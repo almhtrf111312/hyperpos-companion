@@ -9,6 +9,7 @@ import POS from "./pages/POS";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import Debts from "./pages/Debts";
+import Partners from "./pages/Partners";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -30,7 +31,7 @@ const App = () => (
           <Route path="/debts" element={<MainLayout><Debts /></MainLayout>} />
           <Route path="/services" element={<MainLayout><div className="p-6"><h1 className="text-3xl font-bold">الصيانة - قريباً</h1></div></MainLayout>} />
           <Route path="/services/*" element={<MainLayout><div className="p-6"><h1 className="text-3xl font-bold">الصيانة - قريباً</h1></div></MainLayout>} />
-          <Route path="/partners" element={<MainLayout><div className="p-6"><h1 className="text-3xl font-bold">الشركاء - قريباً</h1></div></MainLayout>} />
+          <Route path="/partners" element={<MainLayout><Partners /></MainLayout>} />
           <Route path="/reports" element={<MainLayout><div className="p-6"><h1 className="text-3xl font-bold">التقارير - قريباً</h1></div></MainLayout>} />
           <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
           <Route path="*" element={<NotFound />} />

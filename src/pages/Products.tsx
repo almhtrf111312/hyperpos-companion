@@ -2,18 +2,36 @@ import { useState } from 'react';
 import { 
   Search, 
   Plus, 
-  Filter, 
   Package,
   Edit,
   Trash2,
-  MoreVertical,
   Barcode,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  X,
+  Save
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -26,7 +44,7 @@ interface Product {
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
-const mockProducts: Product[] = [
+const initialProducts: Product[] = [
   { id: '1', name: 'iPhone 15 Pro Max', barcode: '123456789001', category: 'هواتف', costPrice: 1100, salePrice: 1300, quantity: 15, status: 'in_stock' },
   { id: '2', name: 'Samsung Galaxy S24', barcode: '123456789002', category: 'هواتف', costPrice: 850, salePrice: 1000, quantity: 20, status: 'in_stock' },
   { id: '3', name: 'AirPods Pro 2', barcode: '123456789003', category: 'سماعات', costPrice: 180, salePrice: 250, quantity: 5, status: 'low_stock' },
@@ -43,13 +61,32 @@ const statusConfig = {
   out_of_stock: { label: 'نفذ المخزون', color: 'badge-danger', icon: AlertTriangle },
 };
 
+const categoryOptions = ['هواتف', 'أكسسوارات', 'سماعات', 'شواحن', 'قطع غيار', 'أجهزة لوحية', 'ساعات'];
+
 export default function Products() {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
+  
+  // Dialogs
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    barcode: '',
+    category: 'هواتف',
+    costPrice: 0,
+    salePrice: 0,
+    quantity: 0,
+  });
 
-  const categories = ['الكل', ...new Set(mockProducts.map(p => p.category))];
+  const categories = ['الكل', ...new Set(products.map(p => p.category))];
 
-  const filteredProducts = mockProducts.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.barcode.includes(searchQuery);
     const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
@@ -57,93 +94,168 @@ export default function Products() {
   });
 
   const stats = {
-    total: mockProducts.length,
-    inStock: mockProducts.filter(p => p.status === 'in_stock').length,
-    lowStock: mockProducts.filter(p => p.status === 'low_stock').length,
-    outOfStock: mockProducts.filter(p => p.status === 'out_of_stock').length,
+    total: products.length,
+    inStock: products.filter(p => p.status === 'in_stock').length,
+    lowStock: products.filter(p => p.status === 'low_stock').length,
+    outOfStock: products.filter(p => p.status === 'out_of_stock').length,
+  };
+
+  const getStatus = (quantity: number): 'in_stock' | 'low_stock' | 'out_of_stock' => {
+    if (quantity === 0) return 'out_of_stock';
+    if (quantity <= 5) return 'low_stock';
+    return 'in_stock';
+  };
+
+  const handleAddProduct = () => {
+    if (!formData.name || !formData.barcode) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+    
+    const newProduct: Product = {
+      id: Date.now().toString(),
+      ...formData,
+      status: getStatus(formData.quantity),
+    };
+    
+    setProducts([...products, newProduct]);
+    setShowAddDialog(false);
+    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
+    toast.success('تم إضافة المنتج بنجاح');
+  };
+
+  const handleEditProduct = () => {
+    if (!selectedProduct || !formData.name) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+    
+    setProducts(products.map(p => 
+      p.id === selectedProduct.id 
+        ? { ...p, ...formData, status: getStatus(formData.quantity) }
+        : p
+    ));
+    setShowEditDialog(false);
+    setSelectedProduct(null);
+    toast.success('تم تعديل المنتج بنجاح');
+  };
+
+  const handleDeleteProduct = () => {
+    if (!selectedProduct) return;
+    
+    setProducts(products.filter(p => p.id !== selectedProduct.id));
+    setShowDeleteDialog(false);
+    setSelectedProduct(null);
+    toast.success('تم حذف المنتج بنجاح');
+  };
+
+  const openEditDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setFormData({
+      name: product.name,
+      barcode: product.barcode,
+      category: product.category,
+      costPrice: product.costPrice,
+      salePrice: product.salePrice,
+      quantity: product.quantity,
+    });
+    setShowEditDialog(true);
+  };
+
+  const openDeleteDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDeleteDialog(true);
+  };
+
+  const generateBarcode = () => {
+    const barcode = Math.floor(Math.random() * 900000000000) + 100000000000;
+    setFormData({ ...formData, barcode: barcode.toString() });
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">إدارة المنتجات</h1>
-          <p className="text-muted-foreground mt-1">إدارة مخزون المنتجات والأسعار</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة المنتجات</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة مخزون المنتجات والأسعار</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90">
-          <Plus className="w-5 h-5 ml-2" />
+        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+          setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
+          setShowAddDialog(true);
+        }}>
+          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
           إضافة منتج
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Package className="w-5 h-5 text-primary" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
+              <Package className="w-4 h-4 md:w-5 md:h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-sm text-muted-foreground">إجمالي المنتجات</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">إجمالي</p>
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <CheckCircle className="w-5 h-5 text-success" />
+        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-success/10">
+              <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.inStock}</p>
-              <p className="text-sm text-muted-foreground">متوفر</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.inStock}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">متوفر</p>
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <AlertTriangle className="w-5 h-5 text-warning" />
+        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-warning/10">
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.lowStock}</p>
-              <p className="text-sm text-muted-foreground">كمية منخفضة</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">منخفض</p>
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-destructive/10">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
+        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-destructive/10">
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.outOfStock}</p>
-              <p className="text-sm text-muted-foreground">نفذ المخزون</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">نفذ</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+      <div className="flex flex-col gap-3">
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
           <Input
             type="text"
             placeholder="بحث بالاسم أو الباركود..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10 bg-muted border-0"
+            className="pr-9 md:pr-10 bg-muted border-0"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
               className={cn(
-                "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+                "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
                 selectedCategory === category
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -155,8 +267,67 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      {/* Products Grid - Mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
+        {filteredProducts.map((product, index) => {
+          const status = statusConfig[product.status];
+          const profit = product.salePrice - product.costPrice;
+          
+          return (
+            <div 
+              key={product.id}
+              className="bg-card rounded-xl border border-border p-4 fade-in"
+              style={{ animationDelay: `${index * 30}ms` }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                  <Package className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
+                  <p className="text-xs text-muted-foreground">{product.category}</p>
+                </div>
+                <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", status.color)}>
+                  {status.label}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">الشراء</p>
+                  <p className="font-semibold text-sm">${product.costPrice}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">البيع</p>
+                  <p className="font-semibold text-sm text-primary">${product.salePrice}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">الربح</p>
+                  <p className="font-semibold text-sm text-success">${profit}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">المخزون: </span>
+                  <span className="font-semibold">{product.quantity}</span>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDeleteDialog(product)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Products Table - Desktop */}
+      <div className="hidden lg:block bg-card rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -229,14 +400,17 @@ export default function Products() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-center gap-2">
-                        <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <button 
+                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          onClick={() => openEditDialog(product)}
+                        >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive">
+                        <button 
+                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
+                          onClick={() => openDeleteDialog(product)}
+                        >
                           <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                          <MoreVertical className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -247,6 +421,186 @@ export default function Products() {
           </table>
         </div>
       </div>
+
+      {/* Add Product Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              إضافة منتج جديد
+            </DialogTitle>
+            <DialogDescription>أدخل بيانات المنتج الجديد</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">اسم المنتج *</label>
+                <Input
+                  placeholder="مثال: iPhone 15 Pro"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">الباركود *</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="123456789012"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                  />
+                  <Button variant="outline" onClick={generateBarcode}>
+                    <Barcode className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
+                <select 
+                  className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  {categoryOptions.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">الكمية</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.quantity || ''}
+                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.costPrice || ''}
+                  onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.salePrice || ''}
+                  onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
+                إلغاء
+              </Button>
+              <Button className="flex-1" onClick={handleAddProduct}>
+                <Save className="w-4 h-4 ml-2" />
+                حفظ المنتج
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-primary" />
+              تعديل المنتج
+            </DialogTitle>
+            <DialogDescription>تعديل بيانات المنتج</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">اسم المنتج *</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">الباركود</label>
+                <Input
+                  value={formData.barcode}
+                  onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
+                <select 
+                  className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  {categoryOptions.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">الكمية</label>
+                <Input
+                  type="number"
+                  value={formData.quantity || ''}
+                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
+                <Input
+                  type="number"
+                  value={formData.costPrice || ''}
+                  onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
+                <Input
+                  type="number"
+                  value={formData.salePrice || ''}
+                  onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
+                إلغاء
+              </Button>
+              <Button className="flex-1" onClick={handleEditProduct}>
+                <Save className="w-4 h-4 ml-2" />
+                حفظ التعديلات
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف المنتج "{selectedProduct?.name}"؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90">
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
