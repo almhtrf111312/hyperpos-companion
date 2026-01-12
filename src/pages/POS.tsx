@@ -1,29 +1,17 @@
-import { useState } from 'react';
-import { 
-  Search, 
-  Barcode, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  ShoppingCart,
-  CreditCard,
-  Banknote,
-  Percent,
-  Printer,
-  Send,
-  User,
-  Package
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { POSHeader } from '@/components/pos/POSHeader';
+import { ProductGrid } from '@/components/pos/ProductGrid';
+import { CartPanel } from '@/components/pos/CartPanel';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 interface CartItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
-  image?: string;
 }
 
 interface Product {
@@ -59,18 +47,16 @@ const currencies = [
 ];
 
 export default function POS() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]);
   const [customerName, setCustomerName] = useState('');
-
-  const filteredProducts = mockProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -103,250 +89,95 @@ export default function POS() {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountAmount = (subtotal * discount) / 100;
-  const total = subtotal - discountAmount;
-  const totalInCurrency = total * selectedCurrency.rate;
-
   const clearCart = () => {
     setCart([]);
     setDiscount(0);
     setCustomerName('');
   };
 
+  // Determine if we're on tablet (md breakpoint)
+  const [isTablet, setIsTablet] = useState(false);
+  
+  useEffect(() => {
+    const checkDevice = () => {
+      setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
+    };
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+    return () => window.removeEventListener('resize', checkDevice);
+  }, []);
+
   return (
-    <div className="h-screen flex">
-      {/* Products Section */}
-      <div className="flex-1 flex flex-col bg-background">
-        {/* Search and Categories */}
-        <div className="p-4 border-b border-border space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="بحث عن منتج..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10 h-12 bg-muted border-0 text-lg"
-              />
-            </div>
-            <Button variant="outline" size="lg" className="h-12 px-4">
-              <Barcode className="w-5 h-5" />
-            </Button>
-          </div>
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Sidebar for navigation */}
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      
+      {/* Header - Always visible */}
+      <div className="flex-shrink-0">
+        <POSHeader
+          cartItemsCount={cart.length}
+          onMenuClick={() => setSidebarOpen(true)}
+          onCartClick={() => setCartOpen(true)}
+          showCartButton={isMobile}
+        />
+      </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
-                  selectedCategory === category
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Products Section */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <ProductGrid
+            products={mockProducts}
+            categories={categories}
+            searchQuery={searchQuery}
+            selectedCategory={selectedCategory}
+            onSearchChange={setSearchQuery}
+            onCategoryChange={setSelectedCategory}
+            onProductClick={addToCart}
+          />
         </div>
 
-        {/* Products Grid */}
-        <div className="flex-1 p-4 overflow-y-auto">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {filteredProducts.map((product, index) => (
-              <button
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className="pos-item text-right fade-in"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-3">
-                  <Package className="w-12 h-12 text-muted-foreground/50" />
-                </div>
-                <h3 className="font-semibold text-foreground text-sm line-clamp-2 mb-1">
-                  {product.name}
-                </h3>
-                <p className="text-primary font-bold">${product.price}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  المخزون: {product.quantity}
-                </p>
-              </button>
-            ))}
-          </div>
+        {/* Cart Section - Desktop/Tablet */}
+        <div className="w-72 md:w-80 lg:w-96 flex-shrink-0 hidden md:flex flex-col h-full overflow-hidden">
+          <CartPanel
+            cart={cart}
+            currencies={currencies}
+            selectedCurrency={selectedCurrency}
+            discount={discount}
+            customerName={customerName}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeFromCart}
+            onClearCart={clearCart}
+            onCurrencyChange={setSelectedCurrency}
+            onDiscountChange={setDiscount}
+            onCustomerNameChange={setCustomerName}
+          />
         </div>
       </div>
 
-      {/* Cart Section */}
-      <div className="w-96 bg-card border-r border-border flex flex-col">
-        {/* Cart Header */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-primary" />
-              <h2 className="font-bold text-lg">سلة المشتريات</h2>
-            </div>
-            {cart.length > 0 && (
-              <button 
-                onClick={clearCart}
-                className="text-sm text-destructive hover:text-destructive/80"
-              >
-                إفراغ السلة
-              </button>
-            )}
-          </div>
-
-          {/* Customer Name */}
-          <div className="mt-4 relative">
-            <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="اسم العميل (اختياري)"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="pr-10 bg-muted border-0"
-            />
-          </div>
-        </div>
-
-        {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <ShoppingCart className="w-16 h-16 mb-4 opacity-50" />
-              <p>السلة فارغة</p>
-              <p className="text-sm">اضغط على منتج لإضافته</p>
-            </div>
-          ) : (
-            cart.map((item, index) => (
-              <div 
-                key={item.id}
-                className="bg-muted rounded-xl p-3 slide-in-right"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h4 className="font-medium text-sm line-clamp-2">{item.name}</h4>
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQuantity(item.id, -1)}
-                      className="w-8 h-8 rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, 1)}
-                      className="w-8 h-8 rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="font-bold text-primary">
-                    ${(item.price * item.quantity).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Cart Footer */}
-        <div className="border-t border-border p-4 space-y-4">
-          {/* Currency Selector */}
-          <div className="flex gap-2">
-            {currencies.map((currency) => (
-              <button
-                key={currency.code}
-                onClick={() => setSelectedCurrency(currency)}
-                className={cn(
-                  "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-                  selectedCurrency.code === currency.code
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {currency.symbol} {currency.code}
-              </button>
-            ))}
-          </div>
-
-          {/* Discount */}
-          <div className="flex items-center gap-2">
-            <Percent className="w-4 h-4 text-muted-foreground" />
-            <Input
-              type="number"
-              placeholder="خصم %"
-              value={discount || ''}
-              onChange={(e) => setDiscount(Number(e.target.value))}
-              className="bg-muted border-0"
-              min="0"
-              max="100"
-            />
-          </div>
-
-          {/* Summary */}
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">المجموع الفرعي</span>
-              <span>${subtotal.toLocaleString()}</span>
-            </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-success">
-                <span>الخصم ({discount}%)</span>
-                <span>-${discountAmount.toLocaleString()}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
-              <span>الإجمالي</span>
-              <span className="text-primary">
-                {selectedCurrency.symbol}{totalInCurrency.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Payment Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              className="h-14 bg-success hover:bg-success/90"
-              disabled={cart.length === 0}
-            >
-              <Banknote className="w-5 h-5 ml-2" />
-              نقدي
-            </Button>
-            <Button
-              variant="outline"
-              className="h-14 border-warning text-warning hover:bg-warning hover:text-warning-foreground"
-              disabled={cart.length === 0}
-            >
-              <CreditCard className="w-5 h-5 ml-2" />
-              دين
-            </Button>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" disabled={cart.length === 0}>
-              <Printer className="w-4 h-4 ml-2" />
-              طباعة
-            </Button>
-            <Button variant="outline" className="flex-1" disabled={cart.length === 0}>
-              <Send className="w-4 h-4 ml-2" />
-              واتساب
-            </Button>
-          </div>
-        </div>
-      </div>
+      {/* Cart Drawer - Mobile */}
+      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+        <SheetContent 
+          side="bottom" 
+          className="h-[85vh] p-0 rounded-t-2xl"
+        >
+          <CartPanel
+            cart={cart}
+            currencies={currencies}
+            selectedCurrency={selectedCurrency}
+            discount={discount}
+            customerName={customerName}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeFromCart}
+            onClearCart={clearCart}
+            onCurrencyChange={setSelectedCurrency}
+            onDiscountChange={setDiscount}
+            onCustomerNameChange={setCustomerName}
+            onClose={() => setCartOpen(false)}
+            isMobile
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
