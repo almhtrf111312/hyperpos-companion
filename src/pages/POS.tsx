@@ -6,6 +6,8 @@ import { CartPanel } from '@/components/pos/CartPanel';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { getProductsForPOS, POSProduct } from '@/lib/products-store';
+import { getCategoryNames } from '@/lib/categories-store';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -33,33 +35,6 @@ interface CartItem {
   quantity: number;
 }
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  category: string;
-  image?: string;
-  barcode?: string;
-}
-
-const mockProducts: Product[] = [
-  { id: '1', name: 'iPhone 15 Pro Max', price: 1300, quantity: 15, category: 'هواتف', barcode: '123456789001' },
-  { id: '2', name: 'Samsung Galaxy S24', price: 1000, quantity: 20, category: 'هواتف', barcode: '123456789002' },
-  { id: '3', name: 'AirPods Pro 2', price: 250, quantity: 35, category: 'سماعات', barcode: '123456789003' },
-  { id: '4', name: 'شاشة iPhone 13', price: 150, quantity: 50, category: 'قطع غيار', barcode: '123456789004' },
-  { id: '5', name: 'سلك شحن Type-C', price: 15, quantity: 200, category: 'أكسسوارات', barcode: '123456789005' },
-  { id: '6', name: 'حافظة iPhone 15', price: 25, quantity: 100, category: 'أكسسوارات', barcode: '123456789006' },
-  { id: '7', name: 'شاحن سريع 65W', price: 45, quantity: 75, category: 'شواحن', barcode: '123456789007' },
-  { id: '8', name: 'باور بانك 20000mAh', price: 55, quantity: 40, category: 'أكسسوارات', barcode: '123456789008' },
-  { id: '9', name: 'Samsung Galaxy Tab S9', price: 850, quantity: 10, category: 'أجهزة لوحية', barcode: '123456789009' },
-  { id: '10', name: 'Apple Watch Series 9', price: 450, quantity: 25, category: 'ساعات', barcode: '123456789010' },
-  { id: '11', name: 'زجاج حماية iPhone', price: 10, quantity: 150, category: 'أكسسوارات', barcode: '123456789011' },
-  { id: '12', name: 'سماعة بلوتوث JBL', price: 120, quantity: 30, category: 'سماعات', barcode: '123456789012' },
-];
-
-const categories = ['الكل', 'هواتف', 'أكسسوارات', 'سماعات', 'شواحن', 'قطع غيار', 'أجهزة لوحية', 'ساعات'];
-
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
 
 export default function POS() {
@@ -71,6 +46,38 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
+
+  // Load products and categories from shared stores
+  const [products, setProducts] = useState<POSProduct[]>([]);
+  const [categories, setCategories] = useState<string[]>(['الكل']);
+
+  // Reload data when component mounts or when returning to this page
+  useEffect(() => {
+    const loadData = () => {
+      setProducts(getProductsForPOS());
+      setCategories(['الكل', ...getCategoryNames()]);
+    };
+    
+    loadData();
+    
+    // Listen for storage changes (when products/categories are updated in other pages)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key?.includes('hyperpos')) {
+        loadData();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorage);
+    
+    // Also reload when window gains focus (user returns from another tab/page)
+    const handleFocus = () => loadData();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const currencies: Currency[] = useMemo(() => {
     const rates = loadExchangeRates();
@@ -84,7 +91,7 @@ export default function POS() {
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => currencies[0]);
   const [customerName, setCustomerName] = useState('');
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: POSProduct) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -153,7 +160,7 @@ export default function POS() {
         {/* Products Section */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <ProductGrid
-            products={mockProducts}
+            products={products}
             categories={categories}
             searchQuery={searchQuery}
             selectedCategory={selectedCategory}
