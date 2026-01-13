@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -12,6 +13,7 @@ interface StatCardProps {
     label: string;
   };
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
+  linkTo?: string;
 }
 
 const variantStyles = {
@@ -38,7 +40,9 @@ const iconColorStyles = {
   danger: 'text-destructive',
 };
 
-export function StatCard({ title, value, subtitle, icon, trend, variant = 'default' }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon, trend, variant = 'default', linkTo }: StatCardProps) {
+  const navigate = useNavigate();
+
   const getTrendIcon = () => {
     if (!trend) return null;
     if (trend.value > 0) return <TrendingUp className="w-4 h-4" />;
@@ -53,11 +57,23 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
     return 'text-muted-foreground';
   };
 
+  const handleClick = () => {
+    if (linkTo) {
+      navigate(linkTo);
+    }
+  };
+
   return (
-    <div className={cn(
-      "rounded-2xl border p-6 card-hover",
-      variantStyles[variant]
-    )}>
+    <div 
+      className={cn(
+        "rounded-2xl border p-6 card-hover",
+        variantStyles[variant],
+        linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50"
+      )}
+      onClick={handleClick}
+      role={linkTo ? "button" : undefined}
+      tabIndex={linkTo ? 0 : undefined}
+    >
       <div className="flex items-start justify-between">
         <div className="space-y-3">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>

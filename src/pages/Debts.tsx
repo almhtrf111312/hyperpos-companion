@@ -10,7 +10,8 @@ import {
   CheckCircle,
   Eye,
   CreditCard,
-  Save
+  Save,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,8 @@ interface Debt {
   dueDate: string;
   status: 'due' | 'partially_paid' | 'overdue' | 'fully_paid';
   createdAt: string;
+  notes?: string;
+  isCashDebt?: boolean;
 }
 
 const initialDebts: Debt[] = [
@@ -62,8 +65,18 @@ export default function Debts() {
   // Dialogs
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showAddDebtDialog, setShowAddDebtDialog] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
+
+  // Form for adding cash debt
+  const [newDebtForm, setNewDebtForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    amount: 0,
+    dueDate: '',
+    notes: '',
+  });
 
   const filterStatusMap: Record<string, string | null> = {
     'الكل': null,
@@ -132,6 +145,44 @@ export default function Debts() {
     toast.success('تم تسجيل الدفعة بنجاح');
   };
 
+  const handleAddCashDebt = () => {
+    if (!newDebtForm.customerName || !newDebtForm.customerPhone || newDebtForm.amount <= 0) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    if (!newDebtForm.dueDate) {
+      toast.error('يرجى تحديد تاريخ الاستحقاق');
+      return;
+    }
+
+    const newDebt: Debt = {
+      id: Date.now().toString(),
+      invoiceId: `CASH_${Date.now()}`,
+      customerName: newDebtForm.customerName,
+      customerPhone: newDebtForm.customerPhone,
+      totalDebt: newDebtForm.amount,
+      totalPaid: 0,
+      remainingDebt: newDebtForm.amount,
+      dueDate: newDebtForm.dueDate,
+      status: 'due',
+      createdAt: new Date().toISOString().split('T')[0],
+      notes: newDebtForm.notes,
+      isCashDebt: true,
+    };
+
+    setDebts([newDebt, ...debts]);
+    setShowAddDebtDialog(false);
+    setNewDebtForm({
+      customerName: '',
+      customerPhone: '',
+      amount: 0,
+      dueDate: '',
+      notes: '',
+    });
+    toast.success('تم إضافة الدين النقدي بنجاح');
+  };
+
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
@@ -140,9 +191,9 @@ export default function Debts() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة الديون</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">تتبع وإدارة ديون العملاء</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => toast.info('يتم إضافة الديون من خلال فواتير البيع بالدين')}>
+        <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowAddDebtDialog(true)}>
           <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          تسجيل دفعة
+          إضافة دين نقدي
         </Button>
       </div>
 
@@ -255,6 +306,11 @@ export default function Debts() {
                         <StatusIcon className="w-2.5 h-2.5 md:w-3 md:h-3" />
                         {status.label}
                       </span>
+                      {debt.isCashDebt && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium bg-accent/20 text-accent">
+                          نقدي
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -316,6 +372,90 @@ export default function Debts() {
           );
         })}
       </div>
+
+      {/* Add Cash Debt Dialog */}
+      <Dialog open={showAddDebtDialog} onOpenChange={setShowAddDebtDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              إضافة دين نقدي
+            </DialogTitle>
+            <DialogDescription>
+              إضافة دائن جديد بدون فاتورة
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
+              <div className="relative">
+                <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="اسم العميل"
+                  value={newDebtForm.customerName}
+                  onChange={(e) => setNewDebtForm({ ...newDebtForm, customerName: e.target.value })}
+                  className="pr-10"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+              <div className="relative">
+                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="+963 xxx xxx xxx"
+                  value={newDebtForm.customerPhone}
+                  onChange={(e) => setNewDebtForm({ ...newDebtForm, customerPhone: e.target.value })}
+                  className="pr-10"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">المبلغ ($) *</label>
+              <div className="relative">
+                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={newDebtForm.amount || ''}
+                  onChange={(e) => setNewDebtForm({ ...newDebtForm, amount: Number(e.target.value) })}
+                  className="pr-10"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">تاريخ الاستحقاق *</label>
+              <div className="relative">
+                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={newDebtForm.dueDate}
+                  onChange={(e) => setNewDebtForm({ ...newDebtForm, dueDate: e.target.value })}
+                  className="pr-10"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <Input
+                placeholder="ملاحظات إضافية..."
+                value={newDebtForm.notes}
+                onChange={(e) => setNewDebtForm({ ...newDebtForm, notes: e.target.value })}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddDebtDialog(false)}>
+                إلغاء
+              </Button>
+              <Button className="flex-1" onClick={handleAddCashDebt}>
+                <Save className="w-4 h-4 ml-2" />
+                إضافة الدين
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
@@ -404,7 +544,7 @@ export default function Debts() {
                 </div>
               </div>
               
-              <div className="space-y-2 bg-muted rounded-lg p-4">
+              <div className="bg-muted rounded-lg p-4 space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">رقم الفاتورة:</span>
                   <span className="font-mono">{selectedDebt.invoiceId}</span>
@@ -417,24 +557,47 @@ export default function Debts() {
                   <span className="text-muted-foreground">تاريخ الاستحقاق:</span>
                   <span>{selectedDebt.dueDate}</span>
                 </div>
+                {selectedDebt.isCashDebt && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">النوع:</span>
+                    <span className="text-accent font-medium">دين نقدي</span>
+                  </div>
+                )}
+                {selectedDebt.notes && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">ملاحظات:</span>
+                    <span>{selectedDebt.notes}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-muted rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground">إجمالي</p>
+                  <p className="text-xs text-muted-foreground mb-1">إجمالي الدين</p>
                   <p className="text-lg font-bold">${selectedDebt.totalDebt}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground">مدفوع</p>
+                <div className="bg-success/10 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">المدفوع</p>
                   <p className="text-lg font-bold text-success">${selectedDebt.totalPaid}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground">متبقي</p>
-                  <p className={cn("text-lg font-bold", selectedDebt.remainingDebt > 0 ? "text-destructive" : "text-success")}>
-                    ${selectedDebt.remainingDebt}
-                  </p>
+                <div className="bg-destructive/10 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">المتبقي</p>
+                  <p className="text-lg font-bold text-destructive">${selectedDebt.remainingDebt}</p>
                 </div>
               </div>
+
+              {selectedDebt.remainingDebt > 0 && (
+                <Button 
+                  className="w-full bg-success hover:bg-success/90" 
+                  onClick={() => {
+                    setShowViewDialog(false);
+                    openPaymentDialog(selectedDebt);
+                  }}
+                >
+                  <DollarSign className="w-4 h-4 ml-2" />
+                  تسجيل دفعة
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
