@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus, 
@@ -10,7 +10,8 @@ import {
   CheckCircle,
   X,
   Save,
-  ScanLine
+  ScanLine,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { CategoryManager } from '@/components/CategoryManager';
+import { getCategoryNames } from '@/lib/categories-store';
 
 interface Product {
   id: string;
@@ -63,12 +66,12 @@ const statusConfig = {
   out_of_stock: { label: 'نفذ المخزون', color: 'badge-danger', icon: AlertTriangle },
 };
 
-const categoryOptions = ['هواتف', 'أكسسوارات', 'سماعات', 'شواحن', 'قطع غيار', 'أجهزة لوحية', 'ساعات'];
-
 export default function Products() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
@@ -89,7 +92,15 @@ export default function Products() {
     quantity: 0,
   });
 
-  const categories = ['الكل', ...new Set(products.map(p => p.category))];
+  // Reload categories from store
+  const reloadCategories = () => {
+    setCategoryOptions(getCategoryNames());
+  };
+
+  // Get categories used by products (cannot be deleted)
+  const usedCategories = [...new Set(products.map(p => p.category))];
+
+  const categories = ['الكل', ...categoryOptions];
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -185,13 +196,19 @@ export default function Products() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة المنتجات</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة مخزون المنتجات والأسعار</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
-          setShowAddDialog(true);
-        }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          إضافة منتج
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
+            <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            التصنيفات
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
+            setShowAddDialog(true);
+          }}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            إضافة منتج
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -639,6 +656,14 @@ export default function Products() {
             toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج' });
           }
         }}
+      />
+
+      {/* Category Manager */}
+      <CategoryManager
+        isOpen={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+        onCategoriesChange={reloadCategories}
+        usedCategories={usedCategories}
       />
     </div>
   );

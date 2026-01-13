@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { X, Camera, SwitchCamera } from 'lucide-react';
+import { useZxing } from 'react-zxing';
+import { X, Camera, SwitchCamera, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
@@ -34,41 +34,100 @@ const playBeep = () => {
 };
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const lastScanRef = useRef<{ text: string; ts: number } | null>(null);
-  const acceptedRef = useRef(false);
-  const zoomAppliedRef = useRef(false);
-  const startTimeRef = useRef<number>(0);
-
-  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
-  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
-  const containerId = 'barcode-scanner-container';
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceIndex, setDeviceIndex] = useState(0);
+  const acceptedRef = useRef(false);
+  const lastScanRef = useRef<{ text: string; ts: number } | null>(null);
 
-  // Barcode-first (QR disabled intentionally to reduce false positives)
-  const formatsToSupport = [
-    Html5QrcodeSupportedFormats.EAN_13,
-    Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.UPC_A,
-    Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.CODE_128,
-    Html5QrcodeSupportedFormats.CODE_39,
-    Html5QrcodeSupportedFormats.CODE_93,
-    Html5QrcodeSupportedFormats.CODABAR,
-    Html5QrcodeSupportedFormats.ITF,
-  ];
+  // Reset on open
+  useEffect(() => {
+    if (isOpen) {
+      acceptedRef.current = false;
+      lastScanRef.current = null;
+      setIsZoomed(false);
+      setError(null);
+    }
+  }, [isOpen]);
 
-  const applyZoom = useCallback(async () => {
-    if (zoomAppliedRef.current) return;
+  // Get available cameras
+  useEffect(() => {
+    if (!isOpen) return;
     
+    navigator.mediaDevices.enumerateDevices()
+      .then(allDevices => {
+        const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+        setDevices(videoDevices);
+        
+        // Prefer back camera
+        const backIndex = videoDevices.findIndex(
+          d => d.label.toLowerCase().includes('back') || 
+               d.label.toLowerCase().includes('rear') ||
+               d.label.toLowerCase().includes('خلفي')
+        );
+        if (backIndex >= 0) {
+          setDeviceIndex(backIndex);
+        }
+      })
+      .catch(() => {
+        setError('لم يتم العثور على كاميرا');
+      });
+  }, [isOpen]);
+
+  const handleDecode = useCallback((result: any) => {
+    if (acceptedRef.current) return;
+    
+    const text = result.getText().trim();
+    
+    // Basic sanity filter
+    if (text.length < 4 || text.length > 48) return;
+    if (!/^[0-9A-Za-z._-]+$/.test(text)) return;
+
+    const now = Date.now();
+    const prev = lastScanRef.current;
+
+    // Debounce: prevent same barcode within 300ms
+    if (prev && prev.text === text && now - prev.ts < 300) return;
+    
+    lastScanRef.current = { text, ts: now };
+    acceptedRef.current = true;
+
+    // Play beep sound
+    playBeep();
+
+    // Vibrate
+    if (navigator.vibrate) {
+      navigator.vibrate(100);
+    }
+    
+    onScan(text);
+    onClose();
+  }, [onScan, onClose]);
+
+  const { ref } = useZxing({
+    paused: !isOpen,
+    deviceId: devices[deviceIndex]?.deviceId,
+    onDecodeResult: handleDecode,
+    onError: (err) => {
+      console.error('Scanner error:', err);
+    },
+    timeBetweenDecodingAttempts: 100, // Very fast scanning
+  });
+
+  const handleClose = () => {
+    onClose();
+  };
+
+  const switchCamera = () => {
+    if (devices.length <= 1) return;
+    setDeviceIndex((prev) => (prev + 1) % devices.length);
+    setIsZoomed(false);
+  };
+
+  const toggleZoom = async () => {
     try {
-      const scanner = scannerRef.current;
-      if (!scanner) return;
-      
-      // Get the video track
-      const videoElement = document.querySelector(`#${containerId} video`) as HTMLVideoElement;
+      const videoElement = ref.current as HTMLVideoElement;
       if (!videoElement || !videoElement.srcObject) return;
       
       const stream = videoElement.srcObject as MediaStream;
@@ -78,184 +137,33 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         const capabilities = track.getCapabilities() as any;
         
         if (capabilities.zoom) {
-          const maxZoom = capabilities.zoom.max || 2;
-          const targetZoom = Math.min(2, maxZoom);
+          const maxZoom = capabilities.zoom.max || 3;
+          const targetZoom = isZoomed ? 1 : Math.min(2.5, maxZoom);
           
           await track.applyConstraints({
             advanced: [{ zoom: targetZoom } as any]
           });
           
-          zoomAppliedRef.current = true;
-          setIsZoomed(true);
+          setIsZoomed(!isZoomed);
         }
       }
     } catch (e) {
       console.log('Zoom not supported on this device');
     }
-  }, []);
+  };
 
+  // Auto-zoom after 1 second
   useEffect(() => {
-    if (!isOpen) {
-      stopScanner();
-      return;
-    }
-
-    acceptedRef.current = false;
-    zoomAppliedRef.current = false;
-    startTimeRef.current = Date.now();
-    setIsZoomed(false);
-
-    const initScanner = async () => {
-      try {
-        setError(null);
-        
-        // Get available cameras
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          setCameras(devices);
-          
-          // Prefer back camera
-          const backCameraIndex = devices.findIndex(
-            d => d.label.toLowerCase().includes('back') || 
-                 d.label.toLowerCase().includes('rear') ||
-                 d.label.toLowerCase().includes('خلفي')
-          );
-          const preferredIndex = backCameraIndex >= 0 ? backCameraIndex : 0;
-          setCurrentCameraIndex(preferredIndex);
-          
-          await startScanner(devices[preferredIndex].id);
-        } else {
-          setError('لم يتم العثور على كاميرا');
-        }
-      } catch (err: any) {
-        console.error('Camera error:', err);
-        if (err.name === 'NotAllowedError') {
-          setError('يرجى السماح بالوصول إلى الكاميرا');
-        } else {
-          setError('خطأ في تشغيل الكاميرا');
-        }
-      }
-    };
-
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(initScanner, 100);
-    return () => {
-      clearTimeout(timer);
-      stopScanner();
-    };
-  }, [isOpen]);
-
-  // Auto-zoom after ~1.2 seconds if no barcode detected (helps low-focus cameras)
-  useEffect(() => {
-    if (!isScanning || isZoomed) return;
-
-    const zoomTimer = setTimeout(() => {
-      if (!acceptedRef.current && !zoomAppliedRef.current) {
-        applyZoom();
-      }
-    }, 1200);
-
-    return () => clearTimeout(zoomTimer);
-  }, [isScanning, isZoomed, applyZoom]);
-
-  const startScanner = async (cameraId: string) => {
-    try {
-      // Stop existing scanner if any
-      await stopScanner();
-      
-      const scanner = new Html5Qrcode(containerId, {
-        formatsToSupport,
-        verbose: false,
-      });
-      
-      scannerRef.current = scanner;
-
-      await scanner.start(
-        cameraId,
-        {
-          fps: 45,
-          disableFlip: true,
-          // Bigger scan box improves detection speed on real barcodes
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.min(480, Math.floor(viewfinderWidth * 0.95));
-            const height = Math.min(280, Math.floor(viewfinderHeight * 0.45));
-            return { width, height };
-          },
-          aspectRatio: 16 / 9,
-        },
-        (decodedText) => {
-          if (acceptedRef.current) return;
-
-          const text = decodedText.trim();
-
-          // Basic sanity filter
-          if (text.length < 4 || text.length > 48) return;
-          if (!/^[0-9A-Za-z._-]+$/.test(text)) return;
-
-          const now = Date.now();
-          const prev = lastScanRef.current;
-
-          // Debounce: prevent same barcode within 500ms
-          if (prev && prev.text === text && now - prev.ts < 500) return;
-          
-          lastScanRef.current = { text, ts: now };
-          acceptedRef.current = true;
-
-          // Play beep sound
-          playBeep();
-
-          // Vibrate
-          if (navigator.vibrate) {
-            navigator.vibrate(100);
-          }
-          
-          onScan(text);
-          handleClose();
-        },
-        () => {
-          // Ignore scan failures (continuous scanning)
-        }
-      );
-      
-      setIsScanning(true);
-      setError(null);
-    } catch (err: any) {
-      console.error('Scanner start error:', err);
-      setError('خطأ في بدء الماسح');
-    }
-  };
-
-  const stopScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        const state = scannerRef.current.getState();
-        if (state === 2) { // SCANNING state
-          await scannerRef.current.stop();
-        }
-        scannerRef.current.clear();
-      } catch (err) {
-        // Ignore cleanup errors
-      }
-      scannerRef.current = null;
-    }
-    setIsScanning(false);
-  };
-
-  const handleClose = async () => {
-    await stopScanner();
-    onClose();
-  };
-
-  const switchCamera = async () => {
-    if (cameras.length <= 1) return;
+    if (!isOpen || isZoomed) return;
     
-    zoomAppliedRef.current = false;
-    setIsZoomed(false);
+    const timer = setTimeout(() => {
+      if (!acceptedRef.current) {
+        toggleZoom();
+      }
+    }, 1000);
     
-    const nextIndex = (currentCameraIndex + 1) % cameras.length;
-    setCurrentCameraIndex(nextIndex);
-    await startScanner(cameras[nextIndex].id);
-  };
+    return () => clearTimeout(timer);
+  }, [isOpen, isZoomed]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -277,35 +185,35 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
         {/* Scanner Container */}
         <div className="relative pt-14 pb-24">
-          <div 
-            id={containerId} 
-            className="w-full min-h-[300px] bg-black"
+          <video 
+            ref={ref} 
+            className="w-full min-h-[300px] bg-black object-cover"
+            playsInline
+            muted
           />
           
           {/* Scanning overlay */}
-          {isScanning && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center pt-14 pb-24">
-              <div className="relative">
-                <div className="w-72 h-40 border-2 border-primary rounded-lg relative">
-                  {/* Corner decorations */}
-                  <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg" />
-                  <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg" />
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg" />
-                  <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg" />
-                  
-                  {/* Scanning line animation */}
-                  <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan" />
-                </div>
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center pt-14 pb-24">
+            <div className="relative">
+              <div className="w-72 h-40 border-2 border-primary rounded-lg relative">
+                {/* Corner decorations */}
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg" />
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg" />
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg" />
                 
-                {/* Zoom indicator */}
-                {isZoomed && (
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-primary/80 text-white text-xs px-2 py-1 rounded">
-                    تكبير 2x
-                  </div>
-                )}
+                {/* Scanning line animation */}
+                <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan" />
               </div>
+              
+              {/* Zoom indicator */}
+              {isZoomed && (
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-primary/80 text-white text-xs px-2 py-1 rounded">
+                  تكبير 2.5x
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Error message */}
           {error && (
@@ -321,8 +229,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           )}
         </div>
 
-        {/* Bottom Controls - Always visible close option */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/80 flex items-center justify-between gap-4 z-20">
+        {/* Bottom Controls */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/80 flex items-center justify-between gap-2 z-20">
           <Button
             variant="outline"
             onClick={handleClose}
@@ -332,20 +240,27 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             إغلاق
           </Button>
           
-          <p className="text-white/70 text-sm flex-1 text-center">
-            وجّه الكاميرا نحو الباركود
-          </p>
-          
-          {cameras.length > 1 && (
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="icon"
-              onClick={switchCamera}
-              className="rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={toggleZoom}
+              className={`rounded-full border-white/20 text-white hover:bg-white/20 ${isZoomed ? 'bg-primary/50' : 'bg-white/10'}`}
             >
-              <SwitchCamera className="w-5 h-5" />
+              <ZoomIn className="w-5 h-5" />
             </Button>
-          )}
+            
+            {devices.length > 1 && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={switchCamera}
+                className="rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <SwitchCamera className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

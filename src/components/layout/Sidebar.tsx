@@ -27,8 +27,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'لوحة التحكم', path: '/' },
-  { icon: ShoppingCart, label: 'نقطة البيع', path: '/pos' },
+  { icon: ShoppingCart, label: 'نقطة البيع', path: '/' },
+  { icon: LayoutDashboard, label: 'لوحة التحكم', path: '/dashboard' },
   { icon: Package, label: 'المنتجات', path: '/products' },
   { icon: Users, label: 'العملاء', path: '/customers' },
   { icon: CreditCard, label: 'الديون', path: '/debts' },
