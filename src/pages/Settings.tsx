@@ -28,7 +28,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Cloud,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
@@ -39,6 +40,8 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
+import { useUsersManagement, UserData } from '@/hooks/use-users-management';
+import { useAuth } from '@/hooks/use-auth';
 
 const settingsTabs = [
   { id: 'store', label: 'المحل', labelKey: 'settings.general', icon: Store },
@@ -84,13 +87,7 @@ const savePersistedSettings = (data: PersistedSettings) => {
   }
 };
 
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'cashier';
-  password?: string;
-}
+// UserData interface is now imported from use-users-management hook
 
 interface BackupData {
   id: string;
@@ -101,7 +98,10 @@ interface BackupData {
 
 export default function Settings() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
   const [activeTab, setActiveTab] = useState('store');
+  const [isSavingUser, setIsSavingUser] = useState(false);
 
   const persisted = loadPersistedSettings();
   
@@ -192,12 +192,7 @@ export default function Settings() {
     footer: 'شكراً لتسوقكم معنا!',
   });
 
-  // Users
-  const [users, setUsers] = useState<UserData[]>([
-    { id: '1', name: 'المشرف', email: 'admin@hyperpos.com', role: 'admin' },
-    { id: '2', name: 'أحمد محمد', email: 'ahmed@hyperpos.com', role: 'cashier' },
-    { id: '3', name: 'سارة علي', email: 'sara@hyperpos.com', role: 'cashier' },
-  ]);
+  // Users are now managed by useUsersManagement hook
 
   // Backups
   const [backups, setBackups] = useState<BackupData[]>([
@@ -296,7 +291,7 @@ export default function Settings() {
 
   const handleEditUser = (user: UserData) => {
     setSelectedUser(user);
-    setUserForm({ name: user.name, email: user.email, password: '', role: user.role });
+    setUserForm({ name: user.name, email: '', password: '', role: user.role });
     setUserDialogOpen(true);
   };
 
@@ -305,46 +300,74 @@ export default function Settings() {
     setDeleteUserDialogOpen(true);
   };
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (selectedUser) {
-      setUsers(users.filter(u => u.id !== selectedUser.id));
-      toast({
-        title: "تم الحذف",
-        description: `تم حذف المستخدم ${selectedUser.name}`,
-      });
+      setIsSavingUser(true);
+      const success = await deleteUser(selectedUser.user_id, selectedUser.id);
+      setIsSavingUser(false);
+      if (success) {
+        setDeleteUserDialogOpen(false);
+        setSelectedUser(null);
+      }
     }
-    setDeleteUserDialogOpen(false);
-    setSelectedUser(null);
   };
 
-  const handleSaveUser = () => {
-    if (!userForm.name || !userForm.email) {
+  const handleSaveUser = async () => {
+    if (!userForm.name) {
       toast({
         title: "خطأ",
-        description: "يرجى ملء جميع الحقول المطلوبة",
+        description: "يرجى إدخال اسم المستخدم",
         variant: "destructive",
       });
       return;
     }
 
+    setIsSavingUser(true);
+
     if (selectedUser) {
-      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, ...userForm } : u));
-      toast({
-        title: "تم التحديث",
-        description: `تم تحديث بيانات ${userForm.name}`,
-      });
+      // Update existing user
+      let success = true;
+      
+      if (userForm.name !== selectedUser.name) {
+        success = await updateUserProfile(selectedUser.user_id, userForm.name);
+      }
+      
+      if (success && userForm.role !== selectedUser.role) {
+        success = await updateUserRole(selectedUser.user_id, userForm.role);
+      }
+      
+      if (success) {
+        setUserDialogOpen(false);
+      }
     } else {
-      const newUser: UserData = {
-        id: Date.now().toString(),
-        ...userForm,
-      };
-      setUsers([...users, newUser]);
-      toast({
-        title: "تمت الإضافة",
-        description: `تم إضافة المستخدم ${userForm.name}`,
-      });
+      // Add new user
+      if (!userForm.email || !userForm.password) {
+        toast({
+          title: "خطأ",
+          description: "يرجى إدخال البريد الإلكتروني وكلمة المرور",
+          variant: "destructive",
+        });
+        setIsSavingUser(false);
+        return;
+      }
+
+      if (userForm.password.length < 6) {
+        toast({
+          title: "خطأ",
+          description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+          variant: "destructive",
+        });
+        setIsSavingUser(false);
+        return;
+      }
+
+      const success = await addUser(userForm.email, userForm.password, userForm.name, userForm.role);
+      if (success) {
+        setUserDialogOpen(false);
+      }
     }
-    setUserDialogOpen(false);
+    
+    setIsSavingUser(false);
   };
 
   const handleBackupNow = () => {
@@ -921,44 +944,59 @@ export default function Settings() {
               </Button>
             </div>
 
-            <div className="space-y-3">
-              {users.map((user) => (
-                <div key={user.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                      user.role === 'admin' ? "bg-primary text-primary-foreground" : "bg-blue-500/20 text-blue-500"
-                    )}>
-                      <span className="font-bold">{user.name.charAt(0)}</span>
+            {usersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <span className="mr-2 text-muted-foreground">جاري تحميل المستخدمين...</span>
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                لا يوجد مستخدمين. قم بإضافة مستخدم جديد.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {users.map((user) => (
+                  <div key={user.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                        user.role === 'admin' ? "bg-primary text-primary-foreground" : "bg-blue-500/20 text-blue-500"
+                      )}>
+                        <span className="font-bold">{user.name.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.user_id === currentUser?.id && '(أنت)'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 justify-between sm:justify-end">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-xs font-medium",
-                      user.role === 'admin' ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"
-                    )}>
-                      {user.role === 'admin' ? 'مشرف' : 'كاشير'}
-                    </span>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      {user.role !== 'admin' && (
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                    <div className="flex items-center gap-2 justify-between sm:justify-end">
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-xs font-medium",
+                        user.role === 'admin' ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"
+                      )}>
+                        {user.role === 'admin' ? 'مشرف' : 'كاشير'}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                          <Edit className="w-4 h-4" />
                         </Button>
-                      )}
+                        {user.user_id !== currentUser?.id && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
+
+
 
       case 'backup':
         return (
@@ -1012,7 +1050,7 @@ export default function Settings() {
                       if (data.settings.printSettings) setPrintSettings(data.settings.printSettings);
                       if (data.settings.backupSettings) setBackupSettings(data.settings.backupSettings);
                     }
-                    if (data?.users) setUsers(data.users);
+                    // Note: Users are managed by database, not local backup
                     if (data?.backups) setBackups(data.backups);
                     
                     toast({
@@ -1198,42 +1236,47 @@ export default function Settings() {
                 placeholder="أدخل اسم المستخدم"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">البريد الإلكتروني</label>
-              <Input
-                type="email"
-                value={userForm.email}
-                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                placeholder="example@email.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {selectedUser ? 'كلمة المرور الجديدة (اختياري)' : 'كلمة المرور'}
-              </label>
-              <div className="relative">
+            {!selectedUser && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">البريد الإلكتروني</label>
                 <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={userForm.password}
-                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="pl-10"
+                  type="email"
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  placeholder="example@email.com"
+                  disabled={isSavingUser}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
+            )}
+            {!selectedUser && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">كلمة المرور</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={userForm.password}
+                    onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                    placeholder="••••••••"
+                    className="pl-10"
+                    disabled={isSavingUser}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium">الصلاحية</label>
               <select
                 className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
                 value={userForm.role}
                 onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'admin' | 'cashier' })}
+                disabled={isSavingUser}
               >
                 <option value="cashier">كاشير</option>
                 <option value="admin">مشرف</option>
@@ -1241,11 +1284,18 @@ export default function Settings() {
             </div>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setUserDialogOpen(false)} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setUserDialogOpen(false)} className="w-full sm:w-auto" disabled={isSavingUser}>
               إلغاء
             </Button>
-            <Button onClick={handleSaveUser} className="w-full sm:w-auto">
-              {selectedUser ? 'حفظ التغييرات' : 'إضافة المستخدم'}
+            <Button onClick={handleSaveUser} className="w-full sm:w-auto" disabled={isSavingUser}>
+              {isSavingUser ? (
+                <>
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                selectedUser ? 'حفظ التغييرات' : 'إضافة المستخدم'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1261,11 +1311,18 @@ export default function Settings() {
             هل أنت متأكد من حذف المستخدم "{selectedUser?.name}"؟ لا يمكن التراجع عن هذا الإجراء.
           </p>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setDeleteUserDialogOpen(false)} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setDeleteUserDialogOpen(false)} className="w-full sm:w-auto" disabled={isSavingUser}>
               إلغاء
             </Button>
-            <Button variant="destructive" onClick={confirmDeleteUser} className="w-full sm:w-auto">
-              حذف المستخدم
+            <Button variant="destructive" onClick={confirmDeleteUser} className="w-full sm:w-auto" disabled={isSavingUser}>
+              {isSavingUser ? (
+                <>
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  جاري الحذف...
+                </>
+              ) : (
+                'حذف المستخدم'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
