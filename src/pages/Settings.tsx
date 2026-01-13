@@ -26,8 +26,7 @@ import {
   Clock,
   Shield,
   AlertCircle,
-  CheckCircle2,
-  Menu
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,7 +34,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const settingsTabs = [
   { id: 'store', label: 'المحل', icon: Store },
@@ -98,7 +96,6 @@ interface BackupData {
 export default function Settings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('store');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const persisted = loadPersistedSettings();
   
@@ -1065,50 +1062,13 @@ export default function Settings() {
     }
   };
 
-  const SidebarTabs = () => (
-    <div className="bg-card rounded-2xl border border-border p-2">
-      {settingsTabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => {
-            setActiveTab(tab.id);
-            setMobileMenuOpen(false);
-          }}
-          className={cn(
-            "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-right transition-all",
-            activeTab === tab.id
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-        >
-          <tab.icon className="w-5 h-5" />
-          <span className="font-medium">{tab.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 gap-4">
-        <div className="flex items-center gap-3">
-          {/* Mobile menu trigger */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-72 p-4">
-              <h2 className="text-lg font-bold mb-4">الإعدادات</h2>
-              <SidebarTabs />
-            </SheetContent>
-          </Sheet>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">الإعدادات</h1>
-            <p className="text-muted-foreground mt-1 text-sm md:text-base">إدارة إعدادات النظام</p>
-          </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">الإعدادات</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">إدارة إعدادات النظام</p>
         </div>
         <Button onClick={handleSaveSettings} className="hidden sm:flex">
           <Save className="w-5 h-5 ml-2" />
@@ -1119,16 +1079,57 @@ export default function Settings() {
         </Button>
       </div>
 
-      <div className="flex gap-6">
-        {/* Desktop Sidebar */}
-        <div className="hidden md:block w-64 flex-shrink-0">
-          <SidebarTabs />
+      {/* Windows-style Tabs */}
+      <div className="mb-6">
+        {/* Desktop Tabs */}
+        <div className="hidden md:flex items-end gap-0 border-b-2 border-border">
+          {settingsTabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all rounded-t-lg border-2 border-b-0",
+                activeTab === tab.id
+                  ? "bg-card text-foreground border-border -mb-[2px] z-10"
+                  : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground -mb-[2px]",
+                index > 0 && "-mr-1"
+              )}
+              style={{
+                boxShadow: activeTab === tab.id ? '0 -2px 8px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {renderTabContent()}
+        {/* Mobile Tabs - Horizontal Scroll */}
+        <div className="md:hidden overflow-x-auto pb-2 -mx-4 px-4">
+          <div className="flex items-end gap-0 border-b-2 border-border min-w-max">
+            {settingsTabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "relative flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-t-lg border-2 border-b-0",
+                  activeTab === tab.id
+                    ? "bg-card text-foreground border-border -mb-[2px] z-10"
+                    : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted -mb-[2px]",
+                  index > 0 && "-mr-0.5"
+                )}
+              >
+                <tab.icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="min-w-0">
+        {renderTabContent()}
       </div>
 
       {/* Add/Edit User Dialog */}
