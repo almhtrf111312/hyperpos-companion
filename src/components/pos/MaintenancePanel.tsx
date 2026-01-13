@@ -11,7 +11,13 @@ import {
   Send,
   Check,
   X,
-  Loader2
+  Smartphone,
+  Watch,
+  Laptop,
+  Tablet,
+  Headphones,
+  Monitor,
+  Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from 'sonner';
 import { addMaintenanceService } from '@/lib/maintenance-store';
+import { addInvoice } from '@/lib/invoices-store';
 
 interface Currency {
   code: 'USD' | 'TRY' | 'SYP';
@@ -40,7 +54,29 @@ interface MaintenancePanelProps {
   onCurrencyChange: (currency: Currency) => void;
   onClose?: () => void;
   isMobile?: boolean;
+  fullWidth?: boolean;
 }
+
+const serviceTypes = [
+  { value: 'repair', label: 'إصلاح' },
+  { value: 'setup', label: 'إعداد/تثبيت' },
+  { value: 'account', label: 'إنشاء حساب' },
+  { value: 'unlock', label: 'فتح قفل' },
+  { value: 'software', label: 'برمجيات' },
+  { value: 'data', label: 'نقل بيانات' },
+  { value: 'cleaning', label: 'تنظيف' },
+  { value: 'other', label: 'أخرى' },
+];
+
+const productTypes = [
+  { value: 'phone', label: 'هاتف', icon: Smartphone },
+  { value: 'tablet', label: 'تابلت', icon: Tablet },
+  { value: 'laptop', label: 'لابتوب', icon: Laptop },
+  { value: 'watch', label: 'ساعة ذكية', icon: Watch },
+  { value: 'headphones', label: 'سماعات', icon: Headphones },
+  { value: 'monitor', label: 'شاشة', icon: Monitor },
+  { value: 'other', label: 'أخرى', icon: Package },
+];
 
 export function MaintenancePanel({
   currencies,
@@ -48,9 +84,12 @@ export function MaintenancePanel({
   onCurrencyChange,
   onClose,
   isMobile = false,
+  fullWidth = false,
 }: MaintenancePanelProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [serviceType, setServiceType] = useState('');
+  const [productType, setProductType] = useState('');
   const [description, setDescription] = useState('');
   const [servicePrice, setServicePrice] = useState<number>(0);
   const [partsCost, setPartsCost] = useState<number>(0);
@@ -61,9 +100,14 @@ export function MaintenancePanel({
   const profit = servicePrice - partsCost;
   const servicePriceInCurrency = servicePrice * selectedCurrency.rate;
 
+  const getServiceLabel = () => serviceTypes.find(s => s.value === serviceType)?.label || '';
+  const getProductLabel = () => productTypes.find(p => p.value === productType)?.label || '';
+
   const resetForm = () => {
     setCustomerName('');
     setCustomerPhone('');
+    setServiceType('');
+    setProductType('');
     setDescription('');
     setServicePrice(0);
     setPartsCost(0);
@@ -75,7 +119,7 @@ export function MaintenancePanel({
       return false;
     }
     if (servicePrice <= 0) {
-      toast.error('يرجى إدخال قيمة الخدمة');
+      toast.error('يرجى إدخال المبلغ المقبوض');
       return false;
     }
     return true;
@@ -92,14 +136,42 @@ export function MaintenancePanel({
   };
 
   const confirmSale = (paymentType: 'cash' | 'debt') => {
+    const fullDescription = [
+      getServiceLabel(),
+      getProductLabel(),
+      description
+    ].filter(Boolean).join(' - ');
+
+    // Add to maintenance store
     addMaintenanceService({
       customerName,
       customerPhone,
-      description,
+      description: fullDescription,
       servicePrice,
       partsCost,
       paymentType,
       status: 'completed',
+    });
+
+    // Add to invoices store
+    addInvoice({
+      type: 'maintenance',
+      customerName,
+      customerPhone,
+      items: [],
+      subtotal: servicePrice,
+      discount: 0,
+      total: servicePrice,
+      totalInCurrency: servicePriceInCurrency,
+      currency: selectedCurrency.code,
+      currencySymbol: selectedCurrency.symbol,
+      paymentType,
+      status: paymentType === 'cash' ? 'paid' : 'pending',
+      serviceDescription: fullDescription,
+      serviceType: getServiceLabel(),
+      productType: getProductLabel(),
+      partsCost,
+      profit,
     });
     
     toast.success(paymentType === 'cash' 
@@ -143,7 +215,9 @@ export function MaintenancePanel({
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
     
-    // Create print content with logo
+    const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
+    
+    // Create print content with logo - only show price to customer, not cost
     const printContent = `
       <html dir="rtl">
         <head>
@@ -171,9 +245,9 @@ export function MaintenancePanel({
           </div>
           <div class="info"><span class="info-label">العميل:</span> ${customerName}</div>
           ${customerPhone ? `<div class="info"><span class="info-label">الهاتف:</span> ${customerPhone}</div>` : ''}
-          ${description ? `<div class="info"><span class="info-label">الوصف:</span> ${description}</div>` : ''}
+          ${fullDescription ? `<div class="info"><span class="info-label">الخدمة:</span> ${fullDescription}</div>` : ''}
           <div class="total">
-            <strong>قيمة الخدمة:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
+            <strong>المبلغ:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
           </div>
           <div class="footer">
             <p>${footer}</p>
@@ -211,8 +285,9 @@ export function MaintenancePanel({
     } catch {}
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
+    const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
     
-    // Create formatted WhatsApp message with store info
+    // Create formatted WhatsApp message - only show price to customer
     const message = `╔══════════════════╗
     *${storeName}*
 ${storeAddress ? `📍 ${storeAddress}` : ''}
@@ -225,10 +300,10 @@ ${storePhone ? `📞 ${storePhone}` : ''}
 ━━━━━━━━━━━━━━━━━━
 👤 *العميل:* ${customerName}
 ${customerPhone ? `📱 *الهاتف:* ${customerPhone}` : ''}
-${description ? `📝 *الوصف:* ${description}` : ''}
+${fullDescription ? `📝 *الخدمة:* ${fullDescription}` : ''}
 ━━━━━━━━━━━━━━━━━━
 
-💰 *قيمة الخدمة:* ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
+💰 *المبلغ:* ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
 
 ${footer}`;
     
@@ -244,14 +319,14 @@ ${footer}`;
     <>
       <div className={cn(
         "bg-card flex flex-col h-full",
-        isMobile ? "rounded-t-2xl" : "border-r border-border"
+        isMobile ? "rounded-t-2xl" : fullWidth ? "" : "border-r border-border"
       )}>
         {/* Header */}
         <div className="p-3 md:p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wrench className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              <h2 className="font-bold text-base md:text-lg">خدمات الصيانة</h2>
+              <h2 className="font-bold text-base md:text-lg">خدمة صيانة سريعة</h2>
             </div>
             {isMobile && onClose && (
               <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
@@ -259,124 +334,190 @@ ${footer}`;
               </Button>
             )}
           </div>
+          <p className="text-sm text-muted-foreground mt-1">فوترة مباشرة للخدمات السريعة</p>
         </div>
 
         {/* Form */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
-          {/* Customer Info */}
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
-              <div className="relative">
-                <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="اسم العميل"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="pr-9 bg-muted border-0"
-                />
+        <div className={cn(
+          "flex-1 overflow-y-auto p-3 md:p-4",
+          fullWidth ? "max-w-3xl mx-auto w-full" : ""
+        )}>
+          <div className={cn(
+            "space-y-4",
+            fullWidth ? "grid md:grid-cols-2 gap-6" : ""
+          )}>
+            {/* Left Column - Customer & Service Info */}
+            <div className="space-y-4">
+              {/* Customer Info */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-sm text-muted-foreground">معلومات العميل</h3>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
+                  <div className="relative">
+                    <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="اسم العميل"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="pr-9 bg-muted border-0"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">رقم الهاتف</label>
+                  <div className="relative">
+                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="+963 xxx xxx xxx"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="pr-9 bg-muted border-0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Details */}
+              <div className="space-y-3 pt-3 border-t border-border">
+                <h3 className="font-medium text-sm text-muted-foreground">تفاصيل الخدمة</h3>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">نوع الخدمة</label>
+                    <Select value={serviceType} onValueChange={setServiceType}>
+                      <SelectTrigger className="bg-muted border-0">
+                        <SelectValue placeholder="اختر..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {serviceTypes.map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">نوع الجهاز</label>
+                    <Select value={productType} onValueChange={setProductType}>
+                      <SelectTrigger className="bg-muted border-0">
+                        <SelectValue placeholder="اختر..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {productTypes.map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex items-center gap-2">
+                              <type.icon className="w-4 h-4" />
+                              {type.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">تفاصيل إضافية</label>
+                  <Textarea
+                    placeholder="وصف مختصر للخدمة..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="bg-muted border-0 min-h-[80px]"
+                  />
+                </div>
               </div>
             </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف</label>
-              <div className="relative">
-                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="+963 xxx xxx xxx"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="pr-9 bg-muted border-0"
-                />
+
+            {/* Right Column - Pricing */}
+            <div className="space-y-4">
+              <div className="space-y-3 pt-3 md:pt-0 border-t md:border-t-0 border-border">
+                <h3 className="font-medium text-sm text-muted-foreground">التسعير</h3>
+                
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-success" />
+                    المبلغ المقبوض (من الزبون) *
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={servicePrice || ''}
+                    onChange={(e) => setServicePrice(Number(e.target.value))}
+                    className="bg-muted border-0 text-lg font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-warning" />
+                    سعر التكلفة (علينا)
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={partsCost || ''}
+                    onChange={(e) => setPartsCost(Number(e.target.value))}
+                    className="bg-muted border-0"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">لا يظهر في الفاتورة للعميل</p>
+                </div>
+
+                {/* Profit Display */}
+                <div className="bg-success/10 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">الربح الصافي</span>
+                    <span className={cn(
+                      "text-lg font-bold",
+                      profit >= 0 ? "text-success" : "text-destructive"
+                    )}>
+                      ${profit.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">وصف الخدمة</label>
-              <Textarea
-                placeholder="وصف مختصر للخدمة..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="bg-muted border-0 min-h-[80px]"
-              />
-            </div>
-          </div>
+              {/* Currency Selector */}
+              <div className="space-y-3 pt-3 border-t border-border">
+                <h3 className="font-medium text-sm text-muted-foreground">العملة</h3>
+                <div className="flex gap-1.5 md:gap-2">
+                  {currencies.map((currency) => (
+                    <button
+                      key={currency.code}
+                      onClick={() => onCurrencyChange(currency)}
+                      className={cn(
+                        "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
+                        selectedCurrency.code === currency.code
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {currency.symbol} {currency.code}
+                    </button>
+                  ))}
+                </div>
 
-          {/* Pricing */}
-          <div className="space-y-3 pt-3 border-t border-border">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-primary" />
-                قيمة الخدمة (للعميل) *
-              </label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={servicePrice || ''}
-                onChange={(e) => setServicePrice(Number(e.target.value))}
-                className="bg-muted border-0 text-lg font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-warning" />
-                تكلفة القطع (علينا)
-              </label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={partsCost || ''}
-                onChange={(e) => setPartsCost(Number(e.target.value))}
-                className="bg-muted border-0"
-              />
-            </div>
-
-            {/* Profit Display */}
-            <div className="bg-success/10 rounded-lg p-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">الربح الصافي</span>
-                <span className={cn(
-                  "text-lg font-bold",
-                  profit >= 0 ? "text-success" : "text-destructive"
-                )}>
-                  ${profit.toLocaleString()}
-                </span>
+                {/* Summary */}
+                <div className="bg-muted rounded-lg p-3">
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>الإجمالي</span>
+                    <span className="text-primary">
+                      {selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4">
-          {/* Currency Selector */}
-          <div className="flex gap-1.5 md:gap-2">
-            {currencies.map((currency) => (
-              <button
-                key={currency.code}
-                onClick={() => onCurrencyChange(currency)}
-                className={cn(
-                  "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
-                  selectedCurrency.code === currency.code
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {currency.symbol} {currency.code}
-              </button>
-            ))}
-          </div>
-
-          {/* Summary */}
-          <div className="bg-muted rounded-lg p-3">
-            <div className="flex justify-between items-center text-lg font-bold">
-              <span>الإجمالي للعميل</span>
-              <span className="text-primary">
-                {selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
+        <div className={cn(
+          "border-t border-border p-3 md:p-4 space-y-3",
+          fullWidth ? "max-w-3xl mx-auto w-full" : ""
+        )}>
           {/* Payment Buttons */}
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             <Button

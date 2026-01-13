@@ -16,7 +16,8 @@ import {
   Menu,
   X,
   Shield,
-  User
+  User,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -36,6 +37,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: ShoppingCart, label: 'نقطة البيع', translationKey: 'nav.pos', path: '/' },
   { icon: LayoutDashboard, label: 'لوحة التحكم', translationKey: 'nav.dashboard', path: '/dashboard' },
+  { icon: FileText, label: 'الفواتير', translationKey: 'nav.invoices', path: '/invoices' },
   { icon: Package, label: 'المنتجات', translationKey: 'nav.products', path: '/products' },
   { icon: Users, label: 'العملاء', translationKey: 'nav.customers', path: '/customers' },
   { icon: CreditCard, label: 'الديون', translationKey: 'nav.debts', path: '/debts' },
