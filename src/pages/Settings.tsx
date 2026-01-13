@@ -446,10 +446,13 @@ export default function Settings() {
                   <label className="text-sm font-medium text-foreground">رقم الهاتف</label>
                   <div className="relative">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="off"
                       value={storeSettings.phone}
                       onChange={(e) => setStoreSettings({ ...storeSettings, phone: e.target.value })}
-                      className="pr-10 bg-muted border-0"
+                      className="flex h-10 w-full rounded-md px-3 py-2 text-sm pr-10 bg-muted border-0 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   </div>
                 </div>
@@ -511,12 +514,13 @@ export default function Settings() {
                       <p className="text-sm text-muted-foreground">1 USD = {exchangeRates.TRY || '0'} TRY</p>
                     </div>
                   </div>
-                  <Input
+                  <input
                     type="text"
                     inputMode="decimal"
+                    autoComplete="off"
                     value={exchangeRates.TRY}
                     onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
-                    className="w-full sm:w-32 bg-background border-0 text-left"
+                    className="flex h-10 w-full sm:w-32 rounded-md px-3 py-2 text-sm bg-background border-0 text-foreground text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
 
@@ -530,12 +534,13 @@ export default function Settings() {
                       <p className="text-sm text-muted-foreground">1 USD = {Number(exchangeRates.SYP || 0).toLocaleString()} SYP</p>
                     </div>
                   </div>
-                  <Input
+                  <input
                     type="text"
-                    inputMode="numeric"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={exchangeRates.SYP}
                     onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
-                    className="w-full sm:w-32 bg-background border-0 text-left"
+                    className="flex h-10 w-full sm:w-32 rounded-md px-3 py-2 text-sm bg-background border-0 text-foreground text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               </div>
