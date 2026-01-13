@@ -13,13 +13,16 @@ interface BarcodeScannerProps {
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const lastScanRef = useRef<{ text: string; ts: number; count: number } | null>(null);
+  const acceptedRef = useRef(false);
+
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const containerId = 'barcode-scanner-container';
 
-  // Supported barcode formats
+  // Barcode-first (QR disabled intentionally to reduce false positives)
   const formatsToSupport = [
     Html5QrcodeSupportedFormats.EAN_13,
     Html5QrcodeSupportedFormats.EAN_8,
@@ -30,7 +33,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     Html5QrcodeSupportedFormats.CODE_93,
     Html5QrcodeSupportedFormats.CODABAR,
     Html5QrcodeSupportedFormats.ITF,
-    Html5QrcodeSupportedFormats.QR_CODE,
   ];
 
   useEffect(() => {
@@ -94,16 +96,47 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       await scanner.start(
         cameraId,
         {
-          fps: 15,
-          qrbox: { width: 280, height: 150 },
-          aspectRatio: 1.5,
+          fps: 25,
+          disableFlip: true,
+          // Wide scan box fits common product barcodes
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const width = Math.min(360, Math.floor(viewfinderWidth * 0.9));
+            const height = Math.min(220, Math.floor(viewfinderHeight * 0.35));
+            return { width, height };
+          },
+          aspectRatio: 16 / 9,
+          experimentalFeatures: {
+            // Uses native BarcodeDetector when available (much faster + more accurate)
+            useBarCodeDetectorIfSupported: true,
+          },
         },
         (decodedText) => {
-          // Vibrate on successful scan
+          if (acceptedRef.current) return;
+
+          const text = decodedText.trim();
+
+          // Basic sanity filter to avoid noisy false-positives
+          if (text.length < 6 || text.length > 32) return;
+          if (!/^[0-9A-Za-z._-]+$/.test(text)) return;
+
+          const now = Date.now();
+          const prev = lastScanRef.current;
+
+          // Confirm the same value twice within a short window to avoid random reads
+          if (prev && prev.text === text && now - prev.ts < 1400) {
+            lastScanRef.current = { text, ts: now, count: prev.count + 1 };
+          } else {
+            lastScanRef.current = { text, ts: now, count: 1 };
+          }
+
+          if ((lastScanRef.current?.count ?? 0) < 2) return;
+
+          acceptedRef.current = true;
+
           if (navigator.vibrate) {
             navigator.vibrate(100);
           }
-          onScan(decodedText);
+          onScan(text);
           handleClose();
         },
         () => {

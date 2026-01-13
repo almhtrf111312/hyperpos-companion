@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -6,6 +6,25 @@ import { CartPanel } from '@/components/pos/CartPanel';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+
+const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
+
+const loadExchangeRates = () => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return { TRY: 32, SYP: 14500 };
+    const parsed = JSON.parse(raw);
+    const ex = parsed?.exchangeRates;
+    const TRY = Number(ex?.TRY ?? 32);
+    const SYP = Number(ex?.SYP ?? 14500);
+    return {
+      TRY: Number.isFinite(TRY) && TRY > 0 ? TRY : 32,
+      SYP: Number.isFinite(SYP) && SYP > 0 ? SYP : 14500,
+    };
+  } catch {
+    return { TRY: 32, SYP: 14500 };
+  }
+};
 
 interface CartItem {
   id: string;
@@ -41,11 +60,7 @@ const mockProducts: Product[] = [
 
 const categories = ['الكل', 'هواتف', 'أكسسوارات', 'سماعات', 'شواحن', 'قطع غيار', 'أجهزة لوحية', 'ساعات'];
 
-const currencies = [
-  { code: 'USD', symbol: '$', name: 'دولار أمريكي', rate: 1 },
-  { code: 'TRY', symbol: '₺', name: 'ليرة تركية', rate: 32 },
-  { code: 'SYP', symbol: 'ل.س', name: 'ليرة سورية', rate: 14500 },
-];
+type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
 
 export default function POS() {
   const isMobile = useIsMobile();
@@ -56,7 +71,17 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
-  const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]);
+
+  const currencies: Currency[] = useMemo(() => {
+    const rates = loadExchangeRates();
+    return [
+      { code: 'USD', symbol: '$', name: 'دولار أمريكي', rate: 1 },
+      { code: 'TRY', symbol: '₺', name: 'ليرة تركية', rate: rates.TRY },
+      { code: 'SYP', symbol: 'ل.س', name: 'ليرة سورية', rate: rates.SYP },
+    ];
+  }, []);
+
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => currencies[0]);
   const [customerName, setCustomerName] = useState('');
 
   const addToCart = (product: Product) => {

@@ -47,6 +47,39 @@ const settingsTabs = [
   { id: 'backup', label: 'النسخ الاحتياطي', icon: Database },
 ];
 
+const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
+
+type PersistedSettings = {
+  storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string }>;
+  exchangeRates?: Partial<{ TRY: string; SYP: string }>;
+  syncSettings?: any;
+  notificationSettings?: any;
+  printSettings?: any;
+  backupSettings?: any;
+};
+
+const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
+
+const loadPersistedSettings = (): PersistedSettings | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as PersistedSettings) : null;
+  } catch {
+    return null;
+  }
+};
+
+const savePersistedSettings = (data: PersistedSettings) => {
+  try {
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // ignore write errors
+  }
+};
+
 interface UserData {
   id: string;
   name: string;
@@ -66,20 +99,22 @@ export default function Settings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('store');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const persisted = loadPersistedSettings();
   
   // Store settings
   const [storeSettings, setStoreSettings] = useState({
-    name: 'HyperPOS Store',
-    type: 'phones',
-    phone: '+963 912 345 678',
-    email: 'store@hyperpos.com',
-    address: 'دمشق، شارع النيل',
+    name: persisted?.storeSettings?.name ?? 'HyperPOS Store',
+    type: persisted?.storeSettings?.type ?? 'phones',
+    phone: persisted?.storeSettings?.phone ?? '+963 912 345 678',
+    email: persisted?.storeSettings?.email ?? 'store@hyperpos.com',
+    address: persisted?.storeSettings?.address ?? 'دمشق، شارع النيل',
   });
 
-  // Exchange rates
+  // Exchange rates (string to avoid mobile keyboard/focus issues)
   const [exchangeRates, setExchangeRates] = useState({
-    TRY: 32,
-    SYP: 14500,
+    TRY: persisted?.exchangeRates?.TRY ?? '32',
+    SYP: persisted?.exchangeRates?.SYP ?? '14500',
   });
 
   // Sync settings
@@ -108,7 +143,7 @@ export default function Settings() {
     showAddress: true,
     showPhone: true,
     paperSize: '80mm',
-    copies: 1,
+    copies: String(persisted?.printSettings?.copies ?? 1),
     footer: 'شكراً لتسوقكم معنا!',
   });
 
@@ -127,9 +162,9 @@ export default function Settings() {
   ]);
 
   const [backupSettings, setBackupSettings] = useState({
-    autoBackup: true,
-    interval: 'daily',
-    keepDays: 30,
+    autoBackup: persisted?.backupSettings?.autoBackup ?? true,
+    interval: persisted?.backupSettings?.interval ?? 'daily',
+    keepDays: String(persisted?.backupSettings?.keepDays ?? 30),
   });
 
   // Dialogs
@@ -149,9 +184,50 @@ export default function Settings() {
 
   // Handlers
   const handleSaveSettings = () => {
+    const tryRate = Number(exchangeRates.TRY);
+    const sypRate = Number(exchangeRates.SYP);
+    const copies = Number(printSettings.copies);
+    const keepDays = Number(backupSettings.keepDays);
+
+    if (!Number.isFinite(tryRate) || tryRate <= 0 || !Number.isFinite(sypRate) || sypRate <= 0) {
+      toast({
+        title: 'خطأ',
+        description: 'يرجى إدخال أسعار صرف صحيحة',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!Number.isFinite(copies) || copies < 1 || copies > 5) {
+      toast({
+        title: 'خطأ',
+        description: 'عدد النسخ يجب أن يكون بين 1 و 5',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!Number.isFinite(keepDays) || keepDays < 7 || keepDays > 365) {
+      toast({
+        title: 'خطأ',
+        description: 'الاحتفاظ بالنسخ يجب أن يكون بين 7 و 365 يوم',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    savePersistedSettings({
+      storeSettings,
+      exchangeRates,
+      syncSettings,
+      notificationSettings,
+      printSettings,
+      backupSettings,
+    });
+
     toast({
-      title: "تم الحفظ",
-      description: "تم حفظ الإعدادات بنجاح",
+      title: 'تم الحفظ',
+      description: 'تم حفظ الإعدادات بنجاح',
     });
   };
 
@@ -237,11 +313,38 @@ export default function Settings() {
       };
       setBackups([newBackup, ...backups]);
       setIsBackingUp(false);
+
+      // Download a local backup file (offline)
+      const payload = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        settings: {
+          storeSettings,
+          exchangeRates,
+          syncSettings,
+          notificationSettings,
+          printSettings,
+          backupSettings,
+        },
+        users,
+        backups: [newBackup, ...backups],
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
       toast({
         title: "تم النسخ الاحتياطي",
-        description: "تم إنشاء نسخة احتياطية بنجاح",
+        description: "تم إنشاء نسخة احتياطية وتنزيلها بنجاح",
       });
-    }, 2000);
+    }, 800);
   };
 
   const handleRestoreBackup = (backup: BackupData) => {
@@ -260,9 +363,34 @@ export default function Settings() {
   };
 
   const handleExportData = () => {
+    const payload = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      settings: {
+        storeSettings,
+        exchangeRates,
+        syncSettings,
+        notificationSettings,
+        printSettings,
+        backupSettings,
+      },
+      users,
+      backups,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hyperpos_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     toast({
-      title: "جاري التصدير",
-      description: "جاري تصدير البيانات...",
+      title: 'تم التصدير',
+      description: 'تم تنزيل ملف البيانات بنجاح',
     });
   };
 
@@ -380,13 +508,14 @@ export default function Settings() {
                     </div>
                     <div>
                       <p className="font-medium text-foreground">الليرة التركية (TRY)</p>
-                      <p className="text-sm text-muted-foreground">1 USD = {exchangeRates.TRY} TRY</p>
+                      <p className="text-sm text-muted-foreground">1 USD = {exchangeRates.TRY || '0'} TRY</p>
                     </div>
                   </div>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={exchangeRates.TRY}
-                    onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: Number(e.target.value) })}
+                    onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
                     className="w-full sm:w-32 bg-background border-0 text-left"
                   />
                 </div>
@@ -398,13 +527,14 @@ export default function Settings() {
                     </div>
                     <div>
                       <p className="font-medium text-foreground">الليرة السورية (SYP)</p>
-                      <p className="text-sm text-muted-foreground">1 USD = {exchangeRates.SYP.toLocaleString()} SYP</p>
+                      <p className="text-sm text-muted-foreground">1 USD = {Number(exchangeRates.SYP || 0).toLocaleString()} SYP</p>
                     </div>
                   </div>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={exchangeRates.SYP}
-                    onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: Number(e.target.value) })}
+                    onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
                     className="w-full sm:w-32 bg-background border-0 text-left"
                   />
                 </div>
@@ -609,11 +739,10 @@ export default function Settings() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">عدد النسخ</label>
                     <Input
-                      type="number"
-                      min={1}
-                      max={5}
+                      type="text"
+                      inputMode="numeric"
                       value={printSettings.copies}
-                      onChange={(e) => setPrintSettings({ ...printSettings, copies: Number(e.target.value) })}
+                      onChange={(e) => setPrintSettings({ ...printSettings, copies: sanitizeNumberText(e.target.value) })}
                       className="bg-muted border-0"
                     />
                   </div>
@@ -788,11 +917,10 @@ export default function Settings() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-foreground">الاحتفاظ بالنسخ (أيام)</label>
                       <Input
-                        type="number"
-                        min={7}
-                        max={365}
+                        type="text"
+                        inputMode="numeric"
                         value={backupSettings.keepDays}
-                        onChange={(e) => setBackupSettings({ ...backupSettings, keepDays: Number(e.target.value) })}
+                        onChange={(e) => setBackupSettings({ ...backupSettings, keepDays: sanitizeNumberText(e.target.value) })}
                         className="bg-muted border-0"
                       />
                     </div>
