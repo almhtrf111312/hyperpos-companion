@@ -38,7 +38,13 @@ export function LanguageSection() {
               </div>
             </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent 
+            side="bottom" 
+            align="start"
+            className="max-h-[300px] overflow-y-auto z-50"
+            position="popper"
+            sideOffset={4}
+          >
             {languages.map((lang) => (
               <SelectItem key={lang.code} value={lang.code} className="py-3">
                 <div className="flex items-center justify-between w-full gap-4">
