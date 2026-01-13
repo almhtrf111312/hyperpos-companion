@@ -105,10 +105,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             return { width, height };
           },
           aspectRatio: 16 / 9,
-          experimentalFeatures: {
-            // Uses native BarcodeDetector when available (much faster + more accurate)
-            useBarCodeDetectorIfSupported: true,
-          },
         },
         (decodedText) => {
           if (acceptedRef.current) return;
