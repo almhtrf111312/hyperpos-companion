@@ -34,7 +34,7 @@ interface CartItem {
 }
 
 interface Currency {
-  code: string;
+  code: 'USD' | 'TRY' | 'SYP';
   symbol: string;
   name: string;
   rate: number;
