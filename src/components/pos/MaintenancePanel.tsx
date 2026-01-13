@@ -114,30 +114,68 @@ export function MaintenancePanel({
   const handlePrint = () => {
     if (!validateForm()) return;
     
-    // Create print content (only shows service price, not parts cost)
+    // Load store settings for invoice
+    let storeName = 'HyperPOS Store';
+    let storeAddress = '';
+    let storePhone = '';
+    let storeLogo = '';
+    let showLogo = true;
+    let showAddress = true;
+    let showPhone = true;
+    let footer = 'شكراً لتعاملكم معنا!';
+    
+    try {
+      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw);
+        storeName = settings.storeSettings?.name || storeName;
+        storeAddress = settings.storeSettings?.address || '';
+        storePhone = settings.storeSettings?.phone || '';
+        storeLogo = settings.storeSettings?.logo || '';
+        showLogo = settings.printSettings?.showLogo ?? true;
+        showAddress = settings.printSettings?.showAddress ?? true;
+        showPhone = settings.printSettings?.showPhone ?? true;
+        footer = settings.printSettings?.footer || footer;
+      }
+    } catch {}
+
+    const currentDate = new Date().toLocaleDateString('ar-SA');
+    const currentTime = new Date().toLocaleTimeString('ar-SA');
+    
+    // Create print content with logo
     const printContent = `
       <html dir="rtl">
         <head>
           <title>فاتورة صيانة</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .info { margin-bottom: 10px; }
-            .total { font-size: 1.5em; font-weight: bold; margin-top: 20px; border-top: 2px solid #000; padding-top: 10px; }
+            body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+            .logo { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; }
+            .store-name { font-size: 1.4em; font-weight: bold; margin: 5px 0; }
+            .store-info { font-size: 0.85em; color: #555; }
+            .date-time { font-size: 0.8em; color: #777; margin-top: 10px; }
+            .info { margin-bottom: 8px; font-size: 0.9em; }
+            .info-label { color: #555; }
+            .total { font-size: 1.3em; font-weight: bold; margin-top: 20px; border-top: 2px solid #000; padding-top: 10px; text-align: center; }
+            .footer { text-align: center; margin-top: 30px; font-size: 0.85em; color: #555; border-top: 1px dashed #ccc; padding-top: 15px; }
           </style>
         </head>
         <body>
           <div class="header">
-            <h2>فاتورة خدمة صيانة</h2>
+            ${showLogo && storeLogo ? `<img src="${storeLogo}" alt="شعار المحل" class="logo" />` : ''}
+            <div class="store-name">${storeName}</div>
+            ${showAddress && storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
+            ${showPhone && storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+            <div class="date-time">${currentDate} - ${currentTime}</div>
           </div>
-          <div class="info"><strong>العميل:</strong> ${customerName}</div>
-          ${customerPhone ? `<div class="info"><strong>الهاتف:</strong> ${customerPhone}</div>` : ''}
-          ${description ? `<div class="info"><strong>الوصف:</strong> ${description}</div>` : ''}
+          <div class="info"><span class="info-label">العميل:</span> ${customerName}</div>
+          ${customerPhone ? `<div class="info"><span class="info-label">الهاتف:</span> ${customerPhone}</div>` : ''}
+          ${description ? `<div class="info"><span class="info-label">الوصف:</span> ${description}</div>` : ''}
           <div class="total">
             <strong>قيمة الخدمة:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
           </div>
-          <div style="text-align: center; margin-top: 30px;">
-            <p>شكراً لتعاملكم معنا!</p>
+          <div class="footer">
+            <p>${footer}</p>
           </div>
         </body>
       </html>

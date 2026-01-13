@@ -50,7 +50,7 @@ const settingsTabs = [
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
 type PersistedSettings = {
-  storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string }>;
+  storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
   exchangeRates?: Partial<{ TRY: string; SYP: string }>;
   syncSettings?: any;
   notificationSettings?: any;
@@ -109,7 +109,49 @@ export default function Settings() {
     phone: persisted?.storeSettings?.phone ?? '+963 912 345 678',
     email: persisted?.storeSettings?.email ?? 'store@hyperpos.com',
     address: persisted?.storeSettings?.address ?? 'دمشق، شارع النيل',
+    logo: persisted?.storeSettings?.logo ?? '',
   });
+
+  // Logo upload handler
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'خطأ',
+          description: 'يرجى اختيار ملف صورة صالح',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'خطأ',
+          description: 'حجم الصورة يجب أن يكون أقل من 2 ميغابايت',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setStoreSettings(prev => ({ ...prev, logo: base64 }));
+        toast({
+          title: 'تم الرفع',
+          description: 'تم رفع الشعار بنجاح',
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setStoreSettings(prev => ({ ...prev, logo: '' }));
+    toast({
+      title: 'تم الحذف',
+      description: 'تم حذف الشعار',
+    });
+  };
 
   // Exchange rates (string to avoid mobile keyboard/focus issues)
   const [exchangeRates, setExchangeRates] = useState({
@@ -467,7 +509,7 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-foreground">العنوان</label>
                   <div className="relative">
                     <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -476,6 +518,51 @@ export default function Settings() {
                       onChange={(e) => setStoreSettings({ ...storeSettings, address: e.target.value })}
                       className="pr-10 bg-muted border-0"
                     />
+                  </div>
+                </div>
+
+                {/* Logo Upload */}
+                <div className="space-y-3 md:col-span-2">
+                  <label className="text-sm font-medium text-foreground">شعار المحل</label>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    {storeSettings.logo ? (
+                      <div className="relative">
+                        <img 
+                          src={storeSettings.logo} 
+                          alt="شعار المحل" 
+                          className="w-20 h-20 object-contain rounded-lg border border-border bg-muted p-1"
+                        />
+                        <button
+                          onClick={handleRemoveLogo}
+                          className="absolute -top-2 -left-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted">
+                        <Store className="w-8 h-8 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <label className="cursor-pointer">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors w-fit">
+                          <Upload className="w-4 h-4" />
+                          <span className="text-sm font-medium">
+                            {storeSettings.logo ? 'تغيير الشعار' : 'رفع شعار'}
+                          </span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        PNG أو JPG - بحد أقصى 2 ميغابايت
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
