@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { 
   Wrench, 
   User, 
@@ -10,7 +10,9 @@ import {
   Printer,
   Send,
   Check,
-  X
+  X,
+  Image,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { addMaintenanceService } from '@/lib/maintenance-store';
+import html2canvas from 'html2canvas';
 
 interface Currency {
   code: 'USD' | 'TRY' | 'SYP';
@@ -189,18 +192,134 @@ export function MaintenancePanel({
     }
   };
 
-  const handleWhatsApp = () => {
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const invoiceRef = useRef<HTMLDivElement>(null);
+
+  const handleWhatsApp = async () => {
     if (!validateForm()) return;
     
-    // Message only shows service price (not parts cost)
-    const message = `فاتورة خدمة صيانة\n\nالعميل: ${customerName}\n${description ? `الوصف: ${description}\n` : ''}\nقيمة الخدمة: ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}\n\nشكراً لتعاملكم معنا!`;
+    setIsGeneratingImage(true);
     
-    const phone = customerPhone?.replace(/[^\d]/g, '');
-    const url = phone 
-      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    // Load store settings
+    let storeName = 'HyperPOS Store';
+    let storeAddress = '';
+    let storePhone = '';
+    let storeLogo = '';
+    let footer = 'شكراً لتعاملكم معنا!';
     
-    window.open(url, '_blank');
+    try {
+      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw);
+        storeName = settings.storeSettings?.name || storeName;
+        storeAddress = settings.storeSettings?.address || '';
+        storePhone = settings.storeSettings?.phone || '';
+        storeLogo = settings.storeSettings?.logo || '';
+        footer = settings.printSettings?.footer || footer;
+      }
+    } catch {}
+
+    const currentDate = new Date().toLocaleDateString('ar-SA');
+    const currentTime = new Date().toLocaleTimeString('ar-SA');
+
+    // Create a temporary div for the invoice image
+    const invoiceDiv = document.createElement('div');
+    invoiceDiv.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 400px;
+      padding: 30px;
+      background: white;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      direction: rtl;
+    `;
+    
+    invoiceDiv.innerHTML = `
+      <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 3px solid #10b981;">
+        ${storeLogo ? `<img src="${storeLogo}" alt="شعار" style="max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; border-radius: 8px;" />` : ''}
+        <div style="font-size: 24px; font-weight: bold; color: #1f2937; margin: 8px 0;">${storeName}</div>
+        ${storeAddress ? `<div style="font-size: 14px; color: #6b7280; margin: 4px 0;">${storeAddress}</div>` : ''}
+        ${storePhone ? `<div style="font-size: 14px; color: #6b7280; margin: 4px 0;">${storePhone}</div>` : ''}
+      </div>
+      
+      <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-bottom: 8px;">🔧 فاتورة خدمة صيانة</div>
+        <div style="font-size: 12px; color: #6b7280;">${currentDate} - ${currentTime}</div>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+          <span style="color: #6b7280;">العميل:</span>
+          <span style="font-weight: 600; color: #1f2937;">${customerName}</span>
+        </div>
+        ${customerPhone ? `
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+          <span style="color: #6b7280;">الهاتف:</span>
+          <span style="font-weight: 600; color: #1f2937;">${customerPhone}</span>
+        </div>
+        ` : ''}
+        ${description ? `
+        <div style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+          <div style="color: #6b7280; margin-bottom: 4px;">الوصف:</div>
+          <div style="color: #1f2937;">${description}</div>
+        </div>
+        ` : ''}
+      </div>
+      
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 20px; text-align: center; color: white;">
+        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px;">قيمة الخدمة</div>
+        <div style="font-size: 28px; font-weight: bold;">${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}</div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px dashed #e5e7eb;">
+        <div style="font-size: 14px; color: #6b7280;">${footer}</div>
+      </div>
+    `;
+    
+    document.body.appendChild(invoiceDiv);
+    
+    try {
+      const canvas = await html2canvas(invoiceDiv, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+      
+      // Convert to blob and create download link
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          // Create a download link for the image
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `invoice_${customerName}_${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          
+          toast.success('تم تحميل صورة الفاتورة! يمكنك مشاركتها عبر واتساب');
+          
+          // Open WhatsApp with a simple message
+          const phone = customerPhone?.replace(/[^\d]/g, '');
+          const message = `فاتورة خدمة صيانة - ${storeName}\nالعميل: ${customerName}\nالمبلغ: ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}`;
+          const waUrl = phone 
+            ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+            : `https://wa.me/?text=${encodeURIComponent(message)}`;
+          
+          setTimeout(() => {
+            window.open(waUrl, '_blank');
+          }, 500);
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('Error generating invoice image:', error);
+      toast.error('حدث خطأ في إنشاء صورة الفاتورة');
+    } finally {
+      document.body.removeChild(invoiceDiv);
+      setIsGeneratingImage(false);
+    }
   };
 
   return (
@@ -373,9 +492,14 @@ export function MaintenancePanel({
               variant="outline" 
               className="flex-1 h-9 md:h-10 text-xs md:text-sm"
               onClick={handleWhatsApp}
+              disabled={isGeneratingImage}
             >
-              <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              واتساب
+              {isGeneratingImage ? (
+                <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
+              )}
+              {isGeneratingImage ? 'جاري...' : 'واتساب'}
             </Button>
           </div>
         </div>
