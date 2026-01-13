@@ -102,6 +102,16 @@ export default function POS() {
   const [customerName, setCustomerName] = useState('');
 
   const addToCart = (product: POSProduct) => {
+    // Check if product is out of stock and show warning
+    if (product.quantity === 0) {
+      toast.warning(`تنبيه: المنتج "${product.name}" نفذ من المخزون!`, {
+        description: 'تم إضافته للسلة رغم ذلك',
+        duration: 5000,
+      });
+    } else if (product.quantity <= 5) {
+      toast.info(`تنبيه: كمية "${product.name}" منخفضة (${product.quantity} فقط)`);
+    }
+    
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
