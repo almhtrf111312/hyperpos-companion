@@ -3,8 +3,7 @@ import {
   TrendingUp, 
   ShoppingCart, 
   Users, 
-  CreditCard,
-  RefreshCw
+  CreditCard
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
@@ -28,14 +27,9 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-foreground">مرحباً بك 👋</h1>
           <p className="text-muted-foreground mt-1">{today}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
-            <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            <span className="text-sm font-medium text-success">متزامن</span>
-          </div>
-          <button className="p-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
-            <RefreshCw className="w-5 h-5 text-muted-foreground" />
-          </button>
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
+          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+          <span className="text-sm font-medium text-success">متزامن</span>
         </div>
       </div>
 
