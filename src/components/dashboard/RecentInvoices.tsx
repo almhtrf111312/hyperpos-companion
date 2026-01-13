@@ -117,9 +117,90 @@ export function RecentInvoices() {
   };
 
   const handlePrintInvoice = (invoice: InvoiceRow) => {
+    // Load store settings for invoice
+    let storeName = 'HyperPOS Store';
+    let storeAddress = '';
+    let storePhone = '';
+    let storeLogo = '';
+    let showLogo = true;
+    let showAddress = true;
+    let showPhone = true;
+    let footer = 'شكراً لتسوقكم معنا!';
+    
+    try {
+      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw);
+        storeName = settings.storeSettings?.name || storeName;
+        storeAddress = settings.storeSettings?.address || '';
+        storePhone = settings.storeSettings?.phone || '';
+        storeLogo = settings.storeSettings?.logo || '';
+        showLogo = settings.printSettings?.showLogo ?? true;
+        showAddress = settings.printSettings?.showAddress ?? true;
+        showPhone = settings.printSettings?.showPhone ?? true;
+        footer = settings.printSettings?.footer || footer;
+      }
+    } catch {}
+
+    const printContent = `
+      <html dir="rtl">
+        <head>
+          <title>فاتورة ${invoice.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+            .logo { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; }
+            .store-name { font-size: 1.4em; font-weight: bold; margin: 5px 0; }
+            .store-info { font-size: 0.85em; color: #555; }
+            .invoice-info { margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+            .invoice-info p { margin: 5px 0; font-size: 0.9em; }
+            .items { margin: 15px 0; }
+            .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #ddd; }
+            .item-name { flex: 1; }
+            .item-qty { color: #555; font-size: 0.85em; }
+            .item-price { font-weight: bold; }
+            .total { font-size: 1.3em; font-weight: bold; margin-top: 15px; padding-top: 10px; border-top: 2px solid #000; text-align: center; }
+            .footer { text-align: center; margin-top: 25px; font-size: 0.85em; color: #555; border-top: 1px dashed #ccc; padding-top: 15px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${showLogo && storeLogo ? `<img src="${storeLogo}" alt="شعار المحل" class="logo" />` : ''}
+            <div class="store-name">${storeName}</div>
+            ${showAddress && storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
+            ${showPhone && storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+          </div>
+          <div class="invoice-info">
+            <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
+            <p><strong>العميل:</strong> ${invoice.customer}</p>
+            <p><strong>التاريخ:</strong> ${invoice.date} - ${invoice.time}</p>
+          </div>
+          <div class="items">
+            ${invoice.items.map(item => `
+              <div class="item">
+                <span class="item-name">${item.name}</span>
+                <span class="item-qty">×${item.quantity}</span>
+                <span class="item-price">$${item.price}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="total">
+            المجموع: $${invoice.amount.toLocaleString()}
+          </div>
+          <div class="footer">
+            <p>${footer}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
     toast.success(`جاري طباعة الفاتورة ${invoice.id}`);
-    // In real app, this would trigger print dialog
-    window.print();
   };
 
   const handleCopyInvoice = (invoice: InvoiceRow) => {
