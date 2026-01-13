@@ -24,6 +24,7 @@ interface ProductGridProps {
   onSearchChange: (query: string) => void;
   onCategoryChange: (category: string) => void;
   onProductClick: (product: Product) => void;
+  onBarcodeScan?: (barcode: string) => void;
 }
 
 export function ProductGrid({
@@ -34,6 +35,7 @@ export function ProductGrid({
   onSearchChange,
   onCategoryChange,
   onProductClick,
+  onBarcodeScan,
 }: ProductGridProps) {
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -45,16 +47,21 @@ export function ProductGrid({
   });
 
   const handleBarcodeScan = (barcode: string) => {
-    // Search for product by barcode
-    const product = products.find(p => p.barcode === barcode);
-    
-    if (product) {
-      onProductClick(product);
-      toast.success(`تمت إضافة "${product.name}" إلى السلة`);
+    // Use external handler if provided, otherwise fall back to search
+    if (onBarcodeScan) {
+      onBarcodeScan(barcode);
     } else {
-      // If no product found, put barcode in search
-      onSearchChange(barcode);
-      toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج بهذا الباركود' });
+      // Fallback: Search for product by barcode
+      const product = products.find(p => p.barcode === barcode);
+      
+      if (product) {
+        onProductClick(product);
+        toast.success(`تمت إضافة "${product.name}" إلى السلة`);
+      } else {
+        // If no product found, put barcode in search
+        onSearchChange(barcode);
+        toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج بهذا الباركود' });
+      }
     }
   };
 
