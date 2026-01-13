@@ -145,7 +145,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     };
   }, [isOpen]);
 
-  // Auto-zoom after 2.5 seconds if no barcode detected
+  // Auto-zoom after ~1.2 seconds if no barcode detected (helps low-focus cameras)
   useEffect(() => {
     if (!isScanning || isZoomed) return;
 
@@ -153,7 +153,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       if (!acceptedRef.current && !zoomAppliedRef.current) {
         applyZoom();
       }
-    }, 2500);
+    }, 1200);
 
     return () => clearTimeout(zoomTimer);
   }, [isScanning, isZoomed, applyZoom]);
@@ -173,12 +173,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       await scanner.start(
         cameraId,
         {
-          fps: 30,
+          fps: 45,
           disableFlip: true,
-          // Wide scan box fits common product barcodes
+          // Bigger scan box improves detection speed on real barcodes
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.min(360, Math.floor(viewfinderWidth * 0.9));
-            const height = Math.min(220, Math.floor(viewfinderHeight * 0.35));
+            const width = Math.min(480, Math.floor(viewfinderWidth * 0.95));
+            const height = Math.min(280, Math.floor(viewfinderHeight * 0.45));
             return { width, height };
           },
           aspectRatio: 16 / 9,
