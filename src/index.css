@@ -275,9 +275,58 @@
   .count-up {
     animation: count-up 0.5s ease-out;
   }
+
+  /* Barcode scanner animation */
+  @keyframes scan {
+    0% {
+      top: 0;
+    }
+    50% {
+      top: calc(100% - 2px);
+    }
+    100% {
+      top: 0;
+    }
+  }
+
+  .animate-scan {
+    animation: scan 2s ease-in-out infinite;
+  }
 }
 
 /* Font family */
 .font-cairo {
   font-family: 'Cairo', sans-serif;
+}
+
+/* HTML5 QR Code scanner styles */
+#barcode-scanner-container {
+  width: 100% !important;
+  border: none !important;
+}
+
+#barcode-scanner-container video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover;
+}
+
+#barcode-scanner-container img {
+  display: none !important;
+}
+
+#barcode-scanner-container #qr-shaded-region {
+  border: none !important;
+}
+
+/* Hide html5-qrcode UI elements */
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop,
+#html5-qrcode-button-file-selection,
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-anchor-scan-type-change,
+#qr-code-full-region__header_message,
+#qr-code-full-region__scan_region > img,
+#qr-code-full-region > div:last-child {
+  display: none !important;
 }

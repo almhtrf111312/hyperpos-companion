@@ -21,21 +21,22 @@ interface Product {
   quantity: number;
   category: string;
   image?: string;
+  barcode?: string;
 }
 
 const mockProducts: Product[] = [
-  { id: '1', name: 'iPhone 15 Pro Max', price: 1300, quantity: 15, category: 'هواتف' },
-  { id: '2', name: 'Samsung Galaxy S24', price: 1000, quantity: 20, category: 'هواتف' },
-  { id: '3', name: 'AirPods Pro 2', price: 250, quantity: 35, category: 'سماعات' },
-  { id: '4', name: 'شاشة iPhone 13', price: 150, quantity: 50, category: 'قطع غيار' },
-  { id: '5', name: 'سلك شحن Type-C', price: 15, quantity: 200, category: 'أكسسوارات' },
-  { id: '6', name: 'حافظة iPhone 15', price: 25, quantity: 100, category: 'أكسسوارات' },
-  { id: '7', name: 'شاحن سريع 65W', price: 45, quantity: 75, category: 'شواحن' },
-  { id: '8', name: 'باور بانك 20000mAh', price: 55, quantity: 40, category: 'أكسسوارات' },
-  { id: '9', name: 'Samsung Galaxy Tab S9', price: 850, quantity: 10, category: 'أجهزة لوحية' },
-  { id: '10', name: 'Apple Watch Series 9', price: 450, quantity: 25, category: 'ساعات' },
-  { id: '11', name: 'زجاج حماية iPhone', price: 10, quantity: 150, category: 'أكسسوارات' },
-  { id: '12', name: 'سماعة بلوتوث JBL', price: 120, quantity: 30, category: 'سماعات' },
+  { id: '1', name: 'iPhone 15 Pro Max', price: 1300, quantity: 15, category: 'هواتف', barcode: '123456789001' },
+  { id: '2', name: 'Samsung Galaxy S24', price: 1000, quantity: 20, category: 'هواتف', barcode: '123456789002' },
+  { id: '3', name: 'AirPods Pro 2', price: 250, quantity: 35, category: 'سماعات', barcode: '123456789003' },
+  { id: '4', name: 'شاشة iPhone 13', price: 150, quantity: 50, category: 'قطع غيار', barcode: '123456789004' },
+  { id: '5', name: 'سلك شحن Type-C', price: 15, quantity: 200, category: 'أكسسوارات', barcode: '123456789005' },
+  { id: '6', name: 'حافظة iPhone 15', price: 25, quantity: 100, category: 'أكسسوارات', barcode: '123456789006' },
+  { id: '7', name: 'شاحن سريع 65W', price: 45, quantity: 75, category: 'شواحن', barcode: '123456789007' },
+  { id: '8', name: 'باور بانك 20000mAh', price: 55, quantity: 40, category: 'أكسسوارات', barcode: '123456789008' },
+  { id: '9', name: 'Samsung Galaxy Tab S9', price: 850, quantity: 10, category: 'أجهزة لوحية', barcode: '123456789009' },
+  { id: '10', name: 'Apple Watch Series 9', price: 450, quantity: 25, category: 'ساعات', barcode: '123456789010' },
+  { id: '11', name: 'زجاج حماية iPhone', price: 10, quantity: 150, category: 'أكسسوارات', barcode: '123456789011' },
+  { id: '12', name: 'سماعة بلوتوث JBL', price: 120, quantity: 30, category: 'سماعات', barcode: '123456789012' },
 ];
 
 const categories = ['الكل', 'هواتف', 'أكسسوارات', 'سماعات', 'شواحن', 'قطع غيار', 'أجهزة لوحية', 'ساعات'];

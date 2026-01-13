@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   CheckCircle,
   X,
-  Save
+  Save,
+  ScanLine
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
+import { BarcodeScanner } from '@/components/BarcodeScanner';
 
 interface Product {
   id: string;
@@ -67,6 +69,7 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
+  const [scannerOpen, setScannerOpen] = useState(false);
   
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -239,15 +242,25 @@ export default function Products() {
 
       {/* Filters */}
       <div className="flex flex-col gap-3">
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="بحث بالاسم أو الباركود..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-9 md:pr-10 bg-muted border-0"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="بحث بالاسم أو الباركود..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-9 md:pr-10 bg-muted border-0"
+            />
+          </div>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-10 w-10 flex-shrink-0"
+            onClick={() => setScannerOpen(true)}
+          >
+            <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
+          </Button>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {categories.map((category) => (
@@ -601,6 +614,21 @@ export default function Products() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(barcode) => {
+          setSearchQuery(barcode);
+          const product = products.find(p => p.barcode === barcode);
+          if (product) {
+            toast.success(`تم العثور على: ${product.name}`);
+          } else {
+            toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج' });
+          }
+        }}
+      />
     </div>
   );
 }
