@@ -408,7 +408,7 @@ export default function Settings() {
     });
   };
 
-  const TabContent = () => {
+  const renderTabContent = () => {
     switch (activeTab) {
       case 'store':
         return (
@@ -1040,7 +1040,7 @@ export default function Settings() {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <TabContent />
+          {renderTabContent()}
         </div>
       </div>
 
