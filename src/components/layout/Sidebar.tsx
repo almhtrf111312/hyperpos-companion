@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
@@ -14,28 +14,35 @@ import {
   LogOut,
   Zap,
   Menu,
-  X
+  X,
+  Shield,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
+import { toast } from 'sonner';
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
+  translationKey: string;
   path: string;
   badge?: number;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { icon: ShoppingCart, label: 'نقطة البيع', path: '/' },
-  { icon: LayoutDashboard, label: 'لوحة التحكم', path: '/dashboard' },
-  { icon: Package, label: 'المنتجات', path: '/products' },
-  { icon: Users, label: 'العملاء', path: '/customers' },
-  { icon: CreditCard, label: 'الديون', path: '/debts' },
-  { icon: Wrench, label: 'الصيانة', path: '/services' },
-  { icon: UserCheck, label: 'الشركاء', path: '/partners' },
-  { icon: BarChart3, label: 'التقارير', path: '/reports' },
-  { icon: Settings, label: 'الإعدادات', path: '/settings' },
+  { icon: ShoppingCart, label: 'نقطة البيع', translationKey: 'nav.pos', path: '/' },
+  { icon: LayoutDashboard, label: 'لوحة التحكم', translationKey: 'nav.dashboard', path: '/dashboard' },
+  { icon: Package, label: 'المنتجات', translationKey: 'nav.products', path: '/products' },
+  { icon: Users, label: 'العملاء', translationKey: 'nav.customers', path: '/customers' },
+  { icon: CreditCard, label: 'الديون', translationKey: 'nav.debts', path: '/debts' },
+  { icon: Wrench, label: 'الصيانة', translationKey: 'nav.services', path: '/services' },
+  { icon: UserCheck, label: 'الشركاء', translationKey: 'nav.partners', path: '/partners', adminOnly: true },
+  { icon: BarChart3, label: 'التقارير', translationKey: 'nav.reports', path: '/reports', adminOnly: true },
+  { icon: Settings, label: 'الإعدادات', translationKey: 'nav.settings', path: '/settings', adminOnly: true },
 ];
 
 interface SidebarProps {
@@ -46,7 +53,10 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { user, profile, role, isAdmin, signOut } = useAuth();
+  const { t } = useLanguage();
 
   // Close sidebar on mobile when navigating
   useEffect(() => {
@@ -58,6 +68,26 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   // On mobile, always show full sidebar (not collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
+
+  // Filter nav items based on role
+  const filteredNavItems = navItems.filter(item => {
+    if (item.adminOnly && !isAdmin) {
+      return false;
+    }
+    return true;
+  });
+
+  const handleLogout = async () => {
+    await signOut();
+    toast.success(t('auth.logoutSuccess'));
+    navigate('/login');
+  };
+
+  // Get user display info
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'مستخدم';
+  const displayEmail = user?.email || '';
+  const userInitial = displayName.charAt(0).toUpperCase();
+  const roleLabel = isAdmin ? t('role.admin') : t('role.cashier');
 
   return (
     <>
@@ -116,7 +146,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 overflow-y-auto">
           <ul className="space-y-1">
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <li key={item.path}>
@@ -133,7 +163,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "animate-pulse")} />
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="font-medium">{item.label}</span>
+                        <span className="font-medium">{t(item.translationKey as any)}</span>
                         {item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                             {item.badge}
@@ -143,7 +173,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     )}
                     {effectiveCollapsed && !isMobile && (
                       <div className="absolute right-full mr-2 px-3 py-2 bg-popover text-popover-foreground rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
-                        {item.label}
+                        {t(item.translationKey as any)}
                       </div>
                     )}
                   </NavLink>
@@ -162,17 +192,33 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             "flex items-center gap-3 p-3 rounded-xl bg-sidebar-accent",
             effectiveCollapsed && !isMobile && "p-2"
           )}>
-            <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground font-bold">م</span>
+            <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0 relative">
+              <span className="text-primary-foreground font-bold">{userInitial}</span>
+              {isAdmin && (
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
+                  <Shield className="w-2.5 h-2.5 text-white" />
+                </div>
+              )}
             </div>
             {(!effectiveCollapsed || isMobile) && (
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate text-sidebar-foreground">المشرف</p>
-                <p className="text-xs text-muted-foreground truncate">admin@hyperpos.com</p>
+                <p className="font-medium text-sm truncate text-sidebar-foreground">{displayName}</p>
+                <div className="flex items-center gap-1">
+                  <span className={cn(
+                    "text-xs px-1.5 py-0.5 rounded-full",
+                    isAdmin ? "bg-amber-500/20 text-amber-500" : "bg-primary/20 text-primary"
+                  )}>
+                    {roleLabel}
+                  </span>
+                </div>
               </div>
             )}
             {(!effectiveCollapsed || isMobile) && (
-              <button className="p-2 rounded-lg hover:bg-sidebar-border transition-colors text-muted-foreground hover:text-destructive">
+              <button 
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-sidebar-border transition-colors text-muted-foreground hover:text-destructive"
+                title={t('auth.logout')}
+              >
                 <LogOut className="w-4 h-4" />
               </button>
             )}
