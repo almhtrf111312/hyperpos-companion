@@ -242,20 +242,13 @@ export default function POS() {
           </>
         ) : (
           <>
-            {/* Maintenance Mode - Full width on mobile, with panel on desktop */}
-            <div className="flex-1 flex items-center justify-center p-4">
-              <div className="text-center text-muted-foreground">
-                <Wrench className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">أدخل بيانات خدمة الصيانة من اللوحة الجانبية</p>
-              </div>
-            </div>
-
-            {/* Maintenance Panel - Desktop/Tablet */}
-            <div className="w-72 md:w-80 lg:w-96 flex-shrink-0 hidden md:flex flex-col h-full overflow-hidden">
+            {/* Maintenance Mode - Panel takes full width */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <MaintenancePanel
                 currencies={currencies}
                 selectedCurrency={selectedCurrency}
                 onCurrencyChange={setSelectedCurrency}
+                fullWidth
               />
             </div>
           </>

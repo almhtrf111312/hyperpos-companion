@@ -16,6 +16,7 @@ import Debts from "./pages/Debts";
 import Partners from "./pages/Partners";
 import Settings from "./pages/Settings";
 import Services from "./pages/Services";
+import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
                 <Route path="/customers/*" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
                 <Route path="/debts" element={<ProtectedRoute><MainLayout><Debts /></MainLayout></ProtectedRoute>} />
+                <Route path="/invoices" element={<ProtectedRoute><MainLayout><Invoices /></MainLayout></ProtectedRoute>} />
                 <Route path="/services" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
                 <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
                 
