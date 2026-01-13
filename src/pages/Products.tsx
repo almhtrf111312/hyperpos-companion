@@ -74,6 +74,7 @@ export default function Products() {
     costPrice: 0,
     salePrice: 0,
     quantity: 0,
+    expiryDate: '',
   });
 
   // Reload categories from store
@@ -115,12 +116,13 @@ export default function Products() {
     const newProduct: Product = {
       id: Date.now().toString(),
       ...formData,
+      expiryDate: formData.expiryDate || undefined,
       status: getStatus(formData.quantity),
     };
     
     updateProducts([...products, newProduct]);
     setShowAddDialog(false);
-    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
+    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '' });
     toast.success('تم إضافة المنتج بنجاح');
   };
 
@@ -158,6 +160,7 @@ export default function Products() {
       costPrice: product.costPrice,
       salePrice: product.salePrice,
       quantity: product.quantity,
+      expiryDate: product.expiryDate || '',
     });
     setShowEditDialog(true);
   };
@@ -186,7 +189,7 @@ export default function Products() {
             التصنيفات
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '' });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -513,6 +516,14 @@ export default function Products() {
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                 />
               </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية (اختياري)</label>
+                <Input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                />
+              </div>
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
@@ -587,6 +598,14 @@ export default function Products() {
                   type="number"
                   value={formData.salePrice || ''}
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية (اختياري)</label>
+                <Input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                 />
               </div>
             </div>

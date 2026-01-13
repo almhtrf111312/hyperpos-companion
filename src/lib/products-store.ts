@@ -11,6 +11,7 @@ export interface Product {
   salePrice: number;
   quantity: number;
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
+  expiryDate?: string; // Optional expiry date for pharmacy/grocery
 }
 
 const defaultProducts: Product[] = [
@@ -87,6 +88,33 @@ export const deleteProduct = (id: string): boolean => {
   return true;
 };
 
+// Check expiry status
+export type ExpiryStatus = 'expired' | 'expiring_soon' | 'valid' | 'no_expiry';
+
+export const getExpiryStatus = (expiryDate?: string): ExpiryStatus => {
+  if (!expiryDate) return 'no_expiry';
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const expiry = new Date(expiryDate);
+  expiry.setHours(0, 0, 0, 0);
+  
+  const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 30) return 'expiring_soon'; // 30 days warning
+  return 'valid';
+};
+
+export const getExpiringProducts = (): Product[] => {
+  const products = loadProducts();
+  return products.filter(p => {
+    const status = getExpiryStatus(p.expiryDate);
+    return status === 'expired' || status === 'expiring_soon';
+  });
+};
+
 // Convert to POS-compatible format
 export interface POSProduct {
   id: string;
@@ -95,6 +123,7 @@ export interface POSProduct {
   quantity: number;
   category: string;
   barcode?: string;
+  expiryDate?: string;
 }
 
 export const getProductsForPOS = (): POSProduct[] => {
@@ -105,5 +134,12 @@ export const getProductsForPOS = (): POSProduct[] => {
     quantity: p.quantity,
     category: p.category,
     barcode: p.barcode,
+    expiryDate: p.expiryDate,
   }));
+};
+
+// Get product by barcode
+export const getProductByBarcode = (barcode: string): POSProduct | undefined => {
+  const products = getProductsForPOS();
+  return products.find(p => p.barcode === barcode);
 };
