@@ -112,20 +112,17 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           const text = decodedText.trim();
 
           // Basic sanity filter to avoid noisy false-positives
-          if (text.length < 6 || text.length > 32) return;
+          if (text.length < 4 || text.length > 48) return;
           if (!/^[0-9A-Za-z._-]+$/.test(text)) return;
 
+          // Accept immediately for faster scanning (library already validates barcode format)
           const now = Date.now();
           const prev = lastScanRef.current;
 
-          // Confirm the same value twice within a short window to avoid random reads
-          if (prev && prev.text === text && now - prev.ts < 1400) {
-            lastScanRef.current = { text, ts: now, count: prev.count + 1 };
-          } else {
-            lastScanRef.current = { text, ts: now, count: 1 };
-          }
-
-          if ((lastScanRef.current?.count ?? 0) < 2) return;
+          // Debounce: prevent same barcode within 500ms
+          if (prev && prev.text === text && now - prev.ts < 500) return;
+          
+          lastScanRef.current = { text, ts: now, count: 1 };
 
           acceptedRef.current = true;
 
