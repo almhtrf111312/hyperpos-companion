@@ -53,9 +53,10 @@ const statusConfig = {
 export default function Products() {
   const [products, setProducts] = useState<Product[]>(() => loadProducts());
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('الكل');
-  const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
+const [selectedCategory, setSelectedCategory] = useState('الكل');
+const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
+const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
@@ -87,12 +88,13 @@ export default function Products() {
 
   const categories = ['الكل', ...categoryOptions];
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.barcode.includes(searchQuery);
-    const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+const filteredProducts = products.filter(product => {
+  const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       product.barcode.includes(searchQuery);
+  const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
+  const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+  return matchesSearch && matchesCategory && matchesStatus;
+});
 
   const stats = {
     total: products.length,
@@ -198,9 +200,15 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats - Clickable for filtering */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+        <button 
+          onClick={() => setStatusFilter('all')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+          )}
+        >
           <div className="flex items-center gap-2 md:gap-3">
             <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
               <Package className="w-4 h-4 md:w-5 md:h-5 text-primary" />
@@ -210,8 +218,14 @@ export default function Products() {
               <p className="text-xs md:text-sm text-muted-foreground">إجمالي</p>
             </div>
           </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+        </button>
+        <button 
+          onClick={() => setStatusFilter('in_stock')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
+          )}
+        >
           <div className="flex items-center gap-2 md:gap-3">
             <div className="p-1.5 md:p-2 rounded-lg bg-success/10">
               <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-success" />
@@ -221,8 +235,14 @@ export default function Products() {
               <p className="text-xs md:text-sm text-muted-foreground">متوفر</p>
             </div>
           </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+        </button>
+        <button 
+          onClick={() => setStatusFilter('low_stock')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
+          )}
+        >
           <div className="flex items-center gap-2 md:gap-3">
             <div className="p-1.5 md:p-2 rounded-lg bg-warning/10">
               <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-warning" />
@@ -232,8 +252,14 @@ export default function Products() {
               <p className="text-xs md:text-sm text-muted-foreground">منخفض</p>
             </div>
           </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+        </button>
+        <button 
+          onClick={() => setStatusFilter('out_of_stock')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+          )}
+        >
           <div className="flex items-center gap-2 md:gap-3">
             <div className="p-1.5 md:p-2 rounded-lg bg-destructive/10">
               <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
@@ -243,7 +269,7 @@ export default function Products() {
               <p className="text-xs md:text-sm text-muted-foreground">نفذ</p>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Filters */}
@@ -446,7 +472,7 @@ export default function Products() {
 
       {/* Add Product Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
@@ -454,7 +480,7 @@ export default function Products() {
             </DialogTitle>
             <DialogDescription>أدخل بيانات المنتج الجديد</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 pb-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">اسم المنتج *</label>
@@ -540,7 +566,7 @@ export default function Products() {
 
       {/* Edit Product Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
@@ -548,7 +574,7 @@ export default function Products() {
             </DialogTitle>
             <DialogDescription>تعديل بيانات المنتج</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 pb-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">اسم المنتج *</label>
