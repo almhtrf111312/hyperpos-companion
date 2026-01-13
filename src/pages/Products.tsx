@@ -37,28 +37,12 @@ import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';
 import { getCategoryNames } from '@/lib/categories-store';
-
-interface Product {
-  id: string;
-  name: string;
-  barcode: string;
-  category: string;
-  costPrice: number;
-  salePrice: number;
-  quantity: number;
-  status: 'in_stock' | 'low_stock' | 'out_of_stock';
-}
-
-const initialProducts: Product[] = [
-  { id: '1', name: 'iPhone 15 Pro Max', barcode: '123456789001', category: 'هواتف', costPrice: 1100, salePrice: 1300, quantity: 15, status: 'in_stock' },
-  { id: '2', name: 'Samsung Galaxy S24', barcode: '123456789002', category: 'هواتف', costPrice: 850, salePrice: 1000, quantity: 20, status: 'in_stock' },
-  { id: '3', name: 'AirPods Pro 2', barcode: '123456789003', category: 'سماعات', costPrice: 180, salePrice: 250, quantity: 5, status: 'low_stock' },
-  { id: '4', name: 'شاشة iPhone 13', barcode: '123456789004', category: 'قطع غيار', costPrice: 100, salePrice: 150, quantity: 0, status: 'out_of_stock' },
-  { id: '5', name: 'سلك شحن Type-C', barcode: '123456789005', category: 'أكسسوارات', costPrice: 8, salePrice: 15, quantity: 200, status: 'in_stock' },
-  { id: '6', name: 'حافظة iPhone 15', barcode: '123456789006', category: 'أكسسوارات', costPrice: 12, salePrice: 25, quantity: 100, status: 'in_stock' },
-  { id: '7', name: 'شاحن سريع 65W', barcode: '123456789007', category: 'شواحن', costPrice: 30, salePrice: 45, quantity: 3, status: 'low_stock' },
-  { id: '8', name: 'باور بانك 20000mAh', barcode: '123456789008', category: 'أكسسوارات', costPrice: 35, salePrice: 55, quantity: 40, status: 'in_stock' },
-];
+import { 
+  loadProducts, 
+  saveProducts, 
+  getStatus,
+  Product 
+} from '@/lib/products-store';
 
 const statusConfig = {
   in_stock: { label: 'متوفر', color: 'badge-success', icon: CheckCircle },
@@ -67,7 +51,7 @@ const statusConfig = {
 };
 
 export default function Products() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>(() => loadProducts());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
@@ -116,10 +100,10 @@ export default function Products() {
     outOfStock: products.filter(p => p.status === 'out_of_stock').length,
   };
 
-  const getStatus = (quantity: number): 'in_stock' | 'low_stock' | 'out_of_stock' => {
-    if (quantity === 0) return 'out_of_stock';
-    if (quantity <= 5) return 'low_stock';
-    return 'in_stock';
+  // Helper to update products state and save to localStorage
+  const updateProducts = (newProducts: Product[]) => {
+    setProducts(newProducts);
+    saveProducts(newProducts);
   };
 
   const handleAddProduct = () => {
@@ -134,7 +118,7 @@ export default function Products() {
       status: getStatus(formData.quantity),
     };
     
-    setProducts([...products, newProduct]);
+    updateProducts([...products, newProduct]);
     setShowAddDialog(false);
     setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0 });
     toast.success('تم إضافة المنتج بنجاح');
@@ -146,7 +130,7 @@ export default function Products() {
       return;
     }
     
-    setProducts(products.map(p => 
+    updateProducts(products.map(p => 
       p.id === selectedProduct.id 
         ? { ...p, ...formData, status: getStatus(formData.quantity) }
         : p
@@ -159,7 +143,7 @@ export default function Products() {
   const handleDeleteProduct = () => {
     if (!selectedProduct) return;
     
-    setProducts(products.filter(p => p.id !== selectedProduct.id));
+    updateProducts(products.filter(p => p.id !== selectedProduct.id));
     setShowDeleteDialog(false);
     setSelectedProduct(null);
     toast.success('تم حذف المنتج بنجاح');
