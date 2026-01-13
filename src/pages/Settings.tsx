@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Store,
   DollarSign,
@@ -26,8 +26,10 @@ import {
   Clock,
   Shield,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Cloud
 } from 'lucide-react';
+import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -974,6 +976,47 @@ export default function Settings() {
                 </Button>
               </div>
 
+              {/* Google Drive Section */}
+              <div className="mb-6 p-4 bg-muted/50 rounded-xl border border-border">
+                <div className="flex items-center gap-2 mb-4">
+                  <Cloud className="w-5 h-5 text-blue-500" />
+                  <h3 className="text-sm font-medium text-foreground">النسخ الاحتياطي السحابي</h3>
+                </div>
+                <GoogleDriveSection
+                  getBackupData={() => ({
+                    version: '1.0',
+                    exportedAt: new Date().toISOString(),
+                    settings: {
+                      storeSettings,
+                      exchangeRates,
+                      syncSettings,
+                      notificationSettings,
+                      printSettings,
+                      backupSettings,
+                    },
+                    users,
+                    backups,
+                  })}
+                  onRestoreBackup={(data: any) => {
+                    if (data?.settings) {
+                      if (data.settings.storeSettings) setStoreSettings(data.settings.storeSettings);
+                      if (data.settings.exchangeRates) setExchangeRates(data.settings.exchangeRates);
+                      if (data.settings.syncSettings) setSyncSettings(data.settings.syncSettings);
+                      if (data.settings.notificationSettings) setNotificationSettings(data.settings.notificationSettings);
+                      if (data.settings.printSettings) setPrintSettings(data.settings.printSettings);
+                      if (data.settings.backupSettings) setBackupSettings(data.settings.backupSettings);
+                    }
+                    if (data?.users) setUsers(data.users);
+                    if (data?.backups) setBackups(data.backups);
+                    
+                    toast({
+                      title: 'تمت الاستعادة',
+                      description: 'تم استعادة البيانات من النسخة الاحتياطية',
+                    });
+                  }}
+                />
+              </div>
+
               {/* Auto backup settings */}
               <div className="space-y-4 mb-6">
                 <h3 className="text-sm font-medium text-foreground">إعدادات النسخ التلقائي</h3>
@@ -1019,7 +1062,7 @@ export default function Settings() {
 
               {/* Backup history */}
               <div className="space-y-3">
-                <h3 className="text-sm font-medium text-foreground">سجل النسخ الاحتياطية</h3>
+                <h3 className="text-sm font-medium text-foreground">سجل النسخ الاحتياطية المحلية</h3>
                 
                 {backups.map((backup) => (
                   <div key={backup.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted rounded-xl">
