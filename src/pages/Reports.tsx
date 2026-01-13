@@ -56,15 +56,97 @@ export default function Reports() {
   ];
 
   const handleExportPDF = () => {
-    toast.success('جاري تصدير التقرير بصيغة PDF...');
+    // Simulate PDF export with data
+    const reportData = {
+      title: 'تقرير المبيعات',
+      dateRange,
+      summary: summaryData,
+      salesData,
+      topProducts,
+      generatedAt: new Date().toLocaleString('ar-SA'),
+    };
+    
+    // Create a simple text representation for download
+    const content = `
+تقرير المبيعات
+================
+التاريخ: ${reportData.dateRange.from} - ${reportData.dateRange.to}
+تاريخ التصدير: ${reportData.generatedAt}
+
+ملخص:
+- إجمالي المبيعات: $${reportData.summary.totalSales.toLocaleString()}
+- صافي الأرباح: $${reportData.summary.totalProfit.toLocaleString()}
+- عدد الطلبات: ${reportData.summary.totalOrders}
+- متوسط قيمة الطلب: $${reportData.summary.avgOrderValue}
+
+المبيعات اليومية:
+${reportData.salesData.map(d => `${d.date}: $${d.sales.toLocaleString()} (ربح: $${d.profit.toLocaleString()}, طلبات: ${d.orders})`).join('\n')}
+
+أفضل المنتجات:
+${reportData.topProducts.map((p, i) => `${i + 1}. ${p.name}: ${p.sales} قطعة - $${p.revenue.toLocaleString()}`).join('\n')}
+    `;
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('تم تصدير التقرير بنجاح');
   };
 
   const handleExportExcel = () => {
-    toast.success('جاري تصدير التقرير بصيغة Excel...');
+    // Create CSV content for Excel compatibility
+    const headers = ['التاريخ', 'المبيعات', 'الأرباح', 'الطلبات'];
+    const rows = salesData.map(d => [d.date, d.sales, d.profit, d.orders]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('تم تصدير التقرير بصيغة Excel بنجاح');
   };
 
   const handleBackup = () => {
-    toast.success('جاري إنشاء نسخة احتياطية من البيانات...');
+    // Create comprehensive backup
+    const backupData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      data: {
+        summaryData,
+        salesData,
+        topProducts,
+        dateRange,
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('تم إنشاء النسخة الاحتياطية بنجاح');
   };
 
   return (
