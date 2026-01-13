@@ -18,16 +18,16 @@ export function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       
-      {/* Mobile menu trigger */}
+      {/* Mobile menu trigger - positioned to not overlap with notification bar */}
       {isMobile && !sidebarOpen && (
         <MobileMenuTrigger onClick={toggleSidebar} />
       )}
 
-      {/* Top bar with notifications */}
-      <div className={`fixed top-0 left-0 z-30 transition-all duration-300 ${isMobile ? 'right-0' : 'right-64'}`}>
-        <div className="flex items-center justify-end gap-2 p-4">
+      {/* Top bar with notifications - positioned on the left side */}
+      <div className={`fixed top-0 z-30 transition-all duration-300 ${isMobile ? 'left-4' : 'left-4'}`}>
+        <div className="flex items-center gap-2 py-4">
           <NotificationBell />
-          <button className="p-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
+          <button className="p-3 rounded-xl bg-card border border-border hover:bg-muted transition-colors shadow-sm">
             <RefreshCw className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
