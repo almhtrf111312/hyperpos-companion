@@ -48,6 +48,7 @@ export default function Dashboard() {
           icon={<DollarSign className="w-6 h-6" />}
           trend={{ value: 12, label: 'من أمس' }}
           variant="primary"
+          linkTo="/pos"
         />
         <StatCard
           title="صافي الأرباح"
@@ -56,6 +57,7 @@ export default function Dashboard() {
           icon={<TrendingUp className="w-6 h-6" />}
           trend={{ value: 8, label: 'من الأسبوع الماضي' }}
           variant="success"
+          linkTo="/reports"
         />
         <StatCard
           title="الديون المستحقة"
@@ -64,6 +66,7 @@ export default function Dashboard() {
           icon={<CreditCard className="w-6 h-6" />}
           trend={{ value: -5, label: 'من الشهر الماضي' }}
           variant="warning"
+          linkTo="/debts"
         />
         <StatCard
           title="العملاء الجدد"
@@ -72,6 +75,7 @@ export default function Dashboard() {
           icon={<Users className="w-6 h-6" />}
           trend={{ value: 15, label: 'من الشهر الماضي' }}
           variant="default"
+          linkTo="/customers"
         />
       </div>
 

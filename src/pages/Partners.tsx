@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -37,12 +38,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 
+const categories = [
+  { id: 'phones', label: 'الهواتف' },
+  { id: 'maintenance', label: 'الصيانة' },
+  { id: 'accessories', label: 'الإكسسوارات' },
+  { id: 'screens', label: 'الشاشات' },
+];
+
+interface CategoryShare {
+  categoryId: string;
+  percentage: number;
+  enabled: boolean;
+}
+
 interface Partner {
   id: string;
   name: string;
   phone: string;
   email?: string;
   sharePercentage: number;
+  categoryShares: CategoryShare[];
+  accessAll: boolean;
   joinedDate: string;
   totalProfitEarned: number;
   totalWithdrawn: number;
@@ -56,6 +72,13 @@ const initialPartners: Partner[] = [
     phone: '+963 987 654 321', 
     email: 'ali@example.com',
     sharePercentage: 30, 
+    categoryShares: [
+      { categoryId: 'phones', percentage: 30, enabled: true },
+      { categoryId: 'maintenance', percentage: 30, enabled: true },
+      { categoryId: 'accessories', percentage: 30, enabled: true },
+      { categoryId: 'screens', percentage: 30, enabled: true },
+    ],
+    accessAll: true,
     joinedDate: '2024-01-01',
     totalProfitEarned: 15000,
     totalWithdrawn: 10000,
@@ -67,6 +90,13 @@ const initialPartners: Partner[] = [
     phone: '+963 955 123 456', 
     email: 'ahmed@example.com',
     sharePercentage: 20, 
+    categoryShares: [
+      { categoryId: 'phones', percentage: 20, enabled: true },
+      { categoryId: 'maintenance', percentage: 0, enabled: false },
+      { categoryId: 'accessories', percentage: 20, enabled: true },
+      { categoryId: 'screens', percentage: 0, enabled: false },
+    ],
+    accessAll: false,
     joinedDate: '2024-03-15',
     totalProfitEarned: 8000,
     totalWithdrawn: 6000,
@@ -77,6 +107,13 @@ const initialPartners: Partner[] = [
     name: 'سامر حسن', 
     phone: '+963 944 789 012', 
     sharePercentage: 50, 
+    categoryShares: [
+      { categoryId: 'phones', percentage: 0, enabled: false },
+      { categoryId: 'maintenance', percentage: 50, enabled: true },
+      { categoryId: 'accessories', percentage: 0, enabled: false },
+      { categoryId: 'screens', percentage: 0, enabled: false },
+    ],
+    accessAll: false,
     joinedDate: '2024-01-01',
     totalProfitEarned: 25000,
     totalWithdrawn: 20000,
@@ -101,7 +138,12 @@ export default function Partners() {
     name: '',
     phone: '',
     email: '',
-    sharePercentage: 0,
+    accessAll: true,
+    categoryShares: categories.map(c => ({
+      categoryId: c.id,
+      percentage: 0,
+      enabled: true,
+    })),
   });
   const [withdrawAmount, setWithdrawAmount] = useState(0);
 
@@ -117,15 +159,39 @@ export default function Partners() {
     totalProfit: partners.reduce((sum, p) => sum + p.totalProfitEarned, 0),
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      accessAll: true,
+      categoryShares: categories.map(c => ({
+        categoryId: c.id,
+        percentage: 0,
+        enabled: true,
+      })),
+    });
+  };
+
+  const calculateMainShare = () => {
+    if (formData.accessAll) {
+      const firstEnabled = formData.categoryShares.find(c => c.enabled);
+      return firstEnabled?.percentage || 0;
+    }
+    const enabledShares = formData.categoryShares.filter(c => c.enabled && c.percentage > 0);
+    if (enabledShares.length === 0) return 0;
+    return Math.max(...enabledShares.map(c => c.percentage));
+  };
+
   const handleAddPartner = () => {
-    if (!formData.name || !formData.phone || formData.sharePercentage <= 0) {
+    if (!formData.name || !formData.phone) {
       toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
 
-    const totalShare = stats.totalShare + formData.sharePercentage;
-    if (totalShare > 100) {
-      toast.error('مجموع نسب الشركاء لا يمكن أن يتجاوز 100%');
+    const mainShare = calculateMainShare();
+    if (mainShare <= 0) {
+      toast.error('يرجى تحديد نسبة أرباح صحيحة');
       return;
     }
     
@@ -134,7 +200,9 @@ export default function Partners() {
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,
-      sharePercentage: formData.sharePercentage,
+      sharePercentage: mainShare,
+      categoryShares: formData.categoryShares,
+      accessAll: formData.accessAll,
       joinedDate: new Date().toISOString().split('T')[0],
       totalProfitEarned: 0,
       totalWithdrawn: 0,
@@ -143,7 +211,7 @@ export default function Partners() {
     
     setPartners([...partners, newPartner]);
     setShowAddDialog(false);
-    setFormData({ name: '', phone: '', email: '', sharePercentage: 0 });
+    resetForm();
     toast.success('تم إضافة الشريك بنجاح');
   };
 
@@ -153,18 +221,19 @@ export default function Partners() {
       return;
     }
 
-    const otherShareTotal = partners
-      .filter(p => p.id !== selectedPartner.id)
-      .reduce((sum, p) => sum + p.sharePercentage, 0);
-    
-    if (otherShareTotal + formData.sharePercentage > 100) {
-      toast.error('مجموع نسب الشركاء لا يمكن أن يتجاوز 100%');
-      return;
-    }
+    const mainShare = calculateMainShare();
     
     setPartners(partners.map(p => 
       p.id === selectedPartner.id 
-        ? { ...p, name: formData.name, phone: formData.phone, email: formData.email || undefined, sharePercentage: formData.sharePercentage }
+        ? { 
+            ...p, 
+            name: formData.name, 
+            phone: formData.phone, 
+            email: formData.email || undefined, 
+            sharePercentage: mainShare,
+            categoryShares: formData.categoryShares,
+            accessAll: formData.accessAll,
+          }
         : p
     ));
     setShowEditDialog(false);
@@ -213,7 +282,14 @@ export default function Partners() {
       name: partner.name,
       phone: partner.phone,
       email: partner.email || '',
-      sharePercentage: partner.sharePercentage,
+      accessAll: partner.accessAll,
+      categoryShares: partner.categoryShares.length > 0 
+        ? partner.categoryShares 
+        : categories.map(c => ({
+            categoryId: c.id,
+            percentage: partner.sharePercentage,
+            enabled: true,
+          })),
     });
     setShowEditDialog(true);
   };
@@ -234,16 +310,59 @@ export default function Partners() {
     setShowWithdrawDialog(true);
   };
 
+  const updateCategoryShare = (categoryId: string, field: 'percentage' | 'enabled', value: number | boolean) => {
+    setFormData({
+      ...formData,
+      categoryShares: formData.categoryShares.map(c => 
+        c.categoryId === categoryId 
+          ? { ...c, [field]: value }
+          : c
+      ),
+    });
+  };
+
+  const handleAccessAllChange = (checked: boolean) => {
+    if (checked) {
+      const firstPercentage = formData.categoryShares[0]?.percentage || 0;
+      setFormData({
+        ...formData,
+        accessAll: true,
+        categoryShares: formData.categoryShares.map(c => ({
+          ...c,
+          enabled: true,
+          percentage: firstPercentage,
+        })),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        accessAll: false,
+      });
+    }
+  };
+
+  const handleUniformPercentageChange = (value: number) => {
+    if (formData.accessAll) {
+      setFormData({
+        ...formData,
+        categoryShares: formData.categoryShares.map(c => ({
+          ...c,
+          percentage: value,
+        })),
+      });
+    }
+  };
+
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة الشركاء</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة الشركاء وتوزيع الأرباح</p>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة الشركاء وتوزيع الأرباح حسب الأقسام</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          setFormData({ name: '', phone: '', email: '', sharePercentage: 0 });
+          resetForm();
           setShowAddDialog(true);
         }}>
           <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -332,10 +451,31 @@ export default function Partners() {
                   <p className="text-xs md:text-sm text-muted-foreground">منذ {partner.joinedDate}</p>
                 </div>
               </div>
-              <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full text-xs md:text-sm font-bold bg-primary/10 text-primary">
-                {partner.sharePercentage}%
-              </span>
+              <div className="text-left">
+                <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full text-xs md:text-sm font-bold bg-primary/10 text-primary">
+                  {partner.sharePercentage}%
+                </span>
+                {partner.accessAll ? (
+                  <p className="text-[10px] text-muted-foreground mt-1">كامل المحل</p>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground mt-1">أقسام محددة</p>
+                )}
+              </div>
             </div>
+
+            {/* Category Shares */}
+            {!partner.accessAll && partner.categoryShares.filter(c => c.enabled).length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-3">
+                {partner.categoryShares.filter(c => c.enabled).map(cs => {
+                  const cat = categories.find(c => c.id === cs.categoryId);
+                  return (
+                    <span key={cs.categoryId} className="px-2 py-0.5 rounded-full text-[10px] bg-accent/10 text-accent">
+                      {cat?.label}: {cs.percentage}%
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Contact Info */}
             <div className="space-y-1.5 md:space-y-2 mb-3 md:mb-4">
@@ -392,13 +532,13 @@ export default function Partners() {
 
       {/* Add Partner Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
               إضافة شريك جديد
             </DialogTitle>
-            <DialogDescription>أدخل بيانات الشريك الجديد</DialogDescription>
+            <DialogDescription>أدخل بيانات الشريك الجديد ونسب الأرباح</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -425,20 +565,62 @@ export default function Partners() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح (%) *</label>
-              <Input
-                type="number"
-                placeholder="0"
-                min="1"
-                max={100 - stats.totalShare}
-                value={formData.sharePercentage || ''}
-                onChange={(e) => setFormData({ ...formData, sharePercentage: Number(e.target.value) })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                المتاح: {100 - stats.totalShare}%
-              </p>
+
+            {/* Access Type */}
+            <div className="p-4 bg-muted rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground">الوصول لكامل المحل</p>
+                  <p className="text-sm text-muted-foreground">نسبة موحدة لجميع الأقسام</p>
+                </div>
+                <Switch 
+                  checked={formData.accessAll}
+                  onCheckedChange={handleAccessAllChange}
+                />
+              </div>
+
+              {formData.accessAll ? (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح لجميع الأقسام (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={formData.categoryShares[0]?.percentage || ''}
+                    onChange={(e) => handleUniformPercentageChange(Number(e.target.value))}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">نسبة الأرباح لكل قسم:</p>
+                  {categories.map(cat => {
+                    const share = formData.categoryShares.find(c => c.categoryId === cat.id);
+                    return (
+                      <div key={cat.id} className="flex items-center gap-3">
+                        <Switch 
+                          checked={share?.enabled || false}
+                          onCheckedChange={(checked) => updateCategoryShare(cat.id, 'enabled', checked)}
+                        />
+                        <span className="flex-1 text-sm">{cat.label}</span>
+                        <Input
+                          type="number"
+                          className="w-20"
+                          placeholder="0"
+                          min="0"
+                          max="100"
+                          disabled={!share?.enabled}
+                          value={share?.percentage || ''}
+                          onChange={(e) => updateCategoryShare(cat.id, 'percentage', Number(e.target.value))}
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
                 إلغاء
@@ -454,7 +636,7 @@ export default function Partners() {
 
       {/* Edit Partner Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
@@ -483,23 +665,69 @@ export default function Partners() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح (%)</label>
-              <Input
-                type="number"
-                min="1"
-                max="100"
-                value={formData.sharePercentage || ''}
-                onChange={(e) => setFormData({ ...formData, sharePercentage: Number(e.target.value) })}
-              />
+
+            {/* Access Type */}
+            <div className="p-4 bg-muted rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground">الوصول لكامل المحل</p>
+                  <p className="text-sm text-muted-foreground">نسبة موحدة لجميع الأقسام</p>
+                </div>
+                <Switch 
+                  checked={formData.accessAll}
+                  onCheckedChange={handleAccessAllChange}
+                />
+              </div>
+
+              {formData.accessAll ? (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح لجميع الأقسام (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={formData.categoryShares[0]?.percentage || ''}
+                    onChange={(e) => handleUniformPercentageChange(Number(e.target.value))}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">نسبة الأرباح لكل قسم:</p>
+                  {categories.map(cat => {
+                    const share = formData.categoryShares.find(c => c.categoryId === cat.id);
+                    return (
+                      <div key={cat.id} className="flex items-center gap-3">
+                        <Switch 
+                          checked={share?.enabled || false}
+                          onCheckedChange={(checked) => updateCategoryShare(cat.id, 'enabled', checked)}
+                        />
+                        <span className="flex-1 text-sm">{cat.label}</span>
+                        <Input
+                          type="number"
+                          className="w-20"
+                          placeholder="0"
+                          min="0"
+                          max="100"
+                          disabled={!share?.enabled}
+                          value={share?.percentage || ''}
+                          onChange={(e) => updateCategoryShare(cat.id, 'percentage', Number(e.target.value))}
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
                 إلغاء
               </Button>
               <Button className="flex-1" onClick={handleEditPartner}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ
+                حفظ التغييرات
               </Button>
             </div>
           </div>
@@ -525,40 +753,75 @@ export default function Partners() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold">{selectedPartner.name}</h3>
-                  <p className="text-muted-foreground">نسبة الأرباح: {selectedPartner.sharePercentage}%</p>
-                </div>
-              </div>
-              
-              <div className="space-y-2 bg-muted rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span>{selectedPartner.phone}</span>
-                </div>
-                {selectedPartner.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedPartner.email}</span>
-                  </div>
-                )}
-                <div className="text-sm text-muted-foreground pt-2 border-t border-border">
-                  تاريخ الانضمام: {selectedPartner.joinedDate}
+                  <p className="text-muted-foreground">{selectedPartner.phone}</p>
+                  {selectedPartner.email && (
+                    <p className="text-sm text-muted-foreground">{selectedPartner.email}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">إجمالي الأرباح</p>
+              <div className="bg-muted rounded-lg p-4 space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">نوع الوصول:</span>
+                  <span className="font-medium">
+                    {selectedPartner.accessAll ? 'كامل المحل' : 'أقسام محددة'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">تاريخ الانضمام:</span>
+                  <span>{selectedPartner.joinedDate}</span>
+                </div>
+              </div>
+
+              {/* Category Shares */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">نسب الأرباح:</p>
+                {selectedPartner.categoryShares.map(cs => {
+                  const cat = categories.find(c => c.id === cs.categoryId);
+                  return (
+                    <div key={cs.categoryId} className={cn(
+                      "flex justify-between items-center p-2 rounded-lg",
+                      cs.enabled ? "bg-primary/10" : "bg-muted opacity-50"
+                    )}>
+                      <span className="text-sm">{cat?.label}</span>
+                      <span className={cn(
+                        "font-bold",
+                        cs.enabled ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {cs.enabled ? `${cs.percentage}%` : 'غير مفعل'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-success/10 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح</p>
                   <p className="text-lg font-bold text-success">${selectedPartner.totalProfitEarned.toLocaleString()}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">المسحوب</p>
+                <div className="bg-muted rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">المسحوب</p>
                   <p className="text-lg font-bold">${selectedPartner.totalWithdrawn.toLocaleString()}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
+                <div className="bg-primary/10 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">الرصيد</p>
                   <p className="text-lg font-bold text-primary">${selectedPartner.currentBalance.toLocaleString()}</p>
                 </div>
               </div>
+
+              {selectedPartner.currentBalance > 0 && (
+                <Button 
+                  className="w-full bg-warning hover:bg-warning/90 text-warning-foreground" 
+                  onClick={() => {
+                    setShowViewDialog(false);
+                    openWithdrawDialog(selectedPartner);
+                  }}
+                >
+                  <ArrowDownLeft className="w-4 h-4 ml-2" />
+                  سحب رصيد
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
@@ -570,19 +833,19 @@ export default function Partners() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowDownLeft className="w-5 h-5 text-warning" />
-              سحب أرباح
+              سحب رصيد
             </DialogTitle>
             <DialogDescription>
-              سحب أرباح للشريك {selectedPartner?.name}
+              سحب رصيد للشريك {selectedPartner?.name}
             </DialogDescription>
           </DialogHeader>
           {selectedPartner && (
             <div className="space-y-4 py-4">
               <div className="bg-muted rounded-lg p-4 text-center">
-                <p className="text-sm text-muted-foreground">الرصيد المتاح</p>
+                <p className="text-sm text-muted-foreground mb-1">الرصيد المتاح</p>
                 <p className="text-3xl font-bold text-primary">${selectedPartner.currentBalance.toLocaleString()}</p>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium mb-1.5 block">مبلغ السحب ($)</label>
                 <Input
@@ -607,7 +870,7 @@ export default function Partners() {
                   إلغاء
                 </Button>
                 <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleWithdraw}>
-                  <ArrowDownLeft className="w-4 h-4 ml-2" />
+                  <Save className="w-4 h-4 ml-2" />
                   تأكيد السحب
                 </Button>
               </div>
@@ -616,16 +879,16 @@ export default function Partners() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف الشريك "{selectedPartner?.name}"؟ لا يمكن التراجع عن هذا الإجراء.
+              سيتم حذف الشريك "{selectedPartner?.name}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
+          <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeletePartner} className="bg-destructive hover:bg-destructive/90">
               حذف

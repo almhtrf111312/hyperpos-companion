@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock, CheckCircle, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,16 @@ const statusConfig = {
 };
 
 export function DebtAlerts() {
+  const navigate = useNavigate();
+
+  const handleViewAllDebts = () => {
+    navigate('/debts');
+  };
+
+  const handleDebtClick = (debtId: string) => {
+    navigate('/debts');
+  };
+
   return (
     <div className="bg-card rounded-2xl border border-border p-6">
       <div className="flex items-center justify-between mb-6">
@@ -58,11 +69,12 @@ export function DebtAlerts() {
             <div 
               key={debt.id}
               className={cn(
-                "p-4 rounded-xl border transition-all duration-200 hover:shadow-md fade-in",
+                "p-4 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer fade-in",
                 config.bgColor,
                 config.borderColor
               )}
               style={{ animationDelay: `${index * 50}ms` }}
+              onClick={() => handleDebtClick(debt.id)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -86,7 +98,10 @@ export function DebtAlerts() {
           );
         })}
       </div>
-      <button className="w-full mt-4 py-3 text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+      <button 
+        onClick={handleViewAllDebts}
+        className="w-full mt-4 py-3 text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+      >
         عرض جميع الديون
       </button>
     </div>
