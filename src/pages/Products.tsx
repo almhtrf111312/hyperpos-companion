@@ -69,7 +69,9 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
+
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
   
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -170,9 +172,9 @@ export default function Products() {
     setShowDeleteDialog(true);
   };
 
-  const generateBarcode = () => {
-    const barcode = Math.floor(Math.random() * 900000000000) + 100000000000;
-    setFormData({ ...formData, barcode: barcode.toString() });
+  const openBarcodeScannerForForm = () => {
+    setScanTarget('form');
+    setScannerOpen(true);
   };
 
   return (
@@ -257,7 +259,10 @@ export default function Products() {
             variant="outline" 
             size="icon" 
             className="h-10 w-10 flex-shrink-0"
-            onClick={() => setScannerOpen(true)}
+            onClick={() => {
+              setScanTarget('search');
+              setScannerOpen(true);
+            }}
           >
             <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
@@ -463,8 +468,8 @@ export default function Products() {
                     value={formData.barcode}
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                   />
-                  <Button variant="outline" onClick={generateBarcode}>
-                    <Barcode className="w-4 h-4" />
+                  <Button variant="outline" onClick={openBarcodeScannerForForm} type="button">
+                    <ScanLine className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -620,8 +625,14 @@ export default function Products() {
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={(barcode) => {
+          if (scanTarget === 'form') {
+            setFormData((prev) => ({ ...prev, barcode }));
+            toast.success('تمت قراءة الباركود', { description: barcode });
+            return;
+          }
+
           setSearchQuery(barcode);
-          const product = products.find(p => p.barcode === barcode);
+          const product = products.find((p) => p.barcode === barcode);
           if (product) {
             toast.success(`تم العثور على: ${product.name}`);
           } else {
