@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus,
@@ -13,7 +13,8 @@ import {
   ArrowDownLeft,
   Save,
   UserCheck,
-  Percent
+  Percent,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,16 +38,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-
-const categories = [
-  { id: 'phones', label: 'الهواتف' },
-  { id: 'maintenance', label: 'الصيانة' },
-  { id: 'accessories', label: 'الإكسسوارات' },
-  { id: 'screens', label: 'الشاشات' },
-];
+import { getCategoryNames } from '@/lib/categories-store';
+import { CategoryManager } from '@/components/CategoryManager';
+import { loadProducts } from '@/lib/products-store';
 
 interface CategoryShare {
   categoryId: string;
+  categoryName: string;
   percentage: number;
   enabled: boolean;
 }
@@ -65,65 +63,48 @@ interface Partner {
   currentBalance: number;
 }
 
-const initialPartners: Partner[] = [
-  { 
-    id: '1', 
-    name: 'علي محمد', 
-    phone: '+963 987 654 321', 
-    email: 'ali@example.com',
-    sharePercentage: 30, 
-    categoryShares: [
-      { categoryId: 'phones', percentage: 30, enabled: true },
-      { categoryId: 'maintenance', percentage: 30, enabled: true },
-      { categoryId: 'accessories', percentage: 30, enabled: true },
-      { categoryId: 'screens', percentage: 30, enabled: true },
-    ],
-    accessAll: true,
-    joinedDate: '2024-01-01',
-    totalProfitEarned: 15000,
-    totalWithdrawn: 10000,
-    currentBalance: 5000
-  },
-  { 
-    id: '2', 
-    name: 'أحمد خالد', 
-    phone: '+963 955 123 456', 
-    email: 'ahmed@example.com',
-    sharePercentage: 20, 
-    categoryShares: [
-      { categoryId: 'phones', percentage: 20, enabled: true },
-      { categoryId: 'maintenance', percentage: 0, enabled: false },
-      { categoryId: 'accessories', percentage: 20, enabled: true },
-      { categoryId: 'screens', percentage: 0, enabled: false },
-    ],
-    accessAll: false,
-    joinedDate: '2024-03-15',
-    totalProfitEarned: 8000,
-    totalWithdrawn: 6000,
-    currentBalance: 2000
-  },
-  { 
-    id: '3', 
-    name: 'سامر حسن', 
-    phone: '+963 944 789 012', 
-    sharePercentage: 50, 
-    categoryShares: [
-      { categoryId: 'phones', percentage: 0, enabled: false },
-      { categoryId: 'maintenance', percentage: 50, enabled: true },
-      { categoryId: 'accessories', percentage: 0, enabled: false },
-      { categoryId: 'screens', percentage: 0, enabled: false },
-    ],
-    accessAll: false,
-    joinedDate: '2024-01-01',
-    totalProfitEarned: 25000,
-    totalWithdrawn: 20000,
-    currentBalance: 5000
-  },
-];
+const PARTNERS_STORAGE_KEY = 'hyperpos_partners_v1';
+
+const loadPartners = (): Partner[] => {
+  try {
+    const stored = localStorage.getItem(PARTNERS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+};
+
+const savePartners = (partners: Partner[]) => {
+  try {
+    localStorage.setItem(PARTNERS_STORAGE_KEY, JSON.stringify(partners));
+  } catch {
+    // ignore
+  }
+};
 
 export default function Partners() {
-  const [partners, setPartners] = useState<Partner[]>(initialPartners);
+  const [partners, setPartners] = useState<Partner[]>(() => loadPartners());
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  
+  // Load categories from shared store
+  const [categories, setCategories] = useState(() => 
+    getCategoryNames().map((name, idx) => ({ id: `cat_${idx}`, label: name }))
+  );
+  
+  // Get used categories from products
+  const usedCategories = [...new Set(loadProducts().map(p => p.category))];
+  
+  // Reload categories from store
+  const reloadCategories = () => {
+    setCategories(getCategoryNames().map((name, idx) => ({ id: `cat_${idx}`, label: name })));
+  };
   
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -141,11 +122,28 @@ export default function Partners() {
     accessAll: true,
     categoryShares: categories.map(c => ({
       categoryId: c.id,
+      categoryName: c.label,
       percentage: 0,
       enabled: true,
     })),
   });
   const [withdrawAmount, setWithdrawAmount] = useState(0);
+
+  // Update form when categories change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      categoryShares: categories.map(c => {
+        const existing = prev.categoryShares.find(cs => cs.categoryName === c.label);
+        return existing || {
+          categoryId: c.id,
+          categoryName: c.label,
+          percentage: 0,
+          enabled: true,
+        };
+      }),
+    }));
+  }, [categories]);
 
   const filteredPartners = partners.filter(partner =>
     partner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -159,6 +157,11 @@ export default function Partners() {
     totalProfit: partners.reduce((sum, p) => sum + p.totalProfitEarned, 0),
   };
 
+  const updatePartners = (newPartners: Partner[]) => {
+    setPartners(newPartners);
+    savePartners(newPartners);
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -167,6 +170,7 @@ export default function Partners() {
       accessAll: true,
       categoryShares: categories.map(c => ({
         categoryId: c.id,
+        categoryName: c.label,
         percentage: 0,
         enabled: true,
       })),
@@ -284,9 +288,13 @@ export default function Partners() {
       email: partner.email || '',
       accessAll: partner.accessAll,
       categoryShares: partner.categoryShares.length > 0 
-        ? partner.categoryShares 
+        ? partner.categoryShares.map(cs => ({
+            ...cs,
+            categoryName: cs.categoryName || categories.find(c => c.id === cs.categoryId)?.label || '',
+          }))
         : categories.map(c => ({
             categoryId: c.id,
+            categoryName: c.label,
             percentage: partner.sharePercentage,
             enabled: true,
           })),
@@ -361,13 +369,19 @@ export default function Partners() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة الشركاء</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة الشركاء وتوزيع الأرباح حسب الأقسام</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          resetForm();
-          setShowAddDialog(true);
-        }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          إضافة شريك
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
+            <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            التصنيفات
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+            resetForm();
+            setShowAddDialog(true);
+          }}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            إضافة شريك
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -467,10 +481,9 @@ export default function Partners() {
             {!partner.accessAll && partner.categoryShares.filter(c => c.enabled).length > 0 && (
               <div className="flex flex-wrap gap-1 mb-3">
                 {partner.categoryShares.filter(c => c.enabled).map(cs => {
-                  const cat = categories.find(c => c.id === cs.categoryId);
                   return (
                     <span key={cs.categoryId} className="px-2 py-0.5 rounded-full text-[10px] bg-accent/10 text-accent">
-                      {cat?.label}: {cs.percentage}%
+                      {cs.categoryName || cs.categoryId}: {cs.percentage}%
                     </span>
                   );
                 })}
@@ -896,6 +909,14 @@ export default function Partners() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Category Manager */}
+      <CategoryManager
+        isOpen={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+        onCategoriesChange={reloadCategories}
+        usedCategories={usedCategories}
+      />
     </div>
   );
 }

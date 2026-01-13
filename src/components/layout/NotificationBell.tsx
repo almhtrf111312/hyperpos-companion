@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, AlertTriangle, Clock, Package, X, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Bell, AlertTriangle, Clock, Package, X, Check, CheckCheck, Trash2, CalendarX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotifications, Notification } from '@/hooks/use-notifications';
 import {
@@ -31,6 +31,16 @@ const notificationConfig: Record<Notification['type'], { icon: typeof AlertTrian
     icon: Package,
     color: 'text-destructive',
     bgColor: 'bg-destructive/10',
+  },
+  expired: {
+    icon: CalendarX,
+    color: 'text-destructive',
+    bgColor: 'bg-destructive/10',
+  },
+  expiring_soon: {
+    icon: CalendarX,
+    color: 'text-warning',
+    bgColor: 'bg-warning/10',
   },
 };
 
@@ -65,7 +75,8 @@ export function NotificationBell() {
     // Navigate based on notification type
     if (notification.type === 'debt_overdue' || notification.type === 'debt_due_today') {
       navigate('/debts');
-    } else if (notification.type === 'low_stock' || notification.type === 'out_of_stock') {
+    } else if (notification.type === 'low_stock' || notification.type === 'out_of_stock' || 
+               notification.type === 'expired' || notification.type === 'expiring_soon') {
       navigate('/products');
     }
     
