@@ -27,24 +27,28 @@ import {
   Shield,
   AlertCircle,
   CheckCircle2,
-  Cloud
+  Cloud,
+  Globe
 } from 'lucide-react';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
+import { LanguageSection } from '@/components/settings/LanguageSection';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/hooks/use-language';
 
 const settingsTabs = [
-  { id: 'store', label: 'المحل', icon: Store },
-  { id: 'currencies', label: 'العملات', icon: DollarSign },
-  { id: 'sync', label: 'التزامن', icon: RefreshCw },
-  { id: 'notifications', label: 'الإشعارات', icon: Bell },
-  { id: 'printing', label: 'الطباعة', icon: Printer },
-  { id: 'users', label: 'المستخدمين', icon: User },
-  { id: 'backup', label: 'النسخ الاحتياطي', icon: Database },
+  { id: 'store', label: 'المحل', labelKey: 'settings.general', icon: Store },
+  { id: 'language', label: 'اللغة', labelKey: 'settings.language', icon: Globe },
+  { id: 'currencies', label: 'العملات', labelKey: 'settings.general', icon: DollarSign },
+  { id: 'sync', label: 'التزامن', labelKey: 'settings.general', icon: RefreshCw },
+  { id: 'notifications', label: 'الإشعارات', labelKey: 'settings.general', icon: Bell },
+  { id: 'printing', label: 'الطباعة', labelKey: 'settings.general', icon: Printer },
+  { id: 'users', label: 'المستخدمين', labelKey: 'settings.users', icon: User },
+  { id: 'backup', label: 'النسخ الاحتياطي', labelKey: 'settings.backup', icon: Database },
 ];
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -451,6 +455,8 @@ export default function Settings() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'language':
+        return <LanguageSection />;
       case 'store':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
