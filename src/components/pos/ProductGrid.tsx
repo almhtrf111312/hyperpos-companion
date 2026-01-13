@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Search, Barcode, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -10,6 +13,7 @@ interface Product {
   quantity: number;
   category: string;
   image?: string;
+  barcode?: string;
 }
 
 interface ProductGridProps {
@@ -31,11 +35,28 @@ export function ProductGrid({
   onCategoryChange,
   onProductClick,
 }: ProductGridProps) {
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (product.barcode && product.barcode.includes(searchQuery));
     const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const handleBarcodeScan = (barcode: string) => {
+    // Search for product by barcode
+    const product = products.find(p => p.barcode === barcode);
+    
+    if (product) {
+      onProductClick(product);
+      toast.success(`تمت إضافة "${product.name}" إلى السلة`);
+    } else {
+      // If no product found, put barcode in search
+      onSearchChange(barcode);
+      toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج بهذا الباركود' });
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -46,13 +67,18 @@ export function ProductGrid({
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="بحث عن منتج..."
+              placeholder="بحث عن منتج أو باركود..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
             />
           </div>
-          <Button variant="outline" size="icon" className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0"
+            onClick={() => setScannerOpen(true)}
+          >
             <Barcode className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
         </div>
@@ -106,6 +132,13 @@ export function ProductGrid({
           </div>
         )}
       </div>
+
+      {/* Barcode Scanner Dialog */}
+      <BarcodeScanner
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={handleBarcodeScan}
+      />
     </div>
   );
 }
