@@ -82,6 +82,12 @@ export const deleteProduct = (id: string): boolean => {
   return true;
 };
 
+// Get product by ID
+export const getProductById = (id: string): Product | null => {
+  const products = loadProducts();
+  return products.find(p => p.id === id) || null;
+};
+
 // Check expiry status
 export type ExpiryStatus = 'expired' | 'expiring_soon' | 'valid' | 'no_expiry';
 

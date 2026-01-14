@@ -6,6 +6,7 @@ export const EVENTS = {
   MAINTENANCE_UPDATED: 'hyperpos:maintenance-updated',
   INVOICES_UPDATED: 'hyperpos:invoices-updated',
   SETTINGS_UPDATED: 'hyperpos:settings-updated',
+  PARTNERS_UPDATED: 'hyperpos:partners-updated',
 };
 
 export function emitEvent(name: string, detail?: any) {

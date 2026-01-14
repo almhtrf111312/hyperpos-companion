@@ -152,7 +152,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     }
   };
 
-  // Auto-zoom after 1 second
+  // Auto-zoom after 2 seconds if no barcode detected
   useEffect(() => {
     if (!isOpen || isZoomed) return;
     
@@ -160,7 +160,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       if (!acceptedRef.current) {
         toggleZoom();
       }
-    }, 1000);
+    }, 2000);
     
     return () => clearTimeout(timer);
   }, [isOpen, isZoomed]);
