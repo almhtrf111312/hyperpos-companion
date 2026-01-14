@@ -661,6 +661,596 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                ... (file continues unchanged)
-  }
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">نوع المحل</label>
+                  <select
+                    value={storeSettings.type}
+                    onChange={(e) => setStoreSettings({ ...storeSettings, type: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  >
+                    <option value="phones">هواتف وإلكترونيات</option>
+                    <option value="grocery">بقالة ومواد غذائية</option>
+                    <option value="pharmacy">صيدلية</option>
+                    <option value="clothing">ملابس وأزياء</option>
+                    <option value="general">متجر عام</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">رقم الهاتف</label>
+                  <div className="relative">
+                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={storeSettings.phone}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, phone: e.target.value })}
+                      className="pr-10 bg-muted border-0"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">البريد الإلكتروني</label>
+                  <div className="relative">
+                    <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={storeSettings.email}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, email: e.target.value })}
+                      className="pr-10 bg-muted border-0"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-foreground">العنوان</label>
+                  <div className="relative">
+                    <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={storeSettings.address}
+                      onChange={(e) => setStoreSettings({ ...storeSettings, address: e.target.value })}
+                      className="pr-10 bg-muted border-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Logo Upload */}
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold text-foreground">شعار المحل</h3>
+              <div className="flex items-center gap-4">
+                {storeSettings.logo ? (
+                  <div className="relative">
+                    <img 
+                      src={storeSettings.logo} 
+                      alt="شعار المحل" 
+                      className="w-20 h-20 rounded-lg object-cover border border-border"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -left-2 h-6 w-6"
+                      onClick={handleRemoveLogo}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted">
+                    <Store className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <label htmlFor="logo-upload">
+                    <Button variant="outline" asChild>
+                      <span className="cursor-pointer">
+                        <Upload className="w-4 h-4 ml-2" />
+                        رفع شعار
+                      </span>
+                    </Button>
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG أقل من 2 ميغابايت</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'currencies':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">أسعار الصرف</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">الليرة التركية (TRY)</label>
+                <div className="relative">
+                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={exchangeRates.TRY}
+                    onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
+                    className="pr-10 bg-muted border-0"
+                    placeholder="32"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">1 دولار = {exchangeRates.TRY} ليرة تركية</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">الليرة السورية (SYP)</label>
+                <div className="relative">
+                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={exchangeRates.SYP}
+                    onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
+                    className="pr-10 bg-muted border-0"
+                    placeholder="14500"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">1 دولار = {exchangeRates.SYP} ليرة سورية</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'sync':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+            <GoogleDriveSection />
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-base font-semibold text-foreground mb-4">التزامن المحلي</h3>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                <div>
+                  <p className="font-medium text-foreground">آخر تزامن</p>
+                  <p className="text-sm text-muted-foreground">{syncSettings.lastSync}</p>
+                </div>
+                <Button onClick={handleSync} disabled={isSyncing}>
+                  {isSyncing ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 ml-2" />
+                  )}
+                  تزامن الآن
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'notifications':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">الإشعارات</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                <div className="flex items-center gap-3">
+                  {notificationSettings.sound ? <Volume2 className="w-5 h-5 text-primary" /> : <VolumeX className="w-5 h-5 text-muted-foreground" />}
+                  <div>
+                    <p className="font-medium text-foreground">الصوت</p>
+                    <p className="text-sm text-muted-foreground">تشغيل صوت عند الإشعارات</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={notificationSettings.sound}
+                  onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, sound: checked })}
+                />
+              </div>
+              {[
+                { key: 'newSale', label: 'عملية بيع جديدة', icon: CheckCircle2 },
+                { key: 'lowStock', label: 'نفاذ المخزون', icon: AlertCircle },
+                { key: 'newDebt', label: 'دين جديد', icon: FileText },
+                { key: 'paymentReceived', label: 'استلام دفعة', icon: Banknote },
+              ].map(({ key, label, icon: Icon }) => (
+                <div key={key} className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{label}</span>
+                  </div>
+                  <Switch
+                    checked={notificationSettings[key as keyof typeof notificationSettings] as boolean}
+                    onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [key]: checked })}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'printing':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">إعدادات الطباعة</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                <div>
+                  <p className="font-medium text-foreground">الطباعة التلقائية</p>
+                  <p className="text-sm text-muted-foreground">طباعة الفاتورة تلقائياً بعد كل عملية</p>
+                </div>
+                <Switch
+                  checked={printSettings.autoPrint}
+                  onCheckedChange={(checked) => setPrintSettings({ ...printSettings, autoPrint: checked })}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">حجم الورق</label>
+                  <select
+                    value={printSettings.paperSize}
+                    onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  >
+                    <option value="80mm">80mm (حراري)</option>
+                    <option value="58mm">58mm (صغير)</option>
+                    <option value="A4">A4</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">عدد النسخ</label>
+                  <Input
+                    type="number"
+                    value={printSettings.copies}
+                    onChange={(e) => setPrintSettings({ ...printSettings, copies: e.target.value })}
+                    min="1"
+                    max="5"
+                    className="bg-muted border-0"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">نص التذييل</label>
+                <Input
+                  value={printSettings.footer}
+                  onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
+                  className="bg-muted border-0"
+                  placeholder="شكراً لتسوقكم معنا!"
+                />
+              </div>
+              <Button variant="outline" className="w-full" onClick={handleTestPrint}>
+                <Printer className="w-4 h-4 ml-2" />
+                طباعة تجريبية
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'users':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg md:text-xl font-bold text-foreground">إدارة المستخدمين</h2>
+              <Button onClick={handleAddUser}>
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة مستخدم
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {usersLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                  جاري التحميل...
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  لا يوجد مستخدمين
+                </div>
+              ) : (
+                users.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{user.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {user.role === 'admin' ? 'مدير' : 'كاشير'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setPasswordChangeUserId(user.user_id);
+                          setPasswordDialogOpen(true);
+                        }}
+                      >
+                        <Key className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={user.user_id === currentUser?.id}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+
+      case 'backup':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">النسخ الاحتياطي</h2>
+            
+            {/* Encrypted Backup Section */}
+            <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 space-y-4">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-foreground">النسخ الاحتياطي المشفر</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                قم بإنشاء نسخة احتياطية مشفرة تحتوي على جميع بيانات المحل
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleBackupNow} disabled={isBackingUp} className="flex-1 min-w-[140px]">
+                  {isBackingUp ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 ml-2" />
+                  )}
+                  تنزيل نسخة مشفرة
+                </Button>
+                <div className="flex-1 min-w-[140px]">
+                  <input
+                    type="file"
+                    accept=".hpbk"
+                    onChange={handleImportEncryptedBackup}
+                    className="hidden"
+                    id="import-encrypted-backup"
+                    ref={importInputRef}
+                  />
+                  <label htmlFor="import-encrypted-backup" className="w-full">
+                    <Button variant="outline" className="w-full" asChild disabled={isImporting}>
+                      <span className="cursor-pointer">
+                        {isImporting ? (
+                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                        ) : (
+                          <FileUp className="w-4 h-4 ml-2" />
+                        )}
+                        استيراد نسخة مشفرة
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Auto Backup Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                <div>
+                  <p className="font-medium text-foreground">النسخ التلقائي</p>
+                  <p className="text-sm text-muted-foreground">نسخ احتياطي تلقائي للبيانات</p>
+                </div>
+                <Switch
+                  checked={backupSettings.autoBackup}
+                  onCheckedChange={(checked) => setBackupSettings({ ...backupSettings, autoBackup: checked })}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">فترة النسخ</label>
+                  <select
+                    value={backupSettings.interval}
+                    onChange={(e) => setBackupSettings({ ...backupSettings, interval: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  >
+                    <option value="daily">يومياً</option>
+                    <option value="weekly">أسبوعياً</option>
+                    <option value="monthly">شهرياً</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">الاحتفاظ (أيام)</label>
+                  <Input
+                    type="number"
+                    value={backupSettings.keepDays}
+                    onChange={(e) => setBackupSettings({ ...backupSettings, keepDays: e.target.value })}
+                    min="7"
+                    max="365"
+                    className="bg-muted border-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Export JSON */}
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-base font-semibold text-foreground mb-3">تصدير البيانات (JSON)</h3>
+              <Button variant="outline" onClick={handleExportData}>
+                <Download className="w-4 h-4 ml-2" />
+                تصدير JSON
+              </Button>
+            </div>
+
+            {/* Recent Backups */}
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-base font-semibold text-foreground mb-3">النسخ الأخيرة</h3>
+              <div className="space-y-2">
+                {backups.map((backup) => (
+                  <div key={backup.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Database className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{backup.date}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {backup.size} • {backup.type === 'auto' ? 'تلقائي' : 'يدوي'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleRestoreBackup(backup)}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteBackup(backup)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">الإعدادات</h1>
+        <p className="text-muted-foreground mt-1">إدارة إعدادات التطبيق والمحل</p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Sidebar */}
+        <div className="lg:w-64 flex-shrink-0">
+          <div className="bg-card rounded-2xl border border-border p-2">
+            <nav className="space-y-1">
+              {settingsTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <tab.icon className="w-5 h-5" />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1">
+          {renderTabContent()}
+          
+          {/* Save Button */}
+          <div className="mt-6">
+            <Button className="w-full md:w-auto" onClick={handleSaveSettings}>
+              <Save className="w-4 h-4 ml-2" />
+              حفظ الإعدادات
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* User Dialog */}
+      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedUser ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">الاسم</label>
+              <Input
+                value={userForm.name}
+                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                placeholder="اسم المستخدم"
+              />
+            </div>
+            {!selectedUser && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">البريد الإلكتروني</label>
+                  <Input
+                    type="email"
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">كلمة المرور</label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={userForm.password}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                      placeholder="كلمة المرور"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">الصلاحية</label>
+              <select
+                value={userForm.role}
+                onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'admin' | 'cashier' })}
+                className="w-full h-10 px-3 rounded-md bg-muted border-0"
+              >
+                <option value="cashier">كاشير</option>
+                <option value="admin">مدير</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUserDialogOpen(false)}>إلغاء</Button>
+            <Button onClick={handleSaveUser} disabled={isSavingUser}>
+              {isSavingUser ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+              حفظ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={deleteUserDialogOpen} onOpenChange={setDeleteUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+          </DialogHeader>
+          <p className="py-4">هل أنت متأكد من حذف المستخدم "{selectedUser?.name}"؟</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteUserDialogOpen(false)}>إلغاء</Button>
+            <Button variant="destructive" onClick={confirmDeleteUser} disabled={isSavingUser}>
+              {isSavingUser ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Trash2 className="w-4 h-4 ml-2" />}
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Change Dialog */}
+      <PasswordChangeDialog
+        isOpen={passwordDialogOpen}
+        onClose={() => {
+          setPasswordDialogOpen(false);
+          setPasswordChangeUserId(null);
+        }}
+        userId={passwordChangeUserId}
+      />
+    </div>
+  );
 }
