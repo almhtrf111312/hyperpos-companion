@@ -29,70 +29,8 @@ interface InvoiceRow {
   items: { name: string; quantity: number; price: number }[];
 }
 
-const mockInvoices: InvoiceRow[] = [
-  { 
-    id: 'INV_001', 
-    customer: 'محمد أحمد', 
-    amount: 1250, 
-    currency: 'USD', 
-    status: 'completed', 
-    time: '10:30 ص',
-    date: '2025-01-13',
-    items: [
-      { name: 'هاتف Samsung Galaxy S24', quantity: 1, price: 1000 },
-      { name: 'شاحن سريع', quantity: 2, price: 125 },
-    ]
-  },
-  { 
-    id: 'INV_002', 
-    customer: 'علي حسن', 
-    amount: 850, 
-    currency: 'USD', 
-    status: 'completed', 
-    time: '11:15 ص',
-    date: '2025-01-13',
-    items: [
-      { name: 'سماعات AirPods Pro', quantity: 1, price: 850 },
-    ]
-  },
-  { 
-    id: 'INV_003', 
-    customer: 'فاطمة محمود', 
-    amount: 2100, 
-    currency: 'USD', 
-    status: 'pending', 
-    time: '12:00 م',
-    date: '2025-01-13',
-    items: [
-      { name: 'هاتف iPhone 15 Pro', quantity: 1, price: 2000 },
-      { name: 'كفر حماية', quantity: 1, price: 100 },
-    ]
-  },
-  { 
-    id: 'INV_004', 
-    customer: 'خالد عمر', 
-    amount: 450, 
-    currency: 'USD', 
-    status: 'completed', 
-    time: '01:30 م',
-    date: '2025-01-13',
-    items: [
-      { name: 'شاشة حماية', quantity: 3, price: 150 },
-    ]
-  },
-  { 
-    id: 'INV_005', 
-    customer: 'سارة يوسف', 
-    amount: 1800, 
-    currency: 'USD', 
-    status: 'cancelled', 
-    time: '02:45 م',
-    date: '2025-01-13',
-    items: [
-      { name: 'تابلت iPad Air', quantity: 1, price: 1800 },
-    ]
-  },
-];
+// Empty invoices - will be populated from real data
+const mockInvoices: InvoiceRow[] = [];
 
 const statusStyles = {
   completed: 'badge-success',
@@ -143,10 +81,13 @@ export function RecentInvoices() {
     } catch {}
 
     const printContent = `
+      <!DOCTYPE html>
       <html dir="rtl">
         <head>
+          <meta charset="UTF-8">
           <title>فاتورة ${invoice.id}</title>
           <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
             .logo { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; }
@@ -161,6 +102,7 @@ export function RecentInvoices() {
             .item-price { font-weight: bold; }
             .total { font-size: 1.3em; font-weight: bold; margin-top: 15px; padding-top: 10px; border-top: 2px solid #000; text-align: center; }
             .footer { text-align: center; margin-top: 25px; font-size: 0.85em; color: #555; border-top: 1px dashed #ccc; padding-top: 15px; }
+            @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
           </style>
         </head>
         <body>
@@ -190,15 +132,20 @@ export function RecentInvoices() {
           <div class="footer">
             <p>${footer}</p>
           </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() { window.close(); };
+            };
+          </script>
         </body>
       </html>
     `;
     
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('about:blank', '_blank');
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      printWindow.print();
     }
     toast.success(`جاري طباعة الفاتورة ${invoice.id}`);
   };
@@ -336,10 +283,16 @@ export function RecentInvoices() {
       {/* Invoice View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>تفاصيل الفاتورة {selectedInvoice?.id}</span>
-            </DialogTitle>
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle>تفاصيل الفاتورة {selectedInvoice?.id}</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowViewDialog(false)}
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-4 py-4">
@@ -414,6 +367,14 @@ export function RecentInvoices() {
                   تعديل
                 </Button>
               </div>
+              <Button 
+                variant="secondary" 
+                className="w-full mt-2"
+                onClick={() => setShowViewDialog(false)}
+              >
+                <X className="w-4 h-4 ml-2" />
+                إغلاق
+              </Button>
             </div>
           )}
         </DialogContent>

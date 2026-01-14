@@ -8,13 +8,8 @@ interface TopProduct {
   trend: number;
 }
 
-const mockProducts: TopProduct[] = [
-  { id: '1', name: 'iPhone 15 Pro Max', sales: 45, revenue: 58500, trend: 12 },
-  { id: '2', name: 'Samsung Galaxy S24', sales: 38, revenue: 38000, trend: 8 },
-  { id: '3', name: 'AirPods Pro 2', sales: 72, revenue: 18000, trend: 25 },
-  { id: '4', name: 'شاشة iPhone 13', sales: 28, revenue: 4200, trend: -5 },
-  { id: '5', name: 'سلك شحن Type-C', sales: 156, revenue: 2340, trend: 18 },
-];
+// Empty products - will be populated from real data
+const mockProducts: TopProduct[] = [];
 
 export function TopProducts() {
   const maxSales = Math.max(...mockProducts.map(p => p.sales));
