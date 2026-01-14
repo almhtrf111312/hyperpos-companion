@@ -64,12 +64,10 @@ const AppContent = () => {
         <Route path="/invoices" element={<ProtectedRoute><MainLayout><Invoices /></MainLayout></ProtectedRoute>} />
         <Route path="/services" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
         <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
-        
-        {/* Admin only routes */}
-        <Route path="/partners" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Partners /></MainLayout></ProtectedRoute>} />
-        <Route path="/expenses" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+        <Route path="/partners" element={<ProtectedRoute><MainLayout><Partners /></MainLayout></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>

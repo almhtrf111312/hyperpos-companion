@@ -17,7 +17,8 @@ import {
   Percent,
   Tag,
   Banknote,
-  PiggyBank
+  PiggyBank,
+  Receipt
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -26,7 +27,11 @@ import {
   addCapital as addCapitalToStore,
   withdrawProfit,
   withdrawCapital,
-  smartWithdraw
+  smartWithdraw,
+  loadPartners,
+  savePartners,
+  Partner,
+  ExpenseRecord
 } from '@/lib/partners-store';
 import { cn, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,54 +65,6 @@ interface CategoryShare {
   percentage: number;
   enabled: boolean;
 }
-
-interface Partner {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  sharePercentage: number;
-  categoryShares: CategoryShare[];
-  accessAll: boolean;
-  sharesExpenses: boolean;
-  joinedDate: string;
-  totalProfitEarned: number;
-  totalWithdrawn: number;
-  totalExpensesPaid: number;
-  currentBalance: number;
-  // رأس المال
-  initialCapital: number;
-  currentCapital: number;
-  capitalWithdrawals: any[];
-  capitalHistory: any[];
-  confirmedProfit: number;
-  pendingProfit: number;
-}
-
-const PARTNERS_STORAGE_KEY = 'hyperpos_partners_v1';
-
-const loadPartners = (): Partner[] => {
-  try {
-    const stored = localStorage.getItem(PARTNERS_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return [];
-};
-
-const savePartners = (partners: Partner[]) => {
-  try {
-    localStorage.setItem(PARTNERS_STORAGE_KEY, JSON.stringify(partners));
-  } catch {
-    // ignore
-  }
-};
 
 export default function Partners() {
   const [partners, setPartners] = useState<Partner[]>(() => loadPartners());
@@ -235,6 +192,7 @@ export default function Partners() {
       phone: formData.phone,
       email: formData.email || undefined,
       sharePercentage: mainShare,
+      expenseSharePercentage: formData.expenseSharePercentage || 0,
       categoryShares: formData.categoryShares,
       accessAll: formData.accessAll,
       sharesExpenses: formData.sharesExpenses,
@@ -250,6 +208,10 @@ export default function Partners() {
       capitalHistory: [],
       confirmedProfit: 0,
       pendingProfit: 0,
+      pendingProfitDetails: [],
+      profitHistory: [],
+      withdrawalHistory: [],
+      expenseHistory: [],
     };
     
     const updatedPartners = [...partners, newPartner];
@@ -1004,6 +966,32 @@ export default function Partners() {
                   <p className="text-lg font-bold">${formatNumber(selectedPartner.totalWithdrawn || 0)}</p>
                 </div>
               </div>
+
+              {/* Expense History */}
+              {selectedPartner.expenseHistory && selectedPartner.expenseHistory.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-destructive" />
+                    <p className="text-sm font-medium">سجل المصاريف ({selectedPartner.expenseHistory.length})</p>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {selectedPartner.expenseHistory.slice(0, 5).map((exp, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-2 bg-destructive/10 rounded-lg text-sm">
+                        <div>
+                          <span className="font-medium">{exp.type}</span>
+                          <span className="text-xs text-muted-foreground mr-2">
+                            {new Date(exp.date).toLocaleDateString('ar-SA')}
+                          </span>
+                        </div>
+                        <span className="font-bold text-destructive">-${formatNumber(exp.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    إجمالي المصاريف المدفوعة: ${formatNumber(selectedPartner.totalExpensesPaid || 0)}
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-2">

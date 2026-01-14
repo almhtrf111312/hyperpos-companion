@@ -3,15 +3,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
 
-type AppRole = 'admin' | 'cashier';
-
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedRoles?: AppRole[];
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, isLoading } = useAuth();
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -29,16 +26,5 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If no specific roles required, just need to be authenticated
-  if (!allowedRoles || allowedRoles.length === 0) {
-    return <>{children}</>;
-  }
-
-  // Check if user has one of the allowed roles
-  if (role && allowedRoles.includes(role)) {
-    return <>{children}</>;
-  }
-
-  // User doesn't have required role, redirect to home
-  return <Navigate to="/" replace />;
+  return <>{children}</>;
 }

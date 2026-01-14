@@ -15,7 +15,6 @@ import {
   Zap,
   Menu,
   X,
-  Shield,
   User,
   FileText,
   Receipt
@@ -43,10 +42,10 @@ const navItems: NavItem[] = [
   { icon: Users, label: 'العملاء', translationKey: 'nav.customers', path: '/customers' },
   { icon: CreditCard, label: 'الديون', translationKey: 'nav.debts', path: '/debts' },
   { icon: Wrench, label: 'الصيانة', translationKey: 'nav.services', path: '/services' },
-  { icon: UserCheck, label: 'الشركاء', translationKey: 'nav.partners', path: '/partners', adminOnly: true },
-  { icon: Receipt, label: 'المصاريف', translationKey: 'nav.expenses', path: '/expenses', adminOnly: true },
-  { icon: BarChart3, label: 'التقارير', translationKey: 'nav.reports', path: '/reports', adminOnly: true },
-  { icon: Settings, label: 'الإعدادات', translationKey: 'nav.settings', path: '/settings', adminOnly: true },
+  { icon: UserCheck, label: 'الشركاء', translationKey: 'nav.partners', path: '/partners' },
+  { icon: Receipt, label: 'المصاريف', translationKey: 'nav.expenses', path: '/expenses' },
+  { icon: BarChart3, label: 'التقارير', translationKey: 'nav.reports', path: '/reports' },
+  { icon: Settings, label: 'الإعدادات', translationKey: 'nav.settings', path: '/settings' },
 ];
 
 interface SidebarProps {
@@ -59,7 +58,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { user, profile, role, isAdmin, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { t } = useLanguage();
 
   // Close sidebar on mobile when navigating
@@ -73,13 +72,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   // On mobile, always show full sidebar (not collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
 
-  // Filter nav items based on role
-  const filteredNavItems = navItems.filter(item => {
-    if (item.adminOnly && !isAdmin) {
-      return false;
-    }
-    return true;
-  });
+  // All nav items are accessible now (no role filtering)
+  const filteredNavItems = navItems;
 
   const handleLogout = async () => {
     await signOut();
@@ -91,7 +85,6 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'مستخدم';
   const displayEmail = user?.email || '';
   const userInitial = displayName.charAt(0).toUpperCase();
-  const roleLabel = isAdmin ? t('role.admin') : t('role.cashier');
 
   return (
     <>
@@ -196,25 +189,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             "flex items-center gap-3 p-3 rounded-xl bg-sidebar-accent",
             effectiveCollapsed && !isMobile && "p-2"
           )}>
-            <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0 relative">
+            <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
               <span className="text-primary-foreground font-bold">{userInitial}</span>
-              {isAdmin && (
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
-                  <Shield className="w-2.5 h-2.5 text-white" />
-                </div>
-              )}
             </div>
             {(!effectiveCollapsed || isMobile) && (
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate text-sidebar-foreground">{displayName}</p>
-                <div className="flex items-center gap-1">
-                  <span className={cn(
-                    "text-xs px-1.5 py-0.5 rounded-full",
-                    isAdmin ? "bg-amber-500/20 text-amber-500" : "bg-primary/20 text-primary"
-                  )}>
-                    {roleLabel}
-                  </span>
-                </div>
+                <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
               </div>
             )}
             {(!effectiveCollapsed || isMobile) && (
