@@ -11,11 +11,23 @@ import {
   Edit,
   Trash2,
   ArrowDownLeft,
+  ArrowUpRight,
   Save,
   UserCheck,
   Percent,
-  Tag
+  Tag,
+  Banknote,
+  PiggyBank
 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  addCapital as addCapitalToStore,
+  withdrawProfit,
+  withdrawCapital,
+  smartWithdraw
+} from '@/lib/partners-store';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,12 +69,19 @@ interface Partner {
   sharePercentage: number;
   categoryShares: CategoryShare[];
   accessAll: boolean;
-  sharesExpenses: boolean; // هل يشارك في المصاريف
+  sharesExpenses: boolean;
   joinedDate: string;
   totalProfitEarned: number;
   totalWithdrawn: number;
-  totalExpensesPaid: number; // المصاريف المدفوعة
+  totalExpensesPaid: number;
   currentBalance: number;
+  // رأس المال
+  initialCapital: number;
+  currentCapital: number;
+  capitalWithdrawals: any[];
+  capitalHistory: any[];
+  confirmedProfit: number;
+  pendingProfit: number;
 }
 
 const PARTNERS_STORAGE_KEY = 'hyperpos_partners_v1';
@@ -114,6 +133,7 @@ export default function Partners() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+  const [showAddCapitalDialog, setShowAddCapitalDialog] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   
   // Form state
@@ -131,6 +151,10 @@ export default function Partners() {
     })),
   });
   const [withdrawAmount, setWithdrawAmount] = useState(0);
+  const [withdrawType, setWithdrawType] = useState<'profit' | 'capital' | 'auto'>('auto');
+  const [withdrawNotes, setWithdrawNotes] = useState('');
+  const [capitalAmount, setCapitalAmount] = useState(0);
+  const [capitalNotes, setCapitalNotes] = useState('');
 
   // Update form when categories change
   useEffect(() => {
@@ -217,6 +241,13 @@ export default function Partners() {
       totalWithdrawn: 0,
       totalExpensesPaid: 0,
       currentBalance: 0,
+      // رأس المال
+      initialCapital: 0,
+      currentCapital: 0,
+      capitalWithdrawals: [],
+      capitalHistory: [],
+      confirmedProfit: 0,
+      pendingProfit: 0,
     };
     
     const updatedPartners = [...partners, newPartner];
@@ -273,26 +304,83 @@ export default function Partners() {
       return;
     }
 
-    if (withdrawAmount > selectedPartner.currentBalance) {
-      toast.error('المبلغ أكبر من الرصيد المتاح');
+    const profitAvailable = selectedPartner.currentBalance || 0;
+    const capitalAvailable = selectedPartner.currentCapital || 0;
+    const totalAvailable = profitAvailable + capitalAvailable;
+
+    // التحقق من الرصيد حسب نوع السحب
+    if (withdrawType === 'profit' && withdrawAmount > profitAvailable) {
+      toast.error('المبلغ أكبر من الأرباح المتاحة');
+      return;
+    }
+    if (withdrawType === 'capital' && withdrawAmount > capitalAvailable) {
+      toast.error('المبلغ أكبر من رأس المال المتاح');
+      return;
+    }
+    if (withdrawType === 'auto' && withdrawAmount > totalAvailable) {
+      toast.error('المبلغ أكبر من الرصيد الكلي المتاح');
       return;
     }
 
-    const updatedPartners = partners.map(p => 
-      p.id === selectedPartner.id 
-        ? { 
-            ...p, 
-            totalWithdrawn: p.totalWithdrawn + withdrawAmount,
-            currentBalance: p.currentBalance - withdrawAmount
-          }
-        : p
-    );
-    setPartners(updatedPartners);
-    savePartners(updatedPartners); // حفظ مباشر
-    setShowWithdrawDialog(false);
-    setSelectedPartner(null);
-    setWithdrawAmount(0);
-    toast.success('تم تسجيل السحب بنجاح');
+    let success = false;
+    let resultMessage = '';
+
+    if (withdrawType === 'profit') {
+      success = withdrawProfit(selectedPartner.id, withdrawAmount, withdrawNotes);
+      resultMessage = `تم سحب $${withdrawAmount.toLocaleString()} من الأرباح`;
+    } else if (withdrawType === 'capital') {
+      success = withdrawCapital(selectedPartner.id, withdrawAmount, withdrawNotes);
+      resultMessage = `تم سحب $${withdrawAmount.toLocaleString()} من رأس المال`;
+    } else {
+      const result = smartWithdraw(selectedPartner.id, withdrawAmount, withdrawNotes);
+      success = result.success;
+      if (success) {
+        const parts = [];
+        if (result.fromProfit > 0) parts.push(`$${result.fromProfit.toLocaleString()} من الأرباح`);
+        if (result.fromCapital > 0) parts.push(`$${result.fromCapital.toLocaleString()} من رأس المال`);
+        resultMessage = `تم سحب ${parts.join(' و ')}`;
+      }
+    }
+
+    if (success) {
+      // إعادة تحميل الشركاء
+      setPartners(loadPartners());
+      setShowWithdrawDialog(false);
+      setSelectedPartner(null);
+      setWithdrawAmount(0);
+      setWithdrawType('auto');
+      setWithdrawNotes('');
+      toast.success(resultMessage);
+    } else {
+      toast.error('حدث خطأ أثناء السحب');
+    }
+  };
+
+  const handleAddCapital = () => {
+    if (!selectedPartner || capitalAmount <= 0) {
+      toast.error('يرجى إدخال مبلغ صحيح');
+      return;
+    }
+
+    const success = addCapitalToStore(selectedPartner.id, capitalAmount, capitalNotes);
+    
+    if (success) {
+      setPartners(loadPartners());
+      setShowAddCapitalDialog(false);
+      setSelectedPartner(null);
+      setCapitalAmount(0);
+      setCapitalNotes('');
+      toast.success(`تم إضافة $${capitalAmount.toLocaleString()} إلى رأس المال`);
+    } else {
+      toast.error('حدث خطأ أثناء إضافة رأس المال');
+    }
+  };
+
+  const openAddCapitalDialog = (partner: Partner) => {
+    setSelectedPartner(partner);
+    setCapitalAmount(0);
+    setCapitalNotes('');
+    setShowAddCapitalDialog(true);
   };
 
   const openEditDialog = (partner: Partner) => {
@@ -331,6 +419,8 @@ export default function Partners() {
   const openWithdrawDialog = (partner: Partner) => {
     setSelectedPartner(partner);
     setWithdrawAmount(0);
+    setWithdrawType('auto');
+    setWithdrawNotes('');
     setShowWithdrawDialog(true);
   };
 
@@ -524,28 +614,28 @@ export default function Partners() {
             </div>
 
             {/* Financial Stats */}
-            <div className="grid grid-cols-3 gap-2 py-3 md:py-4 border-t border-border">
+            <div className="grid grid-cols-2 gap-2 py-3 md:py-4 border-t border-border">
               <div className="text-center">
                 <p className="text-[10px] md:text-xs text-muted-foreground">الأرباح</p>
-                <p className="text-sm md:text-base font-bold text-success">${partner.totalProfitEarned.toLocaleString()}</p>
+                <p className="text-sm md:text-base font-bold text-success">${(partner.currentBalance || 0).toLocaleString()}</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] md:text-xs text-muted-foreground">المسحوب</p>
-                <p className="text-sm md:text-base font-bold text-muted-foreground">${partner.totalWithdrawn.toLocaleString()}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] md:text-xs text-muted-foreground">الرصيد</p>
-                <p className="text-sm md:text-base font-bold text-primary">${partner.currentBalance.toLocaleString()}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">رأس المال</p>
+                <p className="text-sm md:text-base font-bold text-info">${(partner.currentCapital || 0).toLocaleString()}</p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-3 md:pt-4 border-t border-border">
+            <div className="flex flex-wrap gap-2 pt-3 md:pt-4 border-t border-border">
               <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(partner)}>
                 <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
                 عرض
               </Button>
-              {partner.currentBalance > 0 && (
+              <Button size="sm" className="flex-1 h-8 md:h-9 bg-success hover:bg-success/90 text-success-foreground text-xs md:text-sm" onClick={() => openAddCapitalDialog(partner)}>
+                <ArrowUpRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                إيداع
+              </Button>
+              {((partner.currentBalance || 0) > 0 || (partner.currentCapital || 0) > 0) && (
                 <Button size="sm" className="flex-1 h-8 md:h-9 bg-warning hover:bg-warning/90 text-warning-foreground text-xs md:text-sm" onClick={() => openWithdrawDialog(partner)}>
                   <ArrowDownLeft className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
                   سحب
@@ -851,39 +941,66 @@ export default function Partners() {
                 })}
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-success/10 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح</p>
-                  <p className="text-lg font-bold text-success">${selectedPartner.totalProfitEarned.toLocaleString()}</p>
+              {/* Financial Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-success/10 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <TrendingUp className="w-4 h-4 text-success" />
+                    <p className="text-xs text-muted-foreground">الأرباح المتاحة</p>
+                  </div>
+                  <p className="text-lg font-bold text-success">${(selectedPartner.currentBalance || 0).toLocaleString()}</p>
                 </div>
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">المسحوب</p>
-                  <p className="text-lg font-bold">${selectedPartner.totalWithdrawn.toLocaleString()}</p>
-                </div>
-                <div className="bg-primary/10 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">الرصيد</p>
-                  <p className="text-lg font-bold text-primary">${selectedPartner.currentBalance.toLocaleString()}</p>
+                <div className="bg-info/10 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <PiggyBank className="w-4 h-4 text-info" />
+                    <p className="text-xs text-muted-foreground">رأس المال</p>
+                  </div>
+                  <p className="text-lg font-bold text-info">${(selectedPartner.currentCapital || 0).toLocaleString()}</p>
                 </div>
               </div>
 
-              {selectedPartner.currentBalance > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح المكتسبة</p>
+                  <p className="text-lg font-bold">${(selectedPartner.totalProfitEarned || 0).toLocaleString()}</p>
+                </div>
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">إجمالي المسحوب</p>
+                  <p className="text-lg font-bold">${(selectedPartner.totalWithdrawn || 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
                 <Button 
-                  className="w-full bg-warning hover:bg-warning/90 text-warning-foreground" 
+                  className="flex-1 bg-success hover:bg-success/90 text-success-foreground" 
                   onClick={() => {
                     setShowViewDialog(false);
-                    openWithdrawDialog(selectedPartner);
+                    openAddCapitalDialog(selectedPartner);
                   }}
                 >
-                  <ArrowDownLeft className="w-4 h-4 ml-2" />
-                  سحب رصيد
+                  <ArrowUpRight className="w-4 h-4 ml-2" />
+                  إضافة رصيد
                 </Button>
-              )}
+                {((selectedPartner.currentBalance || 0) > 0 || (selectedPartner.currentCapital || 0) > 0) && (
+                  <Button 
+                    className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
+                    onClick={() => {
+                      setShowViewDialog(false);
+                      openWithdrawDialog(selectedPartner);
+                    }}
+                  >
+                    <ArrowDownLeft className="w-4 h-4 ml-2" />
+                    سحب رصيد
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Withdraw Dialog */}
+      {/* Withdraw Dialog - Improved */}
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -897,11 +1014,50 @@ export default function Partners() {
           </DialogHeader>
           {selectedPartner && (
             <div className="space-y-4 py-4">
-              <div className="bg-muted rounded-lg p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">الرصيد المتاح</p>
-                <p className="text-3xl font-bold text-primary">${selectedPartner.currentBalance.toLocaleString()}</p>
+              {/* الأرصدة المتاحة */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-success/10 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <TrendingUp className="w-4 h-4 text-success" />
+                    <p className="text-xs text-muted-foreground">الأرباح</p>
+                  </div>
+                  <p className="text-xl font-bold text-success">${(selectedPartner.currentBalance || 0).toLocaleString()}</p>
+                </div>
+                <div className="bg-info/10 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <PiggyBank className="w-4 h-4 text-info" />
+                    <p className="text-xs text-muted-foreground">رأس المال</p>
+                  </div>
+                  <p className="text-xl font-bold text-info">${(selectedPartner.currentCapital || 0).toLocaleString()}</p>
+                </div>
               </div>
 
+              {/* نوع السحب */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium">نوع السحب</label>
+                <RadioGroup value={withdrawType} onValueChange={(value) => setWithdrawType(value as 'profit' | 'capital' | 'auto')}>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <RadioGroupItem value="profit" id="profit" disabled={(selectedPartner.currentBalance || 0) <= 0} />
+                    <Label htmlFor="profit" className={cn("cursor-pointer", (selectedPartner.currentBalance || 0) <= 0 && "opacity-50")}>
+                      سحب من الأرباح فقط
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <RadioGroupItem value="capital" id="capital" disabled={(selectedPartner.currentCapital || 0) <= 0} />
+                    <Label htmlFor="capital" className={cn("cursor-pointer", (selectedPartner.currentCapital || 0) <= 0 && "opacity-50")}>
+                      سحب من رأس المال فقط
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <RadioGroupItem value="auto" id="auto" />
+                    <Label htmlFor="auto" className="cursor-pointer">
+                      تلقائي (الأرباح أولاً ثم رأس المال)
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* مبلغ السحب */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">مبلغ السحب ($)</label>
                 <Input
@@ -909,17 +1065,53 @@ export default function Partners() {
                   placeholder="0"
                   value={withdrawAmount || ''}
                   onChange={(e) => setWithdrawAmount(Number(e.target.value))}
-                  max={selectedPartner.currentBalance}
                 />
               </div>
 
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => setWithdrawAmount(selectedPartner.currentBalance)}
-              >
-                سحب كامل الرصيد
-              </Button>
+              {/* أزرار السحب السريع */}
+              <div className="flex gap-2">
+                {withdrawType === 'profit' && (selectedPartner.currentBalance || 0) > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setWithdrawAmount(selectedPartner.currentBalance || 0)}
+                  >
+                    كامل الأرباح
+                  </Button>
+                )}
+                {withdrawType === 'capital' && (selectedPartner.currentCapital || 0) > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setWithdrawAmount(selectedPartner.currentCapital || 0)}
+                  >
+                    كامل رأس المال
+                  </Button>
+                )}
+                {withdrawType === 'auto' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setWithdrawAmount((selectedPartner.currentBalance || 0) + (selectedPartner.currentCapital || 0))}
+                  >
+                    سحب كل الرصيد
+                  </Button>
+                )}
+              </div>
+
+              {/* ملاحظات */}
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">ملاحظات (اختياري)</label>
+                <Textarea
+                  placeholder="أضف ملاحظة..."
+                  value={withdrawNotes}
+                  onChange={(e) => setWithdrawNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
 
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" className="flex-1" onClick={() => setShowWithdrawDialog(false)}>
@@ -928,6 +1120,65 @@ export default function Partners() {
                 <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleWithdraw}>
                   <Save className="w-4 h-4 ml-2" />
                   تأكيد السحب
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Capital Dialog */}
+      <Dialog open={showAddCapitalDialog} onOpenChange={setShowAddCapitalDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowUpRight className="w-5 h-5 text-success" />
+              إضافة رأس مال
+            </DialogTitle>
+            <DialogDescription>
+              إضافة رأس مال للشريك {selectedPartner?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPartner && (
+            <div className="space-y-4 py-4">
+              <div className="bg-info/10 rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <PiggyBank className="w-5 h-5 text-info" />
+                  <p className="text-sm text-muted-foreground">رأس المال الحالي</p>
+                </div>
+                <p className="text-3xl font-bold text-info">${(selectedPartner.currentCapital || 0).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  (الإجمالي: ${(selectedPartner.initialCapital || 0).toLocaleString()})
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">مبلغ الإيداع ($)</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={capitalAmount || ''}
+                  onChange={(e) => setCapitalAmount(Number(e.target.value))}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">ملاحظات (اختياري)</label>
+                <Textarea
+                  placeholder="مثال: إيداع شهر يناير..."
+                  value={capitalNotes}
+                  onChange={(e) => setCapitalNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" className="flex-1" onClick={() => setShowAddCapitalDialog(false)}>
+                  إلغاء
+                </Button>
+                <Button className="flex-1 bg-success hover:bg-success/90 text-success-foreground" onClick={handleAddCapital}>
+                  <Save className="w-4 h-4 ml-2" />
+                  تأكيد الإيداع
                 </Button>
               </div>
             </div>
