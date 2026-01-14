@@ -125,7 +125,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     setIsZoomed(false);
   };
 
-  const toggleZoom = async () => {
+  const toggleZoom = useCallback(async () => {
     try {
       const videoElement = ref.current as HTMLVideoElement;
       if (!videoElement || !videoElement.srcObject) return;
@@ -137,8 +137,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         const capabilities = track.getCapabilities() as any;
         
         if (capabilities.zoom) {
-          const maxZoom = capabilities.zoom.max || 3;
-          const targetZoom = isZoomed ? 1 : Math.min(2.5, maxZoom);
+          const maxZoom = capabilities.zoom.max || 2;
+          const targetZoom = isZoomed ? 1 : Math.min(2, maxZoom);
           
           await track.applyConstraints({
             advanced: [{ zoom: targetZoom } as any]
@@ -150,7 +150,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     } catch (e) {
       console.log('Zoom not supported on this device');
     }
-  };
+  }, [isZoomed, ref]);
 
   // Auto-zoom after 2 seconds if no barcode detected
   useEffect(() => {
@@ -163,7 +163,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [isOpen, isZoomed]);
+  }, [isOpen, isZoomed, toggleZoom]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -209,7 +209,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
               {/* Zoom indicator */}
               {isZoomed && (
                 <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-primary/80 text-white text-xs px-2 py-1 rounded">
-                  تكبير 2.5x
+                  تكبير 2x
                 </div>
               )}
             </div>
