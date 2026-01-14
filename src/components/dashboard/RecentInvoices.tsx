@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy } from 'lucide-react';
+import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy, FileX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,44 +17,37 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
-
-interface InvoiceRow {
-  id: string;
-  customer: string;
-  amount: number;
-  currency: string;
-  status: 'completed' | 'pending' | 'cancelled';
-  time: string;
-  date: string;
-  items: { name: string; quantity: number; price: number }[];
-}
-
-// Empty invoices - will be populated from real data
-const mockInvoices: InvoiceRow[] = [];
+import { loadInvoices, Invoice, deleteInvoice } from '@/lib/invoices-store';
 
 const statusStyles = {
-  completed: 'badge-success',
+  paid: 'badge-success',
   pending: 'badge-warning',
   cancelled: 'badge-danger',
 };
 
 const statusLabels = {
-  completed: 'مكتملة',
+  paid: 'مكتملة',
   pending: 'معلقة',
   cancelled: 'ملغاة',
 };
 
 export function RecentInvoices() {
   const navigate = useNavigate();
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleViewInvoice = (invoice: InvoiceRow) => {
+  // Load invoices from localStorage
+  const invoices = useMemo(() => {
+    return loadInvoices().slice(0, 10); // Show last 10 invoices
+  }, [refreshKey]);
+
+  const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setShowViewDialog(true);
   };
 
-  const handlePrintInvoice = (invoice: InvoiceRow) => {
+  const handlePrintInvoice = (invoice: Invoice) => {
     // Load store settings for invoice
     let storeName = 'HyperPOS Store';
     let storeAddress = '';
@@ -79,6 +72,10 @@ export function RecentInvoices() {
         footer = settings.printSettings?.footer || footer;
       }
     } catch {}
+
+    const invoiceDate = new Date(invoice.createdAt);
+    const dateStr = invoiceDate.toLocaleDateString('ar-SA');
+    const timeStr = invoiceDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
 
     const printContent = `
       <!DOCTYPE html>
@@ -114,20 +111,22 @@ export function RecentInvoices() {
           </div>
           <div class="invoice-info">
             <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
-            <p><strong>العميل:</strong> ${invoice.customer}</p>
-            <p><strong>التاريخ:</strong> ${invoice.date} - ${invoice.time}</p>
+            <p><strong>العميل:</strong> ${invoice.customerName}</p>
+            <p><strong>التاريخ:</strong> ${dateStr} - ${timeStr}</p>
+            <p><strong>نوع الدفع:</strong> ${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</p>
           </div>
           <div class="items">
             ${invoice.items.map(item => `
               <div class="item">
                 <span class="item-name">${item.name}</span>
                 <span class="item-qty">×${item.quantity}</span>
-                <span class="item-price">$${item.price}</span>
+                <span class="item-price">${invoice.currencySymbol}${item.total}</span>
               </div>
             `).join('')}
           </div>
+          ${invoice.discount > 0 ? `<div style="text-align: center; color: #666;">خصم: ${invoice.currencySymbol}${invoice.discount}</div>` : ''}
           <div class="total">
-            المجموع: $${invoice.amount.toLocaleString()}
+            المجموع: ${invoice.currencySymbol}${invoice.totalInCurrency.toLocaleString()}
           </div>
           <div class="footer">
             <p>${footer}</p>
@@ -150,22 +149,39 @@ export function RecentInvoices() {
     toast.success(`جاري طباعة الفاتورة ${invoice.id}`);
   };
 
-  const handleCopyInvoice = (invoice: InvoiceRow) => {
+  const handleCopyInvoice = (invoice: Invoice) => {
     navigator.clipboard.writeText(invoice.id);
     toast.success('تم نسخ رقم الفاتورة');
   };
 
-  const handleEditInvoice = (invoice: InvoiceRow) => {
+  const handleEditInvoice = (invoice: Invoice) => {
     toast.info(`تعديل الفاتورة ${invoice.id}`);
     navigate('/pos');
   };
 
-  const handleDeleteInvoice = (invoice: InvoiceRow) => {
-    toast.error(`تم حذف الفاتورة ${invoice.id}`);
+  const handleDeleteInvoice = (invoice: Invoice) => {
+    const success = deleteInvoice(invoice.id);
+    if (success) {
+      toast.success(`تم حذف الفاتورة ${invoice.id}`);
+      setRefreshKey(prev => prev + 1);
+      setShowViewDialog(false);
+    } else {
+      toast.error('فشل في حذف الفاتورة');
+    }
   };
 
   const handleViewAll = () => {
-    navigate('/pos');
+    navigate('/invoices');
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ar-SA');
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -182,102 +198,118 @@ export function RecentInvoices() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">العميل</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">المبلغ</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الحالة</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الوقت</th>
-                <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockInvoices.map((invoice, index) => (
-                <tr 
-                  key={invoice.id}
-                  className={cn(
-                    "border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer fade-in",
-                  )}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                  onClick={() => handleViewInvoice(invoice)}
-                >
-                  <td className="py-4 px-6">
-                    <span className="font-mono text-sm text-foreground">{invoice.id}</span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-medium text-foreground">{invoice.customer}</span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-semibold text-foreground">
-                      ${invoice.amount.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className={cn(
-                      "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
-                      statusStyles[invoice.status]
-                    )}>
-                      {statusLabels[invoice.status]}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="text-muted-foreground">{invoice.time}</span>
-                  </td>
-                  <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-2">
-                      <button 
-                        className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        onClick={() => handleViewInvoice(invoice)}
-                        title="عرض الفاتورة"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        onClick={() => handlePrintInvoice(invoice)}
-                        title="طباعة"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
-                            <Eye className="w-4 h-4 ml-2" />
-                            عرض التفاصيل
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleCopyInvoice(invoice)}>
-                            <Copy className="w-4 h-4 ml-2" />
-                            نسخ الرقم
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
-                            <Edit className="w-4 h-4 ml-2" />
-                            تعديل
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteInvoice(invoice)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            حذف
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </td>
+        
+        {invoices.length === 0 ? (
+          <div className="p-12 text-center">
+            <FileX className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">لا توجد فواتير بعد</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">ابدأ بإنشاء فاتورة جديدة من نقطة البيع</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => navigate('/pos')}
+            >
+              انتقل إلى نقطة البيع
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
+                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">العميل</th>
+                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">المبلغ</th>
+                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الحالة</th>
+                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الوقت</th>
+                  <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">إجراءات</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {invoices.map((invoice, index) => (
+                  <tr 
+                    key={invoice.id}
+                    className={cn(
+                      "border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer fade-in",
+                    )}
+                    style={{ animationDelay: `${index * 50}ms` }}
+                    onClick={() => handleViewInvoice(invoice)}
+                  >
+                    <td className="py-4 px-6">
+                      <span className="font-mono text-sm text-foreground">{invoice.id}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="font-medium text-foreground">{invoice.customerName}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="font-semibold text-foreground">
+                        {invoice.currencySymbol}{invoice.totalInCurrency.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className={cn(
+                        "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
+                        statusStyles[invoice.status]
+                      )}>
+                        {statusLabels[invoice.status]}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-muted-foreground">{formatTime(invoice.createdAt)}</span>
+                    </td>
+                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          onClick={() => handleViewInvoice(invoice)}
+                          title="عرض الفاتورة"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          onClick={() => handlePrintInvoice(invoice)}
+                          title="طباعة"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                              <Eye className="w-4 h-4 ml-2" />
+                              عرض التفاصيل
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCopyInvoice(invoice)}>
+                              <Copy className="w-4 h-4 ml-2" />
+                              نسخ الرقم
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
+                              <Edit className="w-4 h-4 ml-2" />
+                              تعديل
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteInvoice(invoice)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 ml-2" />
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Invoice View Dialog */}
@@ -300,15 +332,25 @@ export function RecentInvoices() {
               <div className="bg-muted rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-muted-foreground">العميل:</span>
-                  <span className="font-semibold">{selectedInvoice.customer}</span>
+                  <span className="font-semibold">{selectedInvoice.customerName}</span>
                 </div>
+                {selectedInvoice.customerPhone && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-muted-foreground">الهاتف:</span>
+                    <span>{selectedInvoice.customerPhone}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-muted-foreground">التاريخ:</span>
-                  <span>{selectedInvoice.date}</span>
+                  <span>{formatDate(selectedInvoice.createdAt)}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-muted-foreground">الوقت:</span>
+                  <span>{formatTime(selectedInvoice.createdAt)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">الوقت:</span>
-                  <span>{selectedInvoice.time}</span>
+                  <span className="text-muted-foreground">نوع الدفع:</span>
+                  <span>{selectedInvoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</span>
                 </div>
               </div>
 
@@ -322,7 +364,7 @@ export function RecentInvoices() {
                         <p className="font-medium">{item.name}</p>
                         <p className="text-sm text-muted-foreground">الكمية: {item.quantity}</p>
                       </div>
-                      <span className="font-semibold">${item.price}</span>
+                      <span className="font-semibold">{selectedInvoice.currencySymbol}{item.total}</span>
                     </div>
                   ))}
                 </div>
@@ -330,9 +372,15 @@ export function RecentInvoices() {
 
               {/* Total */}
               <div className="border-t border-border pt-4">
+                {selectedInvoice.discount > 0 && (
+                  <div className="flex justify-between items-center text-sm text-muted-foreground mb-2">
+                    <span>الخصم:</span>
+                    <span>{selectedInvoice.currencySymbol}{selectedInvoice.discount}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>المجموع:</span>
-                  <span className="text-primary">${selectedInvoice.amount}</span>
+                  <span className="text-primary">{selectedInvoice.currencySymbol}{selectedInvoice.totalInCurrency.toLocaleString()}</span>
                 </div>
               </div>
 
