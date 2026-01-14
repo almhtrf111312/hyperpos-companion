@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   Plus, 
@@ -11,7 +11,9 @@ import {
   X,
   Save,
   ScanLine,
-  Tag
+  Tag,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -76,7 +78,59 @@ const [showCategoryManager, setShowCategoryManager] = useState(false);
     salePrice: 0,
     quantity: 0,
     expiryDate: '',
+    image: '',
   });
+  
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Image upload handler
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('يرجى اختيار ملف صورة صالح');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('حجم الصورة يجب أن يكون أقل من 2 ميغابايت');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Compress image
+        const img = new window.Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxSize = 300;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > maxSize) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          setFormData(prev => ({ ...prev, image: compressedBase64 }));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Reload categories from store
   const reloadCategories = () => {
@@ -124,7 +178,7 @@ const filteredProducts = products.filter(product => {
     
     updateProducts([...products, newProduct]);
     setShowAddDialog(false);
-    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '' });
+    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
     toast.success('تم إضافة المنتج بنجاح');
   };
 
@@ -163,6 +217,7 @@ const filteredProducts = products.filter(product => {
       salePrice: product.salePrice,
       quantity: product.quantity,
       expiryDate: product.expiryDate || '',
+      image: product.image || '',
     });
     setShowEditDialog(true);
   };
@@ -191,7 +246,7 @@ const filteredProducts = products.filter(product => {
             التصنيفات
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '' });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -328,8 +383,12 @@ const filteredProducts = products.filter(product => {
               style={{ animationDelay: `${index * 30}ms` }}
             >
               <div className="flex items-start gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                  <Package className="w-6 h-6 text-muted-foreground" />
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {product.image ? (
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Package className="w-6 h-6 text-muted-foreground" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
@@ -405,8 +464,12 @@ const filteredProducts = products.filter(product => {
                   >
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                          <Package className="w-6 h-6 text-muted-foreground" />
+                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="w-6 h-6 text-muted-foreground" />
+                          )}
                         </div>
                         <span className="font-medium text-foreground">{product.name}</span>
                       </div>
@@ -550,6 +613,42 @@ const filteredProducts = products.filter(product => {
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                 />
               </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={imageInputRef}
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <div className="flex items-center gap-3">
+                  {formData.image ? (
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
+                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, image: '' })}
+                        className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4 ml-2" />
+                    رفع صورة
+                  </Button>
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
@@ -633,6 +732,42 @@ const filteredProducts = products.filter(product => {
                   value={formData.expiryDate}
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="edit-image-input"
+                  onChange={handleImageUpload}
+                />
+                <div className="flex items-center gap-3">
+                  {formData.image ? (
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
+                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, image: '' })}
+                        className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('edit-image-input')?.click()}
+                  >
+                    <Upload className="w-4 h-4 ml-2" />
+                    {formData.image ? 'تغيير الصورة' : 'رفع صورة'}
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="flex gap-3 pt-4">
