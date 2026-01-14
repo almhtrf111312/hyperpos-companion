@@ -1,71 +1,54 @@
-name: Build HyperPOS APK (Camera Fixed)
+name: Build HyperPOS APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'npm'
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build React app
-        run: npm run build
-
-      - name: Install Capacitor
-        run: npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-
-      - name: Init Capacitor
-        run: npx cap init HyperPOS com.hyperpos.app --web-dir=dist
-
-      - name: Add Android platform
-        run: npx cap add android
-
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Add Camera Permissions
-        run: |
-          cat >> android/app/src/main/AndroidManifest.xml << 'EOF'
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
-<uses-feature android:name="android.hardware.camera" android:required="false" />
-EOF
-
-      - name: Fix WebView Settings
-        run: |
-          sed -i 's/configChanges="[^"]*"/configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:usesCleartextTraffic="true" android:allowContentAccess="true" android:allowFileAccess="true" android:allowFileAccessFromFile="true" android:preserveScreenOn="true" android:supportsRtl="true"/' android/app/src/main/AndroidManifest.xml
-
-      - name: Clean Gradle cache
-        run: rm -rf ~/.gradle/caches
-
-      - name: Build APK
-        run: |
-          chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: hyperpos-camera-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+        
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build app
+      run: npm run build
+      
+    - name: Install Capacitor
+      run: npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+      
+    - name: Init Capacitor
+      run: npx cap init HyperPOS com.hyperpos.app --web-dir dist
+      
+    - name: Add Android
+      run: npx cap add android
+      
+    - name: Sync
+      run: npx cap sync android
+      
+    - name: Add permissions
+      run: |
+        echo '<uses-permission android:name="android.permission.CAMERA" />' | cat - android/app/src/main/AndroidManifest.xml > temp && mv temp android/app/src/main/AndroidManifest.xml
+        
+    - name: Build APK
+      run: |
+        chmod +x android/gradlew
+        cd android && ./gradlew assembleDebug
+        
+    - uses: actions/upload-artifact@v4
+      with:
+        name: hyperpos-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
