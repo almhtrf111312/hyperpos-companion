@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus,
@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
+import { EVENTS } from '@/lib/events';
 
 interface RepairRequest {
   id: string;
@@ -58,74 +59,27 @@ interface RepairRequest {
   technician?: string;
 }
 
-const initialRequests: RepairRequest[] = [
-  { 
-    id: 'REP_001', 
-    customerName: 'محمد أحمد', 
-    customerPhone: '+963 912 345 678', 
-    deviceType: 'هاتف',
-    deviceModel: 'iPhone 14 Pro',
-    issue: 'الشاشة مكسورة',
-    diagnosis: 'تحتاج استبدال الشاشة بالكامل',
-    estimatedCost: 150,
-    status: 'in_progress',
-    createdAt: '2025-01-10',
-    estimatedDate: '2025-01-15',
-    technician: 'أحمد'
-  },
-  { 
-    id: 'REP_002', 
-    customerName: 'علي حسن', 
-    customerPhone: '+963 933 111 222', 
-    deviceType: 'هاتف',
-    deviceModel: 'Samsung Galaxy S23',
-    issue: 'البطارية لا تشحن',
-    status: 'pending',
-    createdAt: '2025-01-12',
-  },
-  { 
-    id: 'REP_003', 
-    customerName: 'فاطمة محمود', 
-    customerPhone: '+963 944 555 666', 
-    deviceType: 'تابلت',
-    deviceModel: 'iPad Air',
-    issue: 'الشاشة لا تستجيب',
-    diagnosis: 'مشكلة في الديجيتايزر',
-    estimatedCost: 200,
-    status: 'waiting_parts',
-    createdAt: '2025-01-08',
-    estimatedDate: '2025-01-20',
-    technician: 'سامر'
-  },
-  { 
-    id: 'REP_004', 
-    customerName: 'خالد عمر', 
-    customerPhone: '+963 966 222 333', 
-    deviceType: 'هاتف',
-    deviceModel: 'Huawei P50',
-    issue: 'لا يعمل',
-    diagnosis: 'تلف في اللوحة الأم',
-    estimatedCost: 300,
-    finalCost: 280,
-    status: 'completed',
-    createdAt: '2025-01-05',
-    completedAt: '2025-01-11',
-    technician: 'أحمد'
-  },
-  { 
-    id: 'REP_005', 
-    customerName: 'سارة يوسف', 
-    customerPhone: '+963 977 444 555', 
-    deviceType: 'هاتف',
-    deviceModel: 'iPhone 13',
-    issue: 'الكاميرا لا تعمل',
-    finalCost: 100,
-    status: 'delivered',
-    createdAt: '2025-01-01',
-    completedAt: '2025-01-07',
-    technician: 'سامر'
-  },
-];
+const SERVICES_STORAGE_KEY = 'hyperpos_services_v1';
+
+// Load services from localStorage
+const loadServices = (): RepairRequest[] => {
+  try {
+    const stored = localStorage.getItem(SERVICES_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Save services to localStorage
+const saveServices = (services: RepairRequest[]) => {
+  try {
+    localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(services));
+    window.dispatchEvent(new CustomEvent(EVENTS.SERVICES_UPDATED, { detail: services }));
+  } catch {
+    // ignore
+  }
+};
 
 const statusConfig = {
   pending: { label: 'قيد الانتظار', icon: Clock, color: 'badge-warning' },
@@ -141,9 +95,14 @@ const filterOptions = ['الكل', 'قيد الانتظار', 'قيد الإصل
 const deviceTypes = ['هاتف', 'تابلت', 'لابتوب', 'كمبيوتر', 'ساعة ذكية', 'أخرى'];
 
 export default function Services() {
-  const [requests, setRequests] = useState<RepairRequest[]>(initialRequests);
+  const [requests, setRequests] = useState<RepairRequest[]>(() => loadServices());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('الكل');
+  
+  // Save to localStorage whenever requests change
+  useEffect(() => {
+    saveServices(requests);
+  }, [requests]);
   
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);

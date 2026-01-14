@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
@@ -45,6 +45,7 @@ type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rat
 
 export default function POS() {
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
@@ -176,8 +177,10 @@ export default function POS() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      {/* Sidebar - Hidden on tablet for more product space */}
+      {!isTablet && (
+        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      )}
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
