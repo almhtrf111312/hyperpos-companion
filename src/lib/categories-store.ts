@@ -71,3 +71,8 @@ export const deleteCategory = (id: string): boolean => {
   saveCategories(filtered);
   return true;
 };
+
+export const getCategoryNames = (): string[] => {
+  const categories = loadCategories();
+  return categories.map(c => c.name);
+};

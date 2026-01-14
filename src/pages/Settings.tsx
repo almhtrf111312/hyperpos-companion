@@ -34,7 +34,8 @@ import {
   Activity,
   Key,
   FileUp,
-  Lock
+  Lock,
+  Banknote
 } from 'lucide-react';
 import { encryptBackup, decryptBackup, isEncryptedBackup, getBackupFileExtension } from '@/lib/backup-encryption';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
@@ -797,7 +798,31 @@ export default function Settings() {
       case 'sync':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <GoogleDriveSection />
+            <GoogleDriveSection 
+              getBackupData={() => {
+                const data: Record<string, any> = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key?.startsWith('hyperpos_')) {
+                    try {
+                      data[key] = JSON.parse(localStorage.getItem(key) || '');
+                    } catch {
+                      data[key] = localStorage.getItem(key);
+                    }
+                  }
+                }
+                return data;
+              }}
+              onRestoreBackup={(data) => {
+                Object.entries(data).forEach(([key, value]) => {
+                  localStorage.setItem(key, JSON.stringify(value));
+                });
+                window.dispatchEvent(new Event('productsUpdated'));
+                window.dispatchEvent(new Event('customersUpdated'));
+                window.dispatchEvent(new Event('debtsUpdated'));
+                window.dispatchEvent(new Event('invoicesUpdated'));
+              }}
+            />
             <div className="pt-4 border-t border-border">
               <h3 className="text-base font-semibold text-foreground mb-4">التزامن المحلي</h3>
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
@@ -1244,12 +1269,12 @@ export default function Settings() {
 
       {/* Password Change Dialog */}
       <PasswordChangeDialog
-        isOpen={passwordDialogOpen}
-        onClose={() => {
-          setPasswordDialogOpen(false);
-          setPasswordChangeUserId(null);
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+          if (!open) setPasswordChangeUserId(null);
         }}
-        userId={passwordChangeUserId}
+        userId={passwordChangeUserId || undefined}
       />
     </div>
   );
