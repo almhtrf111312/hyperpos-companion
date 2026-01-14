@@ -112,7 +112,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     onError: (err) => {
       console.error('Scanner error:', err);
     },
-    timeBetweenDecodingAttempts: 100, // Very fast scanning
+    timeBetweenDecodingAttempts: 100,
+    constraints: {
+      video: {
+        facingMode: 'environment',
+      }
+    }
   });
 
   const handleClose = () => {
@@ -152,18 +157,39 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     }
   }, [isZoomed, ref]);
 
-  // Auto-zoom after 2 seconds if no barcode detected
+  // Apply default zoom x2 immediately when camera starts
   useEffect(() => {
-    if (!isOpen || isZoomed) return;
+    if (!isOpen) return;
     
-    const timer = setTimeout(() => {
-      if (!acceptedRef.current) {
-        toggleZoom();
+    const applyDefaultZoom = async () => {
+      // Wait for camera to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const videoElement = ref.current as HTMLVideoElement;
+      if (!videoElement?.srcObject) return;
+      
+      const stream = videoElement.srcObject as MediaStream;
+      const track = stream.getVideoTracks()[0];
+      
+      if (track && 'getCapabilities' in track) {
+        const capabilities = track.getCapabilities() as any;
+        
+        if (capabilities.zoom) {
+          const targetZoom = Math.min(2, capabilities.zoom.max || 2);
+          try {
+            await track.applyConstraints({
+              advanced: [{ zoom: targetZoom } as any]
+            });
+            setIsZoomed(true);
+          } catch (e) {
+            console.log('Could not apply default zoom');
+          }
+        }
       }
-    }, 2000);
+    };
     
-    return () => clearTimeout(timer);
-  }, [isOpen, isZoomed, toggleZoom]);
+    applyDefaultZoom();
+  }, [isOpen, deviceIndex, ref]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>

@@ -12,8 +12,8 @@ import {
   Save,
   ScanLine,
   Tag,
-  Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Camera
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -82,8 +82,45 @@ const [showCategoryManager, setShowCategoryManager] = useState(false);
   });
   
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Image upload handler
+  // Compress image to max 640x640
+  const compressImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 640; // Max 640x640 for storage efficiency
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setFormData(prev => ({ ...prev, image: compressedBase64 }));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Image upload handler (from gallery/files)
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -91,45 +128,24 @@ const [showCategoryManager, setShowCategoryManager] = useState(false);
         toast.error('يرجى اختيار ملف صورة صالح');
         return;
       }
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('حجم الصورة يجب أن يكون أقل من 2 ميغابايت');
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('حجم الصورة يجب أن يكون أقل من 5 ميغابايت');
         return;
       }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        // Compress image
-        const img = new window.Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxSize = 300;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height) {
-            if (width > maxSize) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            }
-          } else {
-            if (height > maxSize) {
-              width = (width * maxSize) / height;
-              height = maxSize;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          setFormData(prev => ({ ...prev, image: compressedBase64 }));
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
+      compressImage(file);
     }
+    // Reset input for re-selection
+    if (event.target) event.target.value = '';
+  };
+
+  // Camera capture handler
+  const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      compressImage(file);
+    }
+    // Reset input for re-capture
+    if (event.target) event.target.value = '';
   };
 
   // Reload categories from store

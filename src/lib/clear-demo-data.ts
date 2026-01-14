@@ -5,12 +5,16 @@ const STORAGE_KEYS_TO_CLEAR = [
   'hyperpos_products_v1',
   'hyperpos_invoices_v1', 
   'hyperpos_maintenance_v1',
+  'hyperpos_services_v1',
+  'hyperpos_customers_v1',
+  'hyperpos_debts_v1',
+  'hyperpos_expenses_v1',
   // Categories are kept as they're useful defaults
 ];
 
 // Version key to track if data has been cleared
 const CLEAR_VERSION_KEY = 'hyperpos_clear_version';
-const CURRENT_CLEAR_VERSION = '2'; // Increment this to trigger a new clear
+const CURRENT_CLEAR_VERSION = '3'; // Increment this to trigger a new clear
 
 export const clearDemoDataOnce = () => {
   try {
