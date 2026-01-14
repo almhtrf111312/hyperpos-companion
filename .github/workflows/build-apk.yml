@@ -1,4 +1,4 @@
-name: Build HyperPOS APK
+name: Build HyperPOS APK (Camera Fixed)
 
 on:
   push:
@@ -39,16 +39,23 @@ jobs:
     - name: Sync
       run: npx cap sync android
       
-    - name: Add permissions
+    - name: Add Camera Permissions
       run: |
-        echo '<uses-permission android:name="android.permission.CAMERA" />' | cat - android/app/src/main/AndroidManifest.xml > temp && mv temp android/app/src/main/AndroidManifest.xml
+        # إضافة Permissions للكاميرا
+        sed -i '1a <uses-permission android:name="android.permission.CAMERA" />' android/app/src/main/AndroidManifest.xml
+        sed -i '2a <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+        sed -i '3a <uses-feature android:name="android.hardware.camera" android:required="false" />' android/app/src/main/AndroidManifest.xml
         
+        # WebView Optimizations
+        sed -i 's/android:configChanges=/android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
+    
     - name: Build APK
       run: |
         chmod +x android/gradlew
-        cd android && ./gradlew assembleDebug
+        cd android
+        ./gradlew assembleDebug
         
     - uses: actions/upload-artifact@v4
       with:
-        name: hyperpos-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        name: hyperpos-camera-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk 
