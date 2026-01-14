@@ -57,3 +57,61 @@ export const addCustomer = (customer: Omit<Customer, 'id' | 'createdAt' | 'updat
   saveCustomers(customers);
   return newCustomer;
 };
+
+export const updateCustomer = (id: string, data: Partial<Omit<Customer, 'id' | 'createdAt'>>): boolean => {
+  const customers = loadCustomers();
+  const index = customers.findIndex(c => c.id === id);
+  if (index === -1) return false;
+  customers[index] = {
+    ...customers[index],
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  saveCustomers(customers);
+  return true;
+};
+
+export const deleteCustomer = (id: string): boolean => {
+  const customers = loadCustomers();
+  const filtered = customers.filter(c => c.id !== id);
+  if (filtered.length === customers.length) return false;
+  saveCustomers(filtered);
+  return true;
+};
+
+export const findOrCreateCustomer = (name: string, phone?: string): Customer => {
+  const customers = loadCustomers();
+  let customer = customers.find(c => 
+    c.name.toLowerCase() === name.toLowerCase() || 
+    (phone && c.phone === phone)
+  );
+  if (!customer) {
+    customer = addCustomer({ name, phone: phone || '' });
+  }
+  return customer;
+};
+
+export const updateCustomerStats = (customerId: string, purchaseAmount: number, isDebt: boolean): void => {
+  const customers = loadCustomers();
+  const index = customers.findIndex(c => c.id === customerId);
+  if (index !== -1) {
+    customers[index].totalPurchases += purchaseAmount;
+    if (isDebt) {
+      customers[index].totalDebt += purchaseAmount;
+    }
+    customers[index].invoiceCount += 1;
+    customers[index].lastPurchase = new Date().toISOString();
+    customers[index].updatedAt = new Date().toISOString();
+    saveCustomers(customers);
+  }
+};
+
+export const getCustomersStats = () => {
+  const customers = loadCustomers();
+  return {
+    total: customers.length,
+    withDebt: customers.filter(c => c.totalDebt > 0).length,
+    totalDebt: customers.reduce((sum, c) => sum + c.totalDebt, 0),
+    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
+  };
+};

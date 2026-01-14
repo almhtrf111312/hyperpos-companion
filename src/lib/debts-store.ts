@@ -51,3 +51,80 @@ export const saveDebts = (debts: Debt[]) => {
     // ignore
   }
 };
+
+export const addDebt = (debtData: Omit<Debt, 'id' | 'createdAt' | 'updatedAt' | 'totalPaid' | 'remainingDebt' | 'status'>): Debt => {
+  const debts = loadDebts();
+  const today = new Date().toISOString().split('T')[0];
+  const newDebt: Debt = {
+    ...debtData,
+    id: Date.now().toString(),
+    totalPaid: 0,
+    remainingDebt: debtData.totalDebt,
+    status: debtData.dueDate < today ? 'overdue' : 'due',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  debts.push(newDebt);
+  saveDebts(debts);
+  return newDebt;
+};
+
+export const addDebtFromInvoice = (
+  invoiceId: string,
+  customerName: string,
+  customerPhone: string,
+  amount: number,
+  dueDate?: string
+): Debt => {
+  const defaultDueDate = new Date();
+  defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+  
+  return addDebt({
+    invoiceId,
+    customerName,
+    customerPhone,
+    totalDebt: amount,
+    dueDate: dueDate || defaultDueDate.toISOString().split('T')[0],
+    isCashDebt: false,
+  });
+};
+
+export const recordPayment = (debtId: string, amount: number): Debt | null => {
+  const debts = loadDebts();
+  const index = debts.findIndex(d => d.id === debtId);
+  if (index === -1) return null;
+
+  const debt = debts[index];
+  const newTotalPaid = debt.totalPaid + amount;
+  const newRemainingDebt = debt.totalDebt - newTotalPaid;
+  
+  let newStatus: DebtStatus = debt.status;
+  if (newRemainingDebt <= 0) {
+    newStatus = 'fully_paid';
+  } else if (newTotalPaid > 0) {
+    newStatus = 'partially_paid';
+  }
+
+  debts[index] = {
+    ...debt,
+    totalPaid: newTotalPaid,
+    remainingDebt: Math.max(0, newRemainingDebt),
+    status: newStatus,
+    updatedAt: new Date().toISOString(),
+  };
+
+  saveDebts(debts);
+  return debts[index];
+};
+
+export const getDebtsStats = () => {
+  const debts = loadDebts();
+  return {
+    total: debts.reduce((sum, d) => sum + d.totalDebt, 0),
+    remaining: debts.reduce((sum, d) => sum + d.remainingDebt, 0),
+    paid: debts.reduce((sum, d) => sum + d.totalPaid, 0),
+    overdue: debts.filter(d => d.status === 'overdue').reduce((sum, d) => sum + d.remainingDebt, 0),
+    count: debts.length,
+    activeCount: debts.filter(d => d.status !== 'fully_paid').length,
+  };
+};

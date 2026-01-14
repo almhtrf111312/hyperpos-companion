@@ -83,7 +83,6 @@ export default function POS() {
     window.addEventListener('storage', handleStorage);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-    // Backward compatibility with older event names
     window.addEventListener('productsUpdated', onProductsUpdated as EventListener);
     window.addEventListener('categoriesUpdated', onCategoriesUpdated as EventListener);
 
@@ -136,8 +135,6 @@ export default function POS() {
     toast.success(`تمت إضافة "${product.name}" إلى السلة`);
   };
 
-  // ... rest of file unchanged (keeps all logic as before)
-
   // Handle barcode scan - show product dialog instead of adding directly
   const handleBarcodeScan = (barcode: string) => {
     const product = getProductByBarcode(barcode);
@@ -151,5 +148,143 @@ export default function POS() {
     }
   };
 
-  // ... remaining content unchanged, function returns the same JSX as before
+  const handleAddScannedProduct = (product: POSProduct) => {
+    addToCart(product);
+    setShowScannedDialog(false);
+    setScannedProduct(null);
+  };
+
+  const updateQuantity = (id: string, change: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQty = Math.max(1, item.quantity + change);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const removeItem = (id: string) => {
+    setCart(prev => prev.filter(item => item.id !== id));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    setDiscount(0);
+    setCustomerName('');
+  };
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <POSHeader
+          onMenuClick={() => setSidebarOpen(true)}
+          onCartClick={() => setCartOpen(true)}
+          cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        />
+
+        {/* Mode Tabs - Mobile Only */}
+        {isMobile && (
+          <div className="px-3 py-2 border-b border-border bg-card">
+            <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as 'products' | 'maintenance')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="products" className="flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4" />
+                  المنتجات
+                </TabsTrigger>
+                <TabsTrigger value="maintenance" className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4" />
+                  الصيانة
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
+
+        {/* Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Products/Maintenance Area */}
+          <div className={cn(
+            "flex-1 overflow-hidden",
+            !isMobile && "border-l border-border"
+          )}>
+            {activeMode === 'products' ? (
+              <ProductGrid
+                products={products}
+                categories={categories}
+                searchQuery={searchQuery}
+                selectedCategory={selectedCategory}
+                onSearchChange={setSearchQuery}
+                onCategoryChange={setSelectedCategory}
+                onProductClick={addToCart}
+                onBarcodeScan={handleBarcodeScan}
+              />
+            ) : (
+              <MaintenancePanel
+                currencies={currencies}
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={setSelectedCurrency}
+              />
+            )}
+          </div>
+
+          {/* Cart Panel - Desktop */}
+          {!isMobile && (
+            <div className="w-96 flex-shrink-0">
+              <CartPanel
+                cart={cart}
+                currencies={currencies}
+                selectedCurrency={selectedCurrency}
+                discount={discount}
+                customerName={customerName}
+                onUpdateQuantity={updateQuantity}
+                onRemoveItem={removeItem}
+                onClearCart={clearCart}
+                onCurrencyChange={setSelectedCurrency}
+                onDiscountChange={setDiscount}
+                onCustomerNameChange={setCustomerName}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Cart Sheet - Mobile */}
+      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+        <SheetContent side="bottom" className="h-[85vh] p-0">
+          <CartPanel
+            cart={cart}
+            currencies={currencies}
+            selectedCurrency={selectedCurrency}
+            discount={discount}
+            customerName={customerName}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeItem}
+            onClearCart={clearCart}
+            onCurrencyChange={setSelectedCurrency}
+            onDiscountChange={setDiscount}
+            onCustomerNameChange={setCustomerName}
+            onClose={() => setCartOpen(false)}
+            isMobile
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Scanned Product Dialog */}
+      <ScannedProductDialog
+        product={scannedProduct}
+        isOpen={showScannedDialog}
+        onClose={() => {
+          setShowScannedDialog(false);
+          setScannedProduct(null);
+        }}
+        onAddToCart={handleAddScannedProduct}
+      />
+    </div>
+  );
 }
