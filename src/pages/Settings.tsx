@@ -29,10 +29,16 @@ import {
   CheckCircle2,
   Cloud,
   Globe,
-  Loader2
+  Loader2,
+  Palette,
+  Activity,
+  Key
 } from 'lucide-react';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
+import { ThemeSection } from '@/components/settings/ThemeSection';
+import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
+import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,11 +52,13 @@ import { useAuth } from '@/hooks/use-auth';
 const settingsTabs = [
   { id: 'store', label: 'المحل', labelKey: 'settings.general', icon: Store },
   { id: 'language', label: 'اللغة', labelKey: 'settings.language', icon: Globe },
+  { id: 'theme', label: 'المظهر', labelKey: 'settings.theme', icon: Palette },
   { id: 'currencies', label: 'العملات', labelKey: 'settings.general', icon: DollarSign },
   { id: 'sync', label: 'التزامن', labelKey: 'settings.general', icon: RefreshCw },
   { id: 'notifications', label: 'الإشعارات', labelKey: 'settings.general', icon: Bell },
   { id: 'printing', label: 'الطباعة', labelKey: 'settings.general', icon: Printer },
   { id: 'users', label: 'المستخدمين', labelKey: 'settings.users', icon: User },
+  { id: 'activity', label: 'سجل النشاط', labelKey: 'settings.activityLog', icon: Activity },
   { id: 'backup', label: 'النسخ الاحتياطي', labelKey: 'settings.backup', icon: Database },
 ];
 
@@ -210,6 +218,8 @@ export default function Settings() {
   // Dialogs
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordChangeUserId, setPasswordChangeUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [userForm, setUserForm] = useState({
@@ -480,6 +490,10 @@ export default function Settings() {
     switch (activeTab) {
       case 'language':
         return <LanguageSection />;
+      case 'theme':
+        return <ThemeSection />;
+      case 'activity':
+        return <ActivityLogSection />;
       case 'store':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
@@ -979,6 +993,17 @@ export default function Settings() {
                         {user.role === 'admin' ? 'مشرف' : 'كاشير'}
                       </span>
                       <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            setPasswordChangeUserId(user.user_id);
+                            setPasswordDialogOpen(true);
+                          }}
+                          title="تغيير كلمة المرور"
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -1327,6 +1352,13 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Password Change Dialog */}
+      <PasswordChangeDialog
+        open={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+        userId={passwordChangeUserId}
+      />
     </div>
   );
 }
