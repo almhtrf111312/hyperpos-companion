@@ -81,6 +81,146 @@
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;
   }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 98%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 20% 45%;
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 160 84% 39%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 160 84% 39%;
+    --pos-grid: 210 40% 96%;
+    --pos-item: 0 0% 100%;
+    --pos-item-hover: 210 40% 94%;
+    --pos-cart: 0 0% 98%;
+    --pos-total: 160 84% 39%;
+  }
+
+  /* Theme: Ocean Blue */
+  .theme-ocean {
+    --primary: 207 90% 54%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 207 90% 54%;
+    --sidebar-primary: 207 90% 54%;
+    --pos-total: 207 90% 54%;
+  }
+
+  /* Theme: Sunset Orange */
+  .theme-sunset {
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 15 75% 50%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 24 95% 53%;
+    --sidebar-primary: 24 95% 53%;
+    --pos-total: 24 95% 53%;
+  }
+
+  /* Theme: Royal Purple */
+  .theme-purple {
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 280 65% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 262 83% 58%;
+    --sidebar-primary: 262 83% 58%;
+    --pos-total: 262 83% 58%;
+  }
+
+  /* Theme: Rose Pink */
+  .theme-rose {
+    --primary: 346 77% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 330 80% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 346 77% 50%;
+    --sidebar-primary: 346 77% 50%;
+    --pos-total: 346 77% 50%;
+  }
+
+  /* Theme: Forest Green */
+  .theme-forest {
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 158 64% 52%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 142 71% 45%;
+    --sidebar-primary: 142 71% 45%;
+    --pos-total: 142 71% 45%;
+  }
+
+  /* Theme: Amber Gold */
+  .theme-amber {
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 0%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 0%;
+    --ring: 45 93% 47%;
+    --sidebar-primary: 45 93% 47%;
+    --pos-total: 45 93% 47%;
+  }
+
+  /* Theme: Slate Gray */
+  .theme-slate {
+    --primary: 215 25% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 215 20% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 215 25% 50%;
+    --sidebar-primary: 215 25% 50%;
+    --pos-total: 215 25% 50%;
+  }
+
+  /* Theme: Cyan Teal */
+  .theme-cyan {
+    --primary: 187 85% 43%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 174 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 187 85% 43%;
+    --sidebar-primary: 187 85% 43%;
+    --pos-total: 187 85% 43%;
+  }
+
+  /* Theme: Indigo Night */
+  .theme-indigo {
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 245 75% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 239 84% 67%;
+    --sidebar-primary: 239 84% 67%;
+    --pos-total: 239 84% 67%;
+  }
 }
 
 @layer base {
