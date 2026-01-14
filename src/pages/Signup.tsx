@@ -38,7 +38,8 @@ export default function Signup() {
     const { error } = await signUp(email, password, fullName);
 
     if (error) {
-      toast.error(error.message);
+      // Use generic error message to prevent user enumeration
+      toast.error('حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.');
       setIsLoading(false);
       return;
     }

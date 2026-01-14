@@ -1,7 +1,7 @@
 // Google Drive API integration for backup storage
 
 const GOOGLE_CLIENT_ID_KEY = 'hyperpos_google_client_id';
-const GOOGLE_TOKENS_KEY = 'hyperpos_google_tokens';
+const GOOGLE_TOKENS_KEY = 'hyperpos_google_tokens_enc';
 const GOOGLE_DRIVE_FOLDER_KEY = 'hyperpos_google_drive_folder';
 
 export interface GoogleDriveFile {
@@ -25,6 +25,28 @@ export interface GoogleDriveUserInfo {
   picture?: string;
 }
 
+// Simple obfuscation for localStorage tokens (not true encryption, but better than plaintext)
+// Note: For production, consider using httpOnly cookies via backend proxy
+const obfuscateToken = (data: string): string => {
+  try {
+    const encoded = btoa(encodeURIComponent(data));
+    // Reverse and add prefix to make it less obvious
+    return 'hp_' + encoded.split('').reverse().join('');
+  } catch {
+    return data;
+  }
+};
+
+const deobfuscateToken = (data: string): string => {
+  try {
+    if (!data.startsWith('hp_')) return data;
+    const encoded = data.slice(3).split('').reverse().join('');
+    return decodeURIComponent(atob(encoded));
+  } catch {
+    return data;
+  }
+};
+
 // Storage functions
 export const getStoredClientId = (): string | null => {
   return localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
@@ -42,18 +64,23 @@ export const getStoredTokens = (): GoogleDriveTokens | null => {
   const tokens = localStorage.getItem(GOOGLE_TOKENS_KEY);
   if (!tokens) return null;
   try {
-    return JSON.parse(tokens);
+    const deobfuscated = deobfuscateToken(tokens);
+    return JSON.parse(deobfuscated);
   } catch {
     return null;
   }
 };
 
 export const setStoredTokens = (tokens: GoogleDriveTokens): void => {
-  localStorage.setItem(GOOGLE_TOKENS_KEY, JSON.stringify(tokens));
+  const tokenString = JSON.stringify(tokens);
+  const obfuscated = obfuscateToken(tokenString);
+  localStorage.setItem(GOOGLE_TOKENS_KEY, obfuscated);
 };
 
 export const removeStoredTokens = (): void => {
   localStorage.removeItem(GOOGLE_TOKENS_KEY);
+  // Also remove old unencrypted key if exists
+  localStorage.removeItem('hyperpos_google_tokens');
 };
 
 export const getStoredFolderId = (): string | null => {
