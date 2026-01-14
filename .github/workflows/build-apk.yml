@@ -24,28 +24,18 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # لو عندك package.json وفيه تبعيات، يفضل تشغيل هذا
-      - name: Install dependencies (if package.json exists)
+      - name: Install Capacitor (stable version)
         run: |
-          if [ -f package.json ]; then
-            npm install
-          fi
-
-      - name: Install Capacitor (fixed version)
-        run: |
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm install @capacitor/core@6.1.2 @capacitor/cli@6.1.2 @capacitor/android@6.1.2
 
       - name: Prepare web files
         run: |
           mkdir -p www
-          # لو عندك build مثل dist غيّر هذا السطر لمسارك
-          if ls *.html 1> /dev/null 2>&1; then
-            cp -r *.html *.css *.js www/ || true
-          fi
+          cp -r *.html *.css *.js www/ || true
 
-      - name: Init Capacitor
+      - name: Init Capacitor (fixed command)
         run: |
-          npx cap init HtmlApp com.example.htmlapp --web-dir=www --npm-client npm
+          npx cap init HtmlApp com.example.htmlapp --web-dir=www
 
       - name: Add Android platform
         run: |
@@ -55,7 +45,6 @@ jobs:
         run: |
           npx cap sync android
 
-      # تنظيف كاش Gradle لتجاوز مشكلة Jar التالفة
       - name: Clean Gradle cache
         run: |
           rm -rf ~/.gradle/caches
@@ -72,4 +61,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: html-app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk 
