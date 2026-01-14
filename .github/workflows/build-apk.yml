@@ -1,4 +1,4 @@
-name: Build HyperPOS APK (React + Vite + Camera)
+name: Build HyperPOS APK (Camera Fixed)
 
 on:
   push:
@@ -45,10 +45,15 @@ jobs:
 
       - name: Add Camera Permissions
         run: |
-          sed -i '/<manifest/i<uses-permission android:name="android.permission.CAMERA" />
+          cat >> android/app/src/main/AndroidManifest.xml << 'EOF'
+<uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
-<uses-feature android:name="android.hardware.camera" android:required="false" />' android/app/src/main/AndroidManifest.xml
-          sed -i 's/android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"/android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:usesCleartextTraffic="true" android:allowContentAccess="true" android:allowFileAccess="true" android:allowFileAccessFromFile="true" android:preserveScreenOn="true" android:supportsRtl="true"/' android/app/src/main/AndroidManifest.xml
+<uses-feature android:name="android.hardware.camera" android:required="false" />
+EOF
+
+      - name: Fix WebView Settings
+        run: |
+          sed -i 's/configChanges="[^"]*"/configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:usesCleartextTraffic="true" android:allowContentAccess="true" android:allowFileAccess="true" android:allowFileAccessFromFile="true" android:preserveScreenOn="true" android:supportsRtl="true"/' android/app/src/main/AndroidManifest.xml
 
       - name: Clean Gradle cache
         run: rm -rf ~/.gradle/caches
@@ -63,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hyperpos-camera-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk 
+          path: android/app/build/outputs/apk/debug/app-debug.apk
