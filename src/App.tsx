@@ -9,6 +9,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import { LanguageProvider } from "./hooks/use-language";
 import { ThemeProvider } from "./hooks/use-theme";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Products from "./pages/Products";
@@ -22,6 +23,9 @@ import Reports from "./pages/Reports";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+
+// Clear demo data on app start
+clearDemoDataOnce();
 
 const queryClient = new QueryClient();
 
