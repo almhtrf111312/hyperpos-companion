@@ -419,7 +419,10 @@ export default function Settings() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `hyperpos_backup_${new Date().toISOString().split('T')[0]}${getBackupFileExtension()}`;
+      // Generate filename with store email and date
+      const storeEmail = storeSettings.email.replace(/[^a-zA-Z0-9@._-]/g, '_') || 'hyperpos';
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.download = `${storeEmail}_${dateStr}${getBackupFileExtension()}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

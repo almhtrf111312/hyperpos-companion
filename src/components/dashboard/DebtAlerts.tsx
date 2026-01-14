@@ -11,11 +11,8 @@ interface DebtAlert {
   status: 'overdue' | 'due_today' | 'due_soon';
 }
 
-const mockDebts: DebtAlert[] = [
-  { id: '1', customer: 'أحمد محمد', phone: '+963 912 345 678', amount: 1500, dueDate: '2025-01-05', status: 'overdue' },
-  { id: '2', customer: 'خالد عمر', phone: '+963 998 765 432', amount: 850, dueDate: '2025-01-08', status: 'due_today' },
-  { id: '3', customer: 'سامي حسن', phone: '+963 933 111 222', amount: 2200, dueDate: '2025-01-10', status: 'due_soon' },
-];
+// Empty debts - will be populated from real data
+const mockDebts: DebtAlert[] = [];
 
 const statusConfig = {
   overdue: {

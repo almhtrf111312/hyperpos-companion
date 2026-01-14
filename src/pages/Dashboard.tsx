@@ -37,37 +37,33 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="المبيعات اليوم"
-          value="$12,450"
-          subtitle="42 فاتورة"
+          value="$0"
+          subtitle="0 فاتورة"
           icon={<DollarSign className="w-6 h-6" />}
-          trend={{ value: 12, label: 'من أمس' }}
           variant="primary"
           linkTo="/pos"
         />
         <StatCard
           title="صافي الأرباح"
-          value="$3,240"
-          subtitle="هامش ربح 26%"
+          value="$0"
+          subtitle="هامش ربح 0%"
           icon={<TrendingUp className="w-6 h-6" />}
-          trend={{ value: 8, label: 'من الأسبوع الماضي' }}
           variant="success"
           linkTo="/reports"
         />
         <StatCard
           title="الديون المستحقة"
-          value="$8,750"
-          subtitle="15 عميل"
+          value="$0"
+          subtitle="0 عميل"
           icon={<CreditCard className="w-6 h-6" />}
-          trend={{ value: -5, label: 'من الشهر الماضي' }}
           variant="warning"
           linkTo="/debts"
         />
         <StatCard
           title="العملاء الجدد"
-          value="28"
+          value="0"
           subtitle="هذا الشهر"
           icon={<Users className="w-6 h-6" />}
-          trend={{ value: 15, label: 'من الشهر الماضي' }}
           variant="default"
           linkTo="/customers"
         />
