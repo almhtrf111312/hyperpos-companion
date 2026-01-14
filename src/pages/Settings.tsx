@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Store,
   DollarSign,
@@ -32,8 +32,11 @@ import {
   Loader2,
   Palette,
   Activity,
-  Key
+  Key,
+  FileUp,
+  Lock
 } from 'lucide-react';
+import { encryptBackup, decryptBackup, isEncryptedBackup, getBackupFileExtension } from '@/lib/backup-encryption';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 import { ThemeSection } from '@/components/settings/ThemeSection';
@@ -231,6 +234,8 @@ export default function Settings() {
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Handlers
   const handleSaveSettings = () => {
@@ -392,7 +397,7 @@ export default function Settings() {
       setBackups([newBackup, ...backups]);
       setIsBackingUp(false);
 
-      // Download a local backup file (offline)
+      // Create encrypted backup payload
       const payload = {
         version: '1.0',
         exportedAt: new Date().toISOString(),
@@ -408,21 +413,115 @@ export default function Settings() {
         backups: [newBackup, ...backups],
       };
 
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      // Encrypt the backup data
+      const encryptedData = encryptBackup(payload);
+      const blob = new Blob([encryptedData], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `hyperpos_backup_${new Date().toISOString().split('T')[0]}${getBackupFileExtension()}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       toast({
-        title: "تم النسخ الاحتياطي",
-        description: "تم إنشاء نسخة احتياطية وتنزيلها بنجاح",
+        title: "تم النسخ الاحتياطي المشفر",
+        description: "تم إنشاء نسخة احتياطية مشفرة وتنزيلها بنجاح",
       });
     }, 800);
+  };
+
+  // Import encrypted backup file
+  const handleImportEncryptedBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const fileContent = e.target?.result as string;
+        
+        // Check if it's an encrypted backup
+        if (!isEncryptedBackup(fileContent)) {
+          toast({
+            title: "خطأ",
+            description: "الملف غير صالح أو غير مشفر بتنسيق HyperPOS",
+            variant: "destructive",
+          });
+          setIsImporting(false);
+          return;
+        }
+
+        // Decrypt the backup
+        const decryptedData = decryptBackup(fileContent);
+        
+        if (!decryptedData) {
+          toast({
+            title: "خطأ في فك التشفير",
+            description: "فشل في فك تشفير الملف. تأكد من أن الملف صحيح.",
+            variant: "destructive",
+          });
+          setIsImporting(false);
+          return;
+        }
+
+        // Restore the data
+        const data = decryptedData as any;
+        
+        if (data.settings) {
+          if (data.settings.storeSettings) setStoreSettings(data.settings.storeSettings);
+          if (data.settings.exchangeRates) setExchangeRates(data.settings.exchangeRates);
+          if (data.settings.syncSettings) setSyncSettings(data.settings.syncSettings);
+          if (data.settings.notificationSettings) setNotificationSettings(data.settings.notificationSettings);
+          if (data.settings.printSettings) setPrintSettings(data.settings.printSettings);
+          if (data.settings.backupSettings) setBackupSettings(data.settings.backupSettings);
+        }
+        
+        if (data.backups) setBackups(data.backups);
+
+        // Save to local storage
+        savePersistedSettings({
+          storeSettings: data.settings?.storeSettings || storeSettings,
+          exchangeRates: data.settings?.exchangeRates || exchangeRates,
+          syncSettings: data.settings?.syncSettings || syncSettings,
+          notificationSettings: data.settings?.notificationSettings || notificationSettings,
+          printSettings: data.settings?.printSettings || printSettings,
+          backupSettings: data.settings?.backupSettings || backupSettings,
+        });
+
+        toast({
+          title: "تمت الاستعادة بنجاح",
+          description: `تم استعادة النسخة الاحتياطية من ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString('ar-SA') : 'تاريخ غير معروف'}`,
+        });
+      } catch (error) {
+        console.error('Import error:', error);
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ أثناء استيراد النسخة الاحتياطية",
+          variant: "destructive",
+        });
+      }
+      
+      setIsImporting(false);
+      // Reset the input
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      toast({
+        title: "خطأ",
+        description: "فشل في قراءة الملف",
+        variant: "destructive",
+      });
+      setIsImporting(false);
+    };
+
+    reader.readAsText(file);
   };
 
   const handleRestoreBackup = (backup: BackupData) => {
@@ -1030,19 +1129,49 @@ export default function Settings() {
               <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">النسخ الاحتياطي</h2>
               
               {/* Quick actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 <Button 
                   onClick={handleBackupNow} 
                   disabled={isBackingUp}
                   className="w-full"
                 >
-                  <Database className={cn("w-4 h-4 ml-2", isBackingUp && "animate-pulse")} />
-                  {isBackingUp ? 'جاري النسخ...' : 'نسخ احتياطي الآن'}
+                  <Lock className={cn("w-4 h-4 ml-2", isBackingUp && "animate-pulse")} />
+                  {isBackingUp ? 'جاري النسخ...' : 'نسخ مشفر'}
                 </Button>
+                
+                {/* Import encrypted backup button */}
+                <Button 
+                  variant="outline" 
+                  className="w-full relative"
+                  disabled={isImporting}
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <FileUp className={cn("w-4 h-4 ml-2", isImporting && "animate-pulse")} />
+                  {isImporting ? 'جاري الاستيراد...' : 'استيراد نسخة'}
+                </Button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".hpbk"
+                  onChange={handleImportEncryptedBackup}
+                  className="hidden"
+                />
+                
                 <Button variant="outline" onClick={handleExportData} className="w-full">
                   <Download className="w-4 h-4 ml-2" />
-                  تصدير البيانات
+                  تصدير JSON
                 </Button>
+              </div>
+              
+              {/* Encrypted backup info */}
+              <div className="mb-6 p-3 bg-primary/10 rounded-xl border border-primary/20 flex items-start gap-3">
+                <Lock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">النسخ الاحتياطي المشفر</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    يتم حفظ النسخ الاحتياطية بتنسيق مشفر (.hpbk) لحماية بياناتك. يمكنك استيراد النسخة المشفرة في أي وقت.
+                  </p>
+                </div>
               </div>
 
               {/* Google Drive Section */}

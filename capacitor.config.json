@@ -1,6 +1,14 @@
 {
-  "appId": "com.example.htmlapp",
-  "appName": "HtmlApp",
-  "webDir": ".",
-  "bundledWebRuntime": false
+  "appId": "app.lovable.hyperpos",
+  "appName": "HyperPOS",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Camera": {
+      "photoGalleryPermission": "لاختيار صور المنتجات",
+      "cameraPermission": "لمسح الباركود وتصوير المنتجات"
+    }
+  }
 }

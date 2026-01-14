@@ -1,8 +1,15 @@
-name: Build HyperPOS APK (Fixed)
+name: Build HyperPOS APK
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Enable debug mode'
+        required: false
+        default: false
 
 jobs:
   build:
@@ -30,11 +37,24 @@ jobs:
     - name: Install Capacitor + Plugins
       run: npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/camera@6
       
-    - name: Init + Sync
+    - name: Init Capacitor
+      run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
+      
+    - name: Add Android Platform
+      run: npx cap add android
+      
+    - name: Add Android Permissions
       run: |
-        npx cap init HyperPOS com.hyperpos.app --web-dir dist
-        npx cap add android
-        npx cap sync android
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        
+        # Add permissions before <application> tag
+        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" \/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/>\n    <uses-permission android:name="android.permission.VIBRATE" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
+        
+        echo "=== AndroidManifest.xml after adding permissions ==="
+        cat $MANIFEST
+      
+    - name: Sync Capacitor
+      run: npx cap sync android
         
     - name: Build APK
       run: |
@@ -42,7 +62,15 @@ jobs:
         cd android
         ./gradlew assembleDebug
         
+    - name: Rename APK with date
+      run: |
+        DATE=$(date +'%Y%m%d_%H%M%S')
+        cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk
+        
     - uses: actions/upload-artifact@v4
       with:
-        name: hyperpos-fixed-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        name: HyperPOS-APK-${{ github.run_number }}
+        path: |
+          android/app/build/outputs/apk/debug/app-debug.apk
+          android/app/build/outputs/apk/debug/HyperPOS_*.apk
+        retention-days: 30
