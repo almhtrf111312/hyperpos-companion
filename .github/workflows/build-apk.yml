@@ -1,4 +1,4 @@
-name: Build HyperPOS APK (React + Vite)
+name: Build HyperPOS APK (React + Vite + Camera)
 
 on:
   push:
@@ -31,9 +31,6 @@ jobs:
       - name: Build React app
         run: npm run build
 
-      - name: Verify build output
-        run: ls -la dist/
-
       - name: Install Capacitor
         run: npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
 
@@ -45,6 +42,13 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Add Camera Permissions
+        run: |
+          sed -i '/<manifest/i<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-feature android:name="android.hardware.camera" android:required="false" />' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"/android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:usesCleartextTraffic="true" android:allowContentAccess="true" android:allowFileAccess="true" android:allowFileAccessFromFile="true" android:preserveScreenOn="true" android:supportsRtl="true"/' android/app/src/main/AndroidManifest.xml
 
       - name: Clean Gradle cache
         run: rm -rf ~/.gradle/caches
@@ -58,5 +62,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: hyperpos-react-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: hyperpos-camera-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk 
