@@ -21,10 +21,9 @@ jobs:
         npm install @capacitor/core @capacitor/cli
         npm install @capacitor/android
 
-    - name: Init Capacitor
-      run: |
-        npx cap init HtmlApp com.example.htmlapp --web-dir=. --npm-client=npm
-
+- name: Init Capacitor
+  run: |
+    npx cap init HtmlApp com.example.htmlapp --web-dir=.
     - name: Add Android
       run: npx cap add android
 
