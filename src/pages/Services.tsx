@@ -57,6 +57,12 @@ interface RepairRequest {
   completedAt?: string;
   notes?: string;
   technician?: string;
+  // Delivery fields
+  partsCost?: number;        // تكلفة القطع علينا
+  amountReceived?: number;   // المبلغ المقبوض من العميل
+  profit?: number;           // الربح الصافي
+  paymentType?: 'cash' | 'debt';  // نوع الدفع
+  deliveredAt?: string;      // تاريخ التسليم
 }
 
 const SERVICES_STORAGE_KEY = 'hyperpos_services_v1';
@@ -109,7 +115,15 @@ export default function Services() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<RepairRequest | null>(null);
+
+  // Delivery form state
+  const [deliveryData, setDeliveryData] = useState({
+    partsCost: 0,
+    amountReceived: 0,
+    paymentType: 'cash' as 'cash' | 'debt',
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -234,6 +248,18 @@ export default function Services() {
   };
 
   const handleUpdateStatus = (request: RepairRequest, newStatus: RepairRequest['status']) => {
+    // If status is being changed to delivered, open delivery dialog
+    if (newStatus === 'delivered') {
+      setSelectedRequest(request);
+      setDeliveryData({
+        partsCost: 0,
+        amountReceived: request.estimatedCost || 0,
+        paymentType: 'cash',
+      });
+      setShowDeliveryDialog(true);
+      return;
+    }
+
     const updates: Partial<RepairRequest> = { status: newStatus };
     
     if (newStatus === 'completed') {
@@ -244,6 +270,35 @@ export default function Services() {
       r.id === request.id ? { ...r, ...updates } : r
     ));
     toast.success(`تم تحديث الحالة إلى "${statusConfig[newStatus].label}"`);
+  };
+
+  const handleDeliveryConfirm = () => {
+    if (!selectedRequest) return;
+    
+    const profit = deliveryData.amountReceived - deliveryData.partsCost;
+
+    const updates: Partial<RepairRequest> = {
+      status: 'delivered',
+      partsCost: deliveryData.partsCost,
+      amountReceived: deliveryData.amountReceived,
+      profit,
+      paymentType: deliveryData.paymentType,
+      deliveredAt: new Date().toISOString().split('T')[0],
+      finalCost: deliveryData.amountReceived,
+    };
+
+    setRequests(requests.map(r => 
+      r.id === selectedRequest.id ? { ...r, ...updates } : r
+    ));
+
+    setShowDeliveryDialog(false);
+    setSelectedRequest(null);
+    
+    if (deliveryData.paymentType === 'debt') {
+      toast.success(`تم تسليم الخدمة كدين - الربح: $${profit}`);
+    } else {
+      toast.success(`تم تسليم الخدمة نقداً - الربح: $${profit}`);
+    }
   };
 
   const openEditDialog = (request: RepairRequest) => {
@@ -422,8 +477,8 @@ export default function Services() {
                 <p className="text-sm font-medium text-foreground">{request.issue}</p>
               </div>
 
-              {/* Cost */}
-              {(request.estimatedCost || request.finalCost) && (
+              {/* Cost - For non-delivered */}
+              {request.status !== 'delivered' && (request.estimatedCost || request.finalCost) && (
                 <div className="flex items-center justify-between mb-3 md:mb-4 p-2 bg-primary/10 rounded-lg">
                   <span className="text-xs md:text-sm text-muted-foreground">
                     {request.finalCost ? 'التكلفة النهائية' : 'التكلفة المتوقعة'}
@@ -431,6 +486,30 @@ export default function Services() {
                   <span className="font-bold text-primary">
                     ${request.finalCost || request.estimatedCost}
                   </span>
+                </div>
+              )}
+
+              {/* Financial info for delivered services */}
+              {request.status === 'delivered' && request.amountReceived !== undefined && (
+                <div className="p-3 bg-success/10 rounded-lg space-y-2 mb-3 md:mb-4">
+                  <div className="flex justify-between text-xs md:text-sm">
+                    <span className="text-muted-foreground">المبلغ المقبوض:</span>
+                    <span className="font-bold text-success">${request.amountReceived}</span>
+                  </div>
+                  <div className="flex justify-between text-xs md:text-sm">
+                    <span className="text-muted-foreground">التكلفة علينا:</span>
+                    <span className="text-destructive">-${request.partsCost || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs md:text-sm border-t border-border pt-2">
+                    <span className="font-medium">الربح الصافي:</span>
+                    <span className="font-bold text-primary">${request.profit || 0}</span>
+                  </div>
+                  {request.paymentType === 'debt' && (
+                    <div className="flex items-center gap-1 text-xs text-warning">
+                      <DollarSign className="w-3 h-3" />
+                      <span>دين</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -876,6 +955,127 @@ export default function Services() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delivery Dialog */}
+      <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success" />
+              تسليم طلب الصيانة
+            </DialogTitle>
+            <DialogDescription>
+              أدخل تفاصيل التسليم والمبالغ المالية
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4 py-4">
+              {/* Customer & Device Info */}
+              <div className="bg-muted rounded-lg p-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{selectedRequest.customerName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.deviceType} - {selectedRequest.deviceModel}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Inputs */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">التكلفة علينا (القطع) ($)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={deliveryData.partsCost || ''}
+                    onChange={(e) => setDeliveryData({ ...deliveryData, partsCost: Number(e.target.value) })}
+                    className="text-lg"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">تكلفة القطع والمواد المستخدمة</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">المبلغ المقبوض من العميل ($)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={deliveryData.amountReceived || ''}
+                    onChange={(e) => setDeliveryData({ ...deliveryData, amountReceived: Number(e.target.value) })}
+                    className="text-lg"
+                  />
+                </div>
+
+                {/* Calculated Profit */}
+                <div className="bg-success/10 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-foreground">الربح الصافي:</span>
+                    <span className={cn(
+                      "text-2xl font-bold",
+                      (deliveryData.amountReceived - deliveryData.partsCost) >= 0 
+                        ? "text-success" 
+                        : "text-destructive"
+                    )}>
+                      ${deliveryData.amountReceived - deliveryData.partsCost}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">المبلغ المقبوض - التكلفة علينا</p>
+                </div>
+
+                {/* Payment Type */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">نوع الدفع</label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryData({ ...deliveryData, paymentType: 'cash' })}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-center gap-2",
+                        deliveryData.paymentType === 'cash'
+                          ? "border-success bg-success/10 text-success"
+                          : "border-border bg-muted text-muted-foreground hover:border-muted-foreground"
+                      )}
+                    >
+                      <DollarSign className="w-5 h-5" />
+                      <span className="font-medium">نقدي</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryData({ ...deliveryData, paymentType: 'debt' })}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-center gap-2",
+                        deliveryData.paymentType === 'debt'
+                          ? "border-warning bg-warning/10 text-warning"
+                          : "border-border bg-muted text-muted-foreground hover:border-muted-foreground"
+                      )}
+                    >
+                      <Clock className="w-5 h-5" />
+                      <span className="font-medium">دين</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" className="flex-1" onClick={() => setShowDeliveryDialog(false)}>
+                  إلغاء
+                </Button>
+                <Button 
+                  className="flex-1 bg-success hover:bg-success/90" 
+                  onClick={handleDeliveryConfirm}
+                  disabled={deliveryData.amountReceived <= 0}
+                >
+                  <CheckCircle className="w-4 h-4 ml-2" />
+                  تأكيد التسليم
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
