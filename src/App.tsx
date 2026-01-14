@@ -9,9 +9,11 @@ import { NotificationsProvider } from "./hooks/use-notifications";
 import { AuthProvider } from "./hooks/use-auth";
 import { LanguageProvider } from "./hooks/use-language";
 import { ThemeProvider } from "./hooks/use-theme";
+import { LicenseProvider } from "./hooks/use-license";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { SetupWizard } from "./components/setup/SetupWizard";
+import { LicenseGuard } from "./components/license/LicenseGuard";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
@@ -82,9 +84,13 @@ const App = () => (
         <LanguageProvider>
           <ThemeProvider>
             <AuthProvider>
-              <NotificationsProvider>
-                <AppContent />
-              </NotificationsProvider>
+              <LicenseProvider>
+                <NotificationsProvider>
+                  <LicenseGuard>
+                    <AppContent />
+                  </LicenseGuard>
+                </NotificationsProvider>
+              </LicenseProvider>
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>
