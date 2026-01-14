@@ -5,12 +5,15 @@ import {
   DollarSign, 
   ShoppingCart,
   Users,
+  UsersRound,
   Calendar,
   Download,
   FileText,
   PieChart,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Wallet,
+  Banknote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,6 +22,9 @@ import { toast } from 'sonner';
 import { loadInvoices } from '@/lib/invoices-store';
 import { loadProducts } from '@/lib/products-store';
 import { loadCustomers } from '@/lib/customers-store';
+import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
+import { loadCategories } from '@/lib/categories-store';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Reports() {
   const [dateRange, setDateRange] = useState({ 
@@ -27,11 +33,14 @@ export default function Reports() {
   });
   const [activeReport, setActiveReport] = useState('sales');
 
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
+
   const reports = [
     { id: 'sales', label: 'المبيعات', icon: ShoppingCart },
     { id: 'profits', label: 'الأرباح', icon: TrendingUp },
     { id: 'products', label: 'المنتجات', icon: BarChart3 },
     { id: 'customers', label: 'العملاء', icon: Users },
+    { id: 'partners', label: 'الشركاء', icon: UsersRound },
   ];
 
   // Calculate real data from stores
@@ -113,6 +122,111 @@ export default function Reports() {
       hasData: filteredInvoices.length > 0,
     };
   }, [dateRange]);
+
+  // Partner report data
+  const partnerReportData = useMemo(() => {
+    const partners = loadPartners();
+    const categories = loadCategories();
+    
+    // Filter partners based on selection
+    const filteredPartners = selectedPartnerId === 'all' 
+      ? partners 
+      : partners.filter(p => p.id === selectedPartnerId);
+    
+    // Calculate partner profit data within date range
+    const partnerProfitData = filteredPartners.map(partner => {
+      // Filter profit history by date range
+      const filteredProfitHistory = (partner.profitHistory || []).filter(record => {
+        const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
+        return recordDate >= dateRange.from && recordDate <= dateRange.to;
+      });
+      
+      // Total profit in period
+      const totalProfitInPeriod = filteredProfitHistory.reduce((sum, r) => sum + r.amount, 0);
+      
+      // Group by category
+      const profitByCategory: Record<string, { categoryName: string; amount: number; count: number }> = {};
+      filteredProfitHistory.forEach(record => {
+        const catName = record.category || 'بدون صنف';
+        if (!profitByCategory[catName]) {
+          profitByCategory[catName] = { categoryName: catName, amount: 0, count: 0 };
+        }
+        profitByCategory[catName].amount += record.amount;
+        profitByCategory[catName].count += 1;
+      });
+      
+      // Daily profit within period
+      const dailyProfitMap: Record<string, number> = {};
+      filteredProfitHistory.forEach(record => {
+        const date = new Date(record.createdAt).toISOString().split('T')[0];
+        if (!dailyProfitMap[date]) {
+          dailyProfitMap[date] = 0;
+        }
+        dailyProfitMap[date] += record.amount;
+      });
+      
+      const dailyProfit = Object.entries(dailyProfitMap)
+        .map(([date, amount]) => ({ date, amount }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
+      // Filter withdrawals by date range
+      const filteredWithdrawals = (partner.withdrawalHistory || []).filter(w => {
+        const wDate = new Date(w.date).toISOString().split('T')[0];
+        return wDate >= dateRange.from && wDate <= dateRange.to;
+      });
+      
+      const totalWithdrawnInPeriod = filteredWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+      
+      return {
+        id: partner.id,
+        name: partner.name,
+        sharePercentage: partner.sharePercentage,
+        accessAll: partner.accessAll,
+        currentBalance: partner.currentBalance,
+        currentCapital: partner.currentCapital,
+        totalProfitInPeriod,
+        totalWithdrawnInPeriod,
+        profitByCategory: Object.values(profitByCategory).sort((a, b) => b.amount - a.amount),
+        dailyProfit,
+        pendingProfit: partner.pendingProfit,
+        confirmedProfit: partner.confirmedProfit,
+        totalProfitEarned: partner.totalProfitEarned,
+      };
+    });
+    
+    // Summary stats for all filtered partners
+    const totalPartnerProfitInPeriod = partnerProfitData.reduce((sum, p) => sum + p.totalProfitInPeriod, 0);
+    const totalPartnerWithdrawnInPeriod = partnerProfitData.reduce((sum, p) => sum + p.totalWithdrawnInPeriod, 0);
+    const totalCurrentBalance = partnerProfitData.reduce((sum, p) => sum + p.currentBalance, 0);
+    const totalPendingProfit = partnerProfitData.reduce((sum, p) => sum + p.pendingProfit, 0);
+    
+    // Aggregate category breakdown across all selected partners
+    const aggregatedCategoryProfits: Record<string, { categoryName: string; amount: number; count: number }> = {};
+    partnerProfitData.forEach(partner => {
+      partner.profitByCategory.forEach(cat => {
+        if (!aggregatedCategoryProfits[cat.categoryName]) {
+          aggregatedCategoryProfits[cat.categoryName] = { categoryName: cat.categoryName, amount: 0, count: 0 };
+        }
+        aggregatedCategoryProfits[cat.categoryName].amount += cat.amount;
+        aggregatedCategoryProfits[cat.categoryName].count += cat.count;
+      });
+    });
+    
+    return {
+      partners: partnerProfitData,
+      allPartners: partners,
+      categories,
+      summary: {
+        totalProfitInPeriod: totalPartnerProfitInPeriod,
+        totalWithdrawnInPeriod: totalPartnerWithdrawnInPeriod,
+        totalCurrentBalance,
+        totalPendingProfit,
+        partnersCount: filteredPartners.length,
+      },
+      aggregatedCategoryProfits: Object.values(aggregatedCategoryProfits).sort((a, b) => b.amount - a.amount),
+      hasData: partnerProfitData.some(p => p.totalProfitInPeriod > 0 || p.currentBalance > 0),
+    };
+  }, [dateRange, selectedPartnerId]);
 
   const handleExportPDF = () => {
     const content = `
@@ -399,6 +513,182 @@ ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-4">لا يوجد عملاء</p>
+          )}
+        </div>
+      )}
+
+      {/* Partners Report */}
+      {activeReport === 'partners' && (
+        <div className="space-y-6">
+          {/* Partner Filter */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <span className="text-sm text-muted-foreground">اختر شريك:</span>
+            <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="جميع الشركاء" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الشركاء</SelectItem>
+                {partnerReportData.allPartners.map(partner => (
+                  <SelectItem key={partner.id} value={partner.id}>
+                    {partner.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Partner Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <TrendingUp className="w-5 h-5 text-success" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalProfitInPeriod.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">الأرباح في الفترة</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Wallet className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalCurrentBalance.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Banknote className="w-5 h-5 text-warning" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalWithdrawnInPeriod.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <UsersRound className="w-5 h-5 text-info" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">{partnerReportData.summary.partnersCount}</p>
+              <p className="text-xs text-muted-foreground">عدد الشركاء</p>
+            </div>
+          </div>
+
+          {!partnerReportData.hasData && partnerReportData.allPartners.length === 0 ? (
+            <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <UsersRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">لا يوجد شركاء مسجلين</p>
+              <p className="text-sm text-muted-foreground">أضف شركاء من صفحة الشركاء</p>
+            </div>
+          ) : (
+            <>
+              {/* Profit by Category */}
+              {partnerReportData.aggregatedCategoryProfits.length > 0 && (
+                <div className="bg-card rounded-2xl border border-border p-6">
+                  <h3 className="text-lg font-semibold mb-4">الأرباح حسب الصنف</h3>
+                  <div className="space-y-3">
+                    {partnerReportData.aggregatedCategoryProfits.map((cat, idx) => {
+                      const maxCatProfit = Math.max(...partnerReportData.aggregatedCategoryProfits.map(c => c.amount), 1);
+                      return (
+                        <div key={idx} className="flex items-center gap-4">
+                          <span className="text-sm font-medium w-32 truncate">{cat.categoryName}</span>
+                          <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-all duration-500"
+                              style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }}
+                            />
+                          </div>
+                          <div className="text-left w-28">
+                            <p className="text-sm font-semibold">${cat.amount.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">{cat.count} عملية</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Individual Partner Details */}
+              {partnerReportData.partners.map(partner => (
+                <div key={partner.id} className="bg-card rounded-2xl border border-border p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
+                        {partner.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">{partner.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {partner.accessAll ? `نسبة عامة: ${partner.sharePercentage}%` : 'شريك متخصص'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-lg font-bold text-success">${partner.totalProfitInPeriod.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">أرباح الفترة</p>
+                    </div>
+                  </div>
+
+                  {/* Partner Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
+                      <p className="text-lg font-bold text-foreground">${partner.currentBalance.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">رأس المال</p>
+                      <p className="text-lg font-bold text-foreground">${partner.currentCapital.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">أرباح معلقة</p>
+                      <p className="text-lg font-bold text-warning">${partner.pendingProfit.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
+                      <p className="text-lg font-bold text-foreground">${partner.totalWithdrawnInPeriod.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  {/* Partner Category Breakdown */}
+                  {partner.profitByCategory.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold mb-2 text-muted-foreground">توزيع الأرباح حسب الصنف</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {partner.profitByCategory.slice(0, 5).map((cat, idx) => (
+                          <span 
+                            key={idx} 
+                            className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
+                          >
+                            {cat.categoryName}: ${cat.amount.toLocaleString()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Partner Daily Profit Chart */}
+                  {partner.dailyProfit.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2 text-muted-foreground">الأرباح اليومية</h4>
+                      <div className="space-y-2">
+                        {partner.dailyProfit.slice(-5).map((day, idx) => {
+                          const maxDayProfit = Math.max(...partner.dailyProfit.map(d => d.amount), 1);
+                          return (
+                            <div key={idx} className="flex items-center gap-3">
+                              <span className="text-xs text-muted-foreground w-20">{day.date}</span>
+                              <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
+                                <div 
+                                  className="h-full bg-success/70 rounded transition-all duration-500"
+                                  style={{ width: `${(day.amount / maxDayProfit) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-semibold w-20 text-left">${day.amount.toLocaleString()}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
           )}
         </div>
       )}
