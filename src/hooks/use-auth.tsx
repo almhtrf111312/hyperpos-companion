@@ -89,10 +89,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      // Log successful login
+      if (!error && data.user) {
+        // Dynamically import to avoid circular dependencies
+        import('@/lib/activity-log').then(({ addActivityLog }) => {
+          addActivityLog(
+            'login',
+            data.user.id,
+            data.user.email || 'مستخدم',
+            `تم تسجيل الدخول بنجاح`,
+            { email }
+          );
+        });
+      }
+      
       return { error: error ? new Error(error.message) : null };
     } catch (err) {
       return { error: err as Error };
@@ -123,6 +138,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Log logout before signing out
+    if (user) {
+      import('@/lib/activity-log').then(({ addActivityLog }) => {
+        addActivityLog(
+          'logout',
+          user.id,
+          user.email || profile?.full_name || 'مستخدم',
+          `تم تسجيل الخروج`,
+          {}
+        );
+      });
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

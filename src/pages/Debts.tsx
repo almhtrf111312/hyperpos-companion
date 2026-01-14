@@ -31,6 +31,8 @@ import {
   getDebtsStats,
   Debt 
 } from '@/lib/debts-store';
+import { addActivityLog } from '@/lib/activity-log';
+import { useAuth } from '@/hooks/use-auth';
 
 const statusConfig = {
   due: { label: 'مستحق', icon: Clock, color: 'badge-info' },
@@ -42,6 +44,7 @@ const statusConfig = {
 const filterOptions = ['الكل', 'مستحق', 'مدفوع جزئياً', 'متأخر', 'مدفوع بالكامل'];
 
 export default function Debts() {
+  const { user, profile } = useAuth();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('الكل');
@@ -121,6 +124,18 @@ export default function Debts() {
     }
 
     recordPayment(selectedDebt.id, paymentAmount);
+    
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'debt_paid',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `تم تسديد دفعة $${paymentAmount.toLocaleString()} من دين ${selectedDebt.customerName}`,
+        { debtId: selectedDebt.id, amount: paymentAmount, customerName: selectedDebt.customerName }
+      );
+    }
+    
     setDebts(loadDebts());
     
     setShowPaymentDialog(false);
@@ -149,6 +164,17 @@ export default function Debts() {
       notes: newDebtForm.notes,
       isCashDebt: true,
     });
+
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'debt_created',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `تم إنشاء دين نقدي للعميل ${newDebtForm.customerName} بقيمة $${newDebtForm.amount.toLocaleString()}`,
+        { amount: newDebtForm.amount, customerName: newDebtForm.customerName, isCashDebt: true }
+      );
+    }
 
     setDebts(loadDebts());
     setShowAddDebtDialog(false);
