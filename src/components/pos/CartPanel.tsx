@@ -28,6 +28,8 @@ import { toast } from 'sonner';
 import { addInvoice } from '@/lib/invoices-store';
 import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
+import { loadProducts } from '@/lib/products-store';
+import { distributeProfit } from '@/lib/partners-store';
 
 interface CartItem {
   id: string;
@@ -102,6 +104,22 @@ export function CartPanel({
     // Find or create customer
     const customer = customerName ? findOrCreateCustomer(customerName) : null;
     
+    // Calculate profit
+    const products = loadProducts();
+    let totalProfit = 0;
+    let primaryCategory = 'عام';
+    
+    cart.forEach((item, idx) => {
+      const product = products.find(p => p.id === item.id);
+      if (product) {
+        totalProfit += (item.price - product.costPrice) * item.quantity;
+        if (idx === 0) primaryCategory = product.category || 'عام';
+      }
+    });
+    
+    // Apply discount to profit
+    const discountedProfit = totalProfit * (1 - discount / 100);
+    
     // Create invoice
     const invoice = addInvoice({
       type: 'sale',
@@ -121,7 +139,13 @@ export function CartPanel({
       currencySymbol: selectedCurrency.symbol,
       paymentType: 'cash',
       status: 'paid',
+      profit: discountedProfit,
     });
+    
+    // Distribute profit to partners
+    if (discountedProfit > 0) {
+      distributeProfit(discountedProfit, primaryCategory, invoice.id, customerName || 'عميل نقدي', false);
+    }
     
     // Update customer stats
     if (customer) {
@@ -136,6 +160,22 @@ export function CartPanel({
   const confirmDebtSale = () => {
     // Find or create customer
     const customer = findOrCreateCustomer(customerName);
+    
+    // Calculate profit
+    const products = loadProducts();
+    let totalProfit = 0;
+    let primaryCategory = 'عام';
+    
+    cart.forEach((item, idx) => {
+      const product = products.find(p => p.id === item.id);
+      if (product) {
+        totalProfit += (item.price - product.costPrice) * item.quantity;
+        if (idx === 0) primaryCategory = product.category || 'عام';
+      }
+    });
+    
+    // Apply discount to profit
+    const discountedProfit = totalProfit * (1 - discount / 100);
     
     // Create invoice
     const invoice = addInvoice({
@@ -156,10 +196,16 @@ export function CartPanel({
       currencySymbol: selectedCurrency.symbol,
       paymentType: 'debt',
       status: 'pending',
+      profit: discountedProfit,
     });
     
     // Create debt record
     addDebtFromInvoice(invoice.id, customerName, '', total);
+    
+    // Distribute profit to partners (as pending)
+    if (discountedProfit > 0) {
+      distributeProfit(discountedProfit, primaryCategory, invoice.id, customerName, true);
+    }
     
     // Update customer stats
     updateCustomerStats(customer.id, total, true);

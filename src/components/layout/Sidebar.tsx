@@ -17,7 +17,8 @@ import {
   X,
   Shield,
   User,
-  FileText
+  FileText,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { icon: CreditCard, label: 'الديون', translationKey: 'nav.debts', path: '/debts' },
   { icon: Wrench, label: 'الصيانة', translationKey: 'nav.services', path: '/services' },
   { icon: UserCheck, label: 'الشركاء', translationKey: 'nav.partners', path: '/partners', adminOnly: true },
+  { icon: Receipt, label: 'المصاريف', translationKey: 'nav.expenses', path: '/expenses', adminOnly: true },
   { icon: BarChart3, label: 'التقارير', translationKey: 'nav.reports', path: '/reports', adminOnly: true },
   { icon: Settings, label: 'الإعدادات', translationKey: 'nav.settings', path: '/settings', adminOnly: true },
 ];
