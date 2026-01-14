@@ -57,9 +57,11 @@ interface Partner {
   sharePercentage: number;
   categoryShares: CategoryShare[];
   accessAll: boolean;
+  sharesExpenses: boolean; // هل يشارك في المصاريف
   joinedDate: string;
   totalProfitEarned: number;
   totalWithdrawn: number;
+  totalExpensesPaid: number; // المصاريف المدفوعة
   currentBalance: number;
 }
 
@@ -120,6 +122,7 @@ export default function Partners() {
     phone: '',
     email: '',
     accessAll: true,
+    sharesExpenses: false, // يشارك في المصاريف
     categoryShares: categories.map(c => ({
       categoryId: c.id,
       categoryName: c.label,
@@ -168,6 +171,7 @@ export default function Partners() {
       phone: '',
       email: '',
       accessAll: true,
+      sharesExpenses: false,
       categoryShares: categories.map(c => ({
         categoryId: c.id,
         categoryName: c.label,
@@ -207,13 +211,17 @@ export default function Partners() {
       sharePercentage: mainShare,
       categoryShares: formData.categoryShares,
       accessAll: formData.accessAll,
+      sharesExpenses: formData.sharesExpenses,
       joinedDate: new Date().toISOString().split('T')[0],
       totalProfitEarned: 0,
       totalWithdrawn: 0,
+      totalExpensesPaid: 0,
       currentBalance: 0,
     };
     
-    setPartners([...partners, newPartner]);
+    const updatedPartners = [...partners, newPartner];
+    setPartners(updatedPartners);
+    savePartners(updatedPartners); // حفظ مباشر
     setShowAddDialog(false);
     resetForm();
     toast.success('تم إضافة الشريك بنجاح');
@@ -227,7 +235,7 @@ export default function Partners() {
 
     const mainShare = calculateMainShare();
     
-    setPartners(partners.map(p => 
+    const updatedPartners = partners.map(p => 
       p.id === selectedPartner.id 
         ? { 
             ...p, 
@@ -237,9 +245,12 @@ export default function Partners() {
             sharePercentage: mainShare,
             categoryShares: formData.categoryShares,
             accessAll: formData.accessAll,
+            sharesExpenses: formData.sharesExpenses,
           }
         : p
-    ));
+    );
+    setPartners(updatedPartners);
+    savePartners(updatedPartners); // حفظ مباشر
     setShowEditDialog(false);
     setSelectedPartner(null);
     toast.success('تم تعديل بيانات الشريك بنجاح');
@@ -248,7 +259,9 @@ export default function Partners() {
   const handleDeletePartner = () => {
     if (!selectedPartner) return;
     
-    setPartners(partners.filter(p => p.id !== selectedPartner.id));
+    const updatedPartners = partners.filter(p => p.id !== selectedPartner.id);
+    setPartners(updatedPartners);
+    savePartners(updatedPartners); // حفظ مباشر
     setShowDeleteDialog(false);
     setSelectedPartner(null);
     toast.success('تم حذف الشريك بنجاح');
@@ -265,7 +278,7 @@ export default function Partners() {
       return;
     }
 
-    setPartners(partners.map(p => 
+    const updatedPartners = partners.map(p => 
       p.id === selectedPartner.id 
         ? { 
             ...p, 
@@ -273,7 +286,9 @@ export default function Partners() {
             currentBalance: p.currentBalance - withdrawAmount
           }
         : p
-    ));
+    );
+    setPartners(updatedPartners);
+    savePartners(updatedPartners); // حفظ مباشر
     setShowWithdrawDialog(false);
     setSelectedPartner(null);
     setWithdrawAmount(0);
@@ -287,6 +302,7 @@ export default function Partners() {
       phone: partner.phone,
       email: partner.email || '',
       accessAll: partner.accessAll,
+      sharesExpenses: partner.sharesExpenses || false,
       categoryShares: partner.categoryShares.length > 0 
         ? partner.categoryShares.map(cs => ({
             ...cs,
@@ -474,6 +490,9 @@ export default function Partners() {
                 ) : (
                   <p className="text-[10px] text-muted-foreground mt-1">أقسام محددة</p>
                 )}
+                {partner.sharesExpenses && (
+                  <span className="text-[10px] text-success">● يشارك في المصاريف</span>
+                )}
               </div>
             </div>
 
@@ -592,6 +611,18 @@ export default function Partners() {
                 />
               </div>
 
+              {/* Shares Expenses */}
+              <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                <div>
+                  <p className="font-medium text-foreground">المشاركة في المصاريف</p>
+                  <p className="text-sm text-muted-foreground">هل يشارك هذا الشريك في دفع المصاريف؟</p>
+                </div>
+                <Switch 
+                  checked={formData.sharesExpenses}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
+                />
+              </div>
+
               {formData.accessAll ? (
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح لجميع الأقسام (%)</label>
@@ -689,6 +720,18 @@ export default function Partners() {
                 <Switch 
                   checked={formData.accessAll}
                   onCheckedChange={handleAccessAllChange}
+                />
+              </div>
+
+              {/* Shares Expenses */}
+              <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                <div>
+                  <p className="font-medium text-foreground">المشاركة في المصاريف</p>
+                  <p className="text-sm text-muted-foreground">هل يشارك هذا الشريك في دفع المصاريف؟</p>
+                </div>
+                <Switch 
+                  checked={formData.sharesExpenses}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
                 />
               </div>
 

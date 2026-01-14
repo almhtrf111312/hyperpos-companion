@@ -1,4 +1,5 @@
 // Debts store for managing all debts data
+import { loadCustomers, saveCustomers } from './customers-store';
 
 const DEBTS_STORAGE_KEY = 'hyperpos_debts_v1';
 
@@ -115,7 +116,28 @@ export const recordPayment = (id: string, amount: number): Debt | null => {
     updatedAt: new Date().toISOString(),
   };
   saveDebts(debts);
+  
+  // Update customer debt stats
+  updateCustomerDebtOnPayment(debt.customerPhone, debt.customerName, amount, newStatus === 'fully_paid');
+  
   return debts[index];
+};
+
+// Update customer debt when payment is made
+const updateCustomerDebtOnPayment = (phone: string, name: string, paidAmount: number, isFullyPaid: boolean) => {
+  const customers = loadCustomers();
+  const customerIndex = customers.findIndex(c => 
+    c.phone === phone || c.name.toLowerCase() === name.toLowerCase()
+  );
+  
+  if (customerIndex !== -1) {
+    customers[customerIndex] = {
+      ...customers[customerIndex],
+      totalDebt: Math.max(0, customers[customerIndex].totalDebt - paidAmount),
+      updatedAt: new Date().toISOString(),
+    };
+    saveCustomers(customers);
+  }
 };
 
 export const deleteDebt = (id: string): boolean => {
