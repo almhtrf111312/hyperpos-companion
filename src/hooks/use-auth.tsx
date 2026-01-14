@@ -2,8 +2,6 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
-type AppRole = 'admin' | 'cashier';
-
 interface Profile {
   id: string;
   user_id: string;
@@ -16,10 +14,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
-  role: AppRole | null;
   isLoading: boolean;
-  isAdmin: boolean;
-  isCashier: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -32,7 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -54,35 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const fetchRole = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching role:', error);
-        return null;
-      }
-      return data?.role as AppRole | null;
-    } catch (err) {
-      console.error('Error in fetchRole:', err);
-      return null;
-    }
-  }, []);
-
   const refreshProfile = useCallback(async () => {
     if (user) {
-      const [profileData, roleData] = await Promise.all([
-        fetchProfile(user.id),
-        fetchRole(user.id)
-      ]);
+      const profileData = await fetchProfile(user.id);
       setProfile(profileData);
-      setRole(roleData);
     }
-  }, [user, fetchProfile, fetchRole]);
+  }, [user, fetchProfile]);
 
   useEffect(() => {
     // Set up auth state listener BEFORE checking for existing session
@@ -94,17 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession?.user) {
           // Use setTimeout to avoid potential deadlocks
           setTimeout(async () => {
-            const [profileData, roleData] = await Promise.all([
-              fetchProfile(currentSession.user.id),
-              fetchRole(currentSession.user.id)
-            ]);
+            const profileData = await fetchProfile(currentSession.user.id);
             setProfile(profileData);
-            setRole(roleData);
             setIsLoading(false);
           }, 0);
         } else {
           setProfile(null);
-          setRole(null);
           setIsLoading(false);
         }
       }
@@ -119,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile, fetchRole]);
+  }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -135,9 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      // Check if this is the first user
-      const { data: isFirst } = await supabase.rpc('is_first_user');
-      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -153,23 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error(error.message) };
       }
 
-      // If signup successful and user exists, create role
-      if (data.user) {
-        const roleToAssign: AppRole = isFirst ? 'admin' : 'cashier';
-        
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role: roleToAssign,
-          });
-
-        if (roleError) {
-          console.error('Error creating role:', roleError);
-          // Don't return error here, the user was created successfully
-        }
-      }
-
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -181,21 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
-    setRole(null);
   };
-
-  const isAdmin = role === 'admin';
-  const isCashier = role === 'cashier';
 
   return (
     <AuthContext.Provider value={{
       user,
       session,
       profile,
-      role,
       isLoading,
-      isAdmin,
-      isCashier,
       signIn,
       signUp,
       signOut,

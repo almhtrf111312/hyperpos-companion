@@ -4,7 +4,9 @@ import {
   TrendingUp, 
   ShoppingCart, 
   Users, 
-  CreditCard
+  CreditCard,
+  Package,
+  Wallet
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
@@ -12,6 +14,8 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
 import { loadInvoices, getInvoiceStats } from '@/lib/invoices-store';
+import { loadProducts } from '@/lib/products-store';
+import { loadPartners } from '@/lib/partners-store';
 
 export default function Dashboard() {
   const today = new Date().toLocaleDateString('ar-EG', {
@@ -51,6 +55,15 @@ export default function Dashboard() {
     });
     const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
 
+    // Calculate inventory value
+    const products = loadProducts();
+    const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
+
+    // Calculate total capital from partners
+    const partners = loadPartners();
+    const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
+    const availableCapital = totalCapital - inventoryValue;
+
     return {
       todaySales,
       todayCount: todayInvoices.length,
@@ -59,6 +72,9 @@ export default function Dashboard() {
       totalDebtAmount,
       debtCustomers,
       uniqueCustomers,
+      inventoryValue,
+      totalCapital,
+      availableCapital,
     };
   }, []);
 
@@ -76,7 +92,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - First Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="المبيعات اليوم"
@@ -110,6 +126,45 @@ export default function Dashboard() {
           variant="default"
           linkTo="/customers"
         />
+      </div>
+
+      {/* Stats Grid - Capital Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-info/10">
+              <Package className="w-5 h-5 text-info" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">قيمة المخزون</p>
+              <p className="text-xl font-bold text-foreground">${stats.inventoryValue.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Wallet className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">رأس المال الإجمالي</p>
+              <p className="text-xl font-bold text-foreground">${stats.totalCapital.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${stats.availableCapital >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+              <DollarSign className={`w-5 h-5 ${stats.availableCapital >= 0 ? 'text-success' : 'text-destructive'}`} />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">رأس المال المتاح</p>
+              <p className={`text-xl font-bold ${stats.availableCapital >= 0 ? 'text-success' : 'text-destructive'}`}>
+                ${stats.availableCapital.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
