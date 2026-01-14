@@ -30,6 +30,8 @@ import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store
 import { addDebtFromInvoice } from '@/lib/debts-store';
 import { loadProducts } from '@/lib/products-store';
 import { distributeProfit } from '@/lib/partners-store';
+import { addActivityLog } from '@/lib/activity-log';
+import { useAuth } from '@/hooks/use-auth';
 
 interface CartItem {
   id: string;
@@ -76,6 +78,7 @@ export function CartPanel({
   onClose,
   isMobile = false,
 }: CartPanelProps) {
+  const { user, profile } = useAuth();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -152,6 +155,17 @@ export function CartPanel({
       updateCustomerStats(customer.id, total, false);
     }
     
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'sale',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `عملية بيع نقدي بقيمة $${total.toLocaleString()}`,
+        { invoiceId: invoice.id, total, itemsCount: cart.length, customerName: customerName || 'عميل نقدي' }
+      );
+    }
+    
     toast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
     setShowCashDialog(false);
     onClearCart();
@@ -209,6 +223,25 @@ export function CartPanel({
     
     // Update customer stats
     updateCustomerStats(customer.id, total, true);
+    
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'sale',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `عملية بيع بالدين بقيمة $${total.toLocaleString()} للعميل ${customerName}`,
+        { invoiceId: invoice.id, total, itemsCount: cart.length, customerName, paymentType: 'debt' }
+      );
+      
+      addActivityLog(
+        'debt_created',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `تم إنشاء دين جديد للعميل ${customerName} بقيمة $${total.toLocaleString()}`,
+        { invoiceId: invoice.id, amount: total, customerName }
+      );
+    }
     
     toast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
     setShowDebtDialog(false);

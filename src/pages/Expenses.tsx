@@ -8,7 +8,13 @@ import {
   Trash2,
   Save,
   Users,
-  TrendingDown
+  TrendingDown,
+  RefreshCw,
+  Clock,
+  Check,
+  X,
+  Bell,
+  Settings2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,14 +54,30 @@ import {
   Expense,
   ExpenseType 
 } from '@/lib/expenses-store';
+import {
+  loadRecurringExpenses,
+  addRecurringExpense,
+  deleteRecurringExpense,
+  getDueExpenses,
+  payRecurringExpense,
+  skipRecurringExpense,
+  recurringIntervals,
+  RecurringExpense
+} from '@/lib/recurring-expenses-store';
 import { EVENTS } from '@/lib/events';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>(() => loadExpenses());
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => loadRecurringExpenses());
+  const [dueExpenses, setDueExpenses] = useState<RecurringExpense[]>(() => getDueExpenses());
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRecurringDialog, setShowRecurringDialog] = useState(false);
+  const [showRecurringListDialog, setShowRecurringListDialog] = useState(false);
+  const [showPayConfirmDialog, setShowPayConfirmDialog] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [selectedRecurring, setSelectedRecurring] = useState<RecurringExpense | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -66,14 +88,31 @@ export default function Expenses() {
     date: new Date().toISOString().split('T')[0],
   });
 
+  // Recurring form state
+  const [recurringForm, setRecurringForm] = useState({
+    name: '',
+    type: 'wages' as ExpenseType,
+    customType: '',
+    amount: 0,
+    intervalDays: 30,
+    startDate: new Date().toISOString().split('T')[0],
+    notes: '',
+  });
+
   // Listen for expense updates
   useEffect(() => {
     const handleUpdate = () => {
       setExpenses(loadExpenses());
+      setRecurringExpenses(loadRecurringExpenses());
+      setDueExpenses(getDueExpenses());
     };
     
     window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-    return () => window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleUpdate);
+    return () => {
+      window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleUpdate);
+    };
   }, []);
 
   const filteredExpenses = expenses.filter(expense =>
@@ -90,6 +129,18 @@ export default function Expenses() {
       amount: 0,
       notes: '',
       date: new Date().toISOString().split('T')[0],
+    });
+  };
+
+  const resetRecurringForm = () => {
+    setRecurringForm({
+      name: '',
+      type: 'wages',
+      customType: '',
+      amount: 0,
+      intervalDays: 30,
+      startDate: new Date().toISOString().split('T')[0],
+      notes: '',
     });
   };
 
@@ -118,6 +169,29 @@ export default function Expenses() {
     toast.success('تم إضافة المصروف بنجاح');
   };
 
+  const handleAddRecurringExpense = () => {
+    if (!recurringForm.name || recurringForm.amount <= 0) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    addRecurringExpense({
+      name: recurringForm.name,
+      type: recurringForm.type,
+      customType: recurringForm.customType,
+      amount: recurringForm.amount,
+      intervalDays: recurringForm.intervalDays,
+      startDate: recurringForm.startDate,
+      notes: recurringForm.notes,
+    });
+
+    setRecurringExpenses(loadRecurringExpenses());
+    setDueExpenses(getDueExpenses());
+    setShowRecurringDialog(false);
+    resetRecurringForm();
+    toast.success('تم إضافة المصروف الثابت بنجاح');
+  };
+
   const handleDeleteExpense = () => {
     if (!selectedExpense) return;
     
@@ -128,9 +202,40 @@ export default function Expenses() {
     toast.success('تم حذف المصروف بنجاح');
   };
 
+  const handlePayRecurring = () => {
+    if (!selectedRecurring) return;
+    
+    payRecurringExpense(selectedRecurring.id);
+    setExpenses(loadExpenses());
+    setRecurringExpenses(loadRecurringExpenses());
+    setDueExpenses(getDueExpenses());
+    setShowPayConfirmDialog(false);
+    setSelectedRecurring(null);
+    toast.success('تم دفع المصروف بنجاح');
+  };
+
+  const handleSkipRecurring = (expense: RecurringExpense) => {
+    skipRecurringExpense(expense.id);
+    setRecurringExpenses(loadRecurringExpenses());
+    setDueExpenses(getDueExpenses());
+    toast.info('تم تخطي هذه الدفعة');
+  };
+
+  const handleDeleteRecurring = (id: string) => {
+    deleteRecurringExpense(id);
+    setRecurringExpenses(loadRecurringExpenses());
+    setDueExpenses(getDueExpenses());
+    toast.success('تم حذف المصروف الثابت');
+  };
+
   const openDeleteDialog = (expense: Expense) => {
     setSelectedExpense(expense);
     setShowDeleteDialog(true);
+  };
+
+  const openPayConfirmDialog = (expense: RecurringExpense) => {
+    setSelectedRecurring(expense);
+    setShowPayConfirmDialog(true);
   };
 
   return (
@@ -141,14 +246,53 @@ export default function Expenses() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">المصاريف</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة المصاريف والنفقات الشهرية</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          resetForm();
-          setShowAddDialog(true);
-        }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          إضافة مصروف
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => {
+            resetRecurringForm();
+            setShowRecurringDialog(true);
+          }}>
+            <RefreshCw className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            مصروف ثابت
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+            resetForm();
+            setShowAddDialog(true);
+          }}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            إضافة مصروف
+          </Button>
+        </div>
       </div>
+
+      {/* Due Expenses Alert */}
+      {dueExpenses.length > 0 && (
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Bell className="w-5 h-5 text-warning" />
+            <h3 className="font-semibold text-warning">مصاريف مستحقة الدفع ({dueExpenses.length})</h3>
+          </div>
+          <div className="space-y-2">
+            {dueExpenses.map(expense => (
+              <div key={expense.id} className="flex items-center justify-between bg-card rounded-lg p-3">
+                <div>
+                  <p className="font-medium">{expense.name}</p>
+                  <p className="text-sm text-muted-foreground">${expense.amount.toLocaleString()}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleSkipRecurring(expense)}>
+                    <X className="w-4 h-4 ml-1" />
+                    تخطي
+                  </Button>
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => openPayConfirmDialog(expense)}>
+                    <Check className="w-4 h-4 ml-1" />
+                    دفع
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
@@ -185,14 +329,17 @@ export default function Expenses() {
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+        <div 
+          className="bg-card rounded-xl border border-border p-3 md:p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setShowRecurringListDialog(true)}
+        >
           <div className="flex items-center gap-2 md:gap-3">
             <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
-              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              <RefreshCw className="w-4 h-4 md:w-5 md:h-5 text-primary" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.expenseCount}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">إجمالي السجلات</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{recurringExpenses.length}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">مصاريف ثابتة</p>
             </div>
           </div>
         </div>
@@ -375,6 +522,165 @@ export default function Expenses() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Recurring Expense Dialog */}
+      <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-primary" />
+              إضافة مصروف ثابت/متكرر
+            </DialogTitle>
+            <DialogDescription>أضف مصروف يتكرر بشكل دوري</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">اسم المصروف *</label>
+              <Input
+                placeholder="مثال: أجرة الصانع"
+                value={recurringForm.name}
+                onChange={(e) => setRecurringForm({ ...recurringForm, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">نوع المصروف *</label>
+              <Select
+                value={recurringForm.type}
+                onValueChange={(value: ExpenseType) => setRecurringForm({ ...recurringForm, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر نوع المصروف" />
+                </SelectTrigger>
+                <SelectContent>
+                  {expenseTypes.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">المبلغ ($) *</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={recurringForm.amount || ''}
+                onChange={(e) => setRecurringForm({ ...recurringForm, amount: Number(e.target.value) })}
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">التكرار كل *</label>
+              <Select
+                value={String(recurringForm.intervalDays)}
+                onValueChange={(value) => setRecurringForm({ ...recurringForm, intervalDays: Number(value) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر فترة التكرار" />
+                </SelectTrigger>
+                <SelectContent>
+                  {recurringIntervals.map(interval => (
+                    <SelectItem key={interval.value} value={String(interval.value)}>
+                      {interval.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">تاريخ البدء *</label>
+              <Input
+                type="date"
+                value={recurringForm.startDate}
+                onChange={(e) => setRecurringForm({ ...recurringForm, startDate: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <Textarea
+                placeholder="أي ملاحظات إضافية..."
+                value={recurringForm.notes}
+                onChange={(e) => setRecurringForm({ ...recurringForm, notes: e.target.value })}
+                rows={2}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setShowRecurringDialog(false)}>
+                إلغاء
+              </Button>
+              <Button className="flex-1" onClick={handleAddRecurringExpense}>
+                <Save className="w-4 h-4 ml-2" />
+                حفظ
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recurring Expenses List Dialog */}
+      <Dialog open={showRecurringListDialog} onOpenChange={setShowRecurringListDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="w-5 h-5 text-primary" />
+              إدارة المصاريف الثابتة
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4 max-h-96 overflow-y-auto">
+            {recurringExpenses.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">لا توجد مصاريف ثابتة</p>
+            ) : (
+              recurringExpenses.map(expense => (
+                <div key={expense.id} className="flex items-center justify-between bg-muted rounded-lg p-3">
+                  <div>
+                    <p className="font-medium">{expense.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ${expense.amount} - كل {expense.intervalDays} يوم
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      الاستحقاق القادم: {expense.nextDueDate}
+                    </p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-destructive"
+                    onClick={() => handleDeleteRecurring(expense.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay Confirmation Dialog */}
+      <AlertDialog open={showPayConfirmDialog} onOpenChange={setShowPayConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد دفع المصروف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل تريد دفع "{selectedRecurring?.name}" بقيمة ${selectedRecurring?.amount.toLocaleString()}؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePayRecurring} className="bg-success hover:bg-success/90">
+              <Check className="w-4 h-4 ml-2" />
+              دفع الآن
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

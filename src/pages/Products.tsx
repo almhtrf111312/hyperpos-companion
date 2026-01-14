@@ -45,6 +45,8 @@ import {
   getStatus,
   Product 
 } from '@/lib/products-store';
+import { addActivityLog } from '@/lib/activity-log';
+import { useAuth } from '@/hooks/use-auth';
 
 const statusConfig = {
   in_stock: { label: 'متوفر', color: 'badge-success', icon: CheckCircle },
@@ -53,6 +55,7 @@ const statusConfig = {
 };
 
 export default function Products() {
+  const { user, profile } = useAuth();
   const [products, setProducts] = useState<Product[]>(() => loadProducts());
   const [searchQuery, setSearchQuery] = useState('');
 const [selectedCategory, setSelectedCategory] = useState('الكل');
@@ -193,6 +196,18 @@ const filteredProducts = products.filter(product => {
     };
     
     updateProducts([...products, newProduct]);
+    
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'product_added',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `تم إضافة منتج جديد: ${formData.name}`,
+        { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
+      );
+    }
+    
     setShowAddDialog(false);
     setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
     toast.success('تم إضافة المنتج بنجاح');
@@ -209,6 +224,18 @@ const filteredProducts = products.filter(product => {
         ? { ...p, ...formData, status: getStatus(formData.quantity) }
         : p
     ));
+    
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'product_updated',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `تم تعديل منتج: ${formData.name}`,
+        { productId: selectedProduct.id, name: formData.name }
+      );
+    }
+    
     setShowEditDialog(false);
     setSelectedProduct(null);
     toast.success('تم تعديل المنتج بنجاح');
@@ -217,7 +244,20 @@ const filteredProducts = products.filter(product => {
   const handleDeleteProduct = () => {
     if (!selectedProduct) return;
     
+    const productName = selectedProduct.name;
     updateProducts(products.filter(p => p.id !== selectedProduct.id));
+    
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'product_deleted',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `تم حذف منتج: ${productName}`,
+        { productId: selectedProduct.id, name: productName }
+      );
+    }
+    
     setShowDeleteDialog(false);
     setSelectedProduct(null);
     toast.success('تم حذف المنتج بنجاح');

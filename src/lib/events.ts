@@ -9,6 +9,8 @@ export const EVENTS = {
   PARTNERS_UPDATED: 'hyperpos:partners-updated',
   EXPENSES_UPDATED: 'hyperpos:expenses-updated',
   SERVICES_UPDATED: 'hyperpos:services-updated',
+  RECURRING_EXPENSES_UPDATED: 'hyperpos:recurring-expenses-updated',
+  ACTIVITY_LOG_UPDATED: 'hyperpos:activity-log-updated',
 };
 
 export function emitEvent(name: string, detail?: any) {
