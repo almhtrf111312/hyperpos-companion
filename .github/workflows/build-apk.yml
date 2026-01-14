@@ -2,38 +2,44 @@ name: Build HTML APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-    - name: Install Capacitor
-      run: |
-        npm install @capacitor/core @capacitor/cli
-        npm install @capacitor/android
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/cli
+          npm install @capacitor/android
 
-- name: Init Capacitor
-  run: |
-    npx cap init HtmlApp com.example.htmlapp --web-dir=.
-    - name: Add Android
-      run: npx cap add android
+      - name: Init Capacitor
+        run: |
+          npx cap init HtmlApp com.example.htmlapp --web-dir=.
 
-    - name: Build APK
-      run: |
-        cd android
-        ./gradlew assembleDebug
+      - name: Add Android
+        run: |
+          npx cap add android
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
+      - name: Build APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk      with:
         name: html-app-debug
         path: android/app/build/outputs/apk/debug/app-debug.apk
