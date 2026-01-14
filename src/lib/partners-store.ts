@@ -17,6 +17,14 @@ export interface Withdrawal {
   notes?: string;
 }
 
+export interface CapitalTransaction {
+  id: string;
+  amount: number;
+  type: 'deposit' | 'withdrawal';
+  date: string;
+  notes?: string;
+}
+
 export interface PendingProfitDetail {
   invoiceId: string;
   amount: number;
@@ -47,6 +55,7 @@ export interface Partner {
   initialCapital: number;
   currentCapital: number;
   capitalWithdrawals: Withdrawal[];
+  capitalHistory: CapitalTransaction[];
   
   // الأرباح
   confirmedProfit: number;
@@ -85,6 +94,7 @@ export const loadPartners = (): Partner[] => {
           initialCapital: p.initialCapital ?? 0,
           currentCapital: p.currentCapital ?? 0,
           capitalWithdrawals: p.capitalWithdrawals ?? [],
+          capitalHistory: p.capitalHistory ?? [],
           confirmedProfit: p.confirmedProfit ?? p.totalProfitEarned ?? 0,
           pendingProfit: p.pendingProfit ?? 0,
           pendingProfitDetails: p.pendingProfitDetails ?? [],
@@ -116,7 +126,7 @@ export const getPartnerById = (id: string): Partner | null => {
   return partners.find(p => p.id === id) || null;
 };
 
-// Distribute profit to partners
+// Distribute profit to partners - SEQUENTIAL distribution
 export const distributeProfit = (
   profit: number,
   category: string,
@@ -131,31 +141,27 @@ export const distributeProfit = (
   
   let remainingProfit = profit;
   
-  partners.forEach(partner => {
-    let percentage = 0;
+  // ======= المرحلة 1: الشركاء المتخصصون في الصنف =======
+  // يأخذون نسبتهم من الربح الأصلي أولاً
+  const specializedPartners = partners.filter(p => 
+    !p.accessAll && p.categoryShares.some(cs => cs.enabled && cs.categoryName === category)
+  );
+  
+  specializedPartners.forEach(partner => {
+    const categoryShare = partner.categoryShares.find(
+      cs => cs.enabled && cs.categoryName === category
+    );
     
-    if (partner.accessAll) {
-      // شريك عام - استخدم النسبة الرئيسية
-      percentage = partner.sharePercentage;
-    } else {
-      // شريك متخصص - ابحث عن النسبة للفئة المحددة
-      const categoryShare = partner.categoryShares.find(
-        cs => cs.enabled && cs.categoryName === category
-      );
-      if (categoryShare) {
-        percentage = categoryShare.percentage;
-      }
-    }
-    
-    if (percentage > 0) {
-      const partnerShare = (profit * percentage) / 100;
+    if (categoryShare && categoryShare.percentage > 0) {
+      // يأخذ نسبته من الربح الأصلي
+      const partnerShare = (profit * categoryShare.percentage) / 100;
       remainingProfit -= partnerShare;
       
       distributions.push({
         partnerId: partner.id,
         partnerName: partner.name,
         amount: partnerShare,
-        percentage,
+        percentage: categoryShare.percentage,
       });
       
       // Update partner data
@@ -169,7 +175,6 @@ export const distributeProfit = (
       };
       
       if (isDebt) {
-        // الأرباح من فواتير الدين تضاف كأرباح معلقة
         partner.pendingProfit += partnerShare;
         partner.pendingProfitDetails.push({
           invoiceId,
@@ -178,7 +183,6 @@ export const distributeProfit = (
           createdAt: new Date().toISOString(),
         });
       } else {
-        // الأرباح النقدية تضاف مباشرة
         partner.confirmedProfit += partnerShare;
         partner.currentBalance += partnerShare;
         partner.totalProfitEarned += partnerShare;
@@ -187,6 +191,57 @@ export const distributeProfit = (
       partner.profitHistory.push(profitRecord);
     }
   });
+  
+  // ======= المرحلة 2: الشركاء الكاملون =======
+  // يأخذون نسبتهم من الربح المتبقي بعد الشركاء المتخصصين
+  if (remainingProfit > 0) {
+    const fullPartners = partners.filter(p => p.accessAll);
+    
+    // حساب إجمالي نسب الشركاء الكاملين
+    const totalFullShare = fullPartners.reduce((sum, p) => sum + p.sharePercentage, 0);
+    
+    fullPartners.forEach(partner => {
+      if (partner.sharePercentage > 0 && totalFullShare > 0) {
+        // نسبة هذا الشريك من إجمالي نسب الشركاء الكاملين
+        const partnerRatio = partner.sharePercentage / totalFullShare;
+        // يأخذ نسبته من المتبقي
+        const partnerShare = remainingProfit * partnerRatio;
+        
+        distributions.push({
+          partnerId: partner.id,
+          partnerName: partner.name,
+          amount: partnerShare,
+          percentage: partner.sharePercentage,
+        });
+        
+        // Update partner data
+        const profitRecord: ProfitRecord = {
+          id: Date.now().toString() + partner.id,
+          invoiceId,
+          amount: partnerShare,
+          category,
+          isDebt,
+          createdAt: new Date().toISOString(),
+        };
+        
+        if (isDebt) {
+          partner.pendingProfit += partnerShare;
+          partner.pendingProfitDetails.push({
+            invoiceId,
+            amount: partnerShare,
+            customerName,
+            createdAt: new Date().toISOString(),
+          });
+        } else {
+          partner.confirmedProfit += partnerShare;
+          partner.currentBalance += partnerShare;
+          partner.totalProfitEarned += partnerShare;
+        }
+        
+        partner.profitHistory.push(profitRecord);
+      }
+    });
+  }
   
   savePartners(partners);
   return distributions;
@@ -223,6 +278,39 @@ export const confirmPendingProfit = (invoiceId: string, ratio: number = 1): void
   });
   
   savePartners(partners);
+};
+
+// Add capital to partner
+export const addCapital = (
+  partnerId: string,
+  amount: number,
+  notes?: string
+): boolean => {
+  const partners = loadPartners();
+  const partner = partners.find(p => p.id === partnerId);
+  
+  if (!partner || amount <= 0) {
+    return false;
+  }
+  
+  const transaction: CapitalTransaction = {
+    id: Date.now().toString(),
+    amount,
+    type: 'deposit',
+    date: new Date().toISOString(),
+    notes,
+  };
+  
+  partner.initialCapital += amount;
+  partner.currentCapital += amount;
+  
+  if (!partner.capitalHistory) {
+    partner.capitalHistory = [];
+  }
+  partner.capitalHistory.push(transaction);
+  
+  savePartners(partners);
+  return true;
 };
 
 // Withdraw profit
@@ -278,27 +366,116 @@ export const withdrawCapital = (
   partner.currentCapital -= amount;
   partner.capitalWithdrawals.push(withdrawal);
   
+  // Also add to capital history
+  if (!partner.capitalHistory) {
+    partner.capitalHistory = [];
+  }
+  partner.capitalHistory.push({
+    id: Date.now().toString(),
+    amount,
+    type: 'withdrawal',
+    date: new Date().toISOString(),
+    notes,
+  });
+  
   savePartners(partners);
   return true;
+};
+
+// Smart withdraw - profit first, then capital
+export const smartWithdraw = (
+  partnerId: string,
+  amount: number,
+  notes?: string
+): { success: boolean; fromProfit: number; fromCapital: number } => {
+  const partners = loadPartners();
+  const partner = partners.find(p => p.id === partnerId);
+  
+  if (!partner || amount <= 0) {
+    return { success: false, fromProfit: 0, fromCapital: 0 };
+  }
+  
+  const totalAvailable = partner.currentBalance + partner.currentCapital;
+  if (amount > totalAvailable) {
+    return { success: false, fromProfit: 0, fromCapital: 0 };
+  }
+  
+  let remaining = amount;
+  let fromProfit = 0;
+  let fromCapital = 0;
+  
+  // First, withdraw from profit
+  if (partner.currentBalance > 0) {
+    fromProfit = Math.min(remaining, partner.currentBalance);
+    partner.currentBalance -= fromProfit;
+    partner.totalWithdrawn += fromProfit;
+    remaining -= fromProfit;
+    
+    if (fromProfit > 0) {
+      partner.withdrawalHistory.push({
+        id: Date.now().toString(),
+        amount: fromProfit,
+        type: 'profit',
+        date: new Date().toISOString(),
+        notes: notes ? `${notes} (من الأرباح)` : 'سحب من الأرباح',
+      });
+    }
+  }
+  
+  // Then, withdraw from capital if needed
+  if (remaining > 0 && partner.currentCapital >= remaining) {
+    fromCapital = remaining;
+    partner.currentCapital -= fromCapital;
+    
+    partner.capitalWithdrawals.push({
+      id: Date.now().toString(),
+      amount: fromCapital,
+      type: 'capital',
+      date: new Date().toISOString(),
+      notes: notes ? `${notes} (من رأس المال)` : 'سحب من رأس المال',
+    });
+    
+    if (!partner.capitalHistory) {
+      partner.capitalHistory = [];
+    }
+    partner.capitalHistory.push({
+      id: Date.now().toString(),
+      amount: fromCapital,
+      type: 'withdrawal',
+      date: new Date().toISOString(),
+      notes: notes ? `${notes} (من رأس المال)` : 'سحب من رأس المال',
+    });
+  }
+  
+  savePartners(partners);
+  return { success: true, fromProfit, fromCapital };
 };
 
 // Get partners statistics
 export const getPartnersStats = () => {
   const partners = loadPartners();
   
+  // Calculate full partners share (only those with accessAll)
+  const fullPartners = partners.filter(p => p.accessAll);
+  const specializedPartners = partners.filter(p => !p.accessAll);
+  
   return {
     totalPartners: partners.length,
-    totalShare: partners.reduce((sum, p) => sum + p.sharePercentage, 0),
+    fullPartnersCount: fullPartners.length,
+    specializedPartnersCount: specializedPartners.length,
+    fullPartnersShare: fullPartners.reduce((sum, p) => sum + p.sharePercentage, 0),
     totalCapital: partners.reduce((sum, p) => sum + p.currentCapital, 0),
+    totalInitialCapital: partners.reduce((sum, p) => sum + p.initialCapital, 0),
     totalBalance: partners.reduce((sum, p) => sum + p.currentBalance, 0),
     totalConfirmedProfit: partners.reduce((sum, p) => sum + p.confirmedProfit, 0),
     totalPendingProfit: partners.reduce((sum, p) => sum + p.pendingProfit, 0),
     totalWithdrawn: partners.reduce((sum, p) => sum + p.totalWithdrawn, 0),
+    totalExpensesPaid: partners.reduce((sum, p) => sum + (p.totalExpensesPaid || 0), 0),
   };
 };
 
 // Add partner
-export const addPartner = (partnerData: Omit<Partner, 'id' | 'joinedDate' | 'profitHistory' | 'withdrawalHistory' | 'capitalWithdrawals' | 'pendingProfitDetails'>): Partner => {
+export const addPartner = (partnerData: Omit<Partner, 'id' | 'joinedDate' | 'profitHistory' | 'withdrawalHistory' | 'capitalWithdrawals' | 'pendingProfitDetails' | 'capitalHistory'>): Partner => {
   const partners = loadPartners();
   
   const newPartner: Partner = {
@@ -309,6 +486,7 @@ export const addPartner = (partnerData: Omit<Partner, 'id' | 'joinedDate' | 'pro
     withdrawalHistory: [],
     capitalWithdrawals: [],
     pendingProfitDetails: [],
+    capitalHistory: [],
   };
   
   partners.push(newPartner);

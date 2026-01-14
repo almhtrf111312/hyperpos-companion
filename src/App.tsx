@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Services from "./pages/Services";
 import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
+import Expenses from "./pages/Expenses";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -59,6 +60,7 @@ const App = () => (
                   
                   {/* Admin only routes */}
                   <Route path="/partners" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Partners /></MainLayout></ProtectedRoute>} />
+                  <Route path="/expenses" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
                   <Route path="/reports" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
                   

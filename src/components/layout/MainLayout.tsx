@@ -2,7 +2,6 @@ import { ReactNode, useState } from 'react';
 import { Sidebar, MobileMenuTrigger } from './Sidebar';
 import { NotificationBell } from './NotificationBell';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { RefreshCw } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -27,9 +26,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className={`fixed top-0 z-30 transition-all duration-300 ${isMobile ? 'left-4' : 'left-4'}`}>
         <div className="flex items-center gap-2 py-4">
           <NotificationBell />
-          <button className="p-3 rounded-xl bg-card border border-border hover:bg-muted transition-colors shadow-sm">
-            <RefreshCw className="w-5 h-5 text-muted-foreground" />
-          </button>
         </div>
       </div>
       
