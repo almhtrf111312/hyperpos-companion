@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -10,6 +11,7 @@ import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
+import { loadInvoices, getInvoiceStats } from '@/lib/invoices-store';
 
 export default function Dashboard() {
   const today = new Date().toLocaleDateString('ar-EG', {
@@ -18,6 +20,47 @@ export default function Dashboard() {
     month: 'long',
     day: 'numeric',
   });
+
+  // Load real stats from invoices
+  const stats = useMemo(() => {
+    const invoiceStats = getInvoiceStats();
+    const invoices = loadInvoices();
+    
+    // Calculate today's sales
+    const todayStr = new Date().toDateString();
+    const todayInvoices = invoices.filter(inv => 
+      new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
+    );
+    const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    const todayProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+    
+    // Calculate pending debts
+    const pendingDebts = invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending');
+    const totalDebtAmount = pendingDebts.reduce((sum, inv) => sum + inv.total, 0);
+    const debtCustomers = new Set(pendingDebts.map(inv => inv.customerName)).size;
+    
+    // Calculate profit margin
+    const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
+    
+    // Get unique customers this month
+    const thisMonth = new Date().getMonth();
+    const thisYear = new Date().getFullYear();
+    const monthInvoices = invoices.filter(inv => {
+      const date = new Date(inv.createdAt);
+      return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
+    });
+    const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
+
+    return {
+      todaySales,
+      todayCount: todayInvoices.length,
+      todayProfit,
+      profitMargin,
+      totalDebtAmount,
+      debtCustomers,
+      uniqueCustomers,
+    };
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -37,32 +80,32 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="المبيعات اليوم"
-          value="$0"
-          subtitle="0 فاتورة"
+          value={`$${stats.todaySales.toLocaleString()}`}
+          subtitle={`${stats.todayCount} فاتورة`}
           icon={<DollarSign className="w-6 h-6" />}
           variant="primary"
           linkTo="/pos"
         />
         <StatCard
           title="صافي الأرباح"
-          value="$0"
-          subtitle="هامش ربح 0%"
+          value={`$${stats.todayProfit.toLocaleString()}`}
+          subtitle={`هامش ربح ${stats.profitMargin}%`}
           icon={<TrendingUp className="w-6 h-6" />}
           variant="success"
           linkTo="/reports"
         />
         <StatCard
           title="الديون المستحقة"
-          value="$0"
-          subtitle="0 عميل"
+          value={`$${stats.totalDebtAmount.toLocaleString()}`}
+          subtitle={`${stats.debtCustomers} عميل`}
           icon={<CreditCard className="w-6 h-6" />}
           variant="warning"
           linkTo="/debts"
         />
         <StatCard
-          title="العملاء الجدد"
-          value="0"
-          subtitle="هذا الشهر"
+          title="العملاء هذا الشهر"
+          value={stats.uniqueCustomers.toString()}
+          subtitle="عملاء فريدين"
           icon={<Users className="w-6 h-6" />}
           variant="default"
           linkTo="/customers"
