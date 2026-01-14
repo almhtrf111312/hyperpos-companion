@@ -9,6 +9,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import { LanguageProvider } from "./hooks/use-language";
 import { ThemeProvider } from "./hooks/use-theme";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
@@ -38,6 +39,7 @@ const App = () => (
           <ThemeProvider>
             <AuthProvider>
               <NotificationsProvider>
+                <ExitConfirmDialog />
                 <Toaster />
                 <Sonner />
                 <Routes>

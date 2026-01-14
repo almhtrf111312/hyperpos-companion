@@ -1,4 +1,4 @@
-import { ArrowRight, Menu, ShoppingCart } from 'lucide-react';
+import { Menu, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -30,16 +30,6 @@ export function POSHeader({
         >
           <Menu className="w-5 h-5" />
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/')}
-          className="gap-2"
-        >
-          <ArrowRight className="w-4 h-4" />
-          <span className="hidden sm:inline">العودة</span>
-        </Button>
-        <div className="h-6 w-px bg-border hidden sm:block" />
         <h1 className="font-bold text-base md:text-lg">نقطة البيع</h1>
       </div>
 

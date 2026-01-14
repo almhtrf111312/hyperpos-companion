@@ -1,4 +1,6 @@
 import { emitEvent, EVENTS } from './events';
+import { deleteDebtByInvoiceId } from './debts-store';
+import { revertProfitDistribution } from './partners-store';
 
 // Invoices store for managing all sales and maintenance invoices
 
@@ -94,8 +96,19 @@ export const updateInvoice = (id: string, updates: Partial<Invoice>): Invoice | 
 
 export const deleteInvoice = (id: string): boolean => {
   const invoices = loadInvoices();
+  const invoice = invoices.find(inv => inv.id === id);
+  
+  if (!invoice) return false;
+  
+  // Delete associated debt if exists
+  if (invoice.paymentType === 'debt') {
+    deleteDebtByInvoiceId(id);
+  }
+  
+  // Revert profit distribution
+  revertProfitDistribution(id);
+  
   const filtered = invoices.filter(inv => inv.id !== id);
-  if (filtered.length === invoices.length) return false;
   saveInvoices(filtered);
   return true;
 };
