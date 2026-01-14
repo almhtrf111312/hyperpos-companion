@@ -1,3 +1,5 @@
+import { emitEvent, EVENTS } from './events';
+
 // Invoices store for managing all sales and maintenance invoices
 
 const INVOICES_STORAGE_KEY = 'hyperpos_invoices_v1';
@@ -56,6 +58,8 @@ export const loadInvoices = (): Invoice[] => {
 export const saveInvoices = (invoices: Invoice[]) => {
   try {
     localStorage.setItem(INVOICES_STORAGE_KEY, JSON.stringify(invoices));
+    // Emit standardized event so other components update in same-tab
+    emitEvent(EVENTS.INVOICES_UPDATED, invoices);
   } catch {
     // ignore
   }
