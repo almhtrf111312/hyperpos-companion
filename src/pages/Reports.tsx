@@ -13,9 +13,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Wallet,
-  Banknote
+  Banknote,
+  Receipt,
+  Share2,
+  MessageCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -24,6 +27,7 @@ import { loadProducts } from '@/lib/products-store';
 import { loadCustomers } from '@/lib/customers-store';
 import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
 import { loadCategories } from '@/lib/categories-store';
+import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function Reports() {
@@ -41,6 +45,7 @@ export default function Reports() {
     { id: 'products', label: 'المنتجات', icon: BarChart3 },
     { id: 'customers', label: 'العملاء', icon: Users },
     { id: 'partners', label: 'الشركاء', icon: UsersRound },
+    { id: 'expenses', label: 'المصاريف', icon: Receipt },
   ];
 
   // Calculate real data from stores
@@ -228,6 +233,71 @@ export default function Reports() {
     };
   }, [dateRange, selectedPartnerId]);
 
+  // Expense report data
+  const expenseReportData = useMemo(() => {
+    const allExpenses = loadExpenses();
+    const partners = loadPartners();
+    
+    // Filter expenses by date range
+    const filteredExpenses = allExpenses.filter(exp => {
+      const expDate = exp.date;
+      return expDate >= dateRange.from && expDate <= dateRange.to;
+    });
+    
+    // Total expenses in period
+    const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // Group by type
+    const byType: Record<string, { type: string; amount: number; count: number }> = {};
+    filteredExpenses.forEach(exp => {
+      const type = exp.typeLabel;
+      if (!byType[type]) {
+        byType[type] = { type, amount: 0, count: 0 };
+      }
+      byType[type].amount += exp.amount;
+      byType[type].count += 1;
+    });
+    
+    // Partner expense breakdown
+    const partnerExpenses: Record<string, { name: string; amount: number; percentage: number }> = {};
+    filteredExpenses.forEach(exp => {
+      exp.distributions.forEach(dist => {
+        if (!partnerExpenses[dist.partnerId]) {
+          partnerExpenses[dist.partnerId] = { name: dist.partnerName, amount: 0, percentage: 0 };
+        }
+        partnerExpenses[dist.partnerId].amount += dist.amount;
+      });
+    });
+    
+    // Calculate percentages
+    Object.values(partnerExpenses).forEach(pe => {
+      pe.percentage = totalExpenses > 0 ? (pe.amount / totalExpenses) * 100 : 0;
+    });
+    
+    // Daily expenses
+    const dailyExpenseMap: Record<string, number> = {};
+    filteredExpenses.forEach(exp => {
+      if (!dailyExpenseMap[exp.date]) {
+        dailyExpenseMap[exp.date] = 0;
+      }
+      dailyExpenseMap[exp.date] += exp.amount;
+    });
+    
+    const dailyExpenses = Object.entries(dailyExpenseMap)
+      .map(([date, amount]) => ({ date, amount }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    return {
+      expenses: filteredExpenses,
+      totalExpenses,
+      byType: Object.values(byType).sort((a, b) => b.amount - a.amount),
+      partnerExpenses: Object.values(partnerExpenses).sort((a, b) => b.amount - a.amount),
+      dailyExpenses,
+      hasData: filteredExpenses.length > 0,
+      allPartners: partners,
+    };
+  }, [dateRange]);
+
   const handleExportPDF = () => {
     const content = `
 تقرير المبيعات
@@ -236,19 +306,19 @@ export default function Reports() {
 تاريخ التصدير: ${new Date().toLocaleString('ar-SA')}
 
 ملخص:
-- إجمالي المبيعات: $${reportData.summary.totalSales.toLocaleString()}
-- صافي الأرباح: $${reportData.summary.totalProfit.toLocaleString()}
-- عدد الطلبات: ${reportData.summary.totalOrders}
-- متوسط قيمة الطلب: $${reportData.summary.avgOrderValue.toFixed(0)}
+- إجمالي المبيعات: $${formatNumber(reportData.summary.totalSales)}
+- صافي الأرباح: $${formatNumber(reportData.summary.totalProfit)}
+- عدد الطلبات: ${formatNumber(reportData.summary.totalOrders)}
+- متوسط قيمة الطلب: $${formatNumber(Math.round(reportData.summary.avgOrderValue))}
 
 المبيعات اليومية:
-${reportData.dailySales.map(d => `${d.date}: $${d.sales.toLocaleString()} (ربح: $${d.profit.toLocaleString()}, طلبات: ${d.orders})`).join('\n')}
+${reportData.dailySales.map(d => `${d.date}: $${formatNumber(d.sales)} (ربح: $${formatNumber(d.profit)}, طلبات: ${d.orders})`).join('\n')}
 
 أفضل المنتجات:
-${reportData.topProducts.map((p, i) => `${i + 1}. ${p.name}: ${p.sales} قطعة - $${p.revenue.toLocaleString()}`).join('\n')}
+${reportData.topProducts.map((p, i) => `${i + 1}. ${p.name}: ${p.sales} قطعة - $${formatNumber(p.revenue)}`).join('\n')}
 
 أفضل العملاء:
-${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب - $${c.total.toLocaleString()}`).join('\n')}
+${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب - $${formatNumber(c.total)}`).join('\n')}
     `;
     
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -285,6 +355,66 @@ ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب
     URL.revokeObjectURL(url);
     
     toast.success('تم تصدير التقرير بصيغة Excel بنجاح');
+  };
+
+  // Export expenses report as Excel
+  const handleExportExpensesExcel = () => {
+    const headers = ['التاريخ', 'النوع', 'المبلغ', 'الملاحظات', 'توزيع الشركاء'];
+    const rows = expenseReportData.expenses.map(exp => [
+      exp.date,
+      exp.typeLabel,
+      exp.amount,
+      exp.notes || '',
+      exp.distributions.map(d => `${d.partnerName}: $${formatNumber(d.amount)}`).join(' | ')
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `تقرير_المصاريف_${dateRange.from}_${dateRange.to}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('تم تصدير تقرير المصاريف بنجاح');
+  };
+
+  // Generate partner expense report for WhatsApp
+  const handleShareExpenseReport = (partnerName: string) => {
+    const partnerExpenses = expenseReportData.expenses.filter(exp => 
+      exp.distributions.some(d => d.partnerName === partnerName)
+    );
+    
+    const partnerTotal = partnerExpenses.reduce((sum, exp) => {
+      const dist = exp.distributions.find(d => d.partnerName === partnerName);
+      return sum + (dist?.amount || 0);
+    }, 0);
+    
+    const report = `📊 تقرير المصاريف - ${partnerName}
+📅 الفترة: ${dateRange.from} إلى ${dateRange.to}
+
+💰 إجمالي المصاريف المشتركة: $${formatNumber(partnerTotal)}
+
+📋 التفاصيل:
+${partnerExpenses.map(exp => {
+  const dist = exp.distributions.find(d => d.partnerName === partnerName);
+  return `• ${exp.date} - ${exp.typeLabel}: $${formatNumber(dist?.amount || 0)}`;
+}).join('\n')}
+
+---
+تم إنشاء التقرير بواسطة HyperPOS`;
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(report)}`;
+    window.open(whatsappUrl, '_blank');
+    toast.success('تم فتح واتساب للمشاركة');
   };
 
   const handleBackup = () => {
@@ -693,6 +823,180 @@ ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب
         </div>
       )}
 
+      {/* Expenses Report */}
+      {activeReport === 'expenses' && (
+        <div className="space-y-6">
+          {/* Expense Action Buttons */}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportExpensesExcel}>
+              <Download className="w-4 h-4 ml-2" />
+              تصدير Excel
+            </Button>
+          </div>
+
+          {/* Expense Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Receipt className="w-5 h-5 text-destructive" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">${formatNumber(expenseReportData.totalExpenses)}</p>
+              <p className="text-xs text-muted-foreground">إجمالي المصاريف</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Calendar className="w-5 h-5 text-info" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.expenses.length)}</p>
+              <p className="text-xs text-muted-foreground">عدد المصاريف</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <PieChart className="w-5 h-5 text-warning" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.byType.length)}</p>
+              <p className="text-xs text-muted-foreground">أنواع المصاريف</p>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <UsersRound className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.partnerExpenses.length)}</p>
+              <p className="text-xs text-muted-foreground">الشركاء المشاركون</p>
+            </div>
+          </div>
+
+          {!expenseReportData.hasData ? (
+            <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">لا توجد مصاريف في الفترة المحددة</p>
+              <p className="text-sm text-muted-foreground">جرب تغيير نطاق التاريخ</p>
+            </div>
+          ) : (
+            <>
+              {/* Expenses by Type */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="text-lg font-semibold mb-4">المصاريف حسب النوع</h3>
+                <div className="space-y-3">
+                  {expenseReportData.byType.map((type, idx) => {
+                    const maxAmount = Math.max(...expenseReportData.byType.map(t => t.amount), 1);
+                    return (
+                      <div key={idx} className="flex items-center gap-4">
+                        <span className="text-sm font-medium w-28 truncate">{type.type}</span>
+                        <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-all duration-500"
+                            style={{ width: `${(type.amount / maxAmount) * 100}%` }}
+                          />
+                        </div>
+                        <div className="text-left w-28">
+                          <p className="text-sm font-semibold">${formatNumber(type.amount)}</p>
+                          <p className="text-xs text-muted-foreground">{type.count} مصروف</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Partner Expense Distribution */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="text-lg font-semibold mb-4">توزيع المصاريف على الشركاء</h3>
+                <div className="space-y-4">
+                  {expenseReportData.partnerExpenses.map((partner, idx) => (
+                    <div key={idx} className="bg-muted rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
+                            {partner.name.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">{partner.name}</h4>
+                            <p className="text-sm text-muted-foreground">{formatNumber(Math.round(partner.percentage))}% من الإجمالي</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-left">
+                            <p className="text-lg font-bold text-destructive">${formatNumber(partner.amount)}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-success hover:text-success"
+                            onClick={() => handleShareExpenseReport(partner.name)}
+                            title="مشاركة عبر واتساب"
+                          >
+                            <MessageCircle className="w-5 h-5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-background rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-destructive/70 rounded-full transition-all duration-500"
+                          style={{ width: `${partner.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Daily Expenses Chart */}
+              {expenseReportData.dailyExpenses.length > 0 && (
+                <div className="bg-card rounded-2xl border border-border p-6">
+                  <h3 className="text-lg font-semibold mb-4">المصاريف اليومية</h3>
+                  <div className="space-y-3">
+                    {expenseReportData.dailyExpenses.slice(-7).map((day, idx) => {
+                      const maxDaily = Math.max(...expenseReportData.dailyExpenses.map(d => d.amount), 1);
+                      return (
+                        <div key={idx} className="flex items-center gap-4">
+                          <span className="text-sm text-muted-foreground w-24">{day.date}</span>
+                          <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                            <div 
+                              className="h-full bg-destructive/60 rounded-lg transition-all duration-500"
+                              style={{ width: `${(day.amount / maxDaily) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-semibold w-24 text-left">
+                            ${formatNumber(day.amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Expense List */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="text-lg font-semibold mb-4">قائمة المصاريف</h3>
+                <div className="space-y-3">
+                  {expenseReportData.expenses.slice(0, 10).map((expense, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                          <Receipt className="w-5 h-5 text-destructive" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{expense.typeLabel}</h4>
+                          <p className="text-xs text-muted-foreground">{expense.date}</p>
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-destructive">-${formatNumber(expense.amount)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {expense.distributions.length} شريك
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Default view - Top Products when on sales tab */}
       {reportData.hasData && activeReport === 'sales' && reportData.topProducts.length > 0 && (
         <div className="bg-card rounded-2xl border border-border p-6">
@@ -707,7 +1011,7 @@ ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب
                   <span className="font-medium">{product.name}</span>
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-foreground">${product.revenue.toLocaleString()}</p>
+                  <p className="font-bold text-foreground">${formatNumber(product.revenue)}</p>
                   <p className="text-xs text-muted-foreground">{product.sales} قطعة</p>
                 </div>
               </div>

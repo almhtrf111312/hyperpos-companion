@@ -41,12 +41,22 @@ export interface ProfitRecord {
   createdAt: string;
 }
 
+export interface ExpenseRecord {
+  expenseId: string;
+  type: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Partner {
   id: string;
   name: string;
   phone: string;
   email?: string;
   sharePercentage: number;
+  expenseSharePercentage?: number; // نسبة المشاركة في المصاريف (اختياري)
   categoryShares: CategoryShare[];
   accessAll: boolean;
   sharesExpenses: boolean;
@@ -71,6 +81,7 @@ export interface Partner {
   // السجلات
   profitHistory: ProfitRecord[];
   withdrawalHistory: Withdrawal[];
+  expenseHistory: ExpenseRecord[]; // سجل المصاريف
   joinedDate: string;
 }
 
@@ -100,7 +111,9 @@ export const loadPartners = (): Partner[] => {
           pendingProfitDetails: p.pendingProfitDetails ?? [],
           profitHistory: p.profitHistory ?? [],
           withdrawalHistory: p.withdrawalHistory ?? [],
+          expenseHistory: p.expenseHistory ?? [],
           totalExpensesPaid: p.totalExpensesPaid ?? 0,
+          expenseSharePercentage: p.expenseSharePercentage,
         }));
       }
     }

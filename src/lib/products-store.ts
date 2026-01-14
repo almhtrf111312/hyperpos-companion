@@ -12,6 +12,7 @@ export interface Product {
   quantity: number;
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
   expiryDate?: string; // Optional expiry date for pharmacy/grocery
+  image?: string; // Base64 image for product
 }
 
 // No default products - start with empty inventory
@@ -124,6 +125,7 @@ export interface POSProduct {
   category: string;
   barcode?: string;
   expiryDate?: string;
+  image?: string;
 }
 
 export const getProductsForPOS = (): POSProduct[] => {
@@ -135,6 +137,7 @@ export const getProductsForPOS = (): POSProduct[] => {
     category: p.category,
     barcode: p.barcode,
     expiryDate: p.expiryDate,
+    image: p.image,
   }));
 };
 
