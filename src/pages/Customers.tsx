@@ -47,14 +47,8 @@ interface Customer {
   lastPurchase: string;
 }
 
-const initialCustomers: Customer[] = [
-  { id: '1', name: 'محمد أحمد', phone: '+963 912 345 678', email: 'mohamed@email.com', address: 'دمشق، شارع النيل', totalPurchases: 15000, totalDebt: 2500, invoiceCount: 12, lastPurchase: '2025-01-08' },
-  { id: '2', name: 'علي حسن', phone: '+963 998 765 432', email: 'ali@email.com', totalPurchases: 8500, totalDebt: 0, invoiceCount: 8, lastPurchase: '2025-01-07' },
-  { id: '3', name: 'فاطمة محمود', phone: '+963 933 111 222', address: 'حلب، شارع الحرية', totalPurchases: 22000, totalDebt: 5000, invoiceCount: 18, lastPurchase: '2025-01-06' },
-  { id: '4', name: 'خالد عمر', phone: '+963 944 555 666', email: 'khaled@email.com', totalPurchases: 5200, totalDebt: 850, invoiceCount: 5, lastPurchase: '2025-01-05' },
-  { id: '5', name: 'سارة يوسف', phone: '+963 955 888 999', totalPurchases: 18000, totalDebt: 0, invoiceCount: 15, lastPurchase: '2025-01-04' },
-  { id: '6', name: 'أحمد سالم', phone: '+963 966 222 333', email: 'ahmed@email.com', address: 'اللاذقية', totalPurchases: 3500, totalDebt: 1200, invoiceCount: 3, lastPurchase: '2025-01-03' },
-];
+// Start with empty customers
+const initialCustomers: Customer[] = [];
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);

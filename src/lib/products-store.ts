@@ -14,16 +14,8 @@ export interface Product {
   expiryDate?: string; // Optional expiry date for pharmacy/grocery
 }
 
-const defaultProducts: Product[] = [
-  { id: '1', name: 'iPhone 15 Pro Max', barcode: '123456789001', category: 'هواتف', costPrice: 1100, salePrice: 1300, quantity: 15, status: 'in_stock' },
-  { id: '2', name: 'Samsung Galaxy S24', barcode: '123456789002', category: 'هواتف', costPrice: 850, salePrice: 1000, quantity: 20, status: 'in_stock' },
-  { id: '3', name: 'AirPods Pro 2', barcode: '123456789003', category: 'سماعات', costPrice: 180, salePrice: 250, quantity: 5, status: 'low_stock' },
-  { id: '4', name: 'شاشة iPhone 13', barcode: '123456789004', category: 'قطع غيار', costPrice: 100, salePrice: 150, quantity: 0, status: 'out_of_stock' },
-  { id: '5', name: 'سلك شحن Type-C', barcode: '123456789005', category: 'أكسسوارات', costPrice: 8, salePrice: 15, quantity: 200, status: 'in_stock' },
-  { id: '6', name: 'حافظة iPhone 15', barcode: '123456789006', category: 'أكسسوارات', costPrice: 12, salePrice: 25, quantity: 100, status: 'in_stock' },
-  { id: '7', name: 'شاحن سريع 65W', barcode: '123456789007', category: 'شواحن', costPrice: 30, salePrice: 45, quantity: 3, status: 'low_stock' },
-  { id: '8', name: 'باور بانك 20000mAh', barcode: '123456789008', category: 'أكسسوارات', costPrice: 35, salePrice: 55, quantity: 40, status: 'in_stock' },
-];
+// No default products - start with empty inventory
+const defaultProducts: Product[] = [];
 
 export const getStatus = (quantity: number): 'in_stock' | 'low_stock' | 'out_of_stock' => {
   if (quantity === 0) return 'out_of_stock';

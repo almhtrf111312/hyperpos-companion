@@ -40,13 +40,8 @@ interface Debt {
   isCashDebt?: boolean;
 }
 
-const initialDebts: Debt[] = [
-  { id: '1', invoiceId: 'INV_001', customerName: 'محمد أحمد', customerPhone: '+963 912 345 678', totalDebt: 2500, totalPaid: 0, remainingDebt: 2500, dueDate: '2025-01-15', status: 'due', createdAt: '2025-01-05' },
-  { id: '2', invoiceId: 'INV_002', customerName: 'فاطمة محمود', customerPhone: '+963 933 111 222', totalDebt: 5000, totalPaid: 2000, remainingDebt: 3000, dueDate: '2025-01-10', status: 'partially_paid', createdAt: '2025-01-03' },
-  { id: '3', invoiceId: 'INV_003', customerName: 'خالد عمر', customerPhone: '+963 944 555 666', totalDebt: 850, totalPaid: 0, remainingDebt: 850, dueDate: '2025-01-05', status: 'overdue', createdAt: '2025-01-01' },
-  { id: '4', invoiceId: 'INV_004', customerName: 'أحمد سالم', customerPhone: '+963 966 222 333', totalDebt: 1200, totalPaid: 500, remainingDebt: 700, dueDate: '2025-01-20', status: 'partially_paid', createdAt: '2025-01-06' },
-  { id: '5', invoiceId: 'INV_005', customerName: 'سمير حسن', customerPhone: '+963 977 444 555', totalDebt: 3500, totalPaid: 3500, remainingDebt: 0, dueDate: '2025-01-08', status: 'fully_paid', createdAt: '2025-01-02' },
-];
+// Start with empty debts
+const initialDebts: Debt[] = [];
 
 const statusConfig = {
   due: { label: 'مستحق', icon: Clock, color: 'badge-info' },
