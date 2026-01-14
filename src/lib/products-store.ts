@@ -1,4 +1,4 @@
-// Shared products store - used by Products and POS
+import { emitEvent, EVENTS } from './events';
 
 const PRODUCTS_STORAGE_KEY = 'hyperpos_products_v1';
 
@@ -28,7 +28,8 @@ export const loadProducts = (): Product[] => {
     const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      // Accept array even if empty ([] is a valid stored value)
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -41,6 +42,7 @@ export const loadProducts = (): Product[] => {
 export const saveProducts = (products: Product[]) => {
   try {
     localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
+    emitEvent(EVENTS.PRODUCTS_UPDATED, products);
   } catch {
     // ignore
   }
@@ -62,7 +64,7 @@ export const updateProduct = (id: string, data: Partial<Omit<Product, 'id' | 'st
   const products = loadProducts();
   const index = products.findIndex(p => p.id === id);
   if (index === -1) return false;
-  
+
   const updated = { ...products[index], ...data };
   if (data.quantity !== undefined) {
     updated.status = getStatus(data.quantity);
@@ -85,15 +87,15 @@ export type ExpiryStatus = 'expired' | 'expiring_soon' | 'valid' | 'no_expiry';
 
 export const getExpiryStatus = (expiryDate?: string): ExpiryStatus => {
   if (!expiryDate) return 'no_expiry';
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const expiry = new Date(expiryDate);
   expiry.setHours(0, 0, 0, 0);
-  
+
   const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays < 0) return 'expired';
   if (diffDays <= 30) return 'expiring_soon'; // 30 days warning
   return 'valid';
@@ -130,7 +132,6 @@ export const getProductsForPOS = (): POSProduct[] => {
   }));
 };
 
-// Get product by barcode
 export const getProductByBarcode = (barcode: string): POSProduct | undefined => {
   const products = getProductsForPOS();
   return products.find(p => p.barcode === barcode);

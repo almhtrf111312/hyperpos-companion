@@ -1,4 +1,4 @@
-// Maintenance services store
+import { emitEvent, EVENTS } from './events';
 
 const MAINTENANCE_STORAGE_KEY = 'hyperpos_maintenance_v1';
 
@@ -33,6 +33,7 @@ export const loadMaintenanceServices = (): MaintenanceService[] => {
 export const saveMaintenanceServices = (services: MaintenanceService[]) => {
   try {
     localStorage.setItem(MAINTENANCE_STORAGE_KEY, JSON.stringify(services));
+    emitEvent(EVENTS.MAINTENANCE_UPDATED, services);
   } catch {
     // ignore
   }
@@ -45,20 +46,9 @@ export const addMaintenanceService = (service: Omit<MaintenanceService, 'id' | '
     id: Date.now().toString(),
     profit: service.servicePrice - service.partsCost,
     createdAt: new Date().toISOString(),
+    status: service.status || 'pending',
   };
   services.push(newService);
   saveMaintenanceServices(services);
   return newService;
-};
-
-export const getMaintenanceStats = () => {
-  const services = loadMaintenanceServices();
-  return {
-    total: services.length,
-    totalRevenue: services.reduce((sum, s) => sum + s.servicePrice, 0),
-    totalCost: services.reduce((sum, s) => sum + s.partsCost, 0),
-    totalProfit: services.reduce((sum, s) => sum + s.profit, 0),
-    pending: services.filter(s => s.status === 'pending').length,
-    completed: services.filter(s => s.status === 'completed').length,
-  };
 };

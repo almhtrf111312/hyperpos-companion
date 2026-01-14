@@ -1,4 +1,4 @@
-// Shared categories store - used by Products and Partners
+import { emitEvent, EVENTS } from './events';
 
 const CATEGORIES_STORAGE_KEY = 'hyperpos_categories_v1';
 
@@ -24,7 +24,7 @@ export const loadCategories = (): Category[] => {
     const stored = localStorage.getItem(CATEGORIES_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -37,6 +37,7 @@ export const loadCategories = (): Category[] => {
 export const saveCategories = (categories: Category[]) => {
   try {
     localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+    emitEvent(EVENTS.CATEGORIES_UPDATED, categories);
   } catch {
     // ignore
   }
@@ -69,8 +70,4 @@ export const deleteCategory = (id: string): boolean => {
   if (filtered.length === categories.length) return false;
   saveCategories(filtered);
   return true;
-};
-
-export const getCategoryNames = (): string[] => {
-  return loadCategories().map(c => c.name);
 };
