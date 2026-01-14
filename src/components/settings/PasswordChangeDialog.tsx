@@ -17,6 +17,7 @@ interface PasswordChangeDialogProps {
 export function PasswordChangeDialog({
   open,
   onOpenChange,
+  userId,
   userName,
   isOwnPassword = false,
 }: PasswordChangeDialogProps) {
@@ -62,6 +63,7 @@ export function PasswordChangeDialog({
     setIsLoading(true);
     try {
       if (isOwnPassword) {
+        // For own password change, verify current password first
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) throw new Error('User not found');
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -73,10 +75,39 @@ export function PasswordChangeDialog({
           setIsLoading(false);
           return;
         }
-      }
 
-      const { error } = await supabase.auth.updateUser({ password: form.newPassword });
-      if (error) throw error;
+        const { error } = await supabase.auth.updateUser({ password: form.newPassword });
+        if (error) throw error;
+      } else {
+        // For admin changing other user's password, use secure edge function
+        if (!userId) {
+          toast({ title: 'خطأ', description: 'معرف المستخدم غير موجود', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          toast({ title: 'خطأ', description: 'يرجى تسجيل الدخول مرة أخرى', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await supabase.functions.invoke('admin-change-password', {
+          body: {
+            targetUserId: userId,
+            newPassword: form.newPassword,
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'فشل في تغيير كلمة المرور');
+        }
+
+        if (response.data?.error) {
+          throw new Error(response.data.error);
+        }
+      }
 
       toast({ title: 'تم بنجاح', description: 'تم تغيير كلمة المرور بنجاح' });
       handleClose();
