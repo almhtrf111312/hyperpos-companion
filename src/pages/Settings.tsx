@@ -397,7 +397,29 @@ export default function Settings() {
       setBackups([newBackup, ...backups]);
       setIsBackingUp(false);
 
-      // Create encrypted backup payload
+      // Create encrypted backup payload with ALL localStorage data
+      const allData: Record<string, unknown> = {};
+      
+      // Get all localStorage keys and their values
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          try {
+            const value = localStorage.getItem(key);
+            if (value) {
+              // Try to parse JSON, if fails store as string
+              try {
+                allData[key] = JSON.parse(value);
+              } catch {
+                allData[key] = value;
+              }
+            }
+          } catch {
+            // skip problematic keys
+          }
+        }
+      }
+
       const payload = {
         version: '1.0',
         exportedAt: new Date().toISOString(),
@@ -411,6 +433,8 @@ export default function Settings() {
         },
         users,
         backups: [newBackup, ...backups],
+        // Include all localStorage data
+        localStorageData: allData,
       };
 
       // Encrypt the backup data
@@ -474,6 +498,21 @@ export default function Settings() {
         // Restore the data
         const data = decryptedData as any;
         
+        // Restore ALL localStorage data if available
+        if (data.localStorageData && typeof data.localStorageData === 'object') {
+          Object.entries(data.localStorageData).forEach(([key, value]) => {
+            try {
+              if (typeof value === 'string') {
+                localStorage.setItem(key, value);
+              } else {
+                localStorage.setItem(key, JSON.stringify(value));
+              }
+            } catch {
+              // skip problematic keys
+            }
+          });
+        }
+        
         if (data.settings) {
           if (data.settings.storeSettings) setStoreSettings(data.settings.storeSettings);
           if (data.settings.exchangeRates) setExchangeRates(data.settings.exchangeRates);
@@ -494,6 +533,12 @@ export default function Settings() {
           printSettings: data.settings?.printSettings || printSettings,
           backupSettings: data.settings?.backupSettings || backupSettings,
         });
+        
+        // Dispatch events to update all components
+        window.dispatchEvent(new Event('customersUpdated'));
+        window.dispatchEvent(new Event('debtsUpdated'));
+        window.dispatchEvent(new Event('invoicesUpdated'));
+        window.dispatchEvent(new Event('productsUpdated'));
 
         toast({
           title: "تمت الاستعادة بنجاح",
