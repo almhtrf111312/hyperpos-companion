@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus,
@@ -24,24 +24,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
-
-interface Debt {
-  id: string;
-  invoiceId: string;
-  customerName: string;
-  customerPhone: string;
-  totalDebt: number;
-  totalPaid: number;
-  remainingDebt: number;
-  dueDate: string;
-  status: 'due' | 'partially_paid' | 'overdue' | 'fully_paid';
-  createdAt: string;
-  notes?: string;
-  isCashDebt?: boolean;
-}
-
-// Start with empty debts
-const initialDebts: Debt[] = [];
+import { 
+  loadDebts, 
+  addDebt, 
+  recordPayment,
+  getDebtsStats,
+  Debt 
+} from '@/lib/debts-store';
 
 const statusConfig = {
   due: { label: 'مستحق', icon: Clock, color: 'badge-info' },
@@ -53,7 +42,7 @@ const statusConfig = {
 const filterOptions = ['الكل', 'مستحق', 'مدفوع جزئياً', 'متأخر', 'مدفوع بالكامل'];
 
 export default function Debts() {
-  const [debts, setDebts] = useState<Debt[]>(initialDebts);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('الكل');
   
@@ -73,6 +62,23 @@ export default function Debts() {
     notes: '',
   });
 
+  // Load debts from store
+  useEffect(() => {
+    const loadData = () => setDebts(loadDebts());
+    loadData();
+    
+    // Listen for updates
+    window.addEventListener('debtsUpdated', loadData);
+    window.addEventListener('storage', loadData);
+    window.addEventListener('focus', loadData);
+    
+    return () => {
+      window.removeEventListener('debtsUpdated', loadData);
+      window.removeEventListener('storage', loadData);
+      window.removeEventListener('focus', loadData);
+    };
+  }, []);
+
   const filterStatusMap: Record<string, string | null> = {
     'الكل': null,
     'مستحق': 'due',
@@ -90,12 +96,7 @@ export default function Debts() {
     return matchesSearch && matchesFilter;
   });
 
-  const stats = {
-    total: debts.reduce((sum, d) => sum + d.totalDebt, 0),
-    remaining: debts.reduce((sum, d) => sum + d.remainingDebt, 0),
-    paid: debts.reduce((sum, d) => sum + d.totalPaid, 0),
-    overdue: debts.filter(d => d.status === 'overdue').reduce((sum, d) => sum + d.remainingDebt, 0),
-  };
+  const stats = getDebtsStats();
 
   const openPaymentDialog = (debt: Debt) => {
     setSelectedDebt(debt);
@@ -119,21 +120,9 @@ export default function Debts() {
       return;
     }
 
-    setDebts(debts.map(d => {
-      if (d.id === selectedDebt.id) {
-        const newTotalPaid = d.totalPaid + paymentAmount;
-        const newRemainingDebt = d.totalDebt - newTotalPaid;
-        const newStatus = newRemainingDebt === 0 ? 'fully_paid' : 'partially_paid';
-        return {
-          ...d,
-          totalPaid: newTotalPaid,
-          remainingDebt: newRemainingDebt,
-          status: newStatus as Debt['status'],
-        };
-      }
-      return d;
-    }));
-
+    recordPayment(selectedDebt.id, paymentAmount);
+    setDebts(loadDebts());
+    
     setShowPaymentDialog(false);
     setSelectedDebt(null);
     setPaymentAmount(0);
@@ -151,22 +140,17 @@ export default function Debts() {
       return;
     }
 
-    const newDebt: Debt = {
-      id: Date.now().toString(),
+    addDebt({
       invoiceId: `CASH_${Date.now()}`,
       customerName: newDebtForm.customerName,
       customerPhone: newDebtForm.customerPhone,
       totalDebt: newDebtForm.amount,
-      totalPaid: 0,
-      remainingDebt: newDebtForm.amount,
       dueDate: newDebtForm.dueDate,
-      status: 'due',
-      createdAt: new Date().toISOString().split('T')[0],
       notes: newDebtForm.notes,
       isCashDebt: true,
-    };
+    });
 
-    setDebts([newDebt, ...debts]);
+    setDebts(loadDebts());
     setShowAddDebtDialog(false);
     setNewDebtForm({
       customerName: '',

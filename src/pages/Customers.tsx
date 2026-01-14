@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, 
   Plus, 
@@ -34,24 +34,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  address?: string;
-  totalPurchases: number;
-  totalDebt: number;
-  invoiceCount: number;
-  lastPurchase: string;
-}
-
-// Start with empty customers
-const initialCustomers: Customer[] = [];
+import { 
+  loadCustomers, 
+  addCustomer, 
+  updateCustomer, 
+  deleteCustomer,
+  getCustomersStats,
+  Customer 
+} from '@/lib/customers-store';
 
 export default function Customers() {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Dialogs
@@ -69,17 +62,29 @@ export default function Customers() {
     address: '',
   });
 
+  // Load customers from store
+  useEffect(() => {
+    const loadData = () => setCustomers(loadCustomers());
+    loadData();
+    
+    // Listen for updates
+    window.addEventListener('customersUpdated', loadData);
+    window.addEventListener('storage', loadData);
+    window.addEventListener('focus', loadData);
+    
+    return () => {
+      window.removeEventListener('customersUpdated', loadData);
+      window.removeEventListener('storage', loadData);
+      window.removeEventListener('focus', loadData);
+    };
+  }, []);
+
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     customer.phone.includes(searchQuery)
   );
 
-  const stats = {
-    total: customers.length,
-    withDebt: customers.filter(c => c.totalDebt > 0).length,
-    totalDebt: customers.reduce((sum, c) => sum + c.totalDebt, 0),
-    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
-  };
+  const stats = getCustomersStats();
 
   const handleAddCustomer = () => {
     if (!formData.name || !formData.phone) {
@@ -87,19 +92,14 @@ export default function Customers() {
       return;
     }
     
-    const newCustomer: Customer = {
-      id: Date.now().toString(),
+    addCustomer({
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,
       address: formData.address || undefined,
-      totalPurchases: 0,
-      totalDebt: 0,
-      invoiceCount: 0,
-      lastPurchase: new Date().toISOString().split('T')[0],
-    };
+    });
     
-    setCustomers([...customers, newCustomer]);
+    setCustomers(loadCustomers());
     setShowAddDialog(false);
     setFormData({ name: '', phone: '', email: '', address: '' });
     toast.success('تم إضافة العميل بنجاح');
@@ -111,11 +111,14 @@ export default function Customers() {
       return;
     }
     
-    setCustomers(customers.map(c => 
-      c.id === selectedCustomer.id 
-        ? { ...c, name: formData.name, phone: formData.phone, email: formData.email || undefined, address: formData.address || undefined }
-        : c
-    ));
+    updateCustomer(selectedCustomer.id, {
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email || undefined,
+      address: formData.address || undefined,
+    });
+    
+    setCustomers(loadCustomers());
     setShowEditDialog(false);
     setSelectedCustomer(null);
     toast.success('تم تعديل بيانات العميل بنجاح');
@@ -124,7 +127,8 @@ export default function Customers() {
   const handleDeleteCustomer = () => {
     if (!selectedCustomer) return;
     
-    setCustomers(customers.filter(c => c.id !== selectedCustomer.id));
+    deleteCustomer(selectedCustomer.id);
+    setCustomers(loadCustomers());
     setShowDeleteDialog(false);
     setSelectedCustomer(null);
     toast.success('تم حذف العميل بنجاح');
