@@ -43,6 +43,7 @@ import { LanguageSection } from '@/components/settings/LanguageSection';
 import { ThemeSection } from '@/components/settings/ThemeSection';
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
 import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
+import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,7 @@ const settingsTabs = [
   { id: 'users', label: 'المستخدمين', labelKey: 'settings.users', icon: User },
   { id: 'activity', label: 'سجل النشاط', labelKey: 'settings.activityLog', icon: Activity },
   { id: 'backup', label: 'النسخ الاحتياطي', labelKey: 'settings.backup', icon: Database },
+  { id: 'licenses', label: 'التراخيص', labelKey: 'settings.licenses', icon: Shield, adminOnly: true },
 ];
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -1130,6 +1132,9 @@ export default function Settings() {
           </div>
         );
 
+      case 'licenses':
+        return <LicenseManagement />;
+
       default:
         return null;
     }
@@ -1148,7 +1153,9 @@ export default function Settings() {
         <div className="lg:w-64 flex-shrink-0">
           <div className="bg-card rounded-2xl border border-border p-2">
             <nav className="space-y-1">
-              {settingsTabs.map((tab) => (
+              {settingsTabs
+                .filter(tab => !tab.adminOnly || users.find(u => u.id === currentUser?.id)?.role === 'admin')
+                .map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}

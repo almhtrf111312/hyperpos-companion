@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      activation_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          current_uses: number | null
+          duration_days: number
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          note: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          duration_days: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          note?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          duration_days?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          note?: string | null
+        }
+        Relationships: []
+      }
+      app_licenses: {
+        Row: {
+          activated_at: string | null
+          activation_code_id: string | null
+          created_at: string | null
+          device_id: string | null
+          expires_at: string
+          id: string
+          is_trial: boolean | null
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activation_code_id?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          expires_at: string
+          id?: string
+          is_trial?: boolean | null
+          user_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          activation_code_id?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          expires_at?: string
+          id?: string
+          is_trial?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_licenses_activation_code_id_fkey"
+            columns: ["activation_code_id"]
+            isOneToOne: false
+            referencedRelation: "activation_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
