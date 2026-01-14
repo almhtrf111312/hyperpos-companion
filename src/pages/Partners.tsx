@@ -28,7 +28,7 @@ import {
   withdrawCapital,
   smartWithdraw
 } from '@/lib/partners-store';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -143,6 +143,7 @@ export default function Partners() {
     email: '',
     accessAll: true,
     sharesExpenses: false, // يشارك في المصاريف
+    expenseSharePercentage: 0, // نسبة المشاركة في المصاريف
     categoryShares: categories.map(c => ({
       categoryId: c.id,
       categoryName: c.label,
@@ -196,6 +197,7 @@ export default function Partners() {
       email: '',
       accessAll: true,
       sharesExpenses: false,
+      expenseSharePercentage: 0,
       categoryShares: categories.map(c => ({
         categoryId: c.id,
         categoryName: c.label,
@@ -391,6 +393,7 @@ export default function Partners() {
       email: partner.email || '',
       accessAll: partner.accessAll,
       sharesExpenses: partner.sharesExpenses || false,
+      expenseSharePercentage: (partner as any).expenseSharePercentage || 0,
       categoryShares: partner.categoryShares.length > 0 
         ? partner.categoryShares.map(cs => ({
             ...cs,
@@ -498,7 +501,7 @@ export default function Partners() {
               <UserCheck className="w-4 h-4 md:w-5 md:h-5 text-primary" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.totalPartners}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatNumber(stats.totalPartners)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">الشركاء</p>
             </div>
           </div>
@@ -509,7 +512,7 @@ export default function Partners() {
               <Percent className="w-4 h-4 md:w-5 md:h-5 text-info" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.totalShare}%</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatNumber(stats.totalShare)}%</p>
               <p className="text-xs md:text-sm text-muted-foreground">موزع</p>
             </div>
           </div>
@@ -520,7 +523,7 @@ export default function Partners() {
               <Wallet className="w-4 h-4 md:w-5 md:h-5 text-warning" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalBalance.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">${formatNumber(stats.totalBalance)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">الأرصدة</p>
             </div>
           </div>
@@ -531,7 +534,7 @@ export default function Partners() {
               <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-success" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalProfit.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">${formatNumber(stats.totalProfit)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">الأرباح</p>
             </div>
           </div>
@@ -617,11 +620,11 @@ export default function Partners() {
             <div className="grid grid-cols-2 gap-2 py-3 md:py-4 border-t border-border">
               <div className="text-center">
                 <p className="text-[10px] md:text-xs text-muted-foreground">الأرباح</p>
-                <p className="text-sm md:text-base font-bold text-success">${(partner.currentBalance || 0).toLocaleString()}</p>
+                <p className="text-sm md:text-base font-bold text-success">${formatNumber(partner.currentBalance || 0)}</p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] md:text-xs text-muted-foreground">رأس المال</p>
-                <p className="text-sm md:text-base font-bold text-info">${(partner.currentCapital || 0).toLocaleString()}</p>
+                <p className="text-sm md:text-base font-bold text-info">${formatNumber(partner.currentCapital || 0)}</p>
               </div>
             </div>
 
@@ -712,6 +715,22 @@ export default function Partners() {
                   onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
                 />
               </div>
+
+              {/* Expense Share Percentage */}
+              {formData.sharesExpenses && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">نسبة المشاركة في المصاريف (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={formData.expenseSharePercentage || ''}
+                    onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">النسبة التي سيدفعها من إجمالي المصاريف</p>
+                </div>
+              )}
 
               {formData.accessAll ? (
                 <div>
@@ -824,6 +843,22 @@ export default function Partners() {
                   onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
                 />
               </div>
+
+              {/* Expense Share Percentage */}
+              {formData.sharesExpenses && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">نسبة المشاركة في المصاريف (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={formData.expenseSharePercentage || ''}
+                    onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">النسبة التي سيدفعها من إجمالي المصاريف</p>
+                </div>
+              )}
 
               {formData.accessAll ? (
                 <div>
@@ -948,25 +983,25 @@ export default function Partners() {
                     <TrendingUp className="w-4 h-4 text-success" />
                     <p className="text-xs text-muted-foreground">الأرباح المتاحة</p>
                   </div>
-                  <p className="text-lg font-bold text-success">${(selectedPartner.currentBalance || 0).toLocaleString()}</p>
+                  <p className="text-lg font-bold text-success">${formatNumber(selectedPartner.currentBalance || 0)}</p>
                 </div>
                 <div className="bg-info/10 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <PiggyBank className="w-4 h-4 text-info" />
                     <p className="text-xs text-muted-foreground">رأس المال</p>
                   </div>
-                  <p className="text-lg font-bold text-info">${(selectedPartner.currentCapital || 0).toLocaleString()}</p>
+                  <p className="text-lg font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح المكتسبة</p>
-                  <p className="text-lg font-bold">${(selectedPartner.totalProfitEarned || 0).toLocaleString()}</p>
+                  <p className="text-lg font-bold">${formatNumber(selectedPartner.totalProfitEarned || 0)}</p>
                 </div>
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground mb-1">إجمالي المسحوب</p>
-                  <p className="text-lg font-bold">${(selectedPartner.totalWithdrawn || 0).toLocaleString()}</p>
+                  <p className="text-lg font-bold">${formatNumber(selectedPartner.totalWithdrawn || 0)}</p>
                 </div>
               </div>
 
@@ -1021,14 +1056,14 @@ export default function Partners() {
                     <TrendingUp className="w-4 h-4 text-success" />
                     <p className="text-xs text-muted-foreground">الأرباح</p>
                   </div>
-                  <p className="text-xl font-bold text-success">${(selectedPartner.currentBalance || 0).toLocaleString()}</p>
+                  <p className="text-xl font-bold text-success">${formatNumber(selectedPartner.currentBalance || 0)}</p>
                 </div>
                 <div className="bg-info/10 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <PiggyBank className="w-4 h-4 text-info" />
                     <p className="text-xs text-muted-foreground">رأس المال</p>
                   </div>
-                  <p className="text-xl font-bold text-info">${(selectedPartner.currentCapital || 0).toLocaleString()}</p>
+                  <p className="text-xl font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
                 </div>
               </div>
 
@@ -1146,9 +1181,9 @@ export default function Partners() {
                   <PiggyBank className="w-5 h-5 text-info" />
                   <p className="text-sm text-muted-foreground">رأس المال الحالي</p>
                 </div>
-                <p className="text-3xl font-bold text-info">${(selectedPartner.currentCapital || 0).toLocaleString()}</p>
+                <p className="text-3xl font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  (الإجمالي: ${(selectedPartner.initialCapital || 0).toLocaleString()})
+                  (الإجمالي: ${formatNumber(selectedPartner.initialCapital || 0)})
                 </p>
               </div>
 

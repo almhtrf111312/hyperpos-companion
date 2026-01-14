@@ -518,3 +518,42 @@ export const deletePartner = (id: string): boolean => {
   savePartners(filtered);
   return true;
 };
+
+// Revert profit distribution when invoice is deleted
+export const revertProfitDistribution = (invoiceId: string): void => {
+  const partners = loadPartners();
+  
+  partners.forEach(partner => {
+    // Remove from pending profits
+    const pendingDetails = partner.pendingProfitDetails.filter(
+      pd => pd.invoiceId === invoiceId
+    );
+    
+    pendingDetails.forEach(detail => {
+      partner.pendingProfit -= detail.amount;
+    });
+    
+    partner.pendingProfitDetails = partner.pendingProfitDetails.filter(
+      pd => pd.invoiceId !== invoiceId
+    );
+    
+    // Remove from profit history and revert confirmed profits
+    const profitRecords = partner.profitHistory.filter(
+      pr => pr.invoiceId === invoiceId
+    );
+    
+    profitRecords.forEach(record => {
+      if (!record.isDebt) {
+        partner.confirmedProfit -= record.amount;
+        partner.currentBalance -= record.amount;
+        partner.totalProfitEarned -= record.amount;
+      }
+    });
+    
+    partner.profitHistory = partner.profitHistory.filter(
+      pr => pr.invoiceId !== invoiceId
+    );
+  });
+  
+  savePartners(partners);
+};

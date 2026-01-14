@@ -128,3 +128,12 @@ export const getDebtsStats = () => {
     activeCount: debts.filter(d => d.status !== 'fully_paid').length,
   };
 };
+
+// Delete debt by invoice ID
+export const deleteDebtByInvoiceId = (invoiceId: string): boolean => {
+  const debts = loadDebts();
+  const filtered = debts.filter(d => d.invoiceId !== invoiceId);
+  if (filtered.length === debts.length) return false;
+  saveDebts(filtered);
+  return true;
+};
