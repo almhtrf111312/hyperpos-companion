@@ -638,9 +638,17 @@ const filteredProducts = products.filter(product => {
                   className="hidden"
                   onChange={handleImageUpload}
                 />
-                <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={cameraInputRef}
+                  className="hidden"
+                  onChange={handleCameraCapture}
+                />
+                <div className="flex flex-col gap-3">
                   {formData.image ? (
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
                       <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -651,18 +659,30 @@ const filteredProducts = products.filter(product => {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                    <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                     </div>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => imageInputRef.current?.click()}
-                  >
-                    <Upload className="w-4 h-4 ml-2" />
-                    رفع صورة
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => imageInputRef.current?.click()}
+                    >
+                      <ImageIcon className="w-4 h-4 ml-2" />
+                      إضافة صورة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => cameraInputRef.current?.click()}
+                    >
+                      <Camera className="w-4 h-4 ml-2" />
+                      التقاط صورة
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -758,9 +778,17 @@ const filteredProducts = products.filter(product => {
                   id="edit-image-input"
                   onChange={handleImageUpload}
                 />
-                <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  id="edit-camera-input"
+                  onChange={handleCameraCapture}
+                />
+                <div className="flex flex-col gap-3">
                   {formData.image ? (
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
                       <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -771,18 +799,30 @@ const filteredProducts = products.filter(product => {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                    <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                     </div>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('edit-image-input')?.click()}
-                  >
-                    <Upload className="w-4 h-4 ml-2" />
-                    {formData.image ? 'تغيير الصورة' : 'رفع صورة'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('edit-image-input')?.click()}
+                    >
+                      <ImageIcon className="w-4 h-4 ml-2" />
+                      إضافة صورة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('edit-camera-input')?.click()}
+                    >
+                      <Camera className="w-4 h-4 ml-2" />
+                      التقاط صورة
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
