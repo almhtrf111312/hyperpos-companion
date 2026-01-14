@@ -25,6 +25,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
+import { addInvoice } from '@/lib/invoices-store';
+import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store';
+import { addDebtFromInvoice } from '@/lib/debts-store';
 
 interface CartItem {
   id: string;
@@ -96,13 +99,72 @@ export function CartPanel({
   };
 
   const confirmCashSale = () => {
-    toast.success('تم إنشاء الفاتورة النقدية بنجاح');
+    // Find or create customer
+    const customer = customerName ? findOrCreateCustomer(customerName) : null;
+    
+    // Create invoice
+    const invoice = addInvoice({
+      type: 'sale',
+      customerName: customerName || 'عميل نقدي',
+      items: cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        total: item.price * item.quantity,
+      })),
+      subtotal,
+      discount,
+      total,
+      totalInCurrency,
+      currency: selectedCurrency.code,
+      currencySymbol: selectedCurrency.symbol,
+      paymentType: 'cash',
+      status: 'paid',
+    });
+    
+    // Update customer stats
+    if (customer) {
+      updateCustomerStats(customer.id, total, false);
+    }
+    
+    toast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
     setShowCashDialog(false);
     onClearCart();
   };
 
   const confirmDebtSale = () => {
-    toast.success('تم إنشاء فاتورة الدين بنجاح');
+    // Find or create customer
+    const customer = findOrCreateCustomer(customerName);
+    
+    // Create invoice
+    const invoice = addInvoice({
+      type: 'sale',
+      customerName,
+      items: cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        total: item.price * item.quantity,
+      })),
+      subtotal,
+      discount,
+      total,
+      totalInCurrency,
+      currency: selectedCurrency.code,
+      currencySymbol: selectedCurrency.symbol,
+      paymentType: 'debt',
+      status: 'pending',
+    });
+    
+    // Create debt record
+    addDebtFromInvoice(invoice.id, customerName, '', total);
+    
+    // Update customer stats
+    updateCustomerStats(customer.id, total, true);
+    
+    toast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
     setShowDebtDialog(false);
     onClearCart();
   };
@@ -112,6 +174,8 @@ export function CartPanel({
       toast.error('يرجى ملء الحقول المطلوبة');
       return;
     }
+    // Add customer to store
+    findOrCreateCustomer(newCustomer.name, newCustomer.phone);
     onCustomerNameChange(newCustomer.name);
     toast.success('تم إضافة العميل بنجاح');
     setShowCustomerDialog(false);
