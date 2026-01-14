@@ -118,8 +118,16 @@ export function ProductGrid({
               className="pos-item text-right fade-in p-2.5 md:p-4"
               style={{ animationDelay: `${index * 30}ms` }}
             >
-              <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3">
-                <Package className="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/50" />
+              <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3 overflow-hidden">
+                {product.image ? (
+                  <img 
+                    src={product.image} 
+                    alt={product.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Package className="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/50" />
+                )}
               </div>
               <h3 className="font-semibold text-foreground text-xs md:text-sm line-clamp-2 mb-1">
                 {product.name}

@@ -1,5 +1,5 @@
 import { emitEvent, EVENTS } from './events';
-import { loadPartners, savePartners } from './partners-store';
+import { loadPartners, savePartners, ExpenseRecord } from './partners-store';
 
 const EXPENSES_STORAGE_KEY = 'hyperpos_expenses_v1';
 
@@ -72,17 +72,24 @@ export const addExpense = (expenseData: {
 }): Expense => {
   const partners = loadPartners();
   const distributions: ExpenseDistribution[] = [];
+  const expenseId = `EXP-${Date.now()}`;
+  const expenseTypeLabel = expenseData.type === 'other' && expenseData.customType 
+    ? expenseData.customType 
+    : getExpenseTypeLabel(expenseData.type);
   
   // Get partners who share expenses
   const expensePartners = partners.filter(p => p.sharesExpenses);
   
   if (expensePartners.length > 0) {
     // Calculate total share percentage of expense partners
-    const totalExpenseShare = expensePartners.reduce((sum, p) => sum + p.sharePercentage, 0);
+    // Use expenseSharePercentage if available, otherwise fallback to sharePercentage
+    const totalExpenseShare = expensePartners.reduce((sum, p) => 
+      sum + (p.expenseSharePercentage ?? p.sharePercentage), 0);
     
     expensePartners.forEach(partner => {
       // Calculate this partner's ratio of the expense
-      const partnerRatio = totalExpenseShare > 0 ? partner.sharePercentage / totalExpenseShare : 0;
+      const partnerExpenseShare = partner.expenseSharePercentage ?? partner.sharePercentage;
+      const partnerRatio = totalExpenseShare > 0 ? partnerExpenseShare / totalExpenseShare : 0;
       const partnerAmount = expenseData.amount * partnerRatio;
       
       if (partnerAmount > 0) {
@@ -96,6 +103,18 @@ export const addExpense = (expenseData: {
         // Deduct from partner's balance
         partner.totalExpensesPaid = (partner.totalExpensesPaid || 0) + partnerAmount;
         partner.currentBalance -= partnerAmount;
+        
+        // Add to expense history for tracking
+        const expenseRecord: ExpenseRecord = {
+          expenseId,
+          type: expenseTypeLabel,
+          amount: partnerAmount,
+          date: expenseData.date,
+          notes: expenseData.notes,
+          createdAt: new Date().toISOString(),
+        };
+        partner.expenseHistory = partner.expenseHistory || [];
+        partner.expenseHistory.unshift(expenseRecord);
       }
     });
     
@@ -103,11 +122,9 @@ export const addExpense = (expenseData: {
   }
   
   const newExpense: Expense = {
-    id: `EXP-${Date.now()}`,
+    id: expenseId,
     type: expenseData.type,
-    typeLabel: expenseData.type === 'other' && expenseData.customType 
-      ? expenseData.customType 
-      : getExpenseTypeLabel(expenseData.type),
+    typeLabel: expenseTypeLabel,
     customType: expenseData.customType,
     amount: expenseData.amount,
     notes: expenseData.notes,
@@ -126,10 +143,32 @@ export const addExpense = (expenseData: {
 
 export const deleteExpense = (id: string): boolean => {
   const expenses = loadExpenses();
+  const expense = expenses.find(e => e.id === id);
+  
+  if (!expense) return false;
+  
+  // Refund partners
+  if (expense.distributions.length > 0) {
+    const partners = loadPartners();
+    
+    expense.distributions.forEach(dist => {
+      const partner = partners.find(p => p.id === dist.partnerId);
+      if (partner) {
+        // Refund the amount
+        partner.totalExpensesPaid = Math.max(0, (partner.totalExpensesPaid || 0) - dist.amount);
+        partner.currentBalance += dist.amount;
+        
+        // Remove from expense history
+        partner.expenseHistory = (partner.expenseHistory || []).filter(
+          eh => eh.expenseId !== id
+        );
+      }
+    });
+    
+    savePartners(partners);
+  }
+  
   const filtered = expenses.filter(e => e.id !== id);
-  
-  if (filtered.length === expenses.length) return false;
-  
   saveExpenses(filtered);
   return true;
 };
