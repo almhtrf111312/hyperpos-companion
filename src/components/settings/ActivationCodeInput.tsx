@@ -157,7 +157,7 @@ export function ActivationCodeInput() {
                 value={code}
                 onChange={handleCodeChange}
                 className={`${isRTL ? 'pr-10' : 'pl-10'} font-mono tracking-wider`}
-                maxLength={24}
+                maxLength={25}
                 disabled={isLoading}
               />
             </div>
