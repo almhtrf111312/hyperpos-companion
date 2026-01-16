@@ -16,7 +16,18 @@ export function ActivationCodeInput() {
   const [success, setSuccess] = useState(false);
 
   const formatCode = (value: string) => {
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    // Remove non-alphanumeric characters and convert to uppercase
+    let cleaned = value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
+    
+    // If starts with HYPER-, preserve it
+    if (cleaned.startsWith('HYPER-')) {
+      const afterPrefix = cleaned.slice(6).replace(/-/g, '');
+      const parts = afterPrefix.match(/.{1,4}/g) || [];
+      return 'HYPER-' + parts.join('-');
+    }
+    
+    // Otherwise format normally with dashes every 4 chars
+    cleaned = cleaned.replace(/-/g, '');
     const parts = cleaned.match(/.{1,4}/g) || [];
     return parts.join('-');
   };
