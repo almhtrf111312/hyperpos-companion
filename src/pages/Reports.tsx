@@ -16,7 +16,8 @@ import {
   Banknote,
   Receipt,
   Share2,
-  MessageCircle
+  MessageCircle,
+  ClipboardList
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
 import { loadCategories } from '@/lib/categories-store';
 import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
 
 export default function Reports() {
   const [dateRange, setDateRange] = useState({ 
@@ -45,6 +47,7 @@ export default function Reports() {
     { id: 'products', label: 'المنتجات', icon: BarChart3 },
     { id: 'customers', label: 'العملاء', icon: Users },
     { id: 'partners', label: 'الشركاء', icon: UsersRound },
+    { id: 'partner-detailed', label: 'تفاصيل الأرباح', icon: ClipboardList },
     { id: 'expenses', label: 'المصاريف', icon: Receipt },
   ];
 
@@ -821,6 +824,11 @@ ${partnerExpenses.map(exp => {
             </>
           )}
         </div>
+      )}
+
+      {/* Partner Detailed Report */}
+      {activeReport === 'partner-detailed' && (
+        <PartnerProfitDetailedReport dateRange={dateRange} />
       )}
 
       {/* Expenses Report */}
