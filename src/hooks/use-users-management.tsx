@@ -229,9 +229,9 @@ export function useUsersManagement() {
 
   const deleteUser = async (userId: string, roleId: string, userName?: string) => {
     try {
-      // Get the current session token
+      // Ensure user is logged in
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         toast({
           title: 'خطأ',
@@ -241,25 +241,24 @@ export function useUsersManagement() {
         return false;
       }
 
-      // Call the edge function to delete the user completely
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ userId }),
-        }
-      );
+      // Call backend function to delete the user completely
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
 
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (error) {
         toast({
           title: 'خطأ',
-          description: result.error || 'فشل في حذف المستخدم',
+          description: error.message || 'فشل في حذف المستخدم',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      if (!data?.success) {
+        toast({
+          title: 'خطأ',
+          description: data?.error || 'فشل في حذف المستخدم',
           variant: 'destructive',
         });
         return false;
