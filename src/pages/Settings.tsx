@@ -80,7 +80,7 @@ type PersistedSettings = {
   backupSettings?: any;
 };
 
-const sanitizeNumberText = (value: string) => value.replace(/[^\\d.]/g, '');
+const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
 
 const loadPersistedSettings = (): PersistedSettings | null => {
   if (typeof window === 'undefined') return null;
