@@ -1,4 +1,5 @@
-// Activity Log Store - Local storage based activity tracking
+// Activity Log Store - Secure encrypted activity tracking
+import { secureSet, secureGet, secureRemove } from './secure-storage';
 
 export type ActivityType = 
   | 'login'
@@ -26,18 +27,20 @@ export interface ActivityLog {
   userId: string;
   userName: string;
   description: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: string;
 }
 
-const ACTIVITY_LOG_KEY = 'hyperpos_activity_log_v1';
+const ACTIVITY_LOG_KEY = 'activity_log';
+const STORAGE_NAMESPACE = 'hp_audit';
 const MAX_LOGS = 500; // Keep last 500 activities
+// Logs expire after 30 days for automatic cleanup
+const LOG_EXPIRY = 30 * 24 * 60 * 60 * 1000;
 
 export function loadActivityLogs(): ActivityLog[] {
   try {
-    const data = localStorage.getItem(ACTIVITY_LOG_KEY);
-    if (!data) return [];
-    return JSON.parse(data);
+    const logs = secureGet<ActivityLog[]>(ACTIVITY_LOG_KEY, { namespace: STORAGE_NAMESPACE });
+    return logs || [];
   } catch {
     return [];
   }
@@ -47,7 +50,10 @@ export function saveActivityLogs(logs: ActivityLog[]) {
   try {
     // Keep only last MAX_LOGS
     const trimmedLogs = logs.slice(0, MAX_LOGS);
-    localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(trimmedLogs));
+    secureSet(ACTIVITY_LOG_KEY, trimmedLogs, { 
+      namespace: STORAGE_NAMESPACE,
+      expiresIn: LOG_EXPIRY 
+    });
   } catch {
     // Ignore storage errors
   }
@@ -93,7 +99,9 @@ export function getActivityLogsByDateRange(startDate: Date, endDate: Date): Acti
 }
 
 export function clearActivityLogs() {
-  localStorage.removeItem(ACTIVITY_LOG_KEY);
+  secureRemove(ACTIVITY_LOG_KEY, { namespace: STORAGE_NAMESPACE });
+  // Clean up legacy unencrypted logs
+  localStorage.removeItem('hyperpos_activity_log_v1');
 }
 
 // Activity type labels

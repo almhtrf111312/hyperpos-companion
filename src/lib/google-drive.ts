@@ -1,8 +1,13 @@
 // Google Drive API integration for backup storage
+import { secureSet, secureGet, secureRemove } from './secure-storage';
 
-const GOOGLE_CLIENT_ID_KEY = 'hyperpos_google_client_id';
-const GOOGLE_TOKENS_KEY = 'hyperpos_google_tokens_enc';
-const GOOGLE_DRIVE_FOLDER_KEY = 'hyperpos_google_drive_folder';
+const GOOGLE_CLIENT_ID_KEY = 'google_client_id';
+const GOOGLE_TOKENS_KEY = 'google_tokens';
+const GOOGLE_DRIVE_FOLDER_KEY = 'google_drive_folder';
+const STORAGE_NAMESPACE = 'hp_gdrive';
+
+// Token expiration: 1 hour (Google's default)
+const TOKEN_EXPIRY = 60 * 60 * 1000;
 
 export interface GoogleDriveFile {
   id: string;
@@ -25,74 +30,62 @@ export interface GoogleDriveUserInfo {
   picture?: string;
 }
 
-// Simple obfuscation for localStorage tokens (not true encryption, but better than plaintext)
-// Note: For production, consider using httpOnly cookies via backend proxy
-const obfuscateToken = (data: string): string => {
-  try {
-    const encoded = btoa(encodeURIComponent(data));
-    // Reverse and add prefix to make it less obvious
-    return 'hp_' + encoded.split('').reverse().join('');
-  } catch {
-    return data;
-  }
-};
-
-const deobfuscateToken = (data: string): string => {
-  try {
-    if (!data.startsWith('hp_')) return data;
-    const encoded = data.slice(3).split('').reverse().join('');
-    return decodeURIComponent(atob(encoded));
-  } catch {
-    return data;
-  }
-};
-
-// Storage functions
+// Storage functions using secure storage
 export const getStoredClientId = (): string | null => {
-  return localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
+  return secureGet<string>(GOOGLE_CLIENT_ID_KEY, { namespace: STORAGE_NAMESPACE });
 };
 
 export const setStoredClientId = (clientId: string): void => {
-  localStorage.setItem(GOOGLE_CLIENT_ID_KEY, clientId);
+  secureSet(GOOGLE_CLIENT_ID_KEY, clientId, { namespace: STORAGE_NAMESPACE });
 };
 
 export const removeStoredClientId = (): void => {
-  localStorage.removeItem(GOOGLE_CLIENT_ID_KEY);
+  secureRemove(GOOGLE_CLIENT_ID_KEY, { namespace: STORAGE_NAMESPACE });
+  // Clean up legacy keys
+  localStorage.removeItem('hyperpos_google_client_id');
 };
 
 export const getStoredTokens = (): GoogleDriveTokens | null => {
-  const tokens = localStorage.getItem(GOOGLE_TOKENS_KEY);
-  if (!tokens) return null;
-  try {
-    const deobfuscated = deobfuscateToken(tokens);
-    return JSON.parse(deobfuscated);
-  } catch {
+  const tokens = secureGet<GoogleDriveTokens>(GOOGLE_TOKENS_KEY, { namespace: STORAGE_NAMESPACE });
+  
+  // Validate token expiration
+  if (tokens && tokens.expires_at && Date.now() > tokens.expires_at) {
+    // Token expired, remove it
+    removeStoredTokens();
     return null;
   }
+  
+  return tokens;
 };
 
 export const setStoredTokens = (tokens: GoogleDriveTokens): void => {
-  const tokenString = JSON.stringify(tokens);
-  const obfuscated = obfuscateToken(tokenString);
-  localStorage.setItem(GOOGLE_TOKENS_KEY, obfuscated);
+  // Store with expiration matching token lifetime
+  const expiresIn = tokens.expires_at - Date.now();
+  secureSet(GOOGLE_TOKENS_KEY, tokens, { 
+    namespace: STORAGE_NAMESPACE,
+    expiresIn: expiresIn > 0 ? expiresIn : TOKEN_EXPIRY
+  });
 };
 
 export const removeStoredTokens = (): void => {
-  localStorage.removeItem(GOOGLE_TOKENS_KEY);
-  // Also remove old unencrypted key if exists
+  secureRemove(GOOGLE_TOKENS_KEY, { namespace: STORAGE_NAMESPACE });
+  // Clean up legacy keys
+  localStorage.removeItem('hyperpos_google_tokens_enc');
   localStorage.removeItem('hyperpos_google_tokens');
 };
 
 export const getStoredFolderId = (): string | null => {
-  return localStorage.getItem(GOOGLE_DRIVE_FOLDER_KEY);
+  return secureGet<string>(GOOGLE_DRIVE_FOLDER_KEY, { namespace: STORAGE_NAMESPACE });
 };
 
 export const setStoredFolderId = (folderId: string): void => {
-  localStorage.setItem(GOOGLE_DRIVE_FOLDER_KEY, folderId);
+  secureSet(GOOGLE_DRIVE_FOLDER_KEY, folderId, { namespace: STORAGE_NAMESPACE });
 };
 
 export const removeStoredFolderId = (): void => {
-  localStorage.removeItem(GOOGLE_DRIVE_FOLDER_KEY);
+  secureRemove(GOOGLE_DRIVE_FOLDER_KEY, { namespace: STORAGE_NAMESPACE });
+  // Clean up legacy key
+  localStorage.removeItem('hyperpos_google_drive_folder');
 };
 
 // Check if tokens are valid
