@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { addInvoice } from '@/lib/invoices-store';
 import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
-import { loadProducts } from '@/lib/products-store';
+import { loadProducts, deductStockBatch } from '@/lib/products-store';
 import { distributeProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -107,21 +107,24 @@ export function CartPanel({
     // Find or create customer
     const customer = customerName ? findOrCreateCustomer(customerName) : null;
     
-    // Calculate profit
+    // Calculate profit by category for accurate partner distribution
     const products = loadProducts();
+    const profitsByCategory: Record<string, number> = {};
     let totalProfit = 0;
-    let primaryCategory = 'عام';
     
-    cart.forEach((item, idx) => {
+    cart.forEach((item) => {
       const product = products.find(p => p.id === item.id);
       if (product) {
-        totalProfit += (item.price - product.costPrice) * item.quantity;
-        if (idx === 0) primaryCategory = product.category || 'عام';
+        const itemProfit = (item.price - product.costPrice) * item.quantity;
+        const category = product.category || 'عام';
+        profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
+        totalProfit += itemProfit;
       }
     });
     
     // Apply discount to profit
     const discountedProfit = totalProfit * (1 - discount / 100);
+    const discountMultiplier = 1 - discount / 100;
     
     // Create invoice
     const invoice = addInvoice({
@@ -145,10 +148,16 @@ export function CartPanel({
       profit: discountedProfit,
     });
     
-    // Distribute profit to partners
-    if (discountedProfit > 0) {
-      distributeProfit(discountedProfit, primaryCategory, invoice.id, customerName || 'عميل نقدي', false);
-    }
+    // Distribute profit to partners by category
+    Object.entries(profitsByCategory).forEach(([category, profit]) => {
+      const categoryProfit = profit * discountMultiplier;
+      if (categoryProfit > 0) {
+        distributeProfit(categoryProfit, category, invoice.id, customerName || 'عميل نقدي', false);
+      }
+    });
+    
+    // Deduct stock from inventory
+    deductStockBatch(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
     
     // Update customer stats
     if (customer) {
@@ -175,21 +184,24 @@ export function CartPanel({
     // Find or create customer
     const customer = findOrCreateCustomer(customerName);
     
-    // Calculate profit
+    // Calculate profit by category for accurate partner distribution
     const products = loadProducts();
+    const profitsByCategory: Record<string, number> = {};
     let totalProfit = 0;
-    let primaryCategory = 'عام';
     
-    cart.forEach((item, idx) => {
+    cart.forEach((item) => {
       const product = products.find(p => p.id === item.id);
       if (product) {
-        totalProfit += (item.price - product.costPrice) * item.quantity;
-        if (idx === 0) primaryCategory = product.category || 'عام';
+        const itemProfit = (item.price - product.costPrice) * item.quantity;
+        const category = product.category || 'عام';
+        profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
+        totalProfit += itemProfit;
       }
     });
     
     // Apply discount to profit
     const discountedProfit = totalProfit * (1 - discount / 100);
+    const discountMultiplier = 1 - discount / 100;
     
     // Create invoice
     const invoice = addInvoice({
@@ -216,10 +228,16 @@ export function CartPanel({
     // Create debt record
     addDebtFromInvoice(invoice.id, customerName, '', total);
     
-    // Distribute profit to partners (as pending)
-    if (discountedProfit > 0) {
-      distributeProfit(discountedProfit, primaryCategory, invoice.id, customerName, true);
-    }
+    // Distribute profit to partners by category (as pending)
+    Object.entries(profitsByCategory).forEach(([category, profit]) => {
+      const categoryProfit = profit * discountMultiplier;
+      if (categoryProfit > 0) {
+        distributeProfit(categoryProfit, category, invoice.id, customerName, true);
+      }
+    });
+    
+    // Deduct stock from inventory
+    deductStockBatch(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
     
     // Update customer stats
     updateCustomerStats(customer.id, total, true);

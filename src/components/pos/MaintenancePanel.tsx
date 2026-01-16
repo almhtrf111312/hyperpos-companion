@@ -40,6 +40,10 @@ import {
 import { toast } from 'sonner';
 import { addMaintenanceService } from '@/lib/maintenance-store';
 import { addInvoice } from '@/lib/invoices-store';
+import { distributeProfit } from '@/lib/partners-store';
+import { addDebtFromInvoice } from '@/lib/debts-store';
+import { addActivityLog } from '@/lib/activity-log';
+import { useAuth } from '@/hooks/use-auth';
 
 interface Currency {
   code: 'USD' | 'TRY' | 'SYP';
@@ -86,6 +90,7 @@ export function MaintenancePanel({
   isMobile = false,
   fullWidth = false,
 }: MaintenancePanelProps) {
+  const { user, profile } = useAuth();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [serviceType, setServiceType] = useState('');
@@ -154,7 +159,7 @@ export function MaintenancePanel({
     });
 
     // Add to invoices store
-    addInvoice({
+    const invoice = addInvoice({
       type: 'maintenance',
       customerName,
       customerPhone,
@@ -173,6 +178,37 @@ export function MaintenancePanel({
       partsCost,
       profit,
     });
+    
+    // Distribute profit to partners (category: صيانة)
+    if (profit > 0) {
+      distributeProfit(profit, 'صيانة', invoice.id, customerName, paymentType === 'debt');
+    }
+    
+    // Create debt record if payment is debt
+    if (paymentType === 'debt') {
+      addDebtFromInvoice(invoice.id, customerName, customerPhone, servicePrice);
+    }
+    
+    // Log activity
+    if (user) {
+      addActivityLog(
+        'maintenance',
+        user.id,
+        profile?.full_name || user.email || 'مستخدم',
+        `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${servicePrice.toLocaleString()} للعميل ${customerName}`,
+        { invoiceId: invoice.id, total: servicePrice, customerName, paymentType, serviceType: getServiceLabel() }
+      );
+      
+      if (paymentType === 'debt') {
+        addActivityLog(
+          'debt_created',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم إنشاء دين صيانة للعميل ${customerName} بقيمة $${servicePrice.toLocaleString()}`,
+          { invoiceId: invoice.id, amount: servicePrice, customerName }
+        );
+      }
+    }
     
     toast.success(paymentType === 'cash' 
       ? 'تم تسجيل خدمة الصيانة نقداً' 

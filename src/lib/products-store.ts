@@ -145,3 +145,36 @@ export const getProductByBarcode = (barcode: string): POSProduct | undefined => 
   const products = getProductsForPOS();
   return products.find(p => p.barcode === barcode);
 };
+
+// Deduct stock after sale
+export const deductStock = (productId: string, quantity: number): boolean => {
+  const products = loadProducts();
+  const index = products.findIndex(p => p.id === productId);
+  if (index === -1) return false;
+  
+  const newQuantity = Math.max(0, products[index].quantity - quantity);
+  products[index].quantity = newQuantity;
+  products[index].status = getStatus(newQuantity);
+  saveProducts(products);
+  return true;
+};
+
+// Batch deduct stock for multiple items
+export const deductStockBatch = (items: { productId: string; quantity: number }[]): void => {
+  const products = loadProducts();
+  let modified = false;
+  
+  items.forEach(({ productId, quantity }) => {
+    const index = products.findIndex(p => p.id === productId);
+    if (index !== -1) {
+      const newQuantity = Math.max(0, products[index].quantity - quantity);
+      products[index].quantity = newQuantity;
+      products[index].status = getStatus(newQuantity);
+      modified = true;
+    }
+  });
+  
+  if (modified) {
+    saveProducts(products);
+  }
+};

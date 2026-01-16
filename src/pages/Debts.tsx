@@ -31,6 +31,7 @@ import {
   getDebtsStats,
   Debt 
 } from '@/lib/debts-store';
+import { confirmPendingProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -123,7 +124,15 @@ export default function Debts() {
       return;
     }
 
+    // Calculate payment ratio for partial profit confirmation
+    const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
+    
     recordPayment(selectedDebt.id, paymentAmount);
+    
+    // Confirm pending profits proportionally to payment
+    // If full payment (ratio = 1), confirm all pending profits
+    // If partial payment, confirm proportional amount
+    confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
     
     // Log activity
     if (user) {
