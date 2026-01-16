@@ -59,20 +59,41 @@ Deno.serve(async (req) => {
     // Use service role to access activation_codes table
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Find the activation code
-    const { data: activationCode, error: codeError } = await supabaseAdmin
+    console.log('Looking for code:', sanitizedCode)
+
+    // Find the activation code - try exact match first
+    let { data: activationCode, error: codeError } = await supabaseAdmin
       .from('activation_codes')
       .select('*')
       .eq('code', sanitizedCode)
       .eq('is_active', true)
       .single()
 
+    // If not found, try with ILIKE for case-insensitive match
     if (codeError || !activationCode) {
+      console.log('Exact match failed, trying case-insensitive search')
+      const { data: codes } = await supabaseAdmin
+        .from('activation_codes')
+        .select('*')
+        .eq('is_active', true)
+      
+      console.log('Available codes:', codes?.map(c => c.code))
+      
+      // Find matching code case-insensitively
+      activationCode = codes?.find(c => 
+        c.code.toUpperCase().replace(/[-\s]/g, '') === sanitizedCode.replace(/[-\s]/g, '')
+      ) || null
+    }
+
+    if (!activationCode) {
+      console.log('No matching code found for:', sanitizedCode)
       return new Response(
         JSON.stringify({ success: false, error: 'كود التفعيل غير صالح أو غير موجود' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    console.log('Found activation code:', activationCode.id)
 
     // Check if code has expired
     if (activationCode.expires_at && new Date(activationCode.expires_at) < new Date()) {
