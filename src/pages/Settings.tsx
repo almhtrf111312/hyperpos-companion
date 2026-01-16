@@ -548,8 +548,13 @@ export default function Settings() {
 
         toast({
           title: "تمت الاستعادة بنجاح",
-          description: `تم استعادة النسخة الاحتياطية من ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString('ar-SA') : 'تاريخ غير معروف'}`,
+          description: `تم استعادة النسخة الاحتياطية. سيتم إعادة تحميل الصفحة...`,
         });
+        
+        // Reload the page after a short delay to apply all changes
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } catch (error) {
         console.error('Import error:', error);
         toast({
