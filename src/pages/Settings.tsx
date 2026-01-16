@@ -37,7 +37,7 @@ import {
   Lock,
   Banknote
 } from 'lucide-react';
-import { encryptBackup, decryptBackup, isEncryptedBackup, getBackupFileExtension } from '@/lib/backup-encryption';
+// Backup encryption removed - using plain JSON now
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 import { ThemeSection } from '@/components/settings/ThemeSection';
@@ -403,7 +403,7 @@ export default function Settings() {
       setBackups([newBackup, ...backups]);
       setIsBackingUp(false);
 
-      // Create encrypted backup payload with ALL localStorage data
+      // Create backup payload with ALL localStorage data
       const allData: Record<string, unknown> = {};
       
       // Get all localStorage keys and their values
@@ -443,30 +443,30 @@ export default function Settings() {
         localStorageData: allData,
       };
 
-      // Encrypt the backup data
-      const encryptedData = encryptBackup(payload);
-      const blob = new Blob([encryptedData], { type: 'application/octet-stream' });
+      // Create JSON backup (no encryption)
+      const jsonData = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      // Generate filename with store email and date
-      const storeEmail = storeSettings.email.replace(/[^a-zA-Z0-9@._-]/g, '_') || 'hyperpos';
+      // Generate filename with store name and date
+      const storeName = storeSettings.name.replace(/[^a-zA-Z0-9أ-ي\s_-]/g, '').trim() || 'hyperpos';
       const dateStr = new Date().toISOString().split('T')[0];
-      link.download = `${storeEmail}_${dateStr}${getBackupFileExtension()}`;
+      link.download = `backup_${storeName}_${dateStr}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       toast({
-        title: "تم النسخ الاحتياطي المشفر",
-        description: "تم إنشاء نسخة احتياطية مشفرة وتنزيلها بنجاح",
+        title: "تم النسخ الاحتياطي",
+        description: "تم تنزيل النسخة الاحتياطية في مجلد التنزيلات",
       });
     }, 800);
   };
 
-  // Import encrypted backup file
-  const handleImportEncryptedBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Import backup file (JSON format)
+  const handleImportBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -477,33 +477,31 @@ export default function Settings() {
       try {
         const fileContent = e.target?.result as string;
         
-        // Check if it's an encrypted backup
-        if (!isEncryptedBackup(fileContent)) {
+        // Parse JSON backup
+        let data: any;
+        try {
+          data = JSON.parse(fileContent);
+        } catch {
           toast({
             title: "خطأ",
-            description: "الملف غير صالح أو غير مشفر بتنسيق HyperPOS",
+            description: "الملف غير صالح. يجب أن يكون ملف JSON صحيح",
             variant: "destructive",
           });
           setIsImporting(false);
           return;
         }
 
-        // Decrypt the backup
-        const decryptedData = decryptBackup(fileContent);
-        
-        if (!decryptedData) {
+        // Validate backup structure
+        if (!data.version || !data.exportedAt) {
           toast({
-            title: "خطأ في فك التشفير",
-            description: "فشل في فك تشفير الملف. تأكد من أن الملف صحيح.",
+            title: "خطأ",
+            description: "صيغة ملف النسخة الاحتياطية غير صحيحة",
             variant: "destructive",
           });
           setIsImporting(false);
           return;
         }
 
-        // Restore the data
-        const data = decryptedData as any;
-        
         // Restore ALL localStorage data if available
         if (data.localStorageData && typeof data.localStorageData === 'object') {
           Object.entries(data.localStorageData).forEach(([key, value]) => {
@@ -1011,14 +1009,14 @@ export default function Settings() {
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
             <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">النسخ الاحتياطي</h2>
             
-            {/* Encrypted Backup Section */}
+            {/* Backup Section */}
             <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 space-y-4">
               <div className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-foreground">النسخ الاحتياطي المشفر</h3>
+                <Database className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-foreground">النسخ الاحتياطي</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                قم بإنشاء نسخة احتياطية مشفرة تحتوي على جميع بيانات المحل
+                قم بإنشاء نسخة احتياطية تحتوي على جميع بيانات المحل
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleBackupNow} disabled={isBackingUp} className="flex-1 min-w-[140px]">
@@ -1027,18 +1025,18 @@ export default function Settings() {
                   ) : (
                     <Download className="w-4 h-4 ml-2" />
                   )}
-                  تنزيل نسخة مشفرة
+                  تنزيل نسخة احتياطية
                 </Button>
                 <div className="flex-1 min-w-[140px]">
                   <input
                     type="file"
-                    accept=".hpbk"
-                    onChange={handleImportEncryptedBackup}
+                    accept=".json"
+                    onChange={handleImportBackup}
                     className="hidden"
-                    id="import-encrypted-backup"
+                    id="import-backup"
                     ref={importInputRef}
                   />
-                  <label htmlFor="import-encrypted-backup" className="w-full">
+                  <label htmlFor="import-backup" className="w-full">
                     <Button variant="outline" className="w-full" asChild disabled={isImporting}>
                       <span className="cursor-pointer">
                         {isImporting ? (
@@ -1046,7 +1044,7 @@ export default function Settings() {
                         ) : (
                           <FileUp className="w-4 h-4 ml-2" />
                         )}
-                        استيراد نسخة مشفرة
+                        استيراد نسخة احتياطية
                       </span>
                     </Button>
                   </label>
