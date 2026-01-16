@@ -44,6 +44,7 @@ import { ThemeSection } from '@/components/settings/ThemeSection';
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
 import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
 import { LicenseManagement } from '@/components/settings/LicenseManagement';
+import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,8 @@ const settingsTabs = [
   { id: 'users', label: 'المستخدمين', labelKey: 'settings.users', icon: User },
   { id: 'activity', label: 'سجل النشاط', labelKey: 'settings.activityLog', icon: Activity },
   { id: 'backup', label: 'النسخ الاحتياطي', labelKey: 'settings.backup', icon: Database },
-  { id: 'licenses', label: 'التراخيص', labelKey: 'settings.licenses', icon: Shield, adminOnly: true },
+  { id: 'license', label: 'الترخيص', labelKey: 'settings.license', icon: Key },
+  { id: 'licenses', label: 'إدارة التراخيص', labelKey: 'settings.licenses', icon: Shield, adminOnly: true },
 ];
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -1129,6 +1131,9 @@ export default function Settings() {
             </div>
           </div>
         );
+
+      case 'license':
+        return <ActivationCodeInput />;
 
       case 'licenses':
         return <LicenseManagement />;
