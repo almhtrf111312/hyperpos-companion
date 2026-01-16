@@ -229,17 +229,37 @@ export function useUsersManagement() {
 
   const deleteUser = async (userId: string, roleId: string, userName?: string) => {
     try {
-      // Delete the role first
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id', roleId);
-
-      if (roleError) {
-        console.error('Error deleting role:', roleError);
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
         toast({
           title: 'خطأ',
-          description: 'فشل في حذف المستخدم: ' + roleError.message,
+          description: 'يجب تسجيل الدخول لحذف المستخدمين',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Call the edge function to delete the user completely
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: 'خطأ',
+          description: result.error || 'فشل في حذف المستخدم',
           variant: 'destructive',
         });
         return false;
@@ -258,7 +278,7 @@ export function useUsersManagement() {
 
       toast({
         title: 'تم الحذف',
-        description: 'تم حذف المستخدم بنجاح',
+        description: 'تم حذف المستخدم بالكامل من النظام',
       });
 
       await fetchUsers();
