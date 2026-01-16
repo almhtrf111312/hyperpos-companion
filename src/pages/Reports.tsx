@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -31,6 +31,7 @@ import { loadCategories } from '@/lib/categories-store';
 import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
+import { downloadText, downloadCSV, downloadJSON, isNativePlatform } from '@/lib/file-download';
 
 export default function Reports() {
   const [dateRange, setDateRange] = useState({ 
@@ -301,7 +302,7 @@ export default function Reports() {
     };
   }, [dateRange]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = useCallback(async () => {
     const content = `
 تقرير المبيعات
 ================
@@ -324,20 +325,17 @@ ${reportData.topProducts.map((p, i) => `${i + 1}. ${p.name}: ${p.sales} قطعة
 ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب - $${formatNumber(c.total)}`).join('\n')}
     `;
     
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const filename = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.txt`;
+    const success = await downloadText(filename, content);
     
-    toast.success('تم تصدير التقرير بنجاح');
-  };
+    if (success) {
+      toast.success('تم تصدير التقرير بنجاح');
+    } else {
+      toast.error('فشل في تصدير التقرير');
+    }
+  }, [dateRange, reportData]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = useCallback(async () => {
     const headers = ['التاريخ', 'المبيعات', 'الأرباح', 'الطلبات'];
     const rows = reportData.dailySales.map(d => [d.date, d.sales, d.profit, d.orders]);
     
@@ -346,22 +344,18 @@ ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب
       ...rows.map(row => row.join(','))
     ].join('\n');
     
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const filename = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.csv`;
+    const success = await downloadCSV(filename, csvContent);
     
-    toast.success('تم تصدير التقرير بصيغة Excel بنجاح');
-  };
+    if (success) {
+      toast.success('تم تصدير التقرير بصيغة Excel بنجاح');
+    } else {
+      toast.error('فشل في تصدير التقرير');
+    }
+  }, [dateRange, reportData]);
 
   // Export expenses report as Excel
-  const handleExportExpensesExcel = () => {
+  const handleExportExpensesExcel = useCallback(async () => {
     const headers = ['التاريخ', 'النوع', 'المبلغ', 'الملاحظات', 'توزيع الشركاء'];
     const rows = expenseReportData.expenses.map(exp => [
       exp.date,
@@ -376,19 +370,15 @@ ${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
     
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `تقرير_المصاريف_${dateRange.from}_${dateRange.to}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const filename = `تقرير_المصاريف_${dateRange.from}_${dateRange.to}.csv`;
+    const success = await downloadCSV(filename, csvContent);
     
-    toast.success('تم تصدير تقرير المصاريف بنجاح');
-  };
+    if (success) {
+      toast.success('تم تصدير تقرير المصاريف بنجاح');
+    } else {
+      toast.error('فشل في تصدير تقرير المصاريف');
+    }
+  }, [dateRange, expenseReportData]);
 
   // Generate partner expense report for WhatsApp
   const handleShareExpenseReport = (partnerName: string) => {
@@ -420,7 +410,7 @@ ${partnerExpenses.map(exp => {
     toast.success('تم فتح واتساب للمشاركة');
   };
 
-  const handleBackup = () => {
+  const handleBackup = useCallback(async () => {
     const backupData = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
@@ -431,18 +421,15 @@ ${partnerExpenses.map(exp => {
       }
     };
     
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const filename = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
+    const success = await downloadJSON(filename, backupData);
     
-    toast.success('تم إنشاء النسخة الاحتياطية بنجاح');
-  };
+    if (success) {
+      toast.success(isNativePlatform() ? 'تم حفظ النسخة الاحتياطية بنجاح' : 'تم إنشاء النسخة الاحتياطية بنجاح');
+    } else {
+      toast.error('فشل في إنشاء النسخة الاحتياطية');
+    }
+  }, []);
 
   // Find max sales for chart scaling
   const maxSales = Math.max(...reportData.dailySales.map(d => d.sales), 1);

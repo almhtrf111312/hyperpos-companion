@@ -37,7 +37,7 @@ import {
   Lock,
   Banknote
 } from 'lucide-react';
-// Backup encryption removed - using plain JSON now
+import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 import { ThemeSection } from '@/components/settings/ThemeSection';
@@ -395,7 +395,7 @@ export default function Settings() {
 
   const handleBackupNow = () => {
     setIsBackingUp(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       const newBackup: BackupData = {
         id: Date.now().toString(),
         date: new Date().toLocaleString('ar-SA'),
@@ -445,25 +445,28 @@ export default function Settings() {
         localStorageData: allData,
       };
 
-      // Create JSON backup (no encryption)
-      const jsonData = JSON.stringify(payload, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
       // Generate filename with store name and date
       const storeName = storeSettings.name.replace(/[^a-zA-Z0-9أ-ي\s_-]/g, '').trim() || 'hyperpos';
       const dateStr = new Date().toISOString().split('T')[0];
-      link.download = `backup_${storeName}_${dateStr}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const filename = `backup_${storeName}_${dateStr}.json`;
 
-      toast({
-        title: "تم النسخ الاحتياطي",
-        description: "تم تنزيل النسخة الاحتياطية في مجلد التنزيلات",
-      });
+      // Use cross-platform download utility
+      const success = await downloadJSON(filename, payload);
+
+      if (success) {
+        toast({
+          title: "تم النسخ الاحتياطي",
+          description: isNativePlatform() 
+            ? "تم حفظ النسخة الاحتياطية بنجاح" 
+            : "تم تنزيل النسخة الاحتياطية في مجلد التنزيلات",
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: "فشل في حفظ النسخة الاحتياطية",
+          variant: "destructive",
+        });
+      }
     }, 800);
   };
 
@@ -598,7 +601,7 @@ export default function Settings() {
     });
   };
 
-  const handleExportData = () => {
+  const handleExportData = async () => {
     const payload = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
@@ -614,20 +617,23 @@ export default function Settings() {
       backups,
     };
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `hyperpos_export_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const filename = `hyperpos_export_${new Date().toISOString().split('T')[0]}.json`;
+    const success = await downloadJSON(filename, payload);
 
-    toast({
-      title: 'تم التصدير',
-      description: 'تم تنزيل ملف البيانات بنجاح',
-    });
+    if (success) {
+      toast({
+        title: 'تم التصدير',
+        description: isNativePlatform() 
+          ? 'تم حفظ ملف البيانات بنجاح' 
+          : 'تم تنزيل ملف البيانات بنجاح',
+      });
+    } else {
+      toast({
+        title: 'خطأ',
+        description: 'فشل في تصدير البيانات',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleImportData = () => {
