@@ -113,11 +113,11 @@ export function ActivationScreen() {
                 <Key className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground ${isRTL ? 'right-3' : 'left-3'}`} />
                 <Input
                   type="text"
-                  placeholder={isRTL ? 'XXXX-XXXX-XXXX-XXXX' : 'XXXX-XXXX-XXXX-XXXX'}
+                  placeholder="HYPER-XXXX-XXXX-XXXX-XXXX"
                   value={code}
                   onChange={handleCodeChange}
                   className={`${isRTL ? 'pr-10 text-right' : 'pl-10'} text-center font-mono tracking-wider`}
-                  maxLength={19}
+                  maxLength={25}
                   disabled={isLoading}
                 />
               </div>
