@@ -1152,7 +1152,7 @@ export default function Settings() {
           <div className="bg-card rounded-2xl border border-border p-2">
             <nav className="space-y-1">
               {settingsTabs
-                .filter(tab => !tab.adminOnly || users.find(u => u.id === currentUser?.id)?.role === 'admin')
+                .filter(tab => !tab.adminOnly || users.find(u => u.user_id === currentUser?.id)?.role === 'admin')
                 .map((tab) => (
                 <button
                   key={tab.id}
