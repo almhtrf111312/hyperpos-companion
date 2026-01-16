@@ -39,8 +39,17 @@ export function ActivationScreen() {
 
   const formatCode = (value: string) => {
     // Remove non-alphanumeric characters and convert to uppercase
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    // Add dashes every 4 characters for better readability
+    let cleaned = value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
+    
+    // If starts with HYPER-, preserve it
+    if (cleaned.startsWith('HYPER-')) {
+      const afterPrefix = cleaned.slice(6).replace(/-/g, '');
+      const parts = afterPrefix.match(/.{1,4}/g) || [];
+      return 'HYPER-' + parts.join('-');
+    }
+    
+    // Otherwise format normally with dashes every 4 chars
+    cleaned = cleaned.replace(/-/g, '');
     const parts = cleaned.match(/.{1,4}/g) || [];
     return parts.join('-');
   };
