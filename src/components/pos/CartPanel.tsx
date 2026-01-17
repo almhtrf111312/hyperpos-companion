@@ -29,7 +29,7 @@ import { addInvoice } from '@/lib/invoices-store';
 import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
 import { loadProducts, deductStockBatch } from '@/lib/products-store';
-import { distributeProfit } from '@/lib/partners-store';
+import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -148,13 +148,17 @@ export function CartPanel({
       profit: discountedProfit,
     });
     
-    // Distribute profit to partners by category
-    Object.entries(profitsByCategory).forEach(([category, profit]) => {
-      const categoryProfit = profit * discountMultiplier;
-      if (categoryProfit > 0) {
-        distributeProfit(categoryProfit, category, invoice.id, customerName || 'عميل نقدي', false);
-      }
-    });
+    // Distribute profit to partners by category - استدعاء واحد لتجنب Race Condition
+    const categoryProfits = Object.entries(profitsByCategory)
+      .filter(([_, profit]) => profit * discountMultiplier > 0)
+      .map(([category, profit]) => ({
+        category,
+        profit: profit * discountMultiplier
+      }));
+    
+    if (categoryProfits.length > 0) {
+      distributeDetailedProfit(categoryProfits, invoice.id, customerName || 'عميل نقدي', false);
+    }
     
     // Deduct stock from inventory
     deductStockBatch(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
@@ -228,13 +232,17 @@ export function CartPanel({
     // Create debt record
     addDebtFromInvoice(invoice.id, customerName, '', total);
     
-    // Distribute profit to partners by category (as pending)
-    Object.entries(profitsByCategory).forEach(([category, profit]) => {
-      const categoryProfit = profit * discountMultiplier;
-      if (categoryProfit > 0) {
-        distributeProfit(categoryProfit, category, invoice.id, customerName, true);
-      }
-    });
+    // Distribute profit to partners by category (as pending) - استدعاء واحد لتجنب Race Condition
+    const categoryProfits = Object.entries(profitsByCategory)
+      .filter(([_, profit]) => profit * discountMultiplier > 0)
+      .map(([category, profit]) => ({
+        category,
+        profit: profit * discountMultiplier
+      }));
+    
+    if (categoryProfits.length > 0) {
+      distributeDetailedProfit(categoryProfits, invoice.id, customerName, true);
+    }
     
     // Deduct stock from inventory
     deductStockBatch(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
