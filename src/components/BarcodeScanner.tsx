@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useZxing } from 'react-zxing';
-import { X, Camera, SwitchCamera, ZoomIn } from 'lucide-react';
+import { X, Camera, SwitchCamera, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Capacitor } from '@capacitor/core';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -36,10 +37,14 @@ const playBeep = () => {
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<'1x' | '2x'>('1x');
+  const [useCssZoom, setUseCssZoom] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [deviceIndex, setDeviceIndex] = useState(0);
   const acceptedRef = useRef(false);
   const lastScanRef = useRef<{ text: string; ts: number } | null>(null);
+  
+  const isNativePlatform = Capacitor.isNativePlatform();
 
   // Reset on open
   useEffect(() => {
@@ -47,6 +52,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       acceptedRef.current = false;
       lastScanRef.current = null;
       setIsZoomed(false);
+      setZoomLevel('1x');
+      setUseCssZoom(false);
       setError(null);
     }
   }, [isOpen]);
@@ -116,6 +123,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     constraints: {
       video: {
         facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        // @ts-ignore - focusMode is supported on some devices
+        focusMode: 'continuous',
       }
     }
   });
@@ -128,45 +139,30 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     if (devices.length <= 1) return;
     setDeviceIndex((prev) => (prev + 1) % devices.length);
     setIsZoomed(false);
+    setZoomLevel('1x');
+    setUseCssZoom(false);
   };
 
   const toggleZoom = useCallback(async () => {
+    const newZoomed = !isZoomed;
+    
+    // On native platform, use CSS zoom to avoid camera freezing issues
+    if (isNativePlatform) {
+      setIsZoomed(newZoomed);
+      setZoomLevel(newZoomed ? '2x' : '1x');
+      setUseCssZoom(true);
+      return;
+    }
+    
     try {
       const videoElement = ref.current as HTMLVideoElement;
-      if (!videoElement || !videoElement.srcObject) return;
-      
-      const stream = videoElement.srcObject as MediaStream;
-      const track = stream.getVideoTracks()[0];
-      
-      if (track && 'getCapabilities' in track) {
-        const capabilities = track.getCapabilities() as any;
-        
-        if (capabilities.zoom) {
-          const maxZoom = capabilities.zoom.max || 2;
-          const targetZoom = isZoomed ? 1 : Math.min(2, maxZoom);
-          
-          await track.applyConstraints({
-            advanced: [{ zoom: targetZoom } as any]
-          });
-          
-          setIsZoomed(!isZoomed);
-        }
+      if (!videoElement || !videoElement.srcObject) {
+        // Fallback to CSS zoom
+        setIsZoomed(newZoomed);
+        setZoomLevel(newZoomed ? '2x' : '1x');
+        setUseCssZoom(true);
+        return;
       }
-    } catch (e) {
-      console.log('Zoom not supported on this device');
-    }
-  }, [isZoomed, ref]);
-
-  // Apply default zoom x2 immediately when camera starts
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const applyDefaultZoom = async () => {
-      // Wait for camera to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const videoElement = ref.current as HTMLVideoElement;
-      if (!videoElement?.srcObject) return;
       
       const stream = videoElement.srcObject as MediaStream;
       const track = stream.getVideoTracks()[0];
@@ -174,22 +170,36 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       if (track && 'getCapabilities' in track) {
         const capabilities = track.getCapabilities() as any;
         
-        if (capabilities.zoom) {
-          const targetZoom = Math.min(2, capabilities.zoom.max || 2);
+        if (capabilities.zoom && capabilities.zoom.max > 1) {
+          const maxZoom = capabilities.zoom.max || 2;
+          const targetZoom = newZoomed ? Math.min(2, maxZoom) : 1;
+          
           try {
             await track.applyConstraints({
               advanced: [{ zoom: targetZoom } as any]
             });
-            setIsZoomed(true);
-          } catch (e) {
-            console.log('Could not apply default zoom');
+            
+            setIsZoomed(newZoomed);
+            setZoomLevel(newZoomed ? '2x' : '1x');
+            setUseCssZoom(false);
+            return;
+          } catch (constraintError) {
+            console.log('applyConstraints failed, using CSS zoom fallback');
           }
         }
       }
-    };
-    
-    applyDefaultZoom();
-  }, [isOpen, deviceIndex, ref]);
+      
+      // Fallback to CSS zoom if hardware zoom not available
+      setIsZoomed(newZoomed);
+      setZoomLevel(newZoomed ? '2x' : '1x');
+      setUseCssZoom(true);
+    } catch (e) {
+      console.log('Zoom error, using CSS fallback:', e);
+      setIsZoomed(newZoomed);
+      setZoomLevel(newZoomed ? '2x' : '1x');
+      setUseCssZoom(true);
+    }
+  }, [isZoomed, isNativePlatform, ref]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -210,10 +220,14 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
 
         {/* Scanner Container */}
-        <div className="relative pt-14 pb-24">
+        <div className="relative pt-14 pb-24 overflow-hidden">
           <video 
             ref={ref} 
-            className="w-full min-h-[300px] bg-black object-cover"
+            className="w-full min-h-[300px] bg-black object-cover transition-transform duration-200"
+            style={{
+              transform: useCssZoom && isZoomed ? 'scale(2)' : 'scale(1)',
+              transformOrigin: 'center center',
+            }}
             playsInline
             muted
           />
@@ -232,12 +246,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
                 <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan" />
               </div>
               
-              {/* Zoom indicator */}
-              {isZoomed && (
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-primary/80 text-white text-xs px-2 py-1 rounded">
-                  تكبير 2x
-                </div>
-              )}
+              {/* Zoom indicator - always visible */}
+              <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 text-white text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                isZoomed ? 'bg-primary' : 'bg-black/60'
+              }`}>
+                {zoomLevel} {useCssZoom && isZoomed && '(رقمي)'}
+              </div>
             </div>
           </div>
 
@@ -266,14 +280,25 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             إغلاق
           </Button>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {/* Zoom level badge */}
+            <span className={`text-xs font-bold px-2 py-1 rounded ${
+              isZoomed ? 'bg-primary text-primary-foreground' : 'bg-white/20 text-white'
+            }`}>
+              {zoomLevel}
+            </span>
+            
             <Button
               variant="outline"
               size="icon"
               onClick={toggleZoom}
-              className={`rounded-full border-white/20 text-white hover:bg-white/20 ${isZoomed ? 'bg-primary/50' : 'bg-white/10'}`}
+              className={`rounded-full border-2 transition-all ${
+                isZoomed 
+                  ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/80' 
+                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+              }`}
             >
-              <ZoomIn className="w-5 h-5" />
+              {isZoomed ? <ZoomOut className="w-5 h-5" /> : <ZoomIn className="w-5 h-5" />}
             </Button>
             
             {devices.length > 1 && (
