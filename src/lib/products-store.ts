@@ -12,6 +12,7 @@ export interface Product {
   costPrice: number;
   salePrice: number;
   quantity: number;
+  minStockLevel?: number; // Fix #13: Minimum stock level for alerts
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
   expiryDate?: string; // Optional expiry date for pharmacy/grocery
   image?: string; // Base64 image for product
@@ -20,10 +21,31 @@ export interface Product {
 // No default products - start with empty inventory
 const defaultProducts: Product[] = [];
 
-export const getStatus = (quantity: number): 'in_stock' | 'low_stock' | 'out_of_stock' => {
+// Fix #13: Enhanced status check with custom minStockLevel
+export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' | 'low_stock' | 'out_of_stock' => {
   if (quantity === 0) return 'out_of_stock';
-  if (quantity <= 5) return 'low_stock';
+  const threshold = minStockLevel ?? 5; // Default to 5 if not set
+  if (quantity <= threshold) return 'low_stock';
   return 'in_stock';
+};
+
+// Fix #13: Get products below their minimum stock level
+export const getLowStockProducts = (): Product[] => {
+  const products = loadProducts();
+  return products.filter(p => {
+    const threshold = p.minStockLevel ?? 5;
+    return p.quantity <= threshold;
+  });
+};
+
+// Fix #13: Get critical stock alerts (products with quantity = 0 or below half of min level)
+export const getCriticalStockAlerts = (): Product[] => {
+  const products = loadProducts();
+  return products.filter(p => {
+    if (p.quantity === 0) return true;
+    const threshold = p.minStockLevel ?? 5;
+    return p.quantity <= Math.floor(threshold / 2);
+  });
 };
 
 export const loadProducts = (): Product[] => {

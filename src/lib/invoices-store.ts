@@ -86,11 +86,40 @@ export const saveInvoices = (invoices: Invoice[]): boolean => {
   return true;
 };
 
+// Fix #14: Sequential invoice numbering
+const INVOICE_COUNTER_KEY = 'hyperpos_invoice_counter_v1';
+
+const getNextInvoiceNumber = (): string => {
+  try {
+    const year = new Date().getFullYear();
+    const counterData = localStorage.getItem(INVOICE_COUNTER_KEY);
+    let counter = { year, number: 0 };
+    
+    if (counterData) {
+      const parsed = JSON.parse(counterData);
+      if (parsed.year === year) {
+        counter = parsed;
+      }
+      // Reset counter if year changed
+    }
+    
+    counter.number += 1;
+    localStorage.setItem(INVOICE_COUNTER_KEY, JSON.stringify(counter));
+    
+    // Format: INV-2026-001
+    return `INV-${year}-${String(counter.number).padStart(3, '0')}`;
+  } catch (error) {
+    console.error('Failed to generate invoice number:', error);
+    // Fallback to timestamp-based ID
+    return `INV-${Date.now()}`;
+  }
+};
+
 export const addInvoice = (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Invoice => {
   const invoices = loadInvoices();
   const newInvoice: Invoice = {
     ...invoice,
-    id: `INV-${Date.now()}`,
+    id: getNextInvoiceNumber(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
