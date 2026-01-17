@@ -1,7 +1,8 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useCallback } from 'react';
 import { Sidebar, MobileMenuTrigger } from './Sidebar';
 import { NotificationBell } from './NotificationBell';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -12,6 +13,13 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  // Close sidebar on orientation change to prevent stuck overlay
+  useOrientationChange(useCallback(() => {
+    if (sidebarOpen && isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [sidebarOpen, isMobile]));
 
   return (
     <div className="min-h-screen bg-background">

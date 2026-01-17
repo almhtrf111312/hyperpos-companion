@@ -10,12 +10,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLocation } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function ExitConfirmDialog() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
+    // Disable on mobile - uses native back button/gestures
+    // This prevents invisible overlay issues during screen rotation
+    if (isMobile) return;
+
     // Handle browser back button and gesture navigation
     const handlePopState = (event: PopStateEvent) => {
       // Only show dialog on main routes
@@ -34,7 +40,7 @@ export function ExitConfirmDialog() {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [location.pathname]);
+  }, [location.pathname, isMobile]);
 
   const handleConfirmExit = () => {
     setShowExitDialog(false);
@@ -43,6 +49,9 @@ export function ExitConfirmDialog() {
     // If window.close() doesn't work (common in browsers), go back
     window.history.go(-2);
   };
+
+  // Don't render anything on mobile to prevent overlay issues
+  if (isMobile) return null;
 
   return (
     <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>

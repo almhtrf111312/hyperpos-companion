@@ -74,10 +74,52 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
   const { user, isLoading: authLoading } = useAuth();
-  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial } = useLicense();
+  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense } = useLicense();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showChoice, setShowChoice] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Timeout to detect stuck loading state (prevents UI blocking on rotation)
+  useEffect(() => {
+    if (authLoading || isLoading) {
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 5000); // 5 seconds timeout
+
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [authLoading, isLoading]);
+
+  // Show loading with retry button if stuck
+  if ((authLoading || isLoading) && loadingTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">جاري التحميل...</p>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setLoadingTimeout(false);
+              checkLicense();
+            }}
+          >
+            إعادة المحاولة
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            إعادة تحميل التطبيق
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading while checking auth or license
   if (authLoading || isLoading) {
