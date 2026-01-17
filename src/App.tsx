@@ -31,18 +31,27 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 
-// Clear demo data on app start (clears old version data)
-clearDemoDataOnce();
-
-// Load synchronized demo data (products, invoices, debts, customers)
-loadDemoData();
-
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const [setupComplete, setSetupComplete] = useState(() => 
-    localStorage.getItem('hyperpos_setup_complete') === 'true'
-  );
+  const [setupComplete, setSetupComplete] = useState(() => {
+    try {
+      return localStorage.getItem('hyperpos_setup_complete') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Safe demo data loading inside React lifecycle
+  useEffect(() => {
+    try {
+      clearDemoDataOnce();
+      loadDemoData();
+    } catch (error) {
+      console.error('[App] Failed to initialize demo data:', error);
+      // App continues to work even if demo data fails
+    }
+  }, []);
 
   if (!setupComplete) {
     return <SetupWizard onComplete={() => setSetupComplete(true)} />;

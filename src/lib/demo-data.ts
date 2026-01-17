@@ -531,23 +531,40 @@ const DEBTS_KEY = 'hyperpos_debts_v1';
 const DEMO_LOADED_KEY = 'hyperpos_demo_loaded_v2';
 
 export const loadDemoData = (): void => {
-  // Check if demo data was already loaded
-  if (localStorage.getItem(DEMO_LOADED_KEY)) {
-    console.log('[DemoData] Demo data already loaded, skipping...');
-    return;
-  }
-
   try {
+    // Check if demo data was already loaded
+    const demoLoaded = localStorage.getItem(DEMO_LOADED_KEY);
+    if (demoLoaded) {
+      console.log('[DemoData] Demo data already loaded, skipping...');
+      return;
+    }
+
     // Only load if data is empty
     const existingProducts = localStorage.getItem(PRODUCTS_KEY);
     const existingCustomers = localStorage.getItem(CUSTOMERS_KEY);
     const existingInvoices = localStorage.getItem(INVOICES_KEY);
     const existingDebts = localStorage.getItem(DEBTS_KEY);
 
-    const hasProducts = existingProducts && JSON.parse(existingProducts).length > 0;
-    const hasCustomers = existingCustomers && JSON.parse(existingCustomers).length > 0;
-    const hasInvoices = existingInvoices && JSON.parse(existingInvoices).length > 0;
-    const hasDebts = existingDebts && JSON.parse(existingDebts).length > 0;
+    let hasProducts = false;
+    let hasCustomers = false;
+    let hasInvoices = false;
+    let hasDebts = false;
+
+    try {
+      hasProducts = existingProducts ? JSON.parse(existingProducts).length > 0 : false;
+    } catch { hasProducts = false; }
+    
+    try {
+      hasCustomers = existingCustomers ? JSON.parse(existingCustomers).length > 0 : false;
+    } catch { hasCustomers = false; }
+    
+    try {
+      hasInvoices = existingInvoices ? JSON.parse(existingInvoices).length > 0 : false;
+    } catch { hasInvoices = false; }
+    
+    try {
+      hasDebts = existingDebts ? JSON.parse(existingDebts).length > 0 : false;
+    } catch { hasDebts = false; }
 
     // If any data exists, don't overwrite
     if (hasProducts || hasCustomers || hasInvoices || hasDebts) {
@@ -570,6 +587,7 @@ export const loadDemoData = (): void => {
     console.log(`  - ${demoDebts.length} debts`);
   } catch (error) {
     console.error('[DemoData] Failed to load demo data:', error);
+    // App continues to work even if demo data fails
   }
 };
 
