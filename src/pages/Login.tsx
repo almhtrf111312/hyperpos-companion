@@ -5,6 +5,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, Store, Eye, EyeOff } from 'lucide-react';
@@ -13,6 +14,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
@@ -22,7 +24,7 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(email, password, stayLoggedIn);
 
     if (error) {
       toast.error(t('auth.invalidCredentials'));
@@ -84,6 +86,22 @@ export default function Login() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Stay Logged In Checkbox */}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="stayLoggedIn"
+                checked={stayLoggedIn}
+                onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
+                disabled={isLoading}
+              />
+              <Label 
+                htmlFor="stayLoggedIn" 
+                className="text-sm font-normal cursor-pointer select-none"
+              >
+                تذكرني على هذا الجهاز
+              </Label>
             </div>
           </CardContent>
           
