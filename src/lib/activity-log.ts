@@ -21,6 +21,13 @@ export type ActivityType =
   | 'invoice_created'
   | 'invoice_deleted';
 
+// Device info for tracking action origin
+interface DeviceInfo {
+  platform: 'web' | 'android' | 'ios';
+  userAgent: string;
+  screenSize: string;
+}
+
 export interface ActivityLog {
   id: string;
   type: ActivityType;
@@ -29,6 +36,7 @@ export interface ActivityLog {
   description: string;
   details?: Record<string, unknown>;
   timestamp: string;
+  deviceInfo?: DeviceInfo;
 }
 
 const ACTIVITY_LOG_KEY = 'activity_log';
@@ -36,6 +44,27 @@ const STORAGE_NAMESPACE = 'hp_audit';
 const MAX_LOGS = 500; // Keep last 500 activities
 // Logs expire after 30 days for automatic cleanup
 const LOG_EXPIRY = 30 * 24 * 60 * 60 * 1000;
+const LOG_MAX_AGE_DAYS = 30;
+
+// Get device info for activity tracking
+const getDeviceInfo = (): DeviceInfo => {
+  const isCapacitor = typeof window !== 'undefined' && 
+    !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  
+  let platform: 'web' | 'android' | 'ios' = 'web';
+  if (isCapacitor) {
+    platform = /android/i.test(ua) ? 'android' : 'ios';
+  }
+  
+  return {
+    platform,
+    userAgent: ua.substring(0, 100), // Limit length for storage efficiency
+    screenSize: typeof window !== 'undefined' 
+      ? `${window.screen?.width || 0}x${window.screen?.height || 0}` 
+      : '0x0',
+  };
+};
 
 export function loadActivityLogs(): ActivityLog[] {
   try {
@@ -74,9 +103,17 @@ export function addActivityLog(
     description,
     details,
     timestamp: new Date().toISOString(),
+    deviceInfo: getDeviceInfo(),
   };
 
-  const logs = loadActivityLogs();
+  // Load existing logs and filter out old ones (log rotation - 30 days)
+  const now = Date.now();
+  const logs = loadActivityLogs().filter(existingLog => {
+    const logDate = new Date(existingLog.timestamp).getTime();
+    const daysDiff = (now - logDate) / (1000 * 60 * 60 * 24);
+    return daysDiff <= LOG_MAX_AGE_DAYS;
+  });
+  
   logs.unshift(log); // Add to beginning
   saveActivityLogs(logs);
 

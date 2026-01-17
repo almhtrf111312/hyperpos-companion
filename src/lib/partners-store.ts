@@ -370,16 +370,27 @@ export const addCapital = (
   return true;
 };
 
-// Withdraw profit
+// Withdraw profit - prevents negative balance unless explicitly allowed
 export const withdrawProfit = (
   partnerId: string,
   amount: number,
-  notes?: string
+  notes?: string,
+  allowNegative: boolean = false
 ): boolean => {
   const partners = loadPartners();
   const partner = partners.find(p => p.id === partnerId);
   
-  if (!partner || amount <= 0 || amount > partner.currentBalance) {
+  if (!partner || amount <= 0) {
+    return false;
+  }
+  
+  // Prevent negative balance unless explicitly allowed
+  if (!allowNegative && amount > partner.currentBalance) {
+    console.warn('Withdraw denied: would result in negative balance', {
+      partnerId,
+      requested: amount,
+      available: partner.currentBalance
+    });
     return false;
   }
   
@@ -399,16 +410,27 @@ export const withdrawProfit = (
   return true;
 };
 
-// Withdraw capital
+// Withdraw capital - prevents negative balance unless explicitly allowed
 export const withdrawCapital = (
   partnerId: string,
   amount: number,
-  notes?: string
+  notes?: string,
+  allowNegative: boolean = false
 ): boolean => {
   const partners = loadPartners();
   const partner = partners.find(p => p.id === partnerId);
   
-  if (!partner || amount <= 0 || amount > partner.currentCapital) {
+  if (!partner || amount <= 0) {
+    return false;
+  }
+  
+  // Prevent negative balance unless explicitly allowed
+  if (!allowNegative && amount > partner.currentCapital) {
+    console.warn('Capital withdraw denied: would result in negative balance', {
+      partnerId,
+      requested: amount,
+      available: partner.currentCapital
+    });
     return false;
   }
   

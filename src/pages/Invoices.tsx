@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Search, 
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -60,8 +61,9 @@ import {
 export default function Invoices() {
   const { t } = useLanguage();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | InvoiceType>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -70,11 +72,21 @@ export default function Invoices() {
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [stats, setStats] = useState(getInvoiceStats());
 
-  // Load invoices
+  // Debounce search (300ms)
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load invoices with proper cleanup
+  useEffect(() => {
+    setIsLoading(true);
     const loadData = () => {
       setInvoices(loadInvoices());
       setStats(getInvoiceStats());
+      setIsLoading(false);
     };
     loadData();
     
@@ -83,20 +95,23 @@ export default function Invoices() {
         loadData();
       }
     };
+    const handleFocus = () => loadData();
+    
     window.addEventListener('storage', handleStorage);
-    window.addEventListener('focus', loadData);
+    window.addEventListener('focus', handleFocus);
+    
     return () => {
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', loadData);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
-  // Filter invoices
-  useEffect(() => {
+  // Memoized filtered invoices for performance
+  const filteredInvoices = useMemo(() => {
     let result = invoices;
     
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (debouncedSearch) {
+      const query = debouncedSearch.toLowerCase();
       result = result.filter(inv => 
         inv.customerName.toLowerCase().includes(query) ||
         inv.id.toLowerCase().includes(query) ||
@@ -112,8 +127,8 @@ export default function Invoices() {
       result = result.filter(inv => inv.paymentType === filterPayment);
     }
     
-    setFilteredInvoices(result);
-  }, [invoices, searchQuery, filterType, filterPayment]);
+    return result;
+  }, [invoices, debouncedSearch, filterType, filterPayment]);
 
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -411,7 +426,28 @@ ${footer}`;
 
       {/* Invoices List */}
       <div className="space-y-3">
-        {filteredInvoices.length === 0 ? (
+        {isLoading ? (
+          // Skeleton loading state
+          [1, 2, 3, 4, 5].map(i => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <Skeleton className="w-10 h-10 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-10 w-10 rounded" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : filteredInvoices.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -466,8 +502,8 @@ ${footer}`;
                     
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]">
+                          <MoreVertical className="w-5 h-5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
