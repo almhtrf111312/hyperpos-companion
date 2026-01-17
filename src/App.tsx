@@ -15,6 +15,7 @@ import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { SetupWizard } from "./components/setup/SetupWizard";
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
+import { loadDemoData } from "./lib/demo-data";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Products from "./pages/Products";
@@ -30,8 +31,11 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 
-// Clear demo data on app start
+// Clear demo data on app start (clears old version data)
 clearDemoDataOnce();
+
+// Load synchronized demo data (products, invoices, debts, customers)
+loadDemoData();
 
 const queryClient = new QueryClient();
 
