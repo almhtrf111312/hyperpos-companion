@@ -13,8 +13,9 @@ import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
+import { LowStockAlerts } from '@/components/dashboard/LowStockAlerts';
 import { loadInvoices, getInvoiceStats } from '@/lib/invoices-store';
-import { loadProducts } from '@/lib/products-store';
+import { loadProducts, getLowStockProducts } from '@/lib/products-store';
 import { loadPartners } from '@/lib/partners-store';
 
 export default function Dashboard() {
@@ -179,6 +180,7 @@ export default function Dashboard() {
 
         {/* Right Column */}
         <div className="space-y-6">
+          <LowStockAlerts />
           <DebtAlerts />
         </div>
       </div>
