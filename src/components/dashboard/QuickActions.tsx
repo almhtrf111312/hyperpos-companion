@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Plus, Users, CreditCard, Wrench, Package } from 'lucide-react';
+import { ShoppingCart, Plus, Users, CreditCard, Wrench, Package, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuickAction {
@@ -22,14 +22,14 @@ const actions: QuickAction[] = [
     icon: Plus,
     label: 'منتج جديد',
     description: 'إضافة منتج للمخزن',
-    path: '/products/new',
+    path: '/products?action=new',
     color: 'success',
   },
   {
     icon: Users,
     label: 'عميل جديد',
     description: 'إضافة عميل',
-    path: '/customers/new',
+    path: '/customers?action=new',
     color: 'info',
   },
   {
@@ -47,10 +47,17 @@ const actions: QuickAction[] = [
     color: 'accent',
   },
   {
+    icon: Receipt,
+    label: 'إضافة مصروف',
+    description: 'تسجيل مصروف جديد',
+    path: '/expenses?action=new',
+    color: 'warning',
+  },
+  {
     icon: Package,
     label: 'جرد المخزون',
     description: 'فحص المخزون',
-    path: '/products/inventory',
+    path: '/reports?tab=products',
     color: 'primary',
   },
 ];

@@ -26,12 +26,13 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { addInvoice } from '@/lib/invoices-store';
-import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store';
+import { findOrCreateCustomer, updateCustomerStats, loadCustomers } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
 import { loadProducts, deductStockBatch, checkStockAvailability } from '@/lib/products-store';
 import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
+import { printHTML } from '@/lib/print-utils';
 
 interface CartItem {
   id: string;
@@ -83,6 +84,8 @@ export function CartPanel({
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '' });
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState('');
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const discountAmount = (subtotal * discount) / 100;
@@ -100,6 +103,15 @@ export function CartPanel({
       toast.error('يرجى إدخال اسم العميل أولاً');
       return;
     }
+    
+    // التحقق إذا كان العميل موجوداً في قاعدة البيانات
+    const existingCustomers = loadCustomers();
+    const customerExists = existingCustomers.some(c => 
+      c.name.toLowerCase() === customerName.toLowerCase().trim()
+    );
+    setIsNewCustomer(!customerExists);
+    setCustomerPhone('');
+    
     setShowDebtDialog(true);
   };
 
@@ -296,7 +308,7 @@ export function CartPanel({
     });
     
     // Create debt record
-    addDebtFromInvoice(invoice.id, customerName, '', total);
+    addDebtFromInvoice(invoice.id, customerName, customerPhone || '', total);
     
     // Distribute profit to partners by category (as pending) - استدعاء واحد لتجنب Race Condition
     const categoryProfits = Object.entries(profitsByCategory)
@@ -366,10 +378,90 @@ export function CartPanel({
 
   const handlePrint = () => {
     if (cart.length === 0) return;
-    toast.info('جاري تجهيز الطباعة...');
-    setTimeout(() => {
-      toast.success('تم إرسال الفاتورة للطباعة');
-    }, 1000);
+    
+    // Load store settings
+    let storeName = 'HyperPOS Store';
+    let storeAddress = '';
+    let storePhone = '';
+    let storeLogo = '';
+    let footer = 'شكراً لتعاملكم معنا!';
+    
+    try {
+      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw);
+        storeName = settings.storeSettings?.name || storeName;
+        storeAddress = settings.storeSettings?.address || '';
+        storePhone = settings.storeSettings?.phone || '';
+        storeLogo = settings.storeSettings?.logo || '';
+        footer = settings.printSettings?.footer || footer;
+      }
+    } catch {}
+
+    const currentDate = new Date().toLocaleDateString('ar-SA');
+    const currentTime = new Date().toLocaleTimeString('ar-SA');
+    
+    const itemsHtml = cart.map(item => `
+      <tr>
+        <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${(item.price * item.quantity * selectedCurrency.rate).toLocaleString()}</td>
+      </tr>
+    `).join('');
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="UTF-8">
+          <title>فاتورة</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; font-size: 12px; }
+            .header { text-align: center; margin-bottom: 15px; border-bottom: 2px dashed #333; padding-bottom: 12px; }
+            .logo { max-width: 60px; max-height: 60px; margin: 0 auto 8px; display: block; }
+            .store-name { font-size: 1.3em; font-weight: bold; margin: 5px 0; }
+            .store-info { font-size: 0.85em; color: #555; }
+            .invoice-info { margin: 12px 0; font-size: 0.9em; }
+            .invoice-info > div { padding: 3px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
+            th { background: #333; color: #fff; padding: 8px 5px; text-align: right; font-size: 0.85em; }
+            td { padding: 8px 5px; border-bottom: 1px solid #eee; }
+            .total { font-size: 1.2em; font-weight: bold; margin-top: 12px; border-top: 2px solid #333; padding-top: 10px; text-align: center; }
+            .footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: #666; border-top: 1px dashed #ccc; padding-top: 12px; }
+            @media print { @page { size: 80mm auto; margin: 5mm; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" />` : ''}
+            <div class="store-name">${storeName}</div>
+            ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
+            ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+          </div>
+          <div class="invoice-info">
+            <div><strong>التاريخ:</strong> ${currentDate} - ${currentTime}</div>
+            <div><strong>العميل:</strong> ${customerName || 'عميل نقدي'}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th>الكمية</th>
+                <th>المبلغ</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discount}%: -${selectedCurrency.symbol}${discountAmount.toLocaleString()}</div>` : ''}
+          <div class="total">
+            الإجمالي: ${selectedCurrency.symbol}${totalInCurrency.toLocaleString()}
+          </div>
+          <div class="footer">${footer}</div>
+        </body>
+      </html>
+    `;
+    
+    printHTML(printContent);
   };
 
   const handleWhatsApp = () => {
@@ -643,6 +735,19 @@ export function CartPanel({
                 <span>العميل:</span>
                 <span className="font-semibold">{customerName}</span>
               </div>
+              {isNewCustomer && (
+                <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <label className="text-sm font-medium mb-1.5 block text-warning">
+                    رقم الهاتف * (مطلوب لعميل جديد)
+                  </label>
+                  <Input
+                    placeholder="+963 xxx xxx xxx"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="bg-background border-warning"
+                  />
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span>عدد المنتجات:</span>
                 <span className="font-semibold">{cart.length}</span>
@@ -656,7 +761,17 @@ export function CartPanel({
               <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
                 إلغاء
               </Button>
-              <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={confirmDebtSale}>
+              <Button 
+                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
+                onClick={() => {
+                  // التحقق من رقم الهاتف إذا كان عميل جديد
+                  if (isNewCustomer && !customerPhone.trim()) {
+                    toast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
+                    return;
+                  }
+                  confirmDebtSale();
+                }}
+              >
                 <Check className="w-4 h-4 ml-2" />
                 تأكيد الدين
               </Button>

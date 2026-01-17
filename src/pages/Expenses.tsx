@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
   Plus,
@@ -67,6 +68,7 @@ import {
 import { EVENTS } from '@/lib/events';
 
 export default function Expenses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>(() => loadExpenses());
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => loadRecurringExpenses());
   const [dueExpenses, setDueExpenses] = useState<RecurringExpense[]>(() => getDueExpenses());
@@ -114,6 +116,16 @@ export default function Expenses() {
       window.removeEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleUpdate);
     };
   }, []);
+
+  // Auto-open add dialog from URL params
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      resetForm();
+      setShowAddDialog(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const filteredExpenses = expenses.filter(expense =>
     expense.typeLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||

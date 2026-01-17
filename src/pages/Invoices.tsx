@@ -57,6 +57,7 @@ import {
   InvoiceType,
   getInvoiceStats 
 } from '@/lib/invoices-store';
+import { printHTML } from '@/lib/print-utils';
 
 export default function Invoices() {
   const { t } = useLanguage();
@@ -391,14 +392,9 @@ export default function Invoices() {
       </html>
     `;
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    // استخدام iframe للطباعة بدلاً من window.open
+    printHTML(printContent);
   };
-
   const handleWhatsApp = (invoice: Invoice) => {
     // Dynamic store settings with proper defaults
     let storeName = 'HyperPOS Store';

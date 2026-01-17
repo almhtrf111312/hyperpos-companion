@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
@@ -44,6 +45,7 @@ import {
 } from '@/lib/customers-store';
 
 export default function Customers() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -78,6 +80,16 @@ export default function Customers() {
       window.removeEventListener('focus', loadData);
     };
   }, []);
+
+  // Auto-open add dialog from URL params
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setFormData({ name: '', phone: '', email: '', address: '' });
+      setShowAddDialog(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
