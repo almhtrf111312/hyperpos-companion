@@ -32,7 +32,8 @@ import { loadProducts, deductStockBatch, checkStockAvailability } from '@/lib/pr
 import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
-import { printHTML } from '@/lib/print-utils';
+import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 
 interface CartItem {
   id: string;
@@ -229,6 +230,9 @@ export function CartPanel({
       );
     }
     
+    // Play success sound
+    playSaleComplete();
+    
     toast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
     setShowCashDialog(false);
     onClearCart();
@@ -357,6 +361,9 @@ export function CartPanel({
         { invoiceId: invoice.id, amount: total, customerName }
       );
     }
+    
+    // Play debt sound
+    playDebtRecorded();
     
     toast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
     setShowDebtDialog(false);

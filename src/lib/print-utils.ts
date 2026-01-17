@@ -1,3 +1,59 @@
+// Print utilities for HyperPOS
+// Uses hidden iframe approach for better Android/WebView compatibility
+
+const SETTINGS_KEY = 'hyperpos_settings_v1';
+
+export interface StoreSettings {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  logo: string;
+}
+
+export interface PrintSettings {
+  showLogo: boolean;
+  showAddress: boolean;
+  showPhone: boolean;
+  footer: string;
+}
+
+/**
+ * Get store settings from localStorage
+ * Used for dynamic invoice/receipt printing
+ */
+export function getStoreSettings(): StoreSettings {
+  try {
+    const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    return {
+      name: settings.storeSettings?.name || 'HyperPOS Store',
+      phone: settings.storeSettings?.phone || '',
+      email: settings.storeSettings?.email || '',
+      address: settings.storeSettings?.address || '',
+      logo: settings.storeSettings?.logo || '',
+    };
+  } catch {
+    return { name: 'HyperPOS Store', phone: '', email: '', address: '', logo: '' };
+  }
+}
+
+/**
+ * Get print settings from localStorage
+ */
+export function getPrintSettings(): PrintSettings {
+  try {
+    const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    return {
+      showLogo: settings.printSettings?.showLogo ?? true,
+      showAddress: settings.printSettings?.showAddress ?? true,
+      showPhone: settings.printSettings?.showPhone ?? true,
+      footer: settings.printSettings?.footer || 'شكراً لتسوقكم معنا!',
+    };
+  } catch {
+    return { showLogo: true, showAddress: true, showPhone: true, footer: 'شكراً لتسوقكم معنا!' };
+  }
+}
+
 /**
  * طباعة محتوى HTML باستخدام iframe مخفي
  * يعمل على المتصفحات وCapacitor WebView

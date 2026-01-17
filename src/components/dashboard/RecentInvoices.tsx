@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import { loadInvoices, Invoice, deleteInvoice } from '@/lib/invoices-store';
+import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 
 const statusStyles = {
   paid: 'badge-success',
@@ -48,30 +49,9 @@ export function RecentInvoices() {
   };
 
   const handlePrintInvoice = (invoice: Invoice) => {
-    // Load store settings for invoice
-    let storeName = 'HyperPOS Store';
-    let storeAddress = '';
-    let storePhone = '';
-    let storeLogo = '';
-    let showLogo = true;
-    let showAddress = true;
-    let showPhone = true;
-    let footer = 'شكراً لتسوقكم معنا!';
-    
-    try {
-      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
-      if (settingsRaw) {
-        const settings = JSON.parse(settingsRaw);
-        storeName = settings.storeSettings?.name || storeName;
-        storeAddress = settings.storeSettings?.address || '';
-        storePhone = settings.storeSettings?.phone || '';
-        storeLogo = settings.storeSettings?.logo || '';
-        showLogo = settings.printSettings?.showLogo ?? true;
-        showAddress = settings.printSettings?.showAddress ?? true;
-        showPhone = settings.printSettings?.showPhone ?? true;
-        footer = settings.printSettings?.footer || footer;
-      }
-    } catch {}
+    // Use dynamic store settings utilities
+    const storeSettings = getStoreSettings();
+    const printSettings = getPrintSettings();
 
     const invoiceDate = new Date(invoice.createdAt);
     const dateStr = invoiceDate.toLocaleDateString('ar-SA');
@@ -104,10 +84,10 @@ export function RecentInvoices() {
         </head>
         <body>
           <div class="header">
-            ${showLogo && storeLogo ? `<img src="${storeLogo}" alt="شعار المحل" class="logo" />` : ''}
-            <div class="store-name">${storeName}</div>
-            ${showAddress && storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
-            ${showPhone && storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+            ${printSettings.showLogo && storeSettings.logo ? `<img src="${storeSettings.logo}" alt="شعار المحل" class="logo" />` : ''}
+            <div class="store-name">${storeSettings.name}</div>
+            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${storeSettings.address}</div>` : ''}
+            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
           </div>
           <div class="invoice-info">
             <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
@@ -129,23 +109,13 @@ export function RecentInvoices() {
             المجموع: ${invoice.currencySymbol}${invoice.totalInCurrency.toLocaleString()}
           </div>
           <div class="footer">
-            <p>${footer}</p>
+            <p>${printSettings.footer}</p>
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              window.onafterprint = function() { window.close(); };
-            };
-          </script>
         </body>
       </html>
     `;
     
-    const printWindow = window.open('about:blank', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-    }
+    printHTML(printContent);
     toast.success(`جاري طباعة الفاتورة ${invoice.id}`);
   };
 

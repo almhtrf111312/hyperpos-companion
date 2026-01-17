@@ -15,6 +15,7 @@ import { getCategoryNames } from '@/lib/categories-store';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { playAddToCart } from '@/lib/sound-utils';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -134,6 +135,9 @@ export default function POS() {
       }
       return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
     });
+    
+    // Play sound effect
+    playAddToCart();
     toast.success(`تمت إضافة "${product.name}" إلى السلة`);
   };
 
