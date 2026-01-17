@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -34,11 +35,20 @@ import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitD
 import { downloadText, downloadCSV, downloadJSON, isNativePlatform } from '@/lib/file-download';
 
 export default function Reports() {
+  const [searchParams] = useSearchParams();
   const [dateRange, setDateRange] = useState({ 
     from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
     to: new Date().toISOString().split('T')[0] 
   });
   const [activeReport, setActiveReport] = useState('sales');
+
+  // Auto-open tab from URL params
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses'].includes(tab)) {
+      setActiveReport(tab);
+    }
+  }, [searchParams]);
 
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
 

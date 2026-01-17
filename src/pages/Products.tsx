@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { 
+import { useSearchParams } from 'react-router-dom';
+import {
   Search, 
   Plus, 
   Package,
@@ -56,6 +57,7 @@ const statusConfig = {
 };
 
 export default function Products() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const [products, setProducts] = useState<Product[]>(() => loadProducts());
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,6 +126,17 @@ export default function Products() {
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
+
+  // Auto-open add dialog from URL params
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
+      setShowAddDialog(true);
+      // إزالة الـ param بعد فتح الـ dialog
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, categoryOptions, setSearchParams]);
 
   // Compress image to max 640x640
   const compressImage = (file: File) => {

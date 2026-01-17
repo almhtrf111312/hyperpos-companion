@@ -45,6 +45,8 @@ import { addDebtFromInvoice } from '@/lib/debts-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { addExpense } from '@/lib/expenses-store';
 import { useAuth } from '@/hooks/use-auth';
+import { loadCustomers } from '@/lib/customers-store';
+import { printHTML } from '@/lib/print-utils';
 
 interface Currency {
   code: 'USD' | 'TRY' | 'SYP';
@@ -102,6 +104,7 @@ export function MaintenancePanel({
   
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
 
   const profit = servicePrice - partsCost;
   const servicePriceInCurrency = servicePrice * selectedCurrency.rate;
@@ -138,6 +141,19 @@ export function MaintenancePanel({
 
   const handleDebtSale = () => {
     if (!validateForm()) return;
+    
+    // التحقق إذا كان العميل موجوداً في قاعدة البيانات
+    const existingCustomers = loadCustomers();
+    const customerExists = existingCustomers.some(c => 
+      c.name.toLowerCase() === customerName.toLowerCase().trim()
+    );
+    setIsNewCustomer(!customerExists);
+    
+    // إذا كان عميل جديد ولا يوجد رقم هاتف
+    if (!customerExists && !customerPhone.trim()) {
+      // سنسمح بفتح الـ dialog وسيكون الهاتف إلزامياً فيه
+    }
+    
     setShowDebtDialog(true);
   };
 
@@ -320,12 +336,8 @@ export function MaintenancePanel({
       </html>
     `;
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    // استخدام iframe للطباعة بدلاً من window.open
+    printHTML(printContent);
   };
 
   const handleWhatsApp = () => {
@@ -683,6 +695,19 @@ ${footer}`;
                 <span>العميل:</span>
                 <span className="font-semibold">{customerName}</span>
               </div>
+              {isNewCustomer && !customerPhone.trim() && (
+                <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <label className="text-sm font-medium mb-1.5 block text-warning">
+                    رقم الهاتف * (مطلوب لعميل جديد)
+                  </label>
+                  <Input
+                    placeholder="+963 xxx xxx xxx"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="bg-background border-warning"
+                  />
+                </div>
+              )}
               {description && (
                 <div className="flex justify-between text-sm">
                   <span>الوصف:</span>
@@ -698,7 +723,17 @@ ${footer}`;
               <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
                 إلغاء
               </Button>
-              <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={() => confirmSale('debt')}>
+              <Button 
+                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
+                onClick={() => {
+                  // التحقق من رقم الهاتف إذا كان عميل جديد
+                  if (isNewCustomer && !customerPhone.trim()) {
+                    toast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
+                    return;
+                  }
+                  confirmSale('debt');
+                }}
+              >
                 <Check className="w-4 h-4 ml-2" />
                 تأكيد الدين
               </Button>
