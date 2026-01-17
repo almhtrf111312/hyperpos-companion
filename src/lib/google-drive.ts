@@ -8,6 +8,7 @@ const STORAGE_NAMESPACE = 'hp_gdrive';
 
 // Token expiration: 1 hour (Google's default)
 const TOKEN_EXPIRY = 60 * 60 * 1000;
+const LAST_SYNC_KEY = 'google_drive_last_sync';
 
 export interface GoogleDriveFile {
   id: string;
@@ -316,6 +317,69 @@ export const deleteBackupFile = async (accessToken: string, fileId: string): Pro
 export const disconnectGoogleDrive = (): void => {
   removeStoredTokens();
   removeStoredFolderId();
+  secureRemove(LAST_SYNC_KEY, { namespace: STORAGE_NAMESPACE });
+};
+
+// Fix #12: Last sync timestamp management
+export const getLastSyncTimestamp = (): string | null => {
+  return secureGet<string>(LAST_SYNC_KEY, { namespace: STORAGE_NAMESPACE });
+};
+
+export const setLastSyncTimestamp = (): void => {
+  secureSet(LAST_SYNC_KEY, new Date().toISOString(), { namespace: STORAGE_NAMESPACE });
+};
+
+// Fix #12: Check if cloud data is newer than local (for conflict resolution)
+export interface ConflictCheckResult {
+  hasConflict: boolean;
+  cloudNewer: boolean;
+  localTimestamp: string | null;
+  cloudTimestamp: string | null;
+}
+
+export const checkSyncConflict = async (
+  accessToken: string,
+  fileId: string
+): Promise<ConflictCheckResult> => {
+  const localTimestamp = getLastSyncTimestamp();
+  
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=modifiedTime`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      return { hasConflict: false, cloudNewer: false, localTimestamp, cloudTimestamp: null };
+    }
+    
+    const data = await response.json();
+    const cloudTimestamp = data.modifiedTime;
+    
+    if (!localTimestamp) {
+      // First sync, no conflict
+      return { hasConflict: false, cloudNewer: true, localTimestamp: null, cloudTimestamp };
+    }
+    
+    const localDate = new Date(localTimestamp).getTime();
+    const cloudDate = new Date(cloudTimestamp).getTime();
+    
+    // If cloud is more than 1 minute newer, there's a potential conflict
+    const hasConflict = cloudDate > localDate + 60000;
+    
+    return {
+      hasConflict,
+      cloudNewer: cloudDate > localDate,
+      localTimestamp,
+      cloudTimestamp,
+    };
+  } catch {
+    return { hasConflict: false, cloudNewer: false, localTimestamp, cloudTimestamp: null };
+  }
 };
 
 // Format file size

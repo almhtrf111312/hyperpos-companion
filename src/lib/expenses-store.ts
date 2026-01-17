@@ -3,7 +3,9 @@ import { loadPartners, savePartners, ExpenseRecord } from './partners-store';
 
 const EXPENSES_STORAGE_KEY = 'hyperpos_expenses_v1';
 
-export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'other';
+// Fix #17: Enhanced expense types with categories
+export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
+export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'other';
 
 export interface ExpenseDistribution {
   partnerId: string;
@@ -16,6 +18,7 @@ export interface Expense {
   id: string;
   type: ExpenseType;
   typeLabel: string;
+  category: ExpenseCategory; // Fix #17: Added category field
   customType?: string;
   amount: number;
   notes?: string;
@@ -25,18 +28,46 @@ export interface Expense {
   createdAt: string;
 }
 
-export const expenseTypes: { value: ExpenseType; label: string }[] = [
-  { value: 'rent', label: 'إيجار' },
-  { value: 'utilities', label: 'مرافق' },
-  { value: 'wages', label: 'أجور' },
-  { value: 'equipment', label: 'معدات' },
-  { value: 'internet', label: 'إنترنت' },
-  { value: 'electricity', label: 'كهرباء' },
+// Fix #17: Category definitions with Arabic labels
+export const expenseCategories: { value: ExpenseCategory; label: string }[] = [
+  { value: 'operational', label: 'تشغيلية' },
+  { value: 'payroll', label: 'رواتب وأجور' },
+  { value: 'utilities', label: 'مرافق وخدمات' },
+  { value: 'maintenance', label: 'صيانة' },
+  { value: 'marketing', label: 'تسويق وإعلان' },
   { value: 'other', label: 'أخرى' },
+];
+
+// Enhanced expense types with category mapping
+export const expenseTypes: { value: ExpenseType; label: string; category: ExpenseCategory }[] = [
+  { value: 'rent', label: 'إيجار', category: 'operational' },
+  { value: 'utilities', label: 'مرافق', category: 'utilities' },
+  { value: 'wages', label: 'أجور', category: 'payroll' },
+  { value: 'equipment', label: 'معدات', category: 'operational' },
+  { value: 'internet', label: 'إنترنت', category: 'utilities' },
+  { value: 'electricity', label: 'كهرباء', category: 'utilities' },
+  { value: 'water', label: 'مياه', category: 'utilities' },
+  { value: 'gas', label: 'غاز', category: 'utilities' },
+  { value: 'phone', label: 'هاتف', category: 'utilities' },
+  { value: 'insurance', label: 'تأمين', category: 'operational' },
+  { value: 'taxes', label: 'ضرائب', category: 'operational' },
+  { value: 'supplies', label: 'مستلزمات', category: 'operational' },
+  { value: 'marketing', label: 'تسويق', category: 'marketing' },
+  { value: 'transport', label: 'نقل', category: 'operational' },
+  { value: 'maintenance', label: 'صيانة', category: 'maintenance' },
+  { value: 'other', label: 'أخرى', category: 'other' },
 ];
 
 export const getExpenseTypeLabel = (type: ExpenseType): string => {
   return expenseTypes.find(t => t.value === type)?.label || type;
+};
+
+export const getExpenseCategory = (type: ExpenseType): ExpenseCategory => {
+  return expenseTypes.find(t => t.value === type)?.category || 'other';
+};
+
+export const getCategoryLabel = (category: ExpenseCategory): string => {
+  return expenseCategories.find(c => c.value === category)?.label || category;
 };
 
 export const loadExpenses = (): Expense[] => {
@@ -125,6 +156,7 @@ export const addExpense = (expenseData: {
     id: expenseId,
     type: expenseData.type,
     typeLabel: expenseTypeLabel,
+    category: getExpenseCategory(expenseData.type), // Fix #17: Add category
     customType: expenseData.customType,
     amount: expenseData.amount,
     notes: expenseData.notes,
