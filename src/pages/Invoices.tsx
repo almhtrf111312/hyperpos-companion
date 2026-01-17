@@ -143,23 +143,37 @@ export default function Invoices() {
   };
 
   const handlePrint = (invoice: Invoice) => {
-    let storeName = 'HyperPOS Store';
-    let storeAddress = '';
-    let storePhone = '';
-    let storeLogo = '';
-    let footer = 'شكراً لتعاملكم معنا!';
+    // Dynamic store settings with proper defaults
+    const storeDefaults = {
+      storeName: 'HyperPOS Store',
+      storeAddress: '',
+      storePhone: '',
+      storeLogo: '',
+      footer: 'شكراً لتعاملكم معنا!',
+      currencySymbol: 'ر.س'
+    };
+    
+    let storeConfig = { ...storeDefaults };
     
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
         const settings = JSON.parse(settingsRaw);
-        storeName = settings.storeSettings?.name || storeName;
-        storeAddress = settings.storeSettings?.address || '';
-        storePhone = settings.storeSettings?.phone || '';
-        storeLogo = settings.storeSettings?.logo || '';
-        footer = settings.printSettings?.footer || footer;
+        storeConfig = {
+          storeName: settings.storeSettings?.name || storeDefaults.storeName,
+          storeAddress: settings.storeSettings?.address || storeDefaults.storeAddress,
+          storePhone: settings.storeSettings?.phone || storeDefaults.storePhone,
+          storeLogo: settings.storeSettings?.logo || storeDefaults.storeLogo,
+          footer: settings.printSettings?.footer || storeDefaults.footer,
+          currencySymbol: settings.currencySymbol || storeDefaults.currencySymbol,
+        };
       }
-    } catch {}
+    } catch (error) {
+      console.error('Failed to load store settings for print:', error);
+      toast.error('تعذر تحميل إعدادات المتجر للطباعة');
+    }
+
+    const { storeName, storeAddress, storePhone, storeLogo, footer } = storeConfig;
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
     const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
@@ -234,6 +248,7 @@ export default function Invoices() {
   };
 
   const handleWhatsApp = (invoice: Invoice) => {
+    // Dynamic store settings with proper defaults
     let storeName = 'HyperPOS Store';
     let footer = 'شكراً لتعاملكم معنا!';
     
@@ -244,7 +259,10 @@ export default function Invoices() {
         storeName = settings.storeSettings?.name || storeName;
         footer = settings.printSettings?.footer || footer;
       }
-    } catch {}
+    } catch (error) {
+      console.error('Failed to load store settings for WhatsApp:', error);
+      toast.error('تعذر تحميل إعدادات المتجر');
+    }
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
     
@@ -363,7 +381,10 @@ ${footer}`;
             className="pr-10"
           />
         </div>
-        <Select value={filterType} onValueChange={(v) => setFilterType(v as any)}>
+        <Select 
+          value={filterType} 
+          onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}
+        >
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="نوع الفاتورة" />
           </SelectTrigger>
@@ -373,7 +394,10 @@ ${footer}`;
             <SelectItem value="maintenance">صيانة</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterPayment} onValueChange={(v) => setFilterPayment(v as any)}>
+        <Select 
+          value={filterPayment} 
+          onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}
+        >
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="طريقة الدفع" />
           </SelectTrigger>

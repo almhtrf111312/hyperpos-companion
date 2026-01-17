@@ -1,6 +1,8 @@
 import { emitEvent, EVENTS } from './events';
 import { deleteDebtByInvoiceId } from './debts-store';
 import { revertProfitDistribution } from './partners-store';
+import { safeSave, safeLoad } from './safe-storage';
+import { toast } from 'sonner';
 
 // Invoices store for managing all sales and maintenance invoices
 
@@ -51,20 +53,37 @@ export const loadInvoices = (): Invoice[] => {
         return parsed;
       }
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    console.error('Failed to load invoices:', error);
   }
   return [];
 };
 
-export const saveInvoices = (invoices: Invoice[]) => {
-  try {
-    localStorage.setItem(INVOICES_STORAGE_KEY, JSON.stringify(invoices));
-    // Emit standardized event so other components update in same-tab
-    emitEvent(EVENTS.INVOICES_UPDATED, invoices);
-  } catch {
-    // ignore
+export const saveInvoices = (invoices: Invoice[]): boolean => {
+  // Validate data before saving
+  if (!Array.isArray(invoices)) {
+    console.error('saveInvoices: Invalid data - expected array');
+    toast.error('خطأ في حفظ الفواتير', {
+      description: 'البيانات غير صالحة'
+    });
+    return false;
   }
+  
+  const result = safeSave(INVOICES_STORAGE_KEY, invoices);
+  
+  if (!result.success) {
+    console.error('Failed to save invoices:', result.error);
+    toast.error('فشل في حفظ الفواتير', {
+      description: result.error === 'Storage quota exceeded - try clearing old data' 
+        ? 'مساحة التخزين ممتلئة - حاول حذف بعض البيانات القديمة'
+        : 'حدث خطأ أثناء الحفظ'
+    });
+    return false;
+  }
+  
+  // Emit standardized event so other components update in same-tab
+  emitEvent(EVENTS.INVOICES_UPDATED, invoices);
+  return true;
 };
 
 export const addInvoice = (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Invoice => {

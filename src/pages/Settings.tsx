@@ -73,13 +73,48 @@ const settingsTabs = [
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
+// Type-safe settings interfaces
+interface SyncSettingsType {
+  interval: number;
+  showSuccessNotification: boolean;
+  showErrorNotification: boolean;
+  showSyncStatus: boolean;
+  lastSync: string;
+}
+
+interface NotificationSettingsType {
+  sound: boolean;
+  newSale: boolean;
+  lowStock: boolean;
+  newDebt: boolean;
+  paymentReceived: boolean;
+  dailyReport: boolean;
+}
+
+interface PrintSettingsType {
+  autoPrint: boolean;
+  showLogo: boolean;
+  showAddress: boolean;
+  showPhone: boolean;
+  paperSize: string;
+  copies: string;
+  footer: string;
+}
+
+interface BackupSettingsType {
+  autoBackup: boolean;
+  interval: string;
+  keepDays: string;
+}
+
 type PersistedSettings = {
   storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
   exchangeRates?: Partial<{ TRY: string; SYP: string }>;
-  syncSettings?: any;
-  notificationSettings?: any;
-  printSettings?: any;
-  backupSettings?: any;
+  syncSettings?: Partial<SyncSettingsType>;
+  notificationSettings?: Partial<NotificationSettingsType>;
+  printSettings?: Partial<PrintSettingsType>;
+  backupSettings?: Partial<BackupSettingsType>;
+  currencySymbol?: string;
 };
 
 const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
@@ -91,18 +126,21 @@ const loadPersistedSettings = (): PersistedSettings | null => {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' ? (parsed as PersistedSettings) : null;
-  } catch {
+  } catch (error) {
+    console.error('Failed to load settings:', error);
     return null;
   }
 };
 
-const savePersistedSettings = (data: PersistedSettings) => {
+const savePersistedSettings = (data: PersistedSettings): boolean => {
   try {
     window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data));
     // Emit standardized event so other components update in same-tab
     emitEvent(EVENTS.SETTINGS_UPDATED, data);
-  } catch {
-    // ignore write errors
+    return true;
+  } catch (error) {
+    console.error('Failed to save settings:', error);
+    return false;
   }
 };
 

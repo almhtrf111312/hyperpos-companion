@@ -1,4 +1,6 @@
 import { emitEvent, EVENTS } from './events';
+import { safeSave } from './safe-storage';
+import { toast } from 'sonner';
 
 const PRODUCTS_STORAGE_KEY = 'hyperpos_products_v1';
 
@@ -34,19 +36,36 @@ export const loadProducts = (): Product[] => {
         return parsed;
       }
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    console.error('Failed to load products:', error);
   }
   return defaultProducts;
 };
 
-export const saveProducts = (products: Product[]) => {
-  try {
-    localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
-    emitEvent(EVENTS.PRODUCTS_UPDATED, products);
-  } catch {
-    // ignore
+export const saveProducts = (products: Product[]): boolean => {
+  // Validate data before saving
+  if (!Array.isArray(products)) {
+    console.error('saveProducts: Invalid data - expected array');
+    toast.error('خطأ في حفظ المنتجات', {
+      description: 'البيانات غير صالحة'
+    });
+    return false;
   }
+  
+  const result = safeSave(PRODUCTS_STORAGE_KEY, products);
+  
+  if (!result.success) {
+    console.error('Failed to save products:', result.error);
+    toast.error('فشل في حفظ المنتجات', {
+      description: result.error === 'Storage quota exceeded - try clearing old data' 
+        ? 'مساحة التخزين ممتلئة - حاول حذف بعض البيانات القديمة'
+        : 'حدث خطأ أثناء الحفظ'
+    });
+    return false;
+  }
+  
+  emitEvent(EVENTS.PRODUCTS_UPDATED, products);
+  return true;
 };
 
 export const addProduct = (product: Omit<Product, 'id' | 'status'>): Product => {
