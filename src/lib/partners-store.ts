@@ -291,36 +291,50 @@ export const distributeDetailedProfit = (
 };
 
 // Confirm pending profit when debt is paid
+// يتعامل مع السداد الجزئي بدقة ويدعم الديون النقدية
 export const confirmPendingProfit = (invoiceId: string, ratio: number = 1): void => {
+  // تجاهل الديون النقدية التي لا تملك أرباح شركاء مرتبطة
+  if (!invoiceId || invoiceId.startsWith('CASH_')) {
+    return;
+  }
+  
   const partners = loadPartners();
+  let modified = false;
   
   partners.forEach(partner => {
     const pendingDetails = partner.pendingProfitDetails.filter(
       pd => pd.invoiceId === invoiceId
     );
     
+    if (pendingDetails.length === 0) return;
+    
     pendingDetails.forEach(detail => {
-      const amountToConfirm = detail.amount * ratio;
+      // حساب المبلغ للتأكيد بناءً على النسبة المدفوعة
+      const amountToConfirm = Math.min(detail.amount, detail.amount * ratio);
+      
+      if (amountToConfirm <= 0) return;
       
       // نقل من المعلق إلى المؤكد
-      partner.pendingProfit -= amountToConfirm;
+      partner.pendingProfit = Math.max(0, partner.pendingProfit - amountToConfirm);
       partner.confirmedProfit += amountToConfirm;
       partner.currentBalance += amountToConfirm;
       partner.totalProfitEarned += amountToConfirm;
       
-      // إذا تم السداد الكامل، حذف التفاصيل
-      if (ratio >= 1) {
-        partner.pendingProfitDetails = partner.pendingProfitDetails.filter(
-          pd => pd.invoiceId !== invoiceId
-        );
-      } else {
-        // تحديث المبلغ المتبقي
-        detail.amount -= amountToConfirm;
-      }
+      // تحديث المبلغ المتبقي في التفاصيل
+      detail.amount = Math.max(0, detail.amount - amountToConfirm);
+      
+      modified = true;
     });
+    
+    // حذف التفاصيل التي تم تأكيدها بالكامل (المبلغ = 0)
+    partner.pendingProfitDetails = partner.pendingProfitDetails.filter(
+      pd => pd.amount > 0
+    );
   });
   
-  savePartners(partners);
+  if (modified) {
+    savePartners(partners);
+  }
 };
 
 // Add capital to partner

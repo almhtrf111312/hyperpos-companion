@@ -40,9 +40,10 @@ import {
 import { toast } from 'sonner';
 import { addMaintenanceService } from '@/lib/maintenance-store';
 import { addInvoice } from '@/lib/invoices-store';
-import { distributeProfit } from '@/lib/partners-store';
+import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
 import { addActivityLog } from '@/lib/activity-log';
+import { addExpense } from '@/lib/expenses-store';
 import { useAuth } from '@/hooks/use-auth';
 
 interface Currency {
@@ -176,12 +177,29 @@ export function MaintenancePanel({
       serviceType: getServiceLabel(),
       productType: getProductLabel(),
       partsCost,
-      profit,
+      profit, // الربح = سعر الخدمة - تكلفة القطع
     });
     
+    // تسجيل تكلفة القطع كمصروف تلقائي (إذا كانت أكبر من 0)
+    if (partsCost > 0) {
+      addExpense({
+        type: 'equipment',
+        customType: 'قطع غيار صيانة',
+        amount: partsCost,
+        notes: `قطع غيار لخدمة صيانة - العميل: ${customerName} - الفاتورة: ${invoice.id}`,
+        date: new Date().toISOString().split('T')[0],
+      });
+    }
+    
     // Distribute profit to partners (category: صيانة)
+    // الربح = سعر الخدمة - تكلفة القطع
     if (profit > 0) {
-      distributeProfit(profit, 'صيانة', invoice.id, customerName, paymentType === 'debt');
+      distributeDetailedProfit(
+        [{ category: 'صيانة', profit }],
+        invoice.id,
+        customerName,
+        paymentType === 'debt'
+      );
     }
     
     // Create debt record if payment is debt
@@ -189,14 +207,24 @@ export function MaintenancePanel({
       addDebtFromInvoice(invoice.id, customerName, customerPhone, servicePrice);
     }
     
-    // Log activity
+    // Log activity with detailed information
     if (user) {
       addActivityLog(
         'maintenance',
         user.id,
         profile?.full_name || user.email || 'مستخدم',
-        `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${servicePrice.toLocaleString()} للعميل ${customerName}`,
-        { invoiceId: invoice.id, total: servicePrice, customerName, paymentType, serviceType: getServiceLabel() }
+        `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${servicePrice.toLocaleString()} للعميل ${customerName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
+        { 
+          invoiceId: invoice.id, 
+          total: servicePrice, 
+          customerName, 
+          paymentType, 
+          serviceType: getServiceLabel(),
+          productType: getProductLabel(),
+          partsCost,
+          profit,
+          description: fullDescription
+        }
       );
       
       if (paymentType === 'debt') {

@@ -146,12 +146,46 @@ export const getProductByBarcode = (barcode: string): POSProduct | undefined => 
   return products.find(p => p.barcode === barcode);
 };
 
+// Check stock availability before sale
+export interface StockCheckResult {
+  success: boolean;
+  insufficientItems: Array<{
+    productId: string;
+    productName: string;
+    requested: number;
+    available: number;
+  }>;
+}
+
+export const checkStockAvailability = (items: { productId: string; quantity: number }[]): StockCheckResult => {
+  const products = loadProducts();
+  const insufficientItems: StockCheckResult['insufficientItems'] = [];
+  
+  items.forEach(({ productId, quantity }) => {
+    const product = products.find(p => p.id === productId);
+    if (product && product.quantity < quantity) {
+      insufficientItems.push({
+        productId,
+        productName: product.name,
+        requested: quantity,
+        available: product.quantity,
+      });
+    }
+  });
+  
+  return {
+    success: insufficientItems.length === 0,
+    insufficientItems,
+  };
+};
+
 // Deduct stock after sale
 export const deductStock = (productId: string, quantity: number): boolean => {
   const products = loadProducts();
   const index = products.findIndex(p => p.id === productId);
   if (index === -1) return false;
   
+  // منع الكميات السالبة
   const newQuantity = Math.max(0, products[index].quantity - quantity);
   products[index].quantity = newQuantity;
   products[index].status = getStatus(newQuantity);
@@ -159,22 +193,84 @@ export const deductStock = (productId: string, quantity: number): boolean => {
   return true;
 };
 
-// Batch deduct stock for multiple items
-export const deductStockBatch = (items: { productId: string; quantity: number }[]): void => {
+// Batch deduct stock for multiple items with validation
+export interface DeductStockBatchResult {
+  success: boolean;
+  deducted: number;
+  failed: number;
+  insufficientItems: Array<{
+    productId: string;
+    productName: string;
+    requested: number;
+    available: number;
+  }>;
+}
+
+export const deductStockBatch = (
+  items: { productId: string; quantity: number }[],
+  validateFirst: boolean = false
+): DeductStockBatchResult => {
   const products = loadProducts();
-  let modified = false;
+  let deducted = 0;
+  let failed = 0;
+  const insufficientItems: DeductStockBatchResult['insufficientItems'] = [];
   
+  // التحقق أولاً إذا طُلب ذلك
+  if (validateFirst) {
+    items.forEach(({ productId, quantity }) => {
+      const product = products.find(p => p.id === productId);
+      if (product && product.quantity < quantity) {
+        insufficientItems.push({
+          productId,
+          productName: product.name,
+          requested: quantity,
+          available: product.quantity,
+        });
+      }
+    });
+    
+    if (insufficientItems.length > 0) {
+      return { success: false, deducted: 0, failed: items.length, insufficientItems };
+    }
+  }
+  
+  // خصم الكميات
   items.forEach(({ productId, quantity }) => {
     const index = products.findIndex(p => p.id === productId);
     if (index !== -1) {
-      const newQuantity = Math.max(0, products[index].quantity - quantity);
+      const product = products[index];
+      
+      // منع الكميات السالبة - خصم المتاح فقط
+      const actualDeduction = Math.min(quantity, product.quantity);
+      const newQuantity = product.quantity - actualDeduction;
+      
       products[index].quantity = newQuantity;
       products[index].status = getStatus(newQuantity);
-      modified = true;
+      
+      if (actualDeduction < quantity) {
+        insufficientItems.push({
+          productId,
+          productName: product.name,
+          requested: quantity,
+          available: actualDeduction,
+        });
+        failed++;
+      } else {
+        deducted++;
+      }
+    } else {
+      failed++;
     }
   });
   
-  if (modified) {
+  if (deducted > 0 || failed > 0) {
     saveProducts(products);
   }
+  
+  return { 
+    success: failed === 0, 
+    deducted, 
+    failed, 
+    insufficientItems 
+  };
 };
