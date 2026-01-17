@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { addInvoice } from '@/lib/invoices-store';
 import { findOrCreateCustomer, updateCustomerStats } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
-import { loadProducts, deductStockBatch } from '@/lib/products-store';
+import { loadProducts, deductStockBatch, checkStockAvailability } from '@/lib/products-store';
 import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -104,6 +104,19 @@ export function CartPanel({
   };
 
   const confirmCashSale = () => {
+    // التحقق من توفر الكميات في المخزون أولاً
+    const stockCheck = checkStockAvailability(
+      cart.map(item => ({ productId: item.id, quantity: item.quantity }))
+    );
+    
+    if (!stockCheck.success) {
+      const insufficientNames = stockCheck.insufficientItems
+        .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
+        .join('\n');
+      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`);
+      return;
+    }
+    
     // Find or create customer
     const customer = customerName ? findOrCreateCustomer(customerName) : null;
     
@@ -111,6 +124,9 @@ export function CartPanel({
     const products = loadProducts();
     const profitsByCategory: Record<string, number> = {};
     let totalProfit = 0;
+    
+    // تفاصيل المنتجات لسجل النشاطات
+    const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
     
     cart.forEach((item) => {
       const product = products.find(p => p.id === item.id);
@@ -120,6 +136,13 @@ export function CartPanel({
         profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
         totalProfit += itemProfit;
       }
+      
+      // تسجيل تفاصيل المنتجات المباعة
+      soldItems.push({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      });
     });
     
     // Apply discount to profit
@@ -168,14 +191,24 @@ export function CartPanel({
       updateCustomerStats(customer.id, total, false);
     }
     
-    // Log activity
+    // Log activity with product details
     if (user) {
+      const itemsDescription = soldItems
+        .map(item => `${item.name} × ${item.quantity}`)
+        .join('، ');
+      
       addActivityLog(
         'sale',
         user.id,
         profile?.full_name || user.email || 'مستخدم',
-        `عملية بيع نقدي بقيمة $${total.toLocaleString()}`,
-        { invoiceId: invoice.id, total, itemsCount: cart.length, customerName: customerName || 'عميل نقدي' }
+        `عملية بيع نقدي بقيمة $${total.toLocaleString()} - المنتجات: ${itemsDescription}`,
+        { 
+          invoiceId: invoice.id, 
+          total, 
+          itemsCount: cart.length, 
+          customerName: customerName || 'عميل نقدي',
+          items: soldItems // تفاصيل المنتجات للتدقيق
+        }
       );
     }
     
@@ -185,6 +218,19 @@ export function CartPanel({
   };
 
   const confirmDebtSale = () => {
+    // التحقق من توفر الكميات في المخزون أولاً
+    const stockCheck = checkStockAvailability(
+      cart.map(item => ({ productId: item.id, quantity: item.quantity }))
+    );
+    
+    if (!stockCheck.success) {
+      const insufficientNames = stockCheck.insufficientItems
+        .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
+        .join('\n');
+      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`);
+      return;
+    }
+    
     // Find or create customer
     const customer = findOrCreateCustomer(customerName);
     
@@ -192,6 +238,9 @@ export function CartPanel({
     const products = loadProducts();
     const profitsByCategory: Record<string, number> = {};
     let totalProfit = 0;
+    
+    // تفاصيل المنتجات لسجل النشاطات
+    const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
     
     cart.forEach((item) => {
       const product = products.find(p => p.id === item.id);
@@ -201,6 +250,13 @@ export function CartPanel({
         profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
         totalProfit += itemProfit;
       }
+      
+      // تسجيل تفاصيل المنتجات المباعة
+      soldItems.push({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      });
     });
     
     // Apply discount to profit
@@ -250,14 +306,25 @@ export function CartPanel({
     // Update customer stats
     updateCustomerStats(customer.id, total, true);
     
-    // Log activity
+    // Log activity with product details
     if (user) {
+      const itemsDescription = soldItems
+        .map(item => `${item.name} × ${item.quantity}`)
+        .join('، ');
+      
       addActivityLog(
         'sale',
         user.id,
         profile?.full_name || user.email || 'مستخدم',
-        `عملية بيع بالدين بقيمة $${total.toLocaleString()} للعميل ${customerName}`,
-        { invoiceId: invoice.id, total, itemsCount: cart.length, customerName, paymentType: 'debt' }
+        `عملية بيع بالدين بقيمة $${total.toLocaleString()} للعميل ${customerName} - المنتجات: ${itemsDescription}`,
+        { 
+          invoiceId: invoice.id, 
+          total, 
+          itemsCount: cart.length, 
+          customerName, 
+          paymentType: 'debt',
+          items: soldItems // تفاصيل المنتجات للتدقيق
+        }
       );
       
       addActivityLog(
