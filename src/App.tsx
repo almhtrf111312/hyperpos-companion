@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { NotificationsProvider } from "./hooks/use-notifications";
 import { AuthProvider } from "./hooks/use-auth";
@@ -16,6 +16,8 @@ import { SetupWizard } from "./components/setup/SetupWizard";
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { loadDemoData } from "./lib/demo-data";
+import { ClickProbe } from "./components/debug/ClickProbe";
+import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Products from "./pages/Products";
@@ -34,6 +36,11 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
+  const [searchParams] = useSearchParams();
+  const isSafeMode = searchParams.get('safe') === '1';
+  const isDebugClick = searchParams.get('debugclick') === '1';
+  const isReset = searchParams.get('reset') === '1';
+
   const [setupComplete, setSetupComplete] = useState(() => {
     try {
       return localStorage.getItem('hyperpos_setup_complete') === 'true';
@@ -42,23 +49,59 @@ const AppContent = () => {
     }
   });
 
+  // Handle reset mode
+  useEffect(() => {
+    if (isReset) {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('hyperpos') || key === 'setup_complete')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log('[App] Reset: cleared', keysToRemove.length, 'keys');
+        window.location.href = '/';
+      } catch (error) {
+        console.error('[App] Reset failed:', error);
+      }
+    }
+  }, [isReset]);
+
   // Safe demo data loading inside React lifecycle
   useEffect(() => {
+    if (isSafeMode) return; // Don't load demo data in safe mode
     try {
       clearDemoDataOnce();
       loadDemoData();
     } catch (error) {
       console.error('[App] Failed to initialize demo data:', error);
-      // App continues to work even if demo data fails
     }
-  }, []);
+  }, [isSafeMode]);
+
+  // Safe Mode - minimal UI for testing
+  if (isSafeMode) {
+    return (
+      <>
+        {isDebugClick && <ClickProbe />}
+        <SafeModeScreen />
+      </>
+    );
+  }
 
   if (!setupComplete) {
-    return <SetupWizard onComplete={() => setSetupComplete(true)} />;
+    return (
+      <>
+        {isDebugClick && <ClickProbe />}
+        <SetupWizard onComplete={() => setSetupComplete(true)} />
+      </>
+    );
   }
 
   return (
     <>
+      {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
       <Toaster />
       <Sonner />

@@ -230,11 +230,19 @@
 
   html {
     direction: rtl;
+    pointer-events: auto !important;
+    touch-action: manipulation;
   }
 
   body {
     @apply bg-background text-foreground font-cairo antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  #root {
+    pointer-events: auto !important;
   }
 
   /* Custom scrollbar */
