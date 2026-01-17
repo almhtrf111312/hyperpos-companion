@@ -204,36 +204,173 @@ export default function Invoices() {
       : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || 'خدمة صيانة'}</td></tr>`;
     
     const printContent = `
-      <html dir="rtl">
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
           <title>فاتورة - ${invoice.id}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-            .logo { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; }
-            .store-name { font-size: 1.4em; font-weight: bold; margin: 5px 0; }
-            .store-info { font-size: 0.85em; color: #555; }
-            .invoice-info { margin: 15px 0; font-size: 0.9em; }
-            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-            th { background: #f5f5f5; padding: 8px; text-align: right; }
-            .total { font-size: 1.3em; font-weight: bold; margin-top: 15px; border-top: 2px solid #000; padding-top: 10px; text-align: center; }
-            .footer { text-align: center; margin-top: 30px; font-size: 0.85em; color: #555; }
+            /* Reset & Base - Mobile First */
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { 
+              font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
+              padding: 10px; 
+              max-width: 80mm; 
+              margin: 0 auto; 
+              font-size: 12px;
+              line-height: 1.4;
+              color: #333;
+            }
+            
+            /* Header */
+            .header { 
+              text-align: center; 
+              margin-bottom: 15px; 
+              border-bottom: 2px dashed #333; 
+              padding-bottom: 12px; 
+            }
+            .logo { 
+              max-width: 60px; 
+              max-height: 60px; 
+              margin: 0 auto 8px; 
+              display: block; 
+              object-fit: contain;
+            }
+            .store-name { 
+              font-size: 1.3em; 
+              font-weight: bold; 
+              margin: 5px 0; 
+              word-wrap: break-word;
+            }
+            .store-info { 
+              font-size: 0.85em; 
+              color: #555; 
+              word-wrap: break-word;
+            }
+            
+            /* Invoice Info */
+            .invoice-info { 
+              margin: 12px 0; 
+              font-size: 0.9em; 
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              padding: 10px;
+              background: #fafafa;
+            }
+            .invoice-info > div { 
+              padding: 3px 0; 
+              display: flex;
+              justify-content: space-between;
+              flex-wrap: wrap;
+            }
+            .invoice-info strong { 
+              color: #333;
+              min-width: 80px;
+            }
+            
+            /* Table */
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 12px 0; 
+              font-size: 0.9em;
+            }
+            th { 
+              background: #333; 
+              color: #fff;
+              padding: 8px 5px; 
+              text-align: right; 
+              font-size: 0.85em;
+            }
+            td { 
+              padding: 8px 5px; 
+              border-bottom: 1px solid #eee; 
+              vertical-align: top;
+              word-wrap: break-word;
+              max-width: 120px;
+            }
+            td:first-child {
+              max-width: 45%;
+              overflow-wrap: break-word;
+              hyphens: auto;
+            }
+            td:nth-child(2) { text-align: center; width: 20%; }
+            td:nth-child(3) { text-align: left; width: 25%; white-space: nowrap; }
+            
+            /* Service description for maintenance */
+            .service-desc {
+              white-space: pre-wrap;
+              word-wrap: break-word;
+              line-height: 1.5;
+            }
+            
+            /* Discount */
+            .discount-row {
+              text-align: left;
+              padding: 5px 0;
+              color: #c00;
+              font-weight: 500;
+            }
+            
+            /* Total */
+            .total { 
+              font-size: 1.2em; 
+              font-weight: bold; 
+              margin-top: 12px; 
+              border-top: 2px solid #333; 
+              padding-top: 10px; 
+              text-align: center;
+              background: #f5f5f5;
+              padding: 12px;
+              border-radius: 6px;
+            }
+            
+            /* Footer */
+            .footer { 
+              text-align: center; 
+              margin-top: 20px; 
+              font-size: 0.8em; 
+              color: #666;
+              border-top: 1px dashed #ccc;
+              padding-top: 12px;
+            }
+            
+            /* Print Styles */
+            @media print {
+              body { padding: 5px; max-width: 100%; }
+              .header { page-break-after: avoid; }
+              table { page-break-inside: avoid; }
+              .total { page-break-before: avoid; }
+              @page { 
+                size: 80mm auto; 
+                margin: 5mm; 
+              }
+            }
+            
+            /* Mobile Optimization */
+            @media screen and (max-width: 320px) {
+              body { font-size: 11px; padding: 8px; }
+              .store-name { font-size: 1.1em; }
+              td { padding: 6px 3px; }
+            }
           </style>
         </head>
         <body>
           <div class="header">
-            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" />` : ''}
+            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" onerror="this.style.display='none'" />` : ''}
             <div class="store-name">${storeName}</div>
             ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
             ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
           </div>
           <div class="invoice-info">
-            <div><strong>رقم الفاتورة:</strong> ${invoice.id}</div>
-            <div><strong>التاريخ:</strong> ${date} - ${time}</div>
-            <div><strong>العميل:</strong> ${invoice.customerName}</div>
-            ${invoice.customerPhone ? `<div><strong>الهاتف:</strong> ${invoice.customerPhone}</div>` : ''}
-            <div><strong>النوع:</strong> ${invoice.type === 'sale' ? 'مبيعات' : 'صيانة'}</div>
-            <div><strong>الدفع:</strong> ${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</div>
+            <div><strong>رقم الفاتورة:</strong> <span>${invoice.id}</span></div>
+            <div><strong>التاريخ:</strong> <span>${date} - ${time}</span></div>
+            <div><strong>العميل:</strong> <span>${invoice.customerName}</span></div>
+            ${invoice.customerPhone ? `<div><strong>الهاتف:</strong> <span>${invoice.customerPhone}</span></div>` : ''}
+            <div><strong>النوع:</strong> <span>${invoice.type === 'sale' ? 'مبيعات' : 'صيانة'}</span></div>
+            <div><strong>الدفع:</strong> <span>${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</span></div>
           </div>
           <table>
             <thead>
@@ -245,7 +382,7 @@ export default function Invoices() {
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${invoice.discount > 0 ? `<div style="text-align: left;">خصم: ${invoice.currencySymbol}${invoice.discount.toLocaleString()}</div>` : ''}
+          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${invoice.currencySymbol}${invoice.discount.toLocaleString()}</div>` : ''}
           <div class="total">
             الإجمالي: ${invoice.currencySymbol}${invoice.totalInCurrency.toLocaleString()}
           </div>
