@@ -4,45 +4,13 @@ import { X, Camera, SwitchCamera, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Capacitor } from '@capacitor/core';
+import { playBeep } from '@/lib/sound-utils';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
   onClose: () => void;
   onScan: (barcode: string) => void;
 }
-
-// Extended Window interface for WebKit AudioContext
-interface ExtendedWindow extends Window {
-  webkitAudioContext?: typeof AudioContext;
-}
-
-// Beep sound using Web Audio API
-const playBeep = () => {
-  try {
-    const extWindow = window as ExtendedWindow;
-    const AudioContextClass = window.AudioContext || extWindow.webkitAudioContext;
-    if (!AudioContextClass) return;
-    
-    const audioContext = new AudioContextClass();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 1800;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.15);
-  } catch (e) {
-    // Fallback: ignore if audio fails
-    console.log('Audio beep failed:', e);
-  }
-};
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const [error, setError] = useState<string | null>(null);

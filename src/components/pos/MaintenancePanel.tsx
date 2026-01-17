@@ -46,7 +46,8 @@ import { addActivityLog } from '@/lib/activity-log';
 import { addExpense } from '@/lib/expenses-store';
 import { useAuth } from '@/hooks/use-auth';
 import { loadCustomers } from '@/lib/customers-store';
-import { printHTML } from '@/lib/print-utils';
+import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 
 interface Currency {
   code: 'USD' | 'TRY' | 'SYP';
@@ -254,6 +255,13 @@ export function MaintenancePanel({
       }
     }
     
+    // Play appropriate sound
+    if (paymentType === 'cash') {
+      playSaleComplete();
+    } else {
+      playDebtRecorded();
+    }
+    
     toast.success(paymentType === 'cash' 
       ? 'تم تسجيل خدمة الصيانة نقداً' 
       : 'تم تسجيل خدمة الصيانة كدين'
@@ -267,30 +275,9 @@ export function MaintenancePanel({
   const handlePrint = () => {
     if (!validateForm()) return;
     
-    // Load store settings for invoice
-    let storeName = 'HyperPOS Store';
-    let storeAddress = '';
-    let storePhone = '';
-    let storeLogo = '';
-    let showLogo = true;
-    let showAddress = true;
-    let showPhone = true;
-    let footer = 'شكراً لتعاملكم معنا!';
-    
-    try {
-      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
-      if (settingsRaw) {
-        const settings = JSON.parse(settingsRaw);
-        storeName = settings.storeSettings?.name || storeName;
-        storeAddress = settings.storeSettings?.address || '';
-        storePhone = settings.storeSettings?.phone || '';
-        storeLogo = settings.storeSettings?.logo || '';
-        showLogo = settings.printSettings?.showLogo ?? true;
-        showAddress = settings.printSettings?.showAddress ?? true;
-        showPhone = settings.printSettings?.showPhone ?? true;
-        footer = settings.printSettings?.footer || footer;
-      }
-    } catch {}
+    // Use dynamic store settings
+    const storeSettings = getStoreSettings();
+    const printSettings = getPrintSettings();
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
@@ -317,10 +304,10 @@ export function MaintenancePanel({
         </head>
         <body>
           <div class="header">
-            ${showLogo && storeLogo ? `<img src="${storeLogo}" alt="شعار المحل" class="logo" />` : ''}
-            <div class="store-name">${storeName}</div>
-            ${showAddress && storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
-            ${showPhone && storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+            ${printSettings.showLogo && storeSettings.logo ? `<img src="${storeSettings.logo}" alt="شعار المحل" class="logo" />` : ''}
+            <div class="store-name">${storeSettings.name}</div>
+            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${storeSettings.address}</div>` : ''}
+            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
             <div class="date-time">${currentDate} - ${currentTime}</div>
           </div>
           <div class="info"><span class="info-label">العميل:</span> ${customerName}</div>
@@ -330,7 +317,7 @@ export function MaintenancePanel({
             <strong>المبلغ:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
           </div>
           <div class="footer">
-            <p>${footer}</p>
+            <p>${printSettings.footer}</p>
           </div>
         </body>
       </html>
