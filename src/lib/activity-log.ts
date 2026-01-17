@@ -64,7 +64,7 @@ export function addActivityLog(
   userId: string,
   userName: string,
   description: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): ActivityLog {
   const log: ActivityLog = {
     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),

@@ -11,10 +11,19 @@ interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
 }
 
+// Extended Window interface for WebKit AudioContext
+interface ExtendedWindow extends Window {
+  webkitAudioContext?: typeof AudioContext;
+}
+
 // Beep sound using Web Audio API
 const playBeep = () => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const extWindow = window as ExtendedWindow;
+    const AudioContextClass = window.AudioContext || extWindow.webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    const audioContext = new AudioContextClass();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
@@ -31,6 +40,7 @@ const playBeep = () => {
     oscillator.stop(audioContext.currentTime + 0.15);
   } catch (e) {
     // Fallback: ignore if audio fails
+    console.log('Audio beep failed:', e);
   }
 };
 
@@ -82,7 +92,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       });
   }, [isOpen]);
 
-  const handleDecode = useCallback((result: any) => {
+  // Define proper type for decode result
+  interface DecodeResult {
+    getText: () => string;
+  }
+
+  const handleDecode = useCallback((result: DecodeResult) => {
     if (acceptedRef.current) return;
     
     const text = result.getText().trim();
@@ -168,7 +183,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       const track = stream.getVideoTracks()[0];
       
       if (track && 'getCapabilities' in track) {
-        const capabilities = track.getCapabilities() as any;
+        // Type-safe capability check
+        interface ZoomCapabilities {
+          zoom?: { min: number; max: number };
+        }
+        
+        const capabilities = track.getCapabilities() as ZoomCapabilities;
         
         if (capabilities.zoom && capabilities.zoom.max > 1) {
           const maxZoom = capabilities.zoom.max || 2;
@@ -176,7 +196,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           
           try {
             await track.applyConstraints({
-              advanced: [{ zoom: targetZoom } as any]
+              advanced: [{ zoom: targetZoom } as MediaTrackConstraintSet]
             });
             
             setIsZoomed(newZoomed);

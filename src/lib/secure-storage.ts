@@ -4,32 +4,38 @@
  * Uses AES-like XOR encryption with dynamic keys and integrity verification
  */
 
-// Generate a unique device key based on browser fingerprint
+const PERSISTENT_KEY_STORAGE = 'hp_device_id';
+
+// Generate a unique device key with persistent storage
 const getDeviceKey = (): string => {
-  const cached = sessionStorage.getItem('_hpdk');
-  if (cached) return cached;
+  // First: Try to get from session cache
+  const cachedSession = sessionStorage.getItem('_hpdk');
+  if (cachedSession) return cachedSession;
   
-  // Create a device-specific key using available browser info
-  const components = [
-    navigator.userAgent,
-    navigator.language,
-    screen.colorDepth.toString(),
-    screen.width.toString(),
-    screen.height.toString(),
-    new Date().getTimezoneOffset().toString(),
-  ];
-  
-  let hash = 0;
-  const str = components.join('|');
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+  // Second: Try to get persistent key from localStorage
+  try {
+    const persistedKey = localStorage.getItem(PERSISTENT_KEY_STORAGE);
+    if (persistedKey) {
+      sessionStorage.setItem('_hpdk', persistedKey);
+      return persistedKey;
+    }
+  } catch {
+    // localStorage might not be available
   }
   
-  const key = 'HP' + Math.abs(hash).toString(36) + 'SK';
-  sessionStorage.setItem('_hpdk', key);
-  return key;
+  // Third: Generate a new unique key
+  const newKey = 'HP' + Date.now().toString(36) + 
+                 Math.random().toString(36).substring(2, 10) + 'SK';
+  
+  // Persist to localStorage for future sessions
+  try {
+    localStorage.setItem(PERSISTENT_KEY_STORAGE, newKey);
+  } catch {
+    console.warn('Could not persist device key to localStorage');
+  }
+  
+  sessionStorage.setItem('_hpdk', newKey);
+  return newKey;
 };
 
 // Generate a timestamp-based salt
@@ -85,10 +91,23 @@ const APP_SECRET = 'HyperPOS2024SecureStorage';
  * Securely store data with encryption
  */
 export const secureSet = (key: string, data: unknown, options: SecureStorageOptions = {}): boolean => {
+  // Validate data before processing
+  if (data === null || data === undefined) {
+    console.warn('SecureStorage: Attempting to store null/undefined data');
+    return false;
+  }
+  
   try {
+    const dataString = JSON.stringify(data);
+    
+    // Additional validation after serialization
+    if (!dataString || dataString === 'null' || dataString === 'undefined') {
+      console.warn('SecureStorage: Invalid data serialization');
+      return false;
+    }
+    
     const salt = generateSalt();
     const deviceKey = getDeviceKey();
-    const dataString = JSON.stringify(data);
     
     // Multi-layer encryption
     const keys = [APP_SECRET, deviceKey, salt];
