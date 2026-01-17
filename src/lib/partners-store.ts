@@ -139,7 +139,13 @@ export const getPartnerById = (id: string): Partner | null => {
   return partners.find(p => p.id === id) || null;
 };
 
-// Distribute profit to partners - SEQUENTIAL distribution
+// Interface for category profits
+export interface CategoryProfit {
+  category: string;
+  profit: number;
+}
+
+// Distribute profit to partners - SEQUENTIAL distribution (kept for backwards compatibility)
 export const distributeProfit = (
   profit: number,
   category: string,
@@ -147,89 +153,60 @@ export const distributeProfit = (
   customerName: string,
   isDebt: boolean
 ): ProfitDistribution[] => {
-  const partners = loadPartners();
-  const distributions: ProfitDistribution[] = [];
-  
-  if (partners.length === 0 || profit <= 0) return distributions;
-  
-  let remainingProfit = profit;
-  
-  // ======= المرحلة 1: الشركاء المتخصصون في الصنف =======
-  // يأخذون نسبتهم من الربح الأصلي أولاً
-  const specializedPartners = partners.filter(p => 
-    !p.accessAll && p.categoryShares.some(cs => cs.enabled && cs.categoryName === category)
+  // Delegate to the new function with a single category
+  return distributeDetailedProfit(
+    [{ category, profit }],
+    invoiceId,
+    customerName,
+    isDebt
   );
+};
+
+// NEW: Distribute detailed profit - processes all categories in a single transaction
+// This avoids Race Conditions by loading/saving partners only once
+export const distributeDetailedProfit = (
+  profits: CategoryProfit[],
+  invoiceId: string,
+  customerName: string,
+  isDebt: boolean
+): ProfitDistribution[] => {
+  const partners = loadPartners();
+  const allDistributions: ProfitDistribution[] = [];
   
-  specializedPartners.forEach(partner => {
-    const categoryShare = partner.categoryShares.find(
-      cs => cs.enabled && cs.categoryName === category
+  if (partners.length === 0 || profits.length === 0) return allDistributions;
+  
+  // Process each category profit
+  profits.forEach(({ category, profit }) => {
+    if (profit <= 0) return;
+    
+    let remainingProfit = profit;
+    
+    // ======= المرحلة 1: الشركاء المتخصصون في الصنف =======
+    // يأخذون نسبتهم من الربح الأصلي أولاً
+    const specializedPartners = partners.filter(p => 
+      !p.accessAll && p.categoryShares.some(cs => cs.enabled && cs.categoryName === category)
     );
     
-    if (categoryShare && categoryShare.percentage > 0) {
-      // يأخذ نسبته من الربح الأصلي
-      const partnerShare = (profit * categoryShare.percentage) / 100;
-      remainingProfit -= partnerShare;
+    specializedPartners.forEach(partner => {
+      const categoryShare = partner.categoryShares.find(
+        cs => cs.enabled && cs.categoryName === category
+      );
       
-      distributions.push({
-        partnerId: partner.id,
-        partnerName: partner.name,
-        amount: partnerShare,
-        percentage: categoryShare.percentage,
-      });
-      
-      // Update partner data
-      const profitRecord: ProfitRecord = {
-        id: Date.now().toString() + partner.id,
-        invoiceId,
-        amount: partnerShare,
-        category,
-        isDebt,
-        createdAt: new Date().toISOString(),
-      };
-      
-      if (isDebt) {
-        partner.pendingProfit += partnerShare;
-        partner.pendingProfitDetails.push({
-          invoiceId,
-          amount: partnerShare,
-          customerName,
-          createdAt: new Date().toISOString(),
-        });
-      } else {
-        partner.confirmedProfit += partnerShare;
-        partner.currentBalance += partnerShare;
-        partner.totalProfitEarned += partnerShare;
-      }
-      
-      partner.profitHistory.push(profitRecord);
-    }
-  });
-  
-  // ======= المرحلة 2: الشركاء الكاملون =======
-  // يأخذون نسبتهم من الربح المتبقي بعد الشركاء المتخصصين
-  if (remainingProfit > 0) {
-    const fullPartners = partners.filter(p => p.accessAll);
-    
-    // حساب إجمالي نسب الشركاء الكاملين
-    const totalFullShare = fullPartners.reduce((sum, p) => sum + p.sharePercentage, 0);
-    
-    fullPartners.forEach(partner => {
-      if (partner.sharePercentage > 0 && totalFullShare > 0) {
-        // نسبة هذا الشريك من إجمالي نسب الشركاء الكاملين
-        const partnerRatio = partner.sharePercentage / totalFullShare;
-        // يأخذ نسبته من المتبقي
-        const partnerShare = remainingProfit * partnerRatio;
+      if (categoryShare && categoryShare.percentage > 0) {
+        // يأخذ نسبته من الربح الأصلي
+        const partnerShare = (profit * categoryShare.percentage) / 100;
+        remainingProfit -= partnerShare;
         
-        distributions.push({
+        allDistributions.push({
           partnerId: partner.id,
           partnerName: partner.name,
           amount: partnerShare,
-          percentage: partner.sharePercentage,
+          percentage: categoryShare.percentage,
         });
         
         // Update partner data
         const profitRecord: ProfitRecord = {
-          id: Date.now().toString() + partner.id,
+          id: Date.now().toString() + partner.id + category,
           invoiceId,
           amount: partnerShare,
           category,
@@ -254,10 +231,63 @@ export const distributeProfit = (
         partner.profitHistory.push(profitRecord);
       }
     });
-  }
+    
+    // ======= المرحلة 2: الشركاء الكاملون =======
+    // يأخذون نسبتهم من الربح المتبقي بعد الشركاء المتخصصين
+    if (remainingProfit > 0) {
+      const fullPartners = partners.filter(p => p.accessAll);
+      
+      // حساب إجمالي نسب الشركاء الكاملين
+      const totalFullShare = fullPartners.reduce((sum, p) => sum + p.sharePercentage, 0);
+      
+      fullPartners.forEach(partner => {
+        if (partner.sharePercentage > 0 && totalFullShare > 0) {
+          // نسبة هذا الشريك من إجمالي نسب الشركاء الكاملين
+          const partnerRatio = partner.sharePercentage / totalFullShare;
+          // يأخذ نسبته من المتبقي
+          const partnerShare = remainingProfit * partnerRatio;
+          
+          allDistributions.push({
+            partnerId: partner.id,
+            partnerName: partner.name,
+            amount: partnerShare,
+            percentage: partner.sharePercentage,
+          });
+          
+          // Update partner data
+          const profitRecord: ProfitRecord = {
+            id: Date.now().toString() + partner.id + category,
+            invoiceId,
+            amount: partnerShare,
+            category,
+            isDebt,
+            createdAt: new Date().toISOString(),
+          };
+          
+          if (isDebt) {
+            partner.pendingProfit += partnerShare;
+            partner.pendingProfitDetails.push({
+              invoiceId,
+              amount: partnerShare,
+              customerName,
+              createdAt: new Date().toISOString(),
+            });
+          } else {
+            partner.confirmedProfit += partnerShare;
+            partner.currentBalance += partnerShare;
+            partner.totalProfitEarned += partnerShare;
+          }
+          
+          partner.profitHistory.push(profitRecord);
+        }
+      });
+    }
+  });
   
+  // حفظ مرة واحدة فقط في النهاية - تجنب Race Condition
   savePartners(partners);
-  return distributions;
+  
+  return allDistributions;
 };
 
 // Confirm pending profit when debt is paid
