@@ -113,7 +113,12 @@ export function CartPanel({
       const insufficientNames = stockCheck.insufficientItems
         .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
         .join('\n');
-      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`);
+      // تنبيه هام يتطلب إغلاق يدوي
+      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+        duration: Infinity,
+        closeButton: true,
+        description: 'اضغط × للإغلاق',
+      });
       return;
     }
     
@@ -227,7 +232,12 @@ export function CartPanel({
       const insufficientNames = stockCheck.insufficientItems
         .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
         .join('\n');
-      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`);
+      // تنبيه هام يتطلب إغلاق يدوي
+      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+        duration: Infinity,
+        closeButton: true,
+        description: 'اضغط × للإغلاق',
+      });
       return;
     }
     

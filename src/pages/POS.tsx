@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -14,6 +14,7 @@ import { getProductsForPOS, POSProduct, getProductByBarcode } from '@/lib/produc
 import { getCategoryNames } from '@/lib/categories-store';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
+import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -174,6 +175,36 @@ export default function POS() {
     setDiscount(0);
     setCustomerName('');
   };
+
+  // Keyboard shortcuts for POS (desktop only)
+  const [scannerTrigger, setScannerTrigger] = useState(0);
+  
+  usePOSShortcuts({
+    onCashSale: () => {
+      if (cart.length > 0) {
+        // Trigger cash sale - we'll need to expose this from CartPanel
+        toast.info('اضغط F1 لتأكيد البيع النقدي', { description: 'استخدم زر البيع النقدي في السلة' });
+      }
+    },
+    onDebtSale: () => {
+      if (cart.length > 0 && customerName) {
+        toast.info('اضغط F2 لتأكيد البيع بالدين', { description: 'استخدم زر الدين في السلة' });
+      } else if (!customerName) {
+        toast.warning('يجب إدخال اسم العميل أولاً');
+      }
+    },
+    onClearCart: () => {
+      if (cart.length > 0) {
+        clearCart();
+        toast.success('تم مسح السلة');
+      }
+    },
+    onToggleMode: () => {
+      setActiveMode(prev => prev === 'products' ? 'maintenance' : 'products');
+      toast.info(activeMode === 'products' ? 'تم التبديل إلى الصيانة' : 'تم التبديل إلى المنتجات');
+    },
+    enabled: !isMobile,
+  });
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
