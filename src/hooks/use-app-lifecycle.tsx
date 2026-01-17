@@ -151,3 +151,32 @@ export function useAuthLifecycle(refreshSession: () => Promise<void>) {
     clearSensitiveData: false, // Don't clear auth data, just refresh
   });
 }
+
+/**
+ * Hook to handle orientation changes
+ * Useful for closing overlays and preventing UI blocking during rotation
+ */
+export function useOrientationChange(callback: (isPortrait: boolean) => void) {
+  useEffect(() => {
+    let lastOrientation = window.innerHeight > window.innerWidth;
+    
+    const handleOrientationChange = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      if (isPortrait !== lastOrientation) {
+        lastOrientation = isPortrait;
+        callback(isPortrait);
+      }
+    };
+
+    // Listen to orientation change event
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    // Also listen to resize as fallback
+    window.addEventListener('resize', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
+    };
+  }, [callback]);
+}

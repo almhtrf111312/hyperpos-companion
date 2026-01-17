@@ -69,6 +69,36 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, isMobile]);
 
+  // Close sidebar on orientation change to prevent stuck overlay
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      // Close sidebar when orientation changes to prevent UI blocking
+      if (isMobile && isOpen) {
+        onToggle();
+      }
+    };
+
+    // Support both old and new orientation APIs
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    // Also listen to resize as fallback for orientation detection
+    let lastWidth = window.innerWidth;
+    const handleResize = () => {
+      const currentWidth = window.innerWidth;
+      // Detect significant width change (likely rotation)
+      if (Math.abs(currentWidth - lastWidth) > 100 && isMobile && isOpen) {
+        onToggle();
+      }
+      lastWidth = currentWidth;
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile, isOpen, onToggle]);
+
   // On mobile, always show full sidebar (not collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
 
