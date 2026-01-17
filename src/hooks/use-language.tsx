@@ -16,9 +16,13 @@ interface LanguageContextType {
   t: (key: TranslationKey) => string;
   languages: LanguageInfo[];
   direction: 'ltr' | 'rtl';
+  isRTL: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+// RTL languages from the supported list
+const RTL_LANGUAGES: Language[] = ['ar'];
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getCurrentLanguage);
@@ -26,6 +30,30 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     initializeLanguage();
   }, []);
+
+  // Apply RTL/LTR styles to document
+  useEffect(() => {
+    const isRTL = RTL_LANGUAGES.includes(language);
+    
+    // Set document direction
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+    
+    // Add/remove RTL class for CSS targeting
+    if (isRTL) {
+      document.documentElement.classList.add('rtl');
+      document.documentElement.classList.remove('ltr');
+    } else {
+      document.documentElement.classList.add('ltr');
+      document.documentElement.classList.remove('rtl');
+    }
+    
+    // Update meta for proper rendering
+    const metaViewport = document.querySelector('meta[name="viewport"]');
+    if (metaViewport) {
+      metaViewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+    }
+  }, [language]);
 
   useEffect(() => {
     const handleLanguageChange = (e: CustomEvent<Language>) => {
@@ -48,9 +76,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [language]);
 
   const direction = languages.find(l => l.code === language)?.direction || 'rtl';
+  const isRTL = RTL_LANGUAGES.includes(language);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, languages, direction }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, languages, direction, isRTL }}>
       {children}
     </LanguageContext.Provider>
   );

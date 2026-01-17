@@ -2,6 +2,10 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
+// Session persistence keys
+const STAY_LOGGED_IN_KEY = 'hyperpos_stay_logged_in';
+const SESSION_CACHE_KEY = 'hyperpos_session_cache';
+
 interface Profile {
   id: string;
   user_id: string;
@@ -15,19 +19,67 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  stayLoggedIn: boolean;
+  signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setStayLoggedIn: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper to check if we should stay logged in
+const getStayLoggedInPreference = (): boolean => {
+  try {
+    return localStorage.getItem(STAY_LOGGED_IN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+// Helper to cache session for faster restore
+const cacheSession = (session: Session | null) => {
+  try {
+    if (session) {
+      localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
+        user: session.user,
+        expires_at: session.expires_at,
+        cached_at: Date.now()
+      }));
+    } else {
+      localStorage.removeItem(SESSION_CACHE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+// Get cached session for immediate UI restore
+const getCachedSession = () => {
+  try {
+    const cached = localStorage.getItem(SESSION_CACHE_KEY);
+    if (cached) {
+      const data = JSON.parse(cached);
+      // Check if cache is less than 1 hour old and not expired
+      const cacheAge = Date.now() - data.cached_at;
+      const isExpired = data.expires_at && Date.now() / 1000 > data.expires_at;
+      if (cacheAge < 3600000 && !isExpired) {
+        return data;
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [stayLoggedIn, setStayLoggedInState] = useState(getStayLoggedInPreference);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -55,12 +107,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, fetchProfile]);
 
+  // Set stay logged in preference
+  const setStayLoggedIn = useCallback((value: boolean) => {
+    try {
+      localStorage.setItem(STAY_LOGGED_IN_KEY, value.toString());
+      setStayLoggedInState(value);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   useEffect(() => {
+    // Immediately restore from cache for faster UI
+    const cachedData = getCachedSession();
+    if (cachedData && getStayLoggedInPreference()) {
+      setUser(cachedData.user);
+    }
+
     // Set up auth state listener BEFORE checking for existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+
+        // Cache session if stay logged in is enabled
+        if (getStayLoggedInPreference()) {
+          cacheSession(currentSession);
+        }
 
         if (currentSession?.user) {
           // Use setTimeout to avoid potential deadlocks
@@ -73,6 +146,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
           setIsLoading(false);
         }
+
+        // Handle token refresh events
+        if (event === 'TOKEN_REFRESHED' && currentSession) {
+          cacheSession(currentSession);
+        }
+
+        // Handle sign out
+        if (event === 'SIGNED_OUT') {
+          cacheSession(null);
+        }
       }
     );
 
@@ -80,19 +163,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (!existingSession) {
         setIsLoading(false);
+        cacheSession(null);
       }
       // The onAuthStateChange will handle setting the session
     });
 
-    return () => subscription.unsubscribe();
+    // Periodic session refresh for Android background
+    const refreshInterval = setInterval(async () => {
+      if (getStayLoggedInPreference()) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          // Try to refresh if expiring soon (within 10 minutes)
+          const expiresAt = currentSession.expires_at;
+          if (expiresAt && (expiresAt - Date.now() / 1000) < 600) {
+            await supabase.auth.refreshSession();
+          }
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(refreshInterval);
+    };
   }, [fetchProfile]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      // Set stay logged in preference
+      if (!error && data.session) {
+        setStayLoggedIn(rememberMe);
+        if (rememberMe) {
+          cacheSession(data.session);
+        }
+      }
       
       // Log successful login
       if (!error && data.user) {
@@ -103,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             data.user.id,
             data.user.email || 'مستخدم',
             `تم تسجيل الدخول بنجاح`,
-            { email }
+            { email, stayLoggedIn: rememberMe }
           );
         });
       }
@@ -163,10 +272,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       isLoading,
+      stayLoggedIn,
       signIn,
       signUp,
       signOut,
       refreshProfile,
+      setStayLoggedIn,
     }}>
       {children}
     </AuthContext.Provider>

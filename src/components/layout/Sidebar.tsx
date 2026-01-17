@@ -59,7 +59,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user, profile, signOut } = useAuth();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
 
   // Close sidebar on mobile when navigating
   useEffect(() => {
@@ -98,9 +98,11 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       <aside 
         className={cn(
-          "fixed top-0 right-0 h-screen bg-sidebar border-l border-sidebar-border z-50 transition-all duration-300 flex flex-col",
+          "fixed top-0 h-screen bg-sidebar z-50 transition-all duration-300 flex flex-col",
+          // RTL: sidebar on right, LTR: sidebar on left
+          isRTL ? "right-0 border-l border-sidebar-border" : "left-0 border-r border-sidebar-border",
           isMobile 
-            ? cn("w-64", isOpen ? "translate-x-0" : "translate-x-full")
+            ? cn("w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
             : cn(effectiveCollapsed ? "w-20" : "w-64")
         )}
       >
@@ -129,12 +131,16 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               onClick={() => setCollapsed(!collapsed)}
               className={cn(
                 "w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors",
-                effectiveCollapsed && "absolute -left-4 top-6 bg-primary hover:bg-primary/90"
+                effectiveCollapsed && (isRTL ? "absolute -left-4 top-6" : "absolute -right-4 top-6"),
+                effectiveCollapsed && "bg-primary hover:bg-primary/90"
               )}
             >
               <ChevronRight className={cn(
                 "w-4 h-4 transition-transform duration-300",
-                effectiveCollapsed ? "rotate-180 text-primary-foreground" : "text-sidebar-foreground"
+                // Flip arrow direction based on RTL and collapsed state
+                effectiveCollapsed 
+                  ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
+                  : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
               )} />
             </button>
           )}
@@ -169,7 +175,11 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       </>
                     )}
                     {effectiveCollapsed && !isMobile && (
-                      <div className="absolute right-full mr-2 px-3 py-2 bg-popover text-popover-foreground rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                      <div className={cn(
+                        "absolute px-3 py-2 bg-popover text-popover-foreground rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50",
+                        // Position tooltip on opposite side based on RTL
+                        isRTL ? "right-full mr-2" : "left-full ml-2"
+                      )}>
                         {t(item.translationKey as any)}
                       </div>
                     )}
