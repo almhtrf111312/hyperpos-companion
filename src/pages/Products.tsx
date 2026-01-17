@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Search, 
   Plus, 
@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getCategoryNames } from '@/lib/categories-store';
 import { 
   loadProducts, 
@@ -58,10 +59,12 @@ export default function Products() {
   const { user, profile } = useAuth();
   const [products, setProducts] = useState<Product[]>(() => loadProducts());
   const [searchQuery, setSearchQuery] = useState('');
-const [selectedCategory, setSelectedCategory] = useState('الكل');
-const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
-const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
-const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('الكل');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
@@ -86,6 +89,41 @@ const [showCategoryManager, setShowCategoryManager] = useState(false);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Memory leak prevention - proper cleanup for storage events
+  useEffect(() => {
+    setIsLoading(true);
+    const loadData = () => {
+      setProducts(loadProducts());
+      setCategoryOptions(getCategoryNames());
+      setIsLoading(false);
+    };
+    loadData();
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes('hyperpos_products') || e.key?.includes('categories')) {
+        loadData();
+      }
+    };
+    
+    const handleFocus = () => loadData();
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Compress image to max 640x640
   const compressImage = (file: File) => {
@@ -161,13 +199,16 @@ const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const categories = ['الكل', ...categoryOptions];
 
-const filteredProducts = products.filter(product => {
-  const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       product.barcode.includes(searchQuery);
-  const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
-  const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-  return matchesSearch && matchesCategory && matchesStatus;
-});
+// Memoized filtered results for performance
+const filteredProducts = useMemo(() => {
+  return products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                         product.barcode.includes(debouncedSearch);
+    const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
+    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+}, [products, debouncedSearch, selectedCategory, statusFilter]);
 
   const stats = {
     total: products.length,
@@ -427,6 +468,34 @@ const filteredProducts = products.filter(product => {
       </div>
 
       {/* Products Grid - Mobile */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+              </div>
+              <div className="flex justify-between pt-3 border-t border-border">
+                <Skeleton className="h-4 w-20" />
+                <div className="flex gap-1">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <Skeleton className="h-10 w-10 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
         {filteredProducts.map((product, index) => {
           const status = statusConfig[product.status];
@@ -476,11 +545,11 @@ const filteredProducts = products.filter(product => {
                   <span className="font-semibold">{product.quantity}</span>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
-                    <Edit className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
+                    <Edit className="w-5 h-5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDeleteDialog(product)}>
-                    <Trash2 className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
+                    <Trash2 className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
@@ -488,6 +557,7 @@ const filteredProducts = products.filter(product => {
           );
         })}
       </div>
+      )}
 
       {/* Products Table - Desktop */}
       <div className="hidden lg:block bg-card rounded-2xl border border-border overflow-hidden">
