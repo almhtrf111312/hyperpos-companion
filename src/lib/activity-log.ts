@@ -19,7 +19,13 @@ export type ActivityType =
   | 'password_changed'
   | 'backup_created'
   | 'invoice_created'
-  | 'invoice_deleted';
+  | 'invoice_deleted'
+  | 'shift_opened'
+  | 'shift_closed'
+  | 'capital_added'
+  | 'capital_withdrawn'
+  | 'expense_added'
+  | 'partner_investment';
 
 // Device info for tracking action origin
 interface DeviceInfo {
@@ -161,4 +167,10 @@ export const activityTypeLabels: Record<ActivityType, { ar: string; en: string; 
   backup_created: { ar: 'إنشاء نسخة احتياطية', en: 'Backup Created', fr: 'Sauvegarde Créée' },
   invoice_created: { ar: 'إنشاء فاتورة', en: 'Invoice Created', fr: 'Facture Créée' },
   invoice_deleted: { ar: 'حذف فاتورة', en: 'Invoice Deleted', fr: 'Facture Supprimée' },
+  shift_opened: { ar: 'فتح وردية', en: 'Shift Opened', fr: 'Quart Ouvert' },
+  shift_closed: { ar: 'إغلاق وردية', en: 'Shift Closed', fr: 'Quart Fermé' },
+  capital_added: { ar: 'إضافة رأس مال', en: 'Capital Added', fr: 'Capital Ajouté' },
+  capital_withdrawn: { ar: 'سحب رأس مال', en: 'Capital Withdrawn', fr: 'Capital Retiré' },
+  expense_added: { ar: 'إضافة مصروف', en: 'Expense Added', fr: 'Dépense Ajoutée' },
+  partner_investment: { ar: 'استثمار شريك', en: 'Partner Investment', fr: 'Investissement Partenaire' },
 };

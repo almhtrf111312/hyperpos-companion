@@ -45,6 +45,7 @@ export const translations = {
     'nav.invoices': 'الفواتير',
     'nav.expenses': 'المصاريف',
     'nav.partners': 'الشركاء',
+    'nav.cashbox': 'الصندوق',
     'nav.reports': 'التقارير',
     'nav.settings': 'الإعدادات',
     
@@ -304,6 +305,7 @@ export const translations = {
     'nav.invoices': 'Invoices',
     'nav.expenses': 'Expenses',
     'nav.partners': 'Partners',
+    'nav.cashbox': 'Cash Box',
     'nav.reports': 'Reports',
     'nav.settings': 'Settings',
     
