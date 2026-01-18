@@ -159,11 +159,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+    // Check for existing session and verify user still exists
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
       if (!existingSession) {
         setIsLoading(false);
         cacheSession(null);
+        return;
+      }
+      
+      // Verify the user still exists in the database
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) {
+        // User doesn't exist anymore, clear session
+        console.log('User from session does not exist, signing out...');
+        await supabase.auth.signOut();
+        setIsLoading(false);
+        cacheSession(null);
+        return;
       }
       // The onAuthStateChange will handle setting the session
     });
