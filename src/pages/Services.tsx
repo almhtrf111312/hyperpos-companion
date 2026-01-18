@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
+import { useLanguage } from '@/hooks/use-language';
 
 interface RepairRequest {
   id: string;
@@ -101,6 +102,7 @@ const filterOptions = ['الكل', 'قيد الانتظار', 'قيد الإصل
 const deviceTypes = ['هاتف', 'تابلت', 'لابتوب', 'كمبيوتر', 'ساعة ذكية', 'أخرى'];
 
 export default function Services() {
+  const { t } = useLanguage();
   const [requests, setRequests] = useState<RepairRequest[]>(() => loadServices());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('الكل');
