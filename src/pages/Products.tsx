@@ -51,16 +51,18 @@ import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
-
-const statusConfig = {
-  in_stock: { label: 'متوفر', color: 'badge-success', icon: CheckCircle },
-  low_stock: { label: 'كمية منخفضة', color: 'badge-warning', icon: AlertTriangle },
-  out_of_stock: { label: 'نفذ المخزون', color: 'badge-danger', icon: AlertTriangle },
-};
+import { useLanguage } from '@/hooks/use-language';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
+  
+  const statusConfig = {
+    in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
+    low_stock: { label: t('products.low'), color: 'badge-warning', icon: AlertTriangle },
+    out_of_stock: { label: t('products.outOfStock'), color: 'badge-danger', icon: AlertTriangle },
+  };
   const [products, setProducts] = useState<Product[]>(() => loadProducts());
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -403,20 +405,20 @@ const filteredProducts = useMemo(() => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة المنتجات</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة مخزون المنتجات والأسعار</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('products.pageTitle')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('products.pageSubtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
             <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            التصنيفات
+            {t('products.categories')}
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
             setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            إضافة منتج
+            {t('products.addProduct')}
           </Button>
         </div>
       </div>
