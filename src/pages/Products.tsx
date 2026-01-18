@@ -51,7 +51,15 @@ import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
-import { isNativeCameraAvailable, capturePhoto, pickFromGallery } from '@/lib/camera-service';
+import { 
+  isNativeCameraAvailable, 
+  capturePhoto, 
+  pickFromGallery, 
+  initCameraRestoration,
+  markPendingCameraCapture,
+  clearPendingCameraCapture,
+  getRestoredCameraResult
+} from '@/lib/camera-service';
 import { useLanguage } from '@/hooks/use-language';
 
 export default function Products() {
@@ -219,9 +227,15 @@ export default function Products() {
 
   // التقاط صورة باستخدام Capacitor Camera (الأمثل للموبايل)
   const triggerCameraCapture = async () => {
+    // حفظ الحالة دائماً قبل فتح الكاميرا (للتعامل مع إعادة تشغيل Android)
+    markPendingCameraCapture(formData, showEditDialog, selectedProduct?.id);
+    
     if (isNativeCameraAvailable()) {
       // استخدام Capacitor Camera Plugin للموبايل
       const result = await capturePhoto();
+      
+      // مسح علامة الانتظار عند النجاح أو الإلغاء
+      clearPendingCameraCapture();
       
       if (result.success && result.image) {
         setFormData(prev => ({ ...prev, image: result.image! }));
@@ -256,8 +270,37 @@ export default function Products() {
     }
   };
 
-  // استرجاع بيانات النموذج عند تحميل الصفحة (إذا كانت محفوظة)
+  // تهيئة استعادة نتائج الكاميرا (للتعامل مع إعادة تشغيل Android)
   useEffect(() => {
+    initCameraRestoration();
+  }, []);
+
+  // استرجاع الصورة من الكاميرا بعد إعادة تشغيل التطبيق
+  useEffect(() => {
+    const restored = getRestoredCameraResult();
+    
+    if (restored) {
+      console.log('[Products] Restored camera result found, applying...');
+      const { image, formState } = restored;
+      
+      // استعادة بيانات النموذج مع الصورة الجديدة
+      setFormData({ ...formState.formData, image });
+      
+      if (formState.isEditing && formState.selectedProductId) {
+        const product = products.find(p => p.id === formState.selectedProductId);
+        if (product) {
+          setSelectedProduct(product);
+          setShowEditDialog(true);
+        }
+      } else {
+        setShowAddDialog(true);
+      }
+      
+      toast.success('تم استرجاع الصورة بنجاح بعد إعادة تشغيل التطبيق');
+      return; // Skip the regular form state check
+    }
+    
+    // استرجاع بيانات النموذج العادية (للمتصفح)
     const savedState = loadFormState<{
       formData: typeof formData;
       isEditing: boolean;
