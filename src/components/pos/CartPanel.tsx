@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from 'sonner';
+import { showToast } from '@/lib/toast-config';
 import { addInvoice } from '@/lib/invoices-store';
 import { findOrCreateCustomer, updateCustomerStats, loadCustomers } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
@@ -103,7 +103,7 @@ export function CartPanel({
   const handleDebtSale = () => {
     if (cart.length === 0) return;
     if (!customerName) {
-      toast.error('يرجى إدخال اسم العميل أولاً');
+      showToast.error('يرجى إدخال اسم العميل أولاً');
       return;
     }
     
@@ -129,9 +129,8 @@ export function CartPanel({
         .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
         .join('\n');
       // تنبيه هام يتطلب إغلاق يدوي
-      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-        duration: Infinity,
-        closeButton: true,
+      showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+        persistent: true,
         description: 'اضغط × للإغلاق',
       });
       return;
@@ -241,7 +240,7 @@ export function CartPanel({
     // Record activity for auto-backup
     recordActivity();
     
-    toast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
+    showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
     setShowCashDialog(false);
     onClearCart();
   };
@@ -257,9 +256,8 @@ export function CartPanel({
         .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
         .join('\n');
       // تنبيه هام يتطلب إغلاق يدوي
-      toast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-        duration: Infinity,
-        closeButton: true,
+      showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+        persistent: true,
         description: 'اضغط × للإغلاق',
       });
       return;
@@ -373,20 +371,20 @@ export function CartPanel({
     // Play debt sound
     playDebtRecorded();
     
-    toast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
+    showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
     setShowDebtDialog(false);
     onClearCart();
   };
 
   const handleAddCustomer = () => {
     if (!newCustomer.name || !newCustomer.phone) {
-      toast.error('يرجى ملء الحقول المطلوبة');
+      showToast.error('يرجى ملء الحقول المطلوبة');
       return;
     }
     // Add customer to store
     findOrCreateCustomer(newCustomer.name, newCustomer.phone);
     onCustomerNameChange(newCustomer.name);
-    toast.success('تم إضافة العميل بنجاح');
+    showToast.success('تم إضافة العميل بنجاح');
     setShowCustomerDialog(false);
     setNewCustomer({ name: '', phone: '', email: '' });
   };
@@ -481,7 +479,7 @@ export function CartPanel({
 
   const handleWhatsApp = () => {
     if (cart.length === 0) return;
-    toast.info('جاري فتح واتساب...');
+    showToast.info('جاري فتح واتساب...');
     const message = `فاتورة من HyperPOS\n\nالمجموع: ${selectedCurrency.symbol}${totalInCurrency.toLocaleString()}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
@@ -781,7 +779,7 @@ export function CartPanel({
                 onClick={() => {
                   // التحقق من رقم الهاتف إذا كان عميل جديد
                   if (isNewCustomer && !customerPhone.trim()) {
-                    toast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
+                    showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
                     return;
                   }
                   confirmDebtSale();
