@@ -258,10 +258,15 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
 // Mobile menu trigger button component
 export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
+  // Get RTL state from document direction
+  const isRTL = document.documentElement.dir === 'rtl';
+  
   return (
     <button
       onClick={onClick}
-      className="fixed top-4 right-4 z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden"
+      className={`fixed top-4 z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden ${
+        isRTL ? 'right-4' : 'left-4'
+      }`}
     >
       <Menu className="w-6 h-6" />
     </button>
