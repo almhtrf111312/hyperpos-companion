@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Plus, Users, CreditCard, Wrench, Package, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
+import { TranslationKey } from '@/lib/i18n';
 
 interface QuickAction {
   icon: React.ElementType;
-  label: string;
-  description: string;
+  labelKey: TranslationKey;
+  descriptionKey: TranslationKey;
   path: string;
   color: 'primary' | 'success' | 'warning' | 'info' | 'accent';
 }
@@ -13,50 +15,50 @@ interface QuickAction {
 const actions: QuickAction[] = [
   {
     icon: ShoppingCart,
-    label: 'فاتورة جديدة',
-    description: 'إنشاء فاتورة بيع',
+    labelKey: 'quickActions.newInvoice',
+    descriptionKey: 'quickActions.newInvoiceDesc',
     path: '/pos',
     color: 'primary',
   },
   {
     icon: Plus,
-    label: 'منتج جديد',
-    description: 'إضافة منتج للمخزن',
+    labelKey: 'quickActions.newProduct',
+    descriptionKey: 'quickActions.newProductDesc',
     path: '/products?action=new',
     color: 'success',
   },
   {
     icon: Users,
-    label: 'عميل جديد',
-    description: 'إضافة عميل',
+    labelKey: 'quickActions.newCustomer',
+    descriptionKey: 'quickActions.newCustomerDesc',
     path: '/customers?action=new',
     color: 'info',
   },
   {
     icon: CreditCard,
-    label: 'تسجيل دفعة',
-    description: 'تسجيل دفعة دين',
+    labelKey: 'quickActions.recordPayment',
+    descriptionKey: 'quickActions.recordPaymentDesc',
     path: '/debts',
     color: 'warning',
   },
   {
     icon: Wrench,
-    label: 'طلب صيانة',
-    description: 'تسجيل طلب صيانة',
+    labelKey: 'quickActions.maintenanceRequest',
+    descriptionKey: 'quickActions.maintenanceRequestDesc',
     path: '/services/new',
     color: 'accent',
   },
   {
     icon: Receipt,
-    label: 'إضافة مصروف',
-    description: 'تسجيل مصروف جديد',
+    labelKey: 'quickActions.addExpense',
+    descriptionKey: 'quickActions.addExpenseDesc',
     path: '/expenses?action=new',
     color: 'warning',
   },
   {
     icon: Package,
-    label: 'جرد المخزون',
-    description: 'فحص المخزون',
+    labelKey: 'quickActions.inventory',
+    descriptionKey: 'quickActions.inventoryDesc',
     path: '/reports?tab=products',
     color: 'primary',
   },
@@ -71,13 +73,15 @@ const colorStyles = {
 };
 
 export function QuickActions() {
+  const { t } = useLanguage();
+  
   return (
     <div className="bg-card rounded-2xl border border-border p-6">
-      <h3 className="text-lg font-semibold text-foreground mb-4">إجراءات سريعة</h3>
+      <h3 className="text-lg font-semibold text-foreground mb-4">{t('quickActions.title')}</h3>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {actions.map((action, index) => (
           <Link
-            key={action.label}
+            key={action.path}
             to={action.path}
             className={cn(
               "flex flex-col items-center gap-3 p-4 rounded-xl border transition-all duration-200 card-hover fade-in",
@@ -89,8 +93,8 @@ export function QuickActions() {
               <action.icon className="w-6 h-6" />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-foreground">{action.label}</p>
-              <p className="text-xs text-muted-foreground mt-1">{action.description}</p>
+              <p className="font-semibold text-foreground">{t(action.labelKey)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t(action.descriptionKey)}</p>
             </div>
           </Link>
         ))}

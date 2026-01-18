@@ -17,9 +17,12 @@ import { LowStockAlerts } from '@/components/dashboard/LowStockAlerts';
 import { loadInvoices, getInvoiceStats } from '@/lib/invoices-store';
 import { loadProducts, getLowStockProducts } from '@/lib/products-store';
 import { loadPartners } from '@/lib/partners-store';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function Dashboard() {
-  const today = new Date().toLocaleDateString('ar-EG', {
+  const { t, language } = useLanguage();
+  
+  const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -84,45 +87,45 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">مرحباً بك 👋</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
           <p className="text-muted-foreground mt-1">{today}</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span className="text-sm font-medium text-success">متزامن</span>
+          <span className="text-sm font-medium text-success">{t('dashboard.synced')}</span>
         </div>
       </div>
 
       {/* Stats Grid - First Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="المبيعات اليوم"
+          title={t('dashboard.todaySales')}
           value={`$${stats.todaySales.toLocaleString()}`}
-          subtitle={`${stats.todayCount} فاتورة`}
+          subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
           icon={<DollarSign className="w-6 h-6" />}
           variant="primary"
           linkTo="/pos"
         />
         <StatCard
-          title="صافي الأرباح"
+          title={t('dashboard.netProfit')}
           value={`$${stats.todayProfit.toLocaleString()}`}
-          subtitle={`هامش ربح ${stats.profitMargin}%`}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
           icon={<TrendingUp className="w-6 h-6" />}
           variant="success"
           linkTo="/reports"
         />
         <StatCard
-          title="الديون المستحقة"
+          title={t('dashboard.dueDebts')}
           value={`$${stats.totalDebtAmount.toLocaleString()}`}
-          subtitle={`${stats.debtCustomers} عميل`}
+          subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
           icon={<CreditCard className="w-6 h-6" />}
           variant="warning"
           linkTo="/debts"
         />
         <StatCard
-          title="العملاء هذا الشهر"
+          title={t('dashboard.customersThisMonth')}
           value={stats.uniqueCustomers.toString()}
-          subtitle="عملاء فريدين"
+          subtitle={t('dashboard.uniqueCustomers')}
           icon={<Users className="w-6 h-6" />}
           variant="default"
           linkTo="/customers"
@@ -137,7 +140,7 @@ export default function Dashboard() {
               <Package className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">قيمة المخزون</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.inventoryValue')}</p>
               <p className="text-xl font-bold text-foreground">${stats.inventoryValue.toLocaleString()}</p>
             </div>
           </div>
@@ -148,7 +151,7 @@ export default function Dashboard() {
               <Wallet className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">رأس المال الإجمالي</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.totalCapital')}</p>
               <p className="text-xl font-bold text-foreground">${stats.totalCapital.toLocaleString()}</p>
             </div>
           </div>
@@ -159,7 +162,7 @@ export default function Dashboard() {
               <DollarSign className={`w-5 h-5 ${stats.availableCapital >= 0 ? 'text-success' : 'text-destructive'}`} />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">رأس المال المتاح</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.availableCapital')}</p>
               <p className={`text-xl font-bold ${stats.availableCapital >= 0 ? 'text-success' : 'text-destructive'}`}>
                 ${stats.availableCapital.toLocaleString()}
               </p>

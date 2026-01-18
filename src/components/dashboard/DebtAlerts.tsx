@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock, CheckCircle, Phone, FileX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { loadInvoices } from '@/lib/invoices-store';
+import { useLanguage } from '@/hooks/use-language';
 
 interface DebtAlert {
   id: string;
@@ -15,32 +16,33 @@ interface DebtAlert {
   status: 'overdue' | 'due_today' | 'due_soon';
 }
 
-const statusConfig = {
-  overdue: {
-    icon: AlertTriangle,
-    label: 'متأخر',
-    bgColor: 'bg-destructive/10',
-    textColor: 'text-destructive',
-    borderColor: 'border-destructive/20',
-  },
-  due_today: {
-    icon: Clock,
-    label: 'اليوم',
-    bgColor: 'bg-warning/10',
-    textColor: 'text-warning',
-    borderColor: 'border-warning/20',
-  },
-  due_soon: {
-    icon: CheckCircle,
-    label: 'قريباً',
-    bgColor: 'bg-info/10',
-    textColor: 'text-info',
-    borderColor: 'border-info/20',
-  },
-};
-
 export function DebtAlerts() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
+
+  const statusConfig = {
+    overdue: {
+      icon: AlertTriangle,
+      labelKey: 'debtAlerts.overdueLabel' as const,
+      bgColor: 'bg-destructive/10',
+      textColor: 'text-destructive',
+      borderColor: 'border-destructive/20',
+    },
+    due_today: {
+      icon: Clock,
+      labelKey: 'debtAlerts.dueToday' as const,
+      bgColor: 'bg-warning/10',
+      textColor: 'text-warning',
+      borderColor: 'border-warning/20',
+    },
+    due_soon: {
+      icon: CheckCircle,
+      labelKey: 'debtAlerts.dueSoon' as const,
+      bgColor: 'bg-info/10',
+      textColor: 'text-info',
+      borderColor: 'border-info/20',
+    },
+  };
 
   // Load debts from invoices
   const debts = useMemo(() => {
@@ -92,10 +94,10 @@ export function DebtAlerts() {
   return (
     <div className="bg-card rounded-2xl border border-border p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-foreground">تنبيهات الديون</h3>
+        <h3 className="text-lg font-semibold text-foreground">{t('debtAlerts.title')}</h3>
         {overdueCount > 0 && (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium badge-danger">
-            {overdueCount} متأخرة
+            {overdueCount} {t('debtAlerts.overdue')}
           </span>
         )}
       </div>
@@ -103,7 +105,7 @@ export function DebtAlerts() {
       {debts.length === 0 ? (
         <div className="py-8 text-center">
           <FileX className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground">لا توجد ديون مستحقة</p>
+          <p className="text-muted-foreground">{t('debtAlerts.noDebts')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -139,7 +141,7 @@ export function DebtAlerts() {
                   </div>
                   <div className="text-left">
                     <p className="font-bold text-lg text-foreground">{debt.currencySymbol}{debt.amount.toLocaleString()}</p>
-                    <p className={cn("text-xs font-medium", config.textColor)}>{config.label}</p>
+                    <p className={cn("text-xs font-medium", config.textColor)}>{t(config.labelKey)}</p>
                   </div>
                 </div>
               </div>
@@ -152,7 +154,7 @@ export function DebtAlerts() {
         onClick={handleViewAllDebts}
         className="w-full mt-4 py-3 text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
       >
-        عرض جميع الديون
+        {t('debtAlerts.viewAllDebts')}
       </button>
     </div>
   );

@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getLowStockProducts, getCriticalStockAlerts } from '@/lib/products-store';
+import { useLanguage } from '@/hooks/use-language';
 
 export function LowStockAlerts() {
+  const { t } = useLanguage();
+  
   const { lowStockProducts, criticalCount } = useMemo(() => {
     const products = getLowStockProducts();
     const critical = getCriticalStockAlerts();
@@ -26,16 +29,16 @@ export function LowStockAlerts() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-warning" />
-            تنبيهات المخزون
+            {t('lowStock.title')}
             {criticalCount > 0 && (
               <Badge variant="destructive" className="text-xs">
-                {criticalCount} حرج
+                {criticalCount} {t('lowStock.critical')}
               </Badge>
             )}
           </CardTitle>
           <Link to="/products">
             <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-              عرض الكل
+              {t('lowStock.viewAll')}
               <ArrowLeft className="w-3 h-3" />
             </Button>
           </Link>
@@ -78,7 +81,7 @@ export function LowStockAlerts() {
                     {product.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    الحد الأدنى: {product.minStockLevel || 5}
+                    {t('lowStock.minLevel')}: {product.minStockLevel || 5}
                   </p>
                 </div>
               </div>
@@ -89,7 +92,7 @@ export function LowStockAlerts() {
                     isVeryLow && !isCritical ? 'border-warning text-warning' : ''
                   }`}
                 >
-                  {product.quantity} متبقي
+                  {product.quantity} {t('lowStock.remaining')}
                 </Badge>
               </div>
             </div>
@@ -98,7 +101,7 @@ export function LowStockAlerts() {
         
         {lowStockProducts.length > 0 && (
           <p className="text-xs text-muted-foreground text-center pt-2">
-            إجمالي المنتجات منخفضة المخزون: {getLowStockProducts().length}
+            {t('lowStock.totalLowStock')}: {getLowStockProducts().length}
           </p>
         )}
       </CardContent>

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { TrendingUp, Package, FileX } from 'lucide-react';
 import { loadInvoices } from '@/lib/invoices-store';
+import { useLanguage } from '@/hooks/use-language';
 
 interface TopProduct {
   id: string;
@@ -10,6 +11,8 @@ interface TopProduct {
 }
 
 export function TopProducts() {
+  const { t } = useLanguage();
+  
   // Calculate top products from invoices
   const topProducts = useMemo(() => {
     const invoices = loadInvoices();
@@ -40,15 +43,15 @@ export function TopProducts() {
   return (
     <div className="bg-card rounded-2xl border border-border p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-foreground">المنتجات الأكثر مبيعاً</h3>
-        <span className="text-sm text-muted-foreground">من الفواتير</span>
+        <h3 className="text-lg font-semibold text-foreground">{t('topProducts.title')}</h3>
+        <span className="text-sm text-muted-foreground">{t('topProducts.fromInvoices')}</span>
       </div>
       
       {topProducts.length === 0 ? (
         <div className="py-8 text-center">
           <FileX className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground">لا توجد بيانات مبيعات بعد</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">ستظهر هنا المنتجات الأكثر مبيعاً</p>
+          <p className="text-muted-foreground">{t('topProducts.noData')}</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">{t('topProducts.willAppear')}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -79,7 +82,7 @@ export function TopProducts() {
                     />
                   </div>
                   <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {product.sales} مبيعة
+                    {product.sales} {t('topProducts.sold')}
                   </span>
                 </div>
               </div>
