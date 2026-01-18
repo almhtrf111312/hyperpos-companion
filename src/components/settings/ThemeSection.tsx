@@ -1,40 +1,73 @@
-import { Sun, Moon, Palette, Check } from 'lucide-react';
-import { useTheme, themeColors, ThemeColor } from '@/hooks/use-theme';
+import { useState } from 'react';
+import { Sun, Moon, Palette, Check, Save } from 'lucide-react';
+import { useTheme, themeColors, ThemeColor, ThemeMode } from '@/hooks/use-theme';
+import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export function ThemeSection() {
   const { mode, color, setMode, setColor } = useTheme();
+  const { t } = useLanguage();
+  
+  // الحالة المؤقتة للتغييرات (لا تُحفظ حتى الضغط على زر الحفظ)
+  const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
+  const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
+
+  const handleModeChange = (newMode: ThemeMode) => {
+    setPendingMode(newMode);
+    setHasChanges(newMode !== mode || pendingColor !== color);
+  };
+
+  const handleColorChange = (newColor: ThemeColor) => {
+    setPendingColor(newColor);
+    setHasChanges(pendingMode !== mode || newColor !== color);
+  };
+
+  const handleSave = () => {
+    if (pendingMode !== mode) setMode(pendingMode);
+    if (pendingColor !== color) setColor(pendingColor);
+    setHasChanges(false);
+    toast.success(t('settings.languageChanged'));
+  };
+
+  const handleCancel = () => {
+    setPendingMode(mode);
+    setPendingColor(color);
+    setHasChanges(false);
+  };
 
   return (
     <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
       <div>
         <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">
-          المظهر
+          {t('settings.theme')}
         </h2>
         
         <div className="grid grid-cols-2 gap-4 mb-6">
           {/* Light Mode */}
           <button
-            onClick={() => setMode('light')}
+            onClick={() => handleModeChange('light')}
             className={cn(
-              "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all",
-              mode === 'light'
+              "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all relative",
+              pendingMode === 'light'
                 ? "border-primary bg-primary/10"
                 : "border-border bg-muted hover:bg-muted/80"
             )}
           >
             <div className={cn(
               "w-16 h-16 rounded-full flex items-center justify-center",
-              mode === 'light' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+              pendingMode === 'light' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
             )}>
               <Sun className="w-8 h-8" />
             </div>
             <span className="font-medium text-foreground">
-              الوضع النهاري
+              {t('settings.lightMode')}
             </span>
-            {mode === 'light' && (
+            {pendingMode === 'light' && (
               <div className="absolute top-2 left-2">
                 <Check className="w-5 h-5 text-primary" />
               </div>
@@ -43,24 +76,24 @@ export function ThemeSection() {
 
           {/* Dark Mode */}
           <button
-            onClick={() => setMode('dark')}
+            onClick={() => handleModeChange('dark')}
             className={cn(
-              "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all",
-              mode === 'dark'
+              "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all relative",
+              pendingMode === 'dark'
                 ? "border-primary bg-primary/10"
                 : "border-border bg-muted hover:bg-muted/80"
             )}
           >
             <div className={cn(
               "w-16 h-16 rounded-full flex items-center justify-center",
-              mode === 'dark' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+              pendingMode === 'dark' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
             )}>
               <Moon className="w-8 h-8" />
             </div>
             <span className="font-medium text-foreground">
-              الوضع الليلي
+              {t('settings.darkMode')}
             </span>
-            {mode === 'dark' && (
+            {pendingMode === 'dark' && (
               <div className="absolute top-2 left-2">
                 <Check className="w-5 h-5 text-primary" />
               </div>
@@ -73,17 +106,17 @@ export function ThemeSection() {
       <div>
         <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
           <Palette className="w-4 h-4" />
-          لون التطبيق
+          {t('settings.colorTheme')}
         </h3>
         
         <div className="grid grid-cols-5 gap-3">
           {colorOptions.map(([key, value]) => (
             <button
               key={key}
-              onClick={() => setColor(key)}
+              onClick={() => handleColorChange(key)}
               className={cn(
                 "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
-                color === key
+                pendingColor === key
                   ? "border-primary bg-primary/10"
                   : "border-border bg-muted hover:bg-muted/80"
               )}
@@ -98,7 +131,7 @@ export function ThemeSection() {
               <span className="text-xs font-medium text-foreground truncate w-full text-center">
                 {value.nameAr}
               </span>
-              {color === key && (
+              {pendingColor === key && (
                 <div className="absolute top-1 left-1">
                   <Check className="w-4 h-4 text-primary" />
                 </div>
@@ -108,22 +141,36 @@ export function ThemeSection() {
         </div>
       </div>
 
+      {/* Preview */}
       <div className="mt-6 p-4 rounded-xl bg-muted border border-border">
         <p className="text-sm text-muted-foreground mb-3">
-          معاينة المظهر
+          {t('settings.themePreview')}
         </p>
         <div className="flex items-center gap-3">
           <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm">
-            حفظ
+            {t('common.save')}
           </button>
           <button className="px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium text-sm">
-            إلغاء
+            {t('common.cancel')}
           </button>
           <button className="px-4 py-2 rounded-lg bg-destructive text-destructive-foreground font-medium text-sm">
-            حذف
+            {t('common.delete')}
           </button>
         </div>
       </div>
+
+      {/* Save/Cancel Buttons */}
+      {hasChanges && (
+        <div className="flex gap-3 pt-4 border-t border-border">
+          <Button onClick={handleSave} className="flex-1">
+            <Save className="w-4 h-4 ml-2" />
+            {t('common.save')}
+          </Button>
+          <Button variant="outline" onClick={handleCancel} className="flex-1">
+            {t('common.cancel')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -49,6 +49,7 @@ import {
 } from '@/lib/products-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
+import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
 
 const statusConfig = {
   in_stock: { label: 'متوفر', color: 'badge-success', icon: CheckCircle },
@@ -192,15 +193,53 @@ export default function Products() {
     if (event.target) event.target.value = '';
   };
 
-  // Camera capture handler
+  // Camera capture handler - حفظ الحالة قبل فتح الكاميرا
   const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // مسح الحالة المحفوظة بعد نجاح الالتقاط
+      clearFormState('product_form');
       compressImage(file);
     }
     // Reset input for re-capture
     if (event.target) event.target.value = '';
   };
+
+  // حفظ الحالة قبل فتح الكاميرا (لاسترجاعها إذا أعاد Android تحميل التطبيق)
+  const triggerCameraCapture = () => {
+    // حفظ بيانات النموذج الحالية
+    saveFormState('product_form', {
+      formData,
+      isEditing: showEditDialog,
+      selectedProductId: selectedProduct?.id
+    });
+    // فتح الكاميرا
+    cameraInputRef.current?.click();
+  };
+
+  // استرجاع بيانات النموذج عند تحميل الصفحة (إذا كانت محفوظة)
+  useEffect(() => {
+    const savedState = loadFormState<{
+      formData: typeof formData;
+      isEditing: boolean;
+      selectedProductId?: string;
+    }>('product_form');
+    
+    if (savedState) {
+      setFormData(savedState.formData);
+      if (savedState.isEditing && savedState.selectedProductId) {
+        const product = products.find(p => p.id === savedState.selectedProductId);
+        if (product) {
+          setSelectedProduct(product);
+          setShowEditDialog(true);
+        }
+      } else {
+        setShowAddDialog(true);
+      }
+      toast.info('تم استرجاع بيانات النموذج المحفوظة');
+      clearFormState('product_form');
+    }
+  }, []);
 
   // Reload categories from store
   const reloadCategories = () => {
@@ -800,7 +839,7 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => cameraInputRef.current?.click()}
+                      onClick={triggerCameraCapture}
                     >
                       <Camera className="w-4 h-4 ml-2" />
                       التقاط صورة
@@ -940,7 +979,7 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => document.getElementById('edit-camera-input')?.click()}
+                      onClick={triggerCameraCapture}
                     >
                       <Camera className="w-4 h-4 ml-2" />
                       التقاط صورة

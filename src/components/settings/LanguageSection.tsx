@@ -1,19 +1,33 @@
+import { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Globe, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Globe, Check, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Language } from '@/lib/i18n';
 
 export function LanguageSection() {
   const { language, setLanguage, t, languages } = useLanguage();
+  
+  // الحالة المؤقتة للغة (لا تُحفظ حتى الضغط على زر الحفظ)
+  const [pendingLanguage, setPendingLanguage] = useState<Language>(language);
+  const hasChanges = pendingLanguage !== language;
 
-  const handleLanguageChange = (value: string) => {
-    setLanguage(value as Language);
+  const handleLanguageSelect = (value: string) => {
+    setPendingLanguage(value as Language);
+  };
+
+  const handleSave = () => {
+    setLanguage(pendingLanguage);
     toast.success(t('settings.languageChanged'));
   };
 
-  const currentLanguage = languages.find(l => l.code === language);
+  const handleCancel = () => {
+    setPendingLanguage(language);
+  };
+
+  const selectedLanguage = languages.find(l => l.code === pendingLanguage);
 
   return (
     <Card>
@@ -28,13 +42,13 @@ export function LanguageSection() {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <Select value={language} onValueChange={handleLanguageChange}>
+      <CardContent className="space-y-4">
+        <Select value={pendingLanguage} onValueChange={handleLanguageSelect}>
           <SelectTrigger className="w-full h-12">
             <SelectValue>
               <div className="flex items-center gap-2">
-                <span className="font-medium">{currentLanguage?.nativeName}</span>
-                <span className="text-muted-foreground">({currentLanguage?.name})</span>
+                <span className="font-medium">{selectedLanguage?.nativeName}</span>
+                <span className="text-muted-foreground">({selectedLanguage?.name})</span>
               </div>
             </SelectValue>
           </SelectTrigger>
@@ -52,7 +66,7 @@ export function LanguageSection() {
                     <span className="font-medium">{lang.nativeName}</span>
                     <span className="text-muted-foreground text-sm">({lang.name})</span>
                   </div>
-                  {language === lang.code && (
+                  {pendingLanguage === lang.code && (
                     <Check className="w-4 h-4 text-primary" />
                   )}
                 </div>
@@ -60,6 +74,19 @@ export function LanguageSection() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Save/Cancel Buttons */}
+        {hasChanges && (
+          <div className="flex gap-3 pt-2">
+            <Button onClick={handleSave} className="flex-1">
+              <Save className="w-4 h-4 ml-2" />
+              {t('common.save')}
+            </Button>
+            <Button variant="outline" onClick={handleCancel} className="flex-1">
+              {t('common.cancel')}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
