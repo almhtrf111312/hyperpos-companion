@@ -88,24 +88,43 @@ const saveServices = (services: RepairRequest[]) => {
   }
 };
 
-const statusConfig = {
-  pending: { label: 'قيد الانتظار', icon: Clock, color: 'badge-warning' },
-  in_progress: { label: 'قيد الإصلاح', icon: Wrench, color: 'badge-info' },
-  waiting_parts: { label: 'بانتظار قطع', icon: AlertCircle, color: 'badge-warning' },
-  completed: { label: 'مكتمل', icon: CheckCircle, color: 'badge-success' },
-  cancelled: { label: 'ملغي', icon: XCircle, color: 'badge-danger' },
-  delivered: { label: 'تم التسليم', icon: CheckCircle, color: 'badge-success' },
-};
+const getStatusConfig = (t: (key: string) => string) => ({
+  pending: { label: t('services.pending'), icon: Clock, color: 'badge-warning' },
+  in_progress: { label: t('services.inProgress'), icon: Wrench, color: 'badge-info' },
+  waiting_parts: { label: t('services.waitingParts'), icon: AlertCircle, color: 'badge-warning' },
+  completed: { label: t('services.completed'), icon: CheckCircle, color: 'badge-success' },
+  cancelled: { label: t('services.cancelled'), icon: XCircle, color: 'badge-danger' },
+  delivered: { label: t('services.delivered'), icon: CheckCircle, color: 'badge-success' },
+});
 
-const filterOptions = ['الكل', 'قيد الانتظار', 'قيد الإصلاح', 'بانتظار قطع', 'مكتمل', 'تم التسليم', 'ملغي'];
+const getFilterOptions = (t: (key: string) => string) => [
+  { key: 'all', label: t('services.all') },
+  { key: 'pending', label: t('services.pending') },
+  { key: 'in_progress', label: t('services.inProgress') },
+  { key: 'waiting_parts', label: t('services.waitingParts') },
+  { key: 'completed', label: t('services.completed') },
+  { key: 'delivered', label: t('services.delivered') },
+  { key: 'cancelled', label: t('services.cancelled') },
+];
 
-const deviceTypes = ['هاتف', 'تابلت', 'لابتوب', 'كمبيوتر', 'ساعة ذكية', 'أخرى'];
+const getDeviceTypes = (t: (key: string) => string) => [
+  { key: 'phone', label: t('services.deviceTypes.phone') },
+  { key: 'tablet', label: t('services.deviceTypes.tablet') },
+  { key: 'laptop', label: t('services.deviceTypes.laptop') },
+  { key: 'computer', label: t('services.deviceTypes.computer') },
+  { key: 'smartwatch', label: t('services.deviceTypes.smartwatch') },
+  { key: 'other', label: t('services.deviceTypes.other') },
+];
 
 export default function Services() {
   const { t } = useLanguage();
+  const statusConfig = getStatusConfig(t);
+  const filterOptions = getFilterOptions(t);
+  const deviceTypes = getDeviceTypes(t);
+  
   const [requests, setRequests] = useState<RepairRequest[]>(() => loadServices());
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('الكل');
+  const [selectedFilter, setSelectedFilter] = useState('all');
   
   // Save to localStorage whenever requests change
   useEffect(() => {
@@ -131,7 +150,7 @@ export default function Services() {
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
-    deviceType: 'هاتف',
+    deviceType: 'phone',
     deviceModel: '',
     issue: '',
     diagnosis: '',
@@ -142,13 +161,13 @@ export default function Services() {
   });
 
   const filterStatusMap: Record<string, string | null> = {
-    'الكل': null,
-    'قيد الانتظار': 'pending',
-    'قيد الإصلاح': 'in_progress',
-    'بانتظار قطع': 'waiting_parts',
-    'مكتمل': 'completed',
-    'تم التسليم': 'delivered',
-    'ملغي': 'cancelled',
+    'all': null,
+    'pending': 'pending',
+    'in_progress': 'in_progress',
+    'waiting_parts': 'waiting_parts',
+    'completed': 'completed',
+    'delivered': 'delivered',
+    'cancelled': 'cancelled',
   };
 
   const filteredRequests = requests.filter(request => {
@@ -156,7 +175,7 @@ export default function Services() {
                          request.customerPhone.includes(searchQuery) ||
                          request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          request.deviceModel.toLowerCase().includes(searchQuery.toLowerCase());
-    const filterStatus = filterStatusMap[selectedFilter];
+    const filterStatus = filterStatusMap[selectedFilter] || null;
     const matchesFilter = !filterStatus || request.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -172,7 +191,7 @@ export default function Services() {
     setFormData({
       customerName: '',
       customerPhone: '',
-      deviceType: 'هاتف',
+      deviceType: 'phone',
       deviceModel: '',
       issue: '',
       diagnosis: '',
@@ -185,15 +204,17 @@ export default function Services() {
 
   const handleAddRequest = () => {
     if (!formData.customerName || !formData.customerPhone || !formData.deviceModel || !formData.issue) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error(t('services.fillAllFields'));
       return;
     }
 
+    const deviceLabel = deviceTypes.find(d => d.key === formData.deviceType)?.label || formData.deviceType;
+    
     const newRequest: RepairRequest = {
       id: `REP_${Date.now()}`,
       customerName: formData.customerName,
       customerPhone: formData.customerPhone,
-      deviceType: formData.deviceType,
+      deviceType: deviceLabel,
       deviceModel: formData.deviceModel,
       issue: formData.issue,
       diagnosis: formData.diagnosis || undefined,
@@ -208,14 +229,16 @@ export default function Services() {
     setRequests([newRequest, ...requests]);
     setShowAddDialog(false);
     resetForm();
-    toast.success('تم إضافة طلب الصيانة بنجاح');
+    toast.success(t('services.requestAdded'));
   };
 
   const handleEditRequest = () => {
     if (!selectedRequest || !formData.customerName) {
-      toast.error('يرجى ملء الحقول المطلوبة');
+      toast.error(t('services.fillAllFields'));
       return;
     }
+
+    const deviceLabel = deviceTypes.find(d => d.key === formData.deviceType)?.label || formData.deviceType;
 
     setRequests(requests.map(r => 
       r.id === selectedRequest.id 
@@ -223,7 +246,7 @@ export default function Services() {
             ...r, 
             customerName: formData.customerName,
             customerPhone: formData.customerPhone,
-            deviceType: formData.deviceType,
+            deviceType: deviceLabel,
             deviceModel: formData.deviceModel,
             issue: formData.issue,
             diagnosis: formData.diagnosis || undefined,
@@ -237,7 +260,7 @@ export default function Services() {
     setShowEditDialog(false);
     setSelectedRequest(null);
     resetForm();
-    toast.success('تم تحديث طلب الصيانة بنجاح');
+    toast.success(t('services.requestUpdated'));
   };
 
   const handleDeleteRequest = () => {
@@ -246,7 +269,7 @@ export default function Services() {
     setRequests(requests.filter(r => r.id !== selectedRequest.id));
     setShowDeleteDialog(false);
     setSelectedRequest(null);
-    toast.success('تم حذف طلب الصيانة بنجاح');
+    toast.success(t('services.requestDeleted'));
   };
 
   const handleUpdateStatus = (request: RepairRequest, newStatus: RepairRequest['status']) => {
@@ -271,7 +294,7 @@ export default function Services() {
     setRequests(requests.map(r => 
       r.id === request.id ? { ...r, ...updates } : r
     ));
-    toast.success(`تم تحديث الحالة إلى "${statusConfig[newStatus].label}"`);
+    toast.success(t('services.statusUpdated').replace('{status}', statusConfig[newStatus].label));
   };
 
   const handleDeliveryConfirm = () => {
@@ -297,9 +320,9 @@ export default function Services() {
     setSelectedRequest(null);
     
     if (deliveryData.paymentType === 'debt') {
-      toast.success(`تم تسليم الخدمة كدين - الربح: $${profit}`);
+      toast.success(t('services.deliveredDebt').replace('${profit}', String(profit)));
     } else {
-      toast.success(`تم تسليم الخدمة نقداً - الربح: $${profit}`);
+      toast.success(t('services.deliveredCash').replace('${profit}', String(profit)));
     }
   };
 
@@ -335,15 +358,15 @@ export default function Services() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة الصيانة</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">تتبع وإدارة طلبات إصلاح الأجهزة</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('services.title')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('services.subtitle')}</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90" onClick={() => {
           resetForm();
           setShowAddDialog(true);
         }}>
           <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          طلب صيانة جديد
+          {t('services.newRequest')}
         </Button>
       </div>
 
@@ -356,7 +379,7 @@ export default function Services() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">إجمالي الطلبات</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('services.totalRequests')}</p>
             </div>
           </div>
         </div>
@@ -367,7 +390,7 @@ export default function Services() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.pending}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">قيد الانتظار</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('services.pending')}</p>
             </div>
           </div>
         </div>
@@ -378,7 +401,7 @@ export default function Services() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.inProgress}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">قيد الإصلاح</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('services.inProgress')}</p>
             </div>
           </div>
         </div>
@@ -389,7 +412,7 @@ export default function Services() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.completed}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">مكتملة</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('services.completed')}</p>
             </div>
           </div>
         </div>
@@ -401,7 +424,7 @@ export default function Services() {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="بحث بالاسم أو رقم الطلب أو الجهاز..."
+            placeholder={t('services.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-9 md:pr-10 bg-muted border-0"
@@ -410,16 +433,16 @@ export default function Services() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {filterOptions.map((filter) => (
             <button
-              key={filter}
-              onClick={() => setSelectedFilter(filter)}
+              key={filter.key}
+              onClick={() => setSelectedFilter(filter.key)}
               className={cn(
                 "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
-                selectedFilter === filter
+                selectedFilter === filter.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {filter}
+              {filter.label}
             </button>
           ))}
         </div>
@@ -475,7 +498,7 @@ export default function Services() {
 
               {/* Issue */}
               <div className="p-3 bg-muted rounded-lg mb-3 md:mb-4">
-                <p className="text-xs text-muted-foreground mb-1">المشكلة:</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('services.issue')}:</p>
                 <p className="text-sm font-medium text-foreground">{request.issue}</p>
               </div>
 
@@ -483,7 +506,7 @@ export default function Services() {
               {request.status !== 'delivered' && (request.estimatedCost || request.finalCost) && (
                 <div className="flex items-center justify-between mb-3 md:mb-4 p-2 bg-primary/10 rounded-lg">
                   <span className="text-xs md:text-sm text-muted-foreground">
-                    {request.finalCost ? 'التكلفة النهائية' : 'التكلفة المتوقعة'}
+                    {request.finalCost ? t('services.finalCost') : t('services.expectedCost')}
                   </span>
                   <span className="font-bold text-primary">
                     ${request.finalCost || request.estimatedCost}
@@ -495,21 +518,21 @@ export default function Services() {
               {request.status === 'delivered' && request.amountReceived !== undefined && (
                 <div className="p-3 bg-success/10 rounded-lg space-y-2 mb-3 md:mb-4">
                   <div className="flex justify-between text-xs md:text-sm">
-                    <span className="text-muted-foreground">المبلغ المقبوض:</span>
+                    <span className="text-muted-foreground">{t('services.amountReceived')}:</span>
                     <span className="font-bold text-success">${request.amountReceived}</span>
                   </div>
                   <div className="flex justify-between text-xs md:text-sm">
-                    <span className="text-muted-foreground">التكلفة علينا:</span>
+                    <span className="text-muted-foreground">{t('services.ourCost')}:</span>
                     <span className="text-destructive">-${request.partsCost || 0}</span>
                   </div>
                   <div className="flex justify-between text-xs md:text-sm border-t border-border pt-2">
-                    <span className="font-medium">الربح الصافي:</span>
+                    <span className="font-medium">{t('services.netProfit')}:</span>
                     <span className="font-bold text-primary">${request.profit || 0}</span>
                   </div>
                   {request.paymentType === 'debt' && (
                     <div className="flex items-center gap-1 text-xs text-warning">
                       <DollarSign className="w-3 h-3" />
-                      <span>دين</span>
+                      <span>{t('services.debt')}</span>
                     </div>
                   )}
                 </div>
@@ -525,7 +548,7 @@ export default function Services() {
                       className="text-xs h-7"
                       onClick={() => handleUpdateStatus(request, 'in_progress')}
                     >
-                      بدء الإصلاح
+                      {t('services.startRepair')}
                     </Button>
                   )}
                   {request.status === 'in_progress' && (
@@ -536,7 +559,7 @@ export default function Services() {
                         className="text-xs h-7"
                         onClick={() => handleUpdateStatus(request, 'waiting_parts')}
                       >
-                        انتظار قطع
+                        {t('services.waitingForParts')}
                       </Button>
                       <Button 
                         size="sm" 
@@ -544,7 +567,7 @@ export default function Services() {
                         className="text-xs h-7 bg-success/10 text-success border-success/30"
                         onClick={() => handleUpdateStatus(request, 'completed')}
                       >
-                        مكتمل
+                        {t('services.markCompleted')}
                       </Button>
                     </>
                   )}
@@ -555,7 +578,7 @@ export default function Services() {
                       className="text-xs h-7"
                       onClick={() => handleUpdateStatus(request, 'in_progress')}
                     >
-                      استئناف الإصلاح
+                      {t('services.resumeRepair')}
                     </Button>
                   )}
                   {request.status === 'completed' && (
@@ -565,7 +588,7 @@ export default function Services() {
                       className="text-xs h-7 bg-success/10 text-success border-success/30"
                       onClick={() => handleUpdateStatus(request, 'delivered')}
                     >
-                      تم التسليم
+                      {t('services.markDelivered')}
                     </Button>
                   )}
                 </div>
@@ -575,7 +598,7 @@ export default function Services() {
               <div className="flex gap-2 pt-3 border-t border-border">
                 <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(request)}>
                   <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                  عرض
+                  {t('services.view')}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9" onClick={() => openEditDialog(request)}>
                   <Edit className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -595,24 +618,24 @@ export default function Services() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
-              طلب صيانة جديد
+              {t('services.addNewRequest')}
             </DialogTitle>
-            <DialogDescription>أدخل بيانات طلب الصيانة الجديد</DialogDescription>
+            <DialogDescription>{t('services.addNewRequestDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.customerName')}</label>
                 <Input
-                  placeholder="اسم العميل"
+                  placeholder={t('services.customerNamePlaceholder')}
                   value={formData.customerName}
                   onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.phoneNumber')}</label>
                 <Input
-                  placeholder="+963 xxx xxx xxx"
+                  placeholder={t('services.phonePlaceholder')}
                   value={formData.customerPhone}
                   onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
                 />
@@ -620,45 +643,45 @@ export default function Services() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">نوع الجهاز *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
                 <select 
                   className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
                   value={formData.deviceType}
                   onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
                 >
                   {deviceTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type.key} value={type.key}>{type.label}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">موديل الجهاز *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')}</label>
                 <Input
-                  placeholder="مثال: iPhone 14 Pro"
+                  placeholder={t('services.deviceModelPlaceholder')}
                   value={formData.deviceModel}
                   onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">المشكلة *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.issue')} *</label>
               <Input
-                placeholder="وصف المشكلة..."
+                placeholder={t('services.issuePlaceholder')}
                 value={formData.issue}
                 onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">التشخيص المبدئي</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.initialDiagnosis')}</label>
               <Input
-                placeholder="التشخيص المبدئي..."
+                placeholder={t('services.initialDiagnosisPlaceholder')}
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">التكلفة المتوقعة ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedCostLabel')}</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -667,7 +690,7 @@ export default function Services() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">تاريخ التسليم المتوقع</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
                 <Input
                   type="date"
                   value={formData.estimatedDate}
@@ -676,28 +699,28 @@ export default function Services() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">الفني المسؤول</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.responsibleTech')}</label>
               <Input
-                placeholder="اسم الفني"
+                placeholder={t('services.techNamePlaceholder')}
                 value={formData.technician}
                 onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.notes')}</label>
               <Input
-                placeholder="ملاحظات إضافية..."
+                placeholder={t('services.notesPlaceholder')}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
-                إلغاء
+                {t('services.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddRequest}>
                 <Save className="w-4 h-4 ml-2" />
-                إضافة الطلب
+                {t('services.addRequest')}
               </Button>
             </div>
           </div>
@@ -710,20 +733,20 @@ export default function Services() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              تعديل طلب الصيانة
+              {t('services.editRequest')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.customerName')}</label>
                 <Input
                   value={formData.customerName}
                   onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.phoneNumber')}</label>
                 <Input
                   value={formData.customerPhone}
                   onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
@@ -732,19 +755,19 @@ export default function Services() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">نوع الجهاز *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
                 <select 
                   className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
                   value={formData.deviceType}
                   onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
                 >
                   {deviceTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type.key} value={type.key}>{type.label}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">موديل الجهاز *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')}</label>
                 <Input
                   value={formData.deviceModel}
                   onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
@@ -752,14 +775,14 @@ export default function Services() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">المشكلة *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.issue')} *</label>
               <Input
                 value={formData.issue}
                 onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">التشخيص</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.diagnosis')}</label>
               <Input
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
@@ -767,7 +790,7 @@ export default function Services() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">التكلفة المتوقعة ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedCostLabel')}</label>
                 <Input
                   type="number"
                   value={formData.estimatedCost || ''}
@@ -775,7 +798,7 @@ export default function Services() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">تاريخ التسليم المتوقع</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
                 <Input
                   type="date"
                   value={formData.estimatedDate}
@@ -784,14 +807,14 @@ export default function Services() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">الفني المسؤول</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.responsibleTech')}</label>
               <Input
                 value={formData.technician}
                 onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.notes')}</label>
               <Input
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -799,11 +822,11 @@ export default function Services() {
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
-                إلغاء
+                {t('services.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditRequest}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ التغييرات
+                {t('services.saveChanges')}
               </Button>
             </div>
           </div>
