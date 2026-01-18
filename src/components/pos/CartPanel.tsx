@@ -645,10 +645,9 @@ export function CartPanel({
             </div>
           </div>
 
-          {/* Payment Buttons */}
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             <Button
-              className="h-11 md:h-14 bg-success hover:bg-success/90 text-sm md:text-base"
+              className="h-12 md:h-16 bg-success hover:bg-success/90 text-sm md:text-lg font-bold shadow-lg shadow-success/25 transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
@@ -657,7 +656,7 @@ export function CartPanel({
             </Button>
             <Button
               variant="outline"
-              className="h-11 md:h-14 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-base"
+              className="h-12 md:h-16 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-lg font-bold transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleDebtSale}
             >

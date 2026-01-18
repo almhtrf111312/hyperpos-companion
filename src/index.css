@@ -94,7 +94,7 @@
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 40% 94%;
-    --muted-foreground: 215 20% 45%;
+    --muted-foreground: 215 25% 40%;
     --accent: 173 80% 40%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
@@ -121,6 +121,7 @@
     --pos-item-hover: 210 40% 94%;
     --pos-cart: 0 0% 98%;
     --pos-total: 160 84% 39%;
+    --shadow-card-light: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
   }
 
   /* Theme: Ocean Blue */
@@ -247,22 +248,22 @@
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-muted/30;
-    border-radius: 4px;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30;
-    border-radius: 4px;
+    @apply bg-border;
+    border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
+    @apply bg-muted-foreground/40;
+    border-radius: 999px;
   }
 }
 
@@ -439,6 +440,58 @@
 
   .animate-scan {
     animation: scan 2s ease-in-out infinite;
+  }
+
+  /* Enhanced card style */
+  .enhanced-card {
+    @apply rounded-2xl border border-border/30;
+    @apply shadow-lg transition-all duration-300 ease-out;
+    @apply hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  /* Enhanced button style */
+  .enhanced-button {
+    @apply rounded-xl font-medium;
+    @apply transition-all duration-200;
+    @apply active:scale-95;
+  }
+
+  /* Sidebar overlay for mobile */
+  .sidebar-overlay {
+    @apply backdrop-blur-sm bg-black/40;
+  }
+
+  /* Fade in up animation */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out;
+  }
+
+  /* Subtle pulse for notifications */
+  @keyframes subtle-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
+
+  .animate-subtle-pulse {
+    animation: subtle-pulse 2s ease-in-out infinite;
+  }
+
+  /* Shimmer loading effect */
+  .animate-shimmer-effect {
+    background: linear-gradient(90deg, transparent, hsl(var(--muted)), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
   }
 }
 
