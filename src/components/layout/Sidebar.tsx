@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
   { icon: Wrench, label: 'الصيانة', translationKey: 'nav.services', path: '/services' },
   { icon: UserCheck, label: 'الشركاء', translationKey: 'nav.partners', path: '/partners' },
   { icon: Receipt, label: 'المصاريف', translationKey: 'nav.expenses', path: '/expenses' },
-  { icon: Wallet, label: 'الصندوق', translationKey: 'nav.cashbox', path: '/cashbox' },
+  { icon: Wallet, label: 'الصندوق والوردية', translationKey: 'nav.cashShifts', path: '/cash-shifts' },
   { icon: BarChart3, label: 'التقارير', translationKey: 'nav.reports', path: '/reports' },
   { icon: Settings, label: 'الإعدادات', translationKey: 'nav.settings', path: '/settings' },
 ];
