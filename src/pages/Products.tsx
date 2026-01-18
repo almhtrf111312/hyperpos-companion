@@ -50,6 +50,7 @@ import {
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
+import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
 
 const statusConfig = {
   in_stock: { label: 'متوفر', color: 'badge-success', icon: CheckCircle },
@@ -78,7 +79,7 @@ export default function Products() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
-  // Form state
+  // Form state with dynamic fields
   const [formData, setFormData] = useState({
     name: '',
     barcode: '',
@@ -88,7 +89,17 @@ export default function Products() {
     quantity: 0,
     expiryDate: '',
     image: '',
+    // Dynamic fields (Fix #16)
+    serialNumber: '',
+    warranty: '',
+    wholesalePrice: 0,
+    size: '',
+    color: '',
+    minStockLevel: 5,
   });
+  
+  // Get effective field configuration
+  const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +142,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
+      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -302,7 +313,7 @@ const filteredProducts = useMemo(() => {
     }
     
     setShowAddDialog(false);
-    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
+    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
     toast.success('تم إضافة المنتج بنجاح');
   };
 
@@ -367,6 +378,12 @@ const filteredProducts = useMemo(() => {
       quantity: product.quantity,
       expiryDate: product.expiryDate || '',
       image: product.image || '',
+      serialNumber: product.serialNumber || '',
+      warranty: product.warranty || '',
+      wholesalePrice: product.wholesalePrice || 0,
+      size: product.size || '',
+      color: product.color || '',
+      minStockLevel: product.minStockLevel || 5,
     });
     setShowEditDialog(true);
   };
@@ -395,7 +412,7 @@ const filteredProducts = useMemo(() => {
             التصنيفات
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '' });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -783,14 +800,79 @@ const filteredProducts = useMemo(() => {
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية (اختياري)</label>
-                <Input
-                  type="date"
-                  value={formData.expiryDate}
-                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                />
-              </div>
+              {/* Dynamic Fields based on store type (Fix #16) */}
+              {fieldsConfig.expiryDate && (
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية</label>
+                  <Input
+                    type="date"
+                    value={formData.expiryDate}
+                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.serialNumber && (
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">الرقم التسلسلي / IMEI</label>
+                  <Input
+                    placeholder="مثال: 123456789012345"
+                    value={formData.serialNumber}
+                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.warranty && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">مدة الضمان</label>
+                  <Input
+                    placeholder="مثال: 12 شهر"
+                    value={formData.warranty}
+                    onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.wholesalePrice && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={formData.wholesalePrice || ''}
+                    onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.sizeColor && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">المقاس</label>
+                    <Input
+                      placeholder="مثال: XL"
+                      value={formData.size}
+                      onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">اللون</label>
+                    <Input
+                      placeholder="مثال: أسود"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+              {fieldsConfig.minStockLevel && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
+                  <Input
+                    type="number"
+                    placeholder="5"
+                    value={formData.minStockLevel || ''}
+                    onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                  />
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                 <input

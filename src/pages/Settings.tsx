@@ -35,7 +35,8 @@ import {
   Key,
   FileUp,
   Lock,
-  Banknote
+  Banknote,
+  Package
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
@@ -45,6 +46,7 @@ import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
 import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
 import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
+import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +60,7 @@ import { emitEvent, EVENTS } from '@/lib/events';
 
 const settingsTabs = [
   { id: 'store', label: 'المحل', labelKey: 'settings.general', icon: Store },
+  { id: 'productFields', label: 'حقول المنتجات', labelKey: 'settings.productFields', icon: Package },
   { id: 'language', label: 'اللغة', labelKey: 'settings.language', icon: Globe },
   { id: 'theme', label: 'المظهر', labelKey: 'settings.theme', icon: Palette },
   { id: 'currencies', label: 'العملات', labelKey: 'settings.general', icon: DollarSign },
@@ -690,6 +693,12 @@ export default function Settings() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'productFields':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+            <ProductFieldsSection storeType={storeSettings.type} />
+          </div>
+        );
       case 'language':
         return <LanguageSection />;
       case 'theme':
