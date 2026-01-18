@@ -36,6 +36,7 @@ import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
 import { recordActivity } from '@/lib/auto-backup';
+import { useLanguage } from '@/hooks/use-language';
 
 interface CartItem {
   id: string;
@@ -83,6 +84,7 @@ export function CartPanel({
   isMobile = false,
 }: CartPanelProps) {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -103,7 +105,7 @@ export function CartPanel({
   const handleDebtSale = () => {
     if (cart.length === 0) return;
     if (!customerName) {
-      showToast.error('يرجى إدخال اسم العميل أولاً');
+      showToast.error(t('pos.enterCustomerName'));
       return;
     }
     
@@ -378,13 +380,13 @@ export function CartPanel({
 
   const handleAddCustomer = () => {
     if (!newCustomer.name || !newCustomer.phone) {
-      showToast.error('يرجى ملء الحقول المطلوبة');
+      showToast.error(t('pos.fillRequired'));
       return;
     }
     // Add customer to store
     findOrCreateCustomer(newCustomer.name, newCustomer.phone);
     onCustomerNameChange(newCustomer.name);
-    showToast.success('تم إضافة العميل بنجاح');
+    showToast.success(t('pos.customerAdded'));
     setShowCustomerDialog(false);
     setNewCustomer({ name: '', phone: '', email: '' });
   };
@@ -479,8 +481,8 @@ export function CartPanel({
 
   const handleWhatsApp = () => {
     if (cart.length === 0) return;
-    showToast.info('جاري فتح واتساب...');
-    const message = `فاتورة من HyperPOS\n\nالمجموع: ${selectedCurrency.symbol}${totalInCurrency.toLocaleString()}`;
+    showToast.info(t('pos.openingWhatsapp'));
+    const message = `فاتورة من HyperPOS\n\n${t('pos.total')}: ${selectedCurrency.symbol}${totalInCurrency.toLocaleString()}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -495,7 +497,7 @@ export function CartPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              <h2 className="font-bold text-base md:text-lg">سلة المشتريات</h2>
+              <h2 className="font-bold text-base md:text-lg">{t('pos.shoppingCart')}</h2>
               {cart.length > 0 && (
                 <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
                   {cart.length}
@@ -508,7 +510,7 @@ export function CartPanel({
                   onClick={onClearCart}
                   className="text-xs md:text-sm text-destructive hover:text-destructive/80"
                 >
-                  إفراغ
+                  {t('pos.clear')}
                 </button>
               )}
               {isMobile && onClose && (
@@ -525,7 +527,7 @@ export function CartPanel({
               <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="اسم العميل"
+                placeholder={t('pos.customerName')}
                 value={customerName}
                 onChange={(e) => onCustomerNameChange(e.target.value)}
                 className="pr-9 bg-muted border-0 h-9 md:h-10 text-sm"
@@ -547,8 +549,8 @@ export function CartPanel({
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
               <ShoppingCart className="w-12 h-12 md:w-16 md:h-16 mb-3 md:mb-4 opacity-50" />
-              <p className="text-sm md:text-base">السلة فارغة</p>
-              <p className="text-xs md:text-sm">اضغط على منتج لإضافته</p>
+              <p className="text-sm md:text-base">{t('pos.emptyCart')}</p>
+              <p className="text-xs md:text-sm">{t('pos.clickToAdd')}</p>
             </div>
           ) : (
             cart.map((item, index) => (
@@ -628,17 +630,17 @@ export function CartPanel({
           {/* Summary */}
           <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">المجموع الفرعي</span>
+              <span className="text-muted-foreground">{t('pos.subtotal')}</span>
               <span>${subtotal.toLocaleString()}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-success">
-                <span>الخصم ({discount}%)</span>
+                <span>{t('pos.discount')} ({discount}%)</span>
                 <span>-${discountAmount.toLocaleString()}</span>
               </div>
             )}
             <div className="flex justify-between text-base md:text-lg font-bold pt-2 border-t border-border">
-              <span>الإجمالي</span>
+              <span>{t('pos.total')}</span>
               <span className="text-primary">
                 {selectedCurrency.symbol}{totalInCurrency.toLocaleString()}
               </span>
@@ -652,7 +654,7 @@ export function CartPanel({
               onClick={handleCashSale}
             >
               <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-              نقدي
+              {t('pos.cash')}
             </Button>
             <Button
               variant="outline"
@@ -661,7 +663,7 @@ export function CartPanel({
               onClick={handleDebtSale}
             >
               <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-              دين
+              {t('pos.debt')}
             </Button>
           </div>
 
@@ -674,7 +676,7 @@ export function CartPanel({
               onClick={handlePrint}
             >
               <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              طباعة
+              {t('pos.print')}
             </Button>
             <Button 
               variant="outline" 
@@ -683,7 +685,7 @@ export function CartPanel({
               onClick={handleWhatsApp}
             >
               <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              واتساب
+              {t('pos.whatsapp')}
             </Button>
           </div>
         </div>

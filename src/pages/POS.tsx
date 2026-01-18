@@ -16,6 +16,7 @@ import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { playAddToCart } from '@/lib/sound-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -48,12 +49,13 @@ type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rat
 export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('الكل');
+  const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
 
@@ -69,7 +71,7 @@ export default function POS() {
   useEffect(() => {
     const loadData = () => {
       setProducts(getProductsForPOS());
-      setCategories(['الكل', ...getCategoryNames()]);
+      setCategories([t('common.all'), ...getCategoryNames()]);
     };
     
     loadData();
@@ -116,9 +118,9 @@ export default function POS() {
 
   const addToCart = (product: POSProduct) => {
     if (product.quantity === 0) {
-      showToast.warning(`تنبيه: المنتج "${product.name}" نفذ من المخزون!`, 'تم إضافته للسلة رغم ذلك');
+      showToast.warning(t('pos.outOfStock').replace('{name}', product.name));
     } else if (product.quantity <= 5) {
-      showToast.info(`تنبيه: كمية "${product.name}" منخفضة (${product.quantity} فقط)`);
+      showToast.info(t('pos.lowStockWarning').replace('{name}', product.name).replace('{qty}', String(product.quantity)));
     }
     
     setCart(prev => {
@@ -135,7 +137,7 @@ export default function POS() {
     
     // Play sound effect
     playAddToCart();
-    showToast.success(`تمت إضافة "${product.name}" إلى السلة`);
+    showToast.success(t('pos.addedToCart').replace('{name}', product.name));
   };
 
   // Handle barcode scan - show product dialog instead of adding directly
@@ -147,7 +149,7 @@ export default function POS() {
       setShowScannedDialog(true);
     } else {
       setSearchQuery(barcode);
-      showToast.info(`الباركود: ${barcode}`, 'لم يتم العثور على منتج بهذا الباركود');
+      showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));
     }
   };
 
@@ -183,25 +185,25 @@ export default function POS() {
   usePOSShortcuts({
     onCashSale: () => {
       if (cart.length > 0) {
-        showToast.info('اضغط F1 لتأكيد البيع النقدي', 'استخدم زر البيع النقدي في السلة');
+        showToast.info(t('pos.cashSaleShortcut'));
       }
     },
     onDebtSale: () => {
       if (cart.length > 0 && customerName) {
-        showToast.info('اضغط F2 لتأكيد البيع بالدين', 'استخدم زر الدين في السلة');
+        showToast.info(t('pos.debtSaleShortcut'));
       } else if (!customerName) {
-        showToast.warning('يجب إدخال اسم العميل أولاً');
+        showToast.warning(t('pos.enterCustomerName'));
       }
     },
     onClearCart: () => {
       if (cart.length > 0) {
         clearCart();
-        showToast.success('تم مسح السلة');
+        showToast.success(t('pos.cartCleared'));
       }
     },
     onToggleMode: () => {
       setActiveMode(prev => prev === 'products' ? 'maintenance' : 'products');
-      showToast.info(activeMode === 'products' ? 'تم التبديل إلى الصيانة' : 'تم التبديل إلى المنتجات');
+      showToast.info(activeMode === 'products' ? t('pos.switchedToMaintenance') : t('pos.switchedToProducts'));
     },
     enabled: !isMobile,
   });
@@ -229,11 +231,11 @@ export default function POS() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="products" className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4" />
-                  المنتجات
+                  {t('pos.products')}
                 </TabsTrigger>
                 <TabsTrigger value="maintenance" className="flex items-center gap-2">
                   <Wrench className="w-4 h-4" />
-                  الصيانة
+                  {t('pos.maintenance')}
                 </TabsTrigger>
               </TabsList>
             </Tabs>

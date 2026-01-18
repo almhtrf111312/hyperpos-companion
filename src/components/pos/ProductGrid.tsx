@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Product {
   id: string;
@@ -38,11 +39,12 @@ export function ProductGrid({
   onBarcodeScan,
 }: ProductGridProps) {
   const [scannerOpen, setScannerOpen] = useState(false);
+  const { t } = useLanguage();
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (product.barcode && product.barcode.includes(searchQuery));
-    const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
+    const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -56,11 +58,11 @@ export function ProductGrid({
       
       if (product) {
         onProductClick(product);
-        toast.success(`تمت إضافة "${product.name}" إلى السلة`);
+        toast.success(t('pos.addedToCart').replace('{name}', product.name));
       } else {
         // If no product found, put barcode in search
         onSearchChange(barcode);
-        toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج بهذا الباركود' });
+        toast.info(`${t('pos.barcode')}: ${barcode}`, { description: t('pos.barcodeNotFound') });
       }
     }
   };
@@ -74,7 +76,7 @@ export function ProductGrid({
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="بحث عن منتج أو باركود..."
+              placeholder={t('pos.searchProducts')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
@@ -134,7 +136,7 @@ export function ProductGrid({
               </h3>
               <p className="text-primary font-bold text-sm md:text-base">${product.price}</p>
               <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
-                المخزون: {product.quantity}
+                {t('pos.stock')}: {product.quantity}
               </p>
             </button>
           ))}
@@ -143,7 +145,7 @@ export function ProductGrid({
         {filteredProducts.length === 0 && (
           <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
             <Package className="w-12 h-12 mb-2 opacity-50" />
-            <p>لا توجد منتجات</p>
+            <p>{t('pos.noProducts')}</p>
           </div>
         )}
       </div>
