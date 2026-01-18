@@ -17,9 +17,9 @@ Deno.serve(async (req) => {
 
     // Create client with user's auth token
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
-        JSON.stringify({ valid: false, error: 'غير مصرح' }),
+        JSON.stringify({ valid: false, error: 'غير مصرح', userNotFound: false }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -28,12 +28,27 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     })
 
-    // Get current user
+    // Validate JWT using getClaims first
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token)
+    
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ valid: false, error: 'غير مصرح', userNotFound: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const userId = claimsData.claims.sub as string
+
+    // Now verify user still exists in database
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
+      // User doesn't exist anymore - tell client to sign out
+      console.log('User from JWT does not exist:', userId)
       return new Response(
-        JSON.stringify({ valid: false, error: 'غير مصرح' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ valid: false, error: 'المستخدم غير موجود', userNotFound: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

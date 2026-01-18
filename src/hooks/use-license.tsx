@@ -76,6 +76,20 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
       const data = response.data;
 
+      // Check if user was deleted from database
+      if (data.userNotFound) {
+        console.log('User not found in database, signing out...');
+        await supabase.auth.signOut();
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          isValid: false,
+          hasLicense: false,
+          needsActivation: false,
+        }));
+        return;
+      }
+
       setState({
         isLoading: false,
         isValid: data.valid,
