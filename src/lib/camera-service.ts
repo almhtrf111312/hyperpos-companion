@@ -1,9 +1,16 @@
 // Camera Service using Capacitor Camera Plugin
 // Provides native camera access with memory-efficient image capture
 // Falls back to web file input when not on native platform
+// Handles Android process death by restoring camera results
 
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+
+// Storage keys for camera restoration
+const PENDING_CAMERA_KEY = 'hyperpos_pending_camera';
+const RESTORED_IMAGE_KEY = 'hyperpos_restored_image';
+const FORM_STATE_KEY = 'hyperpos_camera_form_state';
 
 export interface CameraServiceResult {
   success: boolean;
@@ -185,4 +192,154 @@ export function compressBase64Image(
     img.onerror = () => reject(new Error('Failed to load image'));
     img.src = base64;
   });
+}
+
+// ==================== Camera Restoration Functions ====================
+
+/**
+ * Mark that a camera capture is pending (before opening camera)
+ * This helps restore state if Android kills the app
+ */
+export function markPendingCameraCapture(formData: any, isEditing: boolean, selectedProductId?: string): void {
+  const state = {
+    formData,
+    isEditing,
+    selectedProductId,
+    timestamp: Date.now()
+  };
+  
+  try {
+    localStorage.setItem(PENDING_CAMERA_KEY, 'true');
+    localStorage.setItem(FORM_STATE_KEY, JSON.stringify(state));
+    console.log('[CameraService] Marked pending camera capture, saved form state');
+  } catch (e) {
+    console.error('[CameraService] Failed to save form state:', e);
+  }
+}
+
+/**
+ * Clear pending camera capture flag
+ */
+export function clearPendingCameraCapture(): void {
+  localStorage.removeItem(PENDING_CAMERA_KEY);
+  console.log('[CameraService] Cleared pending camera capture');
+}
+
+/**
+ * Check if there's a pending camera capture
+ */
+export function hasPendingCameraCapture(): boolean {
+  const pending = localStorage.getItem(PENDING_CAMERA_KEY);
+  // Only valid if less than 5 minutes old (camera session shouldn't take longer)
+  if (pending) {
+    const stateStr = localStorage.getItem(FORM_STATE_KEY);
+    if (stateStr) {
+      try {
+        const state = JSON.parse(stateStr);
+        const age = Date.now() - state.timestamp;
+        if (age < 5 * 60 * 1000) {
+          return true;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    // Cleanup stale data
+    localStorage.removeItem(PENDING_CAMERA_KEY);
+  }
+  return false;
+}
+
+/**
+ * Get restored camera result (image captured before app was killed)
+ */
+export function getRestoredCameraResult(): { image: string; formState: any } | null {
+  const image = localStorage.getItem(RESTORED_IMAGE_KEY);
+  const stateStr = localStorage.getItem(FORM_STATE_KEY);
+  
+  if (image && stateStr) {
+    try {
+      const formState = JSON.parse(stateStr);
+      // Clean up after retrieval
+      localStorage.removeItem(RESTORED_IMAGE_KEY);
+      localStorage.removeItem(FORM_STATE_KEY);
+      localStorage.removeItem(PENDING_CAMERA_KEY);
+      console.log('[CameraService] Retrieved restored camera result');
+      return { image, formState };
+    } catch (e) {
+      console.error('[CameraService] Failed to parse restored state:', e);
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Save restored image from appRestoredResult event
+ */
+function saveRestoredImage(dataUrl: string): void {
+  try {
+    localStorage.setItem(RESTORED_IMAGE_KEY, dataUrl);
+    console.log('[CameraService] Saved restored image from camera');
+  } catch (e) {
+    console.error('[CameraService] Failed to save restored image:', e);
+  }
+}
+
+// Flag to prevent multiple listener registrations
+let restorationListenerInitialized = false;
+
+/**
+ * Initialize camera restoration listener for handling Android process death
+ * Call this once when the app starts
+ */
+export function initCameraRestoration(): void {
+  if (restorationListenerInitialized) {
+    console.log('[CameraService] Restoration listener already initialized');
+    return;
+  }
+  
+  if (!Capacitor.isNativePlatform()) {
+    console.log('[CameraService] Not on native platform, skipping restoration init');
+    return;
+  }
+  
+  console.log('[CameraService] Initializing camera restoration listener');
+  
+  App.addListener('appRestoredResult', (data) => {
+    console.log('[CameraService] App restored result received:', data.pluginId, data.success);
+    
+    if (data.pluginId === 'Camera' && data.success && data.data) {
+      const photo = data.data as Photo;
+      
+      if (photo.base64String) {
+        const mimeType = photo.format === 'png' ? 'image/png' : 'image/jpeg';
+        const dataUrl = `data:${mimeType};base64,${photo.base64String}`;
+        saveRestoredImage(dataUrl);
+        console.log('[CameraService] Camera result restored successfully');
+      } else if (photo.webPath) {
+        // If we got a webPath instead, we need to fetch and convert it
+        console.log('[CameraService] Got webPath, attempting conversion');
+        fetch(photo.webPath)
+          .then(res => res.blob())
+          .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (typeof reader.result === 'string') {
+                saveRestoredImage(reader.result);
+              }
+            };
+            reader.readAsDataURL(blob);
+          })
+          .catch(err => console.error('[CameraService] Failed to convert webPath:', err));
+      }
+    } else if (data.pluginId === 'Camera' && !data.success) {
+      // Camera was cancelled or failed, clean up pending state
+      clearPendingCameraCapture();
+      localStorage.removeItem(FORM_STATE_KEY);
+    }
+  });
+  
+  restorationListenerInitialized = true;
+  console.log('[CameraService] Restoration listener registered');
 }
