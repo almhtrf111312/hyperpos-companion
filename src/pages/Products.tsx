@@ -51,6 +51,8 @@ import {
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
+import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config';
+import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
 
@@ -103,19 +105,27 @@ export default function Products() {
   
   // Get effective field configuration - reload when page gains focus or storage changes
   const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
+  const [customFields, setCustomFields] = useState<CustomField[]>(() => getEnabledCustomFields());
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({});
   
   // Reload fields config when navigating to this page or when settings change
   useEffect(() => {
     const reloadFieldsConfig = () => {
       setFieldsConfig(getEffectiveFieldsConfig());
+      setCustomFields(getEnabledCustomFields());
     };
+    
+    // Listen for custom events (same tab)
+    const handleFieldsUpdated = () => reloadFieldsConfig();
+    window.addEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
+    window.addEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
     
     // Reload on focus (when user comes back from settings)
     window.addEventListener('focus', reloadFieldsConfig);
     
-    // Reload on storage change (same tab updates)
+    // Reload on storage change (different tabs)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.includes('hyperpos_product_fields')) {
+      if (e.key?.includes('hyperpos_product_fields') || e.key?.includes('hyperpos_custom_fields')) {
         reloadFieldsConfig();
       }
     };
@@ -125,6 +135,8 @@ export default function Products() {
     reloadFieldsConfig();
     
     return () => {
+      window.removeEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
+      window.removeEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
       window.removeEventListener('focus', reloadFieldsConfig);
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -234,12 +246,21 @@ const filteredProducts = useMemo(() => {
       toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
+
+    // Validate required custom fields
+    for (const field of customFields) {
+      if (field.required && !customFieldValues[field.id]) {
+        toast.error(`حقل "${field.name}" مطلوب`);
+        return;
+      }
+    }
     
     const newProduct: Product = {
       id: Date.now().toString(),
       ...formData,
       expiryDate: formData.expiryDate || undefined,
       status: getStatus(formData.quantity),
+      customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
     
     updateProducts([...products, newProduct]);
@@ -257,6 +278,7 @@ const filteredProducts = useMemo(() => {
     
     setShowAddDialog(false);
     setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
+    setCustomFieldValues({});
     toast.success('تم إضافة المنتج بنجاح');
   };
 
@@ -265,10 +287,23 @@ const filteredProducts = useMemo(() => {
       toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
+
+    // Validate required custom fields
+    for (const field of customFields) {
+      if (field.required && !customFieldValues[field.id]) {
+        toast.error(`حقل "${field.name}" مطلوب`);
+        return;
+      }
+    }
     
     updateProducts(products.map(p => 
       p.id === selectedProduct.id 
-        ? { ...p, ...formData, status: getStatus(formData.quantity) }
+        ? { 
+            ...p, 
+            ...formData, 
+            status: getStatus(formData.quantity),
+            customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
+          }
         : p
     ));
     
@@ -285,6 +320,7 @@ const filteredProducts = useMemo(() => {
     
     setShowEditDialog(false);
     setSelectedProduct(null);
+    setCustomFieldValues({});
     toast.success('تم تعديل المنتج بنجاح');
   };
 
@@ -328,6 +364,8 @@ const filteredProducts = useMemo(() => {
       color: product.color || '',
       minStockLevel: product.minStockLevel || 5,
     });
+    // Load custom field values from product
+    setCustomFieldValues(product.customFields || {});
     setShowEditDialog(true);
   };
 
@@ -816,6 +854,36 @@ const filteredProducts = useMemo(() => {
                   />
                 </div>
               )}
+              {/* Custom Fields */}
+              {customFields.map((field) => (
+                <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
+                  <label className="text-sm font-medium mb-1.5 block">
+                    {field.name} {field.required && '*'}
+                  </label>
+                  {field.type === 'select' && field.options ? (
+                    <select
+                      className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
+                    >
+                      <option value="">اختر...</option>
+                      {field.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      placeholder={field.placeholder || ''}
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({ 
+                        ...customFieldValues, 
+                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value 
+                      })}
+                    />
+                  )}
+                </div>
+              ))}
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                 <div className="flex flex-col gap-3">
@@ -951,6 +1019,36 @@ const filteredProducts = useMemo(() => {
                   onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                 />
               </div>
+              {/* Custom Fields in Edit Dialog */}
+              {customFields.map((field) => (
+                <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
+                  <label className="text-sm font-medium mb-1.5 block">
+                    {field.name} {field.required && '*'}
+                  </label>
+                  {field.type === 'select' && field.options ? (
+                    <select
+                      className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
+                    >
+                      <option value="">اختر...</option>
+                      {field.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      placeholder={field.placeholder || ''}
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({ 
+                        ...customFieldValues, 
+                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value 
+                      })}
+                    />
+                  )}
+                </div>
+              ))}
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                 <div className="flex flex-col gap-3">

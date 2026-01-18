@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings2, Package, Save, RotateCcw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   ProductFieldsConfig,
@@ -11,6 +12,7 @@ import {
   FIELD_LABELS,
   StoreType,
 } from '@/lib/product-fields-config';
+import { CustomFieldsManager } from './CustomFieldsManager';
 
 interface ProductFieldsSectionProps {
   storeType: string;
@@ -119,6 +121,11 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
           ))}
         </div>
       </div>
+
+      <Separator className="my-6" />
+
+      {/* Custom Fields Section */}
+      <CustomFieldsManager />
     </div>
   );
 }
