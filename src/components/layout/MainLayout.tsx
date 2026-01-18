@@ -1,7 +1,7 @@
 import { ReactNode, useState, useCallback } from 'react';
 import { Sidebar, MobileMenuTrigger } from './Sidebar';
 import { NotificationBell } from './NotificationBell';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -12,7 +12,11 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const { isRTL } = useLanguage();
+  
+  // Sidebar is collapsed by default on tablet
+  const sidebarCollapsed = isTablet;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -40,8 +44,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Main content - margin based on RTL/LTR with increased top padding */}
       <main className={`min-h-screen transition-all duration-300 pt-20 ${
         isRTL 
-          ? (isMobile ? 'ml-0' : 'ml-64') 
-          : (isMobile ? 'mr-0' : 'mr-64')
+          ? (isMobile ? 'ml-0' : sidebarCollapsed ? 'ml-20' : 'ml-64') 
+          : (isMobile ? 'mr-0' : sidebarCollapsed ? 'mr-20' : 'mr-64')
       }`}>
         {children}
       </main>

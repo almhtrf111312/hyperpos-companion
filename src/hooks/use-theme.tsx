@@ -8,6 +8,7 @@ interface ThemeContextType {
   color: ThemeColor;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
+  setTheme: (mode: ThemeMode, color: ThemeColor) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -211,8 +212,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color: newColor }));
   };
 
+  const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
+    setModeState(newMode);
+    setColorState(newColor);
+    applyTheme(newMode, newColor);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor }));
+  };
+
   return (
-    <ThemeContext.Provider value={{ mode, color, setMode, setColor }}>
+    <ThemeContext.Provider value={{ mode, color, setMode, setColor, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
