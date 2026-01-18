@@ -32,13 +32,9 @@ export function MainLayout({ children }: MainLayoutProps) {
         <MobileMenuTrigger onClick={toggleSidebar} />
       )}
 
-      {/* Top bar with notifications - positioned to avoid menu button overlap */}
-      <div className={`fixed top-0 z-30 transition-all duration-300 ${
-        isRTL ? 'left-4' : 'right-4'
-      }`}>
-        <div className="flex items-center gap-2 py-4">
-          <NotificationBell />
-        </div>
+      {/* Top bar with notifications - centered position */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30">
+        <NotificationBell />
       </div>
       
       {/* Main content - margin based on RTL/LTR with increased top padding */}

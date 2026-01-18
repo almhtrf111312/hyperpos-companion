@@ -1,6 +1,9 @@
-// Professional PDF Export using jsPDF
+// Professional PDF Export using jsPDF with Capacitor support
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 export interface PDFExportOptions {
   title: string;
@@ -33,8 +36,33 @@ const processRTL = (text: string): string => {
   return text;
 };
 
+// Save PDF on native platforms using Filesystem and Share APIs
+const savePDFNative = async (doc: jsPDF, fileName: string): Promise<void> => {
+  try {
+    // Convert PDF to base64
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
+    
+    // Save file to cache directory
+    const result = await Filesystem.writeFile({
+      path: fileName,
+      data: pdfBase64,
+      directory: Directory.Cache,
+    });
+    
+    // Share the file
+    await Share.share({
+      title: fileName,
+      url: result.uri,
+      dialogTitle: 'حفظ ملف PDF',
+    });
+  } catch (error) {
+    console.error('Error saving PDF on native:', error);
+    throw error;
+  }
+};
+
 // Create and download PDF file
-export const exportToPDF = (options: PDFExportOptions): void => {
+export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   const {
     title,
     subtitle,
@@ -180,12 +208,16 @@ export const exportToPDF = (options: PDFExportOptions): void => {
     doc.text(pageText, doc.internal.pageSize.width - 15, doc.internal.pageSize.height - 10, { align: 'right' });
   }
   
-  // Save the PDF
-  doc.save(fileName);
+  // Save the PDF based on platform
+  if (Capacitor.isNativePlatform()) {
+    await savePDFNative(doc, fileName);
+  } else {
+    doc.save(fileName);
+  }
 };
 
 // Export invoices to PDF
-export const exportInvoicesToPDF = (
+export const exportInvoicesToPDF = async (
   invoices: Array<{
     id: string;
     customerName: string;
@@ -197,7 +229,7 @@ export const exportInvoicesToPDF = (
   }>,
   storeInfo?: { name: string; phone?: string; address?: string },
   dateRange?: { start: string; end: string }
-): void => {
+): Promise<void> => {
   const columns = [
     { header: 'رقم الفاتورة', key: 'id' },
     { header: 'العميل', key: 'customerName' },
@@ -225,7 +257,7 @@ export const exportInvoicesToPDF = (
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
   
-  exportToPDF({
+  await exportToPDF({
     title: 'تقرير الفواتير',
     subtitle,
     storeName: storeInfo?.name,
@@ -239,7 +271,7 @@ export const exportInvoicesToPDF = (
 };
 
 // Export products to PDF
-export const exportProductsToPDF = (
+export const exportProductsToPDF = async (
   products: Array<{
     name: string;
     barcode: string;
@@ -248,7 +280,7 @@ export const exportProductsToPDF = (
     quantity: number;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string }
-): void => {
+): Promise<void> => {
   const columns = [
     { header: 'المنتج', key: 'name' },
     { header: 'الباركود', key: 'barcode' },
@@ -261,7 +293,7 @@ export const exportProductsToPDF = (
     quantity: products.reduce((sum, p) => sum + p.quantity, 0),
   };
   
-  exportToPDF({
+  await exportToPDF({
     title: 'قائمة المنتجات',
     subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
     storeName: storeInfo?.name,
@@ -275,7 +307,7 @@ export const exportProductsToPDF = (
 };
 
 // Export single invoice to PDF (receipt style)
-export const exportInvoiceReceiptToPDF = (
+export const exportInvoiceReceiptToPDF = async (
   invoice: {
     id: string;
     customerName: string;
@@ -288,7 +320,7 @@ export const exportInvoiceReceiptToPDF = (
     createdAt: string;
   },
   storeInfo?: { name: string; phone?: string; address?: string }
-): void => {
+): Promise<void> => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -381,12 +413,17 @@ export const exportInvoiceReceiptToPDF = (
   const thanksText = processRTL('شكراً لزيارتكم');
   doc.text(thanksText, pageWidth / 2, yPosition, { align: 'center' });
   
-  // Save
-  doc.save(`فاتورة_${invoice.id}.pdf`);
+  // Save based on platform
+  const fileName = `فاتورة_${invoice.id}.pdf`;
+  if (Capacitor.isNativePlatform()) {
+    await savePDFNative(doc, fileName);
+  } else {
+    doc.save(fileName);
+  }
 };
 
 // Export expenses to PDF
-export const exportExpensesToPDF = (
+export const exportExpensesToPDF = async (
   expenses: Array<{
     id: string;
     type: string;
@@ -397,7 +434,7 @@ export const exportExpensesToPDF = (
   }>,
   storeInfo?: { name: string; phone?: string; address?: string },
   dateRange?: { start: string; end: string }
-): void => {
+): Promise<void> => {
   const columns = [
     { header: 'رقم', key: 'id' },
     { header: 'النوع', key: 'typeLabel' },
@@ -414,7 +451,7 @@ export const exportExpensesToPDF = (
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
   
-  exportToPDF({
+  await exportToPDF({
     title: 'تقرير المصاريف',
     subtitle,
     storeName: storeInfo?.name,
@@ -428,7 +465,7 @@ export const exportExpensesToPDF = (
 };
 
 // Export partners to PDF
-export const exportPartnersToPDF = (
+export const exportPartnersToPDF = async (
   partners: Array<{
     name: string;
     sharePercentage: number;
@@ -438,7 +475,7 @@ export const exportPartnersToPDF = (
     currentBalance: number;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string }
-): void => {
+): Promise<void> => {
   const columns = [
     { header: 'الشريك', key: 'name' },
     { header: 'نسبة الأرباح %', key: 'sharePercentage' },
@@ -455,7 +492,7 @@ export const exportPartnersToPDF = (
     currentBalance: partners.reduce((sum, p) => sum + p.currentBalance, 0),
   };
   
-  exportToPDF({
+  await exportToPDF({
     title: 'تقرير الشركاء',
     subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
     storeName: storeInfo?.name,
@@ -469,7 +506,7 @@ export const exportPartnersToPDF = (
 };
 
 // Export customers to PDF
-export const exportCustomersToPDF = (
+export const exportCustomersToPDF = async (
   customers: Array<{
     name: string;
     phone?: string;
@@ -478,7 +515,7 @@ export const exportCustomersToPDF = (
     balance: number;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string }
-): void => {
+): Promise<void> => {
   const columns = [
     { header: 'العميل', key: 'name' },
     { header: 'الهاتف', key: 'phone' },
@@ -493,14 +530,14 @@ export const exportCustomersToPDF = (
     balance: customers.reduce((sum, c) => sum + c.balance, 0),
   };
   
-  exportToPDF({
+  await exportToPDF({
     title: 'قائمة العملاء',
     subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
     storeName: storeInfo?.name,
     storePhone: storeInfo?.phone,
     storeAddress: storeInfo?.address,
     columns,
-    data: customers.map(c => ({ ...c, phone: c.phone || '' })),
+    data: customers,
     totals,
     fileName: `عملاء_${new Date().toISOString().split('T')[0]}.pdf`,
   });
