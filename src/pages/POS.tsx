@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getProductsForPOS, POSProduct, getProductByBarcode } from '@/lib/products-store';
 import { getCategoryNames } from '@/lib/categories-store';
@@ -208,20 +209,28 @@ export default function POS() {
     enabled: !isMobile,
   });
 
+  const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar - Hidden on tablet for more product space */}
-      {!isTablet && (
-        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-      )}
+      {/* Sidebar - Always visible, collapsed by default on non-mobile */}
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onToggle={() => setSidebarOpen(!sidebarOpen)} 
+        defaultCollapsed={!isMobile}
+      />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300",
+        !isMobile && "md:mr-20" // Account for collapsed sidebar width
+      )}>
         {/* Header */}
         <POSHeader
           onMenuClick={() => setSidebarOpen(true)}
           onCartClick={() => setCartOpen(true)}
-          cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          cartItemsCount={cartItemsCount}
+          showCartButton={false}
         />
 
         {/* Mode Tabs - Mobile Only */}
@@ -321,6 +330,33 @@ export default function POS() {
         }}
         onAddToCart={handleAddScannedProduct}
       />
+
+      {/* Floating Cart Button - Mobile Only */}
+      {isMobile && (
+        <Button
+          onClick={() => setCartOpen(true)}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 
+                     w-16 h-16 rounded-full 
+                     shadow-lg shadow-primary/30
+                     flex items-center justify-center
+                     hover:scale-105 active:scale-95
+                     transition-all duration-200"
+          size="icon"
+        >
+          <ShoppingCart className="w-7 h-7" />
+          {cartItemsCount > 0 && (
+            <span className="absolute -top-1 -right-1 
+                           w-6 h-6 rounded-full 
+                           bg-destructive text-destructive-foreground 
+                           text-sm font-bold 
+                           flex items-center justify-center
+                           border-2 border-background
+                           animate-pulse">
+              {cartItemsCount}
+            </span>
+          )}
+        </Button>
+      )}
     </div>
   );
 }
