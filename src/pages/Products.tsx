@@ -51,15 +51,6 @@ import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
-import { 
-  isNativeCameraAvailable, 
-  capturePhoto, 
-  pickFromGallery, 
-  initCameraRestoration,
-  markPendingCameraCapture,
-  clearPendingCameraCapture,
-  getRestoredCameraResult
-} from '@/lib/camera-service';
 import { useLanguage } from '@/hooks/use-language';
 
 export default function Products() {
@@ -215,92 +206,32 @@ export default function Products() {
     if (event.target) event.target.value = '';
   };
 
-  // Camera capture handler - للمتصفح فقط (fallback)
+  // Camera capture handler - حفظ الحالة قبل فتح الكاميرا
   const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // مسح الحالة المحفوظة بعد نجاح الالتقاط
       clearFormState('product_form');
       compressImage(file);
     }
+    // Reset input for re-capture
     if (event.target) event.target.value = '';
   };
 
-  // التقاط صورة باستخدام Capacitor Camera (الأمثل للموبايل)
-  const triggerCameraCapture = async () => {
-    // حفظ الحالة دائماً قبل فتح الكاميرا (للتعامل مع إعادة تشغيل Android)
-    markPendingCameraCapture(formData, showEditDialog, selectedProduct?.id);
-    
-    if (isNativeCameraAvailable()) {
-      // استخدام Capacitor Camera Plugin للموبايل
-      const result = await capturePhoto();
-      
-      // مسح علامة الانتظار عند النجاح أو الإلغاء
-      clearPendingCameraCapture();
-      
-      if (result.success && result.image) {
-        setFormData(prev => ({ ...prev, image: result.image! }));
-        toast.success('تم التقاط الصورة بنجاح');
-      } else if (result.error && result.error !== 'cancelled') {
-        toast.error(result.error);
-      }
-    } else {
-      // Fallback للمتصفح - حفظ الحالة قبل فتح الكاميرا
-      saveFormState('product_form', {
-        formData,
-        isEditing: showEditDialog,
-        selectedProductId: selectedProduct?.id
-      });
-      cameraInputRef.current?.click();
-    }
+  // حفظ الحالة قبل فتح الكاميرا (لاسترجاعها إذا أعاد Android تحميل التطبيق)
+  const triggerCameraCapture = () => {
+    // حفظ بيانات النموذج الحالية
+    saveFormState('product_form', {
+      formData,
+      isEditing: showEditDialog,
+      selectedProductId: selectedProduct?.id
+    });
+    // فتح الكاميرا
+    cameraInputRef.current?.click();
   };
 
-  // اختيار صورة من المعرض باستخدام Capacitor (للموبايل)
-  const triggerGalleryPick = async () => {
-    if (isNativeCameraAvailable()) {
-      const result = await pickFromGallery();
-      
-      if (result.success && result.image) {
-        setFormData(prev => ({ ...prev, image: result.image! }));
-      } else if (result.error && result.error !== 'cancelled') {
-        toast.error(result.error);
-      }
-    } else {
-      // Fallback للمتصفح
-      imageInputRef.current?.click();
-    }
-  };
-
-  // تهيئة استعادة نتائج الكاميرا (للتعامل مع إعادة تشغيل Android)
+  // استرجاع بيانات النموذج عند تحميل الصفحة (إذا كانت محفوظة)
   useEffect(() => {
-    initCameraRestoration();
-  }, []);
-
-  // استرجاع الصورة من الكاميرا بعد إعادة تشغيل التطبيق
-  useEffect(() => {
-    const restored = getRestoredCameraResult();
-    
-    if (restored) {
-      console.log('[Products] Restored camera result found, applying...');
-      const { image, formState } = restored;
-      
-      // استعادة بيانات النموذج مع الصورة الجديدة
-      setFormData({ ...formState.formData, image });
-      
-      if (formState.isEditing && formState.selectedProductId) {
-        const product = products.find(p => p.id === formState.selectedProductId);
-        if (product) {
-          setSelectedProduct(product);
-          setShowEditDialog(true);
-        }
-      } else {
-        setShowAddDialog(true);
-      }
-      
-      toast.success('تم استرجاع الصورة بنجاح بعد إعادة تشغيل التطبيق');
-      return; // Skip the regular form state check
-    }
-    
-    // استرجاع بيانات النموذج العادية (للمتصفح)
     const savedState = loadFormState<{
       formData: typeof formData;
       isEditing: boolean;
@@ -983,7 +914,7 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={triggerGalleryPick}
+                      onClick={() => imageInputRef.current?.click()}
                     >
                       <ImageIcon className="w-4 h-4 ml-2" />
                       إضافة صورة
@@ -1123,7 +1054,7 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={triggerGalleryPick}
+                      onClick={() => document.getElementById('edit-image-input')?.click()}
                     >
                       <ImageIcon className="w-4 h-4 ml-2" />
                       إضافة صورة
