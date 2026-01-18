@@ -16,6 +16,12 @@ export interface Product {
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
   expiryDate?: string; // Optional expiry date for pharmacy/grocery
   image?: string; // Base64 image for product
+  // Fix #16: Dynamic fields based on store type
+  serialNumber?: string; // IMEI for phones, ISBN for books
+  warranty?: string; // Warranty period (e.g., "12 months")
+  wholesalePrice?: number; // Wholesale price for bulk sales
+  size?: string; // Size for clothing
+  color?: string; // Color for clothing
 }
 
 // No default products - start with empty inventory
