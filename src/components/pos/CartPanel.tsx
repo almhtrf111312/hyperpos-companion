@@ -34,6 +34,8 @@ import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
+import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
+import { recordActivity } from '@/lib/auto-backup';
 
 interface CartItem {
   id: string;
@@ -232,6 +234,12 @@ export function CartPanel({
     
     // Play success sound
     playSaleComplete();
+    
+    // Add to cashbox if shift is open
+    addSalesToShift(total);
+    
+    // Record activity for auto-backup
+    recordActivity();
     
     toast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
     setShowCashDialog(false);
