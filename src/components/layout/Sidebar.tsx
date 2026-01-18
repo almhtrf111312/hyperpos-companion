@@ -25,29 +25,29 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
+import { TranslationKey } from '@/lib/i18n';
 
 interface NavItem {
   icon: React.ElementType;
-  label: string;
-  translationKey: string;
+  translationKey: TranslationKey;
   path: string;
   badge?: number;
   adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { icon: ShoppingCart, label: 'نقطة البيع', translationKey: 'nav.pos', path: '/' },
-  { icon: LayoutDashboard, label: 'لوحة التحكم', translationKey: 'nav.dashboard', path: '/dashboard' },
-  { icon: FileText, label: 'الفواتير', translationKey: 'nav.invoices', path: '/invoices' },
-  { icon: Package, label: 'المنتجات', translationKey: 'nav.products', path: '/products' },
-  { icon: Users, label: 'العملاء', translationKey: 'nav.customers', path: '/customers' },
-  { icon: CreditCard, label: 'الديون', translationKey: 'nav.debts', path: '/debts' },
-  { icon: Wrench, label: 'الصيانة', translationKey: 'nav.services', path: '/services' },
-  { icon: UserCheck, label: 'الشركاء', translationKey: 'nav.partners', path: '/partners' },
-  { icon: Receipt, label: 'المصاريف', translationKey: 'nav.expenses', path: '/expenses' },
-  { icon: Wallet, label: 'الصندوق والوردية', translationKey: 'nav.cashShifts', path: '/cash-shifts' },
-  { icon: BarChart3, label: 'التقارير', translationKey: 'nav.reports', path: '/reports' },
-  { icon: Settings, label: 'الإعدادات', translationKey: 'nav.settings', path: '/settings' },
+  { icon: ShoppingCart, translationKey: 'nav.pos', path: '/' },
+  { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard' },
+  { icon: FileText, translationKey: 'nav.invoices', path: '/invoices' },
+  { icon: Package, translationKey: 'nav.products', path: '/products' },
+  { icon: Users, translationKey: 'nav.customers', path: '/customers' },
+  { icon: CreditCard, translationKey: 'nav.debts', path: '/debts' },
+  { icon: Wrench, translationKey: 'nav.services', path: '/services' },
+  { icon: UserCheck, translationKey: 'nav.partners', path: '/partners' },
+  { icon: Receipt, translationKey: 'nav.expenses', path: '/expenses' },
+  { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts' },
+  { icon: BarChart3, translationKey: 'nav.reports', path: '/reports' },
+  { icon: Settings, translationKey: 'nav.settings', path: '/settings' },
 ];
 
 interface SidebarProps {
@@ -114,7 +114,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   };
 
   // Get user display info
-  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'مستخدم';
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const displayEmail = user?.email || '';
   const userInitial = displayName.charAt(0).toUpperCase();
 
@@ -147,7 +147,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             {(!effectiveCollapsed || isMobile) && (
               <div>
                 <h1 className="font-bold text-lg text-foreground">HyperPOS</h1>
-                <p className="text-xs text-muted-foreground">نظام إدارة متكامل</p>
+                <p className="text-xs text-muted-foreground">{t('sidebar.systemDesc')}</p>
               </div>
             )}
           </div>
@@ -198,7 +198,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "animate-pulse")} />
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="font-medium">{t(item.translationKey as any)}</span>
+                        <span className="font-medium">{t(item.translationKey)}</span>
                         {item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                             {item.badge}
@@ -212,7 +212,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         // Position tooltip on opposite side based on RTL
                         isRTL ? "right-full mr-2" : "left-full ml-2"
                       )}>
-                        {t(item.translationKey as any)}
+                        {t(item.translationKey)}
                       </div>
                     )}
                   </NavLink>
