@@ -48,8 +48,10 @@ import {
   exportPartnersToPDF,
   exportCustomersToPDF
 } from '@/lib/pdf-export';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function Reports() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const [dateRange, setDateRange] = useState({ 
     from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
@@ -68,13 +70,13 @@ export default function Reports() {
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
 
   const reports = [
-    { id: 'sales', label: 'المبيعات', icon: ShoppingCart },
-    { id: 'profits', label: 'الأرباح', icon: TrendingUp },
-    { id: 'products', label: 'المنتجات', icon: BarChart3 },
-    { id: 'customers', label: 'العملاء', icon: Users },
-    { id: 'partners', label: 'الشركاء', icon: UsersRound },
-    { id: 'partner-detailed', label: 'تفاصيل الأرباح', icon: ClipboardList },
-    { id: 'expenses', label: 'المصاريف', icon: Receipt },
+    { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
+    { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
+    { id: 'products', label: t('reports.products'), icon: BarChart3 },
+    { id: 'customers', label: t('reports.customers'), icon: Users },
+    { id: 'partners', label: t('reports.partners'), icon: UsersRound },
+    { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
+    { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
   ];
 
   // Calculate real data from stores
@@ -649,8 +651,8 @@ ${partnerExpenses.map(exp => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">التقارير</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">تحليل شامل للمبيعات والأرباح</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExportPDF}>
@@ -663,7 +665,7 @@ ${partnerExpenses.map(exp => {
           </Button>
           <Button onClick={handleBackup}>
             <Download className="w-4 h-4 ml-2" />
-            نسخ احتياطي
+            {t('reports.backup')}
           </Button>
         </div>
       </div>
@@ -672,7 +674,7 @@ ${partnerExpenses.map(exp => {
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">من:</span>
+          <span className="text-sm text-muted-foreground">{t('reports.from')}:</span>
           <Input
             type="date"
             value={dateRange.from}
@@ -681,7 +683,7 @@ ${partnerExpenses.map(exp => {
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">إلى:</span>
+          <span className="text-sm text-muted-foreground">{t('reports.to')}:</span>
           <Input
             type="date"
             value={dateRange.to}
@@ -725,7 +727,7 @@ ${partnerExpenses.map(exp => {
             )}
           </div>
           <p className="text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalSales')}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
@@ -737,21 +739,21 @@ ${partnerExpenses.map(exp => {
             )}
           </div>
           <p className="text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">صافي الأرباح</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <ShoppingCart className="w-5 h-5 text-info" />
           </div>
           <p className="text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
-          <p className="text-xs text-muted-foreground">عدد الطلبات</p>
+          <p className="text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
             <PieChart className="w-5 h-5 text-warning" />
           </div>
           <p className="text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground">متوسط قيمة الطلب</p>
+          <p className="text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
         </div>
       </div>
 
@@ -759,8 +761,8 @@ ${partnerExpenses.map(exp => {
       {!reportData.hasData && (
         <div className="bg-card rounded-2xl border border-border p-8 text-center">
           <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">لا توجد بيانات في الفترة المحددة</p>
-          <p className="text-sm text-muted-foreground">جرب تغيير نطاق التاريخ</p>
+          <p className="text-muted-foreground">{t('reports.noData')}</p>
+          <p className="text-sm text-muted-foreground">{t('reports.tryChangeDateRange')}</p>
         </div>
       )}
 
@@ -768,7 +770,7 @@ ${partnerExpenses.map(exp => {
       {reportData.hasData && (activeReport === 'sales' || activeReport === 'profits') && (
         <div className="bg-card rounded-2xl border border-border p-6">
           <h3 className="text-lg font-semibold mb-4">
-            {activeReport === 'sales' ? 'المبيعات اليومية' : 'الأرباح اليومية'}
+            {activeReport === 'sales' ? t('reports.dailySales') : t('reports.dailyProfit')}
           </h3>
           {reportData.dailySales.length > 0 ? (
             <div className="space-y-3">
@@ -788,7 +790,7 @@ ${partnerExpenses.map(exp => {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-4">لا توجد بيانات يومية</p>
+            <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
           )}
         </div>
       )}
@@ -796,7 +798,7 @@ ${partnerExpenses.map(exp => {
       {/* Top Products */}
       {reportData.hasData && activeReport === 'products' && (
         <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">أفضل المنتجات مبيعاً</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('reports.bestProducts')}</h3>
           {reportData.topProducts.length > 0 ? (
             <div className="space-y-3">
               {reportData.topProducts.map((product, idx) => (
@@ -809,13 +811,13 @@ ${partnerExpenses.map(exp => {
                   </div>
                   <div className="text-left">
                     <p className="font-bold text-foreground">${product.revenue.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{product.sales} قطعة</p>
+                    <p className="text-xs text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-4">لا توجد منتجات مباعة</p>
+            <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
           )}
         </div>
       )}
@@ -823,7 +825,7 @@ ${partnerExpenses.map(exp => {
       {/* Top Customers */}
       {reportData.hasData && activeReport === 'customers' && (
         <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">أفضل العملاء</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
           {reportData.topCustomers.length > 0 ? (
             <div className="space-y-3">
               {reportData.topCustomers.map((customer, idx) => (
@@ -836,13 +838,13 @@ ${partnerExpenses.map(exp => {
                   </div>
                   <div className="text-left">
                     <p className="font-bold text-foreground">${customer.total.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{customer.orders} طلب</p>
+                    <p className="text-xs text-muted-foreground">{customer.orders} {t('reports.order')}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-4">لا يوجد عملاء</p>
+            <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
           )}
         </div>
       )}
@@ -852,13 +854,13 @@ ${partnerExpenses.map(exp => {
         <div className="space-y-6">
           {/* Partner Filter */}
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <span className="text-sm text-muted-foreground">اختر شريك:</span>
+            <span className="text-sm text-muted-foreground">{t('reports.selectPartnerLabel')}</span>
             <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="جميع الشركاء" />
+                <SelectValue placeholder={t('reports.allPartners')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الشركاء</SelectItem>
+                <SelectItem value="all">{t('reports.allPartners')}</SelectItem>
                 {partnerReportData.allPartners.map(partner => (
                   <SelectItem key={partner.id} value={partner.id}>
                     {partner.name}

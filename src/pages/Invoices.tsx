@@ -454,10 +454,10 @@ ${footer}`;
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="w-6 h-6 text-primary" />
-            الفواتير
+            {t('invoices.title')}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            عرض وإدارة جميع الفواتير
+            {t('invoices.subtitle')}
           </p>
         </div>
       </div>
@@ -471,7 +471,7 @@ ${footer}`;
                 <FileText className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">إجمالي الفواتير</p>
+                <p className="text-xs text-muted-foreground">{t('invoices.totalInvoices')}</p>
                 <p className="text-xl font-bold">{stats.total}</p>
               </div>
             </div>
@@ -484,7 +484,7 @@ ${footer}`;
                 <DollarSign className="w-5 h-5 text-success" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">مبيعات اليوم</p>
+                <p className="text-xs text-muted-foreground">{t('invoices.todaySales')}</p>
                 <p className="text-xl font-bold">${stats.todaySales.toLocaleString()}</p>
               </div>
             </div>
@@ -497,7 +497,7 @@ ${footer}`;
                 <CreditCard className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">ديون معلقة</p>
+                <p className="text-xs text-muted-foreground">{t('invoices.pendingDebts')}</p>
                 <p className="text-xl font-bold">{stats.pendingDebts}</p>
               </div>
             </div>
@@ -510,7 +510,7 @@ ${footer}`;
                 <Banknote className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">إجمالي الأرباح</p>
+                <p className="text-xs text-muted-foreground">{t('invoices.totalProfit')}</p>
                 <p className="text-xl font-bold">${stats.totalProfit.toLocaleString()}</p>
               </div>
             </div>
@@ -523,7 +523,7 @@ ${footer}`;
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="بحث بالاسم أو رقم الفاتورة..."
+            placeholder={t('invoices.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-10"
@@ -534,12 +534,12 @@ ${footer}`;
           onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}
         >
           <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="نوع الفاتورة" />
+            <SelectValue placeholder={t('invoices.invoiceType')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">الكل</SelectItem>
-            <SelectItem value="sale">مبيعات</SelectItem>
-            <SelectItem value="maintenance">صيانة</SelectItem>
+            <SelectItem value="all">{t('common.all')}</SelectItem>
+            <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
+            <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
           </SelectContent>
         </Select>
         <Select 
@@ -547,12 +547,12 @@ ${footer}`;
           onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}
         >
           <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="طريقة الدفع" />
+            <SelectValue placeholder={t('invoices.paymentMethod')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">الكل</SelectItem>
-            <SelectItem value="cash">نقدي</SelectItem>
-            <SelectItem value="debt">آجل</SelectItem>
+            <SelectItem value="all">{t('common.all')}</SelectItem>
+            <SelectItem value="cash">{t('invoices.cash')}</SelectItem>
+            <SelectItem value="debt">{t('invoices.credit')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -584,7 +584,7 @@ ${footer}`;
           <Card>
             <CardContent className="p-8 text-center">
               <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">لا توجد فواتير</p>
+              <p className="text-muted-foreground">{t('invoices.noInvoices')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -607,10 +607,10 @@ ${footer}`;
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold truncate">{invoice.customerName}</span>
                         <Badge variant={invoice.paymentType === 'cash' ? 'default' : 'secondary'}>
-                          {invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}
+                          {invoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
                         </Badge>
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
-                          <Badge variant="destructive">غير مدفوع</Badge>
+                          <Badge variant="destructive">{t('invoices.unpaid')}</Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
@@ -642,22 +642,22 @@ ${footer}`;
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleView(invoice)}>
                           <Eye className="w-4 h-4 ml-2" />
-                          عرض
+                          {t('common.view')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handlePrint(invoice)}>
                           <Printer className="w-4 h-4 ml-2" />
-                          طباعة
+                          {t('common.print')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleWhatsApp(invoice)}>
                           <Send className="w-4 h-4 ml-2" />
-                          واتساب
+                          {t('common.whatsapp')}
                         </DropdownMenuItem>
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleMarkPaid(invoice)}>
                               <Check className="w-4 h-4 ml-2" />
-                              تحديد كمدفوع
+                              {t('invoices.markAsPaid')}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -667,7 +667,7 @@ ${footer}`;
                           className="text-destructive"
                         >
                           <Trash2 className="w-4 h-4 ml-2" />
-                          حذف
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -685,52 +685,52 @@ ${footer}`;
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              تفاصيل الفاتورة
+              {t('invoices.details')}
             </DialogTitle>
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">رقم الفاتورة:</span>
+                  <span className="text-muted-foreground">{t('invoices.invoiceNumber')}:</span>
                   <p className="font-semibold">{selectedInvoice.id}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">التاريخ:</span>
+                  <span className="text-muted-foreground">{t('invoices.date')}:</span>
                   <p className="font-semibold">{new Date(selectedInvoice.createdAt).toLocaleDateString('ar-SA')}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">العميل:</span>
+                  <span className="text-muted-foreground">{t('invoices.customer')}:</span>
                   <p className="font-semibold">{selectedInvoice.customerName}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">الهاتف:</span>
+                  <span className="text-muted-foreground">{t('invoices.phone')}:</span>
                   <p className="font-semibold">{selectedInvoice.customerPhone || '-'}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">النوع:</span>
+                  <span className="text-muted-foreground">{t('invoices.type')}:</span>
                   <Badge variant={selectedInvoice.type === 'sale' ? 'default' : 'secondary'}>
-                    {selectedInvoice.type === 'sale' ? 'مبيعات' : 'صيانة'}
+                    {selectedInvoice.type === 'sale' ? t('invoices.sales') : t('invoices.maintenance')}
                   </Badge>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">طريقة الدفع:</span>
+                  <span className="text-muted-foreground">{t('invoices.payment')}:</span>
                   <Badge variant={selectedInvoice.paymentType === 'cash' ? 'default' : 'destructive'}>
-                    {selectedInvoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}
+                    {selectedInvoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
                   </Badge>
                 </div>
               </div>
               
               {selectedInvoice.type === 'maintenance' && selectedInvoice.serviceDescription && (
                 <div className="bg-muted rounded-lg p-3">
-                  <span className="text-sm text-muted-foreground">وصف الخدمة:</span>
+                  <span className="text-sm text-muted-foreground">{t('invoices.service')}:</span>
                   <p className="font-medium">{selectedInvoice.serviceDescription}</p>
                 </div>
               )}
               
               {selectedInvoice.type === 'sale' && selectedInvoice.items.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">المنتجات:</span>
+                  <span className="text-sm text-muted-foreground">{t('invoices.products')}:</span>
                   <div className="bg-muted rounded-lg p-3 space-y-2">
                     {selectedInvoice.items.map((item, idx) => (
                       <div key={idx} className="flex justify-between">
@@ -745,17 +745,17 @@ ${footer}`;
               <div className="border-t pt-4 space-y-2">
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span>الخصم:</span>
+                    <span>{t('invoices.discount')}:</span>
                     <span>{selectedInvoice.currencySymbol}{selectedInvoice.discount.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold">
-                  <span>الإجمالي:</span>
+                  <span>{t('invoices.total')}:</span>
                   <span className="text-primary">{selectedInvoice.currencySymbol}{selectedInvoice.totalInCurrency.toLocaleString()}</span>
                 </div>
                 {selectedInvoice.profit !== undefined && (
                   <div className="flex justify-between text-sm text-success">
-                    <span>الربح:</span>
+                    <span>{t('invoices.profit')}:</span>
                     <span>${selectedInvoice.profit.toLocaleString()}</span>
                   </div>
                 )}
@@ -764,11 +764,11 @@ ${footer}`;
               <div className="flex gap-2">
                 <Button className="flex-1" onClick={() => handlePrint(selectedInvoice)}>
                   <Printer className="w-4 h-4 ml-2" />
-                  طباعة
+                  {t('common.print')}
                 </Button>
                 <Button variant="outline" className="flex-1" onClick={() => handleWhatsApp(selectedInvoice)}>
                   <Send className="w-4 h-4 ml-2" />
-                  واتساب
+                  {t('common.whatsapp')}
                 </Button>
               </div>
             </div>
@@ -782,18 +782,18 @@ ${footer}`;
           <DialogHeader>
             <DialogTitle className="text-destructive flex items-center gap-2">
               <Trash2 className="w-5 h-5" />
-              حذف الفاتورة
+              {t('invoices.deleteInvoice')}
             </DialogTitle>
             <DialogDescription>
-              هل أنت متأكد من حذف هذه الفاتورة؟ لا يمكن التراجع عن هذا الإجراء.
+              {t('invoices.deleteConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              إلغاء
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              حذف
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

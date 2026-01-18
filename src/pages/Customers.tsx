@@ -43,8 +43,10 @@ import {
   getCustomersStats,
   Customer 
 } from '@/lib/customers-store';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function Customers() {
+  const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,15 +174,15 @@ export default function Customers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة العملاء</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">قائمة العملاء والديون</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('customers.pageTitle')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90" onClick={() => {
           setFormData({ name: '', phone: '', email: '', address: '' });
           setShowAddDialog(true);
         }}>
           <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          إضافة عميل
+          {t('customers.addCustomer')}
         </Button>
       </div>
 
@@ -193,7 +195,7 @@ export default function Customers() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">إجمالي</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('customers.total')}</p>
             </div>
           </div>
         </div>
@@ -204,7 +206,7 @@ export default function Customers() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.withDebt}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">مدينون</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('customers.debtors')}</p>
             </div>
           </div>
         </div>
@@ -215,7 +217,7 @@ export default function Customers() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalDebt.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">الديون</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('customers.debts')}</p>
             </div>
           </div>
         </div>
@@ -226,7 +228,7 @@ export default function Customers() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalPurchases.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">المشتريات</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('customers.purchases')}</p>
             </div>
           </div>
         </div>
@@ -237,7 +239,7 @@ export default function Customers() {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="بحث بالاسم أو رقم الهاتف..."
+          placeholder={t('customers.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pr-9 md:pr-10 bg-muted border-0"
@@ -262,12 +264,12 @@ export default function Customers() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm md:text-base">{customer.name}</h3>
-                  <p className="text-xs md:text-sm text-muted-foreground">{customer.invoiceCount} فاتورة</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{customer.invoiceCount} {t('customers.invoices')}</p>
                 </div>
               </div>
               {customer.totalDebt > 0 && (
                 <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium badge-warning">
-                  مدين
+                  {t('customers.debtor')}
                 </span>
               )}
             </div>
@@ -295,11 +297,11 @@ export default function Customers() {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-3 md:gap-4 py-3 md:py-4 border-t border-border">
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">المشتريات</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{t('customers.purchases')}</p>
                 <p className="text-base md:text-lg font-bold text-foreground">${customer.totalPurchases.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">الديون</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{t('customers.debts')}</p>
                 <p className={cn(
                   "text-base md:text-lg font-bold",
                   customer.totalDebt > 0 ? "text-destructive" : "text-success"
@@ -313,11 +315,11 @@ export default function Customers() {
             <div className="flex gap-2 pt-3 md:pt-4 border-t border-border">
               <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(customer)}>
                 <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                عرض
+                {t('common.view')}
               </Button>
               <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openEditDialog(customer)}>
                 <Edit className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                تعديل
+                {t('common.edit')}
               </Button>
               <Button 
                 variant="outline" 
@@ -338,21 +340,21 @@ export default function Customers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
-              إضافة عميل جديد
+              {t('customers.addCustomer')}
             </DialogTitle>
-            <DialogDescription>أدخل بيانات العميل الجديد</DialogDescription>
+            <DialogDescription>{t('customers.fillRequired')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.name')} *</label>
               <Input
-                placeholder="اسم العميل"
+                placeholder={t('customers.name')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.phone')} *</label>
               <Input
                 placeholder="+963 xxx xxx xxx"
                 value={formData.phone}
@@ -360,7 +362,7 @@ export default function Customers() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.email')}</label>
               <Input
                 placeholder="email@example.com"
                 value={formData.email}
@@ -368,20 +370,20 @@ export default function Customers() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">العنوان</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.address')}</label>
               <Input
-                placeholder="العنوان"
+                placeholder={t('customers.address')}
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddCustomer}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ
+                {t('common.save')}
               </Button>
             </div>
           </div>
@@ -394,33 +396,33 @@ export default function Customers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              تعديل بيانات العميل
+              {t('customers.editCustomer')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.name')} *</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.phone')} *</label>
               <Input
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.email')}</label>
               <Input
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">العنوان</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('customers.address')}</label>
               <Input
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -428,11 +430,11 @@ export default function Customers() {
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditCustomer}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ
+                {t('common.save')}
               </Button>
             </div>
           </div>
@@ -445,7 +447,7 @@ export default function Customers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              تفاصيل العميل
+              {t('customers.details')}
             </DialogTitle>
           </DialogHeader>
           {selectedCustomer && (
