@@ -29,7 +29,7 @@ import Services from "./pages/Services";
 import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
-import Cashbox from "./pages/Cashbox";
+import CashShifts from "./pages/CashShifts";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -125,7 +125,7 @@ const AppContent = () => {
         <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
         <Route path="/partners" element={<ProtectedRoute><MainLayout><Partners /></MainLayout></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
-        <Route path="/cashbox" element={<ProtectedRoute><MainLayout><Cashbox /></MainLayout></ProtectedRoute>} />
+        <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         

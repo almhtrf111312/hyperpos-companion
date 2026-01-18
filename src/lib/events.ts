@@ -14,6 +14,7 @@ export const EVENTS = {
   CASHBOX_UPDATED: 'hyperpos:cashbox-updated',
   SHIFTS_UPDATED: 'hyperpos:shifts-updated',
   CAPITAL_UPDATED: 'hyperpos:capital-updated',
+  CASH_SHIFTS_UPDATED: 'hyperpos:cash-shifts-updated',
 };
 
 export function emitEvent(name: string, detail?: any) {

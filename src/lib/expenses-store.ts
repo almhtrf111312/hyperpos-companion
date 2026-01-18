@@ -5,7 +5,7 @@ const EXPENSES_STORAGE_KEY = 'hyperpos_expenses_v1';
 
 // Fix #17: Enhanced expense types with categories
 export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
-export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'other';
+export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'cash_adjustment' | 'other';
 
 export interface ExpenseDistribution {
   partnerId: string;
@@ -55,6 +55,7 @@ export const expenseTypes: { value: ExpenseType; label: string; category: Expens
   { value: 'marketing', label: 'تسويق', category: 'marketing' },
   { value: 'transport', label: 'نقل', category: 'operational' },
   { value: 'maintenance', label: 'صيانة', category: 'maintenance' },
+  { value: 'cash_adjustment', label: 'تسوية صندوق', category: 'other' },
   { value: 'other', label: 'أخرى', category: 'other' },
 ];
 
