@@ -107,10 +107,12 @@ export default function Reports() {
       dailySalesMap[date].orders += 1;
     });
     
-    const dailySales = Object.entries(dailySalesMap)
+    // All daily sales for display (limited to 7 for chart)
+    const allDailySales = Object.entries(dailySalesMap)
       .map(([date, data]) => ({ date, ...data }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-7); // Last 7 days with data
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    const dailySales = allDailySales.slice(-7); // Last 7 days for chart display
     
     // Calculate top products
     const productSalesMap: Record<string, { name: string; sales: number; revenue: number }> = {};
@@ -129,6 +131,10 @@ export default function Reports() {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
     
+    // All products for export
+    const allProducts = Object.values(productSalesMap)
+      .sort((a, b) => b.revenue - a.revenue);
+    
     // Calculate top customers
     const customerPurchasesMap: Record<string, { name: string; orders: number; total: number }> = {};
     filteredInvoices.forEach(inv => {
@@ -144,6 +150,10 @@ export default function Reports() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
     
+    // All customers for export
+    const allCustomers = Object.values(customerPurchasesMap)
+      .sort((a, b) => b.total - a.total);
+    
     // Find top product name
     const topProduct = topProducts.length > 0 ? topProducts[0].name : 'لا يوجد';
     const topCustomer = topCustomers.length > 0 ? topCustomers[0].name : 'لا يوجد';
@@ -151,8 +161,11 @@ export default function Reports() {
     return {
       summary: { totalSales, totalProfit, totalOrders, avgOrderValue, topProduct, topCustomer },
       dailySales,
+      allDailySales,
       topProducts,
+      allProducts,
       topCustomers,
+      allCustomers,
       hasData: filteredInvoices.length > 0,
     };
   }, [dateRange]);
@@ -466,12 +479,12 @@ export default function Reports() {
       switch (activeReport) {
         case 'sales':
         case 'profits': {
-          // Export comprehensive sales report with multiple sheets
+          // Export comprehensive sales report with ALL data (not just top 5/7)
           exportSalesReportToExcel(
             {
-              dailySales: reportData.dailySales,
-              topProducts: reportData.topProducts,
-              topCustomers: reportData.topCustomers,
+              dailySales: reportData.allDailySales, // All days, not just 7
+              topProducts: reportData.allProducts,  // All products, not just 5
+              topCustomers: reportData.allCustomers, // All customers, not just 5
               summary: reportData.summary,
             },
             { start: dateRange.from, end: dateRange.to }
