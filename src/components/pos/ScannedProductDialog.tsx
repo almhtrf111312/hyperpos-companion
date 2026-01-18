@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { POSProduct } from '@/lib/products-store';
+import { useLanguage } from '@/hooks/use-language';
 
 interface ScannedProductDialogProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ export function ScannedProductDialog({
   product,
   onAddToCart,
 }: ScannedProductDialogProps) {
+  const { t } = useLanguage();
+  
   if (!product) return null;
 
   const handleAdd = () => {
@@ -34,7 +37,7 @@ export function ScannedProductDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
-            تم العثور على المنتج
+            {t('scannedProduct.productFound')}
           </DialogTitle>
         </DialogHeader>
         
@@ -52,12 +55,12 @@ export function ScannedProductDialog({
 
           <div className="bg-muted rounded-lg p-3 mb-4">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">المخزون المتاح:</span>
-              <span className="font-semibold">{product.quantity} قطعة</span>
+              <span className="text-muted-foreground">{t('scannedProduct.availableStock')}:</span>
+              <span className="font-semibold">{product.quantity} {t('scannedProduct.piece')}</span>
             </div>
             {product.barcode && (
               <div className="flex justify-between text-sm mt-1">
-                <span className="text-muted-foreground">الباركود:</span>
+                <span className="text-muted-foreground">{t('scannedProduct.barcode')}:</span>
                 <span className="font-mono">{product.barcode}</span>
               </div>
             )}
@@ -66,7 +69,7 @@ export function ScannedProductDialog({
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={onClose}>
               <X className="w-4 h-4 ml-2" />
-              إغلاق
+              {t('scannedProduct.close')}
             </Button>
             <Button 
               className="flex-1 bg-primary hover:bg-primary/90" 
@@ -74,7 +77,7 @@ export function ScannedProductDialog({
               disabled={product.quantity === 0}
             >
               <Plus className="w-4 h-4 ml-2" />
-              إضافة للسلة
+              {t('scannedProduct.addToCart')}
             </Button>
           </div>
         </div>

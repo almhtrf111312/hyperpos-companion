@@ -48,6 +48,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { loadCustomers } from '@/lib/customers-store';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Currency {
   code: 'USD' | 'TRY' | 'SYP';
@@ -65,27 +66,6 @@ interface MaintenancePanelProps {
   fullWidth?: boolean;
 }
 
-const serviceTypes = [
-  { value: 'repair', label: 'إصلاح' },
-  { value: 'setup', label: 'إعداد/تثبيت' },
-  { value: 'account', label: 'إنشاء حساب' },
-  { value: 'unlock', label: 'فتح قفل' },
-  { value: 'software', label: 'برمجيات' },
-  { value: 'data', label: 'نقل بيانات' },
-  { value: 'cleaning', label: 'تنظيف' },
-  { value: 'other', label: 'أخرى' },
-];
-
-const productTypes = [
-  { value: 'phone', label: 'هاتف', icon: Smartphone },
-  { value: 'tablet', label: 'تابلت', icon: Tablet },
-  { value: 'laptop', label: 'لابتوب', icon: Laptop },
-  { value: 'watch', label: 'ساعة ذكية', icon: Watch },
-  { value: 'headphones', label: 'سماعات', icon: Headphones },
-  { value: 'monitor', label: 'شاشة', icon: Monitor },
-  { value: 'other', label: 'أخرى', icon: Package },
-];
-
 export function MaintenancePanel({
   currencies,
   selectedCurrency,
@@ -94,6 +74,7 @@ export function MaintenancePanel({
   isMobile = false,
   fullWidth = false,
 }: MaintenancePanelProps) {
+  const { t } = useLanguage();
   const { user, profile } = useAuth();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -110,6 +91,27 @@ export function MaintenancePanel({
   const profit = servicePrice - partsCost;
   const servicePriceInCurrency = servicePrice * selectedCurrency.rate;
 
+  const serviceTypes = [
+    { value: 'repair', label: t('maintenance.serviceTypes.repair') },
+    { value: 'setup', label: t('maintenance.serviceTypes.setup') },
+    { value: 'account', label: t('maintenance.serviceTypes.account') },
+    { value: 'unlock', label: t('maintenance.serviceTypes.unlock') },
+    { value: 'software', label: t('maintenance.serviceTypes.software') },
+    { value: 'data', label: t('maintenance.serviceTypes.data') },
+    { value: 'cleaning', label: t('maintenance.serviceTypes.cleaning') },
+    { value: 'other', label: t('maintenance.serviceTypes.other') },
+  ];
+
+  const productTypes = [
+    { value: 'phone', label: t('maintenance.deviceTypes.phone'), icon: Smartphone },
+    { value: 'tablet', label: t('maintenance.deviceTypes.tablet'), icon: Tablet },
+    { value: 'laptop', label: t('maintenance.deviceTypes.laptop'), icon: Laptop },
+    { value: 'watch', label: t('maintenance.deviceTypes.watch'), icon: Watch },
+    { value: 'headphones', label: t('maintenance.deviceTypes.headphones'), icon: Headphones },
+    { value: 'monitor', label: t('maintenance.deviceTypes.monitor'), icon: Monitor },
+    { value: 'other', label: t('maintenance.deviceTypes.other'), icon: Package },
+  ];
+
   const getServiceLabel = () => serviceTypes.find(s => s.value === serviceType)?.label || '';
   const getProductLabel = () => productTypes.find(p => p.value === productType)?.label || '';
 
@@ -125,11 +127,11 @@ export function MaintenancePanel({
 
   const validateForm = () => {
     if (!customerName.trim()) {
-      toast.error('يرجى إدخال اسم العميل');
+      toast.error(t('maintenance.enterCustomerName'));
       return false;
     }
     if (servicePrice <= 0) {
-      toast.error('يرجى إدخال المبلغ المقبوض');
+      toast.error(t('maintenance.enterAmount'));
       return false;
     }
     return true;
@@ -149,11 +151,6 @@ export function MaintenancePanel({
       c.name.toLowerCase() === customerName.toLowerCase().trim()
     );
     setIsNewCustomer(!customerExists);
-    
-    // إذا كان عميل جديد ولا يوجد رقم هاتف
-    if (!customerExists && !customerPhone.trim()) {
-      // سنسمح بفتح الـ dialog وسيكون الهاتف إلزامياً فيه
-    }
     
     setShowDebtDialog(true);
   };
@@ -194,7 +191,7 @@ export function MaintenancePanel({
       serviceType: getServiceLabel(),
       productType: getProductLabel(),
       partsCost,
-      profit, // الربح = سعر الخدمة - تكلفة القطع
+      profit,
     });
     
     // تسجيل تكلفة القطع كمصروف تلقائي (إذا كانت أكبر من 0)
@@ -209,7 +206,6 @@ export function MaintenancePanel({
     }
     
     // Distribute profit to partners (category: صيانة)
-    // الربح = سعر الخدمة - تكلفة القطع
     if (profit > 0) {
       distributeDetailedProfit(
         [{ category: 'صيانة', profit }],
@@ -263,8 +259,8 @@ export function MaintenancePanel({
     }
     
     toast.success(paymentType === 'cash' 
-      ? 'تم تسجيل خدمة الصيانة نقداً' 
-      : 'تم تسجيل خدمة الصيانة كدين'
+      ? t('maintenance.cashRecorded')
+      : t('maintenance.debtRecorded')
     );
     
     setShowCashDialog(false);
@@ -275,7 +271,6 @@ export function MaintenancePanel({
   const handlePrint = () => {
     if (!validateForm()) return;
     
-    // Use dynamic store settings
     const storeSettings = getStoreSettings();
     const printSettings = getPrintSettings();
 
@@ -284,7 +279,6 @@ export function MaintenancePanel({
     
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
     
-    // Create print content with logo - only show price to customer, not cost
     const printContent = `
       <html dir="rtl">
         <head>
@@ -310,11 +304,11 @@ export function MaintenancePanel({
             ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
             <div class="date-time">${currentDate} - ${currentTime}</div>
           </div>
-          <div class="info"><span class="info-label">العميل:</span> ${customerName}</div>
-          ${customerPhone ? `<div class="info"><span class="info-label">الهاتف:</span> ${customerPhone}</div>` : ''}
-          ${fullDescription ? `<div class="info"><span class="info-label">الخدمة:</span> ${fullDescription}</div>` : ''}
+          <div class="info"><span class="info-label">${t('maintenance.customer')}:</span> ${customerName}</div>
+          ${customerPhone ? `<div class="info"><span class="info-label">${t('maintenance.phoneNumber')}:</span> ${customerPhone}</div>` : ''}
+          ${fullDescription ? `<div class="info"><span class="info-label">${t('maintenance.serviceType')}:</span> ${fullDescription}</div>` : ''}
           <div class="total">
-            <strong>المبلغ:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
+            <strong>${t('maintenance.total')}:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
           </div>
           <div class="footer">
             <p>${printSettings.footer}</p>
@@ -323,14 +317,12 @@ export function MaintenancePanel({
       </html>
     `;
     
-    // استخدام iframe للطباعة بدلاً من window.open
     printHTML(printContent);
   };
 
   const handleWhatsApp = () => {
     if (!validateForm()) return;
     
-    // Load store settings
     let storeName = 'HyperPOS Store';
     let storeAddress = '';
     let storePhone = '';
@@ -350,7 +342,6 @@ export function MaintenancePanel({
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
     
-    // Create formatted WhatsApp message - only show price to customer
     const message = `╔══════════════════╗
     *${storeName}*
 ${storeAddress ? `📍 ${storeAddress}` : ''}
@@ -361,12 +352,12 @@ ${storePhone ? `📞 ${storePhone}` : ''}
 📅 ${currentDate}
 
 ━━━━━━━━━━━━━━━━━━
-👤 *العميل:* ${customerName}
-${customerPhone ? `📱 *الهاتف:* ${customerPhone}` : ''}
-${fullDescription ? `📝 *الخدمة:* ${fullDescription}` : ''}
+👤 *${t('maintenance.customer')}:* ${customerName}
+${customerPhone ? `📱 *${t('maintenance.phoneNumber')}:* ${customerPhone}` : ''}
+${fullDescription ? `📝 *${t('maintenance.serviceType')}:* ${fullDescription}` : ''}
 ━━━━━━━━━━━━━━━━━━
 
-💰 *المبلغ:* ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
+💰 *${t('maintenance.total')}:* ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
 
 ${footer}`;
     
@@ -389,7 +380,7 @@ ${footer}`;
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wrench className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              <h2 className="font-bold text-base md:text-lg">خدمة صيانة سريعة</h2>
+              <h2 className="font-bold text-base md:text-lg">{t('maintenance.quickService')}</h2>
             </div>
             {isMobile && onClose && (
               <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
@@ -397,7 +388,7 @@ ${footer}`;
               </Button>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1">فوترة مباشرة للخدمات السريعة</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('maintenance.directBilling')}</p>
         </div>
 
         {/* Form */}
@@ -413,13 +404,13 @@ ${footer}`;
             <div className="space-y-4">
               {/* Customer Info */}
               <div className="space-y-3">
-                <h3 className="font-medium text-sm text-muted-foreground">معلومات العميل</h3>
+                <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.customerInfo')}</h3>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.customerNameRequired')}</label>
                   <div className="relative">
                     <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="اسم العميل"
+                      placeholder={t('maintenance.customerName')}
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="pr-9 bg-muted border-0"
@@ -428,7 +419,7 @@ ${footer}`;
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">رقم الهاتف</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.phoneNumber')}</label>
                   <div className="relative">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -443,14 +434,14 @@ ${footer}`;
 
               {/* Service Details */}
               <div className="space-y-3 pt-3 border-t border-border">
-                <h3 className="font-medium text-sm text-muted-foreground">تفاصيل الخدمة</h3>
+                <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.serviceDetails')}</h3>
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">نوع الخدمة</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('maintenance.serviceType')}</label>
                     <Select value={serviceType} onValueChange={setServiceType}>
                       <SelectTrigger className="bg-muted border-0">
-                        <SelectValue placeholder="اختر..." />
+                        <SelectValue placeholder={t('maintenance.select')} />
                       </SelectTrigger>
                       <SelectContent>
                         {serviceTypes.map(type => (
@@ -463,10 +454,10 @@ ${footer}`;
                   </div>
                   
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">نوع الجهاز</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('maintenance.deviceType')}</label>
                     <Select value={productType} onValueChange={setProductType}>
                       <SelectTrigger className="bg-muted border-0">
-                        <SelectValue placeholder="اختر..." />
+                        <SelectValue placeholder={t('maintenance.select')} />
                       </SelectTrigger>
                       <SelectContent>
                         {productTypes.map(type => (
@@ -483,9 +474,9 @@ ${footer}`;
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">تفاصيل إضافية</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.additionalDetails')}</label>
                   <Textarea
-                    placeholder="وصف مختصر للخدمة..."
+                    placeholder={t('maintenance.serviceDescription')}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="bg-muted border-0 min-h-[80px]"
@@ -497,12 +488,12 @@ ${footer}`;
             {/* Right Column - Pricing */}
             <div className="space-y-4">
               <div className="space-y-3 pt-3 md:pt-0 border-t md:border-t-0 border-border">
-                <h3 className="font-medium text-sm text-muted-foreground">التسعير</h3>
+                <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.pricing')}</h3>
                 
                 <div>
                   <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-success" />
-                    المبلغ المقبوض (من الزبون) *
+                    {t('maintenance.amountCollected')}
                   </label>
                   <Input
                     type="number"
@@ -516,7 +507,7 @@ ${footer}`;
                 <div>
                   <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
                     <Calculator className="w-4 h-4 text-warning" />
-                    سعر التكلفة (علينا)
+                    {t('maintenance.costPrice')}
                   </label>
                   <Input
                     type="number"
@@ -525,13 +516,13 @@ ${footer}`;
                     onChange={(e) => setPartsCost(Number(e.target.value))}
                     className="bg-muted border-0"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">لا يظهر في الفاتورة للعميل</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('maintenance.notShownToCustomer')}</p>
                 </div>
 
                 {/* Profit Display */}
                 <div className="bg-success/10 rounded-lg p-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">الربح الصافي</span>
+                    <span className="text-sm font-medium">{t('maintenance.netProfit')}</span>
                     <span className={cn(
                       "text-lg font-bold",
                       profit >= 0 ? "text-success" : "text-destructive"
@@ -544,7 +535,7 @@ ${footer}`;
 
               {/* Currency Selector */}
               <div className="space-y-3 pt-3 border-t border-border">
-                <h3 className="font-medium text-sm text-muted-foreground">العملة</h3>
+                <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.currency')}</h3>
                 <div className="flex gap-1.5 md:gap-2">
                   {currencies.map((currency) => (
                     <button
@@ -565,7 +556,7 @@ ${footer}`;
                 {/* Summary */}
                 <div className="bg-muted rounded-lg p-3">
                   <div className="flex justify-between items-center text-lg font-bold">
-                    <span>الإجمالي</span>
+                    <span>{t('maintenance.total')}</span>
                     <span className="text-primary">
                       {selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}
                     </span>
@@ -588,7 +579,7 @@ ${footer}`;
               onClick={handleCashSale}
             >
               <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-              نقدي
+              {t('maintenance.cash')}
             </Button>
             <Button
               variant="outline"
@@ -596,7 +587,7 @@ ${footer}`;
               onClick={handleDebtSale}
             >
               <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-              دين
+              {t('maintenance.debt')}
             </Button>
           </div>
 
@@ -608,7 +599,7 @@ ${footer}`;
               onClick={handlePrint}
             >
               <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              طباعة
+              {t('maintenance.print')}
             </Button>
             <Button 
               variant="outline" 
@@ -616,7 +607,7 @@ ${footer}`;
               onClick={handleWhatsApp}
             >
               <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              واتساب
+              {t('maintenance.whatsapp')}
             </Button>
           </div>
         </div>
@@ -628,36 +619,36 @@ ${footer}`;
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Banknote className="w-5 h-5 text-success" />
-              تأكيد الدفع النقدي
+              {t('maintenance.confirmCashPayment')}
             </DialogTitle>
             <DialogDescription>
-              سيتم تسجيل خدمة الصيانة كدفع نقدي
+              {t('maintenance.cashPaymentDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>العميل:</span>
+                <span>{t('maintenance.customer')}:</span>
                 <span className="font-semibold">{customerName}</span>
               </div>
               {description && (
                 <div className="flex justify-between text-sm">
-                  <span>الوصف:</span>
+                  <span>{t('maintenance.description')}:</span>
                   <span className="font-semibold text-muted-foreground">{description}</span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>قيمة الخدمة:</span>
+                <span>{t('maintenance.serviceValue')}:</span>
                 <span className="text-primary">{selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}</span>
               </div>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowCashDialog(false)}>
-                إلغاء
+                {t('maintenance.cancel')}
               </Button>
               <Button className="flex-1 bg-success hover:bg-success/90" onClick={() => confirmSale('cash')}>
                 <Check className="w-4 h-4 ml-2" />
-                تأكيد
+                {t('maintenance.confirm')}
               </Button>
             </div>
           </div>
@@ -670,22 +661,22 @@ ${footer}`;
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-warning" />
-              تأكيد الدين
+              {t('maintenance.confirmDebt')}
             </DialogTitle>
             <DialogDescription>
-              سيتم تسجيل قيمة الخدمة كدين على العميل
+              {t('maintenance.debtDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>العميل:</span>
+                <span>{t('maintenance.customer')}:</span>
                 <span className="font-semibold">{customerName}</span>
               </div>
               {isNewCustomer && !customerPhone.trim() && (
                 <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
                   <label className="text-sm font-medium mb-1.5 block text-warning">
-                    رقم الهاتف * (مطلوب لعميل جديد)
+                    {t('maintenance.phoneRequiredNewCustomer')}
                   </label>
                   <Input
                     placeholder="+963 xxx xxx xxx"
@@ -697,32 +688,31 @@ ${footer}`;
               )}
               {description && (
                 <div className="flex justify-between text-sm">
-                  <span>الوصف:</span>
+                  <span>{t('maintenance.description')}:</span>
                   <span className="font-semibold text-muted-foreground">{description}</span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
-                <span>مبلغ الدين:</span>
+                <span>{t('maintenance.debtAmount')}:</span>
                 <span>{selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}</span>
               </div>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
-                إلغاء
+                {t('maintenance.cancel')}
               </Button>
               <Button 
                 className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
                 onClick={() => {
-                  // التحقق من رقم الهاتف إذا كان عميل جديد
                   if (isNewCustomer && !customerPhone.trim()) {
-                    toast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
+                    toast.error(t('maintenance.enterPhoneNewCustomer'));
                     return;
                   }
                   confirmSale('debt');
                 }}
               >
                 <Check className="w-4 h-4 ml-2" />
-                تأكيد الدين
+                {t('maintenance.confirmDebtBtn')}
               </Button>
             </div>
           </div>

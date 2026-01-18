@@ -8,17 +8,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { POS_SHORTCUTS } from '@/hooks/use-keyboard-shortcuts';
-
-const shortcuts = [
-  { key: POS_SHORTCUTS.CASH_SALE, description: 'بيع نقدي' },
-  { key: POS_SHORTCUTS.DEBT_SALE, description: 'بيع بالدين' },
-  { key: POS_SHORTCUTS.CLEAR_CART, description: 'مسح السلة' },
-  { key: POS_SHORTCUTS.PRINT, description: 'طباعة' },
-  { key: POS_SHORTCUTS.SCAN_BARCODE, description: 'مسح الباركود' },
-  { key: POS_SHORTCUTS.TOGGLE_MODE, description: 'تبديل الوضع (منتجات/صيانة)' },
-];
+import { useLanguage } from '@/hooks/use-language';
 
 export function KeyboardShortcutsHelp() {
+  const { t } = useLanguage();
+  
+  const shortcuts = [
+    { key: POS_SHORTCUTS.CASH_SALE, description: t('shortcuts.cashSale') },
+    { key: POS_SHORTCUTS.DEBT_SALE, description: t('shortcuts.debtSale') },
+    { key: POS_SHORTCUTS.CLEAR_CART, description: t('shortcuts.clearCart') },
+    { key: POS_SHORTCUTS.PRINT, description: t('shortcuts.print') },
+    { key: POS_SHORTCUTS.SCAN_BARCODE, description: t('shortcuts.scanBarcode') },
+    { key: POS_SHORTCUTS.TOGGLE_MODE, description: t('shortcuts.toggleMode') },
+  ];
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -26,7 +29,7 @@ export function KeyboardShortcutsHelp() {
           variant="ghost"
           size="icon"
           className="h-9 w-9 text-muted-foreground hover:text-foreground"
-          title="اختصارات لوحة المفاتيح"
+          title={t('shortcuts.title')}
         >
           <Keyboard className="w-4 h-4" />
         </Button>
@@ -35,7 +38,7 @@ export function KeyboardShortcutsHelp() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="w-5 h-5" />
-            اختصارات لوحة المفاتيح
+            {t('shortcuts.title')}
           </DialogTitle>
         </DialogHeader>
         <div className="py-4">
@@ -53,7 +56,7 @@ export function KeyboardShortcutsHelp() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-4 text-center">
-            استخدم هذه الاختصارات لتسريع عملية البيع
+            {t('shortcuts.useToSpeedUp')}
           </p>
         </div>
       </DialogContent>
