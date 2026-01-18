@@ -32,7 +32,22 @@ import { loadCategories } from '@/lib/categories-store';
 import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
-import { downloadText, downloadCSV, downloadJSON, isNativePlatform } from '@/lib/file-download';
+import { downloadJSON, isNativePlatform } from '@/lib/file-download';
+import { 
+  exportInvoicesToExcel, 
+  exportProductsToExcel, 
+  exportExpensesToExcel, 
+  exportPartnersToExcel,
+  exportCustomersToExcel,
+  exportSalesReportToExcel
+} from '@/lib/excel-export';
+import { 
+  exportInvoicesToPDF, 
+  exportProductsToPDF,
+  exportExpensesToPDF,
+  exportPartnersToPDF,
+  exportCustomersToPDF
+} from '@/lib/pdf-export';
 
 export default function Reports() {
   const [searchParams] = useSearchParams();
@@ -312,80 +327,252 @@ export default function Reports() {
     };
   }, [dateRange]);
 
+  // Get store info for exports
+  const getStoreInfo = () => {
+    try {
+      const stored = localStorage.getItem('hyperpos_settings');
+      if (stored) {
+        const settings = JSON.parse(stored);
+        return {
+          name: settings.storeSettings?.name || 'HyperPOS',
+          phone: settings.storeSettings?.phone,
+          address: settings.storeSettings?.address,
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return { name: 'HyperPOS' };
+  };
+
   const handleExportPDF = useCallback(async () => {
-    const content = `
-تقرير المبيعات
-================
-التاريخ: ${dateRange.from} - ${dateRange.to}
-تاريخ التصدير: ${new Date().toLocaleString('ar-SA')}
-
-ملخص:
-- إجمالي المبيعات: $${formatNumber(reportData.summary.totalSales)}
-- صافي الأرباح: $${formatNumber(reportData.summary.totalProfit)}
-- عدد الطلبات: ${formatNumber(reportData.summary.totalOrders)}
-- متوسط قيمة الطلب: $${formatNumber(Math.round(reportData.summary.avgOrderValue))}
-
-المبيعات اليومية:
-${reportData.dailySales.map(d => `${d.date}: $${formatNumber(d.sales)} (ربح: $${formatNumber(d.profit)}, طلبات: ${d.orders})`).join('\n')}
-
-أفضل المنتجات:
-${reportData.topProducts.map((p, i) => `${i + 1}. ${p.name}: ${p.sales} قطعة - $${formatNumber(p.revenue)}`).join('\n')}
-
-أفضل العملاء:
-${reportData.topCustomers.map((c, i) => `${i + 1}. ${c.name}: ${c.orders} طلب - $${formatNumber(c.total)}`).join('\n')}
-    `;
+    const storeInfo = getStoreInfo();
+    const allInvoices = loadInvoices();
+    const products = loadProducts();
+    const customers = loadCustomers();
+    const partners = loadPartners();
     
-    const filename = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.txt`;
-    const success = await downloadText(filename, content);
-    
-    if (success) {
-      toast.success('تم تصدير التقرير بنجاح');
-    } else {
+    try {
+      switch (activeReport) {
+        case 'sales':
+        case 'profits': {
+          const filteredInvoices = allInvoices.filter(inv => {
+            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
+            return invDate >= dateRange.from && invDate <= dateRange.to;
+          });
+          exportInvoicesToPDF(
+            filteredInvoices.map(inv => ({
+              id: inv.id,
+              customerName: inv.customerName || 'عميل نقدي',
+              total: inv.total,
+              profit: inv.profit,
+              paymentType: inv.paymentType,
+              type: inv.type,
+              createdAt: inv.createdAt,
+            })),
+            storeInfo,
+            { start: dateRange.from, end: dateRange.to }
+          );
+          break;
+        }
+        case 'products': {
+          exportProductsToPDF(
+            products.map(p => ({
+              name: p.name,
+              barcode: p.barcode || '',
+              category: p.category || 'بدون تصنيف',
+              salePrice: p.salePrice,
+              quantity: p.quantity,
+            })),
+            storeInfo
+          );
+          break;
+        }
+        case 'customers': {
+          const customerData = customers.map(c => {
+            return {
+              name: c.name,
+              phone: c.phone,
+              totalPurchases: c.totalPurchases || 0,
+              ordersCount: c.invoiceCount || 0,
+              balance: c.totalDebt || 0,
+            };
+          });
+          exportCustomersToPDF(customerData, storeInfo);
+          break;
+        }
+        case 'partners': {
+          const partnerData = partners.map(p => ({
+            name: p.name,
+            sharePercentage: p.sharePercentage,
+            currentCapital: p.currentCapital,
+            totalProfit: p.totalProfitEarned,
+            totalWithdrawn: p.totalWithdrawn,
+            currentBalance: p.currentBalance,
+          }));
+          exportPartnersToPDF(partnerData, storeInfo);
+          break;
+        }
+        case 'expenses': {
+          exportExpensesToPDF(
+            expenseReportData.expenses.map(e => ({
+              id: e.id,
+              type: e.type,
+              typeLabel: e.typeLabel,
+              amount: e.amount,
+              date: e.date,
+              notes: e.notes,
+            })),
+            storeInfo,
+            { start: dateRange.from, end: dateRange.to }
+          );
+          break;
+        }
+        default: {
+          // Default to invoices
+          const defaultInvoices = allInvoices.filter(inv => {
+            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
+            return invDate >= dateRange.from && invDate <= dateRange.to;
+          });
+          exportInvoicesToPDF(
+            defaultInvoices.map(inv => ({
+              id: inv.id,
+              customerName: inv.customerName || 'عميل نقدي',
+              total: inv.total,
+              profit: inv.profit,
+              paymentType: inv.paymentType,
+              type: inv.type,
+              createdAt: inv.createdAt,
+            })),
+            storeInfo,
+            { start: dateRange.from, end: dateRange.to }
+          );
+        }
+      }
+      toast.success('تم تصدير التقرير بصيغة PDF بنجاح');
+    } catch (error) {
+      console.error('PDF export error:', error);
       toast.error('فشل في تصدير التقرير');
     }
-  }, [dateRange, reportData]);
+  }, [dateRange, activeReport, expenseReportData]);
 
   const handleExportExcel = useCallback(async () => {
-    const headers = ['التاريخ', 'المبيعات', 'الأرباح', 'الطلبات'];
-    const rows = reportData.dailySales.map(d => [d.date, d.sales, d.profit, d.orders]);
+    const allInvoices = loadInvoices();
+    const products = loadProducts();
+    const customers = loadCustomers();
+    const partners = loadPartners();
     
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    const filename = `تقرير_المبيعات_${dateRange.from}_${dateRange.to}.csv`;
-    const success = await downloadCSV(filename, csvContent);
-    
-    if (success) {
+    try {
+      switch (activeReport) {
+        case 'sales':
+        case 'profits': {
+          // Export comprehensive sales report with multiple sheets
+          exportSalesReportToExcel(
+            {
+              dailySales: reportData.dailySales,
+              topProducts: reportData.topProducts,
+              topCustomers: reportData.topCustomers,
+              summary: reportData.summary,
+            },
+            { start: dateRange.from, end: dateRange.to }
+          );
+          break;
+        }
+        case 'products': {
+          exportProductsToExcel(
+            products.map(p => ({
+              name: p.name,
+              barcode: p.barcode || '',
+              category: p.category || 'بدون تصنيف',
+              costPrice: p.costPrice,
+              salePrice: p.salePrice,
+              quantity: p.quantity,
+            }))
+          );
+          break;
+        }
+        case 'customers': {
+          const customerData = customers.map(c => {
+            return {
+              name: c.name,
+              phone: c.phone,
+              totalPurchases: c.totalPurchases || 0,
+              ordersCount: c.invoiceCount || 0,
+              balance: c.totalDebt || 0,
+            };
+          });
+          exportCustomersToExcel(customerData);
+          break;
+        }
+        case 'partners': {
+          const partnerData = partners.map(p => ({
+            name: p.name,
+            sharePercentage: p.sharePercentage,
+            initialCapital: p.initialCapital,
+            currentCapital: p.currentCapital,
+            totalProfit: p.totalProfitEarned,
+            totalWithdrawn: p.totalWithdrawn,
+            currentBalance: p.currentBalance,
+          }));
+          exportPartnersToExcel(partnerData);
+          break;
+        }
+        case 'expenses': {
+          exportExpensesToExcel(
+            expenseReportData.expenses.map(e => ({
+              id: e.id,
+              type: e.type,
+              amount: e.amount,
+              date: e.date,
+              notes: e.notes,
+            })),
+            { start: dateRange.from, end: dateRange.to }
+          );
+          break;
+        }
+        default: {
+          // Default to invoices
+          const filteredInvoices = allInvoices.filter(inv => {
+            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
+            return invDate >= dateRange.from && invDate <= dateRange.to;
+          });
+          exportInvoicesToExcel(
+            filteredInvoices.map(inv => ({
+              id: inv.id,
+              customerName: inv.customerName || 'عميل نقدي',
+              total: inv.total,
+              profit: inv.profit,
+              paymentType: inv.paymentType,
+              type: inv.type,
+              createdAt: inv.createdAt,
+            })),
+            { start: dateRange.from, end: dateRange.to }
+          );
+        }
+      }
       toast.success('تم تصدير التقرير بصيغة Excel بنجاح');
-    } else {
+    } catch (error) {
+      console.error('Excel export error:', error);
       toast.error('فشل في تصدير التقرير');
     }
-  }, [dateRange, reportData]);
+  }, [dateRange, activeReport, reportData, expenseReportData]);
 
   // Export expenses report as Excel
   const handleExportExpensesExcel = useCallback(async () => {
-    const headers = ['التاريخ', 'النوع', 'المبلغ', 'الملاحظات', 'توزيع الشركاء'];
-    const rows = expenseReportData.expenses.map(exp => [
-      exp.date,
-      exp.typeLabel,
-      exp.amount,
-      exp.notes || '',
-      exp.distributions.map(d => `${d.partnerName}: $${formatNumber(d.amount)}`).join(' | ')
-    ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-    
-    const filename = `تقرير_المصاريف_${dateRange.from}_${dateRange.to}.csv`;
-    const success = await downloadCSV(filename, csvContent);
-    
-    if (success) {
+    try {
+      exportExpensesToExcel(
+        expenseReportData.expenses.map(e => ({
+          id: e.id,
+          type: e.type,
+          amount: e.amount,
+          date: e.date,
+          notes: e.notes,
+        })),
+        { start: dateRange.from, end: dateRange.to }
+      );
       toast.success('تم تصدير تقرير المصاريف بنجاح');
-    } else {
+    } catch (error) {
+      console.error('Expenses export error:', error);
       toast.error('فشل في تصدير تقرير المصاريف');
     }
   }, [dateRange, expenseReportData]);

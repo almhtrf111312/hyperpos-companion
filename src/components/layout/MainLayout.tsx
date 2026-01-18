@@ -34,9 +34,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Top bar with notifications - positioned to avoid menu button overlap */}
       <div className={`fixed top-0 z-30 transition-all duration-300 ${
-        isRTL 
-          ? (isMobile ? 'left-4' : 'right-4') 
-          : (isMobile ? 'right-4' : 'left-4')
+        isRTL ? 'left-4' : 'right-4'
       }`}>
         <div className="flex items-center gap-2 py-4">
           <NotificationBell />

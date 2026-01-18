@@ -384,3 +384,124 @@ export const exportInvoiceReceiptToPDF = (
   // Save
   doc.save(`فاتورة_${invoice.id}.pdf`);
 };
+
+// Export expenses to PDF
+export const exportExpensesToPDF = (
+  expenses: Array<{
+    id: string;
+    type: string;
+    typeLabel: string;
+    amount: number;
+    date: string;
+    notes?: string;
+  }>,
+  storeInfo?: { name: string; phone?: string; address?: string },
+  dateRange?: { start: string; end: string }
+): void => {
+  const columns = [
+    { header: 'رقم', key: 'id' },
+    { header: 'النوع', key: 'typeLabel' },
+    { header: 'المبلغ', key: 'amount' },
+    { header: 'التاريخ', key: 'date' },
+    { header: 'ملاحظات', key: 'notes' },
+  ];
+  
+  const totals: Record<string, number | string> = {
+    amount: expenses.reduce((sum, e) => sum + e.amount, 0),
+  };
+  
+  const subtitle = dateRange 
+    ? `من ${dateRange.start} إلى ${dateRange.end}`
+    : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
+  
+  exportToPDF({
+    title: 'تقرير المصاريف',
+    subtitle,
+    storeName: storeInfo?.name,
+    storePhone: storeInfo?.phone,
+    storeAddress: storeInfo?.address,
+    columns,
+    data: expenses.map(e => ({ ...e, notes: e.notes || '' })),
+    totals,
+    fileName: `مصاريف_${new Date().toISOString().split('T')[0]}.pdf`,
+  });
+};
+
+// Export partners to PDF
+export const exportPartnersToPDF = (
+  partners: Array<{
+    name: string;
+    sharePercentage: number;
+    currentCapital: number;
+    totalProfit: number;
+    totalWithdrawn: number;
+    currentBalance: number;
+  }>,
+  storeInfo?: { name: string; phone?: string; address?: string }
+): void => {
+  const columns = [
+    { header: 'الشريك', key: 'name' },
+    { header: 'نسبة الأرباح %', key: 'sharePercentage' },
+    { header: 'رأس المال', key: 'currentCapital' },
+    { header: 'الأرباح', key: 'totalProfit' },
+    { header: 'المسحوب', key: 'totalWithdrawn' },
+    { header: 'الرصيد', key: 'currentBalance' },
+  ];
+  
+  const totals: Record<string, number | string> = {
+    currentCapital: partners.reduce((sum, p) => sum + p.currentCapital, 0),
+    totalProfit: partners.reduce((sum, p) => sum + p.totalProfit, 0),
+    totalWithdrawn: partners.reduce((sum, p) => sum + p.totalWithdrawn, 0),
+    currentBalance: partners.reduce((sum, p) => sum + p.currentBalance, 0),
+  };
+  
+  exportToPDF({
+    title: 'تقرير الشركاء',
+    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    storeName: storeInfo?.name,
+    storePhone: storeInfo?.phone,
+    storeAddress: storeInfo?.address,
+    columns,
+    data: partners,
+    totals,
+    fileName: `شركاء_${new Date().toISOString().split('T')[0]}.pdf`,
+  });
+};
+
+// Export customers to PDF
+export const exportCustomersToPDF = (
+  customers: Array<{
+    name: string;
+    phone?: string;
+    totalPurchases: number;
+    ordersCount: number;
+    balance: number;
+  }>,
+  storeInfo?: { name: string; phone?: string; address?: string }
+): void => {
+  const columns = [
+    { header: 'العميل', key: 'name' },
+    { header: 'الهاتف', key: 'phone' },
+    { header: 'المشتريات', key: 'totalPurchases' },
+    { header: 'الطلبات', key: 'ordersCount' },
+    { header: 'الرصيد', key: 'balance' },
+  ];
+  
+  const totals: Record<string, number | string> = {
+    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
+    ordersCount: customers.reduce((sum, c) => sum + c.ordersCount, 0),
+    balance: customers.reduce((sum, c) => sum + c.balance, 0),
+  };
+  
+  exportToPDF({
+    title: 'قائمة العملاء',
+    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    storeName: storeInfo?.name,
+    storePhone: storeInfo?.phone,
+    storeAddress: storeInfo?.address,
+    columns,
+    data: customers.map(c => ({ ...c, phone: c.phone || '' })),
+    totals,
+    fileName: `عملاء_${new Date().toISOString().split('T')[0]}.pdf`,
+  });
+};

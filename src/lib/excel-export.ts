@@ -264,6 +264,104 @@ export const exportPartnersToExcel = (
   });
 };
 
+// Export customers to Excel
+export const exportCustomersToExcel = (
+  customers: Array<{
+    name: string;
+    phone?: string;
+    totalPurchases: number;
+    ordersCount: number;
+    balance: number;
+  }>
+): void => {
+  const columns: ExcelColumn[] = [
+    { header: 'اسم العميل', key: 'name', width: 25 },
+    { header: 'رقم الهاتف', key: 'phone', width: 15 },
+    { header: 'إجمالي المشتريات', key: 'totalPurchases', width: 15 },
+    { header: 'عدد الطلبات', key: 'ordersCount', width: 12 },
+    { header: 'الرصيد', key: 'balance', width: 12 },
+  ];
+  
+  const totals: Record<string, number> = {
+    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
+    ordersCount: customers.reduce((sum, c) => sum + c.ordersCount, 0),
+    balance: customers.reduce((sum, c) => sum + c.balance, 0),
+  };
+  
+  exportToExcel({
+    sheetName: 'العملاء',
+    fileName: `عملاء_${new Date().toISOString().split('T')[0]}.xlsx`,
+    columns,
+    data: customers,
+    totals,
+    title: 'قائمة العملاء',
+    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+  });
+};
+
+// Export comprehensive sales report to Excel with multiple sheets
+export const exportSalesReportToExcel = (
+  data: {
+    dailySales: Array<{ date: string; sales: number; profit: number; orders: number }>;
+    topProducts: Array<{ name: string; sales: number; revenue: number }>;
+    topCustomers: Array<{ name: string; orders: number; total: number }>;
+    summary: { totalSales: number; totalProfit: number; totalOrders: number; avgOrderValue: number };
+  },
+  dateRange: { start: string; end: string }
+): void => {
+  const wb = XLSX.utils.book_new();
+  
+  // Summary sheet
+  const summaryData = [
+    ['تقرير المبيعات التفصيلي'],
+    [`الفترة: من ${dateRange.start} إلى ${dateRange.end}`],
+    [],
+    ['البند', 'القيمة'],
+    ['إجمالي المبيعات', data.summary.totalSales],
+    ['صافي الأرباح', data.summary.totalProfit],
+    ['عدد الطلبات', data.summary.totalOrders],
+    ['متوسط قيمة الطلب', Math.round(data.summary.avgOrderValue)],
+  ];
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+  summarySheet['!cols'] = [{ wch: 25 }, { wch: 15 }];
+  XLSX.utils.book_append_sheet(wb, summarySheet, 'الملخص');
+  
+  // Daily sales sheet
+  const dailyData = [
+    ['التاريخ', 'المبيعات', 'الأرباح', 'الطلبات'],
+    ...data.dailySales.map(d => [d.date, d.sales, d.profit, d.orders]),
+    [],
+    ['الإجمالي', 
+      data.dailySales.reduce((s, d) => s + d.sales, 0),
+      data.dailySales.reduce((s, d) => s + d.profit, 0),
+      data.dailySales.reduce((s, d) => s + d.orders, 0)
+    ]
+  ];
+  const dailySheet = XLSX.utils.aoa_to_sheet(dailyData);
+  dailySheet['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+  XLSX.utils.book_append_sheet(wb, dailySheet, 'المبيعات اليومية');
+  
+  // Top products sheet
+  const productsData = [
+    ['المنتج', 'الكمية المباعة', 'الإيرادات'],
+    ...data.topProducts.map(p => [p.name, p.sales, p.revenue]),
+  ];
+  const productsSheet = XLSX.utils.aoa_to_sheet(productsData);
+  productsSheet['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }];
+  XLSX.utils.book_append_sheet(wb, productsSheet, 'أفضل المنتجات');
+  
+  // Top customers sheet
+  const customersData = [
+    ['العميل', 'عدد الطلبات', 'الإجمالي'],
+    ...data.topCustomers.map(c => [c.name, c.orders, c.total]),
+  ];
+  const customersSheet = XLSX.utils.aoa_to_sheet(customersData);
+  customersSheet['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }];
+  XLSX.utils.book_append_sheet(wb, customersSheet, 'أفضل العملاء');
+  
+  XLSX.writeFile(wb, `تقرير_المبيعات_${dateRange.start}_${dateRange.end}.xlsx`);
+};
+
 // Export daily report to Excel
 export const exportDailyReportToExcel = (
   report: {
