@@ -15,6 +15,8 @@ export const EVENTS = {
   SHIFTS_UPDATED: 'hyperpos:shifts-updated',
   CAPITAL_UPDATED: 'hyperpos:capital-updated',
   CASH_SHIFTS_UPDATED: 'hyperpos:cash-shifts-updated',
+  PRODUCT_FIELDS_UPDATED: 'hyperpos:product-fields-updated',
+  CUSTOM_FIELDS_UPDATED: 'hyperpos:custom-fields-updated',
 };
 
 export function emitEvent(name: string, detail?: any) {

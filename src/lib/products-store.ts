@@ -22,6 +22,8 @@ export interface Product {
   wholesalePrice?: number; // Wholesale price for bulk sales
   size?: string; // Size for clothing
   color?: string; // Color for clothing
+  // Custom fields (user-defined)
+  customFields?: Record<string, string | number>;
 }
 
 // No default products - start with empty inventory

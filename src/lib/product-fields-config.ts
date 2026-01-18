@@ -1,5 +1,7 @@
 // Product Fields Configuration - Dynamic fields based on store type and user preferences
 
+import { emitEvent, EVENTS } from './events';
+
 export interface ProductFieldsConfig {
   expiryDate: boolean;
   serialNumber: boolean;
@@ -94,6 +96,8 @@ export const loadProductFieldsConfig = (): ProductFieldsConfig | null => {
 export const saveProductFieldsConfig = (config: ProductFieldsConfig): boolean => {
   try {
     localStorage.setItem(PRODUCT_FIELDS_STORAGE_KEY, JSON.stringify(config));
+    // Emit event to notify components in the same tab
+    emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, config);
     return true;
   } catch (error) {
     console.error('Failed to save product fields config:', error);
