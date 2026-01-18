@@ -58,6 +58,7 @@ import { toast } from 'sonner';
 import { getCategoryNames } from '@/lib/categories-store';
 import { CategoryManager } from '@/components/CategoryManager';
 import { loadProducts } from '@/lib/products-store';
+import { useLanguage } from '@/hooks/use-language';
 
 interface CategoryShare {
   categoryId: string;
@@ -67,6 +68,7 @@ interface CategoryShare {
 }
 
 export default function Partners() {
+  const { t } = useLanguage();
   const [partners, setPartners] = useState<Partner[]>(() => loadPartners());
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -99,8 +101,8 @@ export default function Partners() {
     phone: '',
     email: '',
     accessAll: true,
-    sharesExpenses: false, // يشارك في المصاريف
-    expenseSharePercentage: 0, // نسبة المشاركة في المصاريف
+    sharesExpenses: false,
+    expenseSharePercentage: 0,
     categoryShares: categories.map(c => ({
       categoryId: c.id,
       categoryName: c.label,
@@ -176,13 +178,13 @@ export default function Partners() {
 
   const handleAddPartner = () => {
     if (!formData.name || !formData.phone) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error(t('partners.fillRequiredFields'));
       return;
     }
 
     const mainShare = calculateMainShare();
     if (mainShare <= 0) {
-      toast.error('يرجى تحديد نسبة أرباح صحيحة');
+      toast.error(t('partners.invalidSharePercentage'));
       return;
     }
     
@@ -201,7 +203,6 @@ export default function Partners() {
       totalWithdrawn: 0,
       totalExpensesPaid: 0,
       currentBalance: 0,
-      // رأس المال
       initialCapital: 0,
       currentCapital: 0,
       capitalWithdrawals: [],
@@ -216,15 +217,15 @@ export default function Partners() {
     
     const updatedPartners = [...partners, newPartner];
     setPartners(updatedPartners);
-    savePartners(updatedPartners); // حفظ مباشر
+    savePartners(updatedPartners);
     setShowAddDialog(false);
     resetForm();
-    toast.success('تم إضافة الشريك بنجاح');
+    toast.success(t('partners.partnerAdded'));
   };
 
   const handleEditPartner = () => {
     if (!selectedPartner || !formData.name) {
-      toast.error('يرجى ملء الحقول المطلوبة');
+      toast.error(t('partners.fillRequiredFields'));
       return;
     }
 
@@ -245,10 +246,10 @@ export default function Partners() {
         : p
     );
     setPartners(updatedPartners);
-    savePartners(updatedPartners); // حفظ مباشر
+    savePartners(updatedPartners);
     setShowEditDialog(false);
     setSelectedPartner(null);
-    toast.success('تم تعديل بيانات الشريك بنجاح');
+    toast.success(t('partners.partnerUpdated'));
   };
 
   const handleDeletePartner = () => {
@@ -256,15 +257,15 @@ export default function Partners() {
     
     const updatedPartners = partners.filter(p => p.id !== selectedPartner.id);
     setPartners(updatedPartners);
-    savePartners(updatedPartners); // حفظ مباشر
+    savePartners(updatedPartners);
     setShowDeleteDialog(false);
     setSelectedPartner(null);
-    toast.success('تم حذف الشريك بنجاح');
+    toast.success(t('partners.partnerDeleted'));
   };
 
   const handleWithdraw = () => {
     if (!selectedPartner || withdrawAmount <= 0) {
-      toast.error('يرجى إدخال مبلغ صحيح');
+      toast.error(t('partners.enterValidAmount'));
       return;
     }
 
@@ -272,17 +273,16 @@ export default function Partners() {
     const capitalAvailable = selectedPartner.currentCapital || 0;
     const totalAvailable = profitAvailable + capitalAvailable;
 
-    // التحقق من الرصيد حسب نوع السحب
     if (withdrawType === 'profit' && withdrawAmount > profitAvailable) {
-      toast.error('المبلغ أكبر من الأرباح المتاحة');
+      toast.error(t('partners.amountExceedsProfit'));
       return;
     }
     if (withdrawType === 'capital' && withdrawAmount > capitalAvailable) {
-      toast.error('المبلغ أكبر من رأس المال المتاح');
+      toast.error(t('partners.amountExceedsCapital'));
       return;
     }
     if (withdrawType === 'auto' && withdrawAmount > totalAvailable) {
-      toast.error('المبلغ أكبر من الرصيد الكلي المتاح');
+      toast.error(t('partners.amountExceedsTotal'));
       return;
     }
 
@@ -291,23 +291,22 @@ export default function Partners() {
 
     if (withdrawType === 'profit') {
       success = withdrawProfit(selectedPartner.id, withdrawAmount, withdrawNotes);
-      resultMessage = `تم سحب $${withdrawAmount.toLocaleString()} من الأرباح`;
+      resultMessage = `${t('partners.withdrawnFromProfit')} $${withdrawAmount.toLocaleString()}`;
     } else if (withdrawType === 'capital') {
       success = withdrawCapital(selectedPartner.id, withdrawAmount, withdrawNotes);
-      resultMessage = `تم سحب $${withdrawAmount.toLocaleString()} من رأس المال`;
+      resultMessage = `${t('partners.withdrawnFromCapital')} $${withdrawAmount.toLocaleString()}`;
     } else {
       const result = smartWithdraw(selectedPartner.id, withdrawAmount, withdrawNotes);
       success = result.success;
       if (success) {
         const parts = [];
-        if (result.fromProfit > 0) parts.push(`$${result.fromProfit.toLocaleString()} من الأرباح`);
-        if (result.fromCapital > 0) parts.push(`$${result.fromCapital.toLocaleString()} من رأس المال`);
-        resultMessage = `تم سحب ${parts.join(' و ')}`;
+        if (result.fromProfit > 0) parts.push(`$${result.fromProfit.toLocaleString()} ${t('partners.fromProfit')}`);
+        if (result.fromCapital > 0) parts.push(`$${result.fromCapital.toLocaleString()} ${t('partners.fromCapital')}`);
+        resultMessage = `${t('partners.withdrawn')} ${parts.join(' & ')}`;
       }
     }
 
     if (success) {
-      // إعادة تحميل الشركاء
       setPartners(loadPartners());
       setShowWithdrawDialog(false);
       setSelectedPartner(null);
@@ -316,13 +315,13 @@ export default function Partners() {
       setWithdrawNotes('');
       toast.success(resultMessage);
     } else {
-      toast.error('حدث خطأ أثناء السحب');
+      toast.error(t('partners.withdrawError'));
     }
   };
 
   const handleAddCapital = () => {
     if (!selectedPartner || capitalAmount <= 0) {
-      toast.error('يرجى إدخال مبلغ صحيح');
+      toast.error(t('partners.enterValidAmount'));
       return;
     }
 
@@ -334,9 +333,9 @@ export default function Partners() {
       setSelectedPartner(null);
       setCapitalAmount(0);
       setCapitalNotes('');
-      toast.success(`تم إضافة $${capitalAmount.toLocaleString()} إلى رأس المال`);
+      toast.success(`${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()}`);
     } else {
-      toast.error('حدث خطأ أثناء إضافة رأس المال');
+      toast.error(t('partners.capitalAddError'));
     }
   };
 
@@ -437,20 +436,20 @@ export default function Partners() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة الشركاء</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة الشركاء وتوزيع الأرباح حسب الأقسام</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('partners.title')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('partners.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
             <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            التصنيفات
+            {t('partners.categories')}
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
             resetForm();
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            إضافة شريك
+            {t('partners.addPartner')}
           </Button>
         </div>
       </div>
@@ -464,7 +463,7 @@ export default function Partners() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{formatNumber(stats.totalPartners)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">الشركاء</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('partners.partners')}</p>
             </div>
           </div>
         </div>
@@ -475,7 +474,7 @@ export default function Partners() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{formatNumber(stats.totalShare)}%</p>
-              <p className="text-xs md:text-sm text-muted-foreground">موزع</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('partners.distributed')}</p>
             </div>
           </div>
         </div>
@@ -486,7 +485,7 @@ export default function Partners() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${formatNumber(stats.totalBalance)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">الأرصدة</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('partners.balances')}</p>
             </div>
           </div>
         </div>
@@ -497,7 +496,7 @@ export default function Partners() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${formatNumber(stats.totalProfit)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">الأرباح</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('partners.profits')}</p>
             </div>
           </div>
         </div>
@@ -508,7 +507,7 @@ export default function Partners() {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="بحث بالاسم أو رقم الهاتف..."
+          placeholder={t('partners.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pr-9 md:pr-10 bg-muted border-0"
@@ -533,7 +532,7 @@ export default function Partners() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm md:text-base">{partner.name}</h3>
-                  <p className="text-xs md:text-sm text-muted-foreground">منذ {partner.joinedDate}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{t('partners.since')} {partner.joinedDate}</p>
                 </div>
               </div>
               <div className="text-left">
@@ -541,12 +540,12 @@ export default function Partners() {
                   {partner.sharePercentage}%
                 </span>
                 {partner.accessAll ? (
-                  <p className="text-[10px] text-muted-foreground mt-1">كامل المحل</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('partners.fullStore')}</p>
                 ) : (
-                  <p className="text-[10px] text-muted-foreground mt-1">أقسام محددة</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('partners.specificCategories')}</p>
                 )}
                 {partner.sharesExpenses && (
-                  <span className="text-[10px] text-success">● يشارك في المصاريف</span>
+                  <span className="text-[10px] text-success">● {t('partners.sharesExpenses')}</span>
                 )}
               </div>
             </div>
@@ -581,11 +580,11 @@ export default function Partners() {
             {/* Financial Stats */}
             <div className="grid grid-cols-2 gap-2 py-3 md:py-4 border-t border-border">
               <div className="text-center">
-                <p className="text-[10px] md:text-xs text-muted-foreground">الأرباح</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">{t('partners.profits')}</p>
                 <p className="text-sm md:text-base font-bold text-success">${formatNumber(partner.currentBalance || 0)}</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] md:text-xs text-muted-foreground">رأس المال</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">{t('partners.capital')}</p>
                 <p className="text-sm md:text-base font-bold text-info">${formatNumber(partner.currentCapital || 0)}</p>
               </div>
             </div>
@@ -594,16 +593,16 @@ export default function Partners() {
             <div className="flex flex-wrap gap-2 pt-3 md:pt-4 border-t border-border">
               <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(partner)}>
                 <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                عرض
+                {t('common.view')}
               </Button>
               <Button size="sm" className="flex-1 h-8 md:h-9 bg-success hover:bg-success/90 text-success-foreground text-xs md:text-sm" onClick={() => openAddCapitalDialog(partner)}>
                 <ArrowUpRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                إيداع
+                {t('partners.deposit')}
               </Button>
               {((partner.currentBalance || 0) > 0 || (partner.currentCapital || 0) > 0) && (
                 <Button size="sm" className="flex-1 h-8 md:h-9 bg-warning hover:bg-warning/90 text-warning-foreground text-xs md:text-sm" onClick={() => openWithdrawDialog(partner)}>
                   <ArrowDownLeft className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                  سحب
+                  {t('partners.withdraw')}
                 </Button>
               )}
               <Button variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9" onClick={() => openEditDialog(partner)}>
@@ -623,21 +622,21 @@ export default function Partners() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
-              إضافة شريك جديد
+              {t('partners.addNewPartner')}
             </DialogTitle>
-            <DialogDescription>أدخل بيانات الشريك الجديد ونسب الأرباح</DialogDescription>
+            <DialogDescription>{t('partners.addPartnerDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.name')} *</label>
               <Input
-                placeholder="اسم الشريك"
+                placeholder={t('partners.partnerName')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.phone')} *</label>
               <Input
                 placeholder="+963 xxx xxx xxx"
                 value={formData.phone}
@@ -645,7 +644,7 @@ export default function Partners() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.email')}</label>
               <Input
                 placeholder="email@example.com"
                 value={formData.email}
@@ -657,8 +656,8 @@ export default function Partners() {
             <div className="p-4 bg-muted rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-foreground">الوصول لكامل المحل</p>
-                  <p className="text-sm text-muted-foreground">نسبة موحدة لجميع الأقسام</p>
+                  <p className="font-medium text-foreground">{t('partners.accessFullStore')}</p>
+                  <p className="text-sm text-muted-foreground">{t('partners.uniformPercentage')}</p>
                 </div>
                 <Switch 
                   checked={formData.accessAll}
@@ -669,8 +668,8 @@ export default function Partners() {
               {/* Shares Expenses */}
               <div className="flex items-center justify-between pt-3 border-t border-border/50">
                 <div>
-                  <p className="font-medium text-foreground">المشاركة في المصاريف</p>
-                  <p className="text-sm text-muted-foreground">هل يشارك هذا الشريك في دفع المصاريف؟</p>
+                  <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
+                  <p className="text-sm text-muted-foreground">{t('partners.expenseSharingDesc')}</p>
                 </div>
                 <Switch 
                   checked={formData.sharesExpenses}
@@ -681,7 +680,7 @@ export default function Partners() {
               {/* Expense Share Percentage */}
               {formData.sharesExpenses && (
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">نسبة المشاركة في المصاريف (%)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('partners.expenseSharePercentage')}</label>
                   <Input
                     type="number"
                     placeholder="0"
@@ -690,13 +689,13 @@ export default function Partners() {
                     value={formData.expenseSharePercentage || ''}
                     onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">النسبة التي سيدفعها من إجمالي المصاريف</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('partners.expenseShareDesc')}</p>
                 </div>
               )}
 
               {formData.accessAll ? (
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح لجميع الأقسام (%)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('partners.profitPercentageAll')}</label>
                   <Input
                     type="number"
                     placeholder="0"
@@ -708,7 +707,7 @@ export default function Partners() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">نسبة الأرباح لكل قسم:</p>
+                  <p className="text-sm font-medium">{t('partners.profitPerCategory')}:</p>
                   {categories.map(cat => {
                     const share = formData.categoryShares.find(c => c.categoryId === cat.id);
                     return (
@@ -738,11 +737,11 @@ export default function Partners() {
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddPartner}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ
+                {t('common.save')}
               </Button>
             </div>
           </div>
@@ -755,26 +754,26 @@ export default function Partners() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              تعديل بيانات الشريك
+              {t('partners.editPartner')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.name')} *</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.phone')} *</label>
               <Input
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.email')}</label>
               <Input
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -785,8 +784,8 @@ export default function Partners() {
             <div className="p-4 bg-muted rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-foreground">الوصول لكامل المحل</p>
-                  <p className="text-sm text-muted-foreground">نسبة موحدة لجميع الأقسام</p>
+                  <p className="font-medium text-foreground">{t('partners.accessFullStore')}</p>
+                  <p className="text-sm text-muted-foreground">{t('partners.uniformPercentage')}</p>
                 </div>
                 <Switch 
                   checked={formData.accessAll}
@@ -797,8 +796,8 @@ export default function Partners() {
               {/* Shares Expenses */}
               <div className="flex items-center justify-between pt-3 border-t border-border/50">
                 <div>
-                  <p className="font-medium text-foreground">المشاركة في المصاريف</p>
-                  <p className="text-sm text-muted-foreground">هل يشارك هذا الشريك في دفع المصاريف؟</p>
+                  <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
+                  <p className="text-sm text-muted-foreground">{t('partners.expenseSharingDesc')}</p>
                 </div>
                 <Switch 
                   checked={formData.sharesExpenses}
@@ -809,7 +808,7 @@ export default function Partners() {
               {/* Expense Share Percentage */}
               {formData.sharesExpenses && (
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">نسبة المشاركة في المصاريف (%)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('partners.expenseSharePercentage')}</label>
                   <Input
                     type="number"
                     placeholder="0"
@@ -818,13 +817,13 @@ export default function Partners() {
                     value={formData.expenseSharePercentage || ''}
                     onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">النسبة التي سيدفعها من إجمالي المصاريف</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('partners.expenseShareDesc')}</p>
                 </div>
               )}
 
               {formData.accessAll ? (
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">نسبة الأرباح لجميع الأقسام (%)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('partners.profitPercentageAll')}</label>
                   <Input
                     type="number"
                     placeholder="0"
@@ -836,7 +835,7 @@ export default function Partners() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">نسبة الأرباح لكل قسم:</p>
+                  <p className="text-sm font-medium">{t('partners.profitPerCategory')}:</p>
                   {categories.map(cat => {
                     const share = formData.categoryShares.find(c => c.categoryId === cat.id);
                     return (
@@ -866,11 +865,11 @@ export default function Partners() {
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditPartner}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ التغييرات
+                {t('common.saveChanges')}
               </Button>
             </div>
           </div>
@@ -879,15 +878,16 @@ export default function Partners() {
 
       {/* View Partner Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-primary" />
-              تفاصيل الشريك
+              <Eye className="w-5 h-5 text-primary" />
+              {t('partners.partnerDetails')}
             </DialogTitle>
           </DialogHeader>
           {selectedPartner && (
             <div className="space-y-4 py-4">
+              {/* Basic Info */}
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center">
                   <span className="text-2xl font-bold text-primary-foreground">
@@ -896,105 +896,44 @@ export default function Partners() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold">{selectedPartner.name}</h3>
-                  <p className="text-muted-foreground">{selectedPartner.phone}</p>
-                  {selectedPartner.email && (
-                    <p className="text-sm text-muted-foreground">{selectedPartner.email}</p>
-                  )}
+                  <p className="text-muted-foreground">{t('partners.since')} {selectedPartner.joinedDate}</p>
                 </div>
               </div>
 
-              <div className="bg-muted rounded-lg p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">نوع الوصول:</span>
-                  <span className="font-medium">
-                    {selectedPartner.accessAll ? 'كامل المحل' : 'أقسام محددة'}
-                  </span>
+              {/* Financial Summary */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-success/10 rounded-lg p-4 text-center">
+                  <p className="text-sm text-muted-foreground">{t('partners.profits')}</p>
+                  <p className="text-2xl font-bold text-success">${formatNumber(selectedPartner.currentBalance || 0)}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">تاريخ الانضمام:</span>
-                  <span>{selectedPartner.joinedDate}</span>
+                <div className="bg-info/10 rounded-lg p-4 text-center">
+                  <p className="text-sm text-muted-foreground">{t('partners.capital')}</p>
+                  <p className="text-2xl font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
                 </div>
               </div>
 
-              {/* Category Shares */}
+              {/* Stats */}
               <div className="space-y-2">
-                <p className="text-sm font-medium">نسب الأرباح:</p>
-                {selectedPartner.categoryShares.map(cs => {
-                  const cat = categories.find(c => c.id === cs.categoryId);
-                  return (
-                    <div key={cs.categoryId} className={cn(
-                      "flex justify-between items-center p-2 rounded-lg",
-                      cs.enabled ? "bg-primary/10" : "bg-muted opacity-50"
-                    )}>
-                      <span className="text-sm">{cat?.label}</span>
-                      <span className={cn(
-                        "font-bold",
-                        cs.enabled ? "text-primary" : "text-muted-foreground"
-                      )}>
-                        {cs.enabled ? `${cs.percentage}%` : 'غير مفعل'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Financial Stats Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-success/10 rounded-lg p-3 text-center">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <TrendingUp className="w-4 h-4 text-success" />
-                    <p className="text-xs text-muted-foreground">الأرباح المتاحة</p>
-                  </div>
-                  <p className="text-lg font-bold text-success">${formatNumber(selectedPartner.currentBalance || 0)}</p>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('partners.sharePercentage')}</span>
+                  <span className="font-medium">{selectedPartner.sharePercentage}%</span>
                 </div>
-                <div className="bg-info/10 rounded-lg p-3 text-center">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <PiggyBank className="w-4 h-4 text-info" />
-                    <p className="text-xs text-muted-foreground">رأس المال</p>
-                  </div>
-                  <p className="text-lg font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('partners.totalProfitEarned')}</span>
+                  <span className="font-medium text-success">${formatNumber(selectedPartner.totalProfitEarned)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('partners.totalWithdrawn')}</span>
+                  <span className="font-medium text-warning">${formatNumber(selectedPartner.totalWithdrawn)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('partners.totalCapital')}</span>
+                  <span className="font-medium text-info">${formatNumber(selectedPartner.initialCapital || 0)}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح المكتسبة</p>
-                  <p className="text-lg font-bold">${formatNumber(selectedPartner.totalProfitEarned || 0)}</p>
-                </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">إجمالي المسحوب</p>
-                  <p className="text-lg font-bold">${formatNumber(selectedPartner.totalWithdrawn || 0)}</p>
-                </div>
-              </div>
-
-              {/* Expense History */}
-              {selectedPartner.expenseHistory && selectedPartner.expenseHistory.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-destructive" />
-                    <p className="text-sm font-medium">سجل المصاريف ({selectedPartner.expenseHistory.length})</p>
-                  </div>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {selectedPartner.expenseHistory.slice(0, 5).map((exp, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-destructive/10 rounded-lg text-sm">
-                        <div>
-                          <span className="font-medium">{exp.type}</span>
-                          <span className="text-xs text-muted-foreground mr-2">
-                            {new Date(exp.date).toLocaleDateString('ar-SA')}
-                          </span>
-                        </div>
-                        <span className="font-bold text-destructive">-${formatNumber(exp.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    إجمالي المصاريف المدفوعة: ${formatNumber(selectedPartner.totalExpensesPaid || 0)}
-                  </p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-2">
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
                 <Button 
                   className="flex-1 bg-success hover:bg-success/90 text-success-foreground" 
                   onClick={() => {
@@ -1003,7 +942,7 @@ export default function Partners() {
                   }}
                 >
                   <ArrowUpRight className="w-4 h-4 ml-2" />
-                  إضافة رصيد
+                  {t('partners.addBalance')}
                 </Button>
                 {((selectedPartner.currentBalance || 0) > 0 || (selectedPartner.currentCapital || 0) > 0) && (
                   <Button 
@@ -1014,7 +953,7 @@ export default function Partners() {
                     }}
                   >
                     <ArrowDownLeft className="w-4 h-4 ml-2" />
-                    سحب رصيد
+                    {t('partners.withdrawBalance')}
                   </Button>
                 )}
               </div>
@@ -1023,66 +962,66 @@ export default function Partners() {
         </DialogContent>
       </Dialog>
 
-      {/* Withdraw Dialog - Improved */}
+      {/* Withdraw Dialog */}
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowDownLeft className="w-5 h-5 text-warning" />
-              سحب رصيد
+              {t('partners.withdrawBalance')}
             </DialogTitle>
             <DialogDescription>
-              سحب رصيد للشريك {selectedPartner?.name}
+              {t('partners.withdrawFor')} {selectedPartner?.name}
             </DialogDescription>
           </DialogHeader>
           {selectedPartner && (
             <div className="space-y-4 py-4">
-              {/* الأرصدة المتاحة */}
+              {/* Available Balances */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-success/10 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <TrendingUp className="w-4 h-4 text-success" />
-                    <p className="text-xs text-muted-foreground">الأرباح</p>
+                    <p className="text-xs text-muted-foreground">{t('partners.profits')}</p>
                   </div>
                   <p className="text-xl font-bold text-success">${formatNumber(selectedPartner.currentBalance || 0)}</p>
                 </div>
                 <div className="bg-info/10 rounded-lg p-3 text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <PiggyBank className="w-4 h-4 text-info" />
-                    <p className="text-xs text-muted-foreground">رأس المال</p>
+                    <p className="text-xs text-muted-foreground">{t('partners.capital')}</p>
                   </div>
                   <p className="text-xl font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
                 </div>
               </div>
 
-              {/* نوع السحب */}
+              {/* Withdraw Type */}
               <div className="space-y-3">
-                <label className="text-sm font-medium">نوع السحب</label>
+                <label className="text-sm font-medium">{t('partners.withdrawType')}</label>
                 <RadioGroup value={withdrawType} onValueChange={(value) => setWithdrawType(value as 'profit' | 'capital' | 'auto')}>
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <RadioGroupItem value="profit" id="profit" disabled={(selectedPartner.currentBalance || 0) <= 0} />
                     <Label htmlFor="profit" className={cn("cursor-pointer", (selectedPartner.currentBalance || 0) <= 0 && "opacity-50")}>
-                      سحب من الأرباح فقط
+                      {t('partners.withdrawFromProfitOnly')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <RadioGroupItem value="capital" id="capital" disabled={(selectedPartner.currentCapital || 0) <= 0} />
                     <Label htmlFor="capital" className={cn("cursor-pointer", (selectedPartner.currentCapital || 0) <= 0 && "opacity-50")}>
-                      سحب من رأس المال فقط
+                      {t('partners.withdrawFromCapitalOnly')}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <RadioGroupItem value="auto" id="auto" />
                     <Label htmlFor="auto" className="cursor-pointer">
-                      تلقائي (الأرباح أولاً ثم رأس المال)
+                      {t('partners.withdrawAuto')}
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
 
-              {/* مبلغ السحب */}
+              {/* Withdraw Amount */}
               <div>
-                <label className="text-sm font-medium mb-1.5 block">مبلغ السحب ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('partners.withdrawAmount')}</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -1091,7 +1030,7 @@ export default function Partners() {
                 />
               </div>
 
-              {/* أزرار السحب السريع */}
+              {/* Quick Withdraw Buttons */}
               <div className="flex gap-2">
                 {withdrawType === 'profit' && (selectedPartner.currentBalance || 0) > 0 && (
                   <Button 
@@ -1100,7 +1039,7 @@ export default function Partners() {
                     className="flex-1"
                     onClick={() => setWithdrawAmount(selectedPartner.currentBalance || 0)}
                   >
-                    كامل الأرباح
+                    {t('partners.allProfit')}
                   </Button>
                 )}
                 {withdrawType === 'capital' && (selectedPartner.currentCapital || 0) > 0 && (
@@ -1110,7 +1049,7 @@ export default function Partners() {
                     className="flex-1"
                     onClick={() => setWithdrawAmount(selectedPartner.currentCapital || 0)}
                   >
-                    كامل رأس المال
+                    {t('partners.allCapital')}
                   </Button>
                 )}
                 {withdrawType === 'auto' && (
@@ -1120,16 +1059,16 @@ export default function Partners() {
                     className="flex-1"
                     onClick={() => setWithdrawAmount((selectedPartner.currentBalance || 0) + (selectedPartner.currentCapital || 0))}
                   >
-                    سحب كل الرصيد
+                    {t('partners.withdrawAll')}
                   </Button>
                 )}
               </div>
 
-              {/* ملاحظات */}
+              {/* Notes */}
               <div>
-                <label className="text-sm font-medium mb-1.5 block">ملاحظات (اختياري)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('common.notes')} ({t('common.optional')})</label>
                 <Textarea
-                  placeholder="أضف ملاحظة..."
+                  placeholder={t('partners.addNote')}
                   value={withdrawNotes}
                   onChange={(e) => setWithdrawNotes(e.target.value)}
                   rows={2}
@@ -1138,11 +1077,11 @@ export default function Partners() {
 
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" className="flex-1" onClick={() => setShowWithdrawDialog(false)}>
-                  إلغاء
+                  {t('common.cancel')}
                 </Button>
                 <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleWithdraw}>
                   <Save className="w-4 h-4 ml-2" />
-                  تأكيد السحب
+                  {t('partners.confirmWithdraw')}
                 </Button>
               </div>
             </div>
@@ -1156,10 +1095,10 @@ export default function Partners() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowUpRight className="w-5 h-5 text-success" />
-              إضافة رأس مال
+              {t('partners.addCapital')}
             </DialogTitle>
             <DialogDescription>
-              إضافة رأس مال للشريك {selectedPartner?.name}
+              {t('partners.addCapitalFor')} {selectedPartner?.name}
             </DialogDescription>
           </DialogHeader>
           {selectedPartner && (
@@ -1167,16 +1106,16 @@ export default function Partners() {
               <div className="bg-info/10 rounded-lg p-4 text-center">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <PiggyBank className="w-5 h-5 text-info" />
-                  <p className="text-sm text-muted-foreground">رأس المال الحالي</p>
+                  <p className="text-sm text-muted-foreground">{t('partners.currentCapital')}</p>
                 </div>
                 <p className="text-3xl font-bold text-info">${formatNumber(selectedPartner.currentCapital || 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  (الإجمالي: ${formatNumber(selectedPartner.initialCapital || 0)})
+                  ({t('partners.total')}: ${formatNumber(selectedPartner.initialCapital || 0)})
                 </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1.5 block">مبلغ الإيداع ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('partners.depositAmount')}</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -1186,9 +1125,9 @@ export default function Partners() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1.5 block">ملاحظات (اختياري)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('common.notes')} ({t('common.optional')})</label>
                 <Textarea
-                  placeholder="مثال: إيداع شهر يناير..."
+                  placeholder={t('partners.depositExample')}
                   value={capitalNotes}
                   onChange={(e) => setCapitalNotes(e.target.value)}
                   rows={2}
@@ -1197,11 +1136,11 @@ export default function Partners() {
 
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" className="flex-1" onClick={() => setShowAddCapitalDialog(false)}>
-                  إلغاء
+                  {t('common.cancel')}
                 </Button>
                 <Button className="flex-1 bg-success hover:bg-success/90 text-success-foreground" onClick={handleAddCapital}>
                   <Save className="w-4 h-4 ml-2" />
-                  تأكيد الإيداع
+                  {t('partners.confirmDeposit')}
                 </Button>
               </div>
             </div>
@@ -1213,15 +1152,15 @@ export default function Partners() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف الشريك "{selectedPartner?.name}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.
+              {t('partners.deleteConfirmation')} "{selectedPartner?.name}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeletePartner} className="bg-destructive hover:bg-destructive/90">
-              حذف
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -34,21 +34,14 @@ import {
 import { confirmPendingProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
-
-const statusConfig = {
-  due: { label: 'مستحق', icon: Clock, color: 'badge-info' },
-  partially_paid: { label: 'مدفوع جزئياً', icon: DollarSign, color: 'badge-warning' },
-  overdue: { label: 'متأخر', icon: AlertTriangle, color: 'badge-danger' },
-  fully_paid: { label: 'مدفوع بالكامل', icon: CheckCircle, color: 'badge-success' },
-};
-
-const filterOptions = ['الكل', 'مستحق', 'مدفوع جزئياً', 'متأخر', 'مدفوع بالكامل'];
+import { useLanguage } from '@/hooks/use-language';
 
 export default function Debts() {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('الكل');
+  const [selectedFilter, setSelectedFilter] = useState('all');
   
   // Dialogs
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -65,6 +58,21 @@ export default function Debts() {
     dueDate: '',
     notes: '',
   });
+
+  const statusConfig = {
+    due: { label: t('debts.statusDue'), icon: Clock, color: 'badge-info' },
+    partially_paid: { label: t('debts.statusPartiallyPaid'), icon: DollarSign, color: 'badge-warning' },
+    overdue: { label: t('debts.statusOverdue'), icon: AlertTriangle, color: 'badge-danger' },
+    fully_paid: { label: t('debts.statusFullyPaid'), icon: CheckCircle, color: 'badge-success' },
+  };
+
+  const filterOptions = [
+    { key: 'all', label: t('common.all') },
+    { key: 'due', label: t('debts.statusDue') },
+    { key: 'partially_paid', label: t('debts.statusPartiallyPaid') },
+    { key: 'overdue', label: t('debts.statusOverdue') },
+    { key: 'fully_paid', label: t('debts.statusFullyPaid') },
+  ];
 
   // Load debts from store
   useEffect(() => {
@@ -83,20 +91,11 @@ export default function Debts() {
     };
   }, []);
 
-  const filterStatusMap: Record<string, string | null> = {
-    'الكل': null,
-    'مستحق': 'due',
-    'مدفوع جزئياً': 'partially_paid',
-    'متأخر': 'overdue',
-    'مدفوع بالكامل': 'fully_paid',
-  };
-
   const filteredDebts = debts.filter(debt => {
     const matchesSearch = debt.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          debt.customerPhone.includes(searchQuery) ||
                          debt.invoiceId.toLowerCase().includes(searchQuery.toLowerCase());
-    const filterStatus = filterStatusMap[selectedFilter];
-    const matchesFilter = !filterStatus || debt.status === filterStatus;
+    const matchesFilter = selectedFilter === 'all' || debt.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
@@ -115,12 +114,12 @@ export default function Debts() {
 
   const handlePayment = () => {
     if (!selectedDebt || paymentAmount <= 0) {
-      toast.error('يرجى إدخال مبلغ صحيح');
+      toast.error(t('debts.enterValidAmount'));
       return;
     }
 
     if (paymentAmount > selectedDebt.remainingDebt) {
-      toast.error('المبلغ أكبر من الدين المتبقي');
+      toast.error(t('debts.amountExceedsRemaining'));
       return;
     }
 
@@ -130,8 +129,6 @@ export default function Debts() {
     recordPayment(selectedDebt.id, paymentAmount);
     
     // Confirm pending profits proportionally to payment
-    // If full payment (ratio = 1), confirm all pending profits
-    // If partial payment, confirm proportional amount
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
     
     // Log activity
@@ -140,7 +137,7 @@ export default function Debts() {
         'debt_paid',
         user.id,
         profile?.full_name || user.email || 'مستخدم',
-        `تم تسديد دفعة $${paymentAmount.toLocaleString()} من دين ${selectedDebt.customerName}`,
+        `${t('debts.paymentRecorded')} $${paymentAmount.toLocaleString()} - ${selectedDebt.customerName}`,
         { debtId: selectedDebt.id, amount: paymentAmount, customerName: selectedDebt.customerName }
       );
     }
@@ -150,17 +147,17 @@ export default function Debts() {
     setShowPaymentDialog(false);
     setSelectedDebt(null);
     setPaymentAmount(0);
-    toast.success('تم تسجيل الدفعة بنجاح');
+    toast.success(t('debts.paymentSuccess'));
   };
 
   const handleAddCashDebt = () => {
     if (!newDebtForm.customerName || !newDebtForm.customerPhone || newDebtForm.amount <= 0) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error(t('debts.fillRequiredFields'));
       return;
     }
 
     if (!newDebtForm.dueDate) {
-      toast.error('يرجى تحديد تاريخ الاستحقاق');
+      toast.error(t('debts.selectDueDate'));
       return;
     }
 
@@ -180,7 +177,7 @@ export default function Debts() {
         'debt_created',
         user.id,
         profile?.full_name || user.email || 'مستخدم',
-        `تم إنشاء دين نقدي للعميل ${newDebtForm.customerName} بقيمة $${newDebtForm.amount.toLocaleString()}`,
+        `${t('debts.cashDebtCreated')} ${newDebtForm.customerName} - $${newDebtForm.amount.toLocaleString()}`,
         { amount: newDebtForm.amount, customerName: newDebtForm.customerName, isCashDebt: true }
       );
     }
@@ -194,7 +191,7 @@ export default function Debts() {
       dueDate: '',
       notes: '',
     });
-    toast.success('تم إضافة الدين النقدي بنجاح');
+    toast.success(t('debts.debtAddedSuccess'));
   };
 
   return (
@@ -202,12 +199,12 @@ export default function Debts() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">إدارة الديون</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">تتبع وإدارة ديون العملاء</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('debts.title')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('debts.subtitle')}</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowAddDebtDialog(true)}>
           <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          إضافة دين نقدي
+          {t('debts.addCashDebt')}
         </Button>
       </div>
 
@@ -220,7 +217,7 @@ export default function Debts() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.total.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">إجمالي</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.total')}</p>
             </div>
           </div>
         </div>
@@ -231,7 +228,7 @@ export default function Debts() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.remaining.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">المتبقي</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.remaining')}</p>
             </div>
           </div>
         </div>
@@ -242,7 +239,7 @@ export default function Debts() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.paid.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">المدفوع</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.paid')}</p>
             </div>
           </div>
         </div>
@@ -253,7 +250,7 @@ export default function Debts() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.overdue.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">متأخر</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.overdue')}</p>
             </div>
           </div>
         </div>
@@ -265,7 +262,7 @@ export default function Debts() {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="بحث بالاسم أو رقم الفاتورة..."
+            placeholder={t('debts.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pr-9 md:pr-10 bg-muted border-0"
@@ -274,16 +271,16 @@ export default function Debts() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {filterOptions.map((filter) => (
             <button
-              key={filter}
-              onClick={() => setSelectedFilter(filter)}
+              key={filter.key}
+              onClick={() => setSelectedFilter(filter.key)}
               className={cn(
                 "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
-                selectedFilter === filter
+                selectedFilter === filter.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {filter}
+              {filter.label}
             </button>
           ))}
         </div>
@@ -322,7 +319,7 @@ export default function Debts() {
                       </span>
                       {debt.isCashDebt && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium bg-accent/20 text-accent">
-                          نقدي
+                          {t('debts.cash')}
                         </span>
                       )}
                     </div>
@@ -342,7 +339,7 @@ export default function Debts() {
                 {/* Progress */}
                 <div>
                   <div className="flex items-center justify-between text-xs md:text-sm mb-1.5 md:mb-2">
-                    <span className="text-muted-foreground">التقدم</span>
+                    <span className="text-muted-foreground">{t('debts.progress')}</span>
                     <span className="font-medium text-foreground">{progress.toFixed(0)}%</span>
                   </div>
                   <div className="h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
@@ -352,15 +349,15 @@ export default function Debts() {
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px] md:text-xs text-muted-foreground mt-1">
-                    <span>مدفوع: ${debt.totalPaid}</span>
-                    <span>المجموع: ${debt.totalDebt}</span>
+                    <span>{t('debts.paidAmount')}: ${debt.totalPaid}</span>
+                    <span>{t('debts.totalAmount')}: ${debt.totalDebt}</span>
                   </div>
                 </div>
 
                 {/* Amount & Actions */}
                 <div className="flex items-center justify-between pt-3 border-t border-border">
                   <div>
-                    <p className="text-xs md:text-sm text-muted-foreground">المبلغ المتبقي</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{t('debts.remainingAmount')}</p>
                     <p className={cn(
                       "text-lg md:text-2xl font-bold",
                       debt.remainingDebt > 0 ? "text-destructive" : "text-success"
@@ -371,12 +368,12 @@ export default function Debts() {
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(debt)}>
                       <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                      عرض
+                      {t('common.view')}
                     </Button>
                     {debt.remainingDebt > 0 && (
                       <Button size="sm" className="h-8 md:h-9 bg-success hover:bg-success/90 text-xs md:text-sm" onClick={() => openPaymentDialog(debt)}>
                         <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                        دفعة
+                        {t('debts.payment')}
                       </Button>
                     )}
                   </div>
@@ -393,19 +390,19 @@ export default function Debts() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
-              إضافة دين نقدي
+              {t('debts.addCashDebt')}
             </DialogTitle>
             <DialogDescription>
-              إضافة دائن جديد بدون فاتورة
+              {t('debts.addDebtWithoutInvoice')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">اسم العميل *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('debts.customerName')} *</label>
               <div className="relative">
                 <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="اسم العميل"
+                  placeholder={t('debts.customerName')}
                   value={newDebtForm.customerName}
                   onChange={(e) => setNewDebtForm({ ...newDebtForm, customerName: e.target.value })}
                   className="pr-10"
@@ -413,7 +410,7 @@ export default function Debts() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.phone')} *</label>
               <div className="relative">
                 <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -425,7 +422,7 @@ export default function Debts() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">المبلغ ($) *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('debts.amount')} ($) *</label>
               <div className="relative">
                 <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -438,7 +435,7 @@ export default function Debts() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">تاريخ الاستحقاق *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('debts.dueDate')} *</label>
               <div className="relative">
                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -450,21 +447,20 @@ export default function Debts() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('common.notes')}</label>
               <Input
-                placeholder="ملاحظات إضافية..."
+                placeholder={t('debts.notesPlaceholder')}
                 value={newDebtForm.notes}
                 onChange={(e) => setNewDebtForm({ ...newDebtForm, notes: e.target.value })}
               />
             </div>
-
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDebtDialog(false)}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddCashDebt}>
                 <Save className="w-4 h-4 ml-2" />
-                إضافة الدين
+                {t('common.save')}
               </Button>
             </div>
           </div>
@@ -477,31 +473,31 @@ export default function Debts() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-success" />
-              تسجيل دفعة جديدة
+              {t('debts.recordPayment')}
             </DialogTitle>
             <DialogDescription>
-              تسجيل دفعة للعميل {selectedDebt?.customerName}
+              {t('debts.recordPaymentFor')} {selectedDebt?.customerName}
             </DialogDescription>
           </DialogHeader>
           {selectedDebt && (
             <div className="space-y-4 py-4">
-              <div className="bg-muted rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">إجمالي الدين:</span>
-                  <span className="font-semibold">${selectedDebt.totalDebt}</span>
+              <div className="bg-muted rounded-xl p-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
+                  <span className="font-bold">${selectedDebt.totalDebt.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">المدفوع:</span>
-                  <span className="font-semibold text-success">${selectedDebt.totalPaid}</span>
+                <div className="flex justify-between mb-2">
+                  <span className="text-muted-foreground">{t('debts.paidSoFar')}</span>
+                  <span className="font-bold text-success">${selectedDebt.totalPaid.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm border-t border-border pt-2">
-                  <span className="text-muted-foreground">المتبقي:</span>
-                  <span className="font-bold text-destructive">${selectedDebt.remainingDebt}</span>
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="text-muted-foreground">{t('debts.remaining')}</span>
+                  <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
                 </div>
               </div>
               
               <div>
-                <label className="text-sm font-medium mb-1.5 block">مبلغ الدفعة ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('debts.paymentAmount')} ($)</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -509,25 +505,33 @@ export default function Debts() {
                   onChange={(e) => setPaymentAmount(Number(e.target.value))}
                   max={selectedDebt.remainingDebt}
                 />
+                <div className="flex gap-2 mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setPaymentAmount(selectedDebt.remainingDebt)}
+                  >
+                    {t('debts.payFull')}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setPaymentAmount(Math.round(selectedDebt.remainingDebt / 2))}
+                  >
+                    {t('debts.payHalf')}
+                  </Button>
+                </div>
               </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => setPaymentAmount(selectedDebt.remainingDebt)}
-                >
-                  دفع كامل المبلغ
-                </Button>
-              </div>
-
-              <div className="flex gap-3 pt-4">
+              
+              <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setShowPaymentDialog(false)}>
-                  إلغاء
+                  {t('common.cancel')}
                 </Button>
                 <Button className="flex-1 bg-success hover:bg-success/90" onClick={handlePayment}>
                   <Save className="w-4 h-4 ml-2" />
-                  تأكيد الدفعة
+                  {t('debts.confirmPayment')}
                 </Button>
               </div>
             </div>
@@ -540,66 +544,58 @@ export default function Debts() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-primary" />
-              تفاصيل الدين
+              <Eye className="w-5 h-5 text-primary" />
+              {t('debts.debtDetails')}
             </DialogTitle>
           </DialogHeader>
           {selectedDebt && (
             <div className="space-y-4 py-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center">
-                  <span className="text-2xl font-bold text-primary-foreground">
+                <div className="w-14 h-14 rounded-full bg-gradient-primary flex items-center justify-center">
+                  <span className="text-xl font-bold text-primary-foreground">
                     {selectedDebt.customerName.charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">{selectedDebt.customerName}</h3>
+                  <h3 className="text-lg font-bold">{selectedDebt.customerName}</h3>
                   <p className="text-muted-foreground">{selectedDebt.customerPhone}</p>
                 </div>
               </div>
               
-              <div className="bg-muted rounded-lg p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">رقم الفاتورة:</span>
-                  <span className="font-mono">{selectedDebt.invoiceId}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('debts.invoiceId')}</span>
+                  <span className="font-medium font-mono">{selectedDebt.invoiceId}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">تاريخ الإنشاء:</span>
-                  <span>{selectedDebt.createdAt}</span>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('debts.createdAt')}</span>
+                  <span className="font-medium">{selectedDebt.createdAt}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">تاريخ الاستحقاق:</span>
-                  <span>{selectedDebt.dueDate}</span>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('debts.dueDate')}</span>
+                  <span className="font-medium">{selectedDebt.dueDate}</span>
                 </div>
-                {selectedDebt.isCashDebt && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">النوع:</span>
-                    <span className="text-accent font-medium">دين نقدي</span>
-                  </div>
-                )}
-                {selectedDebt.notes && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">ملاحظات:</span>
-                    <span>{selectedDebt.notes}</span>
-                  </div>
-                )}
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
+                  <span className="font-bold">${selectedDebt.totalDebt.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">{t('debts.paid')}</span>
+                  <span className="font-bold text-success">${selectedDebt.totalPaid.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">{t('debts.remaining')}</span>
+                  <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
+                </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-3 text-center">
+              
+              {selectedDebt.notes && (
                 <div className="bg-muted rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">إجمالي الدين</p>
-                  <p className="text-lg font-bold">${selectedDebt.totalDebt}</p>
+                  <p className="text-sm text-muted-foreground">{t('common.notes')}:</p>
+                  <p className="text-sm">{selectedDebt.notes}</p>
                 </div>
-                <div className="bg-success/10 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">المدفوع</p>
-                  <p className="text-lg font-bold text-success">${selectedDebt.totalPaid}</p>
-                </div>
-                <div className="bg-destructive/10 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground mb-1">المتبقي</p>
-                  <p className="text-lg font-bold text-destructive">${selectedDebt.remainingDebt}</p>
-                </div>
-              </div>
-
+              )}
+              
               {selectedDebt.remainingDebt > 0 && (
                 <Button 
                   className="w-full bg-success hover:bg-success/90" 
@@ -609,7 +605,7 @@ export default function Debts() {
                   }}
                 >
                   <DollarSign className="w-4 h-4 ml-2" />
-                  تسجيل دفعة
+                  {t('debts.recordPayment')}
                 </Button>
               )}
             </div>

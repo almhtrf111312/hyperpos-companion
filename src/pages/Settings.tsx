@@ -58,22 +58,6 @@ import { useUsersManagement, UserData } from '@/hooks/use-users-management';
 import { useAuth } from '@/hooks/use-auth';
 import { emitEvent, EVENTS } from '@/lib/events';
 
-const settingsTabs = [
-  { id: 'store', label: 'المحل', labelKey: 'settings.general', icon: Store },
-  { id: 'productFields', label: 'حقول المنتجات', labelKey: 'settings.productFields', icon: Package },
-  { id: 'language', label: 'اللغة', labelKey: 'settings.language', icon: Globe },
-  { id: 'theme', label: 'المظهر', labelKey: 'settings.theme', icon: Palette },
-  { id: 'currencies', label: 'العملات', labelKey: 'settings.general', icon: DollarSign },
-  { id: 'sync', label: 'التزامن', labelKey: 'settings.general', icon: RefreshCw },
-  { id: 'notifications', label: 'الإشعارات', labelKey: 'settings.general', icon: Bell },
-  { id: 'printing', label: 'الطباعة', labelKey: 'settings.general', icon: Printer },
-  { id: 'users', label: 'المستخدمين', labelKey: 'settings.users', icon: User },
-  { id: 'activity', label: 'سجل النشاط', labelKey: 'settings.activityLog', icon: Activity },
-  { id: 'backup', label: 'النسخ الاحتياطي', labelKey: 'settings.backup', icon: Database },
-  { id: 'license', label: 'الترخيص', labelKey: 'settings.license', icon: Key },
-  { id: 'licenses', label: 'إدارة التراخيص', labelKey: 'settings.licenses', icon: Shield, adminOnly: true },
-];
-
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
 // Type-safe settings interfaces
@@ -158,10 +142,27 @@ interface BackupData {
 
 export default function Settings() {
   const { toast } = useToast();
+  const { t, isRTL } = useLanguage();
   const { user: currentUser } = useAuth();
   const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
   const [activeTab, setActiveTab] = useState('store');
   const [isSavingUser, setIsSavingUser] = useState(false);
+
+  const settingsTabs = [
+    { id: 'store', label: t('settings.store'), icon: Store },
+    { id: 'productFields', label: t('settings.productFields'), icon: Package },
+    { id: 'language', label: t('settings.language'), icon: Globe },
+    { id: 'theme', label: t('settings.theme'), icon: Palette },
+    { id: 'currencies', label: t('settings.currencies'), icon: DollarSign },
+    { id: 'sync', label: t('settings.sync'), icon: RefreshCw },
+    { id: 'notifications', label: t('settings.notifications'), icon: Bell },
+    { id: 'printing', label: t('settings.printing'), icon: Printer },
+    { id: 'users', label: t('settings.users'), icon: User },
+    { id: 'activity', label: t('settings.activityLog'), icon: Activity },
+    { id: 'backup', label: t('settings.backup'), icon: Database },
+    { id: 'license', label: t('settings.license'), icon: Key },
+    { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, adminOnly: true },
+  ];
 
   const persisted = loadPersistedSettings();
   
@@ -181,16 +182,16 @@ export default function Settings() {
     if (file) {
       if (!file.type.startsWith('image/')) {
         toast({
-          title: 'خطأ',
-          description: 'يرجى اختيار ملف صورة صالح',
+          title: t('common.error'),
+          description: t('settings.invalidImageType'),
           variant: 'destructive',
         });
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
         toast({
-          title: 'خطأ',
-          description: 'حجم الصورة يجب أن يكون أقل من 2 ميغابايت',
+          title: t('common.error'),
+          description: t('settings.imageTooLarge'),
           variant: 'destructive',
         });
         return;
@@ -200,8 +201,8 @@ export default function Settings() {
         const base64 = reader.result as string;
         setStoreSettings(prev => ({ ...prev, logo: base64 }));
         toast({
-          title: 'تم الرفع',
-          description: 'تم رفع الشعار بنجاح',
+          title: t('common.success'),
+          description: t('settings.logoUploaded'),
         });
       };
       reader.readAsDataURL(file);
@@ -211,8 +212,8 @@ export default function Settings() {
   const handleRemoveLogo = () => {
     setStoreSettings(prev => ({ ...prev, logo: '' }));
     toast({
-      title: 'تم الحذف',
-      description: 'تم حذف الشعار',
+      title: t('common.deleted'),
+      description: t('settings.logoRemoved'),
     });
   };
 
@@ -295,8 +296,8 @@ export default function Settings() {
 
     if (!Number.isFinite(tryRate) || tryRate <= 0 || !Number.isFinite(sypRate) || sypRate <= 0) {
       toast({
-        title: 'خطأ',
-        description: 'يرجى إدخال أسعار صرف صحيحة',
+        title: t('common.error'),
+        description: t('settings.invalidExchangeRates'),
         variant: 'destructive',
       });
       return;
@@ -304,8 +305,8 @@ export default function Settings() {
 
     if (!Number.isFinite(copies) || copies < 1 || copies > 5) {
       toast({
-        title: 'خطأ',
-        description: 'عدد النسخ يجب أن يكون بين 1 و 5',
+        title: t('common.error'),
+        description: t('settings.invalidCopies'),
         variant: 'destructive',
       });
       return;
@@ -313,8 +314,8 @@ export default function Settings() {
 
     if (!Number.isFinite(keepDays) || keepDays < 7 || keepDays > 365) {
       toast({
-        title: 'خطأ',
-        description: 'الاحتفاظ بالنسخ يجب أن يكون بين 7 و 365 يوم',
+        title: t('common.error'),
+        description: t('settings.invalidKeepDays'),
         variant: 'destructive',
       });
       return;
@@ -330,8 +331,8 @@ export default function Settings() {
     });
 
     toast({
-      title: 'تم الحفظ',
-      description: 'تم حفظ الإعدادات بنجاح',
+      title: t('common.saved'),
+      description: t('settings.settingsSaved'),
     });
   };
 
@@ -341,8 +342,8 @@ export default function Settings() {
       setIsSyncing(false);
       setSyncSettings(prev => ({ ...prev, lastSync: new Date().toLocaleString('ar-SA') }));
       toast({
-        title: "تم التزامن",
-        description: "تم تزامن البيانات بنجاح",
+        title: t('settings.syncComplete'),
+        description: t('settings.dataSynced'),
       });
     }, 2000);
   };
@@ -379,8 +380,8 @@ export default function Settings() {
   const handleSaveUser = async () => {
     if (!userForm.name) {
       toast({
-        title: "خطأ",
-        description: "يرجى إدخال اسم المستخدم",
+        title: t('common.error'),
+        description: t('settings.enterUsername'),
         variant: "destructive",
       });
       return;
@@ -407,8 +408,8 @@ export default function Settings() {
       // Add new user
       if (!userForm.email || !userForm.password) {
         toast({
-          title: "خطأ",
-          description: "يرجى إدخال البريد الإلكتروني وكلمة المرور",
+          title: t('common.error'),
+          description: t('settings.enterEmailPassword'),
           variant: "destructive",
         });
         setIsSavingUser(false);
@@ -417,8 +418,8 @@ export default function Settings() {
 
       if (userForm.password.length < 6) {
         toast({
-          title: "خطأ",
-          description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+          title: t('common.error'),
+          description: t('settings.passwordTooShort'),
           variant: "destructive",
         });
         setIsSavingUser(false);
@@ -496,16 +497,16 @@ export default function Settings() {
 
       if (success) {
         toast({
-          title: "تم النسخ الاحتياطي",
+          title: t('settings.backupComplete'),
           description: isNativePlatform() 
-            ? "تم حفظ النسخة الاحتياطية بنجاح" 
-            : "تم تنزيل النسخة الاحتياطية في مجلد التنزيلات",
+            ? t('settings.backupSavedDevice') 
+            : t('settings.backupDownloaded'),
         });
       } else {
         toast({
-          title: "خطأ",
-          description: "فشل في حفظ النسخة الاحتياطية",
-          variant: "destructive",
+          title: t('common.error'),
+          description: t('settings.backupFailed'),
+          variant: 'destructive',
         });
       }
     }, 800);
@@ -529,9 +530,9 @@ export default function Settings() {
           data = JSON.parse(fileContent);
         } catch {
           toast({
-            title: "خطأ",
-            description: "الملف غير صالح. يجب أن يكون ملف JSON صحيح",
-            variant: "destructive",
+            title: t('common.error'),
+            description: t('settings.invalidBackupFile'),
+            variant: 'destructive',
           });
           setIsImporting(false);
           return;
@@ -540,9 +541,9 @@ export default function Settings() {
         // Validate backup structure
         if (!data.version || !data.exportedAt) {
           toast({
-            title: "خطأ",
-            description: "صيغة ملف النسخة الاحتياطية غير صحيحة",
-            variant: "destructive",
+            title: t('common.error'),
+            description: t('settings.invalidBackupFormat'),
+            variant: 'destructive',
           });
           setIsImporting(false);
           return;
@@ -591,8 +592,8 @@ export default function Settings() {
         emitEvent(EVENTS.PRODUCTS_UPDATED);
 
         toast({
-          title: "تمت الاستعادة بنجاح",
-          description: `تم استعادة النسخة الاحتياطية. سيتم إعادة تحميل الصفحة...`,
+          title: t('settings.restoreComplete'),
+          description: t('settings.pageReloading'),
         });
         
         // Reload the page after a short delay to apply all changes
@@ -602,9 +603,9 @@ export default function Settings() {
       } catch (error) {
         console.error('Import error:', error);
         toast({
-          title: "خطأ",
-          description: "حدث خطأ أثناء استيراد النسخة الاحتياطية",
-          variant: "destructive",
+          title: t('common.error'),
+          description: t('settings.importFailed'),
+          variant: 'destructive',
         });
       }
       
@@ -617,9 +618,9 @@ export default function Settings() {
 
     reader.onerror = () => {
       toast({
-        title: "خطأ",
-        description: "فشل في قراءة الملف",
-        variant: "destructive",
+        title: t('common.error'),
+        description: t('settings.fileReadError'),
+        variant: 'destructive',
       });
       setIsImporting(false);
     };
@@ -629,16 +630,16 @@ export default function Settings() {
 
   const handleRestoreBackup = (backup: BackupData) => {
     toast({
-      title: "جاري الاستعادة",
-      description: `جاري استعادة النسخة من ${backup.date}`,
+      title: t('settings.restoring'),
+      description: `${t('settings.restoringFrom')} ${backup.date}`,
     });
   };
 
   const handleDeleteBackup = (backup: BackupData) => {
     setBackups(backups.filter(b => b.id !== backup.id));
     toast({
-      title: "تم الحذف",
-      description: "تم حذف النسخة الاحتياطية",
+      title: t('common.deleted'),
+      description: t('settings.backupDeleted'),
     });
   };
 
@@ -663,15 +664,15 @@ export default function Settings() {
 
     if (success) {
       toast({
-        title: 'تم التصدير',
+        title: t('settings.exportComplete'),
         description: isNativePlatform() 
-          ? 'تم حفظ ملف البيانات بنجاح' 
-          : 'تم تنزيل ملف البيانات بنجاح',
+          ? t('settings.dataSavedDevice') 
+          : t('settings.dataDownloaded'),
       });
     } else {
       toast({
-        title: 'خطأ',
-        description: 'فشل في تصدير البيانات',
+        title: t('common.error'),
+        description: t('settings.exportFailed'),
         variant: 'destructive',
       });
     }
@@ -679,15 +680,15 @@ export default function Settings() {
 
   const handleImportData = () => {
     toast({
-      title: "جاري الاستيراد",
-      description: "جاري استيراد البيانات...",
+      title: t('settings.importing'),
+      description: t('settings.importingData'),
     });
   };
 
   const handleTestPrint = () => {
     toast({
-      title: "طباعة تجريبية",
-      description: "تم إرسال صفحة تجريبية للطابعة",
+      title: t('settings.testPrint'),
+      description: t('settings.testPrintSent'),
     });
   };
 
@@ -709,10 +710,10 @@ export default function Settings() {
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
             <div>
-              <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">معلومات المحل</h2>
+              <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.storeInfo')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">اسم المحل</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.storeName')}</label>
                   <div className="relative">
                     <Store className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -723,21 +724,21 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">نوع المحل</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.storeType')}</label>
                   <select
                     value={storeSettings.type}
                     onChange={(e) => setStoreSettings({ ...storeSettings, type: e.target.value })}
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   >
-                    <option value="phones">هواتف وإلكترونيات</option>
-                    <option value="grocery">بقالة ومواد غذائية</option>
-                    <option value="pharmacy">صيدلية</option>
-                    <option value="clothing">ملابس وأزياء</option>
-                    <option value="general">متجر عام</option>
+                    <option value="phones">{t('settings.storeTypes.phones')}</option>
+                    <option value="grocery">{t('settings.storeTypes.grocery')}</option>
+                    <option value="pharmacy">{t('settings.storeTypes.pharmacy')}</option>
+                    <option value="clothing">{t('settings.storeTypes.clothing')}</option>
+                    <option value="general">{t('settings.storeTypes.general')}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">رقم الهاتف</label>
+                  <label className="text-sm font-medium text-foreground">{t('common.phone')}</label>
                   <div className="relative">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -748,7 +749,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">البريد الإلكتروني</label>
+                  <label className="text-sm font-medium text-foreground">{t('common.email')}</label>
                   <div className="relative">
                     <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -759,7 +760,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-foreground">العنوان</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.address')}</label>
                   <div className="relative">
                     <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -774,13 +775,13 @@ export default function Settings() {
 
             {/* Logo Upload */}
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-foreground">شعار المحل</h3>
+              <h3 className="text-base font-semibold text-foreground">{t('settings.storeLogo')}</h3>
               <div className="flex items-center gap-4">
                 {storeSettings.logo ? (
                   <div className="relative">
                     <img 
                       src={storeSettings.logo} 
-                      alt="شعار المحل" 
+                      alt={t('settings.storeLogo')} 
                       className="w-20 h-20 rounded-lg object-cover border border-border"
                     />
                     <Button
@@ -809,11 +810,11 @@ export default function Settings() {
                     <Button variant="outline" asChild>
                       <span className="cursor-pointer">
                         <Upload className="w-4 h-4 ml-2" />
-                        رفع شعار
+                        {t('settings.uploadLogo')}
                       </span>
                     </Button>
                   </label>
-                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG أقل من 2 ميغابايت</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('settings.logoRequirements')}</p>
                 </div>
               </div>
             </div>
@@ -823,10 +824,10 @@ export default function Settings() {
       case 'currencies':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">أسعار الصرف</h2>
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.exchangeRates')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">الليرة التركية (TRY)</label>
+                <label className="text-sm font-medium text-foreground">{t('settings.turkishLira')}</label>
                 <div className="relative">
                   <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -836,10 +837,10 @@ export default function Settings() {
                     placeholder="32"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">1 دولار = {exchangeRates.TRY} ليرة تركية</p>
+                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {t('settings.turkishLiraShort')}</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">الليرة السورية (SYP)</label>
+                <label className="text-sm font-medium text-foreground">{t('settings.syrianPound')}</label>
                 <div className="relative">
                   <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -849,7 +850,7 @@ export default function Settings() {
                     placeholder="14500"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">1 دولار = {exchangeRates.SYP} ليرة سورية</p>
+                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.SYP} {t('settings.syrianPoundShort')}</p>
               </div>
             </div>
           </div>
@@ -884,10 +885,10 @@ export default function Settings() {
               }}
             />
             <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-4">التزامن المحلي</h3>
+              <h3 className="text-base font-semibold text-foreground mb-4">{t('settings.localSync')}</h3>
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
                 <div>
-                  <p className="font-medium text-foreground">آخر تزامن</p>
+                  <p className="font-medium text-foreground">{t('settings.lastSync')}</p>
                   <p className="text-sm text-muted-foreground">{syncSettings.lastSync}</p>
                 </div>
                 <Button onClick={handleSync} disabled={isSyncing}>
@@ -896,7 +897,7 @@ export default function Settings() {
                   ) : (
                     <RefreshCw className="w-4 h-4 ml-2" />
                   )}
-                  تزامن الآن
+                  {t('settings.syncNow')}
                 </Button>
               </div>
             </div>
@@ -906,14 +907,14 @@ export default function Settings() {
       case 'notifications':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">الإشعارات</h2>
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.notifications')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-3">
                   {notificationSettings.sound ? <Volume2 className="w-5 h-5 text-primary" /> : <VolumeX className="w-5 h-5 text-muted-foreground" />}
                   <div>
-                    <p className="font-medium text-foreground">الصوت</p>
-                    <p className="text-sm text-muted-foreground">تشغيل صوت عند الإشعارات</p>
+                    <p className="font-medium text-foreground">{t('settings.sound')}</p>
+                    <p className="text-sm text-muted-foreground">{t('settings.soundDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -922,19 +923,20 @@ export default function Settings() {
                 />
               </div>
               {[
-                { key: 'newSale', label: 'عملية بيع جديدة', icon: CheckCircle2 },
-                { key: 'lowStock', label: 'نفاذ المخزون', icon: AlertCircle },
-                { key: 'newDebt', label: 'دين جديد', icon: FileText },
-                { key: 'paymentReceived', label: 'استلام دفعة', icon: Banknote },
-              ].map(({ key, label, icon: Icon }) => (
-                <div key={key} className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                { key: 'newSale', label: t('settings.newSale'), icon: CheckCircle2 },
+                { key: 'lowStock', label: t('settings.lowStock'), icon: AlertCircle },
+                { key: 'newDebt', label: t('settings.newDebt'), icon: FileText },
+                { key: 'paymentReceived', label: t('settings.paymentReceived'), icon: DollarSign },
+                { key: 'dailyReport', label: t('settings.dailyReport'), icon: Clock },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between p-4 bg-muted rounded-xl">
                   <div className="flex items-center gap-3">
-                    <Icon className="w-5 h-5 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{label}</span>
+                    <item.icon className="w-5 h-5 text-muted-foreground" />
+                    <p className="font-medium text-foreground">{item.label}</p>
                   </div>
                   <Switch
-                    checked={notificationSettings[key as keyof typeof notificationSettings] as boolean}
-                    onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [key]: checked })}
+                    checked={notificationSettings[item.key as keyof NotificationSettingsType] as boolean}
+                    onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
                   />
                 </div>
               ))}
@@ -945,12 +947,12 @@ export default function Settings() {
       case 'printing':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">إعدادات الطباعة</h2>
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.printing')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
                 <div>
-                  <p className="font-medium text-foreground">الطباعة التلقائية</p>
-                  <p className="text-sm text-muted-foreground">طباعة الفاتورة تلقائياً بعد كل عملية</p>
+                  <p className="font-medium text-foreground">{t('settings.autoPrint')}</p>
+                  <p className="text-sm text-muted-foreground">{t('settings.autoPrintDesc')}</p>
                 </div>
                 <Switch
                   checked={printSettings.autoPrint}
@@ -959,19 +961,19 @@ export default function Settings() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">حجم الورق</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.paperSize')}</label>
                   <select
                     value={printSettings.paperSize}
                     onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   >
-                    <option value="80mm">80mm (حراري)</option>
-                    <option value="58mm">58mm (صغير)</option>
+                    <option value="58mm">58mm</option>
+                    <option value="80mm">80mm</option>
                     <option value="A4">A4</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">عدد النسخ</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.copies')}</label>
                   <Input
                     type="number"
                     value={printSettings.copies}
@@ -983,17 +985,16 @@ export default function Settings() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">نص التذييل</label>
+                <label className="text-sm font-medium text-foreground">{t('settings.receiptFooter')}</label>
                 <Input
                   value={printSettings.footer}
                   onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
                   className="bg-muted border-0"
-                  placeholder="شكراً لتسوقكم معنا!"
                 />
               </div>
-              <Button variant="outline" className="w-full" onClick={handleTestPrint}>
+              <Button variant="outline" onClick={handleTestPrint}>
                 <Printer className="w-4 h-4 ml-2" />
-                طباعة تجريبية
+                {t('settings.testPrint')}
               </Button>
             </div>
           </div>
@@ -1003,21 +1004,21 @@ export default function Settings() {
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg md:text-xl font-bold text-foreground">إدارة المستخدمين</h2>
+              <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.userManagement')}</h2>
               <Button onClick={handleAddUser}>
                 <Plus className="w-4 h-4 ml-2" />
-                إضافة مستخدم
+                {t('settings.addUser')}
               </Button>
             </div>
             <div className="space-y-3">
               {usersLoading ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                  جاري التحميل...
+                  {t('common.loading')}
                 </div>
               ) : users.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  لا يوجد مستخدمين
+                  {t('settings.noUsers')}
                 </div>
               ) : (
                 users.map((user) => (
@@ -1029,7 +1030,7 @@ export default function Settings() {
                       <div>
                         <p className="font-medium text-foreground">{user.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {user.role === 'admin' ? 'مدير' : 'كاشير'}
+                          {user.role === 'admin' ? t('settings.admin') : t('settings.cashier')}
                         </p>
                       </div>
                     </div>
@@ -1067,16 +1068,16 @@ export default function Settings() {
       case 'backup':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">النسخ الاحتياطي</h2>
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.backup')}</h2>
             
             {/* Backup Section */}
             <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 space-y-4">
               <div className="flex items-center gap-2">
                 <Database className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-foreground">النسخ الاحتياطي</h3>
+                <h3 className="font-semibold text-foreground">{t('settings.backup')}</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                قم بإنشاء نسخة احتياطية تحتوي على جميع بيانات المحل
+                {t('settings.backupDescription')}
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleBackupNow} disabled={isBackingUp} className="flex-1 min-w-[140px]">
@@ -1085,7 +1086,7 @@ export default function Settings() {
                   ) : (
                     <Download className="w-4 h-4 ml-2" />
                   )}
-                  تنزيل نسخة احتياطية
+                  {t('settings.downloadBackup')}
                 </Button>
                 <div className="flex-1 min-w-[140px]">
                   <input
@@ -1104,7 +1105,7 @@ export default function Settings() {
                         ) : (
                           <FileUp className="w-4 h-4 ml-2" />
                         )}
-                        استيراد نسخة احتياطية
+                        {t('settings.importBackup')}
                       </span>
                     </Button>
                   </label>
@@ -1116,8 +1117,8 @@ export default function Settings() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
                 <div>
-                  <p className="font-medium text-foreground">النسخ التلقائي</p>
-                  <p className="text-sm text-muted-foreground">نسخ احتياطي تلقائي للبيانات</p>
+                  <p className="font-medium text-foreground">{t('settings.autoBackup')}</p>
+                  <p className="text-sm text-muted-foreground">{t('settings.autoBackupDesc')}</p>
                 </div>
                 <Switch
                   checked={backupSettings.autoBackup}
@@ -1126,19 +1127,19 @@ export default function Settings() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">فترة النسخ</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.backupInterval')}</label>
                   <select
                     value={backupSettings.interval}
                     onChange={(e) => setBackupSettings({ ...backupSettings, interval: e.target.value })}
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   >
-                    <option value="daily">يومياً</option>
-                    <option value="weekly">أسبوعياً</option>
-                    <option value="monthly">شهرياً</option>
+                    <option value="daily">{t('settings.daily')}</option>
+                    <option value="weekly">{t('settings.weekly')}</option>
+                    <option value="monthly">{t('settings.monthly')}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">الاحتفاظ (أيام)</label>
+                  <label className="text-sm font-medium text-foreground">{t('settings.keepDays')}</label>
                   <Input
                     type="number"
                     value={backupSettings.keepDays}
@@ -1153,16 +1154,16 @@ export default function Settings() {
 
             {/* Export JSON */}
             <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-3">تصدير البيانات (JSON)</h3>
+              <h3 className="text-base font-semibold text-foreground mb-3">{t('settings.exportDataJson')}</h3>
               <Button variant="outline" onClick={handleExportData}>
                 <Download className="w-4 h-4 ml-2" />
-                تصدير JSON
+                {t('settings.exportJson')}
               </Button>
             </div>
 
             {/* Recent Backups */}
             <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-3">النسخ الأخيرة</h3>
+              <h3 className="text-base font-semibold text-foreground mb-3">{t('settings.recentBackups')}</h3>
               <div className="space-y-2">
                 {backups.map((backup) => (
                   <div key={backup.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -1171,7 +1172,7 @@ export default function Settings() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{backup.date}</p>
                         <p className="text-xs text-muted-foreground">
-                          {backup.size} • {backup.type === 'auto' ? 'تلقائي' : 'يدوي'}
+                          {backup.size} • {backup.type === 'auto' ? t('settings.auto') : t('settings.manual')}
                         </p>
                       </div>
                     </div>
@@ -1205,8 +1206,8 @@ export default function Settings() {
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">الإعدادات</h1>
-        <p className="text-muted-foreground mt-1">إدارة إعدادات التطبيق والمحل</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
+        <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
@@ -1243,7 +1244,7 @@ export default function Settings() {
           <div className="mt-6">
             <Button className="w-full md:w-auto" onClick={handleSaveSettings}>
               <Save className="w-4 h-4 ml-2" />
-              حفظ الإعدادات
+              {t('common.save')}
             </Button>
           </div>
         </div>
@@ -1253,21 +1254,21 @@ export default function Settings() {
       <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedUser ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'}</DialogTitle>
+            <DialogTitle>{selectedUser ? t('settings.editUser') : t('settings.addNewUser')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">الاسم</label>
+              <label className="text-sm font-medium">{t('common.name')}</label>
               <Input
                 value={userForm.name}
                 onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                placeholder="اسم المستخدم"
+                placeholder={t('settings.usernamePlaceholder')}
               />
             </div>
             {!selectedUser && (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">البريد الإلكتروني</label>
+                  <label className="text-sm font-medium">{t('common.email')}</label>
                   <Input
                     type="email"
                     value={userForm.email}
@@ -1276,13 +1277,13 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">كلمة المرور</label>
+                  <label className="text-sm font-medium">{t('auth.password')}</label>
                   <div className="relative">
                     <Input
                       type={showPassword ? 'text' : 'password'}
                       value={userForm.password}
                       onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                      placeholder="كلمة المرور"
+                      placeholder={t('auth.password')}
                       className="pr-10"
                     />
                     <button
@@ -1297,22 +1298,22 @@ export default function Settings() {
               </>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">الصلاحية</label>
+              <label className="text-sm font-medium">{t('settings.role')}</label>
               <select
                 value={userForm.role}
                 onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'admin' | 'cashier' })}
                 className="w-full h-10 px-3 rounded-md bg-muted border-0"
               >
-                <option value="cashier">كاشير</option>
-                <option value="admin">مدير</option>
+                <option value="cashier">{t('settings.cashier')}</option>
+                <option value="admin">{t('settings.admin')}</option>
               </select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUserDialogOpen(false)}>إلغاء</Button>
+            <Button variant="outline" onClick={() => setUserDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSaveUser} disabled={isSavingUser}>
               {isSavingUser ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
-              حفظ
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1322,14 +1323,14 @@ export default function Settings() {
       <Dialog open={deleteUserDialogOpen} onOpenChange={setDeleteUserDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>تأكيد الحذف</DialogTitle>
+            <DialogTitle>{t('common.confirmDelete')}</DialogTitle>
           </DialogHeader>
-          <p className="py-4">هل أنت متأكد من حذف المستخدم "{selectedUser?.name}"؟</p>
+          <p className="py-4">{t('settings.confirmDeleteUser')} "{selectedUser?.name}"?</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteUserDialogOpen(false)}>إلغاء</Button>
+            <Button variant="outline" onClick={() => setDeleteUserDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={confirmDeleteUser} disabled={isSavingUser}>
               {isSavingUser ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Trash2 className="w-4 h-4 ml-2" />}
-              حذف
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
