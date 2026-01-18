@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export function ThemeSection() {
-  const { mode, color, setMode, setColor } = useTheme();
+  const { mode, color, setTheme } = useTheme();
   const { t } = useLanguage();
   
   // الحالة المؤقتة للتغييرات (لا تُحفظ حتى الضغط على زر الحفظ)
@@ -28,8 +28,7 @@ export function ThemeSection() {
   };
 
   const handleSave = () => {
-    if (pendingMode !== mode) setMode(pendingMode);
-    if (pendingColor !== color) setColor(pendingColor);
+    setTheme(pendingMode, pendingColor);
     setHasChanges(false);
     toast.success(t('settings.languageChanged'));
   };

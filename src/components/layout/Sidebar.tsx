@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
@@ -21,7 +22,6 @@ import {
   Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
@@ -61,16 +61,17 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const { user, profile, signOut } = useAuth();
   const { t, isRTL } = useLanguage();
 
-  // Close sidebar on mobile when navigating
+  // Close sidebar on mobile/tablet when navigating
   useEffect(() => {
-    if (isMobile && isOpen) {
+    if ((isMobile || isTablet) && isOpen) {
       onToggle();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, isMobile]);
+  }, [location.pathname, isMobile, isTablet]);
 
   // Close sidebar on orientation change to prevent stuck overlay
   useEffect(() => {

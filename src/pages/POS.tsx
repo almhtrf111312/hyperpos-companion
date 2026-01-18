@@ -278,9 +278,9 @@ export default function POS() {
             )}
           </div>
 
-          {/* Cart Panel - Desktop */}
-          {!isMobile && (
-            <div className="w-96 flex-shrink-0">
+          {/* Cart Panel - Desktop Only (not tablet) */}
+          {!isMobile && !isTablet && (
+            <div className="w-80 flex-shrink-0">
               <CartPanel
                 cart={cart}
                 currencies={currencies}
@@ -331,8 +331,8 @@ export default function POS() {
         onAddToCart={handleAddScannedProduct}
       />
 
-      {/* Floating Cart Button - Mobile Only */}
-      {isMobile && (
+      {/* Floating Cart Button - Mobile & Tablet */}
+      {(isMobile || isTablet) && (
         <Button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 
