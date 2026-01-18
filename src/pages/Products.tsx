@@ -51,6 +51,7 @@ import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
+import { isNativeCameraAvailable, capturePhoto, pickFromGallery } from '@/lib/camera-service';
 import { useLanguage } from '@/hooks/use-language';
 
 export default function Products() {
@@ -206,28 +207,53 @@ export default function Products() {
     if (event.target) event.target.value = '';
   };
 
-  // Camera capture handler - حفظ الحالة قبل فتح الكاميرا
+  // Camera capture handler - للمتصفح فقط (fallback)
   const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // مسح الحالة المحفوظة بعد نجاح الالتقاط
       clearFormState('product_form');
       compressImage(file);
     }
-    // Reset input for re-capture
     if (event.target) event.target.value = '';
   };
 
-  // حفظ الحالة قبل فتح الكاميرا (لاسترجاعها إذا أعاد Android تحميل التطبيق)
-  const triggerCameraCapture = () => {
-    // حفظ بيانات النموذج الحالية
-    saveFormState('product_form', {
-      formData,
-      isEditing: showEditDialog,
-      selectedProductId: selectedProduct?.id
-    });
-    // فتح الكاميرا
-    cameraInputRef.current?.click();
+  // التقاط صورة باستخدام Capacitor Camera (الأمثل للموبايل)
+  const triggerCameraCapture = async () => {
+    if (isNativeCameraAvailable()) {
+      // استخدام Capacitor Camera Plugin للموبايل
+      const result = await capturePhoto();
+      
+      if (result.success && result.image) {
+        setFormData(prev => ({ ...prev, image: result.image! }));
+        toast.success('تم التقاط الصورة بنجاح');
+      } else if (result.error && result.error !== 'cancelled') {
+        toast.error(result.error);
+      }
+    } else {
+      // Fallback للمتصفح - حفظ الحالة قبل فتح الكاميرا
+      saveFormState('product_form', {
+        formData,
+        isEditing: showEditDialog,
+        selectedProductId: selectedProduct?.id
+      });
+      cameraInputRef.current?.click();
+    }
+  };
+
+  // اختيار صورة من المعرض باستخدام Capacitor (للموبايل)
+  const triggerGalleryPick = async () => {
+    if (isNativeCameraAvailable()) {
+      const result = await pickFromGallery();
+      
+      if (result.success && result.image) {
+        setFormData(prev => ({ ...prev, image: result.image! }));
+      } else if (result.error && result.error !== 'cancelled') {
+        toast.error(result.error);
+      }
+    } else {
+      // Fallback للمتصفح
+      imageInputRef.current?.click();
+    }
   };
 
   // استرجاع بيانات النموذج عند تحميل الصفحة (إذا كانت محفوظة)
@@ -914,7 +940,7 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => imageInputRef.current?.click()}
+                      onClick={triggerGalleryPick}
                     >
                       <ImageIcon className="w-4 h-4 ml-2" />
                       إضافة صورة
@@ -1054,7 +1080,7 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => document.getElementById('edit-image-input')?.click()}
+                      onClick={triggerGalleryPick}
                     >
                       <ImageIcon className="w-4 h-4 ml-2" />
                       إضافة صورة
