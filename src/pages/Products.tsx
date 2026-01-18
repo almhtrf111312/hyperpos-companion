@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search, 
@@ -14,7 +14,8 @@ import {
   ScanLine,
   Tag,
   Image as ImageIcon,
-  Camera
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -49,9 +50,9 @@ import {
 } from '@/lib/products-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
-import { saveFormState, loadFormState, clearFormState } from '@/lib/form-persistence';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
 import { useLanguage } from '@/hooks/use-language';
+import { useCamera } from '@/hooks/use-camera';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -103,8 +104,8 @@ export default function Products() {
   // Get effective field configuration
   const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
   
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  // Use Capacitor Camera hook
+  const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({ maxSize: 640, quality: 70 });
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -152,107 +153,21 @@ export default function Products() {
     }
   }, [searchParams, categoryOptions, setSearchParams]);
 
-  // Compress image to max 640x640
-  const compressImage = (file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxSize = 640; // Max 640x640 for storage efficiency
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        setFormData(prev => ({ ...prev, image: compressedBase64 }));
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Image upload handler (from gallery/files)
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('يرجى اختيار ملف صورة صالح');
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('حجم الصورة يجب أن يكون أقل من 5 ميغابايت');
-        return;
-      }
-      compressImage(file);
+  // Handle camera capture using Capacitor Camera plugin
+  const handleCameraCapture = async () => {
+    const base64Image = await takePhoto();
+    if (base64Image) {
+      setFormData(prev => ({ ...prev, image: base64Image }));
     }
-    // Reset input for re-selection
-    if (event.target) event.target.value = '';
   };
 
-  // Camera capture handler - حفظ الحالة قبل فتح الكاميرا
-  const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // مسح الحالة المحفوظة بعد نجاح الالتقاط
-      clearFormState('product_form');
-      compressImage(file);
+  // Handle gallery selection using Capacitor Camera plugin
+  const handleGallerySelect = async () => {
+    const base64Image = await pickFromGallery();
+    if (base64Image) {
+      setFormData(prev => ({ ...prev, image: base64Image }));
     }
-    // Reset input for re-capture
-    if (event.target) event.target.value = '';
   };
-
-  // حفظ الحالة قبل فتح الكاميرا (لاسترجاعها إذا أعاد Android تحميل التطبيق)
-  const triggerCameraCapture = () => {
-    // حفظ بيانات النموذج الحالية
-    saveFormState('product_form', {
-      formData,
-      isEditing: showEditDialog,
-      selectedProductId: selectedProduct?.id
-    });
-    // فتح الكاميرا
-    cameraInputRef.current?.click();
-  };
-
-  // استرجاع بيانات النموذج عند تحميل الصفحة (إذا كانت محفوظة)
-  useEffect(() => {
-    const savedState = loadFormState<{
-      formData: typeof formData;
-      isEditing: boolean;
-      selectedProductId?: string;
-    }>('product_form');
-    
-    if (savedState) {
-      setFormData(savedState.formData);
-      if (savedState.isEditing && savedState.selectedProductId) {
-        const product = products.find(p => p.id === savedState.selectedProductId);
-        if (product) {
-          setSelectedProduct(product);
-          setShowEditDialog(true);
-        }
-      } else {
-        setShowAddDialog(true);
-      }
-      toast.info('تم استرجاع بيانات النموذج المحفوظة');
-      clearFormState('product_form');
-    }
-  }, []);
 
   // Reload categories from store
   const reloadCategories = () => {
@@ -877,21 +792,6 @@ const filteredProducts = useMemo(() => {
               )}
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={imageInputRef}
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  ref={cameraInputRef}
-                  className="hidden"
-                  onChange={handleCameraCapture}
-                />
                 <div className="flex flex-col gap-3">
                   {formData.image ? (
                     <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
@@ -914,18 +814,28 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => imageInputRef.current?.click()}
+                      onClick={handleGallerySelect}
+                      disabled={isCameraLoading}
                     >
-                      <ImageIcon className="w-4 h-4 ml-2" />
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 ml-2" />
+                      )}
                       إضافة صورة
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={triggerCameraCapture}
+                      onClick={handleCameraCapture}
+                      disabled={isCameraLoading}
                     >
-                      <Camera className="w-4 h-4 ml-2" />
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4 ml-2" />
+                      )}
                       التقاط صورة
                     </Button>
                   </div>
@@ -1017,21 +927,6 @@ const filteredProducts = useMemo(() => {
               </div>
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="edit-image-input"
-                  onChange={handleImageUpload}
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  id="edit-camera-input"
-                  onChange={handleCameraCapture}
-                />
                 <div className="flex flex-col gap-3">
                   {formData.image ? (
                     <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
@@ -1054,18 +949,28 @@ const filteredProducts = useMemo(() => {
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => document.getElementById('edit-image-input')?.click()}
+                      onClick={handleGallerySelect}
+                      disabled={isCameraLoading}
                     >
-                      <ImageIcon className="w-4 h-4 ml-2" />
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 ml-2" />
+                      )}
                       إضافة صورة
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       className="flex-1"
-                      onClick={triggerCameraCapture}
+                      onClick={handleCameraCapture}
+                      disabled={isCameraLoading}
                     >
-                      <Camera className="w-4 h-4 ml-2" />
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4 ml-2" />
+                      )}
                       التقاط صورة
                     </Button>
                   </div>
