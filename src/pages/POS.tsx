@@ -12,7 +12,7 @@ import { ShoppingCart, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductsForPOS, POSProduct, getProductByBarcode } from '@/lib/products-store';
 import { getCategoryNames } from '@/lib/categories-store';
-import { toast } from 'sonner';
+import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { playAddToCart } from '@/lib/sound-utils';
@@ -116,12 +116,9 @@ export default function POS() {
 
   const addToCart = (product: POSProduct) => {
     if (product.quantity === 0) {
-      toast.warning(`تنبيه: المنتج "${product.name}" نفذ من المخزون!`, {
-        description: 'تم إضافته للسلة رغم ذلك',
-        duration: 5000,
-      });
+      showToast.warning(`تنبيه: المنتج "${product.name}" نفذ من المخزون!`, 'تم إضافته للسلة رغم ذلك');
     } else if (product.quantity <= 5) {
-      toast.info(`تنبيه: كمية "${product.name}" منخفضة (${product.quantity} فقط)`);
+      showToast.info(`تنبيه: كمية "${product.name}" منخفضة (${product.quantity} فقط)`);
     }
     
     setCart(prev => {
@@ -138,7 +135,7 @@ export default function POS() {
     
     // Play sound effect
     playAddToCart();
-    toast.success(`تمت إضافة "${product.name}" إلى السلة`);
+    showToast.success(`تمت إضافة "${product.name}" إلى السلة`);
   };
 
   // Handle barcode scan - show product dialog instead of adding directly
@@ -150,7 +147,7 @@ export default function POS() {
       setShowScannedDialog(true);
     } else {
       setSearchQuery(barcode);
-      toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج بهذا الباركود' });
+      showToast.info(`الباركود: ${barcode}`, 'لم يتم العثور على منتج بهذا الباركود');
     }
   };
 
@@ -186,26 +183,25 @@ export default function POS() {
   usePOSShortcuts({
     onCashSale: () => {
       if (cart.length > 0) {
-        // Trigger cash sale - we'll need to expose this from CartPanel
-        toast.info('اضغط F1 لتأكيد البيع النقدي', { description: 'استخدم زر البيع النقدي في السلة' });
+        showToast.info('اضغط F1 لتأكيد البيع النقدي', 'استخدم زر البيع النقدي في السلة');
       }
     },
     onDebtSale: () => {
       if (cart.length > 0 && customerName) {
-        toast.info('اضغط F2 لتأكيد البيع بالدين', { description: 'استخدم زر الدين في السلة' });
+        showToast.info('اضغط F2 لتأكيد البيع بالدين', 'استخدم زر الدين في السلة');
       } else if (!customerName) {
-        toast.warning('يجب إدخال اسم العميل أولاً');
+        showToast.warning('يجب إدخال اسم العميل أولاً');
       }
     },
     onClearCart: () => {
       if (cart.length > 0) {
         clearCart();
-        toast.success('تم مسح السلة');
+        showToast.success('تم مسح السلة');
       }
     },
     onToggleMode: () => {
       setActiveMode(prev => prev === 'products' ? 'maintenance' : 'products');
-      toast.info(activeMode === 'products' ? 'تم التبديل إلى الصيانة' : 'تم التبديل إلى المنتجات');
+      showToast.info(activeMode === 'products' ? 'تم التبديل إلى الصيانة' : 'تم التبديل إلى المنتجات');
     },
     enabled: !isMobile,
   });
