@@ -101,8 +101,34 @@ export default function Products() {
     minStockLevel: 5,
   });
   
-  // Get effective field configuration
+  // Get effective field configuration - reload when page gains focus or storage changes
   const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
+  
+  // Reload fields config when navigating to this page or when settings change
+  useEffect(() => {
+    const reloadFieldsConfig = () => {
+      setFieldsConfig(getEffectiveFieldsConfig());
+    };
+    
+    // Reload on focus (when user comes back from settings)
+    window.addEventListener('focus', reloadFieldsConfig);
+    
+    // Reload on storage change (same tab updates)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes('hyperpos_product_fields')) {
+        reloadFieldsConfig();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Initial load
+    reloadFieldsConfig();
+    
+    return () => {
+      window.removeEventListener('focus', reloadFieldsConfig);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   
   // Use Capacitor Camera hook
   const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({ maxSize: 640, quality: 70 });
