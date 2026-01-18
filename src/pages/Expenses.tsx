@@ -66,8 +66,10 @@ import {
   RecurringExpense
 } from '@/lib/recurring-expenses-store';
 import { EVENTS } from '@/lib/events';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function Expenses() {
+  const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>(() => loadExpenses());
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => loadRecurringExpenses());
@@ -158,12 +160,12 @@ export default function Expenses() {
 
   const handleAddExpense = () => {
     if (formData.amount <= 0) {
-      toast.error('يرجى إدخال مبلغ صحيح');
+      toast.error(t('expenses.enterValidAmount'));
       return;
     }
 
     if (formData.type === 'other' && !formData.customType) {
-      toast.error('يرجى تحديد نوع المصروف');
+      toast.error(t('expenses.specifyExpenseType'));
       return;
     }
 
@@ -178,12 +180,12 @@ export default function Expenses() {
     setExpenses(loadExpenses());
     setShowAddDialog(false);
     resetForm();
-    toast.success('تم إضافة المصروف بنجاح');
+    toast.success(t('expenses.expenseAdded'));
   };
 
   const handleAddRecurringExpense = () => {
     if (!recurringForm.name || recurringForm.amount <= 0) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error(t('expenses.fillAllFields'));
       return;
     }
 
@@ -201,7 +203,7 @@ export default function Expenses() {
     setDueExpenses(getDueExpenses());
     setShowRecurringDialog(false);
     resetRecurringForm();
-    toast.success('تم إضافة المصروف الثابت بنجاح');
+    toast.success(t('expenses.fixedExpenseAdded'));
   };
 
   const handleDeleteExpense = () => {
@@ -211,7 +213,7 @@ export default function Expenses() {
     setExpenses(loadExpenses());
     setShowDeleteDialog(false);
     setSelectedExpense(null);
-    toast.success('تم حذف المصروف بنجاح');
+    toast.success(t('expenses.expenseDeleted'));
   };
 
   const handlePayRecurring = () => {
@@ -223,21 +225,21 @@ export default function Expenses() {
     setDueExpenses(getDueExpenses());
     setShowPayConfirmDialog(false);
     setSelectedRecurring(null);
-    toast.success('تم دفع المصروف بنجاح');
+    toast.success(t('expenses.expensePaid'));
   };
 
   const handleSkipRecurring = (expense: RecurringExpense) => {
     skipRecurringExpense(expense.id);
     setRecurringExpenses(loadRecurringExpenses());
     setDueExpenses(getDueExpenses());
-    toast.info('تم تخطي هذه الدفعة');
+    toast.info(t('expenses.paymentSkipped'));
   };
 
   const handleDeleteRecurring = (id: string) => {
     deleteRecurringExpense(id);
     setRecurringExpenses(loadRecurringExpenses());
     setDueExpenses(getDueExpenses());
-    toast.success('تم حذف المصروف الثابت');
+    toast.success(t('expenses.fixedExpenseDeleted'));
   };
 
   const openDeleteDialog = (expense: Expense) => {
@@ -255,8 +257,8 @@ export default function Expenses() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">المصاريف</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">إدارة المصاريف والنفقات الشهرية</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('expenses.title')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('expenses.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => {
@@ -264,14 +266,14 @@ export default function Expenses() {
             setShowRecurringDialog(true);
           }}>
             <RefreshCw className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            مصروف ثابت
+            {t('expenses.recurringExpense')}
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
             resetForm();
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            إضافة مصروف
+            {t('expenses.addExpense')}
           </Button>
         </div>
       </div>
@@ -281,7 +283,7 @@ export default function Expenses() {
         <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Bell className="w-5 h-5 text-warning" />
-            <h3 className="font-semibold text-warning">مصاريف مستحقة الدفع ({dueExpenses.length})</h3>
+            <h3 className="font-semibold text-warning">{t('expenses.dueExpenses')} ({dueExpenses.length})</h3>
           </div>
           <div className="space-y-2">
             {dueExpenses.map(expense => (
@@ -293,11 +295,11 @@ export default function Expenses() {
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => handleSkipRecurring(expense)}>
                     <X className="w-4 h-4 ml-1" />
-                    تخطي
+                    {t('expenses.skip')}
                   </Button>
                   <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => openPayConfirmDialog(expense)}>
                     <Check className="w-4 h-4 ml-1" />
-                    دفع
+                    {t('expenses.pay')}
                   </Button>
                 </div>
               </div>
@@ -315,7 +317,7 @@ export default function Expenses() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalThisMonth.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">هذا الشهر</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('expenses.thisMonth')}</p>
             </div>
           </div>
         </div>
@@ -326,7 +328,7 @@ export default function Expenses() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.monthlyCount}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">مصروف الشهر</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('expenses.monthlyExpenses')}</p>
             </div>
           </div>
         </div>
@@ -337,7 +339,7 @@ export default function Expenses() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalExpenses.toLocaleString()}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">الإجمالي</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('expenses.totalExpenses')}</p>
             </div>
           </div>
         </div>
@@ -351,7 +353,7 @@ export default function Expenses() {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{recurringExpenses.length}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">مصاريف ثابتة</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('expenses.fixedExpenses')}</p>
             </div>
           </div>
         </div>
@@ -360,7 +362,7 @@ export default function Expenses() {
       {/* Expense Types Summary */}
       {Object.keys(stats.byType).length > 0 && (
         <div className="bg-card rounded-xl border border-border p-4">
-          <h3 className="text-sm font-medium mb-3">توزيع مصاريف الشهر</h3>
+          <h3 className="text-sm font-medium mb-3">{t('expenses.monthlyDistribution')}</h3>
           <div className="flex flex-wrap gap-2">
             {Object.entries(stats.byType).map(([type, amount]) => (
               <div key={type} className="px-3 py-2 bg-muted rounded-lg">
@@ -377,7 +379,7 @@ export default function Expenses() {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="بحث في المصاريف..."
+          placeholder={t('expenses.searchExpenses')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pr-9 md:pr-10 bg-muted border-0"
@@ -389,8 +391,8 @@ export default function Expenses() {
         {filteredExpenses.length === 0 ? (
           <div className="bg-card rounded-xl border border-border p-8 text-center">
             <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground">لا توجد مصاريف مسجلة</p>
-            <p className="text-sm text-muted-foreground">ابدأ بإضافة مصروف جديد</p>
+            <p className="text-muted-foreground">{t('expenses.noExpenses')}</p>
+            <p className="text-sm text-muted-foreground">{t('expenses.startAdding')}</p>
           </div>
         ) : (
           filteredExpenses.map((expense, index) => (
@@ -424,7 +426,7 @@ export default function Expenses() {
                 <div className="mt-3 pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    توزيع على الشركاء:
+                    {t('expenses.partnerDistribution')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {expense.distributions.map(dist => (
@@ -457,19 +459,19 @@ export default function Expenses() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-primary" />
-              إضافة مصروف جديد
+              {t('expenses.addNewExpense')}
             </DialogTitle>
-            <DialogDescription>سجل مصروف جديد وحدد نوعه والمبلغ</DialogDescription>
+            <DialogDescription>{t('expenses.addNewExpenseDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">نوع المصروف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.expenseType')}</label>
               <Select
                 value={formData.type}
                 onValueChange={(value: ExpenseType) => setFormData({ ...formData, type: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر نوع المصروف" />
+                  <SelectValue placeholder={t('expenses.selectExpenseType')} />
                 </SelectTrigger>
                 <SelectContent>
                   {expenseTypes.map(type => (
@@ -483,9 +485,9 @@ export default function Expenses() {
 
             {formData.type === 'other' && (
               <div>
-                <label className="text-sm font-medium mb-1.5 block">اسم المصروف *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('expenses.expenseName')}</label>
                 <Input
-                  placeholder="مثال: صيانة المكيف"
+                  placeholder={t('expenses.expenseNamePlaceholder')}
                   value={formData.customType}
                   onChange={(e) => setFormData({ ...formData, customType: e.target.value })}
                 />
@@ -493,7 +495,7 @@ export default function Expenses() {
             )}
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">المبلغ ($) *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.amount')}</label>
               <Input
                 type="number"
                 placeholder="0"
@@ -504,7 +506,7 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">التاريخ *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.date')}</label>
               <Input
                 type="date"
                 value={formData.date}
@@ -513,9 +515,9 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.notes')}</label>
               <Textarea
-                placeholder="أي ملاحظات إضافية..."
+                placeholder={t('expenses.notesPlaceholder')}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
@@ -524,11 +526,11 @@ export default function Expenses() {
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
-                إلغاء
+                {t('expenses.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddExpense}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ
+                {t('expenses.save')}
               </Button>
             </div>
           </div>
@@ -541,28 +543,28 @@ export default function Expenses() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-primary" />
-              إضافة مصروف ثابت/متكرر
+              {t('expenses.addRecurring')}
             </DialogTitle>
-            <DialogDescription>أضف مصروف يتكرر بشكل دوري</DialogDescription>
+            <DialogDescription>{t('expenses.addRecurringDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">اسم المصروف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.expenseName')}</label>
               <Input
-                placeholder="مثال: أجرة الصانع"
+                placeholder={t('expenses.expenseNamePlaceholder')}
                 value={recurringForm.name}
                 onChange={(e) => setRecurringForm({ ...recurringForm, name: e.target.value })}
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">نوع المصروف *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.expenseType')}</label>
               <Select
                 value={recurringForm.type}
                 onValueChange={(value: ExpenseType) => setRecurringForm({ ...recurringForm, type: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر نوع المصروف" />
+                  <SelectValue placeholder={t('expenses.selectExpenseType')} />
                 </SelectTrigger>
                 <SelectContent>
                   {expenseTypes.map(type => (
@@ -575,7 +577,7 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">المبلغ ($) *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.amount')}</label>
               <Input
                 type="number"
                 placeholder="0"
@@ -586,13 +588,13 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">التكرار كل *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.repeatEvery')}</label>
               <Select
                 value={String(recurringForm.intervalDays)}
                 onValueChange={(value) => setRecurringForm({ ...recurringForm, intervalDays: Number(value) })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر فترة التكرار" />
+                  <SelectValue placeholder={t('expenses.selectRepeatInterval')} />
                 </SelectTrigger>
                 <SelectContent>
                   {recurringIntervals.map(interval => (
@@ -605,7 +607,7 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">تاريخ البدء *</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.startDate')}</label>
               <Input
                 type="date"
                 value={recurringForm.startDate}
@@ -614,9 +616,9 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">ملاحظات</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('expenses.notes')}</label>
               <Textarea
-                placeholder="أي ملاحظات إضافية..."
+                placeholder={t('expenses.notesPlaceholder')}
                 value={recurringForm.notes}
                 onChange={(e) => setRecurringForm({ ...recurringForm, notes: e.target.value })}
                 rows={2}
@@ -625,11 +627,11 @@ export default function Expenses() {
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowRecurringDialog(false)}>
-                إلغاء
+                {t('expenses.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddRecurringExpense}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ
+                {t('expenses.save')}
               </Button>
             </div>
           </div>
@@ -642,22 +644,22 @@ export default function Expenses() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="w-5 h-5 text-primary" />
-              إدارة المصاريف الثابتة
+              {t('expenses.manageFixed')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-4 max-h-96 overflow-y-auto">
             {recurringExpenses.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">لا توجد مصاريف ثابتة</p>
+              <p className="text-center text-muted-foreground py-8">{t('expenses.noFixedExpenses')}</p>
             ) : (
               recurringExpenses.map(expense => (
                 <div key={expense.id} className="flex items-center justify-between bg-muted rounded-lg p-3">
                   <div>
                     <p className="font-medium">{expense.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      ${expense.amount} - كل {expense.intervalDays} يوم
+                      ${expense.amount} - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      الاستحقاق القادم: {expense.nextDueDate}
+                      {t('expenses.nextDue')}: {expense.nextDueDate}
                     </p>
                   </div>
                   <Button 
@@ -679,16 +681,16 @@ export default function Expenses() {
       <AlertDialog open={showPayConfirmDialog} onOpenChange={setShowPayConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد دفع المصروف</AlertDialogTitle>
+            <AlertDialogTitle>{t('expenses.confirmPayExpense')}</AlertDialogTitle>
             <AlertDialogDescription>
-              هل تريد دفع "{selectedRecurring?.name}" بقيمة ${selectedRecurring?.amount.toLocaleString()}؟
+              {t('expenses.payExpenseConfirm').replace('{name}', selectedRecurring?.name || '').replace('{amount}', selectedRecurring?.amount.toLocaleString() || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>{t('expenses.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handlePayRecurring} className="bg-success hover:bg-success/90">
               <Check className="w-4 h-4 ml-2" />
-              دفع الآن
+              {t('expenses.payNow')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -698,15 +700,15 @@ export default function Expenses() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogTitle>{t('expenses.confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف المصروف "{selectedExpense?.typeLabel}" بقيمة ${selectedExpense?.amount.toLocaleString()} نهائياً.
+              {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', selectedExpense?.amount.toLocaleString() || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>{t('expenses.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteExpense} className="bg-destructive hover:bg-destructive/90">
-              حذف
+              {t('expenses.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
