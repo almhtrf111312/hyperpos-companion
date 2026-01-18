@@ -53,10 +53,11 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  defaultCollapsed?: boolean;
 }
 
-export function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
