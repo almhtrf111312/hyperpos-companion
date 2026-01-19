@@ -1,5 +1,5 @@
 import { emitEvent, EVENTS } from './events';
-import { deleteDebtByInvoiceId } from './debts-store';
+import { deleteDebtByInvoiceId, loadDebts, recordPayment } from './debts-store';
 import { revertProfitDistribution } from './partners-store';
 import { safeSave, safeLoad } from './safe-storage';
 import { toast } from 'sonner';
@@ -183,4 +183,24 @@ export const getInvoiceStats = () => {
     pendingDebts: invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending').length,
     totalProfit: invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
   };
+};
+
+// تحديد الفاتورة كمدفوعة مع مزامنة الدين
+export const markInvoicePaidWithDebtSync = (invoiceId: string): boolean => {
+  const invoice = getInvoiceById(invoiceId);
+  if (!invoice) return false;
+  
+  // تحديث الفاتورة
+  updateInvoice(invoiceId, { status: 'paid', paymentType: 'cash' });
+  
+  // مزامنة الدين - تحديده كمدفوع بالكامل
+  if (invoice.paymentType === 'debt') {
+    const debts = loadDebts();
+    const debt = debts.find(d => d.invoiceId === invoiceId);
+    if (debt && debt.status !== 'fully_paid') {
+      recordPayment(debt.id, debt.remainingDebt);
+    }
+  }
+  
+  return true;
 };

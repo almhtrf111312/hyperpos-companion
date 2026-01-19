@@ -53,6 +53,7 @@ import {
   loadInvoices, 
   deleteInvoice, 
   updateInvoice,
+  markInvoicePaidWithDebtSync,
   Invoice, 
   InvoiceType,
   getInvoiceStats 
@@ -153,9 +154,9 @@ export default function Invoices() {
   };
 
   const handleMarkPaid = (invoice: Invoice) => {
-    updateInvoice(invoice.id, { status: 'paid', paymentType: 'cash' });
+    markInvoicePaidWithDebtSync(invoice.id);
     setInvoices(loadInvoices());
-    toast.success('تم تحديث حالة الفاتورة');
+    toast.success('تم تحديث حالة الفاتورة والدين');
   };
 
   const handlePrint = (invoice: Invoice) => {

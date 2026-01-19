@@ -66,7 +66,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   return (
     <div 
       className={cn(
-        "rounded-2xl border p-6 card-hover",
+        "rounded-xl border p-3 md:p-4 card-hover",
         variantStyles[variant],
         linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50"
       )}
@@ -74,17 +74,17 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
       role={linkTo ? "button" : undefined}
       tabIndex={linkTo ? 0 : undefined}
     >
-      <div className="flex items-start justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <div className="space-y-1">
-            <p className="text-3xl font-bold text-foreground count-up">{value}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{title}</p>
+          <div className="space-y-0.5">
+            <p className="text-lg md:text-xl font-bold text-foreground count-up">{value}</p>
             {subtitle && (
-              <p className="text-sm text-muted-foreground">{subtitle}</p>
+              <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
             )}
           </div>
           {trend && (
-            <div className={cn("flex items-center gap-1 text-sm font-medium", getTrendColor())}>
+            <div className={cn("flex items-center gap-1 text-xs font-medium", getTrendColor())}>
               {getTrendIcon()}
               <span>{Math.abs(trend.value)}%</span>
               <span className="text-muted-foreground font-normal">{trend.label}</span>
@@ -92,10 +92,10 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
           )}
         </div>
         <div className={cn(
-          "p-3 rounded-xl",
+          "p-2 rounded-lg shrink-0",
           iconBgStyles[variant]
         )}>
-          <div className={iconColorStyles[variant]}>
+          <div className={cn(iconColorStyles[variant], "[&>svg]:w-4 [&>svg]:h-4 md:[&>svg]:w-5 md:[&>svg]:h-5")}>
             {icon}
           </div>
         </div>
