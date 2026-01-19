@@ -48,6 +48,7 @@ import {
   getStatus,
   Product 
 } from '@/lib/products-store';
+import { uploadProductImage } from '@/lib/image-upload';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
@@ -195,7 +196,15 @@ export default function Products() {
   const handleCameraCapture = async () => {
     const base64Image = await takePhoto();
     if (base64Image) {
-      setFormData(prev => ({ ...prev, image: base64Image }));
+      const toastId = toast.loading('جاري رفع الصورة...');
+      const imageUrl = await uploadProductImage(base64Image);
+      toast.dismiss(toastId);
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        toast.success('تم رفع الصورة بنجاح');
+      } else {
+        toast.error('فشل في رفع الصورة');
+      }
     }
   };
 
@@ -203,7 +212,15 @@ export default function Products() {
   const handleGallerySelect = async () => {
     const base64Image = await pickFromGallery();
     if (base64Image) {
-      setFormData(prev => ({ ...prev, image: base64Image }));
+      const toastId = toast.loading('جاري رفع الصورة...');
+      const imageUrl = await uploadProductImage(base64Image);
+      toast.dismiss(toastId);
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        toast.success('تم رفع الصورة بنجاح');
+      } else {
+        toast.error('فشل في رفع الصورة');
+      }
     }
   };
 
