@@ -118,14 +118,28 @@ export const recordPayment = (debtId: string, amount: number): Debt | null => {
   return debts[index];
 };
 
-// تسجيل الدفعة مع مزامنة الفاتورة
+// تسجيل الدفعة مع مزامنة الفاتورة (جزئياً وكاملاً)
 export const recordPaymentWithInvoiceSync = (debtId: string, amount: number): Debt | null => {
   const debt = recordPayment(debtId, amount);
   if (!debt) return null;
   
-  // مزامنة مع الفاتورة إذا تم السداد الكامل
-  if (debt.status === 'fully_paid' && !debt.isCashDebt && debt.invoiceId) {
-    updateInvoice(debt.invoiceId, { status: 'paid', paymentType: 'cash' });
+  // مزامنة مع الفاتورة لأي دفعة (جزئية أو كاملة)
+  if (!debt.isCashDebt && debt.invoiceId) {
+    if (debt.status === 'fully_paid') {
+      // السداد الكامل - تحديث الفاتورة كمدفوعة
+      updateInvoice(debt.invoiceId, { 
+        status: 'paid', 
+        paymentType: 'cash',
+        debtPaid: debt.totalDebt,
+        debtRemaining: 0
+      });
+    } else {
+      // الدفع الجزئي - تحديث المبالغ المدفوعة والمتبقية
+      updateInvoice(debt.invoiceId, { 
+        debtPaid: debt.totalPaid,
+        debtRemaining: debt.remainingDebt
+      });
+    }
   }
   
   return debt;
