@@ -57,7 +57,11 @@ function formatTimeAgo(date: Date): string {
   return `منذ ${diffDays} يوم`;
 }
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  compact?: boolean;
+}
+
+export function NotificationBell({ compact = false }: NotificationBellProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const { 
@@ -86,8 +90,14 @@ export function NotificationBell() {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button className="relative p-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
-          <Bell className="w-5 h-5 text-muted-foreground" />
+        <button className={cn(
+          "relative rounded-xl bg-muted hover:bg-muted/80 transition-colors",
+          compact ? "p-2" : "p-3"
+        )}>
+          <Bell className={cn(
+            "text-muted-foreground",
+            compact ? "w-4 h-4" : "w-5 h-5"
+          )} />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
               {unreadCount > 9 ? '9+' : unreadCount}
