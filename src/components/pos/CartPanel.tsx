@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   ShoppingCart, 
   Plus, 
@@ -12,7 +12,9 @@ import {
   Send,
   X,
   UserPlus,
-  Check
+  Check,
+  Search,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,9 +26,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { showToast } from '@/lib/toast-config';
 import { addInvoice } from '@/lib/invoices-store';
-import { findOrCreateCustomer, updateCustomerStats, loadCustomers } from '@/lib/customers-store';
+import { findOrCreateCustomer, updateCustomerStats, loadCustomers, Customer } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
 import { loadProducts, deductStockBatch, checkStockAvailability } from '@/lib/products-store';
 import { distributeDetailedProfit } from '@/lib/partners-store';
@@ -91,10 +99,22 @@ export function CartPanel({
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '' });
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [customerPhone, setCustomerPhone] = useState('');
+  
+  // Fixed amount discount feature
+  const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
+  
+  // Smart customer search feature
+  const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountAmount = (subtotal * discount) / 100;
-  const total = subtotal - discountAmount;
+  
+  // Calculate discount based on type
+  const discountAmount = discountType === 'percent' 
+    ? (subtotal * discount) / 100 
+    : Math.min(discount, subtotal); // Fixed amount should not exceed subtotal
+  
+  const total = Math.max(0, subtotal - discountAmount);
   const totalInCurrency = total * selectedCurrency.rate;
 
   const handleCashSale = () => {
@@ -166,9 +186,10 @@ export function CartPanel({
       });
     });
     
-    // Apply discount to profit
-    const discountedProfit = totalProfit * (1 - discount / 100);
-    const discountMultiplier = 1 - discount / 100;
+    // Apply discount to profit - use actual discount ratio from amounts
+    const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+    const discountedProfit = totalProfit * (1 - discountRatio);
+    const discountMultiplier = 1 - discountRatio;
     
     // Create invoice
     const invoice = addInvoice({
@@ -293,9 +314,10 @@ export function CartPanel({
       });
     });
     
-    // Apply discount to profit
-    const discountedProfit = totalProfit * (1 - discount / 100);
-    const discountMultiplier = 1 - discount / 100;
+    // Apply discount to profit - use actual discount ratio from amounts
+    const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+    const discountedProfit = totalProfit * (1 - discountRatio);
+    const discountMultiplier = 1 - discountRatio;
     
     // Create invoice
     const invoice = addInvoice({
@@ -376,6 +398,30 @@ export function CartPanel({
     showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
     setShowDebtDialog(false);
     onClearCart();
+  };
+
+  // Smart customer search handler
+  const handleCustomerSearch = (value: string) => {
+    onCustomerNameChange(value);
+    if (value.length >= 2) {
+      const customers = loadCustomers();
+      const matches = customers.filter(c => 
+        c.name.toLowerCase().includes(value.toLowerCase()) ||
+        (c.phone && c.phone.includes(value))
+      ).slice(0, 5); // Max 5 results
+      setCustomerSuggestions(matches);
+      setShowSuggestions(matches.length > 0);
+    } else {
+      setShowSuggestions(false);
+      setCustomerSuggestions([]);
+    }
+  };
+
+  const selectCustomer = (customer: Customer) => {
+    onCustomerNameChange(customer.name);
+    setCustomerPhone(customer.phone || '');
+    setShowSuggestions(false);
+    setCustomerSuggestions([]);
   };
 
   const handleAddCustomer = () => {
@@ -521,17 +567,52 @@ export function CartPanel({
             </div>
           </div>
 
-          {/* Customer Name */}
+          {/* Customer Name with Autocomplete */}
           <div className="mt-3 flex gap-2">
             <div className="flex-1 relative">
-              <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
               <Input
                 type="text"
                 placeholder={t('pos.customerName')}
                 value={customerName}
-                onChange={(e) => onCustomerNameChange(e.target.value)}
+                onChange={(e) => handleCustomerSearch(e.target.value)}
+                onFocus={() => {
+                  if (customerName.length >= 2 && customerSuggestions.length > 0) {
+                    setShowSuggestions(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click on suggestions
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
                 className="pr-9 bg-muted border-0 h-9 md:h-10 text-sm"
               />
+              {/* Customer Suggestions Dropdown */}
+              {showSuggestions && customerSuggestions.length > 0 && (
+                <div className="absolute top-full right-0 left-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+                  <Command className="bg-transparent">
+                    <CommandList>
+                      <CommandGroup>
+                        {customerSuggestions.map((customer) => (
+                          <CommandItem
+                            key={customer.id}
+                            onSelect={() => selectCustomer(customer)}
+                            className="cursor-pointer px-3 py-2 hover:bg-muted flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <User className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="font-medium text-sm">{customer.name}</span>
+                            </div>
+                            {customer.phone && (
+                              <span className="text-xs text-muted-foreground">{customer.phone}</span>
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
             </div>
             <Button 
               variant="outline" 
@@ -613,17 +694,41 @@ export function CartPanel({
             ))}
           </div>
 
-          {/* Discount */}
+          {/* Discount with Type Toggle */}
           <div className="flex items-center gap-2">
-            <Percent className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            {/* Discount Type Toggle */}
+            <div className="flex rounded-lg overflow-hidden border border-border flex-shrink-0">
+              <button
+                onClick={() => setDiscountType('percent')}
+                className={cn(
+                  "px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  discountType === 'percent' 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <Percent className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setDiscountType('fixed')}
+                className={cn(
+                  "px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  discountType === 'fixed' 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <Input
               type="number"
-              placeholder="خصم %"
+              placeholder={discountType === 'percent' ? 'خصم %' : 'خصم $'}
               value={discount || ''}
               onChange={(e) => onDiscountChange(Number(e.target.value))}
               className="bg-muted border-0 h-9 text-sm"
               min="0"
-              max="100"
+              max={discountType === 'percent' ? 100 : undefined}
             />
           </div>
 
@@ -635,7 +740,7 @@ export function CartPanel({
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-success">
-                <span>{t('pos.discount')} ({discount}%)</span>
+                <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
                 <span>-${discountAmount.toLocaleString()}</span>
               </div>
             )}

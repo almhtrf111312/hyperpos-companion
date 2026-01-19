@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
   Plus,
@@ -39,6 +40,7 @@ import { useLanguage } from '@/hooks/use-language';
 export default function Debts() {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -90,6 +92,21 @@ export default function Debts() {
       window.removeEventListener('focus', loadData);
     };
   }, []);
+
+  // Auto-open payment dialog when coming from invoices page
+  useEffect(() => {
+    const invoiceId = searchParams.get('invoiceId');
+    const autoOpen = searchParams.get('autoOpenPayment');
+    
+    if (invoiceId && autoOpen === 'true' && debts.length > 0) {
+      const targetDebt = debts.find(d => d.invoiceId === invoiceId);
+      if (targetDebt && targetDebt.remainingDebt > 0) {
+        openPaymentDialog(targetDebt);
+        // Clear URL params after opening
+        setSearchParams({});
+      }
+    }
+  }, [debts, searchParams, setSearchParams]);
 
   const filteredDebts = debts.filter(debt => {
     const matchesSearch = debt.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
