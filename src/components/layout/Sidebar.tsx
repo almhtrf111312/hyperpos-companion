@@ -26,6 +26,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
+import { NotificationBell } from './NotificationBell';
 
 interface NavItem {
   icon: React.ElementType;
@@ -158,31 +159,38 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
               </div>
             )}
           </div>
-          {isMobile ? (
-            <button
-              onClick={onToggle}
-              className="w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors"
-            >
-              <X className="w-4 h-4 text-sidebar-foreground" />
-            </button>
-          ) : (
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className={cn(
-                "w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors",
-                effectiveCollapsed && (isRTL ? "absolute -left-4 top-6" : "absolute -right-4 top-6"),
-                effectiveCollapsed && "bg-primary hover:bg-primary/90"
-              )}
-            >
-              <ChevronRight className={cn(
-                "w-4 h-4 transition-transform duration-300",
-                // Flip arrow direction based on RTL and collapsed state
-                effectiveCollapsed 
-                  ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
-                  : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
-              )} />
-            </button>
-          )}
+          
+          {/* أزرار التحكم - الجرس + زر الطي/الإغلاق */}
+          <div className="flex items-center gap-1">
+            {/* جرس الإشعارات */}
+            <NotificationBell compact={true} />
+            
+            {isMobile ? (
+              <button
+                onClick={onToggle}
+                className="w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors"
+              >
+                <X className="w-4 h-4 text-sidebar-foreground" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setCollapsed(!collapsed)}
+                className={cn(
+                  "w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors",
+                  effectiveCollapsed && (isRTL ? "absolute -left-4 top-6" : "absolute -right-4 top-6"),
+                  effectiveCollapsed && "bg-primary hover:bg-primary/90"
+                )}
+              >
+                <ChevronRight className={cn(
+                  "w-4 h-4 transition-transform duration-300",
+                  // Flip arrow direction based on RTL and collapsed state
+                  effectiveCollapsed 
+                    ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
+                    : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
+                )} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}

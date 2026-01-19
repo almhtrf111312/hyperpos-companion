@@ -1,6 +1,5 @@
 import { ReactNode, useState, useCallback } from 'react';
 import { Sidebar, MobileMenuTrigger } from './Sidebar';
-import { NotificationBell } from './NotificationBell';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 import { useLanguage } from '@/hooks/use-language';
@@ -36,13 +35,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         <MobileMenuTrigger onClick={toggleSidebar} />
       )}
 
-      {/* Top bar with notifications - centered position */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30">
-        <NotificationBell />
-      </div>
-      
-      {/* Main content - margin based on RTL/LTR with increased top padding */}
-      <main className={`min-h-screen transition-all duration-300 pt-20 ${
+      {/* Main content - margin based on RTL/LTR */}
+      <main className={`min-h-screen transition-all duration-300 pt-4 ${
         isRTL 
           ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64') 
           : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
