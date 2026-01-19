@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   loadDebts, 
   addDebt, 
-  recordPayment,
+  recordPaymentWithInvoiceSync,
   getDebtsStats,
   Debt 
 } from '@/lib/debts-store';
@@ -126,7 +126,7 @@ export default function Debts() {
     // Calculate payment ratio for partial profit confirmation
     const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
     
-    recordPayment(selectedDebt.id, paymentAmount);
+    recordPaymentWithInvoiceSync(selectedDebt.id, paymentAmount);
     
     // Confirm pending profits proportionally to payment
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);

@@ -1,5 +1,6 @@
 import { loadCustomers, saveCustomers } from './customers-store';
 import { emitEvent, EVENTS } from './events';
+import { updateInvoice } from './invoices-store';
 
 const DEBTS_STORAGE_KEY = 'hyperpos_debts_v1';
 
@@ -115,6 +116,19 @@ export const recordPayment = (debtId: string, amount: number): Debt | null => {
 
   saveDebts(debts);
   return debts[index];
+};
+
+// تسجيل الدفعة مع مزامنة الفاتورة
+export const recordPaymentWithInvoiceSync = (debtId: string, amount: number): Debt | null => {
+  const debt = recordPayment(debtId, amount);
+  if (!debt) return null;
+  
+  // مزامنة مع الفاتورة إذا تم السداد الكامل
+  if (debt.status === 'fully_paid' && !debt.isCashDebt && debt.invoiceId) {
+    updateInvoice(debt.invoiceId, { status: 'paid', paymentType: 'cash' });
+  }
+  
+  return debt;
 };
 
 export const getDebtsStats = () => {
