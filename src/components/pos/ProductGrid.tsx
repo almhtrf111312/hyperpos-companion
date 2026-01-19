@@ -111,7 +111,7 @@ export function ProductGrid({
       </div>
 
       {/* Products Grid */}
-      <div className="flex-1 p-3 md:p-4 overflow-y-auto">
+      <div className="flex-1 p-3 md:p-4 overflow-y-auto pb-28">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
           {filteredProducts.map((product, index) => (
             <button

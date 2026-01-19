@@ -44,8 +44,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Main content - margin based on RTL/LTR with increased top padding */}
       <main className={`min-h-screen transition-all duration-300 pt-20 ${
         isRTL 
-          ? (isMobile ? 'ml-0' : sidebarCollapsed ? 'ml-20' : 'ml-64') 
-          : (isMobile ? 'mr-0' : sidebarCollapsed ? 'mr-20' : 'mr-64')
+          ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64') 
+          : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
       }`}>
         {children}
       </main>
