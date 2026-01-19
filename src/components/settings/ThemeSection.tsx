@@ -140,23 +140,6 @@ export function ThemeSection() {
         </div>
       </div>
 
-      {/* Preview */}
-      <div className="mt-6 p-4 rounded-xl bg-muted border border-border">
-        <p className="text-sm text-muted-foreground mb-3">
-          {t('settings.themePreview')}
-        </p>
-        <div className="flex items-center gap-3">
-          <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm">
-            {t('common.save')}
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium text-sm">
-            {t('common.cancel')}
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-destructive text-destructive-foreground font-medium text-sm">
-            {t('common.delete')}
-          </button>
-        </div>
-      </div>
 
       {/* Save/Cancel Buttons */}
       {hasChanges && (
