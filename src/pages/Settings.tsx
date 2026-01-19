@@ -1207,7 +1207,7 @@ export default function Settings() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header with Save Button */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 pr-14 md:pr-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
