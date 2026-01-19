@@ -68,7 +68,7 @@ export function ProductGrid({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Search and Categories */}
       <div className="p-3 md:p-4 border-b border-border space-y-3">
         <div className="flex gap-2">

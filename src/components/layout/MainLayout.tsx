@@ -29,7 +29,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
+      <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} defaultCollapsed={isTablet} />
       
       {/* Mobile menu trigger - positioned to not overlap with notification bar */}
       {isMobile && !sidebarOpen && (
