@@ -65,13 +65,18 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const { user, profile, signOut } = useAuth();
   const { t, isRTL } = useLanguage();
 
-  // Close sidebar on mobile/tablet when navigating
+  // Close sidebar on mobile, collapse on tablet when navigating
   useEffect(() => {
-    if ((isMobile || isTablet) && isOpen) {
+    // على iPad: طي القائمة (العودة للأيقونات فقط)
+    if (isTablet && !collapsed) {
+      setCollapsed(true);
+    }
+    // على الموبايل: إغلاق القائمة بالكامل
+    if (isMobile && isOpen) {
       onToggle();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, isMobile, isTablet]);
+  }, [location.pathname]);
 
   // Close sidebar on orientation change to prevent stuck overlay
   useEffect(() => {
