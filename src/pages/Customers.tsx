@@ -172,7 +172,7 @@ export default function Customers() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('customers.pageTitle')}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>

@@ -85,7 +85,7 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pr-14 md:pr-0">
         <div>
           <h1 className="text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
           <p className="text-muted-foreground mt-1">{today}</p>
