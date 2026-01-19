@@ -1,11 +1,27 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://propos.lovable.app',
+  'https://id-preview--f922b973-c15b-4c58-86ca-0f04c8a8dada.lovable.app',
+  'capacitor://localhost',
+  'http://localhost:5173',
+  'http://localhost:8080'
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Credentials': 'true',
+  };
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -69,7 +85,7 @@ Deno.serve(async (req) => {
       .eq('is_active', true)
       .single()
 
-    // If not found, try with ILIKE for case-insensitive match
+    // If not found, try with case-insensitive match
     if (codeError || !activationCode) {
       console.log('Exact match failed, trying case-insensitive search')
       const { data: codes } = await supabaseAdmin
@@ -103,8 +119,50 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if code has reached max uses
-    if (activationCode.current_uses >= activationCode.max_uses) {
+    // ATOMIC UPDATE: Increment usage counter and check max_uses in one operation
+    // This prevents race condition where multiple requests can pass the check
+    const { data: updatedCode, error: atomicUpdateError } = await supabaseAdmin
+      .rpc('increment_activation_code_usage', { 
+        code_id: activationCode.id,
+        max_allowed: activationCode.max_uses
+      })
+
+    // If RPC doesn't exist, fall back to optimistic update with check
+    if (atomicUpdateError?.message?.includes('function') || atomicUpdateError?.code === '42883') {
+      console.log('Falling back to optimistic update')
+      
+      // Check current uses first
+      if (activationCode.current_uses >= activationCode.max_uses) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'كود التفعيل تم استخدامه بالكامل' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Try to increment with a WHERE clause to prevent race condition
+      const { data: updateResult, error: updateErr } = await supabaseAdmin
+        .from('activation_codes')
+        .update({ current_uses: activationCode.current_uses + 1 })
+        .eq('id', activationCode.id)
+        .lt('current_uses', activationCode.max_uses)
+        .select()
+        .single()
+
+      if (updateErr || !updateResult) {
+        console.log('Race condition detected or code exhausted:', updateErr)
+        return new Response(
+          JSON.stringify({ success: false, error: 'كود التفعيل تم استخدامه بالكامل' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    } else if (atomicUpdateError) {
+      console.error('Atomic update error:', atomicUpdateError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'حدث خطأ أثناء التحقق من الكود' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    } else if (updatedCode === false || updatedCode === null) {
+      // RPC returned false meaning code was exhausted
       return new Response(
         JSON.stringify({ success: false, error: 'كود التفعيل تم استخدامه بالكامل' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -161,15 +219,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Increment the usage counter
-    const { error: incrementError } = await supabaseAdmin
-      .from('activation_codes')
-      .update({ current_uses: activationCode.current_uses + 1 })
-      .eq('id', activationCode.id)
-
-    if (incrementError) {
-      console.error('Error incrementing usage:', incrementError)
-    }
+    console.log('License activated successfully for user:', user.id)
 
     return new Response(
       JSON.stringify({
@@ -184,7 +234,7 @@ Deno.serve(async (req) => {
     console.error('Error:', error)
     return new Response(
       JSON.stringify({ success: false, error: 'حدث خطأ غير متوقع' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })
