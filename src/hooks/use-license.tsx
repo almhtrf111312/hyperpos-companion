@@ -103,10 +103,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error('Error checking license:', error);
+      // On network error, allow the user to proceed (graceful degradation)
+      // They're already authenticated, so don't block them
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: 'فشل في التحقق من الترخيص',
+        isValid: true, // Allow access on network failure
+        hasLicense: true, // Assume they have a license
+        needsActivation: false,
+        error: 'فشل في التحقق من الترخيص - وضع غير متصل',
       }));
     }
   }, [user]);
