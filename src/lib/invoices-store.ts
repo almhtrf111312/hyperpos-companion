@@ -40,6 +40,9 @@ export interface Invoice {
   productType?: string;
   partsCost?: number;
   profit?: number;
+  // Debt tracking fields for partial payments sync
+  debtPaid?: number;
+  debtRemaining?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -190,8 +193,13 @@ export const markInvoicePaidWithDebtSync = (invoiceId: string): boolean => {
   const invoice = getInvoiceById(invoiceId);
   if (!invoice) return false;
   
-  // تحديث الفاتورة
-  updateInvoice(invoiceId, { status: 'paid', paymentType: 'cash' });
+  // تحديث الفاتورة مع تصفير المتبقي
+  updateInvoice(invoiceId, { 
+    status: 'paid', 
+    paymentType: 'cash',
+    debtPaid: invoice.totalInCurrency || invoice.total,
+    debtRemaining: 0
+  });
   
   // مزامنة الدين - تحديده كمدفوع بالكامل
   if (invoice.paymentType === 'debt') {

@@ -611,7 +611,13 @@ ${footer}`;
                           {invoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
                         </Badge>
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
-                          <Badge variant="destructive">{t('invoices.unpaid')}</Badge>
+                          invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
+                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
+                              مدفوع جزئياً
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">{t('invoices.unpaid')}</Badge>
+                          )
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
@@ -627,6 +633,11 @@ ${footer}`;
                       <p className="font-bold text-lg">
                         {invoice.currencySymbol}{invoice.totalInCurrency.toLocaleString()}
                       </p>
+                      {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          المدفوع: {invoice.currencySymbol}{invoice.debtPaid.toLocaleString()} / المتبقي: {invoice.currencySymbol}{(invoice.debtRemaining || 0).toLocaleString()}
+                        </p>
+                      )}
                       {invoice.profit !== undefined && invoice.profit > 0 && (
                         <p className="text-xs text-success">
                           ربح: ${invoice.profit.toLocaleString()}
