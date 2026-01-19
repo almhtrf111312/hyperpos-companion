@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   Search, 
@@ -62,6 +63,7 @@ import { printHTML } from '@/lib/print-utils';
 
 export default function Invoices() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -157,6 +159,11 @@ export default function Invoices() {
     markInvoicePaidWithDebtSync(invoice.id);
     setInvoices(loadInvoices());
     toast.success('تم تحديث حالة الفاتورة والدين');
+  };
+
+  // Navigate to debts page to pay installment
+  const handlePayDebt = (invoice: Invoice) => {
+    navigate(`/debts?invoiceId=${invoice.id}&autoOpenPayment=true`);
   };
 
   const handlePrint = (invoice: Invoice) => {
@@ -667,6 +674,10 @@ ${footer}`;
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                           <>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handlePayDebt(invoice)}>
+                              <DollarSign className="w-4 h-4 ml-2" />
+                              تسديد دفعة
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleMarkPaid(invoice)}>
                               <Check className="w-4 h-4 ml-2" />
                               {t('invoices.markAsPaid')}
