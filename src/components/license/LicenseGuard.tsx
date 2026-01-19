@@ -138,6 +138,18 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     return <>{children}</>;
   }
 
+  // If there was a network error but user is authenticated, allow access
+  if (isValid && hasLicense) {
+    return (
+      <>
+        {isTrial && <TrialBanner />}
+        <div className={isTrial ? 'pt-10' : ''}>
+          {children}
+        </div>
+      </>
+    );
+  }
+
   // If user has no license and hasn't made a choice yet, show choice screen
   if (!hasLicense && !isStartingTrial) {
     if (showActivation) {
