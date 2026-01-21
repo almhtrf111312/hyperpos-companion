@@ -1,11 +1,20 @@
-name: Build HyperPOS Full APK
+name: Build HyperPOS APK
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Enable debug mode'
+        required: false
+        default: false
+
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -14,35 +23,54 @@ jobs:
         node-version: 18
         cache: 'npm'
         
-    # 🔥 npm ci = يثبت كل الـ dependencies من package.json
-    - run: npm ci
-    
-    # 🔥 Build الـ web app
-    - run: npm run build
-    
-    # 🔥 Capacitor core + sync (يقرا capacitor.config.ts)
-    - run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
-    
-    # 🔥 Android + كل الـ plugins من package.json
-    - name: Add Android + Full Sync
-      run: |
-        rm -rf android
-        npx cap add android
-        npx cap sync android
-        
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
+    
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build app
+      run: npm run build
+      
+    - name: Install Capacitor + Plugins
+      run: npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
+      
+    - name: Init Capacitor
+      run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
+      
+    - name: Add Android Platform
+      run: npx cap add android
+      
+    - name: Add Android Permissions
+      run: |
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        
+        # Add permissions before <application> tag
+        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" \/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/>\n    <uses-permission android:name="android.permission.VIBRATE" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
+        
+        echo "=== AndroidManifest.xml after adding permissions ==="
+        cat $MANIFEST
+      
+    - name: Sync Capacitor
+      run: npx cap sync android
         
     - name: Build APK
       run: |
+        chmod +x android/gradlew
         cd android
-        chmod +x gradlew
         ./gradlew assembleDebug
+        
+    - name: Rename APK with date
+      run: |
+        DATE=$(date +'%Y%m%d_%H%M%S')
+        cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk
         
     - uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-FULL-v${{ github.run_number }}
-        path: android/app/build/outputs/apk/debug/*.apk
+        name: HyperPOS-APK-${{ github.run_number }}
+        path: |
+          android/app/build/outputs/apk/debug/app-debug.apk
+          android/app/build/outputs/apk/debug/HyperPOS_*.apk
         retention-days: 30
