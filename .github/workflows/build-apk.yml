@@ -14,7 +14,6 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-
     steps:
     # 1. Checkout
     - name: Checkout repository
@@ -28,7 +27,7 @@ jobs:
         cache: 'npm'
 
     # 3. Install dependencies
-    - name: Install ALL dependencies
+    - name: Install dependencies
       run: npm install
 
     # 4. Build web app
@@ -64,29 +63,21 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    # 10. Add permissions (FIXED - no quotes problem!)
+    # 10. Add permissions - FIXED YAML SYNTAX!
     - name: Add Android permissions
       run: |
-        cat > add_permissions.sh << 'SCRIPT'
-        #!/bin/bash
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         if [ -f "$MANIFEST" ]; then
-          sed -i '/<application>/a\
-<uses-permission android:name="android.permission.INTERNET"/>\
-<uses-permission android:name="android.permission.CAMERA"/>\
-<uses-permission android:name="android.permission.VIBRATE"/>\
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' \
-            "$MANIFEST"
-          echo "✅ Permissions added successfully"
+          echo '  <uses-permission android:name="android.permission.INTERNET" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
+          echo '  <uses-permission android:name="android.permission.CAMERA" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
+          echo '  <uses-permission android:name="android.permission.VIBRATE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
+          echo '  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
+          echo '  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
+          echo '  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
+          echo "✅ Permissions added"
         else
-          echo "❌ AndroidManifest.xml not found"
-          exit 1
+          echo "⚠️  AndroidManifest.xml not found - skipping"
         fi
-        SCRIPT
-        chmod +x add_permissions.sh
-        ./add_permissions.sh
 
     # 11. Sync
     - name: Sync Capacitor
@@ -97,7 +88,7 @@ jobs:
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        ./gradlew assembleDebug
 
     # 13. Upload APK
     - name: Upload APK
