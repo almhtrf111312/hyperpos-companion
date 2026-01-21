@@ -1,69 +1,46 @@
 name: Build HyperPOS Android APK
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
-    # 🔥 تحديث الـ Version تلقائياً
-    - name: Auto-increment version
-      run: |
-        BUILD_NUMBER=${{ github.run_number }}
-        VERSION_CODE=$((BUILD_NUMBER * 10))
-        
-        # package.json
-        npm version patch --no-git-tag-version
-        
-        # Android build.gradle
-        sed -i "s/versionCode .*/versionCode $VERSION_CODE/" android/app/build.gradle
-        sed -i "s/versionName \".*\"/versionName \"$(npm pkg get version | tr -d '\"')\"/" android/app/build.gradle
-        
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        git add .
-        git commit -m "Auto-update version to $VERSION_CODE ($(npm pkg get version | tr -d '\"'))"
-        git push
-        
     - uses: actions/setup-node@v4
       with:
         node-version: 18
         cache: 'npm'
-        
     - run: npm install
     - run: npm run build
-    
-    # باقي الخطوات زي ما هي...
     - name: Setup Capacitor
-      run: |
-        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-        
+      run: npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
     - run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
     - name: Add Android
       run: |
         rm -rf android
         npx cap add android
-        
+    - name: Auto-increment version
+      run: |
+        BUILD_NUMBER=${{ github.run_number }}
+        VERSION_CODE=$((BUILD_NUMBER * 10))
+        VERSION_NAME="1.0.$BUILD_NUMBER"
+        sed -i "s/versionCode .*/versionCode $VERSION_CODE/g" android/app/build.gradle
+        sed -i "s/versionName \".*\"/versionName \"$VERSION_NAME\"/g" android/app/build.gradle
+        echo "✅ Version: $VERSION_NAME (Code: $VERSION_CODE)"
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-        
     - run: npx cap sync android
-    
     - name: Build APK
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleDebug
-        
     - uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-APK-v${{ github.run_number }}
+        name: HyperPOS-v1.0.${{ github.run_number }}
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 30
