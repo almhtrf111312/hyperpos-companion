@@ -1,8 +1,3 @@
-# =====================================================
-# ملف .github/workflows/build-apk.yml الكامل والجاهز
-# نسخ ولصق مباشر - يشتغل 100% مع Vite + React + Shadcn
-# =====================================================
-
 name: Build HyperPOS Android APK
 
 on:
@@ -25,26 +20,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. إعداد Node.js مع cache
+    # 2. Node.js أولاً (للـ build)
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 18
         cache: 'npm'
 
-    # 3. إعداد Java + Gradle cache
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        cache: 'gradle'
-
-    # 4. تنصيب الـ dependencies
+    # 3. npm dependencies
     - name: Install npm dependencies
       run: npm ci
 
-    # 5. 🔥 إصلاح مشكلة Vite Build للـ CI
+    # 4. إنشاء Vite config للـ CI
     - name: Create Vite config for CI
       run: |
         cat > vite.config.js << 'EOF'
@@ -53,106 +40,67 @@ jobs:
 
         export default defineConfig({
           plugins: [react()],
-          base: './',  // 🔧 مهم جداً للـ Capacitor
+          base: './',
           build: {
             outDir: 'dist',
-            assetsDir: 'assets',
-            sourcemap: false,  // تسريع البناء
-            rollupOptions: {
-              output: {
-                manualChunks: undefined  // تجنب chunk splitting
-              }
-            }
+            sourcemap: false
           }
         })
         EOF
-        echo "✅ Vite config created for CI"
 
-    # 6. بناء الـ Web App
-    - name: Build Vite + React app
+    # 5. بناء الـ Web App
+    - name: Build Vite app
+      run: npm run build
+
+    # 6. فحص dist ✅
+    - name: Verify dist folder
       run: |
-        npm run build
-        echo "=== Dist folder check ==="
-        ls -la dist/ || echo "❌ DIST NOT CREATED!"
-        du -sh dist/ 2>/dev/null || echo "No dist size"
+        ls -la dist/
+        if [ ! -d "dist/" ]; then exit 1; fi
 
-    # 7. فشل مبكر إذا ما فيش dist
-    - name: Verify build output
-      run: |
-        if [ ! -d "dist/" ] || [ -z "$(ls -A dist/)" ]; then
-          echo "❌ Build failed - no dist folder or empty!"
-          exit 1
-        fi
-        echo "✅ Build successful: $(find dist/ -type f | wc -l) files"
-
-    # 8. Capacitor setup
+    # 7. Capacitor setup
     - name: Setup Capacitor
       run: |
         npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
         npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
 
-    # 9. تهيئة Capacitor
     - name: Init Capacitor
       run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
 
-    # 10. إضافة Android platform
     - name: Add Android platform
       run: |
         rm -rf android
         npx cap add android
-        echo "✅ Android platform added"
 
-    # 11. إضافة الصلاحيات
-    - name: Add Android permissions
+    # 8. 🔥 Java بعد إنشاء android/ (الحل!)
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Add permissions
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\
-        <uses-permission android:name="android.permission.CAMERA" />\
-        <uses-permission android:name="android.permission.VIBRATE" />\
-        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\
-        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\
-        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n\n    <application|' $MANIFEST
-        echo "✅ Permissions added:"
-        grep -A 10 "uses-permission" $MANIFEST
+<uses-permission android:name="android.permission.CAMERA" />\
+<uses-permission android:name="android.permission.VIBRATE" />\n\n    <application|' "$MANIFEST"
 
-    # 12. مزامنة Capacitor
     - name: Sync Capacitor
       run: npx cap sync android
 
-    # 13. بناء APK
+    # 9. بناء APK
     - name: Build APK
       run: |
-        chmod +x android/gradlew
         cd android
-        echo "Building Debug APK..."
-        ./gradlew assembleDebug --stacktrace --info
+        chmod +x gradlew
+        ./gradlew assembleDebug --stacktrace
 
-    # 14. تسمية APK
-    - name: Rename APK with timestamp
-      run: |
-        DATE=$(date +'%Y%m%d_%H%M%S')
-        APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-        if [ -f "$APK_PATH" ]; then
-          cp "$APK_PATH" "android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk"
-          echo "✅ APK created: HyperPOS_${DATE}.apk"
-        else
-          echo "❌ APK not found at $APK_PATH"
-          ls -la android/app/build/outputs/apk/debug/ || echo "No debug folder"
-          exit 1
-        fi
-
-    # 15. رفع الـ APK كـ artifact
-    - name: Upload APK artifacts
+    # 10. رفع APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: HyperPOS-APK-${{ github.run_number }}
         path: |
           android/app/build/outputs/apk/debug/*.apk
         retention-days: 30
-
-    # 16. معلومات إضافية
-    - name: Build summary
-      run: |
-        echo "=== Build completed successfully ==="
-        echo "APKs available in Artifacts tab"
-        echo "Run: #${{ github.run_number }}"
