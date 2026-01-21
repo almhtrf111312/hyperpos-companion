@@ -27,96 +27,46 @@ jobs:
         node-version: 18
         cache: 'npm'
 
-    # 3. Install dependencies
-    - name: Install npm dependencies
-      run: npm ci
+    # 3. Install ALL dependencies (dev + prod)
+    - name: Install ALL dependencies
+      run: npm install
 
-    # 4. Create Vite config
-    - name: Create Vite config for CI
-      run: |
-        cat > vite.config.js << 'EOF'
-        import { defineConfig } from 'vite'
-        import react from '@vitejs/plugin-react'
-        export default defineConfig({
-          plugins: [react()],
-          base: './',
-          build: {
-            outDir: 'dist',
-            sourcemap: false
-          }
-        })
-        EOF
-
-    # 5. Build web app
-    - name: Build Vite app
+    # 4. Build WITHOUT vite.config.js (يشتغل تلقائياً)
+    - name: Build Vite app (no config needed)
       run: npm run build
 
-    # 6. Verify dist folder
+    # 5. Verify dist folder
     - name: Verify dist folder
       run: |
         ls -la dist/
         test -d dist/ || exit 1
 
-    # 7. Setup Capacitor
+    # 6. Setup Capacitor
     - name: Setup Capacitor
       run: |
         npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
         npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
 
-    # 8. Init Capacitor
+    # 7. Init Capacitor
     - name: Init Capacitor
       run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
 
-    # 9. Add Android platform
+    # 8. Add Android
     - name: Add Android platform
       run: |
         rm -rf android
         npx cap add android
 
-    # 10. Setup Java (بعد android/)
+    # 9. Setup Java
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    # 11. Add Android permissions (خالي من أخطاء YAML)
+    # 10. Add permissions
     - name: Add Android permissions
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i "s|<application|<uses-permission android:name=\"android.permission.INTERNET\"/>
-        <uses-permission android:name=\"android.permission.CAMERA\"/>
-        <uses-permission android:name=\"android.permission.VIBRATE\"/>
-        <uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>
-        <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>
-        <uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>
-
-        <application|" "$MANIFEST"
-        echo "Permissions added to AndroidManifest.xml"
-
-    # 12. Sync Capacitor
-    - name: Sync Capacitor
-      run: npx cap sync android
-
-    # 13. Build APK
-    - name: Build APK
-      run: |
-        cd android
-        chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
-
-    # 14. Rename APK
-    - name: Rename APK
-      run: |
-        DATE=$(date +'%Y%m%d_%H%M%S')
-        cp android/app/build/outputs/apk/debug/app-debug.apk \
-          "android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk"
-
-    # 15. Upload APK
-    - name: Upload APK artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: HyperPOS-APK-${{ github.run_number }}
-        path: |
-          android/app/build/outputs/apk/debug/*.apk
-        retention-days: 30
+        <uses-permission and
