@@ -16,28 +16,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. سحب الكود
+    # 1. Checkout
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Node.js أولاً (للـ build)
+    # 2. Setup Node.js
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 18
         cache: 'npm'
 
-    # 3. npm dependencies
+    # 3. Install dependencies
     - name: Install npm dependencies
       run: npm ci
 
-    # 4. إنشاء Vite config للـ CI
+    # 4. Create Vite config
     - name: Create Vite config for CI
       run: |
         cat > vite.config.js << 'EOF'
         import { defineConfig } from 'vite'
         import react from '@vitejs/plugin-react'
-
         export default defineConfig({
           plugins: [react()],
           base: './',
@@ -48,56 +47,73 @@ jobs:
         })
         EOF
 
-    # 5. بناء الـ Web App
+    # 5. Build web app
     - name: Build Vite app
       run: npm run build
 
-    # 6. فحص dist ✅
+    # 6. Verify dist folder
     - name: Verify dist folder
       run: |
         ls -la dist/
-        if [ ! -d "dist/" ]; then exit 1; fi
+        test -d dist/ || exit 1
 
-    # 7. Capacitor setup
+    # 7. Setup Capacitor
     - name: Setup Capacitor
       run: |
         npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
         npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
 
+    # 8. Init Capacitor
     - name: Init Capacitor
       run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
 
+    # 9. Add Android platform
     - name: Add Android platform
       run: |
         rm -rf android
         npx cap add android
 
-    # 8. 🔥 Java بعد إنشاء android/ (الحل!)
+    # 10. Setup Java (بعد android/)
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Add permissions
+    # 11. Add Android permissions (خالي من أخطاء YAML)
+    - name: Add Android permissions
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
-        sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\
-<uses-permission android:name="android.permission.CAMERA" />\
-<uses-permission android:name="android.permission.VIBRATE" />\n\n    <application|' "$MANIFEST"
+        sed -i "s|<application|<uses-permission android:name=\"android.permission.INTERNET\"/>
+        <uses-permission android:name=\"android.permission.CAMERA\"/>
+        <uses-permission android:name=\"android.permission.VIBRATE\"/>
+        <uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>
+        <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>
+        <uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>
 
+        <application|" "$MANIFEST"
+        echo "Permissions added to AndroidManifest.xml"
+
+    # 12. Sync Capacitor
     - name: Sync Capacitor
       run: npx cap sync android
 
-    # 9. بناء APK
+    # 13. Build APK
     - name: Build APK
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleDebug --stacktrace
 
-    # 10. رفع APK
-    - name: Upload APK
+    # 14. Rename APK
+    - name: Rename APK
+      run: |
+        DATE=$(date +'%Y%m%d_%H%M%S')
+        cp android/app/build/outputs/apk/debug/app-debug.apk \
+          "android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk"
+
+    # 15. Upload APK
+    - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
         name: HyperPOS-APK-${{ github.run_number }}
