@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';<div className="min-h-screen bg-gradient-to-br from-purple-500 to-blue-600">
+  <h1>🔥 HYPERPOS v1.0.133 - TEST MODE 2026</h1>
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
