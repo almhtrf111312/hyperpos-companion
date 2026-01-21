@@ -39,31 +39,46 @@ jobs:
     
     - name: Setup Capacitor Android
       run: |
-        # 1. تثبيت الأدوات
         npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
-        
-        # 2. تهيئة كاباسيدر
         npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
-        
-        # 3. إنشاء مجلد الأندرويد
         rm -rf android
         npx cap add android
         
-        # 4. حل مشكلة تكرار app_name
+        # 1. إصلاح ملف strings.xml بشكل نظيف
         STRINGS_FILE="android/app/src/main/res/values/strings.xml"
         echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">HyperPOS</string><string name="title_activity_main">HyperPOS</string><string name="package_name">app.lovable.hyperpos</string><string name="custom_url_scheme">app.lovable.hyperpos</string></resources>' > $STRINGS_FILE
         
-        # 5. إصلاح ملف AndroidManifest.xml (إضافة الأذونات وخاصية exported)
+        # 2. إعادة كتابة ملف AndroidManifest.xml بالكامل لضمان الصحة 100%
         MANIFEST="android/app/src/main/AndroidManifest.xml"
-        if [ -f "$MANIFEST" ]; then
-          # إضافة الأذونات قبل وسم <application
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
-          
-          # إضافة android:exported="true" للـ MainActivity لحل خطأ Android 12+
-          sed -i 's/<activity/<activity android:exported="true"/' $MANIFEST
-        fi
+        cat <<EOF > $MANIFEST
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="@string/app_name"
+                android:roundIcon="@mipmap/ic_launcher_round"
+                android:supportsRtl="true"
+                android:theme="@style/AppTheme">
+                <activity
+                    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+                    android:name=".MainActivity"
+                    android:label="@string/title_activity_main"
+                    android:theme="@style/AppTheme.NoActionBarLaunch"
+                    android:launchMode="singleTop"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
         
-        # 6. مزامنة الملفات
         npx cap sync android
         
     - name: Build APK
@@ -84,3 +99,4 @@ jobs:
         name: HyperPOS-Android-App
         path: build-output/HyperPOS_*.apk
         retention-days: 7
+ 
