@@ -14,6 +14,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { SetupWizard } from "./components/setup/SetupWizard";
 import { LicenseGuard } from "./components/license/LicenseGuard";
+import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { loadDemoData } from "./lib/demo-data";
 import { ClickProbe } from "./components/debug/ClickProbe";
@@ -142,13 +143,15 @@ const App = () => (
         <LanguageProvider>
           <ThemeProvider>
             <AuthProvider>
-              <LicenseProvider>
-                <NotificationsProvider>
-                  <LicenseGuard>
-                    <AppContent />
-                  </LicenseGuard>
-                </NotificationsProvider>
-              </LicenseProvider>
+              <CloudSyncProvider>
+                <LicenseProvider>
+                  <NotificationsProvider>
+                    <LicenseGuard>
+                      <AppContent />
+                    </LicenseGuard>
+                  </NotificationsProvider>
+                </LicenseProvider>
+              </CloudSyncProvider>
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>

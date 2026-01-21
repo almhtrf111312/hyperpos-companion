@@ -57,6 +57,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useUsersManagement, UserData } from '@/hooks/use-users-management';
 import { useAuth } from '@/hooks/use-auth';
 import { emitEvent, EVENTS } from '@/lib/events';
+import { saveStoreSettings } from '@/lib/supabase-store';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -287,8 +288,10 @@ export default function Settings() {
   const [isImporting, setIsImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
   // Handlers
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     const tryRate = Number(exchangeRates.TRY);
     const sypRate = Number(exchangeRates.SYP);
     const copies = Number(printSettings.copies);
@@ -321,6 +324,9 @@ export default function Settings() {
       return;
     }
 
+    setIsSavingSettings(true);
+
+    // Save to localStorage for local caching
     savePersistedSettings({
       storeSettings,
       exchangeRates,
@@ -330,10 +336,32 @@ export default function Settings() {
       backupSettings,
     });
 
-    toast({
-      title: t('common.saved'),
-      description: t('settings.settingsSaved'),
+    // Save to cloud
+    const cloudSuccess = await saveStoreSettings({
+      name: storeSettings.name,
+      store_type: storeSettings.type,
+      phone: storeSettings.phone,
+      address: storeSettings.address,
+      logo_url: storeSettings.logo,
+      exchange_rates: { USD: 1, TRY: tryRate, SYP: sypRate },
+      sync_settings: syncSettings,
+      notification_settings: notificationSettings,
+      print_settings: printSettings,
     });
+
+    setIsSavingSettings(false);
+
+    if (cloudSuccess) {
+      toast({
+        title: t('common.saved'),
+        description: t('settings.settingsSaved'),
+      });
+    } else {
+      toast({
+        title: t('common.saved'),
+        description: 'تم الحفظ محلياً. قد يكون هناك مشكلة في المزامنة السحابية.',
+      });
+    }
   };
 
   const handleSync = () => {
