@@ -39,23 +39,27 @@ jobs:
     
     - name: Setup Capacitor Android
       run: |
-        # تثبيت الأدوات اللازمة لضمان عدم حدوث خطأ "could not determine executable"
+        # 1. تثبيت الأدوات اللازمة
         npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
         
-        # تهيئة كاباسيدر
+        # 2. تهيئة كاباسيدر
         npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
         
-        # إنشاء مجلد الأندرويد
+        # 3. إنشاء مجلد الأندرويد من الصفر
         rm -rf android
         npx cap add android
         
-        # إضافة الأذونات (الكاميرا والإنترنت)
+        # 4. حل مشكلة تكرار app_name في ملف strings.xml
+        STRINGS_FILE="android/app/src/main/res/values/strings.xml"
+        echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">HyperPOS</string><string name="title_activity_main">HyperPOS</string><string name="package_name">app.lovable.hyperpos</string><string name="custom_url_scheme">app.lovable.hyperpos</string></resources>' > $STRINGS_FILE
+        
+        # 5. إضافة أذونات الكاميرا والإنترنت لملف Manifest
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         if [ -f "$MANIFEST" ]; then
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
         fi
         
-        # مزامنة الملفات
+        # 6. مزامنة الملفات النهائية
         npx cap sync android
         
     - name: Build APK
