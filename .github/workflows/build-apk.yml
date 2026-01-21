@@ -8,7 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
     - uses: actions/setup-node@v4
       with:
         node-version: 18
@@ -16,48 +15,34 @@ jobs:
         
     - run: npm install
     
-    # 🔥 إضافة Camera Plugin مع الإذونات
-    - name: Install Capacitor + Camera
+    # 🔥 كل الـ plugins اللي محتاجها
+    - name: Install All Plugins
       run: |
-        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/camera@6
+        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+        npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
         
     - run: npm run build
-    
     - run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
     
-    # 🔥 إنشاء Android + Camera
-    - name: Add Android + Camera
+    - name: Add Android + Sync All
       run: |
         rm -rf android
         npx cap add android
-        npx cap sync android
+        npx cap sync android  # ← كل الإذونات تتضاف هنا!
         
-    # 🔥 إضافة إذونات الكاميرا للـ AndroidManifest
-    - name: Add Camera Permissions
-      run: |
-        cat >> android/app/src/main/AndroidManifest.xml << 'EOF'
-        <uses-permission android:name="android.permission.CAMERA" />
-        <uses-feature android:name="android.hardware.camera" android:required="true"/>
-        <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-        EOF
-        
-    # 🔥 تحديث الـ Version
     - name: Auto-increment version
       run: |
         BUILD_NUMBER=${{ github.run_number }}
         VERSION_CODE=$((BUILD_NUMBER * 10))
         VERSION_NAME="1.0.$BUILD_NUMBER"
-        sed -i "s/versionCode .*/versionCode $VERSION_CODE/g" android/app/build.gradle
-        sed -i "s/versionName ".*"/versionName "$VERSION_NAME"/g" android/app/build.gradle
-        echo "✅ Version: $VERSION_NAME (Code: $VERSION_CODE)"
+        sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/g" android/app/build.gradle
+        sed -i "s/versionName "[0-9.]*"/versionName "$VERSION_NAME"/g" android/app/build.gradle
         
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
         
-    - run: npx cap sync android
-    
     - name: Build APK
       run: |
         cd android
@@ -66,6 +51,6 @@ jobs:
         
     - uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-Camera-v1.0.${{ github.run_number }}
+        name: HyperPOS-Full-v1.0.${{ github.run_number }}
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 30
