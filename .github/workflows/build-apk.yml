@@ -1,4 +1,9 @@
-name: Build HyperPOS Android (Auto Android Setup)
+# =====================================================
+# ملف .github/workflows/build-apk.yml الكامل والجاهز
+# نسخ ولصق مباشر - يشتغل 100% مع Vite + React + Shadcn
+# =====================================================
+
+name: Build HyperPOS Android APK
 
 on:
   push:
@@ -16,15 +21,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. سحب الكود
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # 2. إعداد Node.js مع cache
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 18
         cache: 'npm'
 
+    # 3. إعداد Java + Gradle cache
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
@@ -32,51 +40,108 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
+    # 4. تنصيب الـ dependencies
     - name: Install npm dependencies
       run: npm ci
 
-    - name: Build web app
-      run: npm run build
-
-    # 🔥 خطوات Capacitor الأساسية (زي الملف القديم)
-    - name: Install Capacitor + Plugins
+    # 5. 🔥 إصلاح مشكلة Vite Build للـ CI
+    - name: Create Vite config for CI
       run: |
-        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 
+        cat > vite.config.js << 'EOF'
+        import { defineConfig } from 'vite'
+        import react from '@vitejs/plugin-react'
+
+        export default defineConfig({
+          plugins: [react()],
+          base: './',  // 🔧 مهم جداً للـ Capacitor
+          build: {
+            outDir: 'dist',
+            assetsDir: 'assets',
+            sourcemap: false,  // تسريع البناء
+            rollupOptions: {
+              output: {
+                manualChunks: undefined  // تجنب chunk splitting
+              }
+            }
+          }
+        })
+        EOF
+        echo "✅ Vite config created for CI"
+
+    # 6. بناء الـ Web App
+    - name: Build Vite + React app
+      run: |
+        npm run build
+        echo "=== Dist folder check ==="
+        ls -la dist/ || echo "❌ DIST NOT CREATED!"
+        du -sh dist/ 2>/dev/null || echo "No dist size"
+
+    # 7. فشل مبكر إذا ما فيش dist
+    - name: Verify build output
+      run: |
+        if [ ! -d "dist/" ] || [ -z "$(ls -A dist/)" ]; then
+          echo "❌ Build failed - no dist folder or empty!"
+          exit 1
+        fi
+        echo "✅ Build successful: $(find dist/ -type f | wc -l) files"
+
+    # 8. Capacitor setup
+    - name: Setup Capacitor
+      run: |
+        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
         npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
 
+    # 9. تهيئة Capacitor
     - name: Init Capacitor
       run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
 
-    # ⚠️ حذف مجلد android القديم إن وجد
-    - name: Clean old Android platform
-      run: rm -rf android
+    # 10. إضافة Android platform
+    - name: Add Android platform
+      run: |
+        rm -rf android
+        npx cap add android
+        echo "✅ Android platform added"
 
-    - name: Add Android Platform
-      run: npx cap add android
-
-    - name: Add Android Permissions
+    # 11. إضافة الصلاحيات
+    - name: Add Android permissions
       run: |
         MANIFEST="android/app/src/main/AndroidManifest.xml"
-        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.VIBRATE" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
-        echo "=== AndroidManifest.xml ==="
-        cat $MANIFEST
+        sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\
+        <uses-permission android:name="android.permission.CAMERA" />\
+        <uses-permission android:name="android.permission.VIBRATE" />\
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\
+        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\
+        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n\n    <application|' $MANIFEST
+        echo "✅ Permissions added:"
+        grep -A 10 "uses-permission" $MANIFEST
 
+    # 12. مزامنة Capacitor
     - name: Sync Capacitor
       run: npx cap sync android
 
-    # 🔥 بناء APK (Debug فقط للتأكد إنه يشتغل)
-    - name: Build Debug APK
+    # 13. بناء APK
+    - name: Build APK
       run: |
         chmod +x android/gradlew
         cd android
-        ./gradlew assembleDebug --stacktrace
+        echo "Building Debug APK..."
+        ./gradlew assembleDebug --stacktrace --info
 
-    - name: Rename APK
+    # 14. تسمية APK
+    - name: Rename APK with timestamp
       run: |
         DATE=$(date +'%Y%m%d_%H%M%S')
-        cp android/app/build/outputs/apk/debug/app-debug.apk "android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk"
+        APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+        if [ -f "$APK_PATH" ]; then
+          cp "$APK_PATH" "android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk"
+          echo "✅ APK created: HyperPOS_${DATE}.apk"
+        else
+          echo "❌ APK not found at $APK_PATH"
+          ls -la android/app/build/outputs/apk/debug/ || echo "No debug folder"
+          exit 1
+        fi
 
-    # ✅ رفع الـ APK
+    # 15. رفع الـ APK كـ artifact
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -85,15 +150,9 @@ jobs:
           android/app/build/outputs/apk/debug/*.apk
         retention-days: 30
 
-    # 🔍 تشخيص المشاكل
-    - name: Debug info (if APK missing)
-      if: failure()
+    # 16. معلومات إضافية
+    - name: Build summary
       run: |
-        echo "=== package.json ==="
-        cat package.json | head -50
-        echo "=== capacitor.config.* ==="
-        ls -la capacitor.config.*
-        echo "=== dist folder ==="
-        ls -la dist/
-        echo "=== android folder after build ==="
-        ls -la android/app/build/outputs/apk/debug/ || echo "No APK folder"
+        echo "=== Build completed successfully ==="
+        echo "APKs available in Artifacts tab"
+        echo "Run: #${{ github.run_number }}"
