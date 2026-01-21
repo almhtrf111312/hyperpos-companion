@@ -8,25 +8,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    
     - uses: actions/setup-node@v4
       with:
         node-version: 18
         cache: 'npm'
         
+    # 🔥 npm ci = يثبت كل الـ dependencies من package.json
     - run: npm ci
     
-    # 🔥 كل الـ plugins من package.json
-    - name: Install All Capacitor Plugins
-      run: |
-        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-        npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
-        
+    # 🔥 Build الـ web app
     - run: npm run build
     
+    # 🔥 Capacitor core + sync (يقرا capacitor.config.ts)
     - run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
     
-    # 🔥 Sync كامل - الكاميرا + التخزين + المشاركة
-    - name: Sync All Plugins
+    # 🔥 Android + كل الـ plugins من package.json
+    - name: Add Android + Full Sync
       run: |
         rm -rf android
         npx cap add android
@@ -47,4 +45,4 @@ jobs:
       with:
         name: HyperPOS-FULL-v${{ github.run_number }}
         path: android/app/build/outputs/apk/debug/*.apk
-        retention-days: 30 
+        retention-days: 30
