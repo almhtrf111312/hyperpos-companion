@@ -40,17 +40,16 @@ jobs:
         ls -la dist/
         test -d dist/ || exit 1
 
-    # 6. Setup Capacitor
-    - name: Setup Capacitor
+    # 6. Setup Capacitor (الأساسيات فقط)
+    - name: Setup Capacitor Core
       run: |
         npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
-        npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
 
     # 7. Init Capacitor
     - name: Init Capacitor
       run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
 
-    # 8. Add Android
+    # 8. Add Android (بدون plugins)
     - name: Add Android platform
       run: |
         rm -rf android
@@ -63,34 +62,18 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    # 10. Add permissions - FIXED YAML SYNTAX!
-    - name: Add Android permissions
-      run: |
-        MANIFEST="android/app/src/main/AndroidManifest.xml"
-        if [ -f "$MANIFEST" ]; then
-          echo '  <uses-permission android:name="android.permission.INTERNET" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
-          echo '  <uses-permission android:name="android.permission.CAMERA" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
-          echo '  <uses-permission android:name="android.permission.VIBRATE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
-          echo '  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
-          echo '  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
-          echo '  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />' | cat - "$MANIFEST" > temp && mv temp "$MANIFEST"
-          echo "✅ Permissions added"
-        else
-          echo "⚠️  AndroidManifest.xml not found - skipping"
-        fi
-
-    # 11. Sync
+    # 10. Sync (بدون plugins - XML سليم!)
     - name: Sync Capacitor
       run: npx cap sync android
 
-    # 12. Build APK
+    # 11. Build APK (الأساسي)
     - name: Build APK
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleDebug
 
-    # 13. Upload APK
+    # 12. Upload APK
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
