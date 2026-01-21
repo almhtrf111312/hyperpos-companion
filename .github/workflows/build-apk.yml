@@ -29,7 +29,7 @@ jobs:
         key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
 
     - name: Install dependencies
-      run: npm ci --legacy-peer-deps
+      run: npm install --legacy-peer-deps
       
     - name: Build app
       run: npm run build
@@ -39,18 +39,23 @@ jobs:
     
     - name: Setup Capacitor Android
       run: |
-        # 1. تهيئة كاباسيدر
+        # تثبيت الأدوات اللازمة لضمان عدم حدوث خطأ "could not determine executable"
+        npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
+        
+        # تهيئة كاباسيدر
         npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
         
-        # 2. حذف أي مجلد قديم وإنشاء مجلد أندرويد جديد
+        # إنشاء مجلد الأندرويد
         rm -rf android
         npx cap add android
         
-        # 3. إضافة أذونات الكاميرا والإنترنت تلقائياً للملف الجديد
+        # إضافة الأذونات (الكاميرا والإنترنت)
         MANIFEST="android/app/src/main/AndroidManifest.xml"
-        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
+        if [ -f "$MANIFEST" ]; then
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
+        fi
         
-        # 4. مزامنة الملفات
+        # مزامنة الملفات
         npx cap sync android
         
     - name: Build APK
@@ -71,3 +76,4 @@ jobs:
         name: HyperPOS-Android-App
         path: build-output/HyperPOS_*.apk
         retention-days: 7
+ 
