@@ -1,4 +1,4 @@
-name: Build HyperPOS Android
+name: Build HyperPOS Android (Auto Android Setup)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     inputs:
       debug_enabled:
         type: boolean
-        description: 'Enable debug build (false = release)'
+        description: 'Enable debug build'
         required: false
         default: true
 
@@ -15,116 +15,85 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
-    env:
-      APP_NAME: HyperPOS
-      APP_ID: app.lovable.hyperpos
-      WEB_DIR: dist
-
     steps:
-      # 1) سحب الكود
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      # 2) إعداد Node + cache
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'npm'
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
 
-      # 3) إعداد Java + cache Gradle
-      - name: Setup Java (Temurin 17)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
 
-      # 4) تنصيب حزم npm
-      - name: Install npm dependencies
-        run: npm ci
+    - name: Install npm dependencies
+      run: npm ci
 
-      # 5) بناء واجهة الويب (Vue / React / إلخ)
-      # عدّل الأمر لو مشروعك يستخدم أمر مختلف
-      - name: Build web app
-        run: npm run build
+    - name: Build web app
+      run: npm run build
 
-      # 6) مزامنة Capacitor مع أندرويد
-      # يفترض أن Capacitor مضاف مسبقًا في المشروع (لا نعيد init/add android في كل Build)
-      - name: Sync Capacitor (Android)
-        run: |
-          npx cap sync android
+    # 🔥 خطوات Capacitor الأساسية (زي الملف القديم)
+    - name: Install Capacitor + Plugins
+      run: |
+        npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 
+        npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
 
-      # 7) حقن صلاحيات إضافية في AndroidManifest عند الحاجة
-      # نفترض وجود ملف android/app/src/main/AndroidManifest.xml
-      - name: Ensure Android permissions
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
+    - name: Init Capacitor
+      run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
 
-          if [ ! -f "$MANIFEST" ]; then
-            echo "AndroidManifest.xml not found at $MANIFEST"
-            exit 1
-          fi
+    # ⚠️ حذف مجلد android القديم إن وجد
+    - name: Clean old Android platform
+      run: rm -rf android
 
-          # نضيف الصلاحيات فقط إذا لم تكن موجودة مسبقًا
-          add_permission() {
-            PERM=$1
-            if ! grep -q "$PERM" "$MANIFEST"; then
-              sed -i "s#<application#<uses-permission android:name=\"$PERM\" />\n    <application#" "$MANIFEST"
-            fi
-          }
+    - name: Add Android Platform
+      run: npx cap add android
 
-          add_permission "android.permission.INTERNET"
-          add_permission "android.permission.CAMERA"
-          add_permission "android.permission.VIBRATE"
-          add_permission "android.permission.ACCESS_NETWORK_STATE"
+    - name: Add Android Permissions
+      run: |
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.VIBRATE" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n\n    <application/' $MANIFEST
+        echo "=== AndroidManifest.xml ==="
+        cat $MANIFEST
 
-          # ملاحظة: READ/WRITE_EXTERNAL_STORAGE Deprecated في الإصدارات الحديثة
-          # أضفها فقط لو كنت محتاجها فعلاً وتستهدف SDK أقل، أو استخدم صلاحيات MEDIA الجديدة
-          # add_permission "android.permission.READ_EXTERNAL_STORAGE"
-          # add_permission "android.permission.WRITE_EXTERNAL_STORAGE"
+    - name: Sync Capacitor
+      run: npx cap sync android
 
-          echo "=== AndroidManifest.xml after ensuring permissions ==="
-          cat "$MANIFEST"
+    # 🔥 بناء APK (Debug فقط للتأكد إنه يشتغل)
+    - name: Build Debug APK
+      run: |
+        chmod +x android/gradlew
+        cd android
+        ./gradlew assembleDebug --stacktrace
 
-      # 8) اختيار نوع البناء (Debug/Release) حسب debug_enabled
-      - name: Build Android APK
-        run: |
-          chmod +x android/gradlew
-          cd android
+    - name: Rename APK
+      run: |
+        DATE=$(date +'%Y%m%d_%H%M%S')
+        cp android/app/build/outputs/apk/debug/app-debug.apk "android/app/build/outputs/apk/debug/HyperPOS_${DATE}.apk"
 
-          if [ "${{ inputs.debug_enabled }}" = "true" ]; then
-            echo "Building DEBUG APK..."
-            ./gradlew assembleDebug
-          else
-            echo "Building RELEASE APK (unsigned by default)..."
-            ./gradlew assembleRelease
-          fi
+    # ✅ رفع الـ APK
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: HyperPOS-APK-${{ github.run_number }}
+        path: |
+          android/app/build/outputs/apk/debug/*.apk
+        retention-days: 30
 
-      # 9) إعادة تسمية الـ APK مع التاريخ/الوقت
-      - name: Rename APK with timestamp
-        run: |
-          DATE=$(date +'%Y%m%d_%H%M%S')
-
-          DEBUG_APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          RELEASE_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
-
-          if [ -f "$DEBUG_APK" ]; then
-            cp "$DEBUG_APK" "android/app/build/outputs/apk/debug/HyperPOS_${DATE}_debug.apk"
-          fi
-
-          if [ -f "$RELEASE_APK" ]; then
-            cp "$RELEASE_APK" "android/app/build/outputs/apk/release/HyperPOS_${DATE}_release-unsigned.apk"
-          fi
-
-      # 10) رفع الـ Artifacts (Debug + Release إن وجد)
-      - name: Upload APK artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: HyperPOS-Android-${{ github.run_number }}
-          path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/apk/debug/HyperPOS_*_debug.apk
-            android/app/build/outputs/apk/release/app-release-unsigned.apk
-            android/app/build/outputs/apk/release/HyperPOS_*_release-unsigned.apk
-          retention-days: 30
+    # 🔍 تشخيص المشاكل
+    - name: Debug info (if APK missing)
+      if: failure()
+      run: |
+        echo "=== package.json ==="
+        cat package.json | head -50
+        echo "=== capacitor.config.* ==="
+        ls -la capacitor.config.*
+        echo "=== dist folder ==="
+        ls -la dist/
+        echo "=== android folder after build ==="
+        ls -la android/app/build/outputs/apk/debug/ || echo "No APK folder"
