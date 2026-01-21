@@ -27,15 +27,15 @@ jobs:
         node-version: 18
         cache: 'npm'
 
-    # 3. Install ALL dependencies (dev + prod)
+    # 3. Install dependencies
     - name: Install ALL dependencies
       run: npm install
 
-    # 4. Build WITHOUT vite.config.js (يشتغل تلقائياً)
-    - name: Build Vite app (no config needed)
+    # 4. Build web app
+    - name: Build Vite app
       run: npm run build
 
-    # 5. Verify dist folder
+    # 5. Verify dist
     - name: Verify dist folder
       run: |
         ls -la dist/
@@ -64,9 +64,46 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    # 10. Add permissions
+    # 10. Add permissions (FIXED - no quotes problem!)
     - name: Add Android permissions
       run: |
+        cat > add_permissions.sh << 'SCRIPT'
+        #!/bin/bash
         MANIFEST="android/app/src/main/AndroidManifest.xml"
-        sed -i "s|<application|<uses-permission android:name=\"android.permission.INTERNET\"/>
-        <uses-permission and
+        if [ -f "$MANIFEST" ]; then
+          sed -i '/<application>/a\
+<uses-permission android:name="android.permission.INTERNET"/>\
+<uses-permission android:name="android.permission.CAMERA"/>\
+<uses-permission android:name="android.permission.VIBRATE"/>\
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' \
+            "$MANIFEST"
+          echo "✅ Permissions added successfully"
+        else
+          echo "❌ AndroidManifest.xml not found"
+          exit 1
+        fi
+        SCRIPT
+        chmod +x add_permissions.sh
+        ./add_permissions.sh
+
+    # 11. Sync
+    - name: Sync Capacitor
+      run: npx cap sync android
+
+    # 12. Build APK
+    - name: Build APK
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug --stacktrace
+
+    # 13. Upload APK
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: HyperPOS-APK-${{ github.run_number }}
+        path: |
+          android/app/build/outputs/apk/debug/*.apk
+        retention-days: 30
