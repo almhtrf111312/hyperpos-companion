@@ -20,13 +20,7 @@ jobs:
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '21' # تم التحديث من 17 إلى 21 لحل مشكلة "invalid source release"
-
-    - name: Cache Gradle Wrapper
-      uses: actions/cache@v4
-      with:
-        path: ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
+        java-version: '21'
 
     - name: Install dependencies
       run: npm install --legacy-peer-deps
@@ -44,11 +38,9 @@ jobs:
         rm -rf android
         npx cap add android
         
-        # 1. إصلاح ملف strings.xml
         STRINGS_FILE="android/app/src/main/res/values/strings.xml"
         echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">HyperPOS</string><string name="title_activity_main">HyperPOS</string><string name="package_name">app.lovable.hyperpos</string><string name="custom_url_scheme">app.lovable.hyperpos</string></resources>' > $STRINGS_FILE
         
-        # 2. إعادة كتابة ملف AndroidManifest.xml
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         cat <<EOF > $MANIFEST
         <?xml version="1.0" encoding="utf-8"?>
@@ -80,22 +72,33 @@ jobs:
         EOF
         
         npx cap sync android
-        
-    - name: Build APK
+
+    # --- خطوة توقيع التطبيق (للسماح بالتحديث فوق النسخة القديمة) ---
+    - name: Build Signed APK
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug
-        
+        ./gradlew assembleRelease
+      
+    - name: Sign APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
+      with:
+        releaseDirectory: android/app/build/outputs/apk/release
+        signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+        keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
     - name: Prepare Final APK
       run: |
         DATE=$(date +'%Y%m%d_%H%M')
         mkdir -p build-output
-        cp android/app/build/outputs/apk/debug/app-debug.apk build-output/HyperPOS_${DATE}.apk
+        cp ${{ steps.sign_app.outputs.signedReleaseFile }} build-output/HyperPOS_Update_${DATE}.apk
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-Android-App
-        path: build-output/HyperPOS_*.apk
+        name: HyperPOS-Release-App
+        path: build-output/*.apk
         retention-days: 7
