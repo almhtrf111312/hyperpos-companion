@@ -20,7 +20,7 @@ jobs:
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21' # تم التحديث من 17 إلى 21 لحل مشكلة "invalid source release"
 
     - name: Cache Gradle Wrapper
       uses: actions/cache@v4
@@ -44,11 +44,11 @@ jobs:
         rm -rf android
         npx cap add android
         
-        # 1. إصلاح ملف strings.xml بشكل نظيف
+        # 1. إصلاح ملف strings.xml
         STRINGS_FILE="android/app/src/main/res/values/strings.xml"
         echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">HyperPOS</string><string name="title_activity_main">HyperPOS</string><string name="package_name">app.lovable.hyperpos</string><string name="custom_url_scheme">app.lovable.hyperpos</string></resources>' > $STRINGS_FILE
         
-        # 2. إعادة كتابة ملف AndroidManifest.xml بالكامل لضمان الصحة 100%
+        # 2. إعادة كتابة ملف AndroidManifest.xml
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         cat <<EOF > $MANIFEST
         <?xml version="1.0" encoding="utf-8"?>
@@ -99,4 +99,3 @@ jobs:
         name: HyperPOS-Android-App
         path: build-output/HyperPOS_*.apk
         retention-days: 7
- 
