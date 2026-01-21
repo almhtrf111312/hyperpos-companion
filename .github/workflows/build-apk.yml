@@ -16,36 +16,25 @@ jobs:
     - run: npm install
     - run: npm run build
     
-    # 🔥 CORE Capacitor فقط - بدون plugins
-    - name: Setup Core Capacitor
+    # 🔥 Core Capacitor فقط
+    - name: Setup Capacitor
       run: |
         npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
         
     - run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
     
-    - name: Add Android
+    # 🔥 Android بدون version editing
+    - name: Add Android platform
       run: |
         rm -rf android
         npx cap add android
-        
-    # 🔥 Version update آمن
-    - name: Update Version
-      run: |
-        BUILD_NUMBER=${{ github.run_number }}
-        VERSION_CODE=$((BUILD_NUMBER * 10))
-        VERSION_NAME="1.0.$BUILD_NUMBER"
-        
-        # استخدام أكثر أماناً
-        sed -i "/versionCode/c        versionCode $VERSION_CODE" android/app/build.gradle
-        sed -i "/versionName/c        versionName "$VERSION_NAME"" android/app/build.gradle
-        
-        echo "✅ Version: $VERSION_NAME (Code: $VERSION_CODE)"
         
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
         
+    # 🔥 Build بدون أي تعديل على build.gradle
     - name: Build APK
       run: |
         cd android
@@ -54,6 +43,6 @@ jobs:
         
     - uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-v1.0.${{ github.run_number }}
+        name: HyperPOS-v${{ github.run_number }}
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 30 
