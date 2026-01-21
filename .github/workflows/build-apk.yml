@@ -1,4 +1,4 @@
-name: Build HyperPOS Android APK
+name: Build HyperPOS Full APK
 on:
   push:
     branches: [ main ]
@@ -13,28 +13,30 @@ jobs:
         node-version: 18
         cache: 'npm'
         
-    - run: npm install
-    - run: npm run build
+    - run: npm ci
     
-    # 🔥 Core Capacitor فقط
-    - name: Setup Capacitor
+    # 🔥 كل الـ plugins من package.json
+    - name: Install All Capacitor Plugins
       run: |
         npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+        npm i @capacitor/camera@6 @capacitor/filesystem@6 @capacitor/share@6
         
+    - run: npm run build
+    
     - run: npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
     
-    # 🔥 Android بدون version editing
-    - name: Add Android platform
+    # 🔥 Sync كامل - الكاميرا + التخزين + المشاركة
+    - name: Sync All Plugins
       run: |
         rm -rf android
         npx cap add android
+        npx cap sync android
         
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
         
-    # 🔥 Build بدون أي تعديل على build.gradle
     - name: Build APK
       run: |
         cd android
@@ -43,6 +45,6 @@ jobs:
         
     - uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-v${{ github.run_number }}
+        name: HyperPOS-FULL-v${{ github.run_number }}
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 30 
