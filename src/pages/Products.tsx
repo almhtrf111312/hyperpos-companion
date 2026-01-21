@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search, 
@@ -40,13 +40,15 @@ import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getCategoryNames } from '@/lib/categories-store';
 import { 
-  loadProducts, 
-  saveProducts, 
+  loadProductsCloud, 
+  addProductCloud,
+  updateProductCloud,
+  deleteProductCloud,
   getStatus,
   Product 
-} from '@/lib/products-store';
+} from '@/lib/cloud/products-cloud';
+import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { uploadProductImage } from '@/lib/image-upload';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -66,13 +68,14 @@ export default function Products() {
     low_stock: { label: t('products.low'), color: 'badge-warning', icon: AlertTriangle },
     out_of_stock: { label: t('products.outOfStock'), color: 'badge-danger', icon: AlertTriangle },
   };
-  const [products, setProducts] = useState<Product[]>(() => loadProducts());
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
-  const [categoryOptions, setCategoryOptions] = useState<string[]>(getCategoryNames());
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -153,32 +156,41 @@ export default function Products() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Load data from cloud
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [cloudProducts, cloudCategories] = await Promise.all([
+        loadProductsCloud(),
+        getCategoryNamesCloud()
+      ]);
+      setProducts(cloudProducts);
+      setCategoryOptions(cloudCategories);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      toast.error('فشل في تحميل المنتجات');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Memory leak prevention - proper cleanup for storage events
   useEffect(() => {
-    setIsLoading(true);
-    const loadData = () => {
-      setProducts(loadProducts());
-      setCategoryOptions(getCategoryNames());
-      setIsLoading(false);
-    };
     loadData();
     
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.includes('hyperpos_products') || e.key?.includes('categories')) {
-        loadData();
-      }
-    };
+    const handleProductsUpdated = () => loadData();
+    const handleCategoriesUpdated = () => loadData();
     
-    const handleFocus = () => loadData();
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
+    window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
+    window.addEventListener('focus', loadData);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
+      window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
+      window.removeEventListener('focus', loadData);
     };
-  }, []);
+  }, [loadData]);
 
   // Auto-open add dialog from URL params
   useEffect(() => {
@@ -207,10 +219,11 @@ export default function Products() {
     }
   };
 
-  // Reload categories from store
-  const reloadCategories = () => {
-    setCategoryOptions(getCategoryNames());
-  };
+  // Reload categories from cloud
+  const reloadCategories = useCallback(async () => {
+    const cats = await getCategoryNamesCloud();
+    setCategoryOptions(cats);
+  }, []);
 
   // Get categories used by products (cannot be deleted)
   const usedCategories = [...new Set(products.map(p => p.category))];
@@ -235,13 +248,7 @@ const filteredProducts = useMemo(() => {
     outOfStock: products.filter(p => p.status === 'out_of_stock').length,
   };
 
-  // Helper to update products state and save to localStorage
-  const updateProducts = (newProducts: Product[]) => {
-    setProducts(newProducts);
-    saveProducts(newProducts);
-  };
-
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!formData.name || !formData.barcode) {
       toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
@@ -255,34 +262,41 @@ const filteredProducts = useMemo(() => {
       }
     }
     
-    const newProduct: Product = {
-      id: Date.now().toString(),
+    setIsSaving(true);
+    
+    const productData = {
       ...formData,
       expiryDate: formData.expiryDate || undefined,
-      status: getStatus(formData.quantity),
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
     
-    updateProducts([...products, newProduct]);
+    const newProduct = await addProductCloud(productData);
     
-    // Log activity
-    if (user) {
-      addActivityLog(
-        'product_added',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `تم إضافة منتج جديد: ${formData.name}`,
-        { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
-      );
+    if (newProduct) {
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'product_added',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم إضافة منتج جديد: ${formData.name}`,
+          { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
+        );
+      }
+      
+      setShowAddDialog(false);
+      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
+      setCustomFieldValues({});
+      toast.success('تم إضافة المنتج بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في إضافة المنتج');
     }
     
-    setShowAddDialog(false);
-    setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
-    setCustomFieldValues({});
-    toast.success('تم إضافة المنتج بنجاح');
+    setIsSaving(false);
   };
 
-  const handleEditProduct = () => {
+  const handleEditProduct = async () => {
     if (!selectedProduct || !formData.name) {
       toast.error('يرجى ملء جميع الحقول المطلوبة');
       return;
@@ -296,54 +310,69 @@ const filteredProducts = useMemo(() => {
       }
     }
     
-    updateProducts(products.map(p => 
-      p.id === selectedProduct.id 
-        ? { 
-            ...p, 
-            ...formData, 
-            status: getStatus(formData.quantity),
-            customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
-          }
-        : p
-    ));
+    setIsSaving(true);
     
-    // Log activity
-    if (user) {
-      addActivityLog(
-        'product_updated',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `تم تعديل منتج: ${formData.name}`,
-        { productId: selectedProduct.id, name: formData.name }
-      );
+    const productData = {
+      ...formData,
+      expiryDate: formData.expiryDate || undefined,
+      customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
+    };
+    
+    const success = await updateProductCloud(selectedProduct.id, productData);
+    
+    if (success) {
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'product_updated',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم تعديل منتج: ${formData.name}`,
+          { productId: selectedProduct.id, name: formData.name }
+        );
+      }
+      
+      setShowEditDialog(false);
+      setSelectedProduct(null);
+      setCustomFieldValues({});
+      toast.success('تم تعديل المنتج بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في تعديل المنتج');
     }
     
-    setShowEditDialog(false);
-    setSelectedProduct(null);
-    setCustomFieldValues({});
-    toast.success('تم تعديل المنتج بنجاح');
+    setIsSaving(false);
   };
 
-  const handleDeleteProduct = () => {
+  const handleDeleteProduct = async () => {
     if (!selectedProduct) return;
     
-    const productName = selectedProduct.name;
-    updateProducts(products.filter(p => p.id !== selectedProduct.id));
+    setIsSaving(true);
     
-    // Log activity
-    if (user) {
-      addActivityLog(
-        'product_deleted',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `تم حذف منتج: ${productName}`,
-        { productId: selectedProduct.id, name: productName }
-      );
+    const productName = selectedProduct.name;
+    const success = await deleteProductCloud(selectedProduct.id);
+    
+    if (success) {
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'product_deleted',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم حذف منتج: ${productName}`,
+          { productId: selectedProduct.id, name: productName }
+        );
+      }
+      
+      setShowDeleteDialog(false);
+      setSelectedProduct(null);
+      toast.success('تم حذف المنتج بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في حذف المنتج');
     }
     
-    setShowDeleteDialog(false);
-    setSelectedProduct(null);
-    toast.success('تم حذف المنتج بنجاح');
+    setIsSaving(false);
   };
 
   const openEditDialog = (product: Product) => {

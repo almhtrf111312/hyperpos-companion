@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
@@ -12,7 +12,8 @@ import {
   Eye,
   CreditCard,
   X,
-  Save
+  Save,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,19 +37,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { 
-  loadCustomers, 
-  addCustomer, 
-  updateCustomer, 
-  deleteCustomer,
-  getCustomersStats,
+  loadCustomersCloud, 
+  addCustomerCloud, 
+  updateCustomerCloud, 
+  deleteCustomerCloud,
+  getCustomersStatsCloud,
   Customer 
-} from '@/lib/customers-store';
+} from '@/lib/cloud/customers-cloud';
 import { useLanguage } from '@/hooks/use-language';
+import { EVENTS } from '@/lib/events';
 
 export default function Customers() {
   const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Dialogs
@@ -66,22 +70,32 @@ export default function Customers() {
     address: '',
   });
 
-  // Load customers from store
+  // Load customers from cloud
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await loadCustomersCloud();
+      setCustomers(data);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadData = () => setCustomers(loadCustomers());
     loadData();
     
     // Listen for updates
-    window.addEventListener('customersUpdated', loadData);
-    window.addEventListener('storage', loadData);
+    const handleUpdate = () => loadData();
+    window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
     window.addEventListener('focus', loadData);
     
     return () => {
-      window.removeEventListener('customersUpdated', loadData);
-      window.removeEventListener('storage', loadData);
+      window.removeEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
       window.removeEventListener('focus', loadData);
     };
-  }, []);
+  }, [loadData]);
 
   // Auto-open add dialog from URL params
   useEffect(() => {
@@ -93,59 +107,86 @@ export default function Customers() {
     }
   }, [searchParams, setSearchParams]);
 
+  const [stats, setStats] = useState({ total: 0, withDebt: 0, totalDebt: 0, totalPurchases: 0 });
+  
+  useEffect(() => {
+    const loadStats = async () => {
+      const s = await getCustomersStatsCloud();
+      setStats(s);
+    };
+    loadStats();
+  }, [customers]);
+
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     customer.phone.includes(searchQuery)
   );
 
-  const stats = getCustomersStats();
-
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     if (!formData.name || !formData.phone) {
       toast.error('يرجى ملء الحقول المطلوبة');
       return;
     }
     
-    addCustomer({
+    setIsSaving(true);
+    const newCustomer = await addCustomerCloud({
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,
       address: formData.address || undefined,
     });
+    setIsSaving(false);
     
-    setCustomers(loadCustomers());
-    setShowAddDialog(false);
-    setFormData({ name: '', phone: '', email: '', address: '' });
-    toast.success('تم إضافة العميل بنجاح');
+    if (newCustomer) {
+      setShowAddDialog(false);
+      setFormData({ name: '', phone: '', email: '', address: '' });
+      toast.success('تم إضافة العميل بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في إضافة العميل');
+    }
   };
 
-  const handleEditCustomer = () => {
+  const handleEditCustomer = async () => {
     if (!selectedCustomer || !formData.name) {
       toast.error('يرجى ملء الحقول المطلوبة');
       return;
     }
     
-    updateCustomer(selectedCustomer.id, {
+    setIsSaving(true);
+    const success = await updateCustomerCloud(selectedCustomer.id, {
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,
       address: formData.address || undefined,
     });
+    setIsSaving(false);
     
-    setCustomers(loadCustomers());
-    setShowEditDialog(false);
-    setSelectedCustomer(null);
-    toast.success('تم تعديل بيانات العميل بنجاح');
+    if (success) {
+      setShowEditDialog(false);
+      setSelectedCustomer(null);
+      toast.success('تم تعديل بيانات العميل بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في تعديل بيانات العميل');
+    }
   };
 
-  const handleDeleteCustomer = () => {
+  const handleDeleteCustomer = async () => {
     if (!selectedCustomer) return;
     
-    deleteCustomer(selectedCustomer.id);
-    setCustomers(loadCustomers());
-    setShowDeleteDialog(false);
-    setSelectedCustomer(null);
-    toast.success('تم حذف العميل بنجاح');
+    setIsSaving(true);
+    const success = await deleteCustomerCloud(selectedCustomer.id);
+    setIsSaving(false);
+    
+    if (success) {
+      setShowDeleteDialog(false);
+      setSelectedCustomer(null);
+      toast.success('تم حذف العميل بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في حذف العميل');
+    }
   };
 
   const openEditDialog = (customer: Customer) => {

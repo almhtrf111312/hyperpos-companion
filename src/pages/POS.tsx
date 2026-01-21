@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -11,13 +11,24 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { getProductsForPOS, POSProduct, getProductByBarcode } from '@/lib/products-store';
-import { getCategoryNames } from '@/lib/categories-store';
+import { loadProductsCloud, getProductByBarcodeCloud, Product } from '@/lib/cloud/products-cloud';
+import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
+
+// POS Product type for display
+interface POSProduct {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  quantity: number;
+  image?: string;
+  barcode?: string;
+}
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -59,51 +70,62 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  
+  // Load products and categories from cloud
+  const [products, setProducts] = useState<POSProduct[]>([]);
+  const [categories, setCategories] = useState<string[]>(['الكل']);
 
   // Scanned product dialog
   const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
   const [showScannedDialog, setShowScannedDialog] = useState(false);
 
-  // Load products and categories from shared stores
-  const [products, setProducts] = useState<POSProduct[]>([]);
-  const [categories, setCategories] = useState<string[]>(['الكل']);
+  // Load products and categories from cloud
+  const loadData = useCallback(async () => {
+    setIsLoadingProducts(true);
+    try {
+      const [cloudProducts, cloudCategories] = await Promise.all([
+        loadProductsCloud(),
+        getCategoryNamesCloud()
+      ]);
+      
+      // Transform to POS format
+      const posProducts: POSProduct[] = cloudProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.salePrice,
+        category: p.category,
+        quantity: p.quantity,
+        image: p.image,
+        barcode: p.barcode,
+      }));
+      
+      setProducts(posProducts);
+      setCategories([t('common.all'), ...cloudCategories]);
+    } catch (error) {
+      console.error('Error loading POS data:', error);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  }, [t]);
 
   // Reload data when component mounts or when returning to this page
   useEffect(() => {
-    const loadData = () => {
-      setProducts(getProductsForPOS());
-      setCategories([t('common.all'), ...getCategoryNames()]);
-    };
-    
     loadData();
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key?.includes('hyperpos')) {
-        loadData();
-      }
-    };
 
     const onProductsUpdated = () => loadData();
     const onCategoriesUpdated = () => loadData();
 
-    window.addEventListener('storage', handleStorage);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-    window.addEventListener('productsUpdated', onProductsUpdated as EventListener);
-    window.addEventListener('categoriesUpdated', onCategoriesUpdated as EventListener);
-
-    const handleFocus = () => loadData();
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', loadData);
 
     return () => {
-      window.removeEventListener('storage', handleStorage);
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-      window.removeEventListener('productsUpdated', onProductsUpdated as EventListener);
-      window.removeEventListener('categoriesUpdated', onCategoriesUpdated as EventListener);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', loadData);
     };
-  }, []);
+  }, [loadData]);
 
   const currencies: Currency[] = useMemo(() => {
     const rates = loadExchangeRates();
@@ -142,11 +164,20 @@ export default function POS() {
   };
 
   // Handle barcode scan - show product dialog instead of adding directly
-  const handleBarcodeScan = (barcode: string) => {
-    const product = getProductByBarcode(barcode);
+  const handleBarcodeScan = async (barcode: string) => {
+    const cloudProduct = await getProductByBarcodeCloud(barcode);
     
-    if (product) {
-      setScannedProduct(product);
+    if (cloudProduct) {
+      const posProduct: POSProduct = {
+        id: cloudProduct.id,
+        name: cloudProduct.name,
+        price: cloudProduct.salePrice,
+        category: cloudProduct.category,
+        quantity: cloudProduct.quantity,
+        image: cloudProduct.image,
+        barcode: cloudProduct.barcode,
+      };
+      setScannedProduct(posProduct);
       setShowScannedDialog(true);
     } else {
       setSearchQuery(barcode);

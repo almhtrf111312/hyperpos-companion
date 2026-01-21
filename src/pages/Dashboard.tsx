@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -6,7 +6,8 @@ import {
   Users, 
   CreditCard,
   Package,
-  Wallet
+  Wallet,
+  Loader2
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
@@ -14,13 +15,27 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
 import { LowStockAlerts } from '@/components/dashboard/LowStockAlerts';
-import { loadInvoices, getInvoiceStats } from '@/lib/invoices-store';
-import { loadProducts, getLowStockProducts } from '@/lib/products-store';
-import { loadPartners } from '@/lib/partners-store';
+import { getInvoiceStatsCloud, loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
+import { loadProductsCloud } from '@/lib/cloud/products-cloud';
+import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
 import { useLanguage } from '@/hooks/use-language';
+import { EVENTS } from '@/lib/events';
 
 export default function Dashboard() {
   const { t, language } = useLanguage();
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    todaySales: 0,
+    todayCount: 0,
+    todayProfit: 0,
+    profitMargin: 0,
+    totalDebtAmount: 0,
+    debtCustomers: 0,
+    uniqueCustomers: 0,
+    inventoryValue: 0,
+    totalCapital: 0,
+    availableCapital: 0,
+  });
   
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
     weekday: 'long',
@@ -29,58 +44,84 @@ export default function Dashboard() {
     day: 'numeric',
   });
 
-  // Load real stats from invoices
-  const stats = useMemo(() => {
-    const invoiceStats = getInvoiceStats();
-    const invoices = loadInvoices();
-    
-    // Calculate today's sales
-    const todayStr = new Date().toDateString();
-    const todayInvoices = invoices.filter(inv => 
-      new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
-    );
-    const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const todayProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
-    
-    // Calculate pending debts
-    const pendingDebts = invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending');
-    const totalDebtAmount = pendingDebts.reduce((sum, inv) => sum + inv.total, 0);
-    const debtCustomers = new Set(pendingDebts.map(inv => inv.customerName)).size;
-    
-    // Calculate profit margin
-    const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
-    
-    // Get unique customers this month
-    const thisMonth = new Date().getMonth();
-    const thisYear = new Date().getFullYear();
-    const monthInvoices = invoices.filter(inv => {
-      const date = new Date(inv.createdAt);
-      return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
-    });
-    const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
+  // Load stats from cloud
+  const loadStats = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [invoices, products, partners] = await Promise.all([
+        loadInvoicesCloud(),
+        loadProductsCloud(),
+        loadPartnersCloud()
+      ]);
+      
+      // Calculate today's sales
+      const todayStr = new Date().toDateString();
+      const todayInvoices = invoices.filter(inv => 
+        new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
+      );
+      const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
+      const todayProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+      
+      // Calculate pending debts
+      const pendingDebts = invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending');
+      const totalDebtAmount = pendingDebts.reduce((sum, inv) => sum + inv.total, 0);
+      const debtCustomers = new Set(pendingDebts.map(inv => inv.customerName)).size;
+      
+      // Calculate profit margin
+      const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
+      
+      // Get unique customers this month
+      const thisMonth = new Date().getMonth();
+      const thisYear = new Date().getFullYear();
+      const monthInvoices = invoices.filter(inv => {
+        const date = new Date(inv.createdAt);
+        return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
+      });
+      const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
 
-    // Calculate inventory value
-    const products = loadProducts();
-    const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
+      // Calculate inventory value
+      const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
 
-    // Calculate total capital from partners
-    const partners = loadPartners();
-    const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
-    const availableCapital = totalCapital - inventoryValue;
+      // Calculate total capital from partners
+      const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
+      const availableCapital = totalCapital - inventoryValue;
 
-    return {
-      todaySales,
-      todayCount: todayInvoices.length,
-      todayProfit,
-      profitMargin,
-      totalDebtAmount,
-      debtCustomers,
-      uniqueCustomers,
-      inventoryValue,
-      totalCapital,
-      availableCapital,
-    };
+      setStats({
+        todaySales,
+        todayCount: todayInvoices.length,
+        todayProfit,
+        profitMargin,
+        totalDebtAmount,
+        debtCustomers,
+        uniqueCustomers,
+        inventoryValue,
+        totalCapital,
+        availableCapital,
+      });
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadStats();
+
+    const handleUpdate = () => loadStats();
+    
+    window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+    window.addEventListener('focus', loadStats);
+    
+    return () => {
+      window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+      window.removeEventListener('focus', loadStats);
+    };
+  }, [loadStats]);
 
   return (
     <div className="p-6 space-y-6">
