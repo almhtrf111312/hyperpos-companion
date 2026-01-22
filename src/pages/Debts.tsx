@@ -25,13 +25,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
+import { EVENTS } from '@/lib/events';
 import { 
-  loadDebts, 
-  addDebt, 
-  recordPaymentWithInvoiceSync,
-  getDebtsStats,
+  loadDebtsCloud, 
+  addDebtCloud, 
+  recordPaymentWithInvoiceSyncCloud,
+  getDebtsStatsCloud,
   Debt 
-} from '@/lib/debts-store';
+} from '@/lib/cloud/debts-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -78,18 +79,18 @@ export default function Debts() {
 
   // Load debts from store
   useEffect(() => {
-    const loadData = () => setDebts(loadDebts());
+    const loadData = async () => {
+      const debtsData = await loadDebtsCloud();
+      setDebts(debtsData);
+    };
     loadData();
     
     // Listen for updates
-    window.addEventListener('debtsUpdated', loadData);
-    window.addEventListener('storage', loadData);
-    window.addEventListener('focus', loadData);
+    const handleUpdate = () => loadData();
+    window.addEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
     
     return () => {
-      window.removeEventListener('debtsUpdated', loadData);
-      window.removeEventListener('storage', loadData);
-      window.removeEventListener('focus', loadData);
+      window.removeEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
     };
   }, []);
 
@@ -116,7 +117,11 @@ export default function Debts() {
     return matchesSearch && matchesFilter;
   });
 
-  const stats = getDebtsStats();
+  const [stats, setStats] = useState({ total: 0, remaining: 0, paid: 0, overdue: 0, count: 0, activeCount: 0 });
+  
+  useEffect(() => {
+    getDebtsStatsCloud().then(setStats);
+  }, [debts]);
 
   const openPaymentDialog = (debt: Debt) => {
     setSelectedDebt(debt);
@@ -129,7 +134,7 @@ export default function Debts() {
     setShowViewDialog(true);
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!selectedDebt || paymentAmount <= 0) {
       toast.error(t('debts.enterValidAmount'));
       return;
@@ -143,7 +148,7 @@ export default function Debts() {
     // Calculate payment ratio for partial profit confirmation
     const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
     
-    recordPaymentWithInvoiceSync(selectedDebt.id, paymentAmount);
+    await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount);
     
     // Confirm pending profits proportionally to payment
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
@@ -159,7 +164,8 @@ export default function Debts() {
       );
     }
     
-    setDebts(loadDebts());
+    const debtsData = await loadDebtsCloud();
+    setDebts(debtsData);
     
     setShowPaymentDialog(false);
     setSelectedDebt(null);
@@ -167,7 +173,7 @@ export default function Debts() {
     toast.success(t('debts.paymentSuccess'));
   };
 
-  const handleAddCashDebt = () => {
+  const handleAddCashDebt = async () => {
     if (!newDebtForm.customerName || !newDebtForm.customerPhone || newDebtForm.amount <= 0) {
       toast.error(t('debts.fillRequiredFields'));
       return;
@@ -178,7 +184,7 @@ export default function Debts() {
       return;
     }
 
-    addDebt({
+    await addDebtCloud({
       invoiceId: `CASH_${Date.now()}`,
       customerName: newDebtForm.customerName,
       customerPhone: newDebtForm.customerPhone,
@@ -199,7 +205,8 @@ export default function Debts() {
       );
     }
 
-    setDebts(loadDebts());
+    const debtsData = await loadDebtsCloud();
+    setDebts(debtsData);
     setShowAddDebtDialog(false);
     setNewDebtForm({
       customerName: '',

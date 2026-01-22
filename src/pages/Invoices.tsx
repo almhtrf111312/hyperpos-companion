@@ -50,15 +50,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
+import { EVENTS } from '@/lib/events';
 import { 
-  loadInvoices, 
-  deleteInvoice, 
-  updateInvoice,
-  markInvoicePaidWithDebtSync,
+  loadInvoicesCloud, 
+  deleteInvoiceCloud, 
+  updateInvoiceCloud,
+  getInvoiceStatsCloud,
   Invoice, 
-  InvoiceType,
-  getInvoiceStats 
-} from '@/lib/invoices-store';
+  InvoiceType
+} from '@/lib/cloud/invoices-cloud';
+import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { printHTML } from '@/lib/print-utils';
 
 export default function Invoices() {
@@ -74,7 +75,7 @@ export default function Invoices() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
-  const [stats, setStats] = useState(getInvoiceStats());
+  const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -86,27 +87,23 @@ export default function Invoices() {
 
   // Load invoices with proper cleanup
   useEffect(() => {
-    setIsLoading(true);
-    const loadData = () => {
-      setInvoices(loadInvoices());
-      setStats(getInvoiceStats());
+    const loadData = async () => {
+      setIsLoading(true);
+      const [invoicesData, statsData] = await Promise.all([
+        loadInvoicesCloud(),
+        getInvoiceStatsCloud()
+      ]);
+      setInvoices(invoicesData);
+      setStats(statsData);
       setIsLoading(false);
     };
     loadData();
     
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key?.includes('hyperpos')) {
-        loadData();
-      }
-    };
-    const handleFocus = () => loadData();
-    
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('focus', handleFocus);
+    const handleUpdate = () => loadData();
+    window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     
     return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     };
   }, []);
 
@@ -144,20 +141,29 @@ export default function Invoices() {
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (invoiceToDelete) {
-      deleteInvoice(invoiceToDelete.id);
-      setInvoices(loadInvoices());
-      setStats(getInvoiceStats());
+      await deleteInvoiceCloud(invoiceToDelete.id);
+      const [invoicesData, statsData] = await Promise.all([
+        loadInvoicesCloud(),
+        getInvoiceStatsCloud()
+      ]);
+      setInvoices(invoicesData);
+      setStats(statsData);
       toast.success('تم حذف الفاتورة بنجاح');
       setShowDeleteDialog(false);
       setInvoiceToDelete(null);
     }
   };
 
-  const handleMarkPaid = (invoice: Invoice) => {
-    markInvoicePaidWithDebtSync(invoice.id);
-    setInvoices(loadInvoices());
+  const handleMarkPaid = async (invoice: Invoice) => {
+    // Update invoice status
+    await updateInvoiceCloud(invoice.id, { status: 'paid', debtPaid: invoice.total, debtRemaining: 0 });
+    // Delete associated debt
+    await deleteDebtByInvoiceIdCloud(invoice.id);
+    // Reload data
+    const invoicesData = await loadInvoicesCloud();
+    setInvoices(invoicesData);
     toast.success('تم تحديث حالة الفاتورة والدين');
   };
 

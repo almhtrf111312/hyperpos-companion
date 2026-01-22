@@ -47,14 +47,14 @@ import {
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { 
-  loadExpenses, 
-  addExpense, 
-  deleteExpense,
-  getExpenseStats,
+  loadExpensesCloud, 
+  addExpenseCloud, 
+  deleteExpenseCloud,
+  getExpenseStatsCloud,
   expenseTypes,
   Expense,
   ExpenseType 
-} from '@/lib/expenses-store';
+} from '@/lib/cloud/expenses-cloud';
 import {
   loadRecurringExpenses,
   addRecurringExpense,
@@ -71,7 +71,7 @@ import { useLanguage } from '@/hooks/use-language';
 export default function Expenses() {
   const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [expenses, setExpenses] = useState<Expense[]>(() => loadExpenses());
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => loadRecurringExpenses());
   const [dueExpenses, setDueExpenses] = useState<RecurringExpense[]>(() => getDueExpenses());
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,6 +82,7 @@ export default function Expenses() {
   const [showPayConfirmDialog, setShowPayConfirmDialog] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedRecurring, setSelectedRecurring] = useState<RecurringExpense | null>(null);
+  const [stats, setStats] = useState({ totalExpenses: 0, totalThisMonth: 0, expenseCount: 0, monthlyCount: 0, byType: {} as Record<string, number> });
   
   // Form state
   const [formData, setFormData] = useState({
@@ -103,19 +104,26 @@ export default function Expenses() {
     notes: '',
   });
 
-  // Listen for expense updates
+  // Load expenses from cloud
   useEffect(() => {
-    const handleUpdate = () => {
-      setExpenses(loadExpenses());
+    const loadData = async () => {
+      const [expensesData, statsData] = await Promise.all([
+        loadExpensesCloud(),
+        getExpenseStatsCloud()
+      ]);
+      setExpenses(expensesData);
+      setStats(statsData);
+    };
+    loadData();
+    
+    const handleUpdate = () => loadData();
+    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, () => {
       setRecurringExpenses(loadRecurringExpenses());
       setDueExpenses(getDueExpenses());
-    };
-    
-    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleUpdate);
+    });
     return () => {
       window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleUpdate);
     };
   }, []);
 
@@ -133,8 +141,6 @@ export default function Expenses() {
     expense.typeLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
     expense.notes?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const stats = getExpenseStats();
 
   const resetForm = () => {
     setFormData({
@@ -158,7 +164,7 @@ export default function Expenses() {
     });
   };
 
-  const handleAddExpense = () => {
+  const handleAddExpense = async () => {
     if (formData.amount <= 0) {
       toast.error(t('expenses.enterValidAmount'));
       return;
@@ -169,7 +175,7 @@ export default function Expenses() {
       return;
     }
 
-    addExpense({
+    await addExpenseCloud({
       type: formData.type,
       customType: formData.customType,
       amount: formData.amount,
@@ -177,7 +183,8 @@ export default function Expenses() {
       date: formData.date,
     });
 
-    setExpenses(loadExpenses());
+    const expensesData = await loadExpensesCloud();
+    setExpenses(expensesData);
     setShowAddDialog(false);
     resetForm();
     toast.success(t('expenses.expenseAdded'));
@@ -206,21 +213,23 @@ export default function Expenses() {
     toast.success(t('expenses.fixedExpenseAdded'));
   };
 
-  const handleDeleteExpense = () => {
+  const handleDeleteExpense = async () => {
     if (!selectedExpense) return;
     
-    deleteExpense(selectedExpense.id);
-    setExpenses(loadExpenses());
+    await deleteExpenseCloud(selectedExpense.id);
+    const expensesData = await loadExpensesCloud();
+    setExpenses(expensesData);
     setShowDeleteDialog(false);
     setSelectedExpense(null);
     toast.success(t('expenses.expenseDeleted'));
   };
 
-  const handlePayRecurring = () => {
+  const handlePayRecurring = async () => {
     if (!selectedRecurring) return;
     
     payRecurringExpense(selectedRecurring.id);
-    setExpenses(loadExpenses());
+    const expensesData = await loadExpensesCloud();
+    setExpenses(expensesData);
     setRecurringExpenses(loadRecurringExpenses());
     setDueExpenses(getDueExpenses());
     setShowPayConfirmDialog(false);

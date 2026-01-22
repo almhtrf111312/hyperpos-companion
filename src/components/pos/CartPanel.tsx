@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   ShoppingCart, 
   Plus, 
@@ -43,6 +43,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
+import { recordActivity } from '@/lib/auto-backup';
 import { recordActivity } from '@/lib/auto-backup';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -99,6 +100,10 @@ export function CartPanel({
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '' });
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [customerPhone, setCustomerPhone] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Loaded customers for search
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   
   // Fixed amount discount feature
   const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
@@ -106,6 +111,11 @@ export function CartPanel({
   // Smart customer search feature
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Load customers on mount
+  useEffect(() => {
+    loadCustomersCloud().then(setAllCustomers);
+  }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   
@@ -130,8 +140,7 @@ export function CartPanel({
     }
     
     // التحقق إذا كان العميل موجوداً في قاعدة البيانات
-    const existingCustomers = loadCustomers();
-    const customerExists = existingCustomers.some(c => 
+    const customerExists = allCustomers.some(c => 
       c.name.toLowerCase() === customerName.toLowerCase().trim()
     );
     setIsNewCustomer(!customerExists);
@@ -140,132 +149,118 @@ export function CartPanel({
     setShowDebtDialog(true);
   };
 
-  const confirmCashSale = () => {
-    // التحقق من توفر الكميات في المخزون أولاً
-    const stockCheck = checkStockAvailability(
-      cart.map(item => ({ productId: item.id, quantity: item.quantity }))
-    );
+  const confirmCashSale = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     
-    if (!stockCheck.success) {
-      const insufficientNames = stockCheck.insufficientItems
-        .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
-        .join('\n');
-      // تنبيه هام يتطلب إغلاق يدوي
-      showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-        persistent: true,
-        description: 'اضغط × للإغلاق',
-      });
-      return;
-    }
-    
-    // Find or create customer
-    const customer = customerName ? findOrCreateCustomer(customerName) : null;
-    
-    // Calculate profit by category for accurate partner distribution
-    const products = loadProducts();
-    const profitsByCategory: Record<string, number> = {};
-    let totalProfit = 0;
-    
-    // تفاصيل المنتجات لسجل النشاطات
-    const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
-    
-    cart.forEach((item) => {
-      const product = products.find(p => p.id === item.id);
-      if (product) {
-        const itemProfit = (item.price - product.costPrice) * item.quantity;
-        const category = product.category || 'عام';
-        profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
-        totalProfit += itemProfit;
+    try {
+      // التحقق من توفر الكميات في المخزون أولاً
+      const stockCheck = checkStockAvailability(
+        cart.map(item => ({ productId: item.id, quantity: item.quantity }))
+      );
+      
+      if (!stockCheck.success) {
+        const insufficientNames = stockCheck.insufficientItems
+          .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
+          .join('\n');
+        showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+          persistent: true,
+          description: 'اضغط × للإغلاق',
+        });
+        return;
       }
       
-      // تسجيل تفاصيل المنتجات المباعة
-      soldItems.push({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      });
-    });
-    
-    // Apply discount to profit - use actual discount ratio from amounts
-    const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-    const discountedProfit = totalProfit * (1 - discountRatio);
-    const discountMultiplier = 1 - discountRatio;
-    
-    // Create invoice
-    const invoice = addInvoice({
-      type: 'sale',
-      customerName: customerName || 'عميل نقدي',
-      items: cart.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        total: item.price * item.quantity,
-      })),
-      subtotal,
-      discount,
-      total,
-      totalInCurrency,
-      currency: selectedCurrency.code,
-      currencySymbol: selectedCurrency.symbol,
-      paymentType: 'cash',
-      status: 'paid',
-      profit: discountedProfit,
-    });
-    
-    // Distribute profit to partners by category - استدعاء واحد لتجنب Race Condition
-    const categoryProfits = Object.entries(profitsByCategory)
-      .filter(([_, profit]) => profit * discountMultiplier > 0)
-      .map(([category, profit]) => ({
-        category,
-        profit: profit * discountMultiplier
-      }));
-    
-    if (categoryProfits.length > 0) {
-      distributeDetailedProfit(categoryProfits, invoice.id, customerName || 'عميل نقدي', false);
-    }
-    
-    // Deduct stock from inventory
-    deductStockBatch(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
-    
-    // Update customer stats
-    if (customer) {
-      updateCustomerStats(customer.id, total, false);
-    }
-    
-    // Log activity with product details
-    if (user) {
-      const itemsDescription = soldItems
-        .map(item => `${item.name} × ${item.quantity}`)
-        .join('، ');
+      // Find or create customer
+      const customer = customerName ? await findOrCreateCustomerCloud(customerName) : null;
       
-      addActivityLog(
-        'sale',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `عملية بيع نقدي بقيمة $${total.toLocaleString()} - المنتجات: ${itemsDescription}`,
-        { 
-          invoiceId: invoice.id, 
-          total, 
-          itemsCount: cart.length, 
-          customerName: customerName || 'عميل نقدي',
-          items: soldItems // تفاصيل المنتجات للتدقيق
+      // Calculate profit by category for accurate partner distribution
+      const products = loadProducts();
+      const profitsByCategory: Record<string, number> = {};
+      let totalProfit = 0;
+      
+      const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
+      
+      cart.forEach((item) => {
+        const product = products.find(p => p.id === item.id);
+        if (product) {
+          const itemProfit = (item.price - product.costPrice) * item.quantity;
+          const category = product.category || 'عام';
+          profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
+          totalProfit += itemProfit;
         }
-      );
+        soldItems.push({ name: item.name, quantity: item.quantity, price: item.price });
+      });
+      
+      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+      const discountedProfit = totalProfit * (1 - discountRatio);
+      const discountMultiplier = 1 - discountRatio;
+      
+      // Create invoice in cloud
+      const invoice = await addInvoiceCloud({
+        type: 'sale',
+        customerName: customerName || 'عميل نقدي',
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          total: item.price * item.quantity,
+        })),
+        subtotal,
+        discount,
+        total,
+        totalInCurrency,
+        currency: selectedCurrency.code,
+        currencySymbol: selectedCurrency.symbol,
+        paymentType: 'cash',
+        status: 'paid',
+        profit: discountedProfit,
+      });
+      
+      if (!invoice) {
+        showToast.error('فشل في إنشاء الفاتورة');
+        return;
+      }
+      
+      // Distribute profit to partners
+      const categoryProfits = Object.entries(profitsByCategory)
+        .filter(([_, profit]) => profit * discountMultiplier > 0)
+        .map(([category, profit]) => ({ category, profit: profit * discountMultiplier }));
+      
+      if (categoryProfits.length > 0) {
+        distributeDetailedProfit(categoryProfits, invoice.id, customerName || 'عميل نقدي', false);
+      }
+      
+      // Deduct stock from inventory
+      await deductStockBatchCloud(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
+      
+      // Update customer stats
+      if (customer) {
+        await updateCustomerStatsCloud(customer.id, total, false);
+      }
+      
+      // Log activity
+      if (user) {
+        const itemsDescription = soldItems.map(item => `${item.name} × ${item.quantity}`).join('، ');
+        addActivityLog(
+          'sale',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `عملية بيع نقدي بقيمة $${total.toLocaleString()} - المنتجات: ${itemsDescription}`,
+          { invoiceId: invoice.id, total, itemsCount: cart.length, customerName: customerName || 'عميل نقدي', items: soldItems }
+        );
+      }
+      
+      playSaleComplete();
+      addSalesToShift(total);
+      recordActivity();
+      
+      showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
+      setShowCashDialog(false);
+      onClearCart();
+    } finally {
+      setIsSaving(false);
     }
-    
-    // Play success sound
-    playSaleComplete();
-    
-    // Add to cashbox if shift is open
-    addSalesToShift(total);
-    
-    // Record activity for auto-backup
-    recordActivity();
-    
-    showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
-    setShowCashDialog(false);
-    onClearCart();
   };
 
   const confirmDebtSale = () => {
