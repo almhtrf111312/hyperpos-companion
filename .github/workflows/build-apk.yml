@@ -16,18 +16,23 @@ jobs:
         node-version: 18
         cache: 'npm'
         
-    # 🔥 npm ci = يثبت كل الـ plugins من package.json (camera + filesystem + share)
+    # 🔥 خطوة 1: تثبيت الكل (npm ci)
     - run: npm ci
     
+    # 🔥 خطوة 2: Build الـ web app
     - run: npm run build
     
-    # 🔥 Setup Capacitor + كل الـ plugins
-    - name: Setup Capacitor + Plugins
+    # 🔥 خطوة 3: تثبيت Capacitor CLI صراحة
+    - name: Install Capacitor CLI
+      run: npm i @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6
+        
+    # 🔥 خطوة 4: تسلسل Capacitor صحيح
+    - name: Setup Capacitor
       run: |
         npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
         rm -rf android
         npx cap add android
-        npx cap sync android  # ← هنا الكاميرا بتتثبت!
+        npx cap sync android
         
     - uses: actions/setup-java@v4
       with:
@@ -38,7 +43,7 @@ jobs:
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug  # ← Debug APK بدون signing errors
+        ./gradlew assembleDebug
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
