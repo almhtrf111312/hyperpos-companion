@@ -1,5 +1,4 @@
 name: Build HyperPOS APK
-
 on:
   push:
     branches: [ main ]
@@ -14,91 +13,36 @@ jobs:
     
     - uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: 18
         cache: 'npm'
+        
+    # 🔥 npm ci = يثبت كل الـ plugins من package.json (camera + filesystem + share)
+    - run: npm ci
+    
+    - run: npm run build
+    
+    # 🔥 Setup Capacitor + كل الـ plugins
+    - name: Setup Capacitor + Plugins
+      run: |
+        npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
+        rm -rf android
+        npx cap add android
+        npx cap sync android  # ← هنا الكاميرا بتتثبت!
         
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '21'
-
-    - name: Install dependencies
-      run: npm install --legacy-peer-deps
-      
-    - name: Build app
-      run: npm run build
-      env:
-        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-    
-    - name: Setup Capacitor Android
-      run: |
-        npm install @capacitor/cli @capacitor/core @capacitor/android --legacy-peer-deps
-        npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
-        rm -rf android
-        npx cap add android
+        java-version: '17'
         
-        STRINGS_FILE="android/app/src/main/res/values/strings.xml"
-        echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">HyperPOS</string><string name="title_activity_main">HyperPOS</string><string name="package_name">app.lovable.hyperpos</string><string name="custom_url_scheme">app.lovable.hyperpos</string></resources>' > $STRINGS_FILE
-        
-        MANIFEST="android/app/src/main/AndroidManifest.xml"
-        cat <<EOF > $MANIFEST
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.INTERNET" />
-            <uses-permission android:name="android.permission.CAMERA" />
-            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-            <application
-                android:allowBackup="true"
-                android:icon="@mipmap/ic_launcher"
-                android:label="@string/app_name"
-                android:roundIcon="@mipmap/ic_launcher_round"
-                android:supportsRtl="true"
-                android:theme="@style/AppTheme">
-                <activity
-                    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
-                    android:name=".MainActivity"
-                    android:label="@string/title_activity_main"
-                    android:theme="@style/AppTheme.NoActionBarLaunch"
-                    android:launchMode="singleTop"
-                    android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-            </application>
-        </manifest>
-        EOF
-        
-        npx cap sync android
-
-    # --- خطوة توقيع التطبيق (للسماح بالتحديث فوق النسخة القديمة) ---
-    - name: Build Signed APK
+    - name: Build APK
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleRelease
-      
-    - name: Sign APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app
-      with:
-        releaseDirectory: android/app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        alias: ${{ secrets.ANDROID_KEY_ALIAS }}
-        keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-    - name: Prepare Final APK
-      run: |
-        DATE=$(date +'%Y%m%d_%H%M')
-        mkdir -p build-output
-        cp ${{ steps.sign_app.outputs.signedReleaseFile }} build-output/HyperPOS_Update_${DATE}.apk
+        ./gradlew assembleDebug  # ← Debug APK بدون signing errors
         
-    - name: Upload Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-Release-App
-        path: build-output/*.apk
-        retention-days: 7
+        name: HyperPOS-Camera-v${{ github.run_number }}
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 30
