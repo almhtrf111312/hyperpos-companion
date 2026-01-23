@@ -22,6 +22,7 @@ interface AuthContextType {
   stayLoggedIn: boolean;
   signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setStayLoggedIn: (value: boolean) => void;
@@ -258,6 +259,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: 'https://www.googleapis.com/auth/drive.file'
+          }
+        }
+      });
+      
+      if (error) {
+        return { error: new Error(error.message) };
+      }
+      
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
   const signOut = async () => {
     // Log logout before signing out
     if (user) {
@@ -287,6 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       stayLoggedIn,
       signIn,
       signUp,
+      signInWithGoogle,
       signOut,
       refreshProfile,
       setStayLoggedIn,
