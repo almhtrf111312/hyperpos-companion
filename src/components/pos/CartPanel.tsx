@@ -44,8 +44,14 @@ import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
 import { recordActivity } from '@/lib/auto-backup';
-import { recordActivity } from '@/lib/auto-backup';
 import { useLanguage } from '@/hooks/use-language';
+import { 
+  loadCustomersCloud, 
+  findOrCreateCustomerCloud, 
+  updateCustomerStatsCloud 
+} from '@/lib/cloud/customers-cloud';
+import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
+import { deductStockBatchCloud } from '@/lib/cloud/products-cloud';
 
 interface CartItem {
   id: string;
