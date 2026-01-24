@@ -26,7 +26,7 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-xl">
-            {isRTL ? 'مرحباً بك في HyperPOS' : 'Welcome to HyperPOS'}
+            {isRTL ? 'مرحباً بك في FlowPOS Pro' : 'Welcome to FlowPOS Pro'}
           </CardTitle>
           <CardDescription>
             {isRTL ? 'اختر طريقة تفعيل التطبيق' : 'Choose how to activate the application'}

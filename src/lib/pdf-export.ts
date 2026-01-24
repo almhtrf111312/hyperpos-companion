@@ -1,4 +1,4 @@
-// Professional PDF Export using jsPDF with Capacitor support
+// Professional PDF Export using jsPDF with Capacitor support - FlowPOS Pro
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Capacitor } from '@capacitor/core';

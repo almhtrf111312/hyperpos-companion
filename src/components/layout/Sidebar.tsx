@@ -152,9 +152,9 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
             <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center glow">
               <Zap className="w-6 h-6 text-primary-foreground" />
             </div>
-            {(!effectiveCollapsed || isMobile) && (
+          {(!effectiveCollapsed || isMobile) && (
               <div>
-                <h1 className="font-bold text-lg text-foreground">HyperPOS</h1>
+                <h1 className="font-bold text-lg text-foreground">FlowPOS Pro</h1>
                 <p className="text-xs text-muted-foreground">{t('sidebar.systemDesc')}</p>
               </div>
             )}

@@ -1,4 +1,4 @@
-name: Build HyperPOS APK
+name: Build FlowPOS Pro APK
 on:
   push:
     branches: [ main ]
@@ -16,38 +16,77 @@ jobs:
         node-version: 18
         cache: 'npm'
         
-    # 🔥 خطوة 1: تثبيت الكل (npm ci)
+    # 🔥 Step 1: Install dependencies
     - run: npm ci
     
-    # 🔥 خطوة 2: Build الـ web app
+    # 🔥 Step 2: Build the web app
     - run: npm run build
     
-    # 🔥 خطوة 3: تثبيت Capacitor CLI صراحة
+    # 🔥 Step 3: Install Capacitor CLI explicitly
     - name: Install Capacitor CLI
       run: npm i @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6
         
-    # 🔥 خطوة 4: تسلسل Capacitor صحيح
+    # 🔥 Step 4: Setup Capacitor
     - name: Setup Capacitor
       run: |
-        npx cap init HyperPOS app.lovable.hyperpos --web-dir dist
+        npx cap init "FlowPOS Pro" com.flowpos.pro --web-dir dist
         rm -rf android
         npx cap add android
         npx cap sync android
+    
+    # 🔥 Step 5: Update Version Code automatically
+    - name: Update Version Code
+      run: |
+        VERSION_CODE=${{ github.run_number }}
+        sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
+        sed -i 's/versionName "1.0"/versionName "1.0.'$VERSION_CODE'"/' android/app/build.gradle
+        echo "Updated to versionCode: $VERSION_CODE, versionName: 1.0.$VERSION_CODE"
         
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
+    
+    # 🔥 Step 6: Decode Keystore (if secrets exist)
+    - name: Decode Keystore
+      if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
         
-    - name: Build APK
+    # 🔥 Step 7: Build Signed Release APK (if keystore exists)
+    - name: Build Signed APK
+      if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=$PWD/app/flowpos-release.keystore \
+          -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+    
+    # 🔥 Step 8: Build Debug APK (fallback if no keystore)
+    - name: Build Debug APK
+      if: ${{ secrets.KEYSTORE_BASE64 == '' }}
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleDebug
         
-    - name: Upload APK
+    # 🔥 Step 9: Upload Signed APK
+    - name: Upload Signed APK
+      if: ${{ secrets.KEYSTORE_BASE64 != '' }}
       uses: actions/upload-artifact@v4
       with:
-        name: HyperPOS-Camera-v${{ github.run_number }}
+        name: FlowPOS-Pro-v1.0.${{ github.run_number }}-release
+        path: android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 30
+        
+    # 🔥 Step 10: Upload Debug APK (fallback)
+    - name: Upload Debug APK
+      if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: FlowPOS-Pro-v1.0.${{ github.run_number }}-debug
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30

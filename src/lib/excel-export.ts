@@ -1,4 +1,4 @@
-// Professional Excel Export using xlsx library with Capacitor support
+// Professional Excel Export using xlsx library with Capacitor support - FlowPOS Pro
 import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -54,7 +54,7 @@ const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
     if (stored) {
       const settings = JSON.parse(stored);
       return {
-        name: settings.storeSettings?.name || 'HyperPOS',
+        name: settings.storeSettings?.name || 'FlowPOS Pro',
         phone: settings.storeSettings?.phone,
         address: settings.storeSettings?.address,
       };
@@ -62,7 +62,7 @@ const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
   } catch {
     // ignore
   }
-  return { name: 'HyperPOS' };
+  return { name: 'FlowPOS Pro' };
 };
 
 // Save Excel file on native platforms using Filesystem and Share APIs

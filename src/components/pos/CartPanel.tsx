@@ -442,7 +442,7 @@ export function CartPanel({
     if (cart.length === 0) return;
     
     // Load store settings
-    let storeName = 'HyperPOS Store';
+    let storeName = 'FlowPOS Pro';
     let storeAddress = '';
     let storePhone = '';
     let storeLogo = '';
