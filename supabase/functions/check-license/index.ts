@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
     // Create client with user's auth token
     const authHeader = req.headers.get('Authorization')
@@ -43,6 +44,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     })
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
     // Validate JWT using getClaims first
     const token = authHeader.replace('Bearer ', '')
@@ -68,11 +71,54 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get user's license
-    const { data: license, error: licenseError } = await supabase
+    // Get user's role and owner_id
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role, owner_id, is_active')
+      .eq('user_id', user.id)
+      .single()
+
+    if (roleError || !roleData) {
+      console.log('No role found for user:', user.id)
+      return new Response(
+        JSON.stringify({ 
+          valid: false, 
+          hasLicense: false,
+          needsActivation: true,
+          role: null
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Determine the owner_id for license check
+    // If user is cashier, use their owner_id; otherwise use their own id
+    const licenseOwnerId = roleData.role === 'cashier' && roleData.owner_id 
+      ? roleData.owner_id 
+      : user.id
+
+    // Boss users always have valid license
+    if (roleData.role === 'boss') {
+      return new Response(
+        JSON.stringify({ 
+          valid: true,
+          hasLicense: true,
+          isTrial: false,
+          expiresAt: null,
+          remainingDays: 999,
+          needsActivation: false,
+          role: 'boss',
+          isRevoked: false
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Get owner's license (for both owners and their cashiers)
+    const { data: license, error: licenseError } = await supabaseAdmin
       .from('app_licenses')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', licenseOwnerId)
       .single()
 
     if (licenseError || !license) {
@@ -81,7 +127,24 @@ Deno.serve(async (req) => {
         JSON.stringify({ 
           valid: false, 
           hasLicense: false,
-          needsActivation: true 
+          needsActivation: true,
+          role: roleData.role
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check if license is revoked
+    if (license.is_revoked) {
+      return new Response(
+        JSON.stringify({ 
+          valid: false,
+          hasLicense: true,
+          isRevoked: true,
+          revokedAt: license.revoked_at,
+          revokedReason: license.revoked_reason,
+          needsActivation: true,
+          role: roleData.role
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -99,7 +162,8 @@ Deno.serve(async (req) => {
           isExpired: true,
           isTrial: license.is_trial,
           needsActivation: true,
-          expiredAt: license.expires_at
+          expiredAt: license.expires_at,
+          role: roleData.role
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -109,6 +173,20 @@ Deno.serve(async (req) => {
     const remainingMs = expiresAt.getTime() - now.getTime()
     const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24))
 
+    // Check if cashier is active
+    if (roleData.role === 'cashier' && !roleData.is_active) {
+      return new Response(
+        JSON.stringify({ 
+          valid: false,
+          hasLicense: true,
+          isCashierDisabled: true,
+          needsActivation: false,
+          role: roleData.role
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify({ 
         valid: true,
@@ -116,7 +194,13 @@ Deno.serve(async (req) => {
         isTrial: license.is_trial,
         expiresAt: license.expires_at,
         remainingDays,
-        needsActivation: false
+        needsActivation: false,
+        role: roleData.role,
+        maxCashiers: license.max_cashiers,
+        licenseTier: license.license_tier,
+        isRevoked: false,
+        // Include warning if expiring soon (7 days)
+        expiringWarning: remainingDays <= 7
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

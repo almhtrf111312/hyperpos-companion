@@ -10,7 +10,9 @@ import { AuthProvider } from "./hooks/use-auth";
 import { LanguageProvider } from "./hooks/use-language";
 import { ThemeProvider } from "./hooks/use-theme";
 import { LicenseProvider } from "./hooks/use-license";
+import { UserRoleProvider } from "./hooks/use-user-role";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { RoleGuard } from "./components/auth/RoleGuard";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { SetupWizard } from "./components/setup/SetupWizard";
 import { LicenseGuard } from "./components/license/LicenseGuard";
@@ -34,6 +36,7 @@ import CashShifts from "./pages/CashShifts";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+import BossPanel from "./pages/BossPanel";
 
 const queryClient = new QueryClient();
 
@@ -128,7 +131,12 @@ const AppContent = () => {
         <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
         <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
+        
+        {/* Boss only routes */}
+        <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -145,11 +153,13 @@ const App = () => (
             <AuthProvider>
               <CloudSyncProvider>
                 <LicenseProvider>
-                  <NotificationsProvider>
-                    <LicenseGuard>
-                      <AppContent />
-                    </LicenseGuard>
-                  </NotificationsProvider>
+                  <UserRoleProvider>
+                    <NotificationsProvider>
+                      <LicenseGuard>
+                        <AppContent />
+                      </LicenseGuard>
+                    </NotificationsProvider>
+                  </UserRoleProvider>
                 </LicenseProvider>
               </CloudSyncProvider>
             </AuthProvider>
