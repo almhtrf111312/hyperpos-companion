@@ -37,6 +37,7 @@ import { confirmPendingProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
+import { processDebtPayment } from '@/lib/unified-transactions';
 
 export default function Debts() {
   const { user, profile } = useAuth();
@@ -149,6 +150,14 @@ export default function Debts() {
     const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
     
     await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount);
+    
+    // ✅ إضافة المبلغ للصندوق تلقائياً (الترابط الجديد)
+    processDebtPayment(
+      paymentAmount,
+      undefined,
+      user?.id,
+      profile?.full_name || user?.email || 'مستخدم'
+    );
     
     // Confirm pending profits proportionally to payment
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);

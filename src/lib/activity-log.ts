@@ -8,6 +8,7 @@ export type ActivityType =
   | 'maintenance'
   | 'debt_created'
   | 'debt_paid'
+  | 'debt_payment'
   | 'product_added'
   | 'product_updated'
   | 'product_deleted'
@@ -25,6 +26,8 @@ export type ActivityType =
   | 'capital_added'
   | 'capital_withdrawn'
   | 'expense_added'
+  | 'expense'
+  | 'refund'
   | 'partner_investment';
 
 // Device info for tracking action origin
@@ -173,4 +176,7 @@ export const activityTypeLabels: Record<ActivityType, { ar: string; en: string; 
   capital_withdrawn: { ar: 'سحب رأس مال', en: 'Capital Withdrawn', fr: 'Capital Retiré' },
   expense_added: { ar: 'إضافة مصروف', en: 'Expense Added', fr: 'Dépense Ajoutée' },
   partner_investment: { ar: 'استثمار شريك', en: 'Partner Investment', fr: 'Investissement Partenaire' },
+  debt_payment: { ar: 'تسديد دفعة', en: 'Debt Payment', fr: 'Paiement Dette' },
+  expense: { ar: 'مصروف', en: 'Expense', fr: 'Dépense' },
+  refund: { ar: 'مرتجع', en: 'Refund', fr: 'Remboursement' },
 };

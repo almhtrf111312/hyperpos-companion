@@ -226,3 +226,55 @@ export const deductStockBatchCloud = async (
 
   return { success: failed === 0, deducted, failed };
 };
+
+// Restore stock for refunds
+export const restoreStockCloud = async (productId: string, quantity: number): Promise<boolean> => {
+  const products = await loadProductsCloud();
+  const product = products.find(p => p.id === productId);
+  
+  if (!product) return false;
+  
+  const newQuantity = product.quantity + quantity;
+  return updateProductCloud(productId, { quantity: newQuantity });
+};
+
+// Batch restore stock for refunds
+export const restoreStockBatchCloud = async (
+  items: { productId: string; quantity: number }[]
+): Promise<{ success: boolean; restored: number; failed: number }> => {
+  let restored = 0;
+  let failed = 0;
+
+  for (const item of items) {
+    const success = await restoreStockCloud(item.productId, item.quantity);
+    if (success) restored++;
+    else failed++;
+  }
+
+  return { success: failed === 0, restored, failed };
+};
+
+// Check stock availability
+export const checkStockAvailabilityCloud = async (
+  items: { productId: string; quantity: number }[]
+): Promise<{ success: boolean; insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> }> => {
+  const products = await loadProductsCloud();
+  const insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> = [];
+  
+  items.forEach(({ productId, quantity }) => {
+    const product = products.find(p => p.id === productId);
+    if (product && product.quantity < quantity) {
+      insufficientItems.push({
+        productId,
+        productName: product.name,
+        requested: quantity,
+        available: product.quantity,
+      });
+    }
+  });
+  
+  return {
+    success: insufficientItems.length === 0,
+    insufficientItems,
+  };
+};

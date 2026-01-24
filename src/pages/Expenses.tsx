@@ -67,6 +67,7 @@ import {
 } from '@/lib/recurring-expenses-store';
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
+import { processExpense } from '@/lib/unified-transactions';
 
 export default function Expenses() {
   const { t } = useLanguage();
@@ -182,6 +183,9 @@ export default function Expenses() {
       notes: formData.notes,
       date: formData.date,
     });
+
+    // ✅ خصم المبلغ من الصندوق تلقائياً (الترابط الجديد)
+    processExpense(formData.amount, formData.type);
 
     const expensesData = await loadExpensesCloud();
     setExpenses(expensesData);

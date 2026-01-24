@@ -17,6 +17,9 @@ export const EVENTS = {
   CASH_SHIFTS_UPDATED: 'hyperpos:cash-shifts-updated',
   PRODUCT_FIELDS_UPDATED: 'hyperpos:product-fields-updated',
   CUSTOM_FIELDS_UPDATED: 'hyperpos:custom-fields-updated',
+  // Unified transaction events
+  TRANSACTION_COMPLETED: 'hyperpos:transaction-completed',
+  REFUND_PROCESSED: 'hyperpos:refund-processed',
 };
 
 export function emitEvent(name: string, detail?: any) {
