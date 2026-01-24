@@ -10,7 +10,8 @@ import {
   AlertCircle,
   ExternalLink,
   Settings,
-  FolderOpen
+  FolderOpen,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,8 @@ import {
   deleteBackupFile,
   disconnectGoogleDrive,
   formatFileSize,
+  getGoogleClientId,
+  hasBuiltInClientId,
   GoogleDriveFile,
   GoogleDriveUserInfo,
   GoogleDriveTokens,
@@ -48,6 +51,9 @@ interface GoogleDriveSectionProps {
 
 export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: GoogleDriveSectionProps) {
   const { toast } = useToast();
+  
+  // Check if built-in Client ID exists
+  const builtInClientId = hasBuiltInClientId();
   
   // State
   const [clientId, setClientId] = useState(getStoredClientId() || '');
@@ -128,7 +134,10 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
   };
 
   const handleConnect = () => {
-    if (!clientId.trim()) {
+    // Use built-in Client ID if available, otherwise use manual input
+    const clientIdToUse = getGoogleClientId() || clientId.trim();
+    
+    if (!clientIdToUse) {
       toast({
         title: 'خطأ',
         description: 'يرجى إدخال معرف العميل (Client ID)',
@@ -137,8 +146,20 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
       return;
     }
     
-    setStoredClientId(clientId.trim());
-    initiateGoogleAuth(clientId.trim());
+    // Store if using manual input
+    if (!builtInClientId && clientId.trim()) {
+      setStoredClientId(clientId.trim());
+    }
+    
+    initiateGoogleAuth(clientIdToUse);
+  };
+
+  // Direct connect for built-in Client ID
+  const handleDirectConnect = () => {
+    const envClientId = getGoogleClientId();
+    if (envClientId) {
+      initiateGoogleAuth(envClientId);
+    }
   };
 
   const handleDisconnect = () => {
@@ -202,8 +223,8 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
         setDriveFiles(prev => [uploadedFile, ...prev]);
         
         toast({
-          title: 'تم الرفع',
-          description: 'تم رفع النسخة الاحتياطية إلى Google Drive',
+          title: '✅ تم النسخ الاحتياطي بنجاح',
+          description: 'تم حفظ بياناتك في Google Drive',
         });
       } else {
         throw new Error('Upload failed');
@@ -330,10 +351,15 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
               إلغاء الربط
             </Button>
           </div>
+        ) : builtInClientId ? (
+          <Button size="sm" onClick={handleDirectConnect} className="bg-blue-600 hover:bg-blue-700">
+            <Cloud className="w-4 h-4 ml-1" />
+            ربط Google Drive
+          </Button>
         ) : (
           <Button size="sm" onClick={() => setSetupDialogOpen(true)}>
             <Cloud className="w-4 h-4 ml-1" />
-            ربط Google Drive
+            إعداد Google Drive
           </Button>
         )}
       </div>
@@ -353,14 +379,23 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
             />
           </div>
 
-          {/* Upload Button */}
+          {/* Cloud Backup Button - Prominent */}
           <Button 
             onClick={handleUploadToDrive} 
             disabled={isUploading}
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base"
           >
-            <Upload className={cn("w-4 h-4 ml-2", isUploading && "animate-pulse")} />
-            {isUploading ? 'جاري الرفع...' : 'رفع نسخة احتياطية الآن'}
+            {isUploading ? (
+              <>
+                <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                جاري النسخ الاحتياطي...
+              </>
+            ) : (
+              <>
+                <Cloud className="w-5 h-5 ml-2" />
+                نسخ احتياطي سحابي
+              </>
+            )}
           </Button>
 
           {/* Files List */}

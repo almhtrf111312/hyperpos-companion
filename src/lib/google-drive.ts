@@ -46,6 +46,21 @@ export const removeStoredClientId = (): void => {
   localStorage.removeItem('hyperpos_google_client_id');
 };
 
+// Get Google Client ID from environment variable or stored value
+export const getGoogleClientId = (): string | null => {
+  // Priority 1: Environment variable (built-in)
+  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (envClientId) return envClientId;
+  
+  // Priority 2: User-stored Client ID (legacy/manual)
+  return getStoredClientId();
+};
+
+// Check if using built-in Client ID from environment
+export const hasBuiltInClientId = (): boolean => {
+  return !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+};
+
 export const getStoredTokens = (): GoogleDriveTokens | null => {
   const tokens = secureGet<GoogleDriveTokens>(GOOGLE_TOKENS_KEY, { namespace: STORAGE_NAMESPACE });
   
