@@ -7,6 +7,7 @@ import { Share } from '@capacitor/share';
 import { loadArabicFont, ARABIC_FONT_NAME } from './fonts/cairo-font';
 import { getCurrentLanguage } from './i18n';
 import ArabicReshaper from 'arabic-reshaper';
+import bidiFactory from 'bidi-js';
 
 export interface PDFExportOptions {
   title: string;
@@ -30,19 +31,39 @@ const containsArabic = (text: string): boolean => {
 
 // Process Arabic text for proper PDF display
 // 1. Reshape: Convert characters to their connected forms
-// 2. Bidi: Reverse for RTL display in PDF
+// 2. Bidi: Apply proper bidi reordering (keeps numbers/dates LTR)
+
+const bidi = bidiFactory();
+
+const applyBidi = (text: string): string => {
+  const embedding = bidi.getEmbeddingLevels(text, 'rtl');
+  const flips = bidi.getReorderSegments(text, embedding);
+
+  const chars = [...text];
+  flips.forEach(([start, end]: [number, number]) => {
+    const segment = chars.slice(start, end + 1).reverse();
+    chars.splice(start, segment.length, ...segment);
+  });
+
+  const mirrored = bidi.getMirroredCharactersMap(text, embedding);
+  mirrored.forEach((char: string, index: number) => {
+    chars[index] = char;
+  });
+
+  return chars.join('');
+};
+
 const processArabicText = (text: string): string => {
   if (!containsArabic(text)) return text;
   
   try {
     // Use arabic-reshaper to properly connect Arabic letters
     const shaped = ArabicReshaper(text);
-    // Reverse for RTL display (PDF renders left-to-right)
-    return shaped.split('').reverse().join('');
+    return applyBidi(shaped);
   } catch (error) {
     console.warn('Arabic reshaping failed, using fallback:', error);
-    // Fallback: just reverse the text
-    return text.split('').reverse().join('');
+    // Fallback: bidi without shaping
+    return applyBidi(text);
   }
 };
 
@@ -151,7 +172,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     try {
       await loadArabicFont(doc);
       arabicFontLoaded = true;
-      doc.setFont(ARABIC_FONT_NAME);
+      doc.setFont(ARABIC_FONT_NAME, 'normal');
     } catch {
       arabicFontLoaded = false;
       doc.setFont('helvetica');
@@ -284,7 +305,8 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     headStyles: {
       fillColor: [41, 128, 185],
       textColor: 255,
-      fontStyle: 'bold',
+      // Avoid bold with Arabic custom fonts in jsPDF/autotable (may fallback to Latin font)
+      fontStyle: arabicFontLoaded ? 'normal' : 'bold',
     },
     alternateRowStyles: {
       fillColor: [245, 245, 245],
@@ -292,7 +314,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     // Style for totals row (last row if totals provided)
     didParseCell: (data) => {
       if (totals && data.row.index === rows.length - 1) {
-        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontStyle = arabicFontLoaded ? 'normal' : 'bold';
         data.cell.styles.fillColor = [230, 230, 230];
       }
     },
@@ -324,7 +346,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       doc.setFont(summaryFontName, 'normal');
       doc.text(processRTL(item.label + ':'), pageWidth / 2 + 30, summaryY, { align: 'right' });
       doc.setTextColor(44, 62, 80);
-      doc.setFont(summaryFontName, 'bold');
+      doc.setFont(summaryFontName, arabicFontLoaded ? 'normal' : 'bold');
       const valueText = typeof item.value === 'number' 
         ? item.value.toLocaleString('en-US') 
         : String(item.value);
