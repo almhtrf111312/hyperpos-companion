@@ -95,10 +95,18 @@ export default function Dashboard() {
       // Calculate inventory value
       const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
 
-      // Calculate total capital from partners
-      const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
+      // ✅ حساب رأس المال الإجمالي من مصادر متعددة
+      // 1. رأس المال من الشركاء (Cloud)
+      const partnersCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
       
-      // ✅ استخدام رصيد الصندوق الفعلي بدلاً من الحساب الخاطئ
+      // 2. رأس المال المحلي (من capital-store)
+      const { loadCapitalState } = await import('@/lib/capital-store');
+      const capitalState = loadCapitalState();
+      
+      // استخدم القيمة الأعلى للتوافق مع كلا المصدرين
+      const totalCapital = Math.max(partnersCapital, capitalState.currentCapital);
+      
+      // ✅ رصيد الصندوق الفعلي
       const cashboxState = loadCashboxState();
       const availableCapital = cashboxState.currentBalance;
 

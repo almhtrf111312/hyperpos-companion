@@ -4,6 +4,8 @@ import autoTable from 'jspdf-autotable';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { loadArabicFont } from './fonts/cairo-font';
+import { getCurrentLanguage } from './i18n';
 
 export interface PDFExportOptions {
   title: string;
@@ -20,23 +22,29 @@ export interface PDFExportOptions {
   fileName?: string;
 }
 
-// Helper to reverse Arabic text for PDF (since jsPDF doesn't support RTL natively)
-const reverseArabicText = (text: string): string => {
-  // Split by spaces to preserve word order in Arabic
-  return text.split('').reverse().join('');
-};
-
 // Check if text contains Arabic characters
 const containsArabic = (text: string): boolean => {
   return /[\u0600-\u06FF]/.test(text);
 };
 
-// Process text for RTL display
+// Helper to reshape Arabic text for proper display in PDF
+// When Cairo font is loaded, we just return the text as-is
+// When not loaded, we use basic reshaping
+const reshapeArabicText = (text: string, fontLoaded: boolean): string => {
+  if (!containsArabic(text)) return text;
+  if (fontLoaded) return text; // Cairo font handles Arabic properly
+  
+  // Fallback: basic reshaping for helvetica (limited support)
+  // Arabic text needs to be reversed for display in non-Arabic fonts
+  return text.split('').reverse().join('');
+};
+
+// Global flag to track if Arabic font is available
+let arabicFontLoaded = false;
+
+// Process text for RTL display - wrapper function
 const processRTL = (text: string): string => {
-  if (containsArabic(text)) {
-    return reverseArabicText(text);
-  }
-  return text;
+  return reshapeArabicText(String(text || ''), arabicFontLoaded);
 };
 
 // Format date in local timezone
@@ -126,8 +134,21 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     format: 'a4',
   });
   
-  // Set font for Arabic support (using built-in fonts)
-  doc.setFont('helvetica');
+  // ✅ Try to load Arabic font (Cairo)
+  const currentLang = getCurrentLanguage();
+  if (currentLang === 'ar') {
+    try {
+      await loadArabicFont(doc);
+      arabicFontLoaded = true;
+      doc.setFont('Cairo');
+    } catch {
+      arabicFontLoaded = false;
+      doc.setFont('helvetica');
+    }
+  } else {
+    doc.setFont('helvetica');
+    arabicFontLoaded = false;
+  }
   
   let yPosition = 15;
   const pageWidth = doc.internal.pageSize.width;
@@ -242,7 +263,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     body: rows,
     theme: 'grid',
     styles: {
-      font: 'helvetica',
+      font: arabicFontLoaded ? 'Cairo' : 'helvetica',
       fontSize: 10,
       cellPadding: 3,
       halign: 'center',
@@ -483,6 +504,17 @@ export const exportInvoiceReceiptToPDF = async (
     format: [80, 200], // Receipt size
   });
   
+  // ✅ Try to load Arabic font for receipt
+  const currentLang = getCurrentLanguage();
+  if (currentLang === 'ar') {
+    try {
+      await loadArabicFont(doc);
+      arabicFontLoaded = true;
+    } catch {
+      arabicFontLoaded = false;
+    }
+  }
+  
   let yPosition = 10;
   const pageWidth = 80;
   const margin = 5;
@@ -490,7 +522,7 @@ export const exportInvoiceReceiptToPDF = async (
   // Store name
   if (storeInfo?.name) {
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'bold');
     const storeNameText = processRTL(storeInfo.name);
     doc.text(storeNameText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 6;
@@ -499,7 +531,7 @@ export const exportInvoiceReceiptToPDF = async (
   // Store contact
   if (storeInfo?.phone) {
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'normal');
     doc.text(storeInfo.phone, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 4;
   }
@@ -553,13 +585,13 @@ export const exportInvoiceReceiptToPDF = async (
   }
   
   // Total
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'bold');
   doc.text(processRTL('الإجمالي:'), pageWidth - margin - 25, yPosition, { align: 'right' });
   doc.text(invoice.total.toFixed(2), pageWidth - margin, yPosition, { align: 'right' });
   yPosition += 6;
   
   // Payment type
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'normal');
   const paymentText = processRTL(invoice.paymentType === 'cash' ? 'نقدي' : 'آجل');
   doc.text(paymentText, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;
