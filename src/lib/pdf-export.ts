@@ -30,28 +30,9 @@ const containsArabic = (text: string): boolean => {
 };
 
 // Process Arabic text for proper PDF display
+// jsPDF renders text left-to-right, so we need to:
 // 1. Reshape: Convert characters to their connected forms
-// 2. Bidi: Apply proper bidi reordering (keeps numbers/dates LTR)
-
-const bidi = bidiFactory();
-
-const applyBidi = (text: string): string => {
-  const embedding = bidi.getEmbeddingLevels(text, 'rtl');
-  const flips = bidi.getReorderSegments(text, embedding);
-
-  const chars = [...text];
-  flips.forEach(([start, end]: [number, number]) => {
-    const segment = chars.slice(start, end + 1).reverse();
-    chars.splice(start, segment.length, ...segment);
-  });
-
-  const mirrored = bidi.getMirroredCharactersMap(text, embedding);
-  mirrored.forEach((char: string, index: number) => {
-    chars[index] = char;
-  });
-
-  return chars.join('');
-};
+// 2. Reverse: Flip the text so it appears RTL when rendered LTR
 
 const processArabicText = (text: string): string => {
   if (!containsArabic(text)) return text;
@@ -59,11 +40,13 @@ const processArabicText = (text: string): string => {
   try {
     // Use arabic-reshaper to properly connect Arabic letters
     const shaped = ArabicReshaper(text);
-    return applyBidi(shaped);
+    // Reverse the shaped text so it displays RTL in the PDF
+    // jsPDF renders left-to-right, so reversed text will appear right-to-left
+    return shaped.split('').reverse().join('');
   } catch (error) {
     console.warn('Arabic reshaping failed, using fallback:', error);
-    // Fallback: bidi without shaping
-    return applyBidi(text);
+    // Fallback: just reverse without shaping
+    return text.split('').reverse().join('');
   }
 };
 
