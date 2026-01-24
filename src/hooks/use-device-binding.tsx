@@ -39,7 +39,7 @@ export function useDeviceBinding() {
       // Get user's license with device info
       const { data: license, error } = await supabase
         .from('app_licenses')
-        .select('device_id, is_revoked')
+        .select('device_id, is_revoked, allow_multi_device')
         .eq('user_id', user.id)
         .eq('is_revoked', false)
         .order('created_at', { ascending: false })
@@ -70,6 +70,17 @@ export function useDeviceBinding() {
       }
 
       const registeredDeviceId = license.device_id;
+
+      // If multi-device is allowed, skip device binding check
+      if (license.allow_multi_device === true) {
+        setState({
+          isChecking: false,
+          isDeviceBlocked: false,
+          deviceId: currentDeviceId,
+          registeredDeviceId: registeredDeviceId || currentDeviceId,
+        });
+        return;
+      }
 
       // If no device registered yet, register this device
       if (!registeredDeviceId) {
