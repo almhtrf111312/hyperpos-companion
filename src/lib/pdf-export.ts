@@ -11,9 +11,12 @@ export interface PDFExportOptions {
   storeName?: string;
   storePhone?: string;
   storeAddress?: string;
+  storeLogo?: string; // Base64 logo
+  reportType?: string;
   columns: { header: string; key: string }[];
   data: Record<string, unknown>[];
   totals?: Record<string, number | string>;
+  summary?: { label: string; value: string | number }[];
   fileName?: string;
 }
 
@@ -34,6 +37,30 @@ const processRTL = (text: string): string => {
     return reverseArabicText(text);
   }
   return text;
+};
+
+// Format date in local timezone
+const formatLocalDate = (date?: Date): string => {
+  const d = date || new Date();
+  return d.toLocaleDateString('ar-SA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+};
+
+// Format datetime in local timezone
+const formatLocalDateTime = (date?: Date): string => {
+  const d = date || new Date();
+  return d.toLocaleString('ar-SA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
 };
 
 // Save PDF on native platforms using Filesystem and Share APIs
@@ -61,6 +88,20 @@ const savePDFNative = async (doc: jsPDF, fileName: string): Promise<void> => {
   }
 };
 
+// Get store logo from settings
+const getStoreLogo = (): string | null => {
+  try {
+    const stored = localStorage.getItem('hyperpos_settings');
+    if (stored) {
+      const settings = JSON.parse(stored);
+      return settings.storeSettings?.logo || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
 // Create and download PDF file
 export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   const {
@@ -69,9 +110,12 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     storeName,
     storePhone,
     storeAddress,
+    storeLogo,
+    reportType,
     columns,
     data,
     totals,
+    summary,
     fileName = 'export.pdf',
   } = options;
   
@@ -86,13 +130,25 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   doc.setFont('helvetica');
   
   let yPosition = 15;
+  const pageWidth = doc.internal.pageSize.width;
+  
+  // Add store logo if available
+  const logo = storeLogo || getStoreLogo();
+  if (logo) {
+    try {
+      doc.addImage(logo, 'PNG', pageWidth / 2 - 15, yPosition, 30, 30);
+      yPosition += 35;
+    } catch {
+      // Logo failed to load, skip
+    }
+  }
   
   // Add store name (header)
   if (storeName) {
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setTextColor(44, 62, 80);
     const storeNameText = processRTL(storeName);
-    doc.text(storeNameText, doc.internal.pageSize.width / 2, yPosition, { align: 'center' });
+    doc.text(storeNameText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 8;
   }
   
@@ -101,28 +157,43 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     if (storePhone) {
-      doc.text(storePhone, doc.internal.pageSize.width / 2, yPosition, { align: 'center' });
+      doc.text(storePhone, pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 5;
     }
     if (storeAddress) {
       const addressText = processRTL(storeAddress);
-      doc.text(addressText, doc.internal.pageSize.width / 2, yPosition, { align: 'center' });
+      doc.text(addressText, pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 5;
     }
   }
   
-  yPosition += 5;
+  yPosition += 3;
   
   // Add horizontal line
   doc.setDrawColor(200, 200, 200);
-  doc.line(15, yPosition, doc.internal.pageSize.width - 15, yPosition);
+  doc.line(15, yPosition, pageWidth - 15, yPosition);
+  yPosition += 8;
+  
+  // Add report type and date header
+  doc.setFontSize(12);
+  doc.setTextColor(100, 100, 100);
+  
+  // Report type on right
+  if (reportType) {
+    const reportTypeText = processRTL(reportType);
+    doc.text(reportTypeText, pageWidth - 15, yPosition, { align: 'right' });
+  }
+  
+  // Date on left
+  const dateText = `${processRTL('تاريخ الإصدار:')} ${formatLocalDateTime()}`;
+  doc.text(dateText, 15, yPosition);
   yPosition += 10;
   
   // Add title
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setTextColor(44, 62, 80);
   const titleText = processRTL(title);
-  doc.text(titleText, doc.internal.pageSize.width / 2, yPosition, { align: 'center' });
+  doc.text(titleText, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;
   
   // Add subtitle
@@ -130,7 +201,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.setFontSize(11);
     doc.setTextColor(100, 100, 100);
     const subtitleText = processRTL(subtitle);
-    doc.text(subtitleText, doc.internal.pageSize.width / 2, yPosition, { align: 'center' });
+    doc.text(subtitleText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 10;
   }
   
@@ -194,6 +265,40 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     },
   });
   
+  // Get final Y position after table
+  const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || yPosition + 50;
+  
+  // Add summary section if provided
+  if (summary && summary.length > 0) {
+    let summaryY = finalY + 15;
+    
+    // Summary header
+    doc.setFontSize(14);
+    doc.setTextColor(44, 62, 80);
+    doc.text(processRTL('خلاصة حسابية'), pageWidth / 2, summaryY, { align: 'center' });
+    summaryY += 8;
+    
+    // Summary line
+    doc.setDrawColor(41, 128, 185);
+    doc.line(pageWidth / 2 - 40, summaryY, pageWidth / 2 + 40, summaryY);
+    summaryY += 8;
+    
+    // Summary items
+    doc.setFontSize(11);
+    summary.forEach(item => {
+      doc.setTextColor(100, 100, 100);
+      doc.text(processRTL(item.label + ':'), pageWidth / 2 + 30, summaryY, { align: 'right' });
+      doc.setTextColor(44, 62, 80);
+      doc.setFont('helvetica', 'bold');
+      const valueText = typeof item.value === 'number' 
+        ? item.value.toLocaleString('en-US') 
+        : String(item.value);
+      doc.text(valueText, pageWidth / 2 - 30, summaryY, { align: 'left' });
+      doc.setFont('helvetica', 'normal');
+      summaryY += 6;
+    });
+  }
+  
   // Add footer with date and page number
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -201,11 +306,14 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     
-    const dateText = new Date().toLocaleDateString('ar-SA');
-    doc.text(dateText, 15, doc.internal.pageSize.height - 10);
+    const footerDateText = formatLocalDate();
+    doc.text(footerDateText, 15, doc.internal.pageSize.height - 10);
     
     const pageText = `${i} / ${pageCount}`;
-    doc.text(pageText, doc.internal.pageSize.width - 15, doc.internal.pageSize.height - 10, { align: 'right' });
+    doc.text(pageText, pageWidth - 15, doc.internal.pageSize.height - 10, { align: 'right' });
+    
+    // App name in center
+    doc.text('HyperPOS', pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
   }
   
   // Save the PDF based on platform
@@ -216,12 +324,13 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   }
 };
 
-// Export invoices to PDF
+// Export invoices to PDF with enhanced details
 export const exportInvoicesToPDF = async (
   invoices: Array<{
     id: string;
     customerName: string;
     total: number;
+    discount?: number;
     profit?: number;
     paymentType: string;
     type: string;
@@ -232,33 +341,48 @@ export const exportInvoicesToPDF = async (
 ): Promise<void> => {
   const columns = [
     { header: 'رقم الفاتورة', key: 'id' },
+    { header: 'التاريخ', key: 'date' },
     { header: 'العميل', key: 'customerName' },
-    { header: 'النوع', key: 'type' },
-    { header: 'الدفع', key: 'paymentType' },
     { header: 'الإجمالي', key: 'total' },
-    { header: 'الربح', key: 'profit' },
+    { header: 'الخصم', key: 'discount' },
+    { header: 'صافي الربح', key: 'profit' },
+    { header: 'نوع الدفع', key: 'paymentType' },
   ];
   
   const data = invoices.map(inv => ({
-    id: inv.id,
-    customerName: inv.customerName,
-    type: inv.type === 'maintenance' ? 'صيانة' : 'مبيعات',
-    paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
+    id: inv.id.substring(0, 8),
+    date: new Date(inv.createdAt).toLocaleDateString('ar-SA'),
+    customerName: inv.customerName || 'عميل نقدي',
     total: inv.total,
+    discount: inv.discount || 0,
     profit: inv.profit || 0,
+    paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
   }));
   
+  const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
+  const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+  const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  
   const totals: Record<string, number | string> = {
-    total: invoices.reduce((sum, inv) => sum + inv.total, 0),
-    profit: invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
+    total: totalSales,
+    discount: totalDiscount,
+    profit: totalProfit,
   };
+  
+  const summary = [
+    { label: 'إجمالي المبيعات', value: totalSales },
+    { label: 'إجمالي الخصومات', value: totalDiscount },
+    { label: 'صافي الأرباح', value: totalProfit },
+    { label: 'عدد الفواتير', value: invoices.length },
+  ];
   
   const subtitle = dateRange 
     ? `من ${dateRange.start} إلى ${dateRange.end}`
-    : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
+    : `التاريخ: ${formatLocalDate()}`;
   
   await exportToPDF({
     title: 'تقرير الفواتير',
+    reportType: 'تقرير المبيعات',
     subtitle,
     storeName: storeInfo?.name,
     storePhone: storeInfo?.phone,
@@ -266,42 +390,74 @@ export const exportInvoicesToPDF = async (
     columns,
     data,
     totals,
+    summary,
     fileName: `فواتير_${new Date().toISOString().split('T')[0]}.pdf`,
   });
 };
 
-// Export products to PDF
+// Export products to PDF with full details
 export const exportProductsToPDF = async (
   products: Array<{
     name: string;
     barcode: string;
     category: string;
+    costPrice?: number;
     salePrice: number;
     quantity: number;
+    minStockLevel?: number;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string }
 ): Promise<void> => {
   const columns = [
     { header: 'المنتج', key: 'name' },
     { header: 'الباركود', key: 'barcode' },
-    { header: 'التصنيف', key: 'category' },
+    { header: 'التكلفة', key: 'costPrice' },
     { header: 'السعر', key: 'salePrice' },
+    { header: 'الربح', key: 'profit' },
     { header: 'الكمية', key: 'quantity' },
+    { header: 'الحد الأدنى', key: 'minStockLevel' },
+    { header: 'القسم', key: 'category' },
   ];
   
+  const data = products.map(p => ({
+    name: p.name,
+    barcode: p.barcode || '-',
+    costPrice: p.costPrice || 0,
+    salePrice: p.salePrice,
+    profit: (p.salePrice - (p.costPrice || 0)),
+    quantity: p.quantity,
+    minStockLevel: p.minStockLevel || 0,
+    category: p.category || 'بدون تصنيف',
+  }));
+  
+  const totalStock = products.reduce((sum, p) => sum + p.quantity, 0);
+  const totalValue = products.reduce((sum, p) => sum + (p.salePrice * p.quantity), 0);
+  const totalCostValue = products.reduce((sum, p) => sum + ((p.costPrice || 0) * p.quantity), 0);
+  const totalPotentialProfit = totalValue - totalCostValue;
+  
   const totals: Record<string, number | string> = {
-    quantity: products.reduce((sum, p) => sum + p.quantity, 0),
+    quantity: totalStock,
   };
+  
+  const summary = [
+    { label: 'عدد المنتجات', value: products.length },
+    { label: 'إجمالي المخزون', value: totalStock },
+    { label: 'قيمة المخزون (بالتكلفة)', value: totalCostValue },
+    { label: 'قيمة المخزون (بالبيع)', value: totalValue },
+    { label: 'الربح المتوقع', value: totalPotentialProfit },
+  ];
   
   await exportToPDF({
     title: 'قائمة المنتجات',
-    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    reportType: 'تقرير المخزون',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
     storeName: storeInfo?.name,
     storePhone: storeInfo?.phone,
     storeAddress: storeInfo?.address,
     columns,
-    data: products,
+    data,
     totals,
+    summary,
     fileName: `منتجات_${new Date().toISOString().split('T')[0]}.pdf`,
   });
 };
@@ -443,16 +599,24 @@ export const exportExpensesToPDF = async (
     { header: 'ملاحظات', key: 'notes' },
   ];
   
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  
   const totals: Record<string, number | string> = {
-    amount: expenses.reduce((sum, e) => sum + e.amount, 0),
+    amount: totalExpenses,
   };
+  
+  const summary = [
+    { label: 'إجمالي المصاريف', value: totalExpenses },
+    { label: 'عدد المصاريف', value: expenses.length },
+  ];
   
   const subtitle = dateRange 
     ? `من ${dateRange.start} إلى ${dateRange.end}`
-    : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
+    : `التاريخ: ${formatLocalDate()}`;
   
   await exportToPDF({
     title: 'تقرير المصاريف',
+    reportType: 'تقرير المصروفات',
     subtitle,
     storeName: storeInfo?.name,
     storePhone: storeInfo?.phone,
@@ -460,6 +624,7 @@ export const exportExpensesToPDF = async (
     columns,
     data: expenses.map(e => ({ ...e, notes: e.notes || '' })),
     totals,
+    summary,
     fileName: `مصاريف_${new Date().toISOString().split('T')[0]}.pdf`,
   });
 };
@@ -485,22 +650,36 @@ export const exportPartnersToPDF = async (
     { header: 'الرصيد', key: 'currentBalance' },
   ];
   
+  const totalCapital = partners.reduce((sum, p) => sum + p.currentCapital, 0);
+  const totalProfit = partners.reduce((sum, p) => sum + p.totalProfit, 0);
+  const totalWithdrawn = partners.reduce((sum, p) => sum + p.totalWithdrawn, 0);
+  const totalBalance = partners.reduce((sum, p) => sum + p.currentBalance, 0);
+  
   const totals: Record<string, number | string> = {
-    currentCapital: partners.reduce((sum, p) => sum + p.currentCapital, 0),
-    totalProfit: partners.reduce((sum, p) => sum + p.totalProfit, 0),
-    totalWithdrawn: partners.reduce((sum, p) => sum + p.totalWithdrawn, 0),
-    currentBalance: partners.reduce((sum, p) => sum + p.currentBalance, 0),
+    currentCapital: totalCapital,
+    totalProfit: totalProfit,
+    totalWithdrawn: totalWithdrawn,
+    currentBalance: totalBalance,
   };
+  
+  const summary = [
+    { label: 'إجمالي رأس المال', value: totalCapital },
+    { label: 'إجمالي الأرباح', value: totalProfit },
+    { label: 'إجمالي المسحوبات', value: totalWithdrawn },
+    { label: 'إجمالي الأرصدة', value: totalBalance },
+  ];
   
   await exportToPDF({
     title: 'تقرير الشركاء',
-    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    reportType: 'تقرير الشراكة',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
     storeName: storeInfo?.name,
     storePhone: storeInfo?.phone,
     storeAddress: storeInfo?.address,
     columns,
     data: partners,
     totals,
+    summary,
     fileName: `شركاء_${new Date().toISOString().split('T')[0]}.pdf`,
   });
 };
@@ -524,21 +703,34 @@ export const exportCustomersToPDF = async (
     { header: 'الرصيد', key: 'balance' },
   ];
   
+  const totalPurchases = customers.reduce((sum, c) => sum + c.totalPurchases, 0);
+  const totalOrders = customers.reduce((sum, c) => sum + c.ordersCount, 0);
+  const totalBalance = customers.reduce((sum, c) => sum + c.balance, 0);
+  
   const totals: Record<string, number | string> = {
-    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
-    ordersCount: customers.reduce((sum, c) => sum + c.ordersCount, 0),
-    balance: customers.reduce((sum, c) => sum + c.balance, 0),
+    totalPurchases: totalPurchases,
+    ordersCount: totalOrders,
+    balance: totalBalance,
   };
+  
+  const summary = [
+    { label: 'عدد العملاء', value: customers.length },
+    { label: 'إجمالي المشتريات', value: totalPurchases },
+    { label: 'إجمالي الطلبات', value: totalOrders },
+    { label: 'إجمالي الأرصدة', value: totalBalance },
+  ];
   
   await exportToPDF({
     title: 'قائمة العملاء',
-    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    reportType: 'تقرير العملاء',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
     storeName: storeInfo?.name,
     storePhone: storeInfo?.phone,
     storeAddress: storeInfo?.address,
     columns,
     data: customers,
     totals,
+    summary,
     fileName: `عملاء_${new Date().toISOString().split('T')[0]}.pdf`,
   });
 };

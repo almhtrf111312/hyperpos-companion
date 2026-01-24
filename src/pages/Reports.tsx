@@ -80,14 +80,23 @@ export default function Reports() {
   ];
 
   // Calculate real data from stores
+  // Helper function to get local date string from a date
+  const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const reportData = useMemo(() => {
     const allInvoices = loadInvoices();
     const products = loadProducts();
     const customers = loadCustomers();
     
-    // Filter invoices by date range
+    // Filter invoices by date range using local timezone
     const filteredInvoices = allInvoices.filter(inv => {
-      const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
+      // Parse invoice date and convert to local date string
+      const invDate = getLocalDateString(new Date(inv.createdAt));
       return invDate >= dateRange.from && invDate <= dateRange.to && inv.type === 'sale';
     });
     
@@ -97,10 +106,10 @@ export default function Reports() {
     const totalOrders = filteredInvoices.length;
     const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
     
-    // Calculate daily sales
+    // Calculate daily sales using local timezone
     const dailySalesMap: Record<string, { sales: number; profit: number; orders: number }> = {};
     filteredInvoices.forEach(inv => {
-      const date = new Date(inv.createdAt).toISOString().split('T')[0];
+      const date = getLocalDateString(new Date(inv.createdAt));
       if (!dailySalesMap[date]) {
         dailySalesMap[date] = { sales: 0, profit: 0, orders: 0 };
       }
