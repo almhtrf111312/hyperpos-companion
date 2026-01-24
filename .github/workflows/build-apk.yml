@@ -24,7 +24,7 @@ jobs:
     
     # 🔥 Step 3: Install Capacitor CLI explicitly
     - name: Install Capacitor CLI
-      run: npm i @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6
+      run: npm i @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets
         
     # 🔥 Step 4: Setup Capacitor
     - name: Setup Capacitor
@@ -32,7 +32,15 @@ jobs:
         npx cap init "FlowPOS Pro" com.flowpos.pro --web-dir dist
         rm -rf android
         npx cap add android
-        npx cap sync android
+        
+    # 🔥 Step 4.5: Generate Android Icons from resources/icon.png
+    - name: Generate App Icons
+      run: |
+        npx capacitor-assets generate --android --iconBackgroundColor "#1e40af"
+        
+    # 🔥 Step 5: Sync Capacitor
+    - name: Sync Capacitor
+      run: npx cap sync android
     
     # 🔥 Step 5: Update Version Code automatically
     - name: Update Version Code
