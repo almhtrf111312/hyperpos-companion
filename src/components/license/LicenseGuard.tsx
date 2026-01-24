@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useLicense } from '@/hooks/use-license';
 import { useAuth } from '@/hooks/use-auth';
 import { useDeviceBinding } from '@/hooks/use-device-binding';
+import { useNotifications } from '@/hooks/use-notifications';
 import { ActivationScreen } from './ActivationScreen';
 import { TrialBanner } from './TrialBanner';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
@@ -76,14 +77,22 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
   const { user, isLoading: authLoading } = useAuth();
-  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense } = useLicense();
+  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
+  const { checkLicenseStatus } = useNotifications();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showChoice, setShowChoice] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   
   const isFullyLoading = authLoading || isLoading || isCheckingDevice;
+
+  // Update license notification when license data changes
+  useEffect(() => {
+    if (isValid && hasLicense && expiresAt && remainingDays !== null) {
+      checkLicenseStatus(expiresAt, remainingDays, isTrial);
+    }
+  }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
   // Timeout to detect stuck loading state (prevents UI blocking on rotation)
   useEffect(() => {

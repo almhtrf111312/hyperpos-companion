@@ -36,7 +36,9 @@ import {
   FileUp,
   Lock,
   Banknote,
-  Package
+  Package,
+  AlertTriangle,
+  ExternalLink
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
@@ -47,6 +49,7 @@ import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog
 import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
+import DataResetSection from '@/components/settings/DataResetSection';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,8 +59,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { useUsersManagement, UserData } from '@/hooks/use-users-management';
 import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { saveStoreSettings } from '@/lib/supabase-store';
+import { useNavigate } from 'react-router-dom';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -148,6 +153,8 @@ export default function Settings() {
   const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
   const [activeTab, setActiveTab] = useState('store');
   const [isSavingUser, setIsSavingUser] = useState(false);
+  const navigate = useNavigate();
+  const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
 
   const settingsTabs = [
     { id: 'store', label: t('settings.store'), icon: Store },
@@ -158,11 +165,12 @@ export default function Settings() {
     { id: 'sync', label: t('settings.sync'), icon: RefreshCw },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'printing', label: t('settings.printing'), icon: Printer },
-    { id: 'users', label: t('settings.users'), icon: User },
+    { id: 'users', label: t('settings.users'), icon: User, adminOnly: true },
     { id: 'activity', label: t('settings.activityLog'), icon: Activity },
-    { id: 'backup', label: t('settings.backup'), icon: Database },
+    { id: 'backup', label: t('settings.backup'), icon: Database, adminOnly: true },
     { id: 'license', label: t('settings.license'), icon: Key },
-    { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, adminOnly: true },
+    { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
+    { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
   ];
 
   const persisted = loadPersistedSettings();
@@ -1223,7 +1231,25 @@ export default function Settings() {
         return <ActivationCodeInput />;
 
       case 'licenses':
-        return <LicenseManagement />;
+        return (
+          <div className="space-y-6">
+            {/* Quick link to Boss Panel */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <div>
+                <h3 className="font-medium text-foreground">{t('settings.bossPanel')}</h3>
+                <p className="text-sm text-muted-foreground">{t('settings.goToBossPanel')}</p>
+              </div>
+              <Button onClick={() => navigate('/boss')} variant="outline" className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                {isRTL ? 'فتح' : 'Open'}
+              </Button>
+            </div>
+            <LicenseManagement />
+          </div>
+        );
+
+      case 'reset':
+        return <DataResetSection />;
 
       default:
         return null;
@@ -1250,7 +1276,14 @@ export default function Settings() {
       {/* Tabs Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {settingsTabs
-          .filter(tab => !tab.adminOnly || isAdmin)
+          .filter(tab => {
+            // Boss sees everything
+            if (isBoss) return true;
+            // Admin sees everything except bossOnly
+            if (isOwnerAdmin && !(tab as any).bossOnly) return true;
+            // Others see only non-admin and non-boss tabs
+            return !tab.adminOnly && !(tab as any).bossOnly;
+          })
           .map((tab) => (
           <button
             key={tab.id}
