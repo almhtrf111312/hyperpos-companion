@@ -60,28 +60,38 @@ const processRTL = (text: string): string => {
   return processArabicText(String(text || ''));
 };
 
-// Format date in local timezone
+// Format date in local timezone with standard numerals
 const formatLocalDate = (date?: Date): string => {
   const d = date || new Date();
-  return d.toLocaleDateString('ar-SA', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  });
+  // Use en-GB for standard date format, then manually format
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  return `${year}/${month}/${day}`;
 };
 
-// Format datetime in local timezone
+// Format datetime in local timezone with standard numerals
 const formatLocalDateTime = (date?: Date): string => {
   const d = date || new Date();
-  return d.toLocaleString('ar-SA', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  });
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  const hour = d.getHours().toString().padStart(2, '0');
+  const minute = d.getMinutes().toString().padStart(2, '0');
+  return `${year}/${month}/${day} ${hour}:${minute}`;
+};
+
+// Format invoice date for display in tables
+const formatInvoiceDate = (dateStr: string): string => {
+  try {
+    const d = new Date(dateStr);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}/${month}/${day}`;
+  } catch {
+    return dateStr;
+  }
 };
 
 // Save PDF on native platforms using Filesystem and Share APIs
@@ -395,8 +405,8 @@ export const exportInvoicesToPDF = async (
   ];
   
   const data = invoices.map(inv => ({
-    id: inv.id.substring(0, 8),
-    date: new Date(inv.createdAt).toLocaleDateString('ar-SA'),
+    id: inv.id.substring(0, 8).toUpperCase(),
+    date: formatInvoiceDate(inv.createdAt),
     customerName: inv.customerName || 'عميل نقدي',
     total: inv.total,
     discount: inv.discount || 0,
