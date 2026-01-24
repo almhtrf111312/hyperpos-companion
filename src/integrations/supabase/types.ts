@@ -24,6 +24,8 @@ export type Database = {
           expires_at: string | null
           id: string
           is_active: boolean | null
+          license_tier: string | null
+          max_cashiers: number | null
           max_uses: number | null
           note: string | null
         }
@@ -36,6 +38,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
+          license_tier?: string | null
+          max_cashiers?: number | null
           max_uses?: number | null
           note?: string | null
         }
@@ -48,6 +52,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
+          license_tier?: string | null
+          max_cashiers?: number | null
           max_uses?: number | null
           note?: string | null
         }
@@ -58,30 +64,48 @@ export type Database = {
           activated_at: string | null
           activation_code_id: string | null
           created_at: string | null
+          current_cashiers: number | null
           device_id: string | null
           expires_at: string
           id: string
+          is_revoked: boolean | null
           is_trial: boolean | null
+          license_tier: string | null
+          max_cashiers: number | null
+          revoked_at: string | null
+          revoked_reason: string | null
           user_id: string
         }
         Insert: {
           activated_at?: string | null
           activation_code_id?: string | null
           created_at?: string | null
+          current_cashiers?: number | null
           device_id?: string | null
           expires_at: string
           id?: string
+          is_revoked?: boolean | null
           is_trial?: boolean | null
+          license_tier?: string | null
+          max_cashiers?: number | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
           user_id: string
         }
         Update: {
           activated_at?: string | null
           activation_code_id?: string | null
           created_at?: string | null
+          current_cashiers?: number | null
           device_id?: string | null
           expires_at?: string
           id?: string
+          is_revoked?: boolean | null
           is_trial?: boolean | null
+          license_tier?: string | null
+          max_cashiers?: number | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
           user_id?: string
         }
         Relationships: [
@@ -724,18 +748,24 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean | null
+          owner_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean | null
+          owner_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean | null
+          owner_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -743,9 +773,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      boss_owners_view: {
+        Row: {
+          cashier_count: number | null
+          full_name: string | null
+          is_active: boolean | null
+          license_expires: string | null
+          license_revoked: boolean | null
+          license_tier: string | null
+          max_cashiers: number | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          role_created_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_add_cashier: { Args: { _owner_id: string }; Returns: boolean }
+      count_owner_cashiers: { Args: { _owner_id: string }; Returns: number }
+      delete_owner_cascade: { Args: { _owner_id: string }; Returns: boolean }
+      get_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -757,10 +805,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
+      is_license_valid: { Args: { _user_id: string }; Returns: boolean }
+      revoke_license: {
+        Args: { _license_id: string; _reason?: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "admin" | "cashier"
+      app_role: "admin" | "cashier" | "boss"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -888,7 +942,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "cashier"],
+      app_role: ["admin", "cashier", "boss"],
     },
   },
 } as const

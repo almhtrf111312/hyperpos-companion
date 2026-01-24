@@ -180,16 +180,23 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .single()
 
+    const licenseData = {
+      activation_code_id: activationCode.id,
+      activated_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      is_trial: false,
+      is_revoked: false,
+      revoked_at: null,
+      revoked_reason: null,
+      max_cashiers: activationCode.max_cashiers || 1,
+      license_tier: activationCode.license_tier || 'basic',
+    }
+
     if (existingLicense) {
       // Update existing license
       const { error: updateError } = await supabaseAdmin
         .from('app_licenses')
-        .update({
-          activation_code_id: activationCode.id,
-          activated_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          is_trial: false
-        })
+        .update(licenseData)
         .eq('user_id', user.id)
 
       if (updateError) {
@@ -205,9 +212,7 @@ Deno.serve(async (req) => {
         .from('app_licenses')
         .insert({
           user_id: user.id,
-          activation_code_id: activationCode.id,
-          expires_at: expiresAt.toISOString(),
-          is_trial: false
+          ...licenseData,
         })
 
       if (insertError) {
@@ -225,7 +230,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         expiresAt: expiresAt.toISOString(),
-        durationDays: activationCode.duration_days
+        durationDays: activationCode.duration_days,
+        maxCashiers: activationCode.max_cashiers || 1,
+        licenseTier: activationCode.license_tier || 'basic',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

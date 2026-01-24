@@ -8,10 +8,15 @@ interface LicenseState {
   hasLicense: boolean;
   isTrial: boolean;
   isExpired: boolean;
+  isRevoked: boolean;
   needsActivation: boolean;
   expiresAt: string | null;
   remainingDays: number | null;
   error: string | null;
+  role: string | null;
+  maxCashiers: number | null;
+  licenseTier: string | null;
+  expiringWarning: boolean;
 }
 
 interface LicenseContextType extends LicenseState {
@@ -32,10 +37,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     hasLicense: false,
     isTrial: false,
     isExpired: false,
+    isRevoked: false,
     needsActivation: false,
     expiresAt: null,
     remainingDays: null,
     error: null,
+    role: null,
+    maxCashiers: null,
+    licenseTier: null,
+    expiringWarning: false,
   });
 
   const checkLicense = useCallback(async () => {
@@ -96,10 +106,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         hasLicense: data.hasLicense,
         isTrial: data.isTrial || false,
         isExpired: data.isExpired || false,
+        isRevoked: data.isRevoked || false,
         needsActivation: data.needsActivation,
         expiresAt: data.expiresAt || null,
         remainingDays: data.remainingDays || null,
         error: null,
+        role: data.role || null,
+        maxCashiers: data.maxCashiers || null,
+        licenseTier: data.licenseTier || null,
+        expiringWarning: data.expiringWarning || false,
       });
     } catch (error) {
       console.error('Error checking license:', error);
