@@ -66,6 +66,7 @@ interface Owner {
   license_tier: string | null;
   cashier_count: number;
   device_id?: string | null;
+  allow_multi_device?: boolean;
 }
 
 interface ActivationCode {
@@ -121,10 +122,25 @@ export default function BossPanel() {
         .from('boss_owners_view')
         .select('*');
 
+      // Get multi-device status for each owner from app_licenses
+      const { data: licensesData } = await supabase
+        .from('app_licenses')
+        .select('user_id, allow_multi_device')
+        .eq('is_revoked', false);
+
+      const multiDeviceMap = new Map(
+        (licensesData || []).map(l => [l.user_id, l.allow_multi_device])
+      );
+
       if (ownersError) {
         console.error('Error fetching owners:', ownersError);
       } else {
-        setOwners(ownersData || []);
+        // Merge allow_multi_device into owners
+        const enrichedOwners = (ownersData || []).map(owner => ({
+          ...owner,
+          allow_multi_device: multiDeviceMap.get(owner.user_id) || false,
+        }));
+        setOwners(enrichedOwners);
       }
 
       // Fetch activation codes
@@ -290,6 +306,27 @@ export default function BossPanel() {
     } catch (error) {
       console.error('Error resetting device:', error);
       toast.error('فشل في إعادة تعيين الجهاز');
+    }
+  };
+
+  const handleToggleMultiDevice = async (ownerId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('app_licenses')
+        .update({ allow_multi_device: !currentValue })
+        .eq('user_id', ownerId)
+        .eq('is_revoked', false);
+
+      if (error) throw error;
+
+      toast.success(!currentValue 
+        ? 'تم تفعيل تعدد الأجهزة - يمكن الآن تسجيل الدخول من أي جهاز' 
+        : 'تم إلغاء تعدد الأجهزة - سيتم قفل الجهاز عند تسجيل الدخول التالي'
+      );
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling multi-device:', error);
+      toast.error('فشل في تحديث إعدادات تعدد الأجهزة');
     }
   };
 
@@ -506,7 +543,17 @@ export default function BossPanel() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {owner.device_id && (
+                        {/* Multi-device toggle button */}
+                        <Button
+                          variant={owner.allow_multi_device ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}
+                          title={owner.allow_multi_device ? 'تعدد الأجهزة مفعّل' : 'السماح بتعدد الأجهزة'}
+                        >
+                          <Smartphone className="w-4 h-4 me-2" />
+                          {owner.allow_multi_device ? 'تعدد الأجهزة ✓' : 'تعدد الأجهزة'}
+                        </Button>
+                        {owner.device_id && !owner.allow_multi_device && (
                           <Button
                             variant="outline"
                             size="sm"

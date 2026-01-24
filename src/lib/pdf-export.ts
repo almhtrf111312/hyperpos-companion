@@ -4,7 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { loadArabicFont } from './fonts/cairo-font';
+import { loadArabicFont, ARABIC_FONT_NAME } from './fonts/cairo-font';
 import { getCurrentLanguage } from './i18n';
 
 export interface PDFExportOptions {
@@ -134,13 +134,13 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     format: 'a4',
   });
   
-  // ✅ Try to load Arabic font (Cairo)
+  // ✅ Try to load Arabic font (Noto Sans Arabic)
   const currentLang = getCurrentLanguage();
   if (currentLang === 'ar') {
     try {
       await loadArabicFont(doc);
       arabicFontLoaded = true;
-      doc.setFont('Cairo');
+      doc.setFont(ARABIC_FONT_NAME);
     } catch {
       arabicFontLoaded = false;
       doc.setFont('helvetica');
@@ -257,13 +257,14 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   }
   
   // Add table using autoTable
+  const fontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
   autoTable(doc, {
     startY: yPosition,
     head: [headers],
     body: rows,
     theme: 'grid',
     styles: {
-      font: arabicFontLoaded ? 'Cairo' : 'helvetica',
+      font: fontName,
       fontSize: 10,
       cellPadding: 3,
       halign: 'center',
@@ -305,17 +306,19 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     summaryY += 8;
     
     // Summary items
+    const summaryFontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
     doc.setFontSize(11);
     summary.forEach(item => {
       doc.setTextColor(100, 100, 100);
+      doc.setFont(summaryFontName, 'normal');
       doc.text(processRTL(item.label + ':'), pageWidth / 2 + 30, summaryY, { align: 'right' });
       doc.setTextColor(44, 62, 80);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(summaryFontName, 'bold');
       const valueText = typeof item.value === 'number' 
         ? item.value.toLocaleString('en-US') 
         : String(item.value);
       doc.text(valueText, pageWidth / 2 - 30, summaryY, { align: 'left' });
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(summaryFontName, 'normal');
       summaryY += 6;
     });
   }

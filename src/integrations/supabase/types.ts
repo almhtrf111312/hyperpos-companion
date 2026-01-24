@@ -63,6 +63,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           activation_code_id: string | null
+          allow_multi_device: boolean | null
           created_at: string | null
           current_cashiers: number | null
           device_id: string | null
@@ -79,6 +80,7 @@ export type Database = {
         Insert: {
           activated_at?: string | null
           activation_code_id?: string | null
+          allow_multi_device?: boolean | null
           created_at?: string | null
           current_cashiers?: number | null
           device_id?: string | null
@@ -95,6 +97,7 @@ export type Database = {
         Update: {
           activated_at?: string | null
           activation_code_id?: string | null
+          allow_multi_device?: boolean | null
           created_at?: string | null
           current_cashiers?: number | null
           device_id?: string | null

@@ -1,16 +1,16 @@
-// Cairo Regular Font - Base64 encoded for PDF export
-// This is a subset of Cairo font that supports Arabic characters
+// Noto Sans Arabic Font - for PDF export with proper Arabic RTL support
+// This font has excellent Arabic character support and is well-optimized for PDFs
 
-// Using Amiri font as fallback - well-known Arabic font
-// Font loading approach for jsPDF Arabic support
+// Font loading approach for jsPDF Arabic support using Noto Sans Arabic
 export const loadArabicFont = async (doc: any): Promise<void> => {
   try {
-    // Load Cairo font from Google Fonts CDN
-    const fontUrl = 'https://fonts.gstatic.com/s/cairo/v28/SLXGc1nY6HkvalIkTp2mxdt0.ttf';
+    // Load Noto Sans Arabic from Google Fonts CDN
+    // Using Regular weight (400) for best readability
+    const fontUrl = 'https://fonts.gstatic.com/s/notosansarabic/v28/nwpxtLGrOAZMl5nJ_wfgRg3DrWFZWsnVBJ_sS6tlqHHFlj4wv4rqxzLI.ttf';
     
     const response = await fetch(fontUrl);
     if (!response.ok) {
-      throw new Error('Failed to load Cairo font');
+      throw new Error('Failed to load Noto Sans Arabic font');
     }
     
     const fontBuffer = await response.arrayBuffer();
@@ -19,25 +19,25 @@ export const loadArabicFont = async (doc: any): Promise<void> => {
     );
     
     // Register font with jsPDF
-    doc.addFileToVFS('Cairo-Regular.ttf', fontBase64);
-    doc.addFont('Cairo-Regular.ttf', 'Cairo', 'normal');
-    doc.setFont('Cairo');
+    doc.addFileToVFS('NotoSansArabic-Regular.ttf', fontBase64);
+    doc.addFont('NotoSansArabic-Regular.ttf', 'NotoSansArabic', 'normal');
+    doc.setFont('NotoSansArabic');
     
     return;
   } catch (error) {
-    console.warn('Could not load Cairo font, using fallback:', error);
+    console.warn('Could not load Noto Sans Arabic font, using fallback:', error);
+    throw error;
   }
 };
 
-// Pre-loaded minimal Cairo font subset (Arabic numerals + common characters)
-// This is a base64-encoded version for offline support
-export const CAIRO_FONT_FALLBACK = true;
+// Arabic font name constant for consistency
+export const ARABIC_FONT_NAME = 'NotoSansArabic';
 
 // Helper to check if Arabic font is available
 export const isArabicFontLoaded = (doc: any): boolean => {
   try {
     const fonts = doc.getFontList();
-    return 'Cairo' in fonts;
+    return ARABIC_FONT_NAME in fonts;
   } catch {
     return false;
   }
