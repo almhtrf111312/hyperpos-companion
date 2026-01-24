@@ -18,6 +18,7 @@ import { LowStockAlerts } from '@/components/dashboard/LowStockAlerts';
 import { getInvoiceStatsCloud, loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
 import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
+import { loadExpensesCloud } from '@/lib/cloud/expenses-cloud';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 
@@ -28,6 +29,8 @@ export default function Dashboard() {
     todaySales: 0,
     todayCount: 0,
     todayProfit: 0,
+    todayExpenses: 0,
+    netProfit: 0, // صافي الربح الحقيقي = الأرباح - المصاريف
     profitMargin: 0,
     totalDebtAmount: 0,
     debtCustomers: 0,
@@ -48,10 +51,11 @@ export default function Dashboard() {
   const loadStats = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [invoices, products, partners] = await Promise.all([
+      const [invoices, products, partners, expenses] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
-        loadPartnersCloud()
+        loadPartnersCloud(),
+        loadExpensesCloud()
       ]);
       
       // Calculate today's sales
@@ -61,6 +65,14 @@ export default function Dashboard() {
       );
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
       const todayProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+      
+      // ✅ Calculate today's expenses
+      const todayExpenses = expenses.filter(exp => 
+        new Date(exp.createdAt).toDateString() === todayStr
+      ).reduce((sum, exp) => sum + exp.amount, 0);
+      
+      // ✅ Calculate NET profit (Profit - Expenses)
+      const netProfit = todayProfit - todayExpenses;
       
       // Calculate pending debts
       const pendingDebts = invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending');
@@ -90,6 +102,8 @@ export default function Dashboard() {
         todaySales,
         todayCount: todayInvoices.length,
         todayProfit,
+        todayExpenses,
+        netProfit,
         profitMargin,
         totalDebtAmount,
         debtCustomers,
@@ -149,10 +163,10 @@ export default function Dashboard() {
         />
         <StatCard
           title={t('dashboard.netProfit')}
-          value={`$${stats.todayProfit.toLocaleString()}`}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
+          value={`$${stats.netProfit.toLocaleString()}`}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | مصاريف: $${stats.todayExpenses.toLocaleString()}`}
           icon={<TrendingUp className="w-6 h-6" />}
-          variant="success"
+          variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"
         />
         <StatCard

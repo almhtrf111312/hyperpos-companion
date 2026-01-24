@@ -323,3 +323,43 @@ export const deductStockBatch = (
     insufficientItems 
   };
 };
+
+// Restore stock for refunds
+export const restoreStock = (productId: string, quantity: number): boolean => {
+  const products = loadProducts();
+  const index = products.findIndex(p => p.id === productId);
+  if (index === -1) return false;
+  
+  const newQuantity = products[index].quantity + quantity;
+  products[index].quantity = newQuantity;
+  products[index].status = getStatus(newQuantity);
+  saveProducts(products);
+  return true;
+};
+
+// Batch restore stock for refunds
+export const restoreStockBatch = (
+  items: { productId: string; quantity: number }[]
+): { success: boolean; restored: number; failed: number } => {
+  const products = loadProducts();
+  let restored = 0;
+  let failed = 0;
+  
+  items.forEach(({ productId, quantity }) => {
+    const index = products.findIndex(p => p.id === productId);
+    if (index !== -1) {
+      const newQuantity = products[index].quantity + quantity;
+      products[index].quantity = newQuantity;
+      products[index].status = getStatus(newQuantity);
+      restored++;
+    } else {
+      failed++;
+    }
+  });
+  
+  if (restored > 0) {
+    saveProducts(products);
+  }
+  
+  return { success: failed === 0, restored, failed };
+};
