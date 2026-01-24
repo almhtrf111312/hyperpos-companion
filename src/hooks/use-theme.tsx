@@ -181,9 +181,14 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   }
 }
 
+// Default theme for new users: Light mode with Blue color
+const DEFAULT_MODE: ThemeMode = 'light';
+const DEFAULT_COLOR: ThemeColor = 'blue';
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('dark');
-  const [color, setColorState] = useState<ThemeColor>('emerald');
+  const [mode, setModeState] = useState<ThemeMode>(DEFAULT_MODE);
+  const [color, setColorState] = useState<ThemeColor>(DEFAULT_COLOR);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load saved theme on mount
   useEffect(() => {
@@ -191,13 +196,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
       if (saved) {
         const { mode: savedMode, color: savedColor } = JSON.parse(saved);
-        if (savedMode) setModeState(savedMode);
-        if (savedColor) setColorState(savedColor);
-        applyTheme(savedMode || 'dark', savedColor || 'emerald');
+        const finalMode = savedMode || DEFAULT_MODE;
+        const finalColor = savedColor || DEFAULT_COLOR;
+        setModeState(finalMode);
+        setColorState(finalColor);
+        applyTheme(finalMode, finalColor);
+      } else {
+        // First time user - apply default theme and save it
+        applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR }));
       }
     } catch {
-      // Use defaults
+      // Use defaults on error
+      applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
     }
+    setIsInitialized(true);
   }, []);
 
   const setMode = (newMode: ThemeMode) => {
