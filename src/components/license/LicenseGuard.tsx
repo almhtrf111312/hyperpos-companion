@@ -1,8 +1,10 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useLicense } from '@/hooks/use-license';
 import { useAuth } from '@/hooks/use-auth';
+import { useDeviceBinding } from '@/hooks/use-device-binding';
 import { ActivationScreen } from './ActivationScreen';
 import { TrialBanner } from './TrialBanner';
+import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,14 +77,17 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 export function LicenseGuard({ children }: LicenseGuardProps) {
   const { user, isLoading: authLoading } = useAuth();
   const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense } = useLicense();
+  const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showChoice, setShowChoice] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  const isFullyLoading = authLoading || isLoading || isCheckingDevice;
 
   // Timeout to detect stuck loading state (prevents UI blocking on rotation)
   useEffect(() => {
-    if (authLoading || isLoading) {
+    if (isFullyLoading) {
       const timer = setTimeout(() => {
         setLoadingTimeout(true);
       }, 5000); // 5 seconds timeout
@@ -91,10 +96,10 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     } else {
       setLoadingTimeout(false);
     }
-  }, [authLoading, isLoading]);
+  }, [isFullyLoading]);
 
   // Show loading with retry button if stuck
-  if ((authLoading || isLoading) && loadingTimeout) {
+  if (isFullyLoading && loadingTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -121,8 +126,8 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     );
   }
 
-  // Show loading while checking auth or license
-  if (authLoading || isLoading) {
+  // Show loading while checking auth, license, or device
+  if (isFullyLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -136,6 +141,11 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   // If user is not logged in, don't guard - let the auth flow handle it
   if (!user) {
     return <>{children}</>;
+  }
+
+  // Check if device is blocked (SECURITY: This check is critical)
+  if (isDeviceBlocked) {
+    return <DeviceBlockedScreen />;
   }
 
   // If there was a network error but user is authenticated, allow access
