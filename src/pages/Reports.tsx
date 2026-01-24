@@ -384,7 +384,7 @@ export default function Reports() {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
             return invDate >= dateRange.from && invDate <= dateRange.to;
           });
-          exportInvoicesToPDF(
+          await exportInvoicesToPDF(
             filteredInvoices.map(inv => ({
               id: inv.id,
               customerName: inv.customerName || 'عميل نقدي',
@@ -400,7 +400,7 @@ export default function Reports() {
           break;
         }
         case 'products': {
-          exportProductsToPDF(
+          await exportProductsToPDF(
             products.map(p => ({
               name: p.name,
               barcode: p.barcode || '',
@@ -422,7 +422,7 @@ export default function Reports() {
               balance: c.totalDebt || 0,
             };
           });
-          exportCustomersToPDF(customerData, storeInfo);
+          await exportCustomersToPDF(customerData, storeInfo);
           break;
         }
         case 'partners': {
@@ -434,11 +434,11 @@ export default function Reports() {
             totalWithdrawn: p.totalWithdrawn,
             currentBalance: p.currentBalance,
           }));
-          exportPartnersToPDF(partnerData, storeInfo);
+          await exportPartnersToPDF(partnerData, storeInfo);
           break;
         }
         case 'expenses': {
-          exportExpensesToPDF(
+          await exportExpensesToPDF(
             expenseReportData.expenses.map(e => ({
               id: e.id,
               type: e.type,
@@ -458,7 +458,7 @@ export default function Reports() {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
             return invDate >= dateRange.from && invDate <= dateRange.to;
           });
-          exportInvoicesToPDF(
+          await exportInvoicesToPDF(
             defaultInvoices.map(inv => ({
               id: inv.id,
               customerName: inv.customerName || 'عميل نقدي',

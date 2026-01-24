@@ -6,6 +6,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { loadArabicFont, ARABIC_FONT_NAME } from './fonts/cairo-font';
 import { getCurrentLanguage } from './i18n';
+import ArabicReshaper from 'arabic-reshaper';
 
 export interface PDFExportOptions {
   title: string;
@@ -27,16 +28,22 @@ const containsArabic = (text: string): boolean => {
   return /[\u0600-\u06FF]/.test(text);
 };
 
-// Helper to reshape Arabic text for proper display in PDF
-// When Cairo font is loaded, we just return the text as-is
-// When not loaded, we use basic reshaping
-const reshapeArabicText = (text: string, fontLoaded: boolean): string => {
+// Process Arabic text for proper PDF display
+// 1. Reshape: Convert characters to their connected forms
+// 2. Bidi: Reverse for RTL display in PDF
+const processArabicText = (text: string): string => {
   if (!containsArabic(text)) return text;
-  if (fontLoaded) return text; // Cairo font handles Arabic properly
   
-  // Fallback: basic reshaping for helvetica (limited support)
-  // Arabic text needs to be reversed for display in non-Arabic fonts
-  return text.split('').reverse().join('');
+  try {
+    // Use arabic-reshaper to properly connect Arabic letters
+    const shaped = ArabicReshaper(text);
+    // Reverse for RTL display (PDF renders left-to-right)
+    return shaped.split('').reverse().join('');
+  } catch (error) {
+    console.warn('Arabic reshaping failed, using fallback:', error);
+    // Fallback: just reverse the text
+    return text.split('').reverse().join('');
+  }
 };
 
 // Global flag to track if Arabic font is available
@@ -44,7 +51,11 @@ let arabicFontLoaded = false;
 
 // Process text for RTL display - wrapper function
 const processRTL = (text: string): string => {
-  return reshapeArabicText(String(text || ''), arabicFontLoaded);
+  if (!arabicFontLoaded) {
+    // Without Arabic font, just return text as-is (will show squares)
+    return String(text || '');
+  }
+  return processArabicText(String(text || ''));
 };
 
 // Format date in local timezone
