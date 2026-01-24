@@ -24,15 +24,17 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  addCapital as addCapitalToStore,
   withdrawProfit,
   withdrawCapital,
   smartWithdraw,
   loadPartners,
   savePartners,
   Partner,
-  ExpenseRecord
+  ExpenseRecord,
+  addCapital as addCapitalToStore
 } from '@/lib/partners-store';
+import { addPartnerInvestment } from '@/lib/capital-store';
+import { getActiveShift } from '@/lib/cashbox-store';
 import { cn, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -325,15 +327,27 @@ export default function Partners() {
       return;
     }
 
-    const success = addCapitalToStore(selectedPartner.id, capitalAmount, capitalNotes);
+    // ✅ استخدام الدالة الموحدة التي تضيف للصندوق تلقائياً
+    const activeShift = getActiveShift();
+    const result = addPartnerInvestment(
+      selectedPartner.id,
+      selectedPartner.name,
+      capitalAmount,
+      capitalNotes,
+      'user',
+      !!activeShift // إضافة للصندوق فقط إذا كانت هناك وردية نشطة
+    );
     
-    if (success) {
+    if (result) {
       setPartners(loadPartners());
       setShowAddCapitalDialog(false);
       setSelectedPartner(null);
       setCapitalAmount(0);
       setCapitalNotes('');
-      toast.success(`${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()}`);
+      const msg = activeShift 
+        ? `${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()} (تمت الإضافة للصندوق)`
+        : `${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()}`;
+      toast.success(msg);
     } else {
       toast.error(t('partners.capitalAddError'));
     }

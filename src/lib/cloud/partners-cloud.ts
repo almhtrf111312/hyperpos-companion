@@ -300,6 +300,29 @@ export const addCapitalCloud = async (
   });
 };
 
+// ✅ إضافة رأس مال مع الربط بالصندوق
+import { addDepositToShift, getActiveShift } from '../cashbox-store';
+
+export const addCapitalWithCashboxCloud = async (
+  partnerId: string,
+  partnerName: string,
+  amount: number,
+  notes?: string
+): Promise<boolean> => {
+  // 1. تحديث سجل الشريك
+  const partnerSuccess = await addCapitalCloud(partnerId, amount, notes);
+  
+  if (partnerSuccess) {
+    // 2. إضافة للصندوق إذا كان هناك وردية نشطة
+    const activeShift = getActiveShift();
+    if (activeShift) {
+      addDepositToShift(amount);
+    }
+  }
+  
+  return partnerSuccess;
+};
+
 // Withdraw profit
 export const withdrawProfitCloud = async (
   partnerId: string,

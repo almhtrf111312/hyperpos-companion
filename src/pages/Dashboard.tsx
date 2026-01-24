@@ -19,6 +19,7 @@ import { getInvoiceStatsCloud, loadInvoicesCloud } from '@/lib/cloud/invoices-cl
 import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
 import { loadExpensesCloud } from '@/lib/cloud/expenses-cloud';
+import { loadCashboxState } from '@/lib/cashbox-store';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 
@@ -96,7 +97,10 @@ export default function Dashboard() {
 
       // Calculate total capital from partners
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
-      const availableCapital = totalCapital - inventoryValue;
+      
+      // ✅ استخدام رصيد الصندوق الفعلي بدلاً من الحساب الخاطئ
+      const cashboxState = loadCashboxState();
+      const availableCapital = cashboxState.currentBalance;
 
       setStats({
         todaySales,
