@@ -26,7 +26,10 @@ import {
   Search,
   AlertTriangle,
   Smartphone,
-  RotateCcw
+  RotateCcw,
+  Mail,
+  Ticket,
+  Send
 } from 'lucide-react';
 import {
   Dialog,
@@ -53,9 +56,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface Owner {
   user_id: string;
+  email: string | null;
   role: string;
   role_created_at: string;
   is_active: boolean;
@@ -67,6 +72,7 @@ interface Owner {
   cashier_count: number;
   device_id?: string | null;
   allow_multi_device?: boolean;
+  is_trial?: boolean;
 }
 
 interface ActivationCode {
@@ -107,6 +113,17 @@ export default function BossPanel() {
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'code'; id: string; name: string } | null>(null);
 
+  // Remote Activation Dialog
+  const [activationDialog, setActivationDialog] = useState<{ owner: Owner } | null>(null);
+  const [activationType, setActivationType] = useState<'new' | 'existing' | 'whatsapp'>('new');
+  const [activationSettings, setActivationSettings] = useState({
+    duration_days: 180,
+    max_cashiers: 1,
+    license_tier: 'basic',
+    selected_code_id: '',
+  });
+  const [isActivating, setIsActivating] = useState(false);
+
   useEffect(() => {
     if (!roleLoading && !isBoss) {
       navigate('/');
@@ -117,30 +134,25 @@ export default function BossPanel() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch owners from view
-      const { data: ownersData, error: ownersError } = await supabase
-        .from('boss_owners_view')
-        .select('*');
+      // Fetch owners with emails from edge function
+      const { data: session } = await supabase.auth.getSession();
+      if (session?.session?.access_token) {
+        const response = await supabase.functions.invoke('get-users-with-emails', {
+          headers: {
+            Authorization: `Bearer ${session.session.access_token}`,
+          },
+        });
 
-      // Get multi-device status for each owner from app_licenses
-      const { data: licensesData } = await supabase
-        .from('app_licenses')
-        .select('user_id, allow_multi_device')
-        .eq('is_revoked', false);
-
-      const multiDeviceMap = new Map(
-        (licensesData || []).map(l => [l.user_id, l.allow_multi_device])
-      );
-
-      if (ownersError) {
-        console.error('Error fetching owners:', ownersError);
-      } else {
-        // Merge allow_multi_device into owners
-        const enrichedOwners = (ownersData || []).map(owner => ({
-          ...owner,
-          allow_multi_device: multiDeviceMap.get(owner.user_id) || false,
-        }));
-        setOwners(enrichedOwners);
+        if (response.error) {
+          console.error('Error fetching users:', response.error);
+          // Fallback to view if edge function fails
+          const { data: ownersData } = await supabase
+            .from('boss_owners_view')
+            .select('*');
+          setOwners((ownersData || []).map(o => ({ ...o, email: null })));
+        } else {
+          setOwners(response.data.users || []);
+        }
       }
 
       // Fetch activation codes
@@ -335,8 +347,78 @@ export default function BossPanel() {
     toast.success('تم نسخ الكود');
   };
 
+  const handleRemoteActivation = async () => {
+    if (!activationDialog) return;
+
+    setIsActivating(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      if (activationType === 'whatsapp') {
+        // Generate code and send via WhatsApp
+        const selectedCode = codes.find(c => c.id === activationSettings.selected_code_id);
+        if (!selectedCode) {
+          toast.error('يرجى اختيار كود');
+          return;
+        }
+        
+        const phone = activationDialog.owner.email?.includes('@') 
+          ? '' 
+          : activationDialog.owner.email;
+        
+        const message = encodeURIComponent(
+          `مرحباً ${activationDialog.owner.full_name || 'عزيزي العميل'}!\n\n` +
+          `كود تفعيل FlowPOS Pro الخاص بك:\n` +
+          `${selectedCode.code}\n\n` +
+          `مدة الترخيص: ${selectedCode.duration_days} يوم\n` +
+          `عدد الكاشيرات: ${selectedCode.max_cashiers}\n\n` +
+          `رابط التطبيق: https://propos.lovable.app`
+        );
+        
+        window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+        toast.success('تم فتح واتساب');
+        setActivationDialog(null);
+        return;
+      }
+
+      const payload = activationType === 'existing'
+        ? { target_user_id: activationDialog.owner.user_id, activation_code_id: activationSettings.selected_code_id }
+        : { 
+            target_user_id: activationDialog.owner.user_id,
+            duration_days: activationSettings.duration_days,
+            max_cashiers: activationSettings.max_cashiers,
+            license_tier: activationSettings.license_tier,
+          };
+
+      const response = await supabase.functions.invoke('remote-activate-user', {
+        body: payload,
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to activate');
+      }
+
+      toast.success(`تم تفعيل حساب "${activationDialog.owner.full_name || activationDialog.owner.email}" بنجاح`);
+      setActivationDialog(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error activating user:', error);
+      toast.error('فشل في تفعيل الحساب');
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
   const filteredOwners = owners.filter(owner =>
     owner.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     owner.user_id.includes(searchTerm)
   );
 
@@ -344,6 +426,8 @@ export default function BossPanel() {
     code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     code.note?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const availableCodes = codes.filter(c => c.is_active && c.current_uses < c.max_uses);
 
   if (roleLoading || !isBoss) {
     return (
@@ -426,7 +510,7 @@ export default function BossPanel() {
         <div className="relative">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="بحث..."
+            placeholder="بحث بالاسم أو الإيميل..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="ps-10"
@@ -497,92 +581,144 @@ export default function BossPanel() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
-              الملاك المسجلين
+              المستخدمين المسجلين
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredOwners.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">لا يوجد ملاك مسجلين</p>
+                <p className="text-center text-muted-foreground py-8">لا يوجد مستخدمين مسجلين</p>
               ) : (
                 filteredOwners.map((owner) => {
                   const isLicenseValid = owner.license_expires && new Date(owner.license_expires) > new Date() && !owner.license_revoked;
                   const daysRemaining = owner.license_expires 
                     ? Math.ceil((new Date(owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                     : 0;
+                  const isBossUser = owner.role === 'boss';
 
                   return (
-                    <div key={owner.user_id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{owner.full_name || 'بدون اسم'}</span>
-                          <Badge variant={isLicenseValid ? 'default' : 'destructive'}>
-                            {isLicenseValid ? 'ترخيص فعال' : owner.license_revoked ? 'ملغى' : 'منتهي'}
-                          </Badge>
-                          {owner.license_tier && (
-                            <Badge variant="outline">{owner.license_tier}</Badge>
+                    <div key={owner.user_id} className="p-4 bg-muted/50 rounded-lg space-y-3">
+                      {/* User Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-lg">{owner.full_name || 'بدون اسم'}</span>
+                            {isBossUser && (
+                              <Badge className="bg-gradient-to-r from-amber-500 to-orange-600">
+                                <Crown className="w-3 h-3 me-1" />
+                                Boss
+                              </Badge>
+                            )}
+                            <Badge variant={isLicenseValid ? 'default' : 'destructive'}>
+                              {isLicenseValid 
+                                ? (owner.is_trial ? 'تجريبي' : 'ترخيص فعال')
+                                : owner.license_revoked ? 'ملغى' : 'منتهي'
+                              }
+                            </Badge>
+                            {owner.license_tier && !isBossUser && (
+                              <Badge variant="outline">{owner.license_tier}</Badge>
+                            )}
+                          </div>
+                          
+                          {/* Email */}
+                          {owner.email && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Mail className="w-3 h-3" />
+                              <span className="font-mono">{owner.email}</span>
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      </div>
+
+                      {/* User Details */}
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        {!isBossUser && (
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
                             {owner.cashier_count}/{owner.max_cashiers || 1} كاشير
                           </span>
-                          {owner.license_expires && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
-                            </span>
+                        )}
+                        {owner.license_expires && !isBossUser && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
+                          </span>
+                        )}
+                        {owner.device_id ? (
+                          <span className="flex items-center gap-1 font-mono text-xs bg-background px-2 py-0.5 rounded">
+                            <Smartphone className="w-3 h-3" />
+                            {owner.device_id.substring(0, 16)}...
+                            {isBossUser && <span className="text-amber-600">(لا يُطبّق)</span>}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground/60">
+                            <Smartphone className="w-3 h-3" />
+                            لم يُسجل جهاز بعد
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      {!isBossUser && (
+                        <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                          {/* Remote Activation Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActivationDialog({ owner })}
+                            className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                          >
+                            <Ticket className="w-4 h-4 me-2" />
+                            تفعيل عن بعد
+                          </Button>
+
+                          {/* Multi-device toggle */}
+                          <Button
+                            variant={owner.allow_multi_device ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}
+                            title={owner.allow_multi_device ? 'تعدد الأجهزة مفعّل' : 'السماح بتعدد الأجهزة'}
+                          >
+                            <Smartphone className="w-4 h-4 me-2" />
+                            {owner.allow_multi_device ? 'تعدد ✓' : 'تعدد'}
+                          </Button>
+
+                          {/* Reset Device */}
+                          {owner.device_id && !owner.allow_multi_device && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المستخدم')}
+                              title="إعادة تعيين الجهاز"
+                            >
+                              <RotateCcw className="w-4 h-4 me-2" />
+                              إعادة تعيين
+                            </Button>
                           )}
-                          {owner.device_id && (
-                            <span className="flex items-center gap-1">
-                              <Smartphone className="w-3 h-3" />
-                              جهاز مسجل
-                            </span>
+
+                          {/* Revoke License */}
+                          {isLicenseValid && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRevokeLicense(owner.user_id)}
+                            >
+                              <Ban className="w-4 h-4 me-2" />
+                              إلغاء الترخيص
+                            </Button>
                           )}
+
+                          {/* Delete */}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setDeleteConfirm({ type: 'owner', id: owner.user_id, name: owner.full_name || 'هذا المستخدم' })}
+                          >
+                            <Trash2 className="w-4 h-4 me-2" />
+                            حذف
+                          </Button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Multi-device toggle button */}
-                        <Button
-                          variant={owner.allow_multi_device ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}
-                          title={owner.allow_multi_device ? 'تعدد الأجهزة مفعّل' : 'السماح بتعدد الأجهزة'}
-                        >
-                          <Smartphone className="w-4 h-4 me-2" />
-                          {owner.allow_multi_device ? 'تعدد الأجهزة ✓' : 'تعدد الأجهزة'}
-                        </Button>
-                        {owner.device_id && !owner.allow_multi_device && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المالك')}
-                            title="إعادة تعيين الجهاز"
-                          >
-                            <RotateCcw className="w-4 h-4 me-2" />
-                            إعادة تعيين الجهاز
-                          </Button>
-                        )}
-                        {isLicenseValid && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRevokeLicense(owner.user_id)}
-                          >
-                            <Ban className="w-4 h-4 me-2" />
-                            إلغاء الترخيص
-                          </Button>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setDeleteConfirm({ type: 'owner', id: owner.user_id, name: owner.full_name || 'هذا المالك' })}
-                        >
-                          <Trash2 className="w-4 h-4 me-2" />
-                          حذف
-                        </Button>
-                      </div>
+                      )}
                     </div>
                   );
                 })
@@ -677,6 +813,156 @@ export default function BossPanel() {
               </Button>
               <Button onClick={handleCreateCode}>
                 إنشاء الكود
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Remote Activation Dialog */}
+        <Dialog open={!!activationDialog} onOpenChange={() => setActivationDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-emerald-600" />
+                تفعيل حساب المستخدم
+              </DialogTitle>
+              <DialogDescription>
+                تفعيل ترخيص لـ {activationDialog?.owner.full_name || activationDialog?.owner.email}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* User Info */}
+              <div className="bg-muted/50 p-3 rounded-lg space-y-1">
+                <p className="font-medium">{activationDialog?.owner.full_name || 'بدون اسم'}</p>
+                {activationDialog?.owner.email && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    {activationDialog.owner.email}
+                  </p>
+                )}
+              </div>
+
+              {/* Activation Type */}
+              <RadioGroup value={activationType} onValueChange={(v) => setActivationType(v as any)}>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <RadioGroupItem value="new" id="new" />
+                  <Label htmlFor="new" className="cursor-pointer">إنشاء ترخيص جديد وتفعيله مباشرة</Label>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <RadioGroupItem value="existing" id="existing" />
+                  <Label htmlFor="existing" className="cursor-pointer">استخدام كود موجود</Label>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <RadioGroupItem value="whatsapp" id="whatsapp" />
+                  <Label htmlFor="whatsapp" className="cursor-pointer">إرسال كود عبر واتساب</Label>
+                </div>
+              </RadioGroup>
+
+              {/* Options based on type */}
+              {activationType === 'new' && (
+                <div className="space-y-3 border-t pt-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">مدة الترخيص (أيام)</Label>
+                      <Select 
+                        value={activationSettings.duration_days.toString()}
+                        onValueChange={(v) => setActivationSettings(prev => ({ ...prev, duration_days: parseInt(v) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 يوم</SelectItem>
+                          <SelectItem value="90">90 يوم</SelectItem>
+                          <SelectItem value="180">180 يوم</SelectItem>
+                          <SelectItem value="365">سنة</SelectItem>
+                          <SelectItem value="730">سنتين</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">عدد الكاشيرات</Label>
+                      <Select 
+                        value={activationSettings.max_cashiers.toString()}
+                        onValueChange={(v) => setActivationSettings(prev => ({ ...prev, max_cashiers: parseInt(v) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 كاشير</SelectItem>
+                          <SelectItem value="2">2 كاشير</SelectItem>
+                          <SelectItem value="3">3 كاشير</SelectItem>
+                          <SelectItem value="5">5 كاشير</SelectItem>
+                          <SelectItem value="10">10 كاشير</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">فئة الترخيص</Label>
+                    <Select 
+                      value={activationSettings.license_tier}
+                      onValueChange={(v) => setActivationSettings(prev => ({ ...prev, license_tier: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="basic">أساسي</SelectItem>
+                        <SelectItem value="pro">احترافي</SelectItem>
+                        <SelectItem value="enterprise">مؤسسات</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {(activationType === 'existing' || activationType === 'whatsapp') && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label>اختر الكود</Label>
+                  {availableCodes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">لا توجد أكواد متاحة. أنشئ كوداً جديداً أولاً.</p>
+                  ) : (
+                    <Select 
+                      value={activationSettings.selected_code_id}
+                      onValueChange={(v) => setActivationSettings(prev => ({ ...prev, selected_code_id: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر كود..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCodes.map(code => (
+                          <SelectItem key={code.id} value={code.id}>
+                            {code.code} ({code.duration_days} يوم - {code.max_cashiers} كاشير)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setActivationDialog(null)}>
+                إلغاء
+              </Button>
+              <Button 
+                onClick={handleRemoteActivation} 
+                disabled={isActivating || (
+                  (activationType === 'existing' || activationType === 'whatsapp') && !activationSettings.selected_code_id
+                )}
+              >
+                {isActivating ? (
+                  <RefreshCw className="w-4 h-4 me-2 animate-spin" />
+                ) : activationType === 'whatsapp' ? (
+                  <Send className="w-4 h-4 me-2" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 me-2" />
+                )}
+                {activationType === 'whatsapp' ? 'إرسال عبر واتساب' : 'تفعيل'}
               </Button>
             </DialogFooter>
           </DialogContent>

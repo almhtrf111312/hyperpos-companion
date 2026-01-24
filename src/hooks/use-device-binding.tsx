@@ -36,6 +36,24 @@ export function useDeviceBinding() {
       // Get current device ID
       const currentDeviceId = await getDeviceId();
       
+      // Check if user is Boss - Boss has unlimited device access
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // If user is Boss, skip device binding entirely
+      if (roleData?.role === 'boss') {
+        setState({
+          isChecking: false,
+          isDeviceBlocked: false,
+          deviceId: currentDeviceId,
+          registeredDeviceId: null, // Boss doesn't need device registration
+        });
+        return;
+      }
+      
       // Get user's license with device info
       const { data: license, error } = await supabase
         .from('app_licenses')

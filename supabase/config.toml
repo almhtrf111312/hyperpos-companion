@@ -2,3 +2,18 @@ project_id = "vdoncnrhtqxnxtftefod"
 
 [functions.admin-change-password]
 verify_jwt = false
+
+[functions.check-license]
+verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = false
+
+[functions.validate-activation-code]
+verify_jwt = false
+
+[functions.get-users-with-emails]
+verify_jwt = false
+
+[functions.remote-activate-user]
+verify_jwt = false
