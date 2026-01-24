@@ -24,7 +24,9 @@ import {
   Calendar,
   RefreshCw,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Smartphone,
+  RotateCcw
 } from 'lucide-react';
 import {
   Dialog,
@@ -63,6 +65,7 @@ interface Owner {
   max_cashiers: number | null;
   license_tier: string | null;
   cashier_count: number;
+  device_id?: string | null;
 }
 
 interface ActivationCode {
@@ -276,6 +279,20 @@ export default function BossPanel() {
     }
   };
 
+  const handleResetDevice = async (ownerId: string, ownerName: string) => {
+    try {
+      const { error } = await supabase.rpc('reset_user_device', { _target_user_id: ownerId });
+
+      if (error) throw error;
+
+      toast.success(`تم إعادة تعيين جهاز "${ownerName}" بنجاح`);
+      fetchData();
+    } catch (error) {
+      console.error('Error resetting device:', error);
+      toast.error('فشل في إعادة تعيين الجهاز');
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('تم نسخ الكود');
@@ -480,9 +497,26 @@ export default function BossPanel() {
                               {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
                             </span>
                           )}
+                          {owner.device_id && (
+                            <span className="flex items-center gap-1">
+                              <Smartphone className="w-3 h-3" />
+                              جهاز مسجل
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {owner.device_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المالك')}
+                            title="إعادة تعيين الجهاز"
+                          >
+                            <RotateCcw className="w-4 h-4 me-2" />
+                            إعادة تعيين الجهاز
+                          </Button>
+                        )}
                         {isLicenseValid && (
                           <Button
                             variant="outline"

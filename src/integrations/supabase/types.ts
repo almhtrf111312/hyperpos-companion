@@ -776,6 +776,7 @@ export type Database = {
       boss_owners_view: {
         Row: {
           cashier_count: number | null
+          device_id: string | null
           full_name: string | null
           is_active: boolean | null
           license_expires: string | null
@@ -808,6 +809,7 @@ export type Database = {
       is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
+      reset_user_device: { Args: { _target_user_id: string }; Returns: boolean }
       revoke_license: {
         Args: { _license_id: string; _reason?: string }
         Returns: boolean
