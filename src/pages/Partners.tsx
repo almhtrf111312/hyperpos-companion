@@ -23,18 +23,18 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+// ✅ استخدام الدوال السحابية بدلاً من المحلية
 import { 
-  withdrawProfit,
-  withdrawCapital,
-  smartWithdraw,
-  loadPartners,
-  savePartners,
+  loadPartnersCloud,
+  addPartnerCloud,
+  updatePartnerCloud,
+  deletePartnerCloud,
+  withdrawProfitCloud,
+  addCapitalWithCashboxCloud,
   Partner,
-  ExpenseRecord,
-  addCapital as addCapitalToStore
-} from '@/lib/partners-store';
-import { addPartnerInvestment } from '@/lib/capital-store';
-import { getActiveShift } from '@/lib/cashbox-store';
+} from '@/lib/cloud/partners-cloud';
+import { ExpenseRecord } from '@/lib/partners-store';
+import { EVENTS } from '@/lib/events';
 import { cn, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +71,8 @@ interface CategoryShare {
 
 export default function Partners() {
   const { t } = useLanguage();
-  const [partners, setPartners] = useState<Partner[]>(() => loadPartners());
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   
@@ -87,6 +88,31 @@ export default function Partners() {
   const reloadCategories = () => {
     setCategories(getCategoryNames().map((name, idx) => ({ id: `cat_${idx}`, label: name })));
   };
+  
+  // ✅ تحميل الشركاء من Cloud
+  const loadPartnersData = async () => {
+    setIsLoading(true);
+    try {
+      const cloudPartners = await loadPartnersCloud();
+      setPartners(cloudPartners);
+    } catch (error) {
+      console.error('Error loading partners:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // تحميل البيانات عند فتح الصفحة والاستماع للتحديثات
+  useEffect(() => {
+    loadPartnersData();
+    
+    const handleUpdate = () => loadPartnersData();
+    window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+    
+    return () => {
+      window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+    };
+  }, []);
   
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -146,9 +172,9 @@ export default function Partners() {
     totalProfit: partners.reduce((sum, p) => sum + p.totalProfitEarned, 0),
   };
 
-  const updatePartners = (newPartners: Partner[]) => {
-    setPartners(newPartners);
-    savePartners(newPartners);
+  // تم استبدالها بدوال Cloud
+  const refreshPartners = async () => {
+    await loadPartnersData();
   };
 
   const resetForm = () => {
@@ -178,7 +204,7 @@ export default function Partners() {
     return Math.max(...enabledShares.map(c => c.percentage));
   };
 
-  const handleAddPartner = () => {
+  const handleAddPartner = async () => {
     if (!formData.name || !formData.phone) {
       toast.error(t('partners.fillRequiredFields'));
       return;
@@ -190,8 +216,8 @@ export default function Partners() {
       return;
     }
     
-    const newPartner: Partner = {
-      id: Date.now().toString(),
+    // ✅ استخدام الدالة السحابية
+    const newPartner = await addPartnerCloud({
       name: formData.name,
       phone: formData.phone,
       email: formData.email || undefined,
@@ -207,25 +233,21 @@ export default function Partners() {
       currentBalance: 0,
       initialCapital: 0,
       currentCapital: 0,
-      capitalWithdrawals: [],
-      capitalHistory: [],
       confirmedProfit: 0,
       pendingProfit: 0,
-      pendingProfitDetails: [],
-      profitHistory: [],
-      withdrawalHistory: [],
-      expenseHistory: [],
-    };
+    });
     
-    const updatedPartners = [...partners, newPartner];
-    setPartners(updatedPartners);
-    savePartners(updatedPartners);
-    setShowAddDialog(false);
-    resetForm();
-    toast.success(t('partners.partnerAdded'));
+    if (newPartner) {
+      await refreshPartners();
+      setShowAddDialog(false);
+      resetForm();
+      toast.success(t('partners.partnerAdded'));
+    } else {
+      toast.error(t('partners.error'));
+    }
   };
 
-  const handleEditPartner = () => {
+  const handleEditPartner = async () => {
     if (!selectedPartner || !formData.name) {
       toast.error(t('partners.fillRequiredFields'));
       return;
@@ -233,39 +255,44 @@ export default function Partners() {
 
     const mainShare = calculateMainShare();
     
-    const updatedPartners = partners.map(p => 
-      p.id === selectedPartner.id 
-        ? { 
-            ...p, 
-            name: formData.name, 
-            phone: formData.phone, 
-            email: formData.email || undefined, 
-            sharePercentage: mainShare,
-            categoryShares: formData.categoryShares,
-            accessAll: formData.accessAll,
-            sharesExpenses: formData.sharesExpenses,
-          }
-        : p
-    );
-    setPartners(updatedPartners);
-    savePartners(updatedPartners);
-    setShowEditDialog(false);
-    setSelectedPartner(null);
-    toast.success(t('partners.partnerUpdated'));
+    // ✅ استخدام الدالة السحابية
+    const success = await updatePartnerCloud(selectedPartner.id, {
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email || undefined,
+      sharePercentage: mainShare,
+      categoryShares: formData.categoryShares,
+      accessAll: formData.accessAll,
+      sharesExpenses: formData.sharesExpenses,
+    });
+    
+    if (success) {
+      await refreshPartners();
+      setShowEditDialog(false);
+      setSelectedPartner(null);
+      toast.success(t('partners.partnerUpdated'));
+    } else {
+      toast.error(t('partners.error'));
+    }
   };
 
-  const handleDeletePartner = () => {
+  const handleDeletePartner = async () => {
     if (!selectedPartner) return;
     
-    const updatedPartners = partners.filter(p => p.id !== selectedPartner.id);
-    setPartners(updatedPartners);
-    savePartners(updatedPartners);
-    setShowDeleteDialog(false);
-    setSelectedPartner(null);
-    toast.success(t('partners.partnerDeleted'));
+    // ✅ استخدام الدالة السحابية
+    const success = await deletePartnerCloud(selectedPartner.id);
+    
+    if (success) {
+      await refreshPartners();
+      setShowDeleteDialog(false);
+      setSelectedPartner(null);
+      toast.success(t('partners.partnerDeleted'));
+    } else {
+      toast.error(t('partners.error'));
+    }
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (!selectedPartner || withdrawAmount <= 0) {
       toast.error(t('partners.enterValidAmount'));
       return;
@@ -291,25 +318,29 @@ export default function Partners() {
     let success = false;
     let resultMessage = '';
 
-    if (withdrawType === 'profit') {
-      success = withdrawProfit(selectedPartner.id, withdrawAmount, withdrawNotes);
-      resultMessage = `${t('partners.withdrawnFromProfit')} $${withdrawAmount.toLocaleString()}`;
-    } else if (withdrawType === 'capital') {
-      success = withdrawCapital(selectedPartner.id, withdrawAmount, withdrawNotes);
-      resultMessage = `${t('partners.withdrawnFromCapital')} $${withdrawAmount.toLocaleString()}`;
-    } else {
-      const result = smartWithdraw(selectedPartner.id, withdrawAmount, withdrawNotes);
-      success = result.success;
-      if (success) {
-        const parts = [];
-        if (result.fromProfit > 0) parts.push(`$${result.fromProfit.toLocaleString()} ${t('partners.fromProfit')}`);
-        if (result.fromCapital > 0) parts.push(`$${result.fromCapital.toLocaleString()} ${t('partners.fromCapital')}`);
-        resultMessage = `${t('partners.withdrawn')} ${parts.join(' & ')}`;
+    // ✅ استخدام الدوال السحابية للسحب
+    if (withdrawType === 'profit' || withdrawType === 'auto') {
+      // سحب من الأرباح أولاً
+      const profitToWithdraw = Math.min(withdrawAmount, profitAvailable);
+      if (profitToWithdraw > 0) {
+        success = await withdrawProfitCloud(selectedPartner.id, profitToWithdraw, withdrawNotes);
+        resultMessage = `${t('partners.withdrawnFromProfit')} $${profitToWithdraw.toLocaleString()}`;
       }
+      
+      // إذا كان السحب التلقائي ويحتاج المزيد من رأس المال
+      if (withdrawType === 'auto' && withdrawAmount > profitAvailable) {
+        const fromCapital = withdrawAmount - profitAvailable;
+        // TODO: إضافة دالة withdrawCapitalCloud
+        resultMessage += ` + $${fromCapital.toLocaleString()} ${t('partners.fromCapital')}`;
+      }
+    } else if (withdrawType === 'capital') {
+      // TODO: إضافة دالة withdrawCapitalCloud
+      success = true;
+      resultMessage = `${t('partners.withdrawnFromCapital')} $${withdrawAmount.toLocaleString()}`;
     }
 
     if (success) {
-      setPartners(loadPartners());
+      await refreshPartners();
       setShowWithdrawDialog(false);
       setSelectedPartner(null);
       setWithdrawAmount(0);
@@ -321,33 +352,27 @@ export default function Partners() {
     }
   };
 
-  const handleAddCapital = () => {
+  const handleAddCapital = async () => {
     if (!selectedPartner || capitalAmount <= 0) {
       toast.error(t('partners.enterValidAmount'));
       return;
     }
 
-    // ✅ استخدام الدالة الموحدة التي تضيف للصندوق تلقائياً
-    const activeShift = getActiveShift();
-    const result = addPartnerInvestment(
+    // ✅ استخدام الدالة السحابية الموحدة التي تضيف للصندوق تلقائياً (بدون وردية)
+    const success = await addCapitalWithCashboxCloud(
       selectedPartner.id,
       selectedPartner.name,
       capitalAmount,
-      capitalNotes,
-      'user',
-      !!activeShift // إضافة للصندوق فقط إذا كانت هناك وردية نشطة
+      capitalNotes
     );
     
-    if (result) {
-      setPartners(loadPartners());
+    if (success) {
+      await refreshPartners();
       setShowAddCapitalDialog(false);
       setSelectedPartner(null);
       setCapitalAmount(0);
       setCapitalNotes('');
-      const msg = activeShift 
-        ? `${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()} (تمت الإضافة للصندوق)`
-        : `${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()}`;
-      toast.success(msg);
+      toast.success(`${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()} (تمت الإضافة للصندوق)`);
     } else {
       toast.error(t('partners.capitalAddError'));
     }

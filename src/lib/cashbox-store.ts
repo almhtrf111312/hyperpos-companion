@@ -186,72 +186,67 @@ export const closeShift = (
   return { shift, discrepancy };
 };
 
-// Add sales to current shift
+/**
+ * ✅ دالة جديدة: تحديث رصيد الصندوق بغض النظر عن الوردية
+ * هذه الدالة تعمل دائماً حتى بدون وردية مفتوحة
+ */
+export const updateCashboxBalance = (
+  amount: number, 
+  type: 'deposit' | 'withdrawal' | 'sale' | 'expense'
+): void => {
+  const roundedAmount = roundCurrency(amount);
+  const state = loadCashboxState();
+  
+  // تحديث رصيد الصندوق
+  if (type === 'deposit' || type === 'sale') {
+    state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+  } else {
+    state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
+  }
+  
+  state.lastUpdated = new Date().toISOString();
+  saveCashboxState(state);
+  
+  // إذا كانت هناك وردية نشطة، حدّثها أيضاً
+  const shifts = loadShifts();
+  const activeIndex = shifts.findIndex(s => s.status === 'open');
+  if (activeIndex !== -1) {
+    switch (type) {
+      case 'sale':
+        shifts[activeIndex].salesTotal = addCurrency(shifts[activeIndex].salesTotal, roundedAmount);
+        break;
+      case 'expense':
+        shifts[activeIndex].expensesTotal = addCurrency(shifts[activeIndex].expensesTotal, roundedAmount);
+        break;
+      case 'deposit':
+        shifts[activeIndex].depositsTotal = addCurrency(shifts[activeIndex].depositsTotal, roundedAmount);
+        break;
+      case 'withdrawal':
+        shifts[activeIndex].withdrawalsTotal = addCurrency(shifts[activeIndex].withdrawalsTotal, roundedAmount);
+        break;
+    }
+    saveShifts(shifts);
+  }
+};
+
+// Add sales to current shift (يعمل بدون وردية الآن)
 export const addSalesToShift = (amount: number): void => {
-  const shifts = loadShifts();
-  const activeIndex = shifts.findIndex(s => s.status === 'open');
-  
-  if (activeIndex !== -1) {
-    shifts[activeIndex].salesTotal = addCurrency(shifts[activeIndex].salesTotal, amount);
-    saveShifts(shifts);
-    
-    // Update cashbox balance
-    const state = loadCashboxState();
-    state.currentBalance = addCurrency(state.currentBalance, amount);
-    state.lastUpdated = new Date().toISOString();
-    saveCashboxState(state);
-  }
+  updateCashboxBalance(amount, 'sale');
 };
 
-// Add expenses to current shift
+// Add expenses to current shift (يعمل بدون وردية الآن)
 export const addExpensesToShift = (amount: number): void => {
-  const shifts = loadShifts();
-  const activeIndex = shifts.findIndex(s => s.status === 'open');
-  
-  if (activeIndex !== -1) {
-    shifts[activeIndex].expensesTotal = addCurrency(shifts[activeIndex].expensesTotal, amount);
-    saveShifts(shifts);
-    
-    // Update cashbox balance
-    const state = loadCashboxState();
-    state.currentBalance = subtractCurrency(state.currentBalance, amount);
-    state.lastUpdated = new Date().toISOString();
-    saveCashboxState(state);
-  }
+  updateCashboxBalance(amount, 'expense');
 };
 
-// Add deposit to current shift (partner capital, etc.)
+// Add deposit to current shift (partner capital, etc.) - يعمل بدون وردية الآن
 export const addDepositToShift = (amount: number): void => {
-  const shifts = loadShifts();
-  const activeIndex = shifts.findIndex(s => s.status === 'open');
-  
-  if (activeIndex !== -1) {
-    shifts[activeIndex].depositsTotal = addCurrency(shifts[activeIndex].depositsTotal, amount);
-    saveShifts(shifts);
-    
-    // Update cashbox balance
-    const state = loadCashboxState();
-    state.currentBalance = addCurrency(state.currentBalance, amount);
-    state.lastUpdated = new Date().toISOString();
-    saveCashboxState(state);
-  }
+  updateCashboxBalance(amount, 'deposit');
 };
 
-// Add withdrawal from current shift
+// Add withdrawal from current shift (يعمل بدون وردية الآن)
 export const addWithdrawalFromShift = (amount: number): void => {
-  const shifts = loadShifts();
-  const activeIndex = shifts.findIndex(s => s.status === 'open');
-  
-  if (activeIndex !== -1) {
-    shifts[activeIndex].withdrawalsTotal = addCurrency(shifts[activeIndex].withdrawalsTotal, amount);
-    saveShifts(shifts);
-    
-    // Update cashbox balance
-    const state = loadCashboxState();
-    state.currentBalance = subtractCurrency(state.currentBalance, amount);
-    state.lastUpdated = new Date().toISOString();
-    saveCashboxState(state);
-  }
+  updateCashboxBalance(amount, 'withdrawal');
 };
 
 // Get shift statistics

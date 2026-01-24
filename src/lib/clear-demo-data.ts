@@ -1,6 +1,8 @@
 // Clear all demo/user data from localStorage
 // This function clears products, invoices, debts, maintenance, and customers data
 
+import { deleteAllUserData } from './supabase-store';
+
 const STORAGE_KEYS_TO_CLEAR = [
   'hyperpos_products_v1',
   'hyperpos_invoices_v1', 
@@ -9,6 +11,11 @@ const STORAGE_KEYS_TO_CLEAR = [
   'hyperpos_customers_v1',
   'hyperpos_debts_v1',
   'hyperpos_expenses_v1',
+  'hyperpos_partners_v1',
+  'hyperpos_cashbox_v1',
+  'hyperpos_shifts_v1',
+  'hyperpos_capital_v1',
+  'hyperpos_demo_loaded_v2',
   // Categories are kept as they're useful defaults
 ];
 
@@ -43,6 +50,44 @@ export const clearAllUserData = () => {
     });
     return true;
   } catch {
+    return false;
+  }
+};
+
+/**
+ * ✅ مسح شامل للبيانات (Local + Cloud)
+ * يمسح جميع البيانات من localStorage و Supabase
+ */
+export const clearAllDataCompletely = async (): Promise<boolean> => {
+  try {
+    // 1. مسح Cloud (Supabase)
+    await deleteAllUserData();
+    
+    // 2. مسح Local Storage
+    STORAGE_KEYS_TO_CLEAR.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // 3. إعادة تعيين الصندوق لصفر
+    localStorage.setItem('hyperpos_cashbox_v1', JSON.stringify({
+      currentBalance: 0,
+      lastUpdated: new Date().toISOString(),
+    }));
+    
+    // 4. إعادة تعيين رأس المال
+    localStorage.setItem('hyperpos_capital_v1', JSON.stringify({
+      initialCapital: 0,
+      currentCapital: 0,
+      totalInvestments: 0,
+      totalWithdrawals: 0,
+      transactions: [],
+      lastUpdated: new Date().toISOString(),
+    }));
+    
+    console.log('[ClearData] All data cleared successfully');
+    return true;
+  } catch (error) {
+    console.error('[ClearData] Failed to clear data:', error);
     return false;
   }
 };
