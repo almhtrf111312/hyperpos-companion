@@ -18,7 +18,52 @@ export interface ExcelExportOptions {
   totals?: Record<string, number>;
   title?: string;
   subtitle?: string;
+  storeName?: string;
+  storePhone?: string;
+  storeAddress?: string;
+  reportType?: string;
+  summary?: { label: string; value: string | number }[];
 }
+
+// Format date in local timezone
+const formatLocalDate = (): string => {
+  return new Date().toLocaleDateString('ar-SA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+};
+
+// Format datetime in local timezone
+const formatLocalDateTime = (): string => {
+  return new Date().toLocaleString('ar-SA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+};
+
+// Get store info from settings
+const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
+  try {
+    const stored = localStorage.getItem('hyperpos_settings');
+    if (stored) {
+      const settings = JSON.parse(stored);
+      return {
+        name: settings.storeSettings?.name || 'HyperPOS',
+        phone: settings.storeSettings?.phone,
+        address: settings.storeSettings?.address,
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { name: 'HyperPOS' };
+};
 
 // Save Excel file on native platforms using Filesystem and Share APIs
 const saveExcelNative = async (wb: XLSX.WorkBook, fileName: string): Promise<void> => {
@@ -45,7 +90,7 @@ const saveExcelNative = async (wb: XLSX.WorkBook, fileName: string): Promise<voi
   }
 };
 
-// Create and download Excel file
+// Create and download Excel file with enhanced header
 export const exportToExcel = async (options: ExcelExportOptions): Promise<void> => {
   const {
     sheetName = 'Sheet1',
@@ -55,13 +100,38 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
     totals,
     title,
     subtitle,
+    storeName,
+    storePhone,
+    storeAddress,
+    reportType,
+    summary,
   } = options;
+  
+  // Get store info if not provided
+  const store = storeName ? { name: storeName, phone: storePhone, address: storeAddress } : getStoreInfo();
   
   // Create workbook
   const wb = XLSX.utils.book_new();
   
   // Prepare data rows
   const rows: (string | number | undefined)[][] = [];
+  
+  // Add store header
+  rows.push([store.name]);
+  if (store.phone) {
+    rows.push([`هاتف: ${store.phone}`]);
+  }
+  if (store.address) {
+    rows.push([`العنوان: ${store.address}`]);
+  }
+  rows.push([]); // Empty row
+  
+  // Add report type and date
+  if (reportType) {
+    rows.push([`نوع التقرير: ${reportType}`]);
+  }
+  rows.push([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
+  rows.push([]); // Empty row
   
   // Add title if provided
   if (title) {
@@ -105,6 +175,16 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
     rows.push(totalsRow);
   }
   
+  // Add summary section if provided
+  if (summary && summary.length > 0) {
+    rows.push([]); // Empty row
+    rows.push(['خلاصة حسابية']);
+    rows.push(['البند', 'القيمة']);
+    summary.forEach(item => {
+      rows.push([item.label, item.value]);
+    });
+  }
+  
   // Create worksheet
   const ws = XLSX.utils.aoa_to_sheet(rows);
   
@@ -122,12 +202,13 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
   }
 };
 
-// Export invoices to Excel
+// Export invoices to Excel with enhanced details
 export const exportInvoicesToExcel = async (
   invoices: Array<{
     id: string;
     customerName: string;
     total: number;
+    discount?: number;
     profit?: number;
     paymentType: string;
     type: string;
@@ -137,32 +218,44 @@ export const exportInvoicesToExcel = async (
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'رقم الفاتورة', key: 'id', width: 15 },
-    { header: 'العميل', key: 'customerName', width: 20 },
-    { header: 'النوع', key: 'type', width: 12 },
-    { header: 'الدفع', key: 'paymentType', width: 10 },
-    { header: 'الإجمالي', key: 'total', width: 12 },
-    { header: 'الربح', key: 'profit', width: 12 },
     { header: 'التاريخ', key: 'date', width: 12 },
+    { header: 'العميل', key: 'customerName', width: 20 },
+    { header: 'الإجمالي', key: 'total', width: 12 },
+    { header: 'الخصم', key: 'discount', width: 10 },
+    { header: 'صافي الربح', key: 'profit', width: 12 },
+    { header: 'نوع الدفع', key: 'paymentType', width: 10 },
   ];
   
   const data = invoices.map(inv => ({
-    id: inv.id,
-    customerName: inv.customerName,
-    type: inv.type === 'maintenance' ? 'صيانة' : 'مبيعات',
-    paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
-    total: inv.total,
-    profit: inv.profit || 0,
+    id: inv.id.substring(0, 8),
     date: new Date(inv.createdAt).toLocaleDateString('ar-SA'),
+    customerName: inv.customerName || 'عميل نقدي',
+    total: inv.total,
+    discount: inv.discount || 0,
+    profit: inv.profit || 0,
+    paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
   }));
   
+  const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
+  const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+  const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  
   const totals: Record<string, number> = {
-    total: invoices.reduce((sum, inv) => sum + inv.total, 0),
-    profit: invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
+    total: totalSales,
+    discount: totalDiscount,
+    profit: totalProfit,
   };
+  
+  const summary = [
+    { label: 'إجمالي المبيعات', value: totalSales },
+    { label: 'إجمالي الخصومات', value: totalDiscount },
+    { label: 'صافي الأرباح', value: totalProfit },
+    { label: 'عدد الفواتير', value: invoices.length },
+  ];
   
   const subtitle = dateRange 
     ? `من ${dateRange.start} إلى ${dateRange.end}`
-    : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
+    : `التاريخ: ${formatLocalDate()}`;
   
   await exportToExcel({
     sheetName: 'الفواتير',
@@ -171,11 +264,13 @@ export const exportInvoicesToExcel = async (
     data,
     totals,
     title: 'تقرير الفواتير',
+    reportType: 'تقرير المبيعات',
     subtitle,
+    summary,
   });
 };
 
-// Export products to Excel
+// Export products to Excel with full details
 export const exportProductsToExcel = async (
   products: Array<{
     name: string;
@@ -184,27 +279,46 @@ export const exportProductsToExcel = async (
     costPrice: number;
     salePrice: number;
     quantity: number;
+    minStockLevel?: number;
   }>
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'المنتج', key: 'name', width: 25 },
     { header: 'الباركود', key: 'barcode', width: 15 },
-    { header: 'التصنيف', key: 'category', width: 15 },
     { header: 'سعر التكلفة', key: 'costPrice', width: 12 },
     { header: 'سعر البيع', key: 'salePrice', width: 12 },
+    { header: 'الربح', key: 'profit', width: 10 },
     { header: 'الكمية', key: 'quantity', width: 10 },
+    { header: 'الحد الأدنى', key: 'minStockLevel', width: 12 },
+    { header: 'القسم', key: 'category', width: 15 },
     { header: 'قيمة المخزون', key: 'stockValue', width: 15 },
   ];
   
   const data = products.map(p => ({
     ...p,
+    barcode: p.barcode || '-',
+    profit: p.salePrice - p.costPrice,
+    minStockLevel: p.minStockLevel || 0,
+    category: p.category || 'بدون تصنيف',
     stockValue: p.costPrice * p.quantity,
   }));
   
+  const totalStock = products.reduce((sum, p) => sum + p.quantity, 0);
+  const totalCostValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
+  const totalSaleValue = products.reduce((sum, p) => sum + (p.salePrice * p.quantity), 0);
+  
   const totals: Record<string, number> = {
-    quantity: products.reduce((sum, p) => sum + p.quantity, 0),
-    stockValue: products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0),
+    quantity: totalStock,
+    stockValue: totalCostValue,
   };
+  
+  const summary = [
+    { label: 'عدد المنتجات', value: products.length },
+    { label: 'إجمالي المخزون', value: totalStock },
+    { label: 'قيمة المخزون (بالتكلفة)', value: totalCostValue },
+    { label: 'قيمة المخزون (بالبيع)', value: totalSaleValue },
+    { label: 'الربح المتوقع', value: totalSaleValue - totalCostValue },
+  ];
   
   await exportToExcel({
     sheetName: 'المنتجات',
@@ -213,7 +327,9 @@ export const exportProductsToExcel = async (
     data,
     totals,
     title: 'قائمة المنتجات',
-    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    reportType: 'تقرير المخزون',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
+    summary,
   });
 };
 
@@ -236,13 +352,20 @@ export const exportExpensesToExcel = async (
     { header: 'ملاحظات', key: 'notes', width: 30 },
   ];
   
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  
   const totals: Record<string, number> = {
-    amount: expenses.reduce((sum, e) => sum + e.amount, 0),
+    amount: totalExpenses,
   };
+  
+  const summary = [
+    { label: 'إجمالي المصاريف', value: totalExpenses },
+    { label: 'عدد المصاريف', value: expenses.length },
+  ];
   
   const subtitle = dateRange 
     ? `من ${dateRange.start} إلى ${dateRange.end}`
-    : `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`;
+    : `التاريخ: ${formatLocalDate()}`;
   
   await exportToExcel({
     sheetName: 'المصاريف',
@@ -251,7 +374,9 @@ export const exportExpensesToExcel = async (
     data: expenses,
     totals,
     title: 'تقرير المصاريف',
+    reportType: 'تقرير المصروفات',
     subtitle,
+    summary,
   });
 };
 
@@ -277,13 +402,25 @@ export const exportPartnersToExcel = async (
     { header: 'الرصيد الحالي', key: 'currentBalance', width: 15 },
   ];
   
+  const totalCapital = partners.reduce((sum, p) => sum + p.currentCapital, 0);
+  const totalProfit = partners.reduce((sum, p) => sum + p.totalProfit, 0);
+  const totalWithdrawn = partners.reduce((sum, p) => sum + p.totalWithdrawn, 0);
+  const totalBalance = partners.reduce((sum, p) => sum + p.currentBalance, 0);
+  
   const totals: Record<string, number> = {
     initialCapital: partners.reduce((sum, p) => sum + p.initialCapital, 0),
-    currentCapital: partners.reduce((sum, p) => sum + p.currentCapital, 0),
-    totalProfit: partners.reduce((sum, p) => sum + p.totalProfit, 0),
-    totalWithdrawn: partners.reduce((sum, p) => sum + p.totalWithdrawn, 0),
-    currentBalance: partners.reduce((sum, p) => sum + p.currentBalance, 0),
+    currentCapital: totalCapital,
+    totalProfit: totalProfit,
+    totalWithdrawn: totalWithdrawn,
+    currentBalance: totalBalance,
   };
+  
+  const summary = [
+    { label: 'إجمالي رأس المال', value: totalCapital },
+    { label: 'إجمالي الأرباح', value: totalProfit },
+    { label: 'إجمالي المسحوبات', value: totalWithdrawn },
+    { label: 'إجمالي الأرصدة', value: totalBalance },
+  ];
   
   await exportToExcel({
     sheetName: 'الشركاء',
@@ -292,7 +429,9 @@ export const exportPartnersToExcel = async (
     data: partners,
     totals,
     title: 'تقرير الشركاء',
-    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    reportType: 'تقرير الشراكة',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
+    summary,
   });
 };
 
@@ -314,11 +453,22 @@ export const exportCustomersToExcel = async (
     { header: 'الرصيد', key: 'balance', width: 12 },
   ];
   
+  const totalPurchases = customers.reduce((sum, c) => sum + c.totalPurchases, 0);
+  const totalOrders = customers.reduce((sum, c) => sum + c.ordersCount, 0);
+  const totalBalance = customers.reduce((sum, c) => sum + c.balance, 0);
+  
   const totals: Record<string, number> = {
-    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
-    ordersCount: customers.reduce((sum, c) => sum + c.ordersCount, 0),
-    balance: customers.reduce((sum, c) => sum + c.balance, 0),
+    totalPurchases: totalPurchases,
+    ordersCount: totalOrders,
+    balance: totalBalance,
   };
+  
+  const summary = [
+    { label: 'عدد العملاء', value: customers.length },
+    { label: 'إجمالي المشتريات', value: totalPurchases },
+    { label: 'إجمالي الطلبات', value: totalOrders },
+    { label: 'إجمالي الأرصدة', value: totalBalance },
+  ];
   
   await exportToExcel({
     sheetName: 'العملاء',
@@ -327,7 +477,9 @@ export const exportCustomersToExcel = async (
     data: customers,
     totals,
     title: 'قائمة العملاء',
-    subtitle: `التاريخ: ${new Date().toLocaleDateString('ar-SA')}`,
+    reportType: 'تقرير العملاء',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
+    summary,
   });
 };
 
@@ -367,9 +519,17 @@ export const exportSalesReportToExcel = async (
   dateRange: { start: string; end: string }
 ): Promise<void> => {
   const wb = XLSX.utils.book_new();
+  const store = getStoreInfo();
   
-  // Summary sheet
+  // Summary sheet with store header
   const summaryData = [
+    [store.name],
+    store.phone ? [`هاتف: ${store.phone}`] : [],
+    store.address ? [`العنوان: ${store.address}`] : [],
+    [],
+    [`نوع التقرير: تقرير المبيعات التفصيلي`],
+    [`تاريخ الإصدار: ${formatLocalDateTime()}`],
+    [],
     ['تقرير المبيعات التفصيلي'],
     [`الفترة: من ${dateRange.start} إلى ${dateRange.end}`],
     [],
@@ -378,7 +538,8 @@ export const exportSalesReportToExcel = async (
     ['صافي الأرباح', data.summary.totalProfit],
     ['عدد الطلبات', data.summary.totalOrders],
     ['متوسط قيمة الطلب', Math.round(data.summary.avgOrderValue)],
-  ];
+  ].filter(row => row.length > 0);
+  
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
   summarySheet['!cols'] = [{ wch: 25 }, { wch: 15 }];
   XLSX.utils.book_append_sheet(wb, summarySheet, 'الملخص');
@@ -461,6 +622,7 @@ export const exportDailyReportToExcel = async (
     columns,
     data,
     title: 'التقرير اليومي للصندوق',
+    reportType: 'تقرير الصندوق',
     subtitle: `التاريخ: ${report.date}`,
   });
 };

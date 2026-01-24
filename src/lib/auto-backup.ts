@@ -89,16 +89,36 @@ export const isBackupNeeded = (): boolean => {
   return hoursSinceBackup >= IDLE_BACKUP_INTERVAL_HOURS;
 };
 
-// Generate backup data
+// Get store settings for backup metadata
+const getStoreSettings = (): Record<string, unknown> => {
+  try {
+    const stored = localStorage.getItem('hyperpos_settings');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+};
+
+// Generate comprehensive backup data with all system data
 export const generateBackupData = (): object => {
   const backupData: Record<string, unknown> = {
-    version: '1.0',
+    version: '2.0',
     timestamp: new Date().toISOString(),
+    localTimestamp: new Date().toLocaleString('ar-SA', {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    source: 'hyperpos_backup',
+    storeInfo: getStoreSettings(),
     data: {},
   };
   
-  // Collect all relevant localStorage data
+  // Comprehensive list of all data keys to backup
   const keysToBackup = [
+    // Core data
     'hyperpos_invoices_v1',
     'hyperpos_products_v1',
     'hyperpos_customers_v1',
@@ -108,11 +128,24 @@ export const generateBackupData = (): object => {
     'hyperpos_recurring_expenses_v1',
     'hyperpos_categories_v1',
     'hyperpos_maintenance_v1',
+    
+    // Financial data
     'hyperpos_cashbox_v1',
     'hyperpos_shifts_v1',
     'hyperpos_capital_v1',
+    
+    // Settings
+    'hyperpos_settings',
     'hyperpos_settings_v1',
     'hyperpos_exchange_rates_v1',
+    'hyperpos_custom_fields_config',
+    'hyperpos_product_fields_config',
+    
+    // Backup config
+    'hyperpos_backup_config_v1',
+    
+    // Activity logs
+    'hyperpos_activity_log',
   ];
   
   keysToBackup.forEach(key => {
@@ -122,9 +155,32 @@ export const generateBackupData = (): object => {
         (backupData.data as Record<string, unknown>)[key] = JSON.parse(value);
       }
     } catch {
-      // Skip invalid data
+      // If JSON parse fails, store as string
+      const value = localStorage.getItem(key);
+      if (value) {
+        (backupData.data as Record<string, unknown>)[key] = value;
+      }
     }
   });
+  
+  // Add summary statistics
+  try {
+    const invoices = (backupData.data as Record<string, unknown>)['hyperpos_invoices_v1'];
+    const products = (backupData.data as Record<string, unknown>)['hyperpos_products_v1'];
+    const customers = (backupData.data as Record<string, unknown>)['hyperpos_customers_v1'];
+    const expenses = (backupData.data as Record<string, unknown>)['hyperpos_expenses_v1'];
+    const partners = (backupData.data as Record<string, unknown>)['hyperpos_partners_v1'];
+    
+    backupData.summary = {
+      invoicesCount: Array.isArray(invoices) ? invoices.length : 0,
+      productsCount: Array.isArray(products) ? products.length : 0,
+      customersCount: Array.isArray(customers) ? customers.length : 0,
+      expensesCount: Array.isArray(expenses) ? expenses.length : 0,
+      partnersCount: Array.isArray(partners) ? partners.length : 0,
+    };
+  } catch {
+    // ignore summary errors
+  }
   
   return backupData;
 };
@@ -270,4 +326,15 @@ export const stopAutoBackup = (): void => {
     clearInterval(backupCheckInterval);
     backupCheckInterval = null;
   }
+};
+
+// Generate downloadable JSON backup for manual export
+export const generateDownloadableBackup = (): { data: string; fileName: string } => {
+  const backupData = generateBackupData();
+  const fileName = `hyperpos_full_backup_${new Date().toISOString().split('T')[0]}.json`;
+  
+  return {
+    data: JSON.stringify(backupData, null, 2),
+    fileName,
+  };
 };
