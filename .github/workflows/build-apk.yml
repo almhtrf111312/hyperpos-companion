@@ -1,4 +1,5 @@
 name: Build FlowPOS Pro APK
+
 on:
   push:
     branches: [ main ]
@@ -9,106 +10,127 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - uses: actions/setup-node@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 20
         cache: 'npm'
         
-    # 🔥 Step 1: Install dependencies
-    - run: npm ci
+    - name: Install dependencies
+      run: npm ci
     
-    # 🔥 Step 2: Build the web app
-    - run: npm run build
+    - name: Build web app
+      run: npm run build
     
-    # 🔥 Step 3: Install Capacitor CLI explicitly
-    - name: Install Capacitor CLI
-      run: npm i @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets
+    - name: Install Capacitor packages
+      run: npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets --save-dev
         
-    # 🔥 Step 4: Setup Capacitor
-    - name: Setup Capacitor
+    - name: Initialize Capacitor
       run: |
-        npx cap init "FlowPOS Pro" com.flowpos.pro --web-dir dist
+        # Remove existing android folder if exists
         rm -rf android
+        
+        # Create capacitor config
+        cat > capacitor.config.json << 'EOF'
+        {
+          "appId": "com.flowpos.pro",
+          "appName": "FlowPOS Pro",
+          "webDir": "dist",
+          "server": {
+            "androidScheme": "https"
+          },
+          "plugins": {
+            "Camera": {
+              "photoGalleryPermission": "لاختيار صور المنتجات",
+              "cameraPermission": "لمسح الباركود وتصوير المنتجات"
+            }
+          }
+        }
+        EOF
+        
+        # Add Android platform
         npx cap add android
         
-    # 🔥 Step 4.5: Generate Android Icons from resources/icon.png
     - name: Generate App Icons
       run: |
         npx capacitor-assets generate --android --iconBackgroundColor "#1e40af"
         
-    # 🔥 Step 5: Sync Capacitor
     - name: Sync Capacitor
       run: npx cap sync android
     
-    # 🔥 Step 5: Update Version Code automatically
     - name: Update Version Code
       run: |
         VERSION_CODE=${{ github.run_number }}
         sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
         sed -i 's/versionName "1.0"/versionName "1.0.'$VERSION_CODE'"/' android/app/build.gradle
-        echo "Updated to versionCode: $VERSION_CODE, versionName: 1.0.$VERSION_CODE"
+        echo "✅ Updated to versionCode: $VERSION_CODE, versionName: 1.0.$VERSION_CODE"
         
-    - uses: actions/setup-java@v4
+    - name: Setup Java
+      uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
     
-    # 🔥 Step 6: Decode Keystore (if secrets exist)
-    - name: Decode Keystore
-      if: ${{ env.KEYSTORE_EXISTS == 'true' }}
-      env:
-        KEYSTORE_EXISTS: ${{ secrets.KEYSTORE_BASE64 != '' }}
-        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+    - name: Check for Keystore
+      id: keystore_check
       run: |
-        echo "$KEYSTORE_BASE64" | base64 -d > android/app/flowpos-release.keystore
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "has_keystore=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_keystore=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Decode Keystore
+      if: steps.keystore_check.outputs.has_keystore == 'true'
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
+        echo "✅ Keystore decoded successfully"
         
-    # 🔥 Step 7: Build Signed Release APK (if keystore exists)
-    - name: Build Signed APK
-      if: ${{ env.KEYSTORE_EXISTS == 'true' }}
-      env:
-        KEYSTORE_EXISTS: ${{ secrets.KEYSTORE_BASE64 != '' }}
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    - name: Build Signed Release APK
+      if: steps.keystore_check.outputs.has_keystore == 'true'
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleRelease \
           -Pandroid.injected.signing.store.file=$PWD/app/flowpos-release.keystore \
-          -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-          -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-          -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+          -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+        echo "✅ Signed APK built successfully"
     
-    # 🔥 Step 8: Build Debug APK (fallback if no keystore)
     - name: Build Debug APK
-      if: ${{ env.KEYSTORE_EXISTS != 'true' }}
-      env:
-        KEYSTORE_EXISTS: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      if: steps.keystore_check.outputs.has_keystore != 'true'
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleDebug
+        echo "✅ Debug APK built successfully"
         
-    # 🔥 Step 9: Upload Signed APK
     - name: Upload Signed APK
-      if: ${{ env.KEYSTORE_EXISTS == 'true' }}
-      env:
-        KEYSTORE_EXISTS: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      if: steps.keystore_check.outputs.has_keystore == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: FlowPOS-Pro-v1.0.${{ github.run_number }}-release
         path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 30
+        if-no-files-found: error
         
-    # 🔥 Step 10: Upload Debug APK (fallback)
     - name: Upload Debug APK
-      if: ${{ env.KEYSTORE_EXISTS != 'true' }}
-      env:
-        KEYSTORE_EXISTS: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      if: steps.keystore_check.outputs.has_keystore != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: FlowPOS-Pro-v1.0.${{ github.run_number }}-debug
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
+        if-no-files-found: error
+        
+    - name: Build Summary
+      run: |
+        echo "## 📱 FlowPOS Pro APK Build Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version:** 1.0.${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Type:** ${{ steps.keystore_check.outputs.has_keystore == 'true' && 'Release (Signed)' || 'Debug' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
