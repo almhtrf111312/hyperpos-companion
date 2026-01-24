@@ -218,9 +218,16 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.text(reportTypeText, pageWidth - 15, yPosition, { align: 'right' });
   }
   
-  // Date on left
-  const dateText = `${processRTL('تاريخ الإصدار:')} ${formatLocalDateTime()}`;
-  doc.text(dateText, 15, yPosition);
+  // Date on left - process the full text together for proper Arabic display
+  const issueDateLabel = processRTL('تاريخ الإصدار:');
+  const currentDateTime = formatLocalDateTime();
+  // For Arabic, display date label then datetime
+  const dateText = currentLang === 'ar' 
+    ? `${currentDateTime} ${issueDateLabel}`
+    : `${issueDateLabel} ${currentDateTime}`;
+  doc.text(dateText, currentLang === 'ar' ? pageWidth - 15 : 15, yPosition, { 
+    align: currentLang === 'ar' ? 'right' : 'left' 
+  });
   yPosition += 10;
   
   // Add title
