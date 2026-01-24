@@ -7,7 +7,9 @@ import {
   CreditCard,
   Package,
   Wallet,
-  Loader2
+  Loader2,
+  Banknote,
+  TrendingDown
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
@@ -39,6 +41,11 @@ export default function Dashboard() {
     inventoryValue: 0,
     totalCapital: 0,
     availableCapital: 0,
+    // ✅ مؤشرات جديدة
+    cashboxBalance: 0,      // رصيد الصندوق الفعلي
+    liquidCapital: 0,       // رأس المال المتاح = إجمالي - مخزون
+    deficit: 0,             // العجز (إذا كان المتاح سالباً)
+    deficitPercentage: 0,   // نسبة العجز من رأس المال
   });
   
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -106,9 +113,16 @@ export default function Dashboard() {
       // استخدم القيمة الأعلى للتوافق مع كلا المصدرين
       const totalCapital = Math.max(partnersCapital, capitalState.currentCapital);
       
-      // ✅ رصيد الصندوق الفعلي
+      // ✅ رصيد الصندوق الفعلي (النقد المتوفر)
       const cashboxState = loadCashboxState();
-      const availableCapital = cashboxState.currentBalance;
+      const cashboxBalance = cashboxState.currentBalance;
+      
+      // ✅ رأس المال المتاح = رأس المال الإجمالي - قيمة المخزون
+      const liquidCapital = totalCapital - inventoryValue;
+      
+      // ✅ حساب العجز والنسبة
+      const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;
+      const deficitPercentage = totalCapital > 0 ? (deficit / totalCapital) * 100 : 0;
 
       setStats({
         todaySales,
@@ -122,7 +136,11 @@ export default function Dashboard() {
         uniqueCustomers,
         inventoryValue,
         totalCapital,
-        availableCapital,
+        availableCapital: cashboxBalance, // رصيد الصندوق للتوافق مع الشفرة القديمة
+        cashboxBalance,
+        liquidCapital,
+        deficit,
+        deficitPercentage,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -136,15 +154,22 @@ export default function Dashboard() {
 
     const handleUpdate = () => loadStats();
     
+    // ✅ الاستماع لجميع الأحداث المالية
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
     window.addEventListener('focus', loadStats);
     
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
       window.removeEventListener('focus', loadStats);
     };
   }, [loadStats]);
@@ -200,7 +225,8 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid - Capital Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+        {/* قيمة المخزون */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-info/10">
@@ -212,6 +238,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        
+        {/* رأس المال الإجمالي */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -223,20 +251,58 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        
+        {/* رصيد الصندوق */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${stats.availableCapital >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
-              <DollarSign className={`w-5 h-5 ${stats.availableCapital >= 0 ? 'text-success' : 'text-destructive'}`} />
+            <div className="p-2 rounded-lg bg-success/10">
+              <Banknote className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.availableCapital')}</p>
-              <p className={`text-xl font-bold ${stats.availableCapital >= 0 ? 'text-success' : 'text-destructive'}`}>
-                ${stats.availableCapital.toLocaleString()}
+              <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance') || 'رصيد الصندوق'}</p>
+              <p className="text-xl font-bold text-success">${stats.cashboxBalance.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* رأس المال المتاح */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
+              <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital') || 'رأس المال المتاح'}</p>
+              <p className={`text-xl font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                ${stats.liquidCapital.toLocaleString()}
               </p>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* العجز - يظهر فقط إذا كان > 0 */}
+      {stats.deficit > 0 && (
+        <div className="bg-destructive/10 rounded-xl border border-destructive/30 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-destructive/20">
+                <TrendingDown className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <p className="text-sm text-destructive/80">{t('dashboard.deficit') || 'العجز'}</p>
+                <p className="text-2xl font-bold text-destructive">
+                  ${stats.deficit.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-destructive/80">{t('dashboard.deficitPercentage') || 'نسبة العجز'}</p>
+              <p className="text-xl font-bold text-destructive">{stats.deficitPercentage.toFixed(1)}%</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <QuickActions />

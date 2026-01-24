@@ -285,42 +285,75 @@ export const addCapitalCloud = async (
   const partner = await getPartnerByIdCloud(partnerId);
   if (!partner || amount <= 0) return false;
   
+  const roundedAmount = Math.round(amount * 100) / 100;
+  
   const transaction: CapitalTransaction = {
     id: Date.now().toString(),
-    amount,
+    amount: roundedAmount,
     type: 'deposit',
     date: new Date().toISOString(),
-    notes,
+    notes: notes || 'إضافة رأس مال',
   };
   
   return updatePartnerCloud(partnerId, {
-    initialCapital: partner.initialCapital + amount,
-    currentCapital: partner.currentCapital + amount,
+    initialCapital: partner.initialCapital + roundedAmount,
+    currentCapital: partner.currentCapital + roundedAmount,
     capitalHistory: [...partner.capitalHistory, transaction],
   });
 };
 
-// ✅ إضافة رأس مال مع الربط بالصندوق
-import { addDepositToShift, getActiveShift } from '../cashbox-store';
-
+/**
+ * ✅ دالة محسّنة: إضافة رأس مال مع تحديث الصندوق تلقائياً
+ * هذه الدالة تضيف رأس المال للشريك + ترفع رصيد الصندوق (تعمل بدون وردية)
+ */
 export const addCapitalWithCashboxCloud = async (
   partnerId: string,
   partnerName: string,
   amount: number,
   notes?: string
 ): Promise<boolean> => {
-  // 1. تحديث سجل الشريك
-  const partnerSuccess = await addCapitalCloud(partnerId, amount, notes);
-  
-  if (partnerSuccess) {
-    // 2. إضافة للصندوق إذا كان هناك وردية نشطة
-    const activeShift = getActiveShift();
-    if (activeShift) {
-      addDepositToShift(amount);
+  try {
+    // 1. تحديث سجل الشريك في Cloud
+    const partnerSuccess = await addCapitalCloud(partnerId, amount, notes);
+    
+    if (partnerSuccess) {
+      // 2. تحديث capital-store المحلي للتوافق
+      const { loadCapitalState, saveCapitalState } = await import('../capital-store');
+      const state = loadCapitalState();
+      const roundedAmount = Math.round(amount * 100) / 100;
+      
+      state.currentCapital = state.currentCapital + roundedAmount;
+      state.totalInvestments = state.totalInvestments + roundedAmount;
+      state.lastUpdated = new Date().toISOString();
+      
+      // إضافة للتاريخ
+      state.transactions.unshift({
+        id: Date.now().toString(),
+        type: 'partner_investment',
+        amount: roundedAmount,
+        partnerId,
+        partnerName,
+        description: notes || `استثمار من ${partnerName}`,
+        previousBalance: state.currentCapital - roundedAmount,
+        newBalance: state.currentCapital,
+        createdAt: new Date().toISOString(),
+        createdBy: 'system',
+      });
+      
+      saveCapitalState(state);
+      
+      // 3. تحديث رصيد الصندوق (يعمل بدون وردية)
+      const { updateCashboxBalance } = await import('../cashbox-store');
+      updateCashboxBalance(roundedAmount, 'deposit');
+      
+      emitEvent(EVENTS.CAPITAL_UPDATED, state);
     }
+    
+    return partnerSuccess;
+  } catch (error) {
+    console.error('Error adding capital with cashbox:', error);
+    return false;
   }
-  
-  return partnerSuccess;
 };
 
 // Withdraw profit
