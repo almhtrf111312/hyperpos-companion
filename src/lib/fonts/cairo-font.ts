@@ -3,31 +3,55 @@
 
 // Font loading approach for jsPDF Arabic support using Noto Sans Arabic
 export const loadArabicFont = async (doc: any): Promise<void> => {
-  try {
-    // Load Noto Sans Arabic from Google Fonts CDN
-    // Using Regular weight (400) for best readability
-    const fontUrl = 'https://fonts.gstatic.com/s/notosansarabic/v28/nwpxtLGrOAZMl5nJ_wfgRg3DrWFZWsnVBJ_sS6tlqHHFlj4wv4rqxzLI.ttf';
-    
-    const response = await fetch(fontUrl);
-    if (!response.ok) {
-      throw new Error('Failed to load Noto Sans Arabic font');
+  // Try multiple font sources in order of preference
+  const fontSources = [
+    // jsDelivr - most reliable CDN for npm packages
+    'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-arabic@5.0.6/files/noto-sans-arabic-arabic-400-normal.woff',
+    // Unpkg fallback
+    'https://unpkg.com/@fontsource/noto-sans-arabic@5.0.6/files/noto-sans-arabic-arabic-400-normal.woff',
+    // Google Fonts CDN (may have version changes)
+    'https://fonts.gstatic.com/s/notosansarabic/v28/nwpxtLGrOAZMl5nJ_wfgRg3DrWFZWsnVBJ_sS6tlqHHFlhEwv4raxts.woff2',
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const fontUrl of fontSources) {
+    try {
+      const response = await fetch(fontUrl, { 
+        mode: 'cors',
+        cache: 'force-cache' 
+      });
+      
+      if (!response.ok) {
+        continue; // Try next source
+      }
+      
+      const fontBuffer = await response.arrayBuffer();
+      const fontBase64 = btoa(
+        new Uint8Array(fontBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      
+      // Determine file extension from URL
+      const isWoff = fontUrl.includes('.woff');
+      const fileName = isWoff ? 'NotoSansArabic-Regular.woff' : 'NotoSansArabic-Regular.ttf';
+      
+      // Register font with jsPDF
+      doc.addFileToVFS(fileName, fontBase64);
+      doc.addFont(fileName, 'NotoSansArabic', 'normal');
+      doc.setFont('NotoSansArabic');
+      
+      console.log('Arabic font loaded successfully from:', fontUrl);
+      return;
+    } catch (error) {
+      lastError = error as Error;
+      console.warn(`Failed to load font from ${fontUrl}:`, error);
+      continue; // Try next source
     }
-    
-    const fontBuffer = await response.arrayBuffer();
-    const fontBase64 = btoa(
-      new Uint8Array(fontBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    );
-    
-    // Register font with jsPDF
-    doc.addFileToVFS('NotoSansArabic-Regular.ttf', fontBase64);
-    doc.addFont('NotoSansArabic-Regular.ttf', 'NotoSansArabic', 'normal');
-    doc.setFont('NotoSansArabic');
-    
-    return;
-  } catch (error) {
-    console.warn('Could not load Noto Sans Arabic font, using fallback:', error);
-    throw error;
   }
+
+  // All sources failed
+  console.warn('Could not load Noto Sans Arabic font from any source:', lastError);
+  throw lastError || new Error('Failed to load Arabic font from all sources');
 };
 
 // Arabic font name constant for consistency
