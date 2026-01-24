@@ -1149,6 +1149,41 @@ export const translations = {
     'shortcuts.toggleMode': 'تبديل الوضع (منتجات/صيانة)',
     'shortcuts.useToSpeedUp': 'استخدم هذه الاختصارات لتسريع عملية البيع',
     
+    // Data Reset
+    'settings.resetData': 'تصفير البيانات',
+    'settings.resetDataWarning': 'تحذير! هذا الإجراء لا يمكن التراجع عنه',
+    'settings.resetDataDescription': 'سيتم حذف جميع بياناتك نهائياً من النظام السحابي والمحلي',
+    'settings.dataToBeDeleted': 'البيانات التي سيتم حذفها',
+    'settings.resetAllData': 'تصفير جميع البيانات',
+    'settings.resetDataConfirm': 'تأكيد تصفير البيانات',
+    'settings.resetDataConfirmDescription': 'أدخل كلمة سر حسابك للتأكيد. هذا الإجراء نهائي ولا يمكن التراجع عنه.',
+    'settings.enterPasswordToConfirm': 'أدخل كلمة السر للتأكيد',
+    'settings.wrongPassword': 'كلمة السر غير صحيحة',
+    'settings.resetDataSuccess': 'تم تصفير جميع البيانات بنجاح',
+    'settings.resetDataFailed': 'فشل تصفير البيانات',
+    'settings.loginRequired': 'يجب تسجيل الدخول أولاً',
+    'settings.verifying': 'جاري التحقق...',
+    'settings.confirmReset': 'تأكيد التصفير',
+    'settings.bossPanel': 'لوحة المالك',
+    'settings.goToBossPanel': 'الذهاب للوحة التحكم',
+    
+    // Common items for reset section
+    'common.products': 'المنتجات',
+    'common.invoices': 'الفواتير',
+    'common.customers': 'العملاء',
+    'common.debts': 'الديون',
+    'common.expenses': 'المصاريف',
+    'common.partners': 'الشركاء',
+    'common.services': 'الخدمات',
+    'common.categories': 'الفئات',
+    
+    // License Notifications
+    'notifications.licenseStatus': 'حالة الترخيص',
+    'notifications.licenseValidUntil': 'الترخيص صالح حتى',
+    'notifications.licenseExpiring': 'الترخيص ينتهي قريباً',
+    'notifications.daysRemaining': 'متبقي {days} يوم',
+    'notifications.licenseExpired': 'انتهى الترخيص',
+    
   },
   en: {
     // Navigation
@@ -2240,6 +2275,41 @@ export const translations = {
     'shortcuts.scanBarcode': 'Scan Barcode',
     'shortcuts.toggleMode': 'Toggle Mode (Products/Maintenance)',
     'shortcuts.useToSpeedUp': 'Use these shortcuts to speed up sales',
+    
+    // Data Reset
+    'settings.resetData': 'Reset Data',
+    'settings.resetDataWarning': 'Warning! This action cannot be undone',
+    'settings.resetDataDescription': 'All your data will be permanently deleted from cloud and local storage',
+    'settings.dataToBeDeleted': 'Data to be deleted',
+    'settings.resetAllData': 'Reset All Data',
+    'settings.resetDataConfirm': 'Confirm Data Reset',
+    'settings.resetDataConfirmDescription': 'Enter your account password to confirm. This action is permanent and cannot be undone.',
+    'settings.enterPasswordToConfirm': 'Enter password to confirm',
+    'settings.wrongPassword': 'Wrong password',
+    'settings.resetDataSuccess': 'All data has been reset successfully',
+    'settings.resetDataFailed': 'Failed to reset data',
+    'settings.loginRequired': 'Login required',
+    'settings.verifying': 'Verifying...',
+    'settings.confirmReset': 'Confirm Reset',
+    'settings.bossPanel': 'Owner Panel',
+    'settings.goToBossPanel': 'Go to Control Panel',
+    
+    // Common items for reset section
+    'common.products': 'Products',
+    'common.invoices': 'Invoices',
+    'common.customers': 'Customers',
+    'common.debts': 'Debts',
+    'common.expenses': 'Expenses',
+    'common.partners': 'Partners',
+    'common.services': 'Services',
+    'common.categories': 'Categories',
+    
+    // License Notifications
+    'notifications.licenseStatus': 'License Status',
+    'notifications.licenseValidUntil': 'License valid until',
+    'notifications.licenseExpiring': 'License expiring soon',
+    'notifications.daysRemaining': '{days} days remaining',
+    'notifications.licenseExpired': 'License expired',
     
   },
 };
