@@ -7,7 +7,6 @@ import { Share } from '@capacitor/share';
 import { loadArabicFont, ARABIC_FONT_NAME } from './fonts/cairo-font';
 import { getCurrentLanguage } from './i18n';
 import ArabicReshaper from 'arabic-reshaper';
-import bidiFactory from 'bidi-js';
 
 export interface PDFExportOptions {
   title: string;
@@ -30,23 +29,22 @@ const containsArabic = (text: string): boolean => {
 };
 
 // Process Arabic text for proper PDF display
-// jsPDF renders text left-to-right, so we need to:
-// 1. Reshape: Convert characters to their connected forms
-// 2. Reverse: Flip the text so it appears RTL when rendered LTR
+// 1. Reshape: Convert characters to their connected forms using arabic-reshaper
+// 2. NO reverse needed - jsPDF with Arabic font handles RTL properly
 
 const processArabicText = (text: string): string => {
   if (!containsArabic(text)) return text;
   
   try {
-    // Use arabic-reshaper to properly connect Arabic letters
-    const shaped = ArabicReshaper(text);
-    // Reverse the shaped text so it displays RTL in the PDF
-    // jsPDF renders left-to-right, so reversed text will appear right-to-left
-    return shaped.split('').reverse().join('');
+    // Use arabic-reshaper.convertArabic() to properly connect Arabic letters
+    // This converts isolated letters to their proper connected forms
+    const shaped = ArabicReshaper.convertArabic(text);
+    // Return shaped text without reversing - the font handles RTL display
+    return shaped;
   } catch (error) {
-    console.warn('Arabic reshaping failed, using fallback:', error);
-    // Fallback: just reverse without shaping
-    return text.split('').reverse().join('');
+    console.warn('Arabic reshaping failed, using original text:', error);
+    // Fallback: return original text without modification
+    return text;
   }
 };
 
