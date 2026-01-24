@@ -1,4 +1,4 @@
-// Internationalization (i18n) system for HyperPOS
+// Internationalization (i18n) system for FlowPOS Pro
 // Only Arabic and English are supported for now
 export type Language = 'ar' | 'en';
 
@@ -149,7 +149,7 @@ export const translations = {
     'auth.logoutSuccess': 'تم تسجيل الخروج',
     'auth.invalidCredentials': 'بيانات الدخول غير صحيحة',
     'auth.passwordMismatch': 'كلمات المرور غير متطابقة',
-    'auth.welcome': 'مرحباً بك في HyperPOS',
+    'auth.welcome': 'مرحباً بك في FlowPOS Pro',
     'auth.loginSubtitle': 'سجل دخولك للمتابعة',
     'auth.signupSubtitle': 'أنشئ حسابك الجديد',
     'auth.loading': 'جاري التحميل...',

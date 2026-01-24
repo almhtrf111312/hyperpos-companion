@@ -1,6 +1,6 @@
 {
-  "appId": "app.lovable.hyperpos",
-  "appName": "HyperPOS",
+  "appId": "com.flowpos.pro",
+  "appName": "FlowPOS Pro",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

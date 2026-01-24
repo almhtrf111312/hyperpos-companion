@@ -149,7 +149,7 @@ export function ActivationScreen() {
             </p>
             <Button variant="outline" className="w-full" asChild>
               <a 
-                href="https://wa.me/+970000000000?text=أريد الحصول على كود تفعيل لتطبيق HyperPOS" 
+                href="https://wa.me/+970000000000?text=أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro" 
                 target="_blank" 
                 rel="noopener noreferrer"
               >
