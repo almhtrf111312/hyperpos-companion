@@ -115,8 +115,8 @@ export default function POS() {
       }
       
       // Transform to POS format with multi-unit support
-      // ✅ استخدام مخزون المستودع إذا متاح، وإلا المخزون العام
-      const posProducts: POSProduct[] = cloudProducts.map(p => ({
+      // ✅ الموزع يرى فقط المنتجات التي في عهدته (الكمية > 0)
+      const allPosProducts: POSProduct[] = cloudProducts.map(p => ({
         id: p.id,
         name: p.name,
         price: p.salePrice,
@@ -135,6 +135,11 @@ export default function POS() {
         costPrice: p.costPrice,
         bulkCostPrice: p.bulkCostPrice || 0,
       }));
+      
+      // ✅ فلترة: الموزع يرى فقط المنتجات التي لديه منها مخزون في عهدته
+      const posProducts = activeWarehouse 
+        ? allPosProducts.filter(p => warehouseStock.has(p.id) && (warehouseStock.get(p.id) || 0) > 0)
+        : allPosProducts;
       
       setProducts(posProducts);
       setCategories([t('common.all'), ...cloudCategories]);
