@@ -201,52 +201,71 @@ export const recordPaymentWithInvoiceSyncCloud = async (
   const debt = await recordPaymentCloud(debtId, amount);
   if (!debt) return null;
   
-  // Sync with invoice
+  // Sync with invoice - استخدام invoice_number للتحديث
   if (!debt.isCashDebt && debt.invoiceId) {
-    if (debt.status === 'fully_paid') {
-      await updateInvoiceCloud(debt.invoiceId, { 
-        status: 'paid', 
-        paymentType: 'cash',
-        debtPaid: debt.totalDebt,
-        debtRemaining: 0
-      });
-    } else {
-      await updateInvoiceCloud(debt.invoiceId, { 
-        debtPaid: debt.totalPaid,
-        debtRemaining: debt.remainingDebt
-      });
+    // البحث عن الفاتورة بـ invoice_number أو UUID
+    const userId = getCurrentUserId();
+    if (userId) {
+      try {
+        // تحديث الفاتورة مباشرة باستخدام invoice_number
+        const updateData = debt.status === 'fully_paid' 
+          ? { 
+              status: 'paid', 
+              payment_type: 'cash',
+              debt_paid: debt.totalDebt,
+              debt_remaining: 0
+            }
+          : { 
+              debt_paid: debt.totalPaid,
+              debt_remaining: debt.remainingDebt
+            };
+        
+        // محاولة التحديث بـ invoice_number أولاً
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any)
+          .from('invoices')
+          .update(updateData)
+          .or(`invoice_number.eq.${debt.invoiceId},id.eq.${debt.invoiceId}`)
+          .eq('user_id', userId);
+        
+        if (!error) {
+          emitEvent(EVENTS.INVOICES_UPDATED, null);
+        }
+      } catch (e) {
+        console.error('[recordPaymentWithInvoiceSyncCloud] Failed to sync invoice:', e);
+      }
     }
   }
   
   return debt;
 };
 
-// Delete debt by invoice ID
+// Delete debt by invoice ID - يدعم البحث بـ invoice_number أو UUID
 export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boolean> => {
-  const debts = await loadDebtsCloud();
-  const debt = debts.find(d => d.invoiceId === invoiceId || d.id === invoiceId);
-  
-  if (!debt) return false;
-  
-  // Use Supabase client to delete by invoice_id (more efficient)
   const userId = getCurrentUserId();
   if (!userId) return false;
   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
-    .from('debts')
-    .delete()
-    .eq('invoice_id', invoiceId)
-    .eq('user_id', userId);
-  
-  const success = !error;
-  
-  if (success) {
-    invalidateDebtsCache();
-    emitEvent(EVENTS.DEBTS_UPDATED, null);
+  try {
+    // حذف مباشر باستخدام OR condition للبحث بـ invoice_id أو id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('debts')
+      .delete()
+      .or(`invoice_id.eq.${invoiceId},id.eq.${invoiceId}`)
+      .eq('user_id', userId);
+    
+    const success = !error;
+    
+    if (success) {
+      invalidateDebtsCache();
+      emitEvent(EVENTS.DEBTS_UPDATED, null);
+    }
+    
+    return success;
+  } catch (e) {
+    console.error('[deleteDebtByInvoiceIdCloud] Error:', e);
+    return false;
   }
-  
-  return success;
 };
 
 // Get debts stats
