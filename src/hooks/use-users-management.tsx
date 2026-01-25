@@ -98,6 +98,17 @@ export function useUsersManagement() {
 
   const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: 'cashier' | 'distributor' = 'cashier', phone?: string) => {
     try {
+      // For cashier/distributor users, link them to the current owner so other screens (e.g. Warehouses)
+      // can fetch them via user_roles.owner_id.
+      if (role === 'cashier' && !currentUser?.id) {
+        toast({
+          title: 'خطأ',
+          description: 'يجب تسجيل الدخول لإنشاء مستخدمين',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
       // Create user via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -133,6 +144,7 @@ export function useUsersManagement() {
         .insert({
           user_id: authData.user.id,
           role: role,
+          owner_id: role === 'cashier' ? currentUser?.id : null,
         });
 
       if (roleError) {
