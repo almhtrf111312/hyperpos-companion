@@ -56,6 +56,21 @@ const loadExchangeRates = () => {
   }
 };
 
+const loadCurrencyNames = () => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return { TRY: 'الليرة التركية', SYP: 'الليرة السورية' };
+    const parsed = JSON.parse(raw);
+    const names = parsed?.currencyNames;
+    return {
+      TRY: names?.TRY || 'الليرة التركية',
+      SYP: names?.SYP || 'الليرة السورية',
+    };
+  } catch {
+    return { TRY: 'الليرة التركية', SYP: 'الليرة السورية' };
+  }
+};
+
 interface CartItem {
   id: string;
   name: string;
@@ -175,10 +190,11 @@ export default function POS() {
 
   const currencies: Currency[] = useMemo(() => {
     const rates = loadExchangeRates();
+    const names = loadCurrencyNames();
     return [
       { code: 'USD', symbol: '$', name: 'دولار أمريكي', rate: 1 },
-      { code: 'TRY', symbol: '₺', name: 'ليرة تركية', rate: rates.TRY },
-      { code: 'SYP', symbol: 'ل.س', name: 'ليرة سورية', rate: rates.SYP },
+      { code: 'TRY', symbol: '₺', name: names.TRY, rate: rates.TRY },
+      { code: 'SYP', symbol: 'ل.س', name: names.SYP, rate: rates.SYP },
     ];
   }, []);
 
