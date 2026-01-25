@@ -54,6 +54,8 @@ import {
 } from '@/lib/cloud/customers-cloud';
 import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
 import { deductStockBatchCloud } from '@/lib/cloud/products-cloud';
+import { deductWarehouseStockBatchCloud } from '@/lib/cloud/warehouses-cloud';
+import { useWarehouse } from '@/hooks/use-warehouse';
 
 interface CartItem {
   id: string;
@@ -112,6 +114,7 @@ export function CartPanel({
 }: CartPanelProps) {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
+  const { activeWarehouse } = useWarehouse();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -249,8 +252,13 @@ export function CartPanel({
         distributeDetailedProfit(categoryProfits, invoice.id, customerName || 'عميل نقدي', false);
       }
       
-      // Deduct stock from inventory
-      await deductStockBatchCloud(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
+      // Deduct stock from inventory (warehouse-specific if available)
+      const stockItems = cart.map(item => ({ productId: item.id, quantity: item.quantity }));
+      if (activeWarehouse) {
+        await deductWarehouseStockBatchCloud(activeWarehouse.id, stockItems);
+      } else {
+        await deductStockBatchCloud(stockItems);
+      }
       
       // Update customer stats
       if (customer) {
@@ -369,8 +377,12 @@ export function CartPanel({
       distributeDetailedProfit(categoryProfits, invoice.id, customerName, true);
     }
     
-    // Deduct stock from inventory
-    deductStockBatch(cart.map(item => ({ productId: item.id, quantity: item.quantity })));
+    // Deduct stock from inventory (warehouse-specific if available)
+    const stockItems = cart.map(item => ({ productId: item.id, quantity: item.quantity }));
+    if (activeWarehouse) {
+      deductWarehouseStockBatchCloud(activeWarehouse.id, stockItems);
+    }
+    deductStockBatch(stockItems);
     
     // Update customer stats
     updateCustomerStats(customer.id, total, true);

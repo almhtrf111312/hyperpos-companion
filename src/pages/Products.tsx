@@ -82,6 +82,7 @@ export default function Products() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
 
@@ -254,15 +255,19 @@ const filteredProducts = useMemo(() => {
                          product.barcode.includes(debouncedSearch);
     const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
     const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+    const matchesUnit = unitFilter === 'all' || 
+                       (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
+                       (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
+    return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
   });
-}, [products, debouncedSearch, selectedCategory, statusFilter]);
+}, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter]);
 
   const stats = {
     total: products.length,
     inStock: products.filter(p => p.status === 'in_stock').length,
     lowStock: products.filter(p => p.status === 'low_stock').length,
     outOfStock: products.filter(p => p.status === 'out_of_stock').length,
+    multiUnit: products.filter(p => p.conversionFactor && p.conversionFactor > 1).length,
   };
 
   const handleAddProduct = async () => {
@@ -571,6 +576,21 @@ const filteredProducts = useMemo(() => {
               {category}
             </button>
           ))}
+          
+          {/* Unit Filter */}
+          <div className="h-6 w-px bg-border mx-1 self-center" />
+          <button
+            onClick={() => setUnitFilter(unitFilter === 'multi_unit' ? 'all' : 'multi_unit')}
+            className={cn(
+              "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
+              unitFilter === 'multi_unit'
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            )}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            متعدد الوحدات ({stats.multiUnit})
+          </button>
         </div>
       </div>
 
@@ -647,9 +667,17 @@ const filteredProducts = useMemo(() => {
               </div>
               
               <div className="flex items-center justify-between pt-3 border-t border-border">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">المخزون: </span>
-                  <span className="font-semibold">{product.quantity}</span>
+                <div className="text-sm flex flex-col">
+                  <div>
+                    <span className="text-muted-foreground">المخزون: </span>
+                    <span className="font-semibold">{product.quantity} {product.smallUnit || 'قطعة'}</span>
+                  </div>
+                  {product.conversionFactor && product.conversionFactor > 1 && (
+                    <span className="text-xs text-muted-foreground">
+                      = {Math.floor(product.quantity / product.conversionFactor)} {product.bulkUnit || 'كرتونة'}
+                      {product.quantity % product.conversionFactor > 0 && ` + ${product.quantity % product.conversionFactor}`}
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
@@ -678,7 +706,12 @@ const filteredProducts = useMemo(() => {
                 <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">سعر الشراء</th>
                 <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">سعر البيع</th>
                 <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الربح</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الكمية</th>
+                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Boxes className="w-4 h-4" />
+                    الكمية
+                  </div>
+                </th>
                 <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الحالة</th>
                 <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">إجراءات</th>
               </tr>
@@ -731,7 +764,17 @@ const filteredProducts = useMemo(() => {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-foreground">{product.quantity}</span>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-foreground">{product.quantity} {product.smallUnit || 'قطعة'}</span>
+                        {product.conversionFactor && product.conversionFactor > 1 && (
+                          <span className="text-xs text-muted-foreground">
+                            {Math.floor(product.quantity / product.conversionFactor)} {product.bulkUnit || 'كرتونة'}
+                            {product.quantity % product.conversionFactor > 0 && (
+                              <> + {product.quantity % product.conversionFactor} {product.smallUnit || 'قطعة'}</>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-4 px-6">
                       <span className={cn(

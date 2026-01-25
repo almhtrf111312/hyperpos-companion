@@ -230,6 +230,23 @@ export const deductWarehouseStockCloud = async (
   return true;
 };
 
+// Batch deduct stock from warehouse (for POS sales)
+export const deductWarehouseStockBatchCloud = async (
+  warehouseId: string,
+  items: { productId: string; quantity: number }[]
+): Promise<{ success: boolean; deducted: number; failed: number }> => {
+  let deducted = 0;
+  let failed = 0;
+
+  for (const item of items) {
+    const success = await deductWarehouseStockCloud(warehouseId, item.productId, item.quantity);
+    if (success) deducted++;
+    else failed++;
+  }
+
+  return { success: failed === 0, deducted, failed };
+};
+
 // ==================== Stock Transfers ====================
 
 // Generate transfer number
