@@ -1,27 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
-// Allowed origins for CORS
-const allowedOrigins = [
-  'https://propos.lovable.app',
-  'https://id-preview--f922b973-c15b-4c58-86ca-0f04c8a8dada.lovable.app',
-  'capacitor://localhost',
-  'http://localhost:5173',
-  'http://localhost:8080'
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('origin') || '';
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -177,7 +162,7 @@ Deno.serve(async (req) => {
     console.error('Error in create-boss-account:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
