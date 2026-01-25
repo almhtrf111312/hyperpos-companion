@@ -254,7 +254,8 @@ export default function POS() {
       {/* Main Content */}
       <div className={cn(
         "flex-1 flex flex-col overflow-hidden transition-all duration-300",
-        !isMobile && "md:mr-20" // Account for collapsed sidebar width
+        // Account for collapsed sidebar width based on RTL
+        !isMobile && (document.documentElement.dir === 'rtl' ? "md:mr-20" : "md:ml-20")
       )}>
         {/* Header */}
         <POSHeader
