@@ -22,6 +22,7 @@ import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
 import { loadExpensesCloud } from '@/lib/cloud/expenses-cloud';
 import { loadCashboxState } from '@/lib/cashbox-store';
+import { getTodayProfit } from '@/lib/profits-store';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 
@@ -31,9 +32,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     todaySales: 0,
     todayCount: 0,
-    todayProfit: 0,
+    todayProfit: 0,        // الربح الإجمالي (المبيعات - COGS)
+    todayCOGS: 0,          // ✅ تكلفة البضاعة المباعة
     todayExpenses: 0,
-    netProfit: 0, // صافي الربح الحقيقي = الأرباح - المصاريف
+    netProfit: 0,          // صافي الربح = الربح الإجمالي - المصاريف
     profitMargin: 0,
     totalDebtAmount: 0,
     debtCustomers: 0,
@@ -41,11 +43,10 @@ export default function Dashboard() {
     inventoryValue: 0,
     totalCapital: 0,
     availableCapital: 0,
-    // ✅ مؤشرات جديدة
-    cashboxBalance: 0,      // رصيد الصندوق الفعلي
-    liquidCapital: 0,       // رأس المال المتاح = إجمالي - مخزون
-    deficit: 0,             // العجز (إذا كان المتاح سالباً)
-    deficitPercentage: 0,   // نسبة العجز من رأس المال
+    cashboxBalance: 0,
+    liquidCapital: 0,
+    deficit: 0,
+    deficitPercentage: 0,
   });
   
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -72,15 +73,13 @@ export default function Dashboard() {
         new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
       );
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      const todayProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
       
-      // ✅ Calculate today's expenses
-      const todayExpenses = expenses.filter(exp => 
-        new Date(exp.createdAt).toDateString() === todayStr
-      ).reduce((sum, exp) => sum + exp.amount, 0);
-      
-      // ✅ Calculate NET profit (Profit - Expenses)
-      const netProfit = todayProfit - todayExpenses;
+      // ✅ استخدام profits-store لحساب الربح الصحيح (مع COGS)
+      const todayProfitData = getTodayProfit();
+      const todayProfit = todayProfitData.totalGrossProfit;
+      const todayCOGS = todayProfitData.totalCOGS;
+      const todayExpenses = todayProfitData.totalOperatingExpenses;
+      const netProfit = todayProfitData.netProfit;
       
       // Calculate pending debts
       const pendingDebts = invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending');
@@ -128,6 +127,7 @@ export default function Dashboard() {
         todaySales,
         todayCount: todayInvoices.length,
         todayProfit,
+        todayCOGS,
         todayExpenses,
         netProfit,
         profitMargin,
@@ -136,7 +136,7 @@ export default function Dashboard() {
         uniqueCustomers,
         inventoryValue,
         totalCapital,
-        availableCapital: cashboxBalance, // رصيد الصندوق للتوافق مع الشفرة القديمة
+        availableCapital: cashboxBalance,
         cashboxBalance,
         liquidCapital,
         deficit,

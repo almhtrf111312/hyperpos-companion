@@ -2,12 +2,15 @@
  * Unified Transaction System - FlowPOS Pro
  * =========================================
  * هذا الملف يضمن ترابط جميع العمليات المالية:
- * - المبيعات ← المخزون + الصندوق
- * - الديون ← العملاء + الصندوق
- * - المصاريف ← الصندوق + الأرباح
- * - المرتجعات ← المخزون + الصندوق
+ * - المبيعات ← المخزون + الصندوق + سجل الأرباح
+ * - الديون ← العملاء + الصندوق + سجل الأرباح
+ * - المصاريف ← الصندوق + سجل المصروفات التشغيلية
+ * - المرتجعات ← المخزون + الصندوق + إلغاء سجل الربح
  * 
  * كل عملية مالية تؤثر على (المخزون، الصندوق، وسجل الأرباح) في نفس اللحظة
+ * 
+ * الصيغة الصحيحة للربح:
+ * صافي الربح = (المبيعات - تكلفة البضاعة المباعة) - المصروفات التشغيلية
  */
 
 import { addSalesToShift, addDepositToShift, addWithdrawalFromShift, addExpensesToShift, getActiveShift } from './cashbox-store';
@@ -15,7 +18,8 @@ import { deductStockBatch, checkStockAvailability, restoreStockBatch } from './p
 import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
-import { roundCurrency } from './utils';
+import { roundCurrency, addCurrency } from './utils';
+import { addGrossProfit, addOperatingExpense, removeGrossProfit } from './profits-store';
 
 // Cloud imports
 import { deductStockBatchCloud, restoreStockBatchCloud } from './cloud/products-cloud';
@@ -33,13 +37,19 @@ export interface TransactionResult {
   success: boolean;
   error?: string;
   insufficientItems?: Array<{ productName: string; available: number; requested: number }>;
+  // بيانات الربح للعملية
+  grossProfit?: number;
+  cogs?: number;
+  invoiceId?: string;
 }
 
 /**
  * 1. عملية بيع نقدي متكاملة
  * - التحقق من المخزون
  * - خصم الكميات من المنتجات
+ * - حساب COGS والربح الإجمالي
  * - إضافة المبلغ للصندوق
+ * - تسجيل الربح في سجل الأرباح
  * - تحديث إحصائيات العميل
  */
 export const processCashSale = async (
@@ -47,7 +57,8 @@ export const processCashSale = async (
   total: number,
   customerId?: string,
   userId?: string,
-  userName?: string
+  userName?: string,
+  invoiceId?: string
 ): Promise<TransactionResult> => {
   // Step 1: التحقق من توفر المخزون
   const stockItems = items.map(item => ({ productId: item.productId, quantity: item.quantity }));
@@ -62,34 +73,43 @@ export const processCashSale = async (
   }
 
   try {
-    // Step 2: خصم الكميات من المخزون (Cloud + Local)
+    // Step 2: حساب تكلفة البضاعة المباعة والربح الإجمالي
+    const totalCOGS = items.reduce((sum, item) => 
+      addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
+    const grossProfit = roundCurrency(total - totalCOGS);
+
+    // Step 3: خصم الكميات من المخزون (Cloud + Local)
     await deductStockBatchCloud(stockItems);
     deductStockBatch(stockItems);
 
-    // Step 3: إضافة المبلغ للصندوق
-    addSalesToShift(roundCurrency(total));
+    // Step 4: إضافة المبلغ للصندوق مع بيانات الربح
+    addSalesToShift(roundCurrency(total), grossProfit, totalCOGS);
 
-    // Step 4: تحديث إحصائيات العميل
+    // Step 5: تسجيل الربح في سجل الأرباح
+    const saleId = invoiceId || `sale_${Date.now()}`;
+    addGrossProfit(saleId, grossProfit, totalCOGS, total);
+
+    // Step 6: تحديث إحصائيات العميل
     if (customerId) {
       await updateCustomerStatsCloud(customerId, total, false);
       updateCustomerStats(customerId, total, false);
     }
 
-    // Step 5: تسجيل النشاط
+    // Step 7: تسجيل النشاط
     if (userId && userName) {
       addActivityLog(
         'sale',
         userId,
         userName,
-        `عملية بيع نقدي متكاملة بقيمة $${total.toLocaleString()}`,
-        { total, itemsCount: items.length, type: 'cash' }
+        `عملية بيع نقدي: $${total.toLocaleString()} | ربح: $${grossProfit.toLocaleString()}`,
+        { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'cash' }
       );
     }
 
     // Emit unified event
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'cash_sale', total });
+    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'cash_sale', total, grossProfit, cogs: totalCOGS });
 
-    return { success: true };
+    return { success: true, grossProfit, cogs: totalCOGS, invoiceId: saleId };
   } catch (error) {
     console.error('خطأ في عملية البيع المتكاملة:', error);
     return { success: false, error: 'حدث خطأ أثناء إتمام العملية' };
@@ -100,6 +120,8 @@ export const processCashSale = async (
  * 2. عملية بيع بالدين متكاملة
  * - التحقق من المخزون
  * - خصم الكميات
+ * - حساب COGS والربح الإجمالي
+ * - تسجيل الربح في سجل الأرباح
  * - تحديث رصيد العميل (زيادة الدين)
  * - لا يُضاف للصندوق حتى السداد
  */
@@ -108,7 +130,8 @@ export const processDebtSale = async (
   total: number,
   customerId: string,
   userId?: string,
-  userName?: string
+  userName?: string,
+  invoiceId?: string
 ): Promise<TransactionResult> => {
   // Step 1: التحقق من توفر المخزون
   const stockItems = items.map(item => ({ productId: item.productId, quantity: item.quantity }));
@@ -123,28 +146,37 @@ export const processDebtSale = async (
   }
 
   try {
-    // Step 2: خصم الكميات من المخزون
+    // Step 2: حساب تكلفة البضاعة المباعة والربح الإجمالي
+    const totalCOGS = items.reduce((sum, item) => 
+      addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
+    const grossProfit = roundCurrency(total - totalCOGS);
+
+    // Step 3: خصم الكميات من المخزون
     await deductStockBatchCloud(stockItems);
     deductStockBatch(stockItems);
 
-    // Step 3: تحديث رصيد العميل (إضافة الدين)
+    // Step 4: تسجيل الربح في سجل الأرباح (الربح يُسجل عند البيع وليس عند السداد)
+    const saleId = invoiceId || `sale_${Date.now()}`;
+    addGrossProfit(saleId, grossProfit, totalCOGS, total);
+
+    // Step 5: تحديث رصيد العميل (إضافة الدين)
     await updateCustomerStatsCloud(customerId, total, true);
     updateCustomerStats(customerId, total, true);
 
-    // Step 4: تسجيل النشاط
+    // Step 6: تسجيل النشاط
     if (userId && userName) {
       addActivityLog(
         'sale',
         userId,
         userName,
-        `عملية بيع بالدين بقيمة $${total.toLocaleString()}`,
-        { total, itemsCount: items.length, type: 'debt' }
+        `عملية بيع بالدين: $${total.toLocaleString()} | ربح: $${grossProfit.toLocaleString()}`,
+        { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'debt' }
       );
     }
 
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'debt_sale', total });
+    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'debt_sale', total, grossProfit, cogs: totalCOGS });
 
-    return { success: true };
+    return { success: true, grossProfit, cogs: totalCOGS, invoiceId: saleId };
   } catch (error) {
     console.error('خطأ في عملية البيع بالدين:', error);
     return { success: false, error: 'حدث خطأ أثناء إتمام العملية' };
@@ -192,6 +224,7 @@ export const processDebtPayment = (
  * 4. عملية مرتجع متكاملة
  * - إعادة الكميات للمخزون
  * - خصم المبلغ من الصندوق
+ * - إلغاء سجل الربح من سجل الأرباح
  * - تحديث إحصائيات العميل
  */
 export const processRefund = async (
@@ -199,37 +232,48 @@ export const processRefund = async (
   total: number,
   customerId?: string,
   userId?: string,
-  userName?: string
+  userName?: string,
+  originalInvoiceId?: string
 ): Promise<TransactionResult> => {
   try {
-    // Step 1: إعادة الكميات للمخزون
+    // Step 1: حساب COGS للمرتجع
+    const totalCOGS = items.reduce((sum, item) => 
+      addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
+    const grossProfit = roundCurrency(total - totalCOGS);
+
+    // Step 2: إعادة الكميات للمخزون
     const stockItems = items.map(item => ({ productId: item.productId, quantity: item.quantity }));
     await restoreStockBatchCloud(stockItems);
     restoreStockBatch(stockItems);
 
-    // Step 2: خصم المبلغ من الصندوق
+    // Step 3: خصم المبلغ من الصندوق مع عكس بيانات الربح
     addWithdrawalFromShift(roundCurrency(total));
 
-    // Step 3: تحديث إحصائيات العميل (خصم المشتريات)
+    // Step 4: إزالة سجل الربح الأصلي إذا كان متاحاً
+    if (originalInvoiceId) {
+      removeGrossProfit(originalInvoiceId);
+    }
+
+    // Step 5: تحديث إحصائيات العميل (خصم المشتريات)
     if (customerId) {
-      // Negative purchase to reduce total
       await updateCustomerStatsCloud(customerId, -total, false);
     }
 
-    // Step 4: تسجيل النشاط
+    // Step 6: تسجيل النشاط
     if (userId && userName) {
       addActivityLog(
         'refund',
         userId,
         userName,
-        `عملية مرتجع بقيمة $${total.toLocaleString()}`,
-        { total, itemsCount: items.length, type: 'refund' }
+        `مرتجع: -$${total.toLocaleString()} | تراجع ربح: -$${grossProfit.toLocaleString()}`,
+        { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'refund' }
       );
     }
 
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'refund', total });
+    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'refund', total, grossProfit, cogs: totalCOGS });
+    emitEvent(EVENTS.REFUND_PROCESSED, { total, originalInvoiceId });
 
-    return { success: true };
+    return { success: true, grossProfit: -grossProfit, cogs: totalCOGS };
   } catch (error) {
     console.error('خطأ في عملية المرتجع:', error);
     return { success: false, error: 'حدث خطأ أثناء إتمام المرتجع' };
@@ -240,29 +284,35 @@ export const processRefund = async (
  * 5. تسجيل مصروف متكامل
  * - خصم المبلغ من الصندوق
  * - تسجيل في سجل المصاريف
+ * - تسجيل كمصروف تشغيلي في سجل الأرباح
  */
 export const processExpense = (
   amount: number,
   expenseType: string,
   userId?: string,
-  userName?: string
+  userName?: string,
+  expenseId?: string
 ): TransactionResult => {
   try {
     // Step 1: خصم المبلغ من الصندوق
     addExpensesToShift(roundCurrency(amount));
 
-    // Step 2: تسجيل النشاط
+    // Step 2: تسجيل كمصروف تشغيلي في سجل الأرباح
+    const expId = expenseId || `exp_${Date.now()}`;
+    addOperatingExpense(expId, amount, expenseType);
+
+    // Step 3: تسجيل النشاط
     if (userId && userName) {
       addActivityLog(
         'expense',
         userId,
         userName,
-        `تسجيل مصروف (${expenseType}) بقيمة $${amount.toLocaleString()}`,
+        `مصروف تشغيلي (${expenseType}): $${amount.toLocaleString()}`,
         { amount, expenseType, type: 'expense' }
       );
     }
 
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'expense', amount });
+    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'expense', amount, expenseType });
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
 
     return { success: true };
