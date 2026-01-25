@@ -398,7 +398,15 @@ export default function Settings() {
     setSelectedUser(user);
     // Convert boss/admin roles to 'cashier' for the form since we only allow cashier role for new users
     const formRole = user.role === 'boss' || user.role === 'admin' ? 'cashier' : user.role;
-    setUserForm({ name: user.name, email: '', password: '', phone: '', role: formRole as 'admin' | 'cashier', userType: user.userType || 'cashier' });
+    // Populate phone from user data
+    setUserForm({ 
+      name: user.name, 
+      email: '', 
+      password: '', 
+      phone: user.phone || '', 
+      role: formRole as 'admin' | 'cashier', 
+      userType: user.userType || 'cashier' 
+    });
     setUserDialogOpen(true);
   };
 

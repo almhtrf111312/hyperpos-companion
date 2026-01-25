@@ -232,20 +232,37 @@ export function useUsersManagement() {
         updateData.phone = phone;
       }
 
-      const { error } = await supabase
+      console.log('Updating profile for user:', userId, 'with data:', updateData);
+
+      // Use .select() to verify if rows were actually updated
+      const { data, error } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select('user_id, full_name, user_type, phone');
 
       if (error) {
         console.error('Error updating profile:', error);
         toast({
           title: 'خطأ',
-          description: 'فشل في تحديث بيانات المستخدم',
+          description: 'فشل في تحديث بيانات المستخدم: ' + error.message,
           variant: 'destructive',
         });
         return false;
       }
+
+      // Check if any rows were actually updated
+      if (!data || data.length === 0) {
+        console.error('No rows updated - possibly RLS restriction');
+        toast({
+          title: 'خطأ في الصلاحيات',
+          description: 'لم يتم تحديث أي بيانات - تحقق من صلاحياتك',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      console.log('Profile updated successfully:', data);
 
       toast({
         title: 'تم التحديث',
@@ -256,6 +273,11 @@ export function useUsersManagement() {
       return true;
     } catch (error) {
       console.error('Error updating profile:', error);
+      toast({
+        title: 'خطأ',
+        description: 'حدث خطأ أثناء تحديث البيانات',
+        variant: 'destructive',
+      });
       return false;
     }
   };
