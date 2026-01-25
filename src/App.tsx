@@ -16,6 +16,7 @@ import { RoleGuard } from "./components/auth/RoleGuard";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { SetupWizard } from "./components/setup/SetupWizard";
 import { LicenseGuard } from "./components/license/LicenseGuard";
+import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 // Demo data loading removed - app uses cloud sync for data persistence
@@ -157,6 +158,7 @@ const App = () => (
                   <UserRoleProvider>
                     <NotificationsProvider>
                       <LicenseGuard>
+                        <LicenseWarningBadge />
                         <AppContent />
                       </LicenseGuard>
                     </NotificationsProvider>
