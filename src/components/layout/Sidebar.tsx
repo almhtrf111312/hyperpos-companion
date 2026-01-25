@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
+import { useUserRole } from '@/hooks/use-user-role';
 import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { NotificationBell } from './NotificationBell';
@@ -35,7 +36,7 @@ interface NavItem {
   translationKey: TranslationKey;
   path: string;
   badge?: number;
-  adminOnly?: boolean;
+  adminOnly?: boolean; // Only visible to admin and boss
 }
 
 const navItems: NavItem[] = [
@@ -46,11 +47,11 @@ const navItems: NavItem[] = [
   { icon: Users, translationKey: 'nav.customers', path: '/customers' },
   { icon: CreditCard, translationKey: 'nav.debts', path: '/debts' },
   { icon: Wrench, translationKey: 'nav.services', path: '/services' },
-  { icon: UserCheck, translationKey: 'nav.partners', path: '/partners' },
+  { icon: UserCheck, translationKey: 'nav.partners', path: '/partners', adminOnly: true },
   { icon: Receipt, translationKey: 'nav.expenses', path: '/expenses' },
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts' },
-  { icon: BarChart3, translationKey: 'nav.reports', path: '/reports' },
-  { icon: Settings, translationKey: 'nav.settings', path: '/settings' },
+  { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true },
+  { icon: Settings, translationKey: 'nav.settings', path: '/settings', adminOnly: true },
 ];
 
 interface SidebarProps {
@@ -67,6 +68,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const isTablet = useIsTablet();
   const { user, profile, signOut } = useAuth();
   const { t, isRTL } = useLanguage();
+  const { isBoss, isAdmin } = useUserRole();
 
   // Close sidebar on mobile, collapse on tablet when navigating
   useEffect(() => {
@@ -119,8 +121,13 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   // On mobile, always show full sidebar (not collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
 
-  // All nav items are accessible now (no role filtering)
-  const filteredNavItems = navItems;
+  // Filter nav items based on role - adminOnly items only visible to admin/boss
+  const filteredNavItems = navItems.filter(item => {
+    if (item.adminOnly) {
+      return isBoss || isAdmin;
+    }
+    return true;
+  });
 
   const handleLogout = async () => {
     await signOut();
