@@ -68,9 +68,20 @@ export function WarehouseProvider({ children }: { children: ReactNode }) {
 
   // Ensure main warehouse exists (create if not)
   const ensureMainWarehouse = useCallback(async (): Promise<Warehouse | null> => {
+    // Check local state first
     if (mainWarehouse) return mainWarehouse;
 
-    // Try to create main warehouse
+    // Check database directly (bypass cache) to prevent duplicates
+    invalidateWarehousesCache();
+    const existingWarehouses = await loadWarehousesCloud();
+    const existingMain = existingWarehouses.find(w => w.type === 'main');
+    
+    if (existingMain) {
+      setMainWarehouse(existingMain);
+      return existingMain; // Already exists, no need to create
+    }
+
+    // Create main warehouse only if none exists
     const newWarehouse = await addWarehouseCloud({
       name: 'المستودع الرئيسي',
       type: 'main',

@@ -219,17 +219,64 @@ export default function Warehouses() {
   };
 
   const handleDelete = async (warehouse: WarehouseType) => {
-    if (warehouse.type === 'main' && warehouse.is_default) {
-      toast.error('لا يمكن حذف المستودع الرئيسي');
+    // Count main warehouses
+    const mainWarehousesCount = warehouses.filter(w => w.type === 'main').length;
+    
+    // Only prevent deletion if it's the ONLY main warehouse
+    if (warehouse.type === 'main' && mainWarehousesCount === 1) {
+      toast.error('لا يمكن حذف المستودع الرئيسي الوحيد');
       return;
     }
 
-    if (confirm(`هل أنت متأكد من حذف المستودع "${warehouse.name}"?`)) {
-      const success = await deleteWarehouseCloud(warehouse.id);
-      if (success) {
-        toast.success('تم حذف المستودع بنجاح');
-        refreshWarehouses();
-      } else {
+    // Check for stock in warehouse
+    const stock = await loadWarehouseStockCloud(warehouse.id);
+    const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
+    
+    let confirmMessage = `هل أنت متأكد من حذف المستودع "${warehouse.name}"?`;
+    if (totalStock > 0) {
+      confirmMessage = `تحذير: يوجد ${totalStock} منتج في هذا المستودع.\n${confirmMessage}`;
+    }
+
+    if (confirm(confirmMessage)) {
+      try {
+        // First, delete related stock transfer items and transfers
+        const { data: transfers } = await supabase
+          .from('stock_transfers')
+          .select('id')
+          .or(`from_warehouse_id.eq.${warehouse.id},to_warehouse_id.eq.${warehouse.id}`);
+
+        if (transfers && transfers.length > 0) {
+          const transferIds = transfers.map(t => t.id);
+          
+          // Delete transfer items first
+          await supabase
+            .from('stock_transfer_items')
+            .delete()
+            .in('transfer_id', transferIds);
+          
+          // Delete transfers
+          await supabase
+            .from('stock_transfers')
+            .delete()
+            .or(`from_warehouse_id.eq.${warehouse.id},to_warehouse_id.eq.${warehouse.id}`);
+        }
+
+        // Delete warehouse stock
+        await supabase
+          .from('warehouse_stock')
+          .delete()
+          .eq('warehouse_id', warehouse.id);
+
+        // Finally delete the warehouse
+        const success = await deleteWarehouseCloud(warehouse.id);
+        if (success) {
+          toast.success('تم حذف المستودع بنجاح');
+          refreshWarehouses();
+        } else {
+          toast.error('فشل في حذف المستودع');
+        }
+      } catch (error) {
+        console.error('[Warehouses] Delete error:', error);
         toast.error('فشل في حذف المستودع');
       }
     }
