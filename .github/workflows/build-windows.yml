@@ -1,0 +1,204 @@
+name: Build FlowPOS Pro Windows
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Create Electron structure
+        run: |
+          mkdir -Force electron
+          
+      - name: Create Electron main.js
+        run: |
+          @"
+          const { app, BrowserWindow, Menu } = require('electron');
+          const path = require('path');
+          
+          let mainWindow;
+          
+          function createWindow() {
+            mainWindow = new BrowserWindow({
+              width: 1400,
+              height: 900,
+              minWidth: 1024,
+              minHeight: 768,
+              icon: path.join(__dirname, '../resources/icon.png'),
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+              },
+              show: false,
+              titleBarStyle: 'default',
+              autoHideMenuBar: false,
+            });
+          
+            // Load the built app
+            mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+          
+            // Show when ready
+            mainWindow.once('ready-to-show', () => {
+              mainWindow.show();
+              mainWindow.focus();
+            });
+          
+            mainWindow.on('closed', () => {
+              mainWindow = null;
+            });
+          
+            // Create menu
+            const template = [
+              {
+                label: 'File',
+                submenu: [
+                  { role: 'quit', label: 'Exit' }
+                ]
+              },
+              {
+                label: 'Edit',
+                submenu: [
+                  { role: 'undo' },
+                  { role: 'redo' },
+                  { type: 'separator' },
+                  { role: 'cut' },
+                  { role: 'copy' },
+                  { role: 'paste' },
+                  { role: 'selectAll' }
+                ]
+              },
+              {
+                label: 'View',
+                submenu: [
+                  { role: 'reload' },
+                  { role: 'forceReload' },
+                  { role: 'toggleDevTools' },
+                  { type: 'separator' },
+                  { role: 'resetZoom' },
+                  { role: 'zoomIn' },
+                  { role: 'zoomOut' },
+                  { type: 'separator' },
+                  { role: 'togglefullscreen' }
+                ]
+              },
+              {
+                label: 'Window',
+                submenu: [
+                  { role: 'minimize' },
+                  { role: 'close' }
+                ]
+              }
+            ];
+          
+            const menu = Menu.buildFromTemplate(template);
+            Menu.setApplicationMenu(menu);
+          }
+          
+          app.whenReady().then(createWindow);
+          
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          
+          app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+              createWindow();
+            }
+          });
+          "@ | Out-File -FilePath electron/main.js -Encoding utf8
+
+      - name: Create Electron package.json
+        run: |
+          @"
+          {
+            "name": "flowpos-pro",
+            "version": "1.0.${{ github.run_number }}",
+            "description": "FlowPOS Pro - نظام إدارة المبيعات والمخزون",
+            "main": "electron/main.js",
+            "author": "FlowPOS Team",
+            "license": "MIT",
+            "build": {
+              "appId": "app.flowpos.pro",
+              "productName": "FlowPOS Pro",
+              "directories": {
+                "output": "electron-dist"
+              },
+              "files": [
+                "dist/**/*",
+                "electron/**/*",
+                "resources/**/*"
+              ],
+              "win": {
+                "target": [
+                  {
+                    "target": "nsis",
+                    "arch": ["x64"]
+                  }
+                ],
+                "icon": "resources/icon.png",
+                "artifactName": "FlowPOS-Pro-Setup-\${version}.exe"
+              },
+              "nsis": {
+                "oneClick": false,
+                "allowToChangeInstallationDirectory": true,
+                "createDesktopShortcut": true,
+                "createStartMenuShortcut": true,
+                "shortcutName": "FlowPOS Pro",
+                "installerIcon": "resources/icon.png",
+                "uninstallerIcon": "resources/icon.png",
+                "installerHeaderIcon": "resources/icon.png",
+                "license": null
+              }
+            }
+          }
+          "@ | Out-File -FilePath electron-package.json -Encoding utf8
+          
+          Copy-Item electron-package.json package.json -Force
+
+      - name: Install Electron and Builder
+        run: |
+          npm install --save-dev electron electron-builder
+
+      - name: Build Windows Installer
+        run: npx electron-builder --win --config electron-package.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlowPOS-Pro-Windows-v1.0.${{ github.run_number }}
+          path: electron-dist/*.exe
+          retention-days: 30
+
+      - name: Build Summary
+        run: |
+          echo "## FlowPOS Pro Windows Build Complete! :rocket:" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $env:GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Version | 1.0.${{ github.run_number }} |" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Platform | Windows x64 |" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Output | FlowPOS-Pro-Setup-1.0.${{ github.run_number }}.exe |" >> $env:GITHUB_STEP_SUMMARY
+          echo "| Build Time | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') |" >> $env:GITHUB_STEP_SUMMARY

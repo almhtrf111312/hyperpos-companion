@@ -11,11 +11,15 @@ import {
   CheckCircle, 
   Calendar,
   Users,
-  Shield
+  Shield,
+  Crown,
+  ExternalLink
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
+import { useUserRole } from '@/hooks/use-user-role';
+import { useNavigate } from 'react-router-dom';
 
 interface ActivationCode {
   id: string;
@@ -43,6 +47,8 @@ interface License {
 export function LicenseManagement() {
   const { toast } = useToast();
   const { language } = useLanguage();
+  const { isBoss } = useUserRole();
+  const navigate = useNavigate();
   const isRTL = language === 'ar';
 
   const [codes, setCodes] = useState<ActivationCode[]>([]);
@@ -226,6 +232,36 @@ export function LicenseManagement() {
     );
   }
 
+  // If not boss, show simplified view directing to Boss Panel
+  if (!isBoss) {
+    return (
+      <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+            <Shield className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {isRTL ? 'إدارة التراخيص' : 'License Management'}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {isRTL ? 'هذه الميزة متاحة للمدير الرئيسي فقط' : 'This feature is only available for Boss users'}
+            </p>
+          </div>
+        </div>
+        
+        <div className="bg-muted/50 rounded-xl p-6 text-center space-y-4">
+          <Crown className="w-12 h-12 mx-auto text-amber-500" />
+          <p className="text-muted-foreground">
+            {isRTL 
+              ? 'لإدارة أكواد التفعيل والتراخيص، يرجى التواصل مع المدير الرئيسي.' 
+              : 'To manage activation codes and licenses, please contact the Boss administrator.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
@@ -243,71 +279,20 @@ export function LicenseManagement() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4" />
-          <span className={isRTL ? 'mr-2' : 'ml-2'}>
-            {isRTL ? 'إنشاء كود' : 'Create Code'}
-          </span>
-        </Button>
-      </div>
-
-      {/* Activation Codes */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-          <Key className="w-4 h-4" />
-          {isRTL ? 'أكواد التفعيل' : 'Activation Codes'}
-        </h3>
-        
-        {codes.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-8">
-            {isRTL ? 'لا توجد أكواد بعد' : 'No codes yet'}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {codes.map((code) => (
-              <div 
-                key={code.id} 
-                className="flex items-center justify-between p-3 bg-muted rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <code className="font-mono text-sm bg-background px-2 py-1 rounded">
-                    {code.code}
-                  </code>
-                  <span className="text-xs text-muted-foreground">
-                    {getDurationLabel(code.duration_days)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {code.current_uses}/{code.max_uses} {isRTL ? 'استخدام' : 'uses'}
-                  </span>
-                  {code.note && (
-                    <span className="text-xs text-muted-foreground">
-                      ({code.note})
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  {code.current_uses < code.max_uses && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleCopyCode(code.code)}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteCode(code.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/boss')}>
+            <ExternalLink className="w-4 h-4" />
+            <span className={isRTL ? 'mr-2' : 'ml-2'}>
+              {isRTL ? 'لوحة Boss' : 'Boss Panel'}
+            </span>
+          </Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4" />
+            <span className={isRTL ? 'mr-2' : 'ml-2'}>
+              {isRTL ? 'إنشاء كود' : 'Create Code'}
+            </span>
+          </Button>
+        </div>
       </div>
 
       {/* Active Licenses */}
