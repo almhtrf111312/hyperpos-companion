@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useLicense } from '@/hooks/use-license';
 import { useLanguage } from '@/hooks/use-language';
+import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 
 export function LicenseWarningBadge() {
-  const { isTrial, remainingDays, isValid, expiringWarning } = useLicense();
+  const { user } = useAuth();
+  const { isTrial, remainingDays, isValid, expiringWarning, isLoading } = useLicense();
   const { language } = useLanguage();
   const [isDismissed, setIsDismissed] = useState(false);
   
@@ -16,17 +18,35 @@ export function LicenseWarningBadge() {
     setIsDismissed(false);
   }, []);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[LicenseWarningBadge] State:', {
+      user: !!user,
+      isLoading,
+      isValid, 
+      isTrial, 
+      remainingDays, 
+      expiringWarning, 
+      isDismissed
+    });
+  }, [user, isLoading, isValid, isTrial, remainingDays, expiringWarning, isDismissed]);
+
+  // Don't show if no user or still loading
+  if (!user || isLoading) {
+    return null;
+  }
+
   // Determine if we should show the badge
-  const shouldShow = isValid && !isDismissed && (
+  const shouldShow = isValid && !isDismissed && remainingDays !== null && (
     // Show for trial licenses
     isTrial || 
     // Show when 30 days or less remaining (expiringWarning from backend)
     expiringWarning ||
     // Fallback: show if remaining days <= 30
-    (remainingDays !== null && remainingDays <= 30)
+    remainingDays <= 30
   );
 
-  if (!shouldShow || remainingDays === null) {
+  if (!shouldShow) {
     return null;
   }
 
