@@ -32,6 +32,7 @@ import { loadCategories } from '@/lib/categories-store';
 import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
+import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import { 
   exportInvoicesToExcel, 
@@ -776,11 +777,9 @@ ${partnerExpenses.map(exp => {
       )}
 
       {/* Sales Chart */}
-      {reportData.hasData && (activeReport === 'sales' || activeReport === 'profits') && (
+      {reportData.hasData && activeReport === 'sales' && (
         <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            {activeReport === 'sales' ? t('reports.dailySales') : t('reports.dailyProfit')}
-          </h3>
+          <h3 className="text-lg font-semibold mb-4">{t('reports.dailySales')}</h3>
           {reportData.dailySales.length > 0 ? (
             <div className="space-y-3">
               {reportData.dailySales.map((day, idx) => (
@@ -789,11 +788,11 @@ ${partnerExpenses.map(exp => {
                   <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
                     <div 
                       className="h-full bg-gradient-primary rounded-lg transition-all duration-500"
-                      style={{ width: `${(activeReport === 'sales' ? day.sales : day.profit) / maxSales * 100}%` }}
+                      style={{ width: `${day.sales / maxSales * 100}%` }}
                     />
                   </div>
                   <span className="text-sm font-semibold w-24 text-left">
-                    ${(activeReport === 'sales' ? day.sales : day.profit).toLocaleString()}
+                    ${day.sales.toLocaleString()}
                   </span>
                 </div>
               ))}
@@ -802,6 +801,15 @@ ${partnerExpenses.map(exp => {
             <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
           )}
         </div>
+      )}
+
+      {/* Profit Trend Chart - رسم بياني تطور الأرباح */}
+      {activeReport === 'profits' && (
+        <ProfitTrendChart 
+          days={60} 
+          startDate={dateRange.from} 
+          endDate={dateRange.to} 
+        />
       )}
 
       {/* Top Products */}

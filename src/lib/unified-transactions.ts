@@ -11,6 +11,10 @@
  * 
  * الصيغة الصحيحة للربح:
  * صافي الربح = (المبيعات - تكلفة البضاعة المباعة) - المصروفات التشغيلية
+ * 
+ * التحسينات:
+ * - نظام الأقفال (Transaction Locks) لمنع تداخل العمليات
+ * - طابور التزامن (Sync Queue) للعمل offline-first
  */
 
 import { addSalesToShift, addDepositToShift, addWithdrawalFromShift, addExpensesToShift, getActiveShift } from './cashbox-store';
@@ -20,6 +24,8 @@ import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
 import { roundCurrency, addCurrency } from './utils';
 import { addGrossProfit, addOperatingExpense, removeGrossProfit } from './profits-store';
+import { withLock, LOCK_RESOURCES } from './transaction-lock';
+import { addToQueue } from './sync-queue';
 
 // Cloud imports
 import { deductStockBatchCloud, restoreStockBatchCloud } from './cloud/products-cloud';
@@ -72,16 +78,16 @@ export const processCashSale = async (
     };
   }
 
-  try {
+  // استخدام القفل لضمان عدم تداخل العمليات
+  const lockResult = await withLock(LOCK_RESOURCES.SALE_PROCESSING, async () => {
     // Step 2: حساب تكلفة البضاعة المباعة والربح الإجمالي
     const totalCOGS = items.reduce((sum, item) => 
       addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
     const grossProfit = roundCurrency(total - totalCOGS);
 
-    // Step 3: خصم الكميات من المخزون (Cloud + Local)
-    await deductStockBatchCloud(stockItems);
+    // Step 3: خصم الكميات من المخزون (Local أولاً)
     deductStockBatch(stockItems);
-
+    
     // Step 4: إضافة المبلغ للصندوق مع بيانات الربح
     addSalesToShift(roundCurrency(total), grossProfit, totalCOGS);
 
@@ -91,7 +97,6 @@ export const processCashSale = async (
 
     // Step 6: تحديث إحصائيات العميل
     if (customerId) {
-      await updateCustomerStatsCloud(customerId, total, false);
       updateCustomerStats(customerId, total, false);
     }
 
@@ -106,14 +111,34 @@ export const processCashSale = async (
       );
     }
 
+    // Step 8: إرسال للسحابة (في الخلفية)
+    try {
+      await deductStockBatchCloud(stockItems);
+      if (customerId) {
+        await updateCustomerStatsCloud(customerId, total, false);
+      }
+    } catch (cloudError) {
+      // إضافة للطابور للتزامن لاحقاً
+      console.warn('فشل التزامن السحابي، إضافة للطابور:', cloudError);
+      addToQueue('sale', { items: stockItems, total, customerId, invoiceId: saleId });
+    }
+
     // Emit unified event
     emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'cash_sale', total, grossProfit, cogs: totalCOGS });
 
-    return { success: true, grossProfit, cogs: totalCOGS, invoiceId: saleId };
-  } catch (error) {
-    console.error('خطأ في عملية البيع المتكاملة:', error);
-    return { success: false, error: 'حدث خطأ أثناء إتمام العملية' };
+    return { grossProfit, cogs: totalCOGS, saleId };
+  });
+
+  if (!lockResult.success) {
+    return { success: false, error: lockResult.error || 'عملية أخرى جارية، حاول مرة أخرى' };
   }
+
+  return { 
+    success: true, 
+    grossProfit: lockResult.result?.grossProfit, 
+    cogs: lockResult.result?.cogs, 
+    invoiceId: lockResult.result?.saleId 
+  };
 };
 
 /**
