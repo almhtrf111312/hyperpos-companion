@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,7 @@ export default function BossPanel() {
   const navigate = useNavigate();
   const { isBoss, isLoading: roleLoading } = useUserRole();
   const { t, direction } = useLanguage();
+  const isMobile = useIsMobile();
   
   const [owners, setOwners] = useState<Owner[]>([]);
   const [codes, setCodes] = useState<ActivationCode[]>([]);
@@ -441,65 +443,65 @@ export default function BossPanel() {
 
   return (
     <MainLayout>
-      <div className="p-4 md:p-6 space-y-6" dir={direction}>
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6 pr-14 md:pr-6" dir={direction}>
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-              <Crown className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Crown className="w-5 h-5 md:w-6 md:h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">لوحة التحكم الرئيسية</h1>
-              <p className="text-sm text-muted-foreground">إدارة التراخيص والمستخدمين</p>
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">لوحة التحكم الرئيسية</h1>
+              <p className="text-xs md:text-sm text-muted-foreground">إدارة التراخيص والمستخدمين</p>
             </div>
           </div>
-          <Button onClick={fetchData} variant="outline" size="icon">
+          <Button onClick={fetchData} variant="outline" size="icon" className="flex-shrink-0">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Users className="w-8 h-8 text-blue-500" />
-                <div>
-                  <p className="text-2xl font-bold">{owners.length}</p>
-                  <p className="text-xs text-muted-foreground">إجمالي الملاك</p>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-lg md:text-2xl font-bold">{owners.length}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">إجمالي الملاك</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Key className="w-8 h-8 text-green-500" />
-                <div>
-                  <p className="text-2xl font-bold">{codes.filter(c => c.is_active).length}</p>
-                  <p className="text-xs text-muted-foreground">أكواد نشطة</p>
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <Key className="w-6 h-6 md:w-8 md:h-8 text-green-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-lg md:text-2xl font-bold">{codes.filter(c => c.is_active).length}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">أكواد نشطة</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-8 h-8 text-emerald-500" />
-                <div>
-                  <p className="text-2xl font-bold">{owners.filter(o => o.license_expires && new Date(o.license_expires) > new Date() && !o.license_revoked).length}</p>
-                  <p className="text-xs text-muted-foreground">تراخيص فعالة</p>
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-lg md:text-2xl font-bold">{owners.filter(o => o.license_expires && new Date(o.license_expires) > new Date() && !o.license_revoked).length}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص فعالة</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <XCircle className="w-8 h-8 text-red-500" />
-                <div>
-                  <p className="text-2xl font-bold">{owners.filter(o => !o.license_expires || new Date(o.license_expires) <= new Date() || o.license_revoked).length}</p>
-                  <p className="text-xs text-muted-foreground">تراخيص منتهية</p>
+          <Card className="overflow-hidden">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <XCircle className="w-6 h-6 md:w-8 md:h-8 text-red-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-lg md:text-2xl font-bold">{owners.filter(o => !o.license_expires || new Date(o.license_expires) <= new Date() || o.license_revoked).length}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص منتهية</p>
                 </div>
               </div>
             </CardContent>
@@ -519,55 +521,59 @@ export default function BossPanel() {
 
         {/* Activation Codes Section */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <Key className="w-5 h-5" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Key className="w-4 h-4 md:w-5 md:h-5" />
               أكواد التفعيل
             </CardTitle>
-            <Button onClick={() => setShowNewCodeDialog(true)} size="sm">
-              <Plus className="w-4 h-4 me-2" />
-              كود جديد
+            <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
+              <Plus className="w-3 h-3 md:w-4 md:h-4 me-1 md:me-2" />
+              {isMobile ? 'جديد' : 'كود جديد'}
             </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="px-3 md:px-6">
+            <div className="space-y-2 md:space-y-3">
               {filteredCodes.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">لا توجد أكواد</p>
+                <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا توجد أكواد</p>
               ) : (
                 filteredCodes.map((code) => (
-                  <div key={code.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
+                  <div key={code.id} className="p-2 md:p-3 bg-muted/50 rounded-lg space-y-2">
+                    {/* Code row */}
+                    <div className="flex items-center justify-between gap-2">
                       <button
                         onClick={() => copyToClipboard(code.code)}
-                        className="font-mono text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors"
+                        className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
                       >
-                        {code.code}
-                        <Copy className="w-3 h-3 inline ms-2 text-muted-foreground" />
+                        {isMobile ? code.code.slice(0, 12) + '...' : code.code}
+                        <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
                       </button>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={code.is_active ? 'default' : 'secondary'}>
-                          {code.is_active ? 'نشط' : 'معطل'}
-                        </Badge>
-                        <Badge variant="outline">{code.duration_days} يوم</Badge>
-                        <Badge variant="outline">{code.current_uses}/{code.max_uses} استخدام</Badge>
-                        <Badge variant="outline">{code.max_cashiers} كاشير</Badge>
+                      <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleToggleCode(code.id, code.is_active)}
+                        >
+                          {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleToggleCode(code.id, code.is_active)}
-                      >
-                        {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                    {/* Badges row */}
+                    <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                      <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">
+                        {code.is_active ? 'نشط' : 'معطل'}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.duration_days}ي</Badge>
+                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses}</Badge>
+                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers}ك</Badge>
                     </div>
                   </div>
                 ))
@@ -578,16 +584,16 @@ export default function BossPanel() {
 
         {/* Owners Section */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
+          <CardHeader className="px-3 md:px-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Shield className="w-4 h-4 md:w-5 md:h-5" />
               المستخدمين المسجلين
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-3 md:px-6">
+            <div className="space-y-3 md:space-y-4">
               {filteredOwners.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">لا يوجد مستخدمين مسجلين</p>
+                <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا يوجد مستخدمين مسجلين</p>
               ) : (
                 filteredOwners.map((owner) => {
                   const isLicenseValid = owner.license_expires && new Date(owner.license_expires) > new Date() && !owner.license_revoked;
@@ -597,79 +603,76 @@ export default function BossPanel() {
                   const isBossUser = owner.role === 'boss';
 
                   return (
-                    <div key={owner.user_id} className="p-4 bg-muted/50 rounded-lg space-y-3">
+                    <div key={owner.user_id} className="p-3 md:p-4 bg-muted/50 rounded-lg space-y-2 md:space-y-3">
                       {/* User Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-lg">{owner.full_name || 'بدون اسم'}</span>
-                            {isBossUser && (
-                              <Badge className="bg-gradient-to-r from-amber-500 to-orange-600">
-                                <Crown className="w-3 h-3 me-1" />
-                                Boss
-                              </Badge>
-                            )}
-                            <Badge variant={isLicenseValid ? 'default' : 'destructive'}>
-                              {isLicenseValid 
-                                ? (owner.is_trial ? 'تجريبي' : 'ترخيص فعال')
-                                : owner.license_revoked ? 'ملغى' : 'منتهي'
-                              }
+                      <div className="space-y-1">
+                        <div className="flex items-center flex-wrap gap-1 md:gap-2">
+                          <span className="font-medium text-sm md:text-lg">{owner.full_name || 'بدون اسم'}</span>
+                          {isBossUser && (
+                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-[10px] md:text-xs">
+                              <Crown className="w-2.5 h-2.5 md:w-3 md:h-3 me-1" />
+                              Boss
                             </Badge>
-                            {owner.license_tier && !isBossUser && (
-                              <Badge variant="outline">{owner.license_tier}</Badge>
-                            )}
-                          </div>
-                          
-                          {/* Email */}
-                          {owner.email && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Mail className="w-3 h-3" />
-                              <span className="font-mono">{owner.email}</span>
-                            </div>
+                          )}
+                          <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
+                            {isLicenseValid 
+                              ? (owner.is_trial ? 'تجريبي' : 'فعال')
+                              : owner.license_revoked ? 'ملغى' : 'منتهي'
+                            }
+                          </Badge>
+                          {owner.license_tier && !isBossUser && (
+                            <Badge variant="outline" className="text-[10px] md:text-xs">{owner.license_tier}</Badge>
                           )}
                         </div>
+                        
+                        {/* Email */}
+                        {owner.email && (
+                          <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span className="font-mono truncate">{owner.email}</span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* User Details */}
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                      {/* User Details - responsive grid for mobile */}
+                      <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
                         {!isBossUser && (
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {owner.cashier_count}/{owner.max_cashiers || 1} كاشير
+                            {owner.cashier_count}/{owner.max_cashiers || 1}
                           </span>
                         )}
                         {owner.license_expires && !isBossUser && (
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
+                            {isLicenseValid ? `${daysRemaining}ي` : 'منتهي'}
                           </span>
                         )}
                         {owner.device_id ? (
-                          <span className="flex items-center gap-1 font-mono text-xs bg-background px-2 py-0.5 rounded">
-                            <Smartphone className="w-3 h-3" />
-                            {owner.device_id.substring(0, 16)}...
-                            {isBossUser && <span className="text-amber-600">(لا يُطبّق)</span>}
+                          <span className="flex items-center gap-1 font-mono text-[10px] md:text-xs bg-background px-1.5 md:px-2 py-0.5 rounded truncate max-w-[100px] md:max-w-none">
+                            <Smartphone className="w-3 h-3 flex-shrink-0" />
+                            {isMobile ? owner.device_id.substring(0, 8) + '...' : owner.device_id.substring(0, 16) + '...'}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-muted-foreground/60">
+                          <span className="flex items-center gap-1 text-muted-foreground/60 text-[10px] md:text-xs">
                             <Smartphone className="w-3 h-3" />
-                            لم يُسجل جهاز بعد
+                            لا جهاز
                           </span>
                         )}
                       </div>
 
-                      {/* Actions */}
+                      {/* Actions - mobile-friendly grid */}
                       {!isBossUser && (
-                        <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                        <div className={`pt-2 border-t ${isMobile ? 'grid grid-cols-2 gap-2' : 'flex items-center gap-2 flex-wrap'}`}>
                           {/* Remote Activation Button */}
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setActivationDialog({ owner })}
-                            className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                            className="text-emerald-600 border-emerald-300 hover:bg-emerald-50 text-xs h-8"
                           >
-                            <Ticket className="w-4 h-4 me-2" />
-                            تفعيل عن بعد
+                            <Ticket className="w-3 h-3 me-1" />
+                            {isMobile ? 'تفعيل' : 'تفعيل عن بعد'}
                           </Button>
 
                           {/* Multi-device toggle */}
@@ -677,10 +680,10 @@ export default function BossPanel() {
                             variant={owner.allow_multi_device ? "default" : "outline"}
                             size="sm"
                             onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}
-                            title={owner.allow_multi_device ? 'تعدد الأجهزة مفعّل' : 'السماح بتعدد الأجهزة'}
+                            className="text-xs h-8"
                           >
-                            <Smartphone className="w-4 h-4 me-2" />
-                            {owner.allow_multi_device ? 'تعدد ✓' : 'تعدد'}
+                            <Smartphone className="w-3 h-3 me-1" />
+                            {owner.allow_multi_device ? 'متعدد ✓' : 'تعدد'}
                           </Button>
 
                           {/* Reset Device */}
@@ -689,10 +692,10 @@ export default function BossPanel() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المستخدم')}
-                              title="إعادة تعيين الجهاز"
+                              className="text-xs h-8"
                             >
-                              <RotateCcw className="w-4 h-4 me-2" />
-                              إعادة تعيين
+                              <RotateCcw className="w-3 h-3 me-1" />
+                              {isMobile ? 'تعيين' : 'إعادة تعيين'}
                             </Button>
                           )}
 
@@ -702,9 +705,10 @@ export default function BossPanel() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleRevokeLicense(owner.user_id)}
+                              className="text-xs h-8"
                             >
-                              <Ban className="w-4 h-4 me-2" />
-                              إلغاء الترخيص
+                              <Ban className="w-3 h-3 me-1" />
+                              إلغاء
                             </Button>
                           )}
 
@@ -713,8 +717,9 @@ export default function BossPanel() {
                             variant="destructive"
                             size="sm"
                             onClick={() => setDeleteConfirm({ type: 'owner', id: owner.user_id, name: owner.full_name || 'هذا المستخدم' })}
+                            className="text-xs h-8"
                           >
-                            <Trash2 className="w-4 h-4 me-2" />
+                            <Trash2 className="w-3 h-3 me-1" />
                             حذف
                           </Button>
                         </div>
