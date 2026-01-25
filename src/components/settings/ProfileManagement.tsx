@@ -279,23 +279,21 @@ export function ProfileManagement() {
       }
 
       // Call edge function to create new boss account
-      const response = await supabase.functions.invoke('create-boss-account', {
+      const { data, error } = await supabase.functions.invoke('create-boss-account', {
         body: {
           email: newBossForm.email,
           password: newBossForm.password,
           fullName: newBossForm.fullName
-        },
-        headers: {
-          Authorization: `Bearer ${session.session.access_token}`,
-        },
+        }
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'فشل في إنشاء الحساب');
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'فشل في إرسال الطلب');
       }
 
-      if (response.data?.error) {
-        throw new Error(response.data.error);
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast.success('تم إنشاء حساب Boss جديد بنجاح');
