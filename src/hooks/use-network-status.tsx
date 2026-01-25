@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
-import { toast } from 'sonner';
+import { showToast } from '@/lib/toast-config';
 
 interface NetworkStatus {
   isOnline: boolean;
@@ -45,7 +45,7 @@ export function useNetworkStatus(onReconnect?: () => void) {
     });
     
     if (wasOffline) {
-      toast.success('عادت الاتصال بالإنترنت ✓', { duration: 2000 });
+      showToast.success('عادت الاتصال بالإنترنت ✓');
       // Trigger reconnect callback
       setTimeout(() => {
         onReconnectRef.current?.();
@@ -65,7 +65,7 @@ export function useNetworkStatus(onReconnect?: () => void) {
       wasOffline: true,
     }));
     
-    toast.error('انقطع الاتصال بالإنترنت', { duration: 3000 });
+    showToast.error('انقطع الاتصال بالإنترنت');
   }, []);
 
   useEffect(() => {

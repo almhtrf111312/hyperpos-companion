@@ -52,6 +52,7 @@ import {
   exportCustomersToPDF
 } from '@/lib/pdf-export';
 import { useLanguage } from '@/hooks/use-language';
+import { MainLayout } from '@/components/layout/MainLayout';
 
 export default function Reports() {
   const { t } = useLanguage();
