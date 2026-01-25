@@ -114,8 +114,7 @@ export default function StockTransfer() {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const conversionFactor = (product as any).conversion_factor || 1;
+    const conversionFactor = product.conversionFactor || 1;
     const quantityInPieces = selectedUnit === 'bulk' 
       ? selectedQuantity * conversionFactor 
       : selectedQuantity;
@@ -199,8 +198,7 @@ export default function StockTransfer() {
         toast.success(`تم زيادة كمية: ${product.name}`);
       } else {
         // Add new item with quantity 1
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const conversionFactor = (product as any).conversion_factor || 1;
+        const conversionFactor = product.conversionFactor || 1;
         setTransferItems(prev => [...prev, {
           productId: product.id,
           productName: product.name,
