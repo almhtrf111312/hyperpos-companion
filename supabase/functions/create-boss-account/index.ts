@@ -116,45 +116,61 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create profile for the new user
+    const newUserId = newUser.user.id;
+    console.log('Created new user:', newUserId);
+
+    // Update or insert profile for the new user (trigger may have already created one)
     const { error: profileError } = await serviceClient
       .from('profiles')
-      .insert({
-        user_id: newUser.user.id,
+      .upsert({
+        user_id: newUserId,
         full_name: fullName
-      });
+      }, { onConflict: 'user_id' });
 
     if (profileError) {
-      console.error('Error creating profile:', profileError);
+      console.error('Error upserting profile:', profileError);
     }
 
-    // Assign boss role to the new user
-    const { error: roleInsertError } = await serviceClient
+    // Update the user role to boss (trigger creates cashier by default)
+    const { error: roleUpdateError } = await serviceClient
       .from('user_roles')
-      .insert({
-        user_id: newUser.user.id,
+      .update({
         role: 'boss',
         is_active: true
-      });
+      })
+      .eq('user_id', newUserId);
 
-    if (roleInsertError) {
-      console.error('Error assigning role:', roleInsertError);
-      // Try to clean up the user if role assignment fails
-      await serviceClient.auth.admin.deleteUser(newUser.user.id);
+    if (roleUpdateError) {
+      console.error('Error updating role:', roleUpdateError);
       
-      return new Response(
-        JSON.stringify({ error: 'Failed to assign boss role' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Try to insert if update didn't work (no existing row)
+      const { error: roleInsertError } = await serviceClient
+        .from('user_roles')
+        .insert({
+          user_id: newUserId,
+          role: 'boss',
+          is_active: true
+        });
+      
+      if (roleInsertError) {
+        console.error('Error inserting role:', roleInsertError);
+        // Try to clean up the user if role assignment fails
+        await serviceClient.auth.admin.deleteUser(newUserId);
+        
+        return new Response(
+          JSON.stringify({ error: 'Failed to assign boss role' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    console.log(`Boss ${callerUserId} created new Boss account ${newUser.user.id} at ${new Date().toISOString()}`);
+    console.log(`Boss ${callerUserId} created new Boss account ${newUserId} at ${new Date().toISOString()}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Boss account created successfully',
-        user_id: newUser.user.id
+        user_id: newUserId
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
