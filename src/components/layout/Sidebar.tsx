@@ -69,14 +69,19 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
   // Close sidebar on mobile, collapse on tablet when navigating
   useEffect(() => {
-    // على iPad: طي القائمة (العودة للأيقونات فقط)
-    if (isTablet && !collapsed) {
-      setCollapsed(true);
-    }
-    // على الموبايل: إغلاق القائمة بالكامل
-    if (isMobile && isOpen) {
-      onToggle();
-    }
+    // تأخير بسيط لضمان انسيابية الحركة على جميع الصفحات
+    const timer = setTimeout(() => {
+      // على iPad: طي القائمة (العودة للأيقونات فقط)
+      if (isTablet && !collapsed) {
+        setCollapsed(true);
+      }
+      // على الموبايل: إغلاق القائمة بالكامل
+      if (isMobile && isOpen) {
+        onToggle();
+      }
+    }, 100); // 100ms delay للانسيابية
+    
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 

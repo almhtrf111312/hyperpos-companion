@@ -30,7 +30,8 @@ import {
   RotateCcw,
   Mail,
   Ticket,
-  Send
+  Send,
+  Pencil
 } from 'lucide-react';
 import {
   Dialog,
@@ -114,6 +115,11 @@ export default function BossPanel() {
   
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'code'; id: string; name: string } | null>(null);
+
+  // Edit Name Dialog
+  const [editNameDialog, setEditNameDialog] = useState<{ owner: Owner } | null>(null);
+  const [newName, setNewName] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
 
   // Remote Activation Dialog
   const [activationDialog, setActivationDialog] = useState<{ owner: Owner } | null>(null);
@@ -257,6 +263,33 @@ export default function BossPanel() {
 
   const handleDeleteCode = async (codeId: string) => {
     try {
+      // Check if this code is used by a Boss account
+      const codeToDelete = codes.find(c => c.id === codeId);
+      if (codeToDelete) {
+        // Check if any boss user has used this code
+        const { data: bossLicenses } = await supabase
+          .from('app_licenses')
+          .select('user_id, activation_code_id')
+          .eq('activation_code_id', codeId);
+        
+        if (bossLicenses && bossLicenses.length > 0) {
+          // Check if any of these users are boss
+          for (const license of bossLicenses) {
+            const { data: roleData } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', license.user_id)
+              .single();
+            
+            if (roleData?.role === 'boss') {
+              toast.error('لا يمكن حذف كود تفعيل مستخدم من قبل حساب Boss');
+              setDeleteConfirm(null);
+              return;
+            }
+          }
+        }
+      }
+
       const { error } = await supabase
         .from('activation_codes')
         .delete()
@@ -415,6 +448,30 @@ export default function BossPanel() {
       toast.error('فشل في تفعيل الحساب');
     } finally {
       setIsActivating(false);
+    }
+  };
+
+  const handleSaveName = async () => {
+    if (!editNameDialog || !newName.trim()) return;
+    
+    setIsSavingName(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: newName.trim() })
+        .eq('user_id', editNameDialog.owner.user_id);
+
+      if (error) throw error;
+
+      toast.success('تم تحديث الاسم بنجاح');
+      setEditNameDialog(null);
+      setNewName('');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating name:', error);
+      toast.error('فشل في تحديث الاسم');
+    } finally {
+      setIsSavingName(false);
     }
   };
 
@@ -608,18 +665,36 @@ export default function BossPanel() {
                       <div className="space-y-1">
                         <div className="flex items-center flex-wrap gap-1 md:gap-2">
                           <span className="font-medium text-sm md:text-lg">{owner.full_name || 'بدون اسم'}</span>
+                          {/* Edit Name Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => {
+                              setEditNameDialog({ owner });
+                              setNewName(owner.full_name || '');
+                            }}
+                          >
+                            <Pencil className="w-3 h-3 text-muted-foreground" />
+                          </Button>
                           {isBossUser && (
                             <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-[10px] md:text-xs">
                               <Crown className="w-2.5 h-2.5 md:w-3 md:h-3 me-1" />
                               Boss
                             </Badge>
                           )}
-                          <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
-                            {isLicenseValid 
-                              ? (owner.is_trial ? 'تجريبي' : 'فعال')
-                              : owner.license_revoked ? 'ملغى' : 'منتهي'
-                            }
-                          </Badge>
+                          {isBossUser ? (
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-[10px] md:text-xs">
+                              ترخيص دائم ∞
+                            </Badge>
+                          ) : (
+                            <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
+                              {isLicenseValid 
+                                ? (owner.is_trial ? 'تجريبي' : 'فعال')
+                                : owner.license_revoked ? 'ملغى' : 'منتهي'
+                              }
+                            </Badge>
+                          )}
                           {owner.license_tier && !isBossUser && (
                             <Badge variant="outline" className="text-[10px] md:text-xs">{owner.license_tier}</Badge>
                           )}
@@ -642,10 +717,16 @@ export default function BossPanel() {
                             {owner.cashier_count}/{owner.max_cashiers || 1}
                           </span>
                         )}
-                        {owner.license_expires && !isBossUser && (
+                        {!isBossUser && owner.license_expires && (
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
                             {isLicenseValid ? `${daysRemaining}ي` : 'منتهي'}
+                          </span>
+                        )}
+                        {isBossUser && (
+                          <span className="flex items-center gap-1 text-emerald-600">
+                            <Calendar className="w-3 h-3" />
+                            لا ينتهي
                           </span>
                         )}
                         {owner.device_id ? (
@@ -1005,6 +1086,40 @@ export default function BossPanel() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Edit Name Dialog */}
+        <Dialog open={!!editNameDialog} onOpenChange={() => setEditNameDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Pencil className="w-5 h-5" />
+                تعديل اسم المستخدم
+              </DialogTitle>
+              <DialogDescription>
+                تعديل اسم {editNameDialog?.owner.email || 'المستخدم'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>الاسم الكامل</Label>
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="أدخل الاسم الجديد..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditNameDialog(null)}>
+                إلغاء
+              </Button>
+              <Button onClick={handleSaveName} disabled={isSavingName || !newName.trim()}>
+                {isSavingName && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                حفظ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
