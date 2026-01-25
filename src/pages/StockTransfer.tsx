@@ -411,68 +411,68 @@ export default function StockTransfer() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">إضافة منتج</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                      {/* Product Search with Autocomplete */}
-                      <div className="relative sm:col-span-2">
-                        <div className="flex gap-1">
-                          <div className="relative flex-1">
-                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                            <Input
-                              ref={searchInputRef}
-                              type="text"
-                              placeholder="ابحث بالاسم أو الباركود..."
-                              value={productSearchQuery}
-                              onChange={(e) => handleProductSearch(e.target.value)}
-                              onFocus={() => {
-                                if (productSearchQuery.length >= 2) setShowProductSuggestions(true);
-                              }}
-                              onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
-                              className="pr-9"
-                            />
-                            
-                            {/* Suggestions Dropdown */}
-                            {showProductSuggestions && (
-                              <div className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg">
-                                <Command>
-                                  <CommandList>
-                                    <CommandEmpty>لا توجد نتائج</CommandEmpty>
-                                    <CommandGroup>
-                                      {productSuggestions.map((product) => (
-                                        <CommandItem
-                                          key={product.id}
-                                          onSelect={() => selectProduct(product)}
-                                          className="cursor-pointer"
-                                        >
-                                          <Package className="w-4 h-4 ml-2 flex-shrink-0" />
-                                          <span className="flex-1 truncate">{product.name}</span>
-                                          {product.barcode && (
-                                            <span className="text-xs text-muted-foreground mr-2">
-                                              {product.barcode}
-                                            </span>
-                                          )}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </div>
-                            )}
+                  <CardContent className="space-y-3">
+                    {/* Row 1: Search and Barcode */}
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                          ref={searchInputRef}
+                          type="text"
+                          placeholder="ابحث عن المنتج بالاسم أو الباركود..."
+                          value={productSearchQuery}
+                          onChange={(e) => handleProductSearch(e.target.value)}
+                          onFocus={() => {
+                            if (productSearchQuery.length >= 2) setShowProductSuggestions(true);
+                          }}
+                          onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
+                          className="pr-9 h-11"
+                        />
+                        
+                        {/* Suggestions Dropdown */}
+                        {showProductSuggestions && (
+                          <div className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg">
+                            <Command>
+                              <CommandList>
+                                <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                                <CommandGroup>
+                                  {productSuggestions.map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      onSelect={() => selectProduct(product)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Package className="w-4 h-4 ml-2 flex-shrink-0" />
+                                      <span className="flex-1 truncate">{product.name}</span>
+                                      {product.barcode && (
+                                        <span className="text-xs text-muted-foreground mr-2">
+                                          {product.barcode}
+                                        </span>
+                                      )}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
                           </div>
-                          
-                          {/* Barcode Scanner Button */}
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setIsScannerOpen(true)}
-                            title="مسح باركود"
-                            type="button"
-                          >
-                            <ScanLine className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        )}
                       </div>
                       
+                      {/* Barcode Scanner Button */}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setIsScannerOpen(true)}
+                        title="مسح باركود"
+                        type="button"
+                        className="h-11 w-11 flex-shrink-0"
+                      >
+                        <ScanLine className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    
+                    {/* Row 2: Quantity, Unit, and Add Button */}
+                    <div className="grid grid-cols-3 gap-2">
                       <Input
                         type="number"
                         min={1}
@@ -491,8 +491,9 @@ export default function StockTransfer() {
                         </SelectContent>
                       </Select>
                       
-                      <Button onClick={addItemToTransfer} disabled={!selectedProductId}>
+                      <Button onClick={addItemToTransfer} disabled={!selectedProductId} className="gap-2">
                         <Plus className="w-4 h-4" />
+                        إضافة
                       </Button>
                     </div>
                   </CardContent>
