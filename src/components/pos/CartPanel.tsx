@@ -992,7 +992,7 @@ export function CartPanel({
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                {currency.symbol} {currency.code}
+                {currency.symbol} {currency.code === 'USD' ? 'USD' : currency.name}
               </button>
             ))}
           </div>
