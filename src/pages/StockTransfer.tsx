@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@
 import { toast } from 'sonner';
 import { 
   Plus, 
+  Minus,
   ArrowLeftRight, 
   Package,
   Trash2,
@@ -191,8 +192,25 @@ export default function StockTransfer() {
   const handleBarcodeScan = (barcode: string) => {
     const product = products.find(p => p.barcode === barcode);
     if (product) {
-      selectProduct(product);
-      toast.success(`تم العثور على: ${product.name}`);
+      // Auto-add product with quantity 1 when scanned
+      if (transferItems.some(item => item.productId === product.id)) {
+        // If already exists, increment quantity
+        updateItemQuantity(product.id, 1);
+        toast.success(`تم زيادة كمية: ${product.name}`);
+      } else {
+        // Add new item with quantity 1
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const conversionFactor = (product as any).conversion_factor || 1;
+        setTransferItems(prev => [...prev, {
+          productId: product.id,
+          productName: product.name,
+          quantity: 1,
+          unit: 'piece' as const,
+          conversionFactor,
+          quantityInPieces: 1
+        }]);
+        toast.success(`تم إضافة: ${product.name}`);
+      }
     } else {
       toast.error('لم يتم العثور على منتج بهذا الباركود');
     }
@@ -201,6 +219,31 @@ export default function StockTransfer() {
 
   const removeItemFromTransfer = (productId: string) => {
     setTransferItems(prev => prev.filter(item => item.productId !== productId));
+  };
+
+  const updateItemQuantity = (productId: string, delta: number) => {
+    setTransferItems(prev => prev.map(item => {
+      if (item.productId === productId) {
+        const newQuantity = Math.max(1, item.quantity + delta);
+        const quantityInPieces = item.unit === 'bulk' 
+          ? newQuantity * item.conversionFactor 
+          : newQuantity;
+        return { ...item, quantity: newQuantity, quantityInPieces };
+      }
+      return item;
+    }));
+  };
+
+  const updateItemUnit = (productId: string, unit: 'piece' | 'bulk') => {
+    setTransferItems(prev => prev.map(item => {
+      if (item.productId === productId) {
+        const quantityInPieces = unit === 'bulk' 
+          ? item.quantity * item.conversionFactor 
+          : item.quantity;
+        return { ...item, unit, quantityInPieces };
+      }
+      return item;
+    }));
   };
 
   const handleCreateTransfer = async () => {
@@ -555,10 +598,44 @@ export default function StockTransfer() {
                       <TableBody>
                         {transferItems.map(item => (
                           <TableRow key={item.productId}>
-                            <TableCell>{item.productName}</TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{item.unit === 'bulk' ? 'كرتونة' : 'قطعة'}</TableCell>
-                            <TableCell>{item.quantityInPieces}</TableCell>
+                            <TableCell className="font-medium">{item.productName}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button 
+                                  variant="outline" 
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => updateItemQuantity(item.productId, -1)}
+                                  disabled={item.quantity <= 1}
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </Button>
+                                <span className="w-8 text-center font-medium">{item.quantity}</span>
+                                <Button 
+                                  variant="outline" 
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => updateItemQuantity(item.productId, 1)}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={item.unit} 
+                                onValueChange={(v: 'piece' | 'bulk') => updateItemUnit(item.productId, v)}
+                              >
+                                <SelectTrigger className="h-8 w-24">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="piece">قطعة</SelectItem>
+                                  <SelectItem value="bulk">كرتونة</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="font-medium">{item.quantityInPieces}</TableCell>
                             <TableCell>
                               <Button 
                                 variant="ghost" 
