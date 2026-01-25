@@ -128,56 +128,54 @@ jobs:
           });
           "@ | Out-File -FilePath electron/main.js -Encoding utf8
 
-      - name: Create Electron package.json
+      - name: Create Electron Builder config
         shell: bash
         run: |
-          cat > electron-package.json << 'EOF'
+          cat > electron-builder.json << 'EOF'
           {
-            "name": "flowpos-pro",
-            "version": "1.0.${{ github.run_number }}",
-            "description": "FlowPOS Pro - Sales and Inventory Management System",
-            "main": "electron/main.js",
-            "author": "FlowPOS Team",
-            "license": "MIT",
-            "build": {
-              "appId": "app.flowpos.pro",
-              "productName": "FlowPOS Pro",
-              "directories": {
-                "output": "electron-dist"
-              },
-              "files": [
-                "dist/**/*",
-                "electron/**/*",
-                "resources/**/*"
+            "appId": "app.flowpos.pro",
+            "productName": "FlowPOS Pro",
+            "directories": {
+              "output": "electron-dist"
+            },
+            "files": [
+              "dist/**/*",
+              "electron/**/*",
+              "resources/**/*"
+            ],
+            "win": {
+              "target": [
+                {
+                  "target": "nsis",
+                  "arch": ["x64"]
+                }
               ],
-              "win": {
-                "target": [
-                  {
-                    "target": "nsis",
-                    "arch": ["x64"]
-                  }
-                ],
-                "icon": "resources/icon.png",
-                "artifactName": "FlowPOS-Pro-Setup-${version}.exe"
-              },
-              "nsis": {
-                "oneClick": false,
-                "allowToChangeInstallationDirectory": true,
-                "createDesktopShortcut": true,
-                "createStartMenuShortcut": true,
-                "shortcutName": "FlowPOS Pro"
-              }
+              "icon": "resources/icon.png",
+              "artifactName": "FlowPOS-Pro-Setup-${version}.exe"
+            },
+            "nsis": {
+              "oneClick": false,
+              "allowToChangeInstallationDirectory": true,
+              "createDesktopShortcut": true,
+              "createStartMenuShortcut": true,
+              "shortcutName": "FlowPOS Pro"
             }
           }
           EOF
-          cp electron-package.json package.json
 
-      - name: Install Electron and Builder
+      - name: Update package.json for Electron
+        shell: bash
         run: |
-          npm install --save-dev electron electron-builder
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.main = 'electron/main.js';
+            pkg.version = '1.0.${{ github.run_number }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
 
       - name: Build Windows Installer
-        run: npx electron-builder --win --config electron-package.json
+        run: npx electron-builder --win --config electron-builder.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
