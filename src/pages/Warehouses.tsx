@@ -55,13 +55,19 @@ export default function Warehouses() {
     phone: ''
   });
 
-  // Load cashiers
+  // Load cashiers belonging to current owner only
   useEffect(() => {
     const loadCashiers = async () => {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get cashiers that belong to this owner (owner_id = current user)
       const { data, error } = await supabase
         .from('user_roles')
-        .select('user_id, role')
-        .eq('role', 'cashier');
+        .select('user_id, role, owner_id')
+        .eq('role', 'cashier')
+        .eq('owner_id', user.id);
 
       if (data && !error) {
         // Get profiles for these cashiers
@@ -71,13 +77,29 @@ export default function Warehouses() {
           .select('user_id, full_name')
           .in('user_id', userIds);
 
-        const cashierList: CashierUser[] = data.map(r => ({
-          id: r.user_id,
-          email: '',
-          full_name: profiles?.find(p => p.user_id === r.user_id)?.full_name || null
-        }));
+        // Get emails via edge function
+        try {
+          const { data: authData } = await supabase.functions.invoke('get-users-with-emails');
+          const emailMap = new Map<string, string>(
+            authData?.users?.map((u: { user_id: string; email: string }) => [u.user_id, u.email]) || []
+          );
 
-        setCashiers(cashierList);
+          const cashierList: CashierUser[] = data.map(r => ({
+            id: r.user_id,
+            email: emailMap.get(r.user_id) || '',
+            full_name: profiles?.find(p => p.user_id === r.user_id)?.full_name || null
+          }));
+
+          setCashiers(cashierList);
+        } catch (err) {
+          // Fallback without emails
+          const cashierList: CashierUser[] = data.map(r => ({
+            id: r.user_id,
+            email: '',
+            full_name: profiles?.find(p => p.user_id === r.user_id)?.full_name || null
+          }));
+          setCashiers(cashierList);
+        }
       }
     };
 
@@ -253,21 +275,39 @@ export default function Warehouses() {
                 {formData.type === 'vehicle' && (
                   <div>
                     <Label>الموزع المسؤول</Label>
-                    <Select
-                      value={formData.assigned_cashier_id}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_cashier_id: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الموزع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cashiers.map(cashier => (
-                          <SelectItem key={cashier.id} value={cashier.id}>
-                            {cashier.full_name || 'موزع'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {cashiers.length === 0 ? (
+                      <div className="p-3 border rounded-md bg-muted/50 text-center">
+                        <p className="text-sm text-muted-foreground">لا يوجد موزعين</p>
+                        <Button 
+                          variant="link" 
+                          size="sm"
+                          onClick={() => window.location.href = '/settings?tab=users'}
+                        >
+                          إضافة موزع جديد من الإعدادات
+                        </Button>
+                      </div>
+                    ) : (
+                      <Select
+                        value={formData.assigned_cashier_id}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_cashier_id: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر الموزع" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cashiers.map(cashier => (
+                            <SelectItem key={cashier.id} value={cashier.id}>
+                              <div className="flex flex-col items-start">
+                                <span>{cashier.full_name || 'موزع'}</span>
+                                {cashier.email && (
+                                  <span className="text-xs text-muted-foreground">{cashier.email}</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 )}
 
@@ -449,21 +489,39 @@ export default function Warehouses() {
               {formData.type === 'vehicle' && (
                 <div>
                   <Label>الموزع المسؤول</Label>
-                  <Select
-                    value={formData.assigned_cashier_id}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_cashier_id: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الموزع" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cashiers.map(cashier => (
-                        <SelectItem key={cashier.id} value={cashier.id}>
-                          {cashier.full_name || 'موزع'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {cashiers.length === 0 ? (
+                    <div className="p-3 border rounded-md bg-muted/50 text-center">
+                      <p className="text-sm text-muted-foreground">لا يوجد موزعين</p>
+                      <Button 
+                        variant="link" 
+                        size="sm"
+                        onClick={() => window.location.href = '/settings?tab=users'}
+                      >
+                        إضافة موزع جديد من الإعدادات
+                      </Button>
+                    </div>
+                  ) : (
+                    <Select
+                      value={formData.assigned_cashier_id}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_cashier_id: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الموزع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cashiers.map(cashier => (
+                          <SelectItem key={cashier.id} value={cashier.id}>
+                            <div className="flex flex-col items-start">
+                              <span>{cashier.full_name || 'موزع'}</span>
+                              {cashier.email && (
+                                <span className="text-xs text-muted-foreground">{cashier.email}</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               )}
 
