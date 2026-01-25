@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.create-boss-account]
 verify_jwt = false
+
+[functions.update-boss-email]
+verify_jwt = false
