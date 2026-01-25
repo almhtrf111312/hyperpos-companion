@@ -396,7 +396,9 @@ export default function Settings() {
 
   const handleEditUser = (user: UserData) => {
     setSelectedUser(user);
-    setUserForm({ name: user.name, email: '', password: '', phone: '', role: user.role, userType: user.userType || 'cashier' });
+    // Convert boss/admin roles to 'cashier' for the form since we only allow cashier role for new users
+    const formRole = user.role === 'boss' || user.role === 'admin' ? 'cashier' : user.role;
+    setUserForm({ name: user.name, email: '', password: '', phone: '', role: formRole as 'admin' | 'cashier', userType: user.userType || 'cashier' });
     setUserDialogOpen(true);
   };
 
@@ -1063,7 +1065,9 @@ export default function Settings() {
                   {t('settings.noUsers')}
                 </div>
               ) : (
-                users.map((user) => (
+                users
+                  .filter((user) => user.role !== 'boss') // Hide boss accounts from this list
+                  .map((user) => (
                   <div key={user.id} className="flex items-center justify-between p-4 bg-muted rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -1072,21 +1076,24 @@ export default function Settings() {
                       <div>
                         <p className="font-medium text-foreground">{user.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {user.role === 'admin' ? t('settings.admin') : t('settings.cashier')}
+                          {user.userType === 'distributor' ? 'موزع' : t('settings.cashier')}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setPasswordChangeUserId(user.user_id);
-                          setPasswordDialogOpen(true);
-                        }}
-                      >
-                        <Key className="w-4 h-4" />
-                      </Button>
+                      {/* Only show password change for non-owner users */}
+                      {!user.isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setPasswordChangeUserId(user.user_id);
+                            setPasswordDialogOpen(true);
+                          }}
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -1095,7 +1102,7 @@ export default function Settings() {
                         size="icon"
                         className="text-destructive"
                         onClick={() => handleDeleteUser(user)}
-                        disabled={user.user_id === currentUser?.id}
+                        disabled={user.user_id === currentUser?.id || user.isOwner}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
