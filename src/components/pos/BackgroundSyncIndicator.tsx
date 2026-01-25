@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
+import { showToast } from '@/lib/toast-config';
 
 export type SyncState = 'idle' | 'syncing' | 'success' | 'error' | 'offline';
 
@@ -142,22 +143,55 @@ export function BackgroundSyncIndicator({
 export function useSyncState() {
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [syncMessage, setSyncMessage] = useState<string>('');
+  const [delayTimer, setDelayTimer] = useState<NodeJS.Timeout | null>(null);
 
-  const startSync = (message?: string) => {
+  const startSync = (message?: string, showImmediateToast = false) => {
+    // إلغاء أي تأخير سابق
+    if (delayTimer) {
+      clearTimeout(delayTimer);
+      setDelayTimer(null);
+    }
+    
     setSyncState('syncing');
     setSyncMessage(message || '');
+    
+    // إظهار toast فوري فقط إذا طُلب (للعمليات الطويلة)
+    if (showImmediateToast && message) {
+      showToast.info(message);
+    }
   };
 
-  const completeSync = () => {
-    setSyncState('success');
-    setSyncMessage('');
-    setTimeout(() => setSyncState('idle'), 3000);
+  const completeSync = (message = 'تمت المزامنة بنجاح', delay = 5000) => {
+    // تأخير 5 ثوانٍ للتأكد من اكتمال المزامنة
+    const timer = setTimeout(() => {
+      setSyncState('success');
+      setSyncMessage('');
+      showToast.success(message);
+      
+      // العودة لـ idle بعد 3 ثوانٍ
+      setTimeout(() => setSyncState('idle'), 3000);
+    }, delay);
+    
+    setDelayTimer(timer);
   };
 
-  const failSync = (error?: string) => {
-    setSyncState('error');
-    setSyncMessage(error || '');
+  const failSync = (error = 'فشلت المزامنة', delay = 5000) => {
+    // تأخير 5 ثوانٍ للتأكد من الفشل النهائي
+    const timer = setTimeout(() => {
+      setSyncState('error');
+      setSyncMessage(error);
+      showToast.error(error);
+    }, delay);
+    
+    setDelayTimer(timer);
   };
+  
+  // تنظيف التأخيرات عند unmount
+  useEffect(() => {
+    return () => {
+      if (delayTimer) clearTimeout(delayTimer);
+    };
+  }, [delayTimer]);
 
   return {
     syncState,

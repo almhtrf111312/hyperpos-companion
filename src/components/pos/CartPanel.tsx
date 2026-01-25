@@ -58,6 +58,8 @@ import { deductWarehouseStockBatchCloud, checkWarehouseStockAvailability } from 
 import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
+import { addToQueue } from '@/lib/sync-queue';
+import { useNetworkStatus } from '@/hooks/use-network-status';
 
 interface CartItem {
   id: string;
@@ -118,6 +120,7 @@ export function CartPanel({
   const { t } = useLanguage();
   const { activeWarehouse } = useWarehouse();
   const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
+  const { isOnline } = useNetworkStatus();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -185,9 +188,24 @@ export function CartPanel({
     setShowCashDialog(false);
     onClearCart();
     playSaleComplete();
-    startSync('جاري حفظ الفاتورة...');
+    startSync('جاري حفظ الفاتورة...', false);
     
     try {
+      // إذا كان الاتصال غير متاح، حفظ محلياً للمزامنة لاحقاً
+      if (!isOnline) {
+        addToQueue('invoice_create', {
+          invoice: {
+            customer_name: customerNameSnapshot || 'عميل نقدي',
+            total: totalSnapshot,
+            items: cartSnapshot,
+          },
+          timestamp: Date.now(),
+        });
+        completeSync('تم حفظ الفاتورة محلياً، سيتم الرفع عند عودة الاتصال', 1000);
+        setIsSaving(false);
+        return;
+      }
+      
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
       const stockItemsWithConversion = cartSnapshot.map(item => ({
         productId: item.id,
@@ -356,11 +374,22 @@ export function CartPanel({
       addSalesToShift(totalSnapshot);
       recordActivity();
       
-      completeSync();
+      completeSync('تمت المزامنة بنجاح');
       showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح ✓`);
     } catch (error) {
       console.error('Cash sale error:', error);
-      failSync('فشل في حفظ الفاتورة');
+      
+      // في حالة الفشل، حفظ محلياً
+      addToQueue('invoice_create', {
+        invoice: {
+          customer_name: customerNameSnapshot || 'عميل نقدي',
+          total: totalSnapshot,
+          items: cartSnapshot,
+        },
+        timestamp: Date.now(),
+      });
+      
+      failSync('تم حفظ الفاتورة محلياً، سيتم الرفع لاحقاً');
       showToast.error('حدث خطأ أثناء معالجة البيع');
     } finally {
       setIsSaving(false);
@@ -380,9 +409,26 @@ export function CartPanel({
     setShowDebtDialog(false);
     onClearCart();
     playDebtRecorded();
-    startSync('جاري إنشاء فاتورة الدين...');
+    startSync('جاري إنشاء فاتورة الدين...', false);
     
     try {
+      // إذا كان الاتصال غير متاح، حفظ محلياً للمزامنة لاحقاً
+      if (!isOnline) {
+        const bundle = {
+          invoiceData: {
+            customer_name: customerNameSnapshot || 'عميل',
+            customer_phone: customerPhoneSnapshot || '',
+            total: totalSnapshot,
+            items: cartSnapshot,
+          },
+          timestamp: Date.now(),
+        };
+        addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
+        completeSync('تم حفظ الفاتورة محلياً، سيتم الرفع عند عودة الاتصال', 1000);
+        setIsSaving(false);
+        return;
+      }
+      
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
       const stockItemsWithConversion = cartSnapshot.map(item => ({
         productId: item.id,
@@ -576,11 +622,24 @@ export function CartPanel({
         );
       }
       
-      completeSync();
+      completeSync('تمت المزامنة بنجاح');
       showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح ✓`);
     } catch (error) {
       console.error('Debt sale error:', error);
-      failSync('فشل في إنشاء فاتورة الدين');
+      
+      // في حالة الفشل، حفظ محلياً
+      const bundle = {
+        invoiceData: {
+          customer_name: customerNameSnapshot || 'عميل',
+          customer_phone: customerPhoneSnapshot || '',
+          total: totalSnapshot,
+          items: cartSnapshot,
+        },
+        timestamp: Date.now(),
+      };
+      addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
+      
+      failSync('تم حفظ الفاتورة محلياً، سيتم الرفع لاحقاً');
       showToast.error('حدث خطأ أثناء معالجة البيع بالدين');
     } finally {
       setIsSaving(false);
