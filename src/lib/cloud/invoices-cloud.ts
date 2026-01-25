@@ -19,6 +19,8 @@ export interface InvoiceItem {
   price: number;
   quantity: number;
   total: number;
+  costPrice?: number; // ✅ سعر التكلفة لحظة البيع
+  profit?: number;    // ✅ الربح لكل عنصر
 }
 
 export interface CloudInvoice {
@@ -196,15 +198,18 @@ export const addInvoiceCloud = async (
   });
   
   if (inserted) {
-    // Insert invoice items
+    // Insert invoice items with cost_price for accurate historical profit tracking
     for (const item of invoice.items) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from('invoice_items').insert({
         invoice_id: inserted.id,
+        product_id: item.id || null,
         product_name: item.name,
         quantity: item.quantity,
         unit_price: item.price,
+        cost_price: item.costPrice || 0, // ✅ تسجيل سعر التكلفة لحظة البيع
         amount_original: item.total,
+        profit: item.profit || 0, // ✅ تسجيل الربح لكل عنصر
       });
     }
     

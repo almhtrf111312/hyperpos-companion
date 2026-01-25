@@ -251,17 +251,39 @@ export function CartPanel({
       const discountedProfit = totalProfit * (1 - discountRatio);
       const discountMultiplier = 1 - discountRatio;
       
-      // Create invoice in cloud
-      const invoice = await addInvoiceCloud({
-        type: 'sale',
-        customerName: customerName || 'عميل نقدي',
-        items: cart.map(item => ({
+      // ✅ حساب سعر التكلفة لكل عنصر قبل إنشاء الفاتورة
+      const itemsWithCost = cart.map(item => {
+        const product = products.find(p => p.id === item.id);
+        let itemCostPrice: number;
+        
+        if (item.unit === 'bulk') {
+          if (item.bulkCostPrice && item.bulkCostPrice > 0) {
+            itemCostPrice = item.bulkCostPrice;
+          } else {
+            itemCostPrice = (item.costPrice || product?.costPrice || 0) * (item.conversionFactor || 1);
+          }
+        } else {
+          itemCostPrice = item.costPrice || product?.costPrice || 0;
+        }
+        
+        const itemProfit = (item.price - itemCostPrice) * item.quantity;
+        
+        return {
           id: item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity,
           total: item.price * item.quantity,
-        })),
+          costPrice: itemCostPrice, // ✅ تسجيل سعر التكلفة لحظة البيع
+          profit: itemProfit * (1 - discountRatio), // ✅ تسجيل الربح بعد الخصم
+        };
+      });
+      
+      // Create invoice in cloud
+      const invoice = await addInvoiceCloud({
+        type: 'sale',
+        customerName: customerName || 'عميل نقدي',
+        items: itemsWithCost,
         subtotal,
         discount,
         total,
@@ -418,17 +440,39 @@ export function CartPanel({
     const discountedProfit = totalProfit * (1 - discountRatio);
     const discountMultiplier = 1 - discountRatio;
     
-    // Create invoice using Cloud API
-    const invoice = await addInvoiceCloud({
-      type: 'sale',
-      customerName,
-      items: cart.map(item => ({
+    // ✅ حساب سعر التكلفة لكل عنصر قبل إنشاء الفاتورة
+    const itemsWithCost = cart.map(item => {
+      const product = products.find(p => p.id === item.id);
+      let itemCostPrice: number;
+      
+      if (item.unit === 'bulk') {
+        if (item.bulkCostPrice && item.bulkCostPrice > 0) {
+          itemCostPrice = item.bulkCostPrice;
+        } else {
+          itemCostPrice = (item.costPrice || product?.costPrice || 0) * (item.conversionFactor || 1);
+        }
+      } else {
+        itemCostPrice = item.costPrice || product?.costPrice || 0;
+      }
+      
+      const itemProfit = (item.price - itemCostPrice) * item.quantity;
+      
+      return {
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
         total: item.price * item.quantity,
-      })),
+        costPrice: itemCostPrice, // ✅ تسجيل سعر التكلفة لحظة البيع
+        profit: itemProfit * discountMultiplier, // ✅ تسجيل الربح بعد الخصم
+      };
+    });
+    
+    // Create invoice using Cloud API
+    const invoice = await addInvoiceCloud({
+      type: 'sale',
+      customerName,
+      items: itemsWithCost,
       subtotal,
       discount,
       total,
