@@ -157,8 +157,9 @@ const App = () => (
                 <LicenseProvider>
                   <UserRoleProvider>
                     <NotificationsProvider>
+                      {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
+                      <LicenseWarningBadge />
                       <LicenseGuard>
-                        <LicenseWarningBadge />
                         <AppContent />
                       </LicenseGuard>
                     </NotificationsProvider>
