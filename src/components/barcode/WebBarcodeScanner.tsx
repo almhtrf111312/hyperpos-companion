@@ -22,7 +22,19 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
   const acceptedRef = useRef(false);
   const lastScanRef = useRef<{ text: string; ts: number } | null>(null);
 
-  // Reset on open
+  // Stop all camera tracks - critical for cleanup
+  const stopAllTracks = useCallback(() => {
+    if (ref.current?.srcObject) {
+      const stream = ref.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => {
+        track.stop();
+        console.log('[WebScanner] Stopped track:', track.kind);
+      });
+      ref.current.srcObject = null;
+    }
+  }, []);
+
+  // Reset on open/close
   useEffect(() => {
     if (isOpen) {
       acceptedRef.current = false;
@@ -31,8 +43,20 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       setZoomLevel('1x');
       setUseCssZoom(false);
       setError(null);
+      // Force re-enumerate devices to get fresh stream
+      setDeviceIndex(prev => prev);
+    } else {
+      // CRITICAL: Stop all tracks when closing to prevent camera freeze
+      stopAllTracks();
     }
-  }, [isOpen]);
+  }, [isOpen, stopAllTracks]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAllTracks();
+    };
+  }, [stopAllTracks]);
 
   // Get available cameras
   useEffect(() => {
@@ -111,9 +135,10 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
     }
   });
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
+    stopAllTracks();
     onClose();
-  };
+  }, [stopAllTracks, onClose]);
 
   const switchCamera = () => {
     if (devices.length <= 1) return;
