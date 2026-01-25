@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.remote-activate-user]
 verify_jwt = false
+
+[functions.create-boss-account]
+verify_jwt = false

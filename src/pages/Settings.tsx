@@ -50,6 +50,7 @@ import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
 import DataResetSection from '@/components/settings/DataResetSection';
+import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,6 +158,7 @@ export default function Settings() {
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
 
   const settingsTabs = [
+    { id: 'profile', label: 'الملف الشخصي', icon: User },
     { id: 'store', label: t('settings.store'), icon: Store },
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
     { id: 'language', label: t('settings.language'), icon: Globe },
@@ -730,6 +732,8 @@ export default function Settings() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'profile':
+        return <ProfileManagement />;
       case 'productFields':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
