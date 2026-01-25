@@ -6,8 +6,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { POSProduct } from '@/lib/products-store';
 import { useLanguage } from '@/hooks/use-language';
+
+// POS Product type matching the one used in POS.tsx (not from localStorage)
+interface POSProduct {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  quantity: number;
+  image?: string;
+  barcode?: string;
+  bulkUnit?: string;
+  smallUnit?: string;
+  conversionFactor?: number;
+  bulkSalePrice?: number;
+  costPrice?: number;
+  bulkCostPrice?: number;
+}
 
 interface ScannedProductDialogProps {
   isOpen: boolean;
@@ -44,7 +60,15 @@ export function ScannedProductDialog({
         <div className="py-4">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-              <Package className="w-10 h-10 text-muted-foreground" />
+              {product.image ? (
+                <img 
+                  src={product.image} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : (
+                <Package className="w-10 h-10 text-muted-foreground" />
+              )}
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-lg text-foreground mb-1">{product.name}</h3>
@@ -56,12 +80,12 @@ export function ScannedProductDialog({
           <div className="bg-muted rounded-lg p-3 mb-4">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('scannedProduct.availableStock')}:</span>
-              <span className="font-semibold">{product.quantity} {t('scannedProduct.piece')}</span>
+              <span className="font-semibold text-foreground">{product.quantity} {t('scannedProduct.piece')}</span>
             </div>
             {product.barcode && (
               <div className="flex justify-between text-sm mt-1">
                 <span className="text-muted-foreground">{t('scannedProduct.barcode')}:</span>
-                <span className="font-mono">{product.barcode}</span>
+                <span className="font-mono text-foreground">{product.barcode}</span>
               </div>
             )}
           </div>
