@@ -175,9 +175,19 @@ export function CartPanel({
     if (isSaving) return;
     setIsSaving(true);
     
+    // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
+    const cartSnapshot = [...cart];
+    const totalSnapshot = total;
+    const customerNameSnapshot = customerName;
+    
+    setShowCashDialog(false);
+    onClearCart();
+    playSaleComplete();
+    showToast.success('جاري إنشاء الفاتورة...');
+    
     try {
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
-      const stockItemsWithConversion = cart.map(item => ({
+      const stockItemsWithConversion = cartSnapshot.map(item => ({
         productId: item.id,
         productName: item.name,
         quantity: item.unit === 'bulk' && item.conversionFactor
@@ -188,10 +198,8 @@ export function CartPanel({
       // التحقق من توفر الكميات - استخدام المستودع المُسند إذا متاح
       let stockCheck;
       if (activeWarehouse) {
-        // التحقق من مخزون المستودع المُسند (للموزعين)
         stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
       } else {
-        // التحقق من المخزون العام
         stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
       }
       
@@ -207,33 +215,28 @@ export function CartPanel({
       }
       
       // Find or create customer
-      const customer = customerName ? await findOrCreateCustomerCloud(customerName) : null;
+      const customer = customerNameSnapshot ? await findOrCreateCustomerCloud(customerNameSnapshot) : null;
       
       // Calculate profit by category for accurate partner distribution
       const products = loadProducts();
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
-      let totalCOGS = 0; // تتبع تكلفة البضاعة المباعة
+      let totalCOGS = 0;
       
       const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
       
-      cart.forEach((item) => {
+      cartSnapshot.forEach((item) => {
         const product = products.find(p => p.id === item.id);
         if (product) {
-          // ✅ إصلاح: استخدام سعر التكلفة المناسب بناءً على الوحدة
           let costPrice: number;
           
           if (item.unit === 'bulk') {
-            // إذا كان البيع بالكرتونة
             if (item.bulkCostPrice && item.bulkCostPrice > 0) {
-              // استخدام سعر تكلفة الكرتونة إذا كان محدداً
               costPrice = item.bulkCostPrice;
             } else {
-              // حساب تكلفة الكرتونة = سعر القطعة × معامل التحويل
               costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
             }
           } else {
-            // البيع بالقطعة
             costPrice = item.costPrice || product.costPrice;
           }
           
@@ -251,8 +254,7 @@ export function CartPanel({
       const discountedProfit = totalProfit * (1 - discountRatio);
       const discountMultiplier = 1 - discountRatio;
       
-      // ✅ حساب سعر التكلفة لكل عنصر قبل إنشاء الفاتورة
-      const itemsWithCost = cart.map(item => {
+      const itemsWithCost = cartSnapshot.map(item => {
         const product = products.find(p => p.id === item.id);
         let itemCostPrice: number;
         
@@ -274,19 +276,19 @@ export function CartPanel({
           price: item.price,
           quantity: item.quantity,
           total: item.price * item.quantity,
-          costPrice: itemCostPrice, // ✅ تسجيل سعر التكلفة لحظة البيع
-          profit: itemProfit * (1 - discountRatio), // ✅ تسجيل الربح بعد الخصم
+          costPrice: itemCostPrice,
+          profit: itemProfit * (1 - discountRatio),
         };
       });
       
       // Create invoice in cloud
       const invoice = await addInvoiceCloud({
         type: 'sale',
-        customerName: customerName || 'عميل نقدي',
+        customerName: customerNameSnapshot || 'عميل نقدي',
         items: itemsWithCost,
         subtotal,
         discount,
-        total,
+        total: totalSnapshot,
         totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
@@ -300,8 +302,11 @@ export function CartPanel({
         return;
       }
       
-      // ✅ تسجيل الربح في سجل الأرباح المركزي
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, total);
+      // ✅ باقي العمليات تتم في الخلفية (parallel)
+      const backgroundTasks = [];
+      
+      // تسجيل الربح
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
       
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
@@ -309,27 +314,30 @@ export function CartPanel({
         .map(([category, profit]) => ({ category, profit: profit * discountMultiplier }));
       
       if (categoryProfits.length > 0) {
-        distributeDetailedProfit(categoryProfits, invoice.id, customerName || 'عميل نقدي', false);
+        distributeDetailedProfit(categoryProfits, invoice.id, customerNameSnapshot || 'عميل نقدي', false);
       }
       
-      // Deduct stock from inventory (warehouse-specific if available)
-      // استخدام الكمية الفعلية بالقطع (مع معامل التحويل)
-      const stockItemsToDeduct = cart.map(item => ({
+      // Deduct stock (parallel)
+      const stockItemsToDeduct = cartSnapshot.map(item => ({
         productId: item.id,
         quantity: item.unit === 'bulk' && item.conversionFactor
           ? item.quantity * item.conversionFactor
           : item.quantity
       }));
+      
       if (activeWarehouse) {
-        await deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct);
+        backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
       } else {
-        await deductStockBatchCloud(stockItemsToDeduct);
+        backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
       }
       
       // Update customer stats
       if (customer) {
-        await updateCustomerStatsCloud(customer.id, total, false);
+        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, false));
       }
+      
+      // Run background tasks in parallel
+      await Promise.all(backgroundTasks);
       
       // Log activity
       if (user) {
@@ -338,235 +346,239 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع نقدي بقيمة $${total.toLocaleString()} - المنتجات: ${itemsDescription}`,
-          { invoiceId: invoice.id, total, itemsCount: cart.length, customerName: customerName || 'عميل نقدي', items: soldItems }
+          `عملية بيع نقدي بقيمة $${totalSnapshot.toLocaleString()} - المنتجات: ${itemsDescription}`,
+          { invoiceId: invoice.id, total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
         );
       }
       
-      playSaleComplete();
-      addSalesToShift(total);
+      addSalesToShift(totalSnapshot);
       recordActivity();
       
-      showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح`);
-      setShowCashDialog(false);
-      onClearCart();
+      showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح ✓`);
+    } catch (error) {
+      console.error('Cash sale error:', error);
+      showToast.error('حدث خطأ أثناء معالجة البيع');
     } finally {
       setIsSaving(false);
     }
   };
 
   const confirmDebtSale = async () => {
-    // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
-    const stockItemsWithConversion = cart.map(item => ({
-      productId: item.id,
-      productName: item.name,
-      quantity: item.unit === 'bulk' && item.conversionFactor
-        ? item.quantity * item.conversionFactor
-        : item.quantity
-    }));
+    if (isSaving) return;
+    setIsSaving(true);
     
-    // ✅ إصلاح: التحقق من المخزون الصحيح بناءً على المستودع المُسند
-    let stockCheck;
-    if (activeWarehouse) {
-      // التحقق من مخزون المستودع المُسند (للموزعين)
-      stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
-    } else {
-      // التحقق من المخزون العام
-      stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
-    }
+    // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
+    const cartSnapshot = [...cart];
+    const totalSnapshot = total;
+    const customerNameSnapshot = customerName;
+    const customerPhoneSnapshot = customerPhone;
     
-    if (!stockCheck.success) {
-      const insufficientNames = stockCheck.insufficientItems
-        .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
-        .join('\n');
-      // تنبيه هام يتطلب إغلاق يدوي
-      showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-        persistent: true,
-        description: 'اضغط × للإغلاق',
-      });
-      return;
-    }
-    
-    // Find or create customer - using Cloud API for consistency
-    const customer = await findOrCreateCustomerCloud(customerName);
-    
-    // Calculate profit by category for accurate partner distribution
-    const products = loadProducts();
-    const profitsByCategory: Record<string, number> = {};
-    let totalProfit = 0;
-    let totalCOGS = 0; // تتبع تكلفة البضاعة المباعة
-    
-    // تفاصيل المنتجات لسجل النشاطات
-    const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
-    
-    cart.forEach((item) => {
-      const product = products.find(p => p.id === item.id);
-      if (product) {
-        // ✅ إصلاح: استخدام سعر التكلفة المناسب بناءً على الوحدة
-        let costPrice: number;
-        
-        if (item.unit === 'bulk') {
-          // إذا كان البيع بالكرتونة
-          if (item.bulkCostPrice && item.bulkCostPrice > 0) {
-            // استخدام سعر تكلفة الكرتونة إذا كان محدداً
-            costPrice = item.bulkCostPrice;
-          } else {
-            // حساب تكلفة الكرتونة = سعر القطعة × معامل التحويل
-            costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
-          }
-        } else {
-          // البيع بالقطعة
-          costPrice = item.costPrice || product.costPrice;
-        }
-        
-        const itemProfit = (item.price - costPrice) * item.quantity;
-        const itemCOGS = costPrice * item.quantity;
-        const category = product.category || 'عام';
-        profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
-        totalProfit += itemProfit;
-        totalCOGS += itemCOGS;
-      }
-      
-      // تسجيل تفاصيل المنتجات المباعة
-      soldItems.push({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      });
-    });
-    
-    // Apply discount to profit - use actual discount ratio from amounts
-    const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-    const discountedProfit = totalProfit * (1 - discountRatio);
-    const discountMultiplier = 1 - discountRatio;
-    
-    // ✅ حساب سعر التكلفة لكل عنصر قبل إنشاء الفاتورة
-    const itemsWithCost = cart.map(item => {
-      const product = products.find(p => p.id === item.id);
-      let itemCostPrice: number;
-      
-      if (item.unit === 'bulk') {
-        if (item.bulkCostPrice && item.bulkCostPrice > 0) {
-          itemCostPrice = item.bulkCostPrice;
-        } else {
-          itemCostPrice = (item.costPrice || product?.costPrice || 0) * (item.conversionFactor || 1);
-        }
-      } else {
-        itemCostPrice = item.costPrice || product?.costPrice || 0;
-      }
-      
-      const itemProfit = (item.price - itemCostPrice) * item.quantity;
-      
-      return {
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        total: item.price * item.quantity,
-        costPrice: itemCostPrice, // ✅ تسجيل سعر التكلفة لحظة البيع
-        profit: itemProfit * discountMultiplier, // ✅ تسجيل الربح بعد الخصم
-      };
-    });
-    
-    // Create invoice using Cloud API
-    const invoice = await addInvoiceCloud({
-      type: 'sale',
-      customerName,
-      items: itemsWithCost,
-      subtotal,
-      discount,
-      total,
-      totalInCurrency,
-      currency: selectedCurrency.code,
-      currencySymbol: selectedCurrency.symbol,
-      paymentType: 'debt',
-      status: 'pending',
-      profit: discountedProfit,
-    });
-    
-    if (!invoice) {
-      showToast.error('فشل في إنشاء الفاتورة');
-      return;
-    }
-    
-    // ✅ تسجيل الربح في سجل الأرباح المركزي
-    addGrossProfit(invoice.id, discountedProfit, totalCOGS, total);
-    
-    // Create debt record using Cloud API
-    await addDebtFromInvoiceCloud(invoice.id, customerName, customerPhone || '', total);
-    
-    // Distribute profit to partners by category (as pending) - استدعاء واحد لتجنب Race Condition
-    const categoryProfits = Object.entries(profitsByCategory)
-      .filter(([_, profit]) => profit * discountMultiplier > 0)
-      .map(([category, profit]) => ({
-        category,
-        profit: profit * discountMultiplier
-      }));
-    
-    if (categoryProfits.length > 0) {
-      distributeDetailedProfit(categoryProfits, invoice.id, customerName, true);
-    }
-    
-    // ✅ إصلاح الخصم المزدوج: خصم من مصدر واحد فقط
-    // إذا كان هناك مستودع مُسند، نخصم منه فقط
-    // وإلا نخصم من المخزون العام
-    const stockItemsToDeduct = cart.map(item => ({
-      productId: item.id,
-      productName: item.name,
-      quantity: item.unit === 'bulk' && item.conversionFactor
-        ? item.quantity * item.conversionFactor
-        : item.quantity
-    }));
-    
-    if (activeWarehouse) {
-      // خصم من المستودع المُسند فقط
-      await deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct);
-    } else {
-      // خصم من المخزون العام فقط
-      await deductStockBatchCloud(stockItemsToDeduct);
-    }
-    
-    // Update customer stats using Cloud API
-    if (customer) {
-      await updateCustomerStatsCloud(customer.id, total, true);
-    }
-    
-    // Log activity with product details
-    if (user) {
-      const itemsDescription = soldItems
-        .map(item => `${item.name} × ${item.quantity}`)
-        .join('، ');
-      
-      addActivityLog(
-        'sale',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `عملية بيع بالدين بقيمة $${total.toLocaleString()} للعميل ${customerName} - المنتجات: ${itemsDescription}`,
-        { 
-          invoiceId: invoice.id, 
-          total, 
-          itemsCount: cart.length, 
-          customerName, 
-          paymentType: 'debt',
-          items: soldItems // تفاصيل المنتجات للتدقيق
-        }
-      );
-      
-      addActivityLog(
-        'debt_created',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `تم إنشاء دين جديد للعميل ${customerName} بقيمة $${total.toLocaleString()}`,
-        { invoiceId: invoice.id, amount: total, customerName }
-      );
-    }
-    
-    // Play debt sound
-    playDebtRecorded();
-    
-    showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح`);
     setShowDebtDialog(false);
     onClearCart();
+    playDebtRecorded();
+    showToast.success('جاري إنشاء فاتورة الدين...');
+    
+    try {
+      // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
+      const stockItemsWithConversion = cartSnapshot.map(item => ({
+        productId: item.id,
+        productName: item.name,
+        quantity: item.unit === 'bulk' && item.conversionFactor
+          ? item.quantity * item.conversionFactor
+          : item.quantity
+      }));
+      
+      // التحقق من المخزون
+      let stockCheck;
+      if (activeWarehouse) {
+        stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
+      } else {
+        stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
+      }
+      
+      if (!stockCheck.success) {
+        const insufficientNames = stockCheck.insufficientItems
+          .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
+          .join('\n');
+        showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+          persistent: true,
+          description: 'اضغط × للإغلاق',
+        });
+        return;
+      }
+      
+      // Find or create customer
+      const customer = await findOrCreateCustomerCloud(customerNameSnapshot);
+      
+      // Calculate profit by category
+      const products = loadProducts();
+      const profitsByCategory: Record<string, number> = {};
+      let totalProfit = 0;
+      let totalCOGS = 0;
+      
+      const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
+      
+      cartSnapshot.forEach((item) => {
+        const product = products.find(p => p.id === item.id);
+        if (product) {
+          let costPrice: number;
+          
+          if (item.unit === 'bulk') {
+            if (item.bulkCostPrice && item.bulkCostPrice > 0) {
+              costPrice = item.bulkCostPrice;
+            } else {
+              costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
+            }
+          } else {
+            costPrice = item.costPrice || product.costPrice;
+          }
+          
+          const itemProfit = (item.price - costPrice) * item.quantity;
+          const itemCOGS = costPrice * item.quantity;
+          const category = product.category || 'عام';
+          profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
+          totalProfit += itemProfit;
+          totalCOGS += itemCOGS;
+        }
+        
+        soldItems.push({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        });
+      });
+      
+      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+      const discountedProfit = totalProfit * (1 - discountRatio);
+      const discountMultiplier = 1 - discountRatio;
+      
+      const itemsWithCost = cartSnapshot.map(item => {
+        const product = products.find(p => p.id === item.id);
+        let itemCostPrice: number;
+        
+        if (item.unit === 'bulk') {
+          if (item.bulkCostPrice && item.bulkCostPrice > 0) {
+            itemCostPrice = item.bulkCostPrice;
+          } else {
+            itemCostPrice = (item.costPrice || product?.costPrice || 0) * (item.conversionFactor || 1);
+          }
+        } else {
+          itemCostPrice = item.costPrice || product?.costPrice || 0;
+        }
+        
+        const itemProfit = (item.price - itemCostPrice) * item.quantity;
+        
+        return {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          total: item.price * item.quantity,
+          costPrice: itemCostPrice,
+          profit: itemProfit * discountMultiplier,
+        };
+      });
+      
+      // Create invoice using Cloud API
+      const invoice = await addInvoiceCloud({
+        type: 'sale',
+        customerName: customerNameSnapshot,
+        items: itemsWithCost,
+        subtotal,
+        discount,
+        total: totalSnapshot,
+        totalInCurrency,
+        currency: selectedCurrency.code,
+        currencySymbol: selectedCurrency.symbol,
+        paymentType: 'debt',
+        status: 'pending',
+        profit: discountedProfit,
+      });
+      
+      if (!invoice) {
+        showToast.error('فشل في إنشاء الفاتورة');
+        return;
+      }
+      
+      // ✅ باقي العمليات في الخلفية (parallel)
+      const backgroundTasks = [];
+      
+      // تسجيل الربح
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
+      
+      // Create debt record
+      backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', totalSnapshot));
+      
+      // Distribute profit to partners
+      const categoryProfits = Object.entries(profitsByCategory)
+        .filter(([_, profit]) => profit * discountMultiplier > 0)
+        .map(([category, profit]) => ({
+          category,
+          profit: profit * discountMultiplier
+        }));
+      
+      if (categoryProfits.length > 0) {
+        distributeDetailedProfit(categoryProfits, invoice.id, customerNameSnapshot, true);
+      }
+      
+      // Deduct stock (parallel)
+      const stockItemsToDeduct = cartSnapshot.map(item => ({
+        productId: item.id,
+        productName: item.name,
+        quantity: item.unit === 'bulk' && item.conversionFactor
+          ? item.quantity * item.conversionFactor
+          : item.quantity
+      }));
+      
+      if (activeWarehouse) {
+        backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
+      } else {
+        backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
+      }
+      
+      // Update customer stats
+      if (customer) {
+        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, true));
+      }
+      
+      // Run all background tasks in parallel
+      await Promise.all(backgroundTasks);
+      
+      // Log activity
+      if (user) {
+        const itemsDescription = soldItems.map(item => `${item.name} × ${item.quantity}`).join('، ');
+        
+        addActivityLog(
+          'sale',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `عملية بيع بالدين بقيمة $${totalSnapshot.toLocaleString()} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          { 
+            invoiceId: invoice.id, 
+            total: totalSnapshot, 
+            itemsCount: cartSnapshot.length, 
+            customerName: customerNameSnapshot, 
+            paymentType: 'debt',
+            items: soldItems
+          }
+        );
+        
+        addActivityLog(
+          'debt_created',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${totalSnapshot.toLocaleString()}`,
+          { invoiceId: invoice.id, amount: totalSnapshot, customerName: customerNameSnapshot }
+        );
+      }
+      
+      showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح ✓`);
+    } catch (error) {
+      console.error('Debt sale error:', error);
+      showToast.error('حدث خطأ أثناء معالجة البيع بالدين');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Smart customer search handler

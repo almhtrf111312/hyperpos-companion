@@ -119,27 +119,90 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
 // Cache for products
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 30000; // 30 seconds
+const CACHE_TTL = 300000; // 5 دقائق (بدلاً من 30 ثانية) لتقليل إعادة التحميل
 
-// Load products from cloud with caching
+// Local storage key for offline fallback
+const LOCAL_PRODUCTS_CACHE_KEY = 'hyperpos_products_cache';
+
+// Save products to localStorage as backup
+const saveToLocalCache = (products: Product[]) => {
+  try {
+    localStorage.setItem(LOCAL_PRODUCTS_CACHE_KEY, JSON.stringify({
+      products,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.warn('Failed to save products to localStorage:', e);
+  }
+};
+
+// Load products from localStorage
+const loadFromLocalCache = (): Product[] | null => {
+  try {
+    const cached = localStorage.getItem(LOCAL_PRODUCTS_CACHE_KEY);
+    if (cached) {
+      const { products, timestamp } = JSON.parse(cached);
+      // Cache is valid for 24 hours locally
+      if (Date.now() - timestamp < 86400000) {
+        return products;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load products from localStorage:', e);
+  }
+  return null;
+};
+
+// Load products from cloud with caching and localStorage fallback
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
-  if (!userId) return [];
+  
+  // إذا لا يوجد مستخدم، جرب التحميل من localStorage
+  if (!userId) {
+    const localProducts = loadFromLocalCache();
+    if (localProducts && localProducts.length > 0) {
+      console.log('[ProductsCloud] Serving from localStorage (no user)');
+      return localProducts;
+    }
+    return [];
+  }
 
-  // Check cache
+  // Check memory cache first
   if (productsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return productsCache;
   }
 
-  const cloudProducts = await fetchFromSupabase<CloudProduct>('products', { 
-    column: 'created_at', 
-    ascending: false 
-  });
+  try {
+    const cloudProducts = await fetchFromSupabase<CloudProduct>('products', { 
+      column: 'created_at', 
+      ascending: false 
+    });
 
-  productsCache = cloudProducts.map(toProduct);
-  cacheTimestamp = Date.now();
-  
-  return productsCache;
+    productsCache = cloudProducts.map(toProduct);
+    cacheTimestamp = Date.now();
+    
+    // حفظ في localStorage كـ backup
+    saveToLocalCache(productsCache);
+    
+    return productsCache;
+  } catch (error) {
+    console.error('[ProductsCloud] Failed to fetch from cloud:', error);
+    
+    // Fallback: محاولة التحميل من الذاكرة المحلية
+    const localProducts = loadFromLocalCache();
+    if (localProducts && localProducts.length > 0) {
+      console.log('[ProductsCloud] Serving from localStorage (cloud failed)');
+      return localProducts;
+    }
+    
+    // إذا كان هناك cache قديم في الذاكرة، استخدمه
+    if (productsCache && productsCache.length > 0) {
+      console.log('[ProductsCloud] Serving from stale memory cache');
+      return productsCache;
+    }
+    
+    throw error;
+  }
 };
 
 // Invalidate cache
