@@ -33,7 +33,7 @@ export function useRealtimeSync() {
     // Create realtime channel for all user data
     const channel = supabase
       .channel(`user-sync-${user.id}`)
-      // Products changes
+      // Products changes - مع مسح localStorage للمزامنة الفورية
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -42,6 +42,12 @@ export function useRealtimeSync() {
       }, (payload) => {
         console.log('[Realtime] Products changed:', payload.eventType);
         invalidateProductsCache();
+        // مسح localStorage أيضاً لضمان التحديث الفوري
+        try {
+          localStorage.removeItem('hyperpos_products_cache');
+        } catch (e) {
+          console.warn('[Realtime] Failed to clear products cache:', e);
+        }
         emitEvent(EVENTS.PRODUCTS_UPDATED);
       })
       // Categories changes

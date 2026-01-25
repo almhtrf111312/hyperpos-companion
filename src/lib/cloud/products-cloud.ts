@@ -120,7 +120,7 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
 // Cache for products
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 300000; // 5 دقائق (بدلاً من 30 ثانية) لتقليل إعادة التحميل
+const CACHE_TTL = 10000; // 10 ثواني فقط للمزامنة اللحظية
 
 // Local storage key for offline fallback
 const LOCAL_PRODUCTS_CACHE_KEY = 'hyperpos_products_cache';
@@ -206,10 +206,16 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
   }
 };
 
-// Invalidate cache
+// Invalidate cache - مسح الذاكرة و localStorage للمزامنة الفورية
 export const invalidateProductsCache = () => {
   productsCache = null;
   cacheTimestamp = 0;
+  // مسح localStorage لضمان التحديث من السحابة
+  try {
+    localStorage.removeItem(LOCAL_PRODUCTS_CACHE_KEY);
+  } catch (e) {
+    console.warn('Failed to clear products localStorage cache:', e);
+  }
 };
 
 // Add product to cloud

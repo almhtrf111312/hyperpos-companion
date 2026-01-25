@@ -315,3 +315,33 @@ export const getInvoiceStatsCloud = async () => {
     totalProfit: invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
   };
 };
+
+// Update invoice by invoice_number - للتحديث المباشر بدون تحميل كل الفواتير
+export const updateInvoiceByNumberCloud = async (
+  invoiceNumber: string, 
+  updates: Partial<Invoice>
+): Promise<boolean> => {
+  const userId = getCurrentUserId();
+  if (!userId) return false;
+  
+  const cloudUpdates: Record<string, unknown> = {};
+  if (updates.status !== undefined) cloudUpdates.status = updates.status;
+  if (updates.paymentType !== undefined) cloudUpdates.payment_type = updates.paymentType;
+  if (updates.debtPaid !== undefined) cloudUpdates.debt_paid = updates.debtPaid;
+  if (updates.debtRemaining !== undefined) cloudUpdates.debt_remaining = updates.debtRemaining;
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('invoices')
+    .update(cloudUpdates)
+    .eq('invoice_number', invoiceNumber)
+    .eq('user_id', userId);
+  
+  if (!error) {
+    invalidateInvoicesCache();
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    return true;
+  }
+  
+  return false;
+};
