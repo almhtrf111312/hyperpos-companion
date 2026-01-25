@@ -22,6 +22,7 @@ import { clearDemoDataOnce } from "./lib/clear-demo-data";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
+import { useAppPermissions } from "./hooks/use-app-permissions";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Products from "./pages/Products";
@@ -49,6 +50,9 @@ const AppContent = () => {
   const isSafeMode = searchParams.get('safe') === '1';
   const isDebugClick = searchParams.get('debugclick') === '1';
   const isReset = searchParams.get('reset') === '1';
+  
+  // Request camera and storage permissions early on native platforms
+  useAppPermissions();
 
   const [setupComplete, setSetupComplete] = useState(() => {
     try {
