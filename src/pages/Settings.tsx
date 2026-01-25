@@ -168,7 +168,7 @@ export default function Settings() {
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'printing', label: t('settings.printing'), icon: Printer },
     { id: 'users', label: t('settings.users'), icon: User, adminOnly: true },
-    { id: 'activity', label: t('settings.activityLog'), icon: Activity },
+    { id: 'activity', label: t('settings.activityLog'), icon: Activity, bossOnly: true },
     { id: 'backup', label: t('settings.backup'), icon: Database, adminOnly: true },
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
