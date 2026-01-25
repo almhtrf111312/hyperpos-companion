@@ -18,7 +18,7 @@ import { SetupWizard } from "./components/setup/SetupWizard";
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
-import { loadDemoData } from "./lib/demo-data";
+// Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import Dashboard from "./pages/Dashboard";
@@ -74,14 +74,15 @@ const AppContent = () => {
     }
   }, [isReset]);
 
-  // Safe demo data loading inside React lifecycle
+  // Clear any existing demo data on app start (one-time migration)
   useEffect(() => {
-    if (isSafeMode) return; // Don't load demo data in safe mode
+    if (isSafeMode) return;
     try {
+      // Only clear demo data, don't load new ones
+      // Demo data should not be loaded for production apps with cloud sync
       clearDemoDataOnce();
-      loadDemoData();
     } catch (error) {
-      console.error('[App] Failed to initialize demo data:', error);
+      console.error('[App] Failed to clear demo data:', error);
     }
   }, [isSafeMode]);
 
@@ -131,7 +132,7 @@ const AppContent = () => {
         <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
         <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
         
