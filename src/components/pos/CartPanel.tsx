@@ -57,6 +57,7 @@ import { deductStockBatchCloud, checkStockAvailabilityCloud } from '@/lib/cloud/
 import { deductWarehouseStockBatchCloud, checkWarehouseStockAvailability } from '@/lib/cloud/warehouses-cloud';
 import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';
 import { useWarehouse } from '@/hooks/use-warehouse';
+import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 
 interface CartItem {
   id: string;
@@ -116,6 +117,7 @@ export function CartPanel({
   const { user, profile } = useAuth();
   const { t } = useLanguage();
   const { activeWarehouse } = useWarehouse();
+  const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -183,7 +185,7 @@ export function CartPanel({
     setShowCashDialog(false);
     onClearCart();
     playSaleComplete();
-    showToast.success('جاري إنشاء الفاتورة...');
+    startSync('جاري حفظ الفاتورة...');
     
     try {
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
@@ -354,9 +356,11 @@ export function CartPanel({
       addSalesToShift(totalSnapshot);
       recordActivity();
       
+      completeSync();
       showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح ✓`);
     } catch (error) {
       console.error('Cash sale error:', error);
+      failSync('فشل في حفظ الفاتورة');
       showToast.error('حدث خطأ أثناء معالجة البيع');
     } finally {
       setIsSaving(false);
@@ -376,7 +380,7 @@ export function CartPanel({
     setShowDebtDialog(false);
     onClearCart();
     playDebtRecorded();
-    showToast.success('جاري إنشاء فاتورة الدين...');
+    startSync('جاري إنشاء فاتورة الدين...');
     
     try {
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
@@ -572,9 +576,11 @@ export function CartPanel({
         );
       }
       
+      completeSync();
       showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح ✓`);
     } catch (error) {
       console.error('Debt sale error:', error);
+      failSync('فشل في إنشاء فاتورة الدين');
       showToast.error('حدث خطأ أثناء معالجة البيع بالدين');
     } finally {
       setIsSaving(false);
@@ -732,6 +738,12 @@ export function CartPanel({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {/* مؤشر المزامنة في الخلفية */}
+              <BackgroundSyncIndicator 
+                state={syncState} 
+                message={syncMessage}
+                className="hidden sm:flex"
+              />
               {cart.length > 0 && (
                 <button 
                   onClick={onClearCart}
@@ -747,6 +759,16 @@ export function CartPanel({
               )}
             </div>
           </div>
+          
+          {/* مؤشر المزامنة على الموبايل */}
+          {(syncState !== 'idle' || isSaving) && (
+            <div className="mt-2 sm:hidden">
+              <BackgroundSyncIndicator 
+                state={syncState} 
+                message={syncMessage}
+              />
+            </div>
+          )}
 
           {/* Customer Name with Autocomplete */}
           <div className="mt-3 flex gap-2">
