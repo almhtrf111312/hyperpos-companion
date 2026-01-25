@@ -8,6 +8,7 @@ import {
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 import { updateInvoiceCloud } from './invoices-cloud';
+import { supabase } from '@/integrations/supabase/client';
 
 export type DebtStatus = 'due' | 'partially_paid' | 'overdue' | 'fully_paid';
 
@@ -223,11 +224,22 @@ export const recordPaymentWithInvoiceSyncCloud = async (
 // Delete debt by invoice ID
 export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boolean> => {
   const debts = await loadDebtsCloud();
-  const debt = debts.find(d => d.invoiceId === invoiceId);
+  const debt = debts.find(d => d.invoiceId === invoiceId || d.id === invoiceId);
   
   if (!debt) return false;
   
-  const success = await deleteFromSupabase('debts', debt.id);
+  // Use Supabase client to delete by invoice_id (more efficient)
+  const userId = getCurrentUserId();
+  if (!userId) return false;
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('debts')
+    .delete()
+    .eq('invoice_id', invoiceId)
+    .eq('user_id', userId);
+  
+  const success = !error;
   
   if (success) {
     invalidateDebtsCache();
