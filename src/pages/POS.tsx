@@ -98,14 +98,21 @@ export default function POS() {
   const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
   const [showScannedDialog, setShowScannedDialog] = useState(false);
 
-  // Load products and categories from cloud
-  const loadData = useCallback(async () => {
+  // Load products and categories from cloud with retry logic
+  const loadData = useCallback(async (retryCount = 0) => {
     setIsLoadingProducts(true);
     try {
       const [cloudProducts, cloudCategories] = await Promise.all([
         loadProductsCloud(),
         getCategoryNamesCloud()
       ]);
+      
+      // إذا لم تُرجع المنتجات وعدد المحاولات أقل من 3، أعد المحاولة
+      if (cloudProducts.length === 0 && retryCount < 3) {
+        console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
+        setTimeout(() => loadData(retryCount + 1), 1000);
+        return;
+      }
       
       // جلب مخزون المستودع إذا كان الكاشير مسنداً لمستودع
       let warehouseStock: Map<string, number> = new Map();
@@ -145,6 +152,13 @@ export default function POS() {
       setCategories([t('common.all'), ...cloudCategories]);
     } catch (error) {
       console.error('Error loading POS data:', error);
+      
+      // إعادة المحاولة في حالة الخطأ
+      if (retryCount < 3) {
+        console.log(`[POS] Error loading, retrying (${retryCount + 1}/3)...`);
+        setTimeout(() => loadData(retryCount + 1), 1500);
+        return;
+      }
     } finally {
       setIsLoadingProducts(false);
     }
@@ -156,15 +170,16 @@ export default function POS() {
 
     const onProductsUpdated = () => loadData();
     const onCategoriesUpdated = () => loadData();
+    const onFocus = () => loadData();
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-    window.addEventListener('focus', loadData);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-      window.removeEventListener('focus', loadData);
+      window.removeEventListener('focus', onFocus);
     };
   }, [loadData]);
 
