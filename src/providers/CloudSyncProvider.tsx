@@ -18,7 +18,8 @@ interface CloudSyncContextType {
   syncNow: () => Promise<void>;
 }
 
-const CloudSyncContext = createContext<CloudSyncContextType | null>(null);
+// Export context for safe usage in components that may render outside provider
+export const CloudSyncContext = createContext<CloudSyncContextType | null>(null);
 
 export const useCloudSyncContext = () => {
   const context = useContext(CloudSyncContext);

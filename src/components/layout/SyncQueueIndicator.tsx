@@ -2,24 +2,34 @@
  * Sync Queue Status Indicator
  * يعرض حالة طابور التزامن مع إمكانية إعادة المحاولة
  */
-import { useState, useEffect, forwardRef } from 'react';
-import { Cloud, CloudOff, RefreshCw, AlertTriangle, Check } from 'lucide-react';
+import { useState, useEffect, forwardRef, useContext } from 'react';
+import { Cloud, RefreshCw, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getQueueStatus, retryFailedOperations, SyncQueueStatus } from '@/lib/sync-queue';
 import { EVENTS } from '@/lib/events';
-import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
+
+// Import the context directly to check if it exists
+import { CloudSyncContext } from '@/providers/CloudSyncProvider';
+
+// Safe hook that returns null when used outside provider
+const useSafeCloudSyncContext = () => {
+  const context = useContext(CloudSyncContext);
+  return context; // May be null if outside provider
+};
 
 export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: string }>(
   ({ className }, ref) => {
     const [status, setStatus] = useState<SyncQueueStatus>(getQueueStatus());
     const [isRetrying, setIsRetrying] = useState(false);
-    const { isSyncing, syncNow } = useCloudSyncContext();
-    const { t, isRTL } = useLanguage();
+    const cloudContext = useSafeCloudSyncContext();
+    const { isRTL } = useLanguage();
+    
+    const isSyncing = cloudContext?.isSyncing ?? false;
+    const syncNow = cloudContext?.syncNow ?? (async () => {});
 
     useEffect(() => {
       const handleUpdate = (e: Event) => {
@@ -81,19 +91,6 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
         return <Cloud className="h-4 w-4 text-warning" />;
       }
       return <Check className="h-4 w-4 text-green-500" />;
-    };
-
-    const getStatusText = () => {
-      if (isActive) {
-        return isRTL ? 'جاري المزامنة...' : 'Syncing...';
-      }
-      if (hasIssues) {
-        return isRTL ? `${failedCount} عملية فاشلة` : `${failedCount} failed`;
-      }
-      if (totalPending > 0) {
-        return isRTL ? `${totalPending} بانتظار المزامنة` : `${totalPending} pending`;
-      }
-      return isRTL ? 'تمت المزامنة' : 'Synced';
     };
 
     return (
