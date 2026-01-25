@@ -50,6 +50,13 @@ export interface Product {
   size?: string;
   color?: string;
   customFields?: Record<string, string | number>;
+  // Unit settings for multi-unit support
+  bulkUnit?: string;
+  smallUnit?: string;
+  conversionFactor?: number;
+  bulkCostPrice?: number;
+  bulkSalePrice?: number;
+  trackByUnit?: 'piece' | 'bulk';
 }
 
 // Transform cloud product to legacy format
@@ -67,6 +74,13 @@ function toProduct(cloud: CloudProduct): Product {
     expiryDate: cloud.expiry_date || undefined,
     image: cloud.image_url || undefined,
     customFields: cloud.custom_fields as Record<string, string | number> | undefined,
+    // Unit settings
+    bulkUnit: (cloud as any).bulk_unit || 'كرتونة',
+    smallUnit: (cloud as any).small_unit || 'قطعة',
+    conversionFactor: (cloud as any).conversion_factor || 1,
+    bulkCostPrice: Number((cloud as any).bulk_cost_price) || 0,
+    bulkSalePrice: Number((cloud as any).bulk_sale_price) || 0,
+    trackByUnit: (cloud as any).track_by_unit || 'piece',
   };
 }
 
@@ -84,6 +98,13 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
     image_url: product.image || null,
     custom_fields: product.customFields || null,
     archived: false,
+    // Unit settings
+    bulk_unit: product.bulkUnit || 'كرتونة',
+    small_unit: product.smallUnit || 'قطعة',
+    conversion_factor: product.conversionFactor || 1,
+    bulk_cost_price: product.bulkCostPrice || 0,
+    bulk_sale_price: product.bulkSalePrice || 0,
+    track_by_unit: product.trackByUnit || 'piece',
   };
 }
 
@@ -156,6 +177,13 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.expiryDate !== undefined) updates.expiry_date = data.expiryDate || null;
   if (data.image !== undefined) updates.image_url = data.image || null;
   if (data.customFields !== undefined) updates.custom_fields = data.customFields || null;
+  // Unit settings
+  if (data.bulkUnit !== undefined) updates.bulk_unit = data.bulkUnit;
+  if (data.smallUnit !== undefined) updates.small_unit = data.smallUnit;
+  if (data.conversionFactor !== undefined) updates.conversion_factor = data.conversionFactor;
+  if (data.bulkCostPrice !== undefined) updates.bulk_cost_price = data.bulkCostPrice;
+  if (data.bulkSalePrice !== undefined) updates.bulk_sale_price = data.bulkSalePrice;
+  if (data.trackByUnit !== undefined) updates.track_by_unit = data.trackByUnit;
 
   const success = await updateInSupabase('products', id, updates);
   
