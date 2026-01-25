@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
 import { processQueue } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
+import { showToast } from '@/lib/toast-config';
+import { useNetworkStatus } from '@/hooks/use-network-status';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -38,9 +40,22 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   const [isReady, setIsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const { isOnline } = useNetworkStatus();
+  const [wasOffline, setWasOffline] = useState(false);
 
   // Enable realtime sync for instant updates across devices
   useRealtimeSync();
+  
+  // مراقبة عودة الاتصال بالإنترنت لتشغيل المزامنة التلقائية
+  useEffect(() => {
+    if (isOnline && wasOffline && user) {
+      // الاتصال عاد - بدء المزامنة التلقائية
+      console.log('[CloudSync] Internet restored, starting auto-sync...');
+      showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
+      syncNow();
+    }
+    setWasOffline(!isOnline);
+  }, [isOnline, wasOffline, user]);
 
   // Initialize cloud sync when user is authenticated
   useEffect(() => {
@@ -186,10 +201,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       emitEvent(EVENTS.SETTINGS_UPDATED);
 
       setLastSyncTime(new Date().toISOString());
-      toast.success('تمت المزامنة بنجاح');
+      showToast.success('تمت المزامنة بنجاح', 'تم رفع جميع البيانات المعلقة');
     } catch (error) {
       console.error('Manual sync error:', error);
-      toast.error('فشل في المزامنة');
+      showToast.error('فشل في المزامنة', { description: 'سيتم إعادة المحاولة لاحقاً' });
     } finally {
       setIsSyncing(false);
     }
