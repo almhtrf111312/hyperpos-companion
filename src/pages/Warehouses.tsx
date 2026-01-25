@@ -176,13 +176,21 @@ export default function Warehouses() {
       return;
     }
 
+    if (!formData.assigned_cashier_id) {
+      toast.error('يرجى اختيار الموزع');
+      return;
+    }
+
+    // Get phone from selected distributor
+    const selectedDistributor = cashiers.find(c => c.id === formData.assigned_cashier_id);
+
     const result = await addWarehouseCloud({
       name: formData.name,
-      type: formData.type,
-      assigned_cashier_id: formData.assigned_cashier_id || null,
+      type: 'vehicle', // Always vehicle type for new warehouses
+      assigned_cashier_id: formData.assigned_cashier_id,
       address: formData.address || null,
-      phone: formData.phone || null,
-      is_default: formData.type === 'main' && warehouses.filter(w => w.type === 'main').length === 0,
+      phone: selectedDistributor?.phone || null,
+      is_default: false,
       is_active: true
     });
 
@@ -320,104 +328,87 @@ export default function Warehouses() {
                 إضافة مستودع
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>إضافة مستودع جديد</DialogTitle>
+                <DialogTitle>إضافة مستودع موزع</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                {/* Distributor Select - Primary Field */}
                 <div>
-                  <Label>اسم المستودع</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="مثال: سيارة أحمد"
-                  />
-                </div>
-                
-                <div>
-                  <Label>نوع المستودع</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: 'main' | 'vehicle') => setFormData(prev => ({ ...prev, type: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="main">مستودع رئيسي</SelectItem>
-                      <SelectItem value="vehicle">مخزن موزع (سيارة)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>اختر الموزع</Label>
+                  {cashiers.length === 0 ? (
+                    <div className="p-4 border rounded-lg bg-muted/50 text-center mt-2">
+                      <User className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">لا يوجد موزعين</p>
+                      <Button 
+                        variant="link" 
+                        size="sm"
+                        onClick={() => window.location.href = '/settings?tab=users'}
+                      >
+                        إضافة موزع من الإعدادات
+                      </Button>
+                    </div>
+                  ) : (
+                    <Select
+                      value={formData.assigned_cashier_id}
+                      onValueChange={handleCashierSelect}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="انقر لاختيار الموزع" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover z-50">
+                        {cashiers.map(cashier => (
+                          <SelectItem key={cashier.id} value={cashier.id}>
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                              <span>{cashier.full_name || 'موزع'}</span>
+                              {cashier.phone && (
+                                <span className="text-xs text-muted-foreground">({cashier.phone})</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
-                {formData.type === 'vehicle' && (
+                {/* Auto-filled Name (editable) */}
+                {formData.assigned_cashier_id && (
                   <div>
-                    <Label>الموزع المسؤول</Label>
-                    {cashiers.length === 0 ? (
-                      <div className="p-3 border rounded-md bg-muted/50 text-center">
-                        <p className="text-sm text-muted-foreground">لا يوجد موزعين</p>
-                        <Button 
-                          variant="link" 
-                          size="sm"
-                          onClick={() => window.location.href = '/settings?tab=users'}
-                        >
-                          إضافة موزع جديد من الإعدادات
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <Select
-                          value={formData.assigned_cashier_id}
-                          onValueChange={handleCashierSelect}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="اختر الموزع" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {cashiers.map(cashier => (
-                              <SelectItem key={cashier.id} value={cashier.id}>
-                                <div className="flex flex-col items-start">
-                                  <span>{cashier.full_name || 'موزع'}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {cashier.email}{cashier.phone && ` • ${cashier.phone}`}
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          سيتم ملء بيانات المستودع تلقائياً من بيانات الموزع
-                        </p>
-                      </>
-                    )}
+                    <Label>اسم المستودع</Label>
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="سيتم ملؤه تلقائياً"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      تم ملء الاسم تلقائياً، يمكنك تعديله
+                    </p>
                   </div>
                 )}
 
+                {/* Optional Address */}
                 <div>
-                  <Label>العنوان (اختياري)</Label>
+                  <Label>العنوان <span className="text-muted-foreground text-xs">(اختياري)</span></Label>
                   <Input
                     value={formData.address}
                     onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                     placeholder="العنوان"
+                    className="mt-1"
                   />
                 </div>
 
-                <div>
-                  <Label>رقم الهاتف (اختياري)</Label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="رقم الهاتف"
-                  />
-                </div>
-
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                <div className="flex gap-2 justify-end pt-2">
+                  <Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetForm(); }}>
                     إلغاء
                   </Button>
-                  <Button onClick={handleAdd}>
-                    إضافة
+                  <Button 
+                    onClick={handleAdd}
+                    disabled={!formData.assigned_cashier_id || !formData.name.trim()}
+                  >
+                    إضافة المستودع
                   </Button>
                 </div>
               </div>
