@@ -175,10 +175,16 @@ export function CartPanel({
     setIsSaving(true);
     
     try {
+      // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
+      const stockItemsWithConversion = cart.map(item => ({
+        productId: item.id,
+        quantity: item.unit === 'bulk' && item.conversionFactor
+          ? item.quantity * item.conversionFactor
+          : item.quantity
+      }));
+      
       // التحقق من توفر الكميات في المخزون أولاً
-      const stockCheck = checkStockAvailability(
-        cart.map(item => ({ productId: item.id, quantity: item.quantity }))
-      );
+      const stockCheck = checkStockAvailability(stockItemsWithConversion);
       
       if (!stockCheck.success) {
         const insufficientNames = stockCheck.insufficientItems
@@ -204,7 +210,12 @@ export function CartPanel({
       cart.forEach((item) => {
         const product = products.find(p => p.id === item.id);
         if (product) {
-          const itemProfit = (item.price - product.costPrice) * item.quantity;
+          // استخدام سعر التكلفة المناسب بناءً على الوحدة
+          const costPrice = item.unit === 'bulk' && item.bulkCostPrice
+            ? item.bulkCostPrice
+            : (item.costPrice || product.costPrice);
+          
+          const itemProfit = (item.price - costPrice) * item.quantity;
           const category = product.category || 'عام';
           profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
           totalProfit += itemProfit;
@@ -253,11 +264,17 @@ export function CartPanel({
       }
       
       // Deduct stock from inventory (warehouse-specific if available)
-      const stockItems = cart.map(item => ({ productId: item.id, quantity: item.quantity }));
+      // استخدام الكمية الفعلية بالقطع (مع معامل التحويل)
+      const stockItemsToDeduct = cart.map(item => ({
+        productId: item.id,
+        quantity: item.unit === 'bulk' && item.conversionFactor
+          ? item.quantity * item.conversionFactor
+          : item.quantity
+      }));
       if (activeWarehouse) {
-        await deductWarehouseStockBatchCloud(activeWarehouse.id, stockItems);
+        await deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct);
       } else {
-        await deductStockBatchCloud(stockItems);
+        await deductStockBatchCloud(stockItemsToDeduct);
       }
       
       // Update customer stats
@@ -290,10 +307,16 @@ export function CartPanel({
   };
 
   const confirmDebtSale = () => {
+    // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
+    const stockItemsWithConversion = cart.map(item => ({
+      productId: item.id,
+      quantity: item.unit === 'bulk' && item.conversionFactor
+        ? item.quantity * item.conversionFactor
+        : item.quantity
+    }));
+    
     // التحقق من توفر الكميات في المخزون أولاً
-    const stockCheck = checkStockAvailability(
-      cart.map(item => ({ productId: item.id, quantity: item.quantity }))
-    );
+    const stockCheck = checkStockAvailability(stockItemsWithConversion);
     
     if (!stockCheck.success) {
       const insufficientNames = stockCheck.insufficientItems
@@ -321,7 +344,12 @@ export function CartPanel({
     cart.forEach((item) => {
       const product = products.find(p => p.id === item.id);
       if (product) {
-        const itemProfit = (item.price - product.costPrice) * item.quantity;
+        // استخدام سعر التكلفة المناسب بناءً على الوحدة
+        const costPrice = item.unit === 'bulk' && item.bulkCostPrice
+          ? item.bulkCostPrice
+          : (item.costPrice || product.costPrice);
+        
+        const itemProfit = (item.price - costPrice) * item.quantity;
         const category = product.category || 'عام';
         profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
         totalProfit += itemProfit;
@@ -378,11 +406,17 @@ export function CartPanel({
     }
     
     // Deduct stock from inventory (warehouse-specific if available)
-    const stockItems = cart.map(item => ({ productId: item.id, quantity: item.quantity }));
+    // استخدام الكمية الفعلية بالقطع (مع معامل التحويل)
+    const stockItemsToDeduct = cart.map(item => ({
+      productId: item.id,
+      quantity: item.unit === 'bulk' && item.conversionFactor
+        ? item.quantity * item.conversionFactor
+        : item.quantity
+    }));
     if (activeWarehouse) {
-      deductWarehouseStockBatchCloud(activeWarehouse.id, stockItems);
+      deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct);
     }
-    deductStockBatch(stockItems);
+    deductStockBatch(stockItemsToDeduct);
     
     // Update customer stats
     updateCustomerStats(customer.id, total, true);

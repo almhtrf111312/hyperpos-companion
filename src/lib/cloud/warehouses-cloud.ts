@@ -247,6 +247,33 @@ export const deductWarehouseStockBatchCloud = async (
   return { success: failed === 0, deducted, failed };
 };
 
+// Check warehouse stock availability (for POS validation)
+export const checkWarehouseStockAvailability = async (
+  warehouseId: string,
+  items: { productId: string; quantity: number; productName?: string }[]
+): Promise<{
+  success: boolean;
+  insufficientItems: Array<{ productName: string; available: number; requested: number }>
+}> => {
+  const stock = await loadWarehouseStockCloud(warehouseId);
+  const insufficientItems: Array<{ productName: string; available: number; requested: number }> = [];
+  
+  for (const item of items) {
+    const stockItem = stock.find(s => s.product_id === item.productId);
+    const available = stockItem?.quantity || 0;
+    
+    if (available < item.quantity) {
+      insufficientItems.push({
+        productName: item.productName || item.productId,
+        available,
+        requested: item.quantity
+      });
+    }
+  }
+  
+  return { success: insufficientItems.length === 0, insufficientItems };
+};
+
 // ==================== Stock Transfers ====================
 
 // Generate transfer number
