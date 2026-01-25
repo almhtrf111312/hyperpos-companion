@@ -14,7 +14,9 @@ import {
   UserPlus,
   Check,
   Search,
-  DollarSign
+  DollarSign,
+  Package,
+  Repeat
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +60,14 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  // Multi-unit support
+  unit: 'piece' | 'bulk';
+  bulkUnit?: string;
+  smallUnit?: string;
+  conversionFactor?: number;
+  bulkSalePrice?: number;
+  costPrice?: number;
+  bulkCostPrice?: number;
 }
 
 interface Currency {
@@ -73,12 +83,13 @@ interface CartPanelProps {
   selectedCurrency: Currency;
   discount: number;
   customerName: string;
-  onUpdateQuantity: (id: string, change: number) => void;
-  onRemoveItem: (id: string) => void;
+  onUpdateQuantity: (id: string, change: number, unit?: 'piece' | 'bulk') => void;
+  onRemoveItem: (id: string, unit?: 'piece' | 'bulk') => void;
   onClearCart: () => void;
   onCurrencyChange: (currency: Currency) => void;
   onDiscountChange: (discount: number) => void;
   onCustomerNameChange: (name: string) => void;
+  onToggleUnit?: (id: string, currentUnit: 'piece' | 'bulk') => void;
   onClose?: () => void;
   isMobile?: boolean;
 }
@@ -95,6 +106,7 @@ export function CartPanel({
   onCurrencyChange,
   onDiscountChange,
   onCustomerNameChange,
+  onToggleUnit,
   onClose,
   isMobile = false,
 }: CartPanelProps) {
@@ -637,14 +649,42 @@ export function CartPanel({
           ) : (
             cart.map((item, index) => (
               <div 
-                key={item.id}
+                key={`${item.id}-${item.unit}`}
                 className="bg-muted rounded-lg md:rounded-xl p-2.5 md:p-3 slide-in-right"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h4 className="font-medium text-xs md:text-sm line-clamp-2">{item.name}</h4>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-xs md:text-sm line-clamp-2">{item.name}</h4>
+                    {/* Unit Badge with Toggle */}
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                        item.unit === 'bulk' 
+                          ? 'bg-primary/20 text-primary' 
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                      }`}>
+                        {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
+                      </span>
+                      {/* Toggle Unit Button - only show if bulk pricing exists */}
+                      {item.bulkSalePrice && item.bulkSalePrice > 0 && onToggleUnit && (
+                        <button
+                          onClick={() => onToggleUnit(item.id, item.unit)}
+                          className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                          title={item.unit === 'bulk' ? 'تحويل إلى قطعة' : 'تحويل إلى كرتونة'}
+                        >
+                          <Repeat className="w-3 h-3" />
+                        </button>
+                      )}
+                      {/* Show conversion info */}
+                      {item.unit === 'bulk' && item.conversionFactor && item.conversionFactor > 1 && (
+                        <span className="text-[9px] text-muted-foreground">
+                          ({item.conversionFactor} {item.smallUnit || 'قطعة'})
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <button
-                    onClick={() => onRemoveItem(item.id)}
+                    onClick={() => onRemoveItem(item.id, item.unit)}
                     className="p-1 text-muted-foreground hover:text-destructive transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -653,14 +693,14 @@ export function CartPanel({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 md:gap-2">
                     <button
-                      onClick={() => onUpdateQuantity(item.id, -1)}
+                      onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
                       className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
                     >
                       <Minus className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
                     <span className="w-6 md:w-8 text-center font-semibold text-sm">{item.quantity}</span>
                     <button
-                      onClick={() => onUpdateQuantity(item.id, 1)}
+                      onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
                       className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
                     >
                       <Plus className="w-3 h-3 md:w-4 md:h-4" />
