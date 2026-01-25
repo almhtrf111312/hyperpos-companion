@@ -69,11 +69,15 @@ export default function DataResetSection() {
       }
 
       // Password verified, proceed with data reset
+      // This now clears local immediately and schedules cloud clear if offline
       const success = await clearAllDataCompletely();
 
       if (success) {
         toast.success(t('settings.resetDataSuccess', language), {
           icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+          description: navigator.onLine 
+            ? undefined 
+            : 'سيتم مسح البيانات السحابية عند عودة الإنترنت',
         });
         setShowConfirmDialog(false);
         

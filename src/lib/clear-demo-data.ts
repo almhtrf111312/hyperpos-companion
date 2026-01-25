@@ -55,26 +55,26 @@ export const clearAllUserData = () => {
 };
 
 /**
- * ✅ مسح شامل للبيانات (Local + Cloud)
- * يمسح جميع البيانات من localStorage و Supabase
+ * ✅ مسح شامل للبيانات (Local فوري + Cloud عند توفر الإنترنت)
+ * يمسح البيانات المحلية فوراً ويحاول مسح السحابة
+ * إذا فشل مسح السحابة (بسبب عدم الاتصال) يُجدول لاحقاً
  */
 export const clearAllDataCompletely = async (): Promise<boolean> => {
+  const PENDING_CLOUD_CLEAR_KEY = 'hyperpos_pending_cloud_clear';
+  
   try {
-    // 1. مسح Cloud (Supabase)
-    await deleteAllUserData();
-    
-    // 2. مسح Local Storage
+    // 1. مسح Local Storage فوراً (لا يحتاج إنترنت)
     STORAGE_KEYS_TO_CLEAR.forEach(key => {
       localStorage.removeItem(key);
     });
     
-    // 3. إعادة تعيين الصندوق لصفر
+    // 2. إعادة تعيين الصندوق لصفر
     localStorage.setItem('hyperpos_cashbox_v1', JSON.stringify({
       currentBalance: 0,
       lastUpdated: new Date().toISOString(),
     }));
     
-    // 4. إعادة تعيين رأس المال
+    // 3. إعادة تعيين رأس المال
     localStorage.setItem('hyperpos_capital_v1', JSON.stringify({
       initialCapital: 0,
       currentCapital: 0,
@@ -84,10 +84,56 @@ export const clearAllDataCompletely = async (): Promise<boolean> => {
       lastUpdated: new Date().toISOString(),
     }));
     
-    console.log('[ClearData] All data cleared successfully');
+    console.log('[ClearData] Local data cleared successfully');
+    
+    // 4. محاولة مسح Cloud مع timeout
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    
+    if (!isOnline) {
+      // لا يوجد إنترنت - جدول المسح لاحقاً
+      localStorage.setItem(PENDING_CLOUD_CLEAR_KEY, 'true');
+      console.log('[ClearData] Offline - cloud clear scheduled for later');
+      return true; // نعتبرها نجاح لأن المحلي تم مسحه
+    }
+    
+    // محاولة مسح السحابة مع timeout 10 ثواني
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => reject(new Error('Cloud clear timeout')), 10000);
+    });
+    
+    try {
+      await Promise.race([
+        deleteAllUserData(),
+        timeoutPromise
+      ]);
+      console.log('[ClearData] Cloud data cleared successfully');
+    } catch (cloudError) {
+      console.warn('[ClearData] Cloud clear failed or timed out:', cloudError);
+      // جدول المسح لاحقاً
+      localStorage.setItem(PENDING_CLOUD_CLEAR_KEY, 'true');
+    }
+    
     return true;
   } catch (error) {
     console.error('[ClearData] Failed to clear data:', error);
     return false;
+  }
+};
+
+/**
+ * تنفيذ مسح السحابة المعلق (يُستدعى عند عودة الإنترنت)
+ */
+export const executePendingCloudClear = async (): Promise<void> => {
+  const PENDING_CLOUD_CLEAR_KEY = 'hyperpos_pending_cloud_clear';
+  const isPending = localStorage.getItem(PENDING_CLOUD_CLEAR_KEY);
+  
+  if (!isPending) return;
+  
+  try {
+    await deleteAllUserData();
+    localStorage.removeItem(PENDING_CLOUD_CLEAR_KEY);
+    console.log('[ClearData] Pending cloud clear executed successfully');
+  } catch (error) {
+    console.error('[ClearData] Failed to execute pending cloud clear:', error);
   }
 };

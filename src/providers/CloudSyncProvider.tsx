@@ -5,6 +5,7 @@ import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/s
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { toast } from 'sonner';
+import { executePendingCloudClear } from '@/lib/clear-demo-data';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -135,6 +136,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setIsSyncing(true);
 
     try {
+      // أولاً: تنفيذ أي مسح سحابي معلق
+      await executePendingCloudClear();
+      
       // Invalidate all caches to force fresh data
       const { invalidateAllCaches } = await import('@/lib/cloud');
       invalidateAllCaches();
