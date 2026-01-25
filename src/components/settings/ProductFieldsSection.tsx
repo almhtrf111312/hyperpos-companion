@@ -8,6 +8,7 @@ import {
   ProductFieldsConfig,
   loadProductFieldsConfig,
   saveProductFieldsConfig,
+  syncProductFieldsFromCloud,
   getDefaultFieldsByStoreType,
   FIELD_LABELS,
   StoreType,
@@ -28,11 +29,20 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    // Check if user has custom config, otherwise use store type defaults
-    const userConfig = loadProductFieldsConfig();
-    if (!userConfig) {
-      setConfig(getDefaultFieldsByStoreType(storeType as StoreType));
-    }
+    // Sync from cloud on mount
+    const syncFromCloud = async () => {
+      const cloudConfig = await syncProductFieldsFromCloud();
+      if (cloudConfig) {
+        setConfig(cloudConfig);
+      } else {
+        // Check if user has custom config, otherwise use store type defaults
+        const userConfig = loadProductFieldsConfig();
+        if (!userConfig) {
+          setConfig(getDefaultFieldsByStoreType(storeType as StoreType));
+        }
+      }
+    };
+    syncFromCloud();
   }, [storeType]);
 
   const handleToggle = (field: keyof ProductFieldsConfig) => {
@@ -43,20 +53,20 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    const success = saveProductFieldsConfig(config);
+  const handleSave = async () => {
+    const success = await saveProductFieldsConfig(config);
     if (success) {
-      toast.success('تم حفظ إعدادات الحقول');
+      toast.success('تم حفظ إعدادات الحقول ومزامنتها');
       setHasChanges(false);
     } else {
       toast.error('فشل في حفظ الإعدادات');
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     const defaults = getDefaultFieldsByStoreType(storeType as StoreType);
     setConfig(defaults);
-    saveProductFieldsConfig(defaults);
+    await saveProductFieldsConfig(defaults);
     setHasChanges(false);
     toast.success('تم استعادة الإعدادات الافتراضية');
   };

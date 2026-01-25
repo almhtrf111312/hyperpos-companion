@@ -104,6 +104,7 @@ interface BackupSettingsType {
 type PersistedSettings = {
   storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
   exchangeRates?: Partial<{ TRY: string; SYP: string }>;
+  currencyNames?: Partial<{ TRY: string; SYP: string }>;
   syncSettings?: Partial<SyncSettingsType>;
   notificationSettings?: Partial<NotificationSettingsType>;
   printSettings?: Partial<PrintSettingsType>;
@@ -233,6 +234,12 @@ export default function Settings() {
     TRY: persisted?.exchangeRates?.TRY ?? '32',
     SYP: persisted?.exchangeRates?.SYP ?? '14500',
   });
+  
+  // Custom currency names
+  const [currencyNames, setCurrencyNames] = useState({
+    TRY: persisted?.currencyNames?.TRY ?? 'الليرة التركية',
+    SYP: persisted?.currencyNames?.SYP ?? 'الليرة السورية',
+  });
 
   // Sync settings
   const [syncSettings, setSyncSettings] = useState({
@@ -342,6 +349,7 @@ export default function Settings() {
     savePersistedSettings({
       storeSettings,
       exchangeRates,
+      currencyNames,
       syncSettings,
       notificationSettings,
       printSettings,
@@ -885,32 +893,56 @@ export default function Settings() {
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
             <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.exchangeRates')}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* العملة الأولى */}
+            <div className="bg-muted/50 rounded-xl p-4 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">{t('settings.turkishLira')}</label>
+                <label className="text-sm font-medium text-foreground">اسم العملة الأولى</label>
+                <Input
+                  value={currencyNames.TRY}
+                  onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
+                  className="bg-background border-border"
+                  placeholder="الليرة التركية"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">سعر الصرف</label>
                 <div className="relative">
                   <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     value={exchangeRates.TRY}
                     onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
-                    className="pr-10 bg-muted border-0"
+                    className="pr-10 bg-background border-border"
                     placeholder="32"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {t('settings.turkishLiraShort')}</p>
+                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
+              </div>
+            </div>
+            
+            {/* العملة الثانية */}
+            <div className="bg-muted/50 rounded-xl p-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">اسم العملة الثانية</label>
+                <Input
+                  value={currencyNames.SYP}
+                  onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
+                  className="bg-background border-border"
+                  placeholder="الليرة السورية"
+                />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">{t('settings.syrianPound')}</label>
+                <label className="text-sm font-medium text-foreground">سعر الصرف</label>
                 <div className="relative">
                   <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     value={exchangeRates.SYP}
                     onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
-                    className="pr-10 bg-muted border-0"
+                    className="pr-10 bg-background border-border"
                     placeholder="14500"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.SYP} {t('settings.syrianPoundShort')}</p>
+                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.SYP} {currencyNames.SYP}</p>
               </div>
             </div>
           </div>

@@ -1,6 +1,8 @@
 // Product Fields Configuration - Dynamic fields based on store type and user preferences
 
 import { emitEvent, EVENTS } from './events';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUserId } from './supabase-store';
 
 export interface ProductFieldsConfig {
   expiryDate: boolean;
@@ -79,7 +81,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
 
 const PRODUCT_FIELDS_STORAGE_KEY = 'hyperpos_product_fields_v1';
 
-// Load user-defined field configuration
+// Load user-defined field configuration from localStorage (for instant access)
 export const loadProductFieldsConfig = (): ProductFieldsConfig | null => {
   try {
     const stored = localStorage.getItem(PRODUCT_FIELDS_STORAGE_KEY);
@@ -92,16 +94,75 @@ export const loadProductFieldsConfig = (): ProductFieldsConfig | null => {
   return null;
 };
 
-// Save user-defined field configuration
-export const saveProductFieldsConfig = (config: ProductFieldsConfig): boolean => {
+// Save user-defined field configuration (to both localStorage and cloud)
+export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Promise<boolean> => {
   try {
+    // Save to localStorage for instant access
     localStorage.setItem(PRODUCT_FIELDS_STORAGE_KEY, JSON.stringify(config));
+    
     // Emit event to notify components in the same tab
     emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, config);
+    
+    // Sync to cloud
+    const userId = getCurrentUserId();
+    if (userId) {
+      // Use sync_settings JSONB column to store product fields config
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('stores')
+        .update({ 
+          sync_settings: { 
+            productFieldsConfig: config 
+          } 
+        })
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Failed to sync product fields to cloud:', error);
+      } else {
+        console.log('[ProductFields] Synced to cloud successfully');
+      }
+    }
+    
     return true;
   } catch (error) {
     console.error('Failed to save product fields config:', error);
     return false;
+  }
+};
+
+// Load product fields from cloud and sync to localStorage
+export const syncProductFieldsFromCloud = async (): Promise<ProductFieldsConfig | null> => {
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+    
+    const { data, error } = await supabase
+      .from('stores')
+      .select('sync_settings')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Failed to fetch product fields from cloud:', error);
+      return null;
+    }
+    
+    const syncSettings = data?.sync_settings as { productFieldsConfig?: ProductFieldsConfig } | null;
+    const cloudConfig = syncSettings?.productFieldsConfig;
+    
+    if (cloudConfig) {
+      // Sync to localStorage
+      localStorage.setItem(PRODUCT_FIELDS_STORAGE_KEY, JSON.stringify(cloudConfig));
+      emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, cloudConfig);
+      console.log('[ProductFields] Synced from cloud to localStorage');
+      return cloudConfig;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Failed to sync product fields from cloud:', error);
+    return null;
   }
 };
 
