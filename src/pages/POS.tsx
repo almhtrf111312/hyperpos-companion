@@ -13,11 +13,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { loadProductsCloud, getProductByBarcodeCloud, Product } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { loadWarehouseStockCloud } from '@/lib/cloud/warehouses-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
+import { useWarehouse } from '@/hooks/use-warehouse';
 
 // POS Product type for display
 interface POSProduct {
@@ -77,6 +79,7 @@ export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { t } = useLanguage();
+  const { activeWarehouse } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
@@ -104,13 +107,24 @@ export default function POS() {
         getCategoryNamesCloud()
       ]);
       
+      // جلب مخزون المستودع إذا كان الكاشير مسنداً لمستودع
+      let warehouseStock: Map<string, number> = new Map();
+      if (activeWarehouse) {
+        const stock = await loadWarehouseStockCloud(activeWarehouse.id);
+        stock.forEach(s => warehouseStock.set(s.product_id, s.quantity));
+      }
+      
       // Transform to POS format with multi-unit support
+      // ✅ استخدام مخزون المستودع إذا متاح، وإلا المخزون العام
       const posProducts: POSProduct[] = cloudProducts.map(p => ({
         id: p.id,
         name: p.name,
         price: p.salePrice,
         category: p.category,
-        quantity: p.quantity,
+        // عرض مخزون المستودع المُسند للموزعين، أو المخزون العام للآخرين
+        quantity: activeWarehouse 
+          ? (warehouseStock.get(p.id) || 0) 
+          : p.quantity,
         image: p.image,
         barcode: p.barcode,
         // Multi-unit fields
@@ -129,7 +143,7 @@ export default function POS() {
     } finally {
       setIsLoadingProducts(false);
     }
-  }, [t]);
+  }, [t, activeWarehouse]);
 
   // Reload data when component mounts or when returning to this page
   useEffect(() => {

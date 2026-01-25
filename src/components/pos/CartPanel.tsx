@@ -38,7 +38,7 @@ import { showToast } from '@/lib/toast-config';
 import { addInvoice } from '@/lib/invoices-store';
 import { findOrCreateCustomer, updateCustomerStats, loadCustomers, Customer } from '@/lib/customers-store';
 import { addDebtFromInvoice } from '@/lib/debts-store';
-import { loadProducts, deductStockBatch, checkStockAvailability } from '@/lib/products-store';
+import { loadProducts, deductStockBatch } from '@/lib/products-store';
 import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -53,8 +53,8 @@ import {
   updateCustomerStatsCloud 
 } from '@/lib/cloud/customers-cloud';
 import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
-import { deductStockBatchCloud } from '@/lib/cloud/products-cloud';
-import { deductWarehouseStockBatchCloud } from '@/lib/cloud/warehouses-cloud';
+import { deductStockBatchCloud, checkStockAvailabilityCloud } from '@/lib/cloud/products-cloud';
+import { deductWarehouseStockBatchCloud, checkWarehouseStockAvailability } from '@/lib/cloud/warehouses-cloud';
 import { useWarehouse } from '@/hooks/use-warehouse';
 
 interface CartItem {
@@ -178,13 +178,21 @@ export function CartPanel({
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
       const stockItemsWithConversion = cart.map(item => ({
         productId: item.id,
+        productName: item.name,
         quantity: item.unit === 'bulk' && item.conversionFactor
           ? item.quantity * item.conversionFactor
           : item.quantity
       }));
       
-      // التحقق من توفر الكميات في المخزون أولاً
-      const stockCheck = checkStockAvailability(stockItemsWithConversion);
+      // التحقق من توفر الكميات - استخدام المستودع المُسند إذا متاح
+      let stockCheck;
+      if (activeWarehouse) {
+        // التحقق من مخزون المستودع المُسند (للموزعين)
+        stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
+      } else {
+        // التحقق من المخزون العام
+        stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
+      }
       
       if (!stockCheck.success) {
         const insufficientNames = stockCheck.insufficientItems
@@ -210,10 +218,22 @@ export function CartPanel({
       cart.forEach((item) => {
         const product = products.find(p => p.id === item.id);
         if (product) {
-          // استخدام سعر التكلفة المناسب بناءً على الوحدة
-          const costPrice = item.unit === 'bulk' && item.bulkCostPrice
-            ? item.bulkCostPrice
-            : (item.costPrice || product.costPrice);
+          // ✅ إصلاح: استخدام سعر التكلفة المناسب بناءً على الوحدة
+          let costPrice: number;
+          
+          if (item.unit === 'bulk') {
+            // إذا كان البيع بالكرتونة
+            if (item.bulkCostPrice && item.bulkCostPrice > 0) {
+              // استخدام سعر تكلفة الكرتونة إذا كان محدداً
+              costPrice = item.bulkCostPrice;
+            } else {
+              // حساب تكلفة الكرتونة = سعر القطعة × معامل التحويل
+              costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
+            }
+          } else {
+            // البيع بالقطعة
+            costPrice = item.costPrice || product.costPrice;
+          }
           
           const itemProfit = (item.price - costPrice) * item.quantity;
           const category = product.category || 'عام';
@@ -306,17 +326,25 @@ export function CartPanel({
     }
   };
 
-  const confirmDebtSale = () => {
+  const confirmDebtSale = async () => {
     // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
     const stockItemsWithConversion = cart.map(item => ({
       productId: item.id,
+      productName: item.name,
       quantity: item.unit === 'bulk' && item.conversionFactor
         ? item.quantity * item.conversionFactor
         : item.quantity
     }));
     
-    // التحقق من توفر الكميات في المخزون أولاً
-    const stockCheck = checkStockAvailability(stockItemsWithConversion);
+    // ✅ إصلاح: التحقق من المخزون الصحيح بناءً على المستودع المُسند
+    let stockCheck;
+    if (activeWarehouse) {
+      // التحقق من مخزون المستودع المُسند (للموزعين)
+      stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
+    } else {
+      // التحقق من المخزون العام
+      stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
+    }
     
     if (!stockCheck.success) {
       const insufficientNames = stockCheck.insufficientItems
@@ -344,10 +372,22 @@ export function CartPanel({
     cart.forEach((item) => {
       const product = products.find(p => p.id === item.id);
       if (product) {
-        // استخدام سعر التكلفة المناسب بناءً على الوحدة
-        const costPrice = item.unit === 'bulk' && item.bulkCostPrice
-          ? item.bulkCostPrice
-          : (item.costPrice || product.costPrice);
+        // ✅ إصلاح: استخدام سعر التكلفة المناسب بناءً على الوحدة
+        let costPrice: number;
+        
+        if (item.unit === 'bulk') {
+          // إذا كان البيع بالكرتونة
+          if (item.bulkCostPrice && item.bulkCostPrice > 0) {
+            // استخدام سعر تكلفة الكرتونة إذا كان محدداً
+            costPrice = item.bulkCostPrice;
+          } else {
+            // حساب تكلفة الكرتونة = سعر القطعة × معامل التحويل
+            costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
+          }
+        } else {
+          // البيع بالقطعة
+          costPrice = item.costPrice || product.costPrice;
+        }
         
         const itemProfit = (item.price - costPrice) * item.quantity;
         const category = product.category || 'عام';
@@ -405,18 +445,24 @@ export function CartPanel({
       distributeDetailedProfit(categoryProfits, invoice.id, customerName, true);
     }
     
-    // Deduct stock from inventory (warehouse-specific if available)
-    // استخدام الكمية الفعلية بالقطع (مع معامل التحويل)
+    // ✅ إصلاح الخصم المزدوج: خصم من مصدر واحد فقط
+    // إذا كان هناك مستودع مُسند، نخصم منه فقط
+    // وإلا نخصم من المخزون العام
     const stockItemsToDeduct = cart.map(item => ({
       productId: item.id,
+      productName: item.name,
       quantity: item.unit === 'bulk' && item.conversionFactor
         ? item.quantity * item.conversionFactor
         : item.quantity
     }));
+    
     if (activeWarehouse) {
-      deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct);
+      // خصم من المستودع المُسند فقط
+      await deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct);
+    } else {
+      // خصم من المخزون العام فقط
+      await deductStockBatchCloud(stockItemsToDeduct);
     }
-    deductStockBatch(stockItemsToDeduct);
     
     // Update customer stats
     updateCustomerStats(customer.id, total, true);
