@@ -170,6 +170,10 @@ export default function StockTransfer() {
       const success = await completeStockTransferCloud(transfer.id);
       if (success) {
         toast.success('تم تأكيد التحويل بنجاح');
+        
+        // طباعة وصل استلام العهدة تلقائياً بعد التأكيد
+        await printTransferReceipt(transfer);
+        
         const newTransfers = await loadStockTransfersCloud();
         setTransfers(newTransfers);
         refreshWarehouses();
