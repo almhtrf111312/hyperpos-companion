@@ -43,6 +43,13 @@ jobs:
               "electron/**/*",
               "resources/**/*"
             ],
+            "extraResources": [
+              {
+                "from": "dist",
+                "to": "dist",
+                "filter": ["**/*"]
+              }
+            ],
             "win": {
               "target": [
                 {
