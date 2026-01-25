@@ -661,6 +661,7 @@ ${partnerExpenses.map(exp => {
   const maxSales = Math.max(...reportData.dailySales.map(d => d.sales), 1);
 
   return (
+    <MainLayout>
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
@@ -1253,5 +1254,6 @@ ${partnerExpenses.map(exp => {
         </div>
       )}
     </div>
+    </MainLayout>
   );
 }
