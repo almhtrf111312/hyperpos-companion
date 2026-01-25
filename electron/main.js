@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow;
 
@@ -15,28 +16,59 @@ function createWindow() {
       contextIsolation: true,
     },
     show: false,
-    titleBarStyle: 'default',
-    autoHideMenuBar: false,
+    frame: true,
+    autoHideMenuBar: true, // Hide menu bar by default
     backgroundColor: '#1a1a2e',
   });
 
-  // Load the production URL or local file
+  // Remove menu completely for clean native app look
+  Menu.setApplicationMenu(null);
+
+  // Load the application
   const isDev = process.env.NODE_ENV === 'development';
   
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    // Try loading from local dist first, fallback to remote URL
-    const localPath = path.join(__dirname, '../dist/index.html');
-    const fs = require('fs');
+    // Production: Try multiple paths
+    const possiblePaths = [
+      path.join(__dirname, '../dist/index.html'),      // Standard build
+      path.join(__dirname, 'dist/index.html'),          // Electron folder
+      path.join(process.resourcesPath, 'dist/index.html'), // Packaged app
+      path.join(app.getAppPath(), 'dist/index.html'),   // App path
+    ];
     
-    if (fs.existsSync(localPath)) {
-      mainWindow.loadFile(localPath);
-    } else {
+    let loaded = false;
+    for (const filePath of possiblePaths) {
+      if (fs.existsSync(filePath)) {
+        console.log('Loading from:', filePath);
+        mainWindow.loadFile(filePath);
+        loaded = true;
+        break;
+      }
+    }
+    
+    // Fallback to online version if local files not found
+    if (!loaded) {
+      console.log('Local files not found, loading online version');
       mainWindow.loadURL('https://propos.lovable.app');
     }
   }
+
+  // Handle load errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
+    
+    // Try loading error page
+    const errorPath = path.join(__dirname, 'error.html');
+    if (fs.existsSync(errorPath)) {
+      mainWindow.loadFile(errorPath);
+    } else {
+      // Fallback to online version
+      mainWindow.loadURL('https://propos.lovable.app');
+    }
+  });
 
   // Show when ready
   mainWindow.once('ready-to-show', () => {
@@ -53,70 +85,6 @@ function createWindow() {
     shell.openExternal(url);
     return { action: 'deny' };
   });
-
-  // Create menu
-  const template = [
-    {
-      label: 'ملف',
-      submenu: [
-        { role: 'quit', label: 'خروج' }
-      ]
-    },
-    {
-      label: 'تحرير',
-      submenu: [
-        { role: 'undo', label: 'تراجع' },
-        { role: 'redo', label: 'إعادة' },
-        { type: 'separator' },
-        { role: 'cut', label: 'قص' },
-        { role: 'copy', label: 'نسخ' },
-        { role: 'paste', label: 'لصق' },
-        { role: 'selectAll', label: 'تحديد الكل' }
-      ]
-    },
-    {
-      label: 'عرض',
-      submenu: [
-        { role: 'reload', label: 'إعادة تحميل' },
-        { role: 'forceReload', label: 'إعادة تحميل إجباري' },
-        { role: 'toggleDevTools', label: 'أدوات المطور' },
-        { type: 'separator' },
-        { role: 'resetZoom', label: 'إعادة تعيين التكبير' },
-        { role: 'zoomIn', label: 'تكبير' },
-        { role: 'zoomOut', label: 'تصغير' },
-        { type: 'separator' },
-        { role: 'togglefullscreen', label: 'ملء الشاشة' }
-      ]
-    },
-    {
-      label: 'نافذة',
-      submenu: [
-        { role: 'minimize', label: 'تصغير' },
-        { role: 'close', label: 'إغلاق' }
-      ]
-    },
-    {
-      label: 'مساعدة',
-      submenu: [
-        {
-          label: 'حول FlowPOS Pro',
-          click: () => {
-            const { dialog } = require('electron');
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'حول FlowPOS Pro',
-              message: 'FlowPOS Pro',
-              detail: `الإصدار: ${app.getVersion()}\n\nنظام متكامل لإدارة المبيعات والمخزون`,
-              buttons: ['موافق']
-            });
-          }
-        }
-      ]
-    }
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
 }
 
 app.whenReady().then(createWindow);

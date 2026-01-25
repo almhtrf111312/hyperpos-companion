@@ -6,6 +6,8 @@ import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
+import { processQueue } from '@/lib/sync-queue';
+import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -139,7 +141,17 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       // أولاً: تنفيذ أي مسح سحابي معلق
       await executePendingCloudClear();
       
-      // Invalidate all caches to force fresh data
+      // ثانياً: معالجة طابور المزامنة (البيع بالدين وغيرها)
+      await processQueue(async (operation) => {
+        if (operation.type === 'debt_sale_bundle') {
+          return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
+        }
+        // أنواع أخرى يمكن إضافتها هنا
+        console.log('[SyncQueue] Processing operation:', operation.type);
+        return true; // Default: mark as processed
+      });
+      
+      // ثالثاً: إبطال الكاش وجلب البيانات الجديدة
       const { invalidateAllCaches } = await import('@/lib/cloud');
       invalidateAllCaches();
 
