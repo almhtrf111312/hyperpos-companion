@@ -18,7 +18,8 @@ import {
   Receipt,
   Share2,
   MessageCircle,
-  ClipboardList
+  ClipboardList,
+  Truck
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
 import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
+import { DistributorInventoryReport } from '@/components/reports/DistributorInventoryReport';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import { 
   exportInvoicesToExcel, 
@@ -63,7 +65,7 @@ export default function Reports() {
   // Auto-open tab from URL params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses'].includes(tab)) {
+    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -78,6 +80,7 @@ export default function Reports() {
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
+    { id: 'distributor-inventory', label: 'جرد العهدة', icon: Truck },
   ];
 
   // Calculate real data from stores
@@ -1045,6 +1048,11 @@ ${partnerExpenses.map(exp => {
       {/* Partner Detailed Report */}
       {activeReport === 'partner-detailed' && (
         <PartnerProfitDetailedReport dateRange={dateRange} />
+      )}
+
+      {/* Distributor Inventory Report - جرد العهدة */}
+      {activeReport === 'distributor-inventory' && (
+        <DistributorInventoryReport />
       )}
 
       {/* Expenses Report */}

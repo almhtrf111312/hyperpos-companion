@@ -28,6 +28,13 @@ interface POSProduct {
   quantity: number;
   image?: string;
   barcode?: string;
+  // Multi-unit support
+  bulkUnit?: string;
+  smallUnit?: string;
+  conversionFactor?: number;
+  bulkSalePrice?: number;
+  costPrice?: number;
+  bulkCostPrice?: number;
 }
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -54,6 +61,14 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  // Multi-unit support
+  unit: 'piece' | 'bulk';
+  bulkUnit?: string;
+  smallUnit?: string;
+  conversionFactor?: number;
+  bulkSalePrice?: number;
+  costPrice?: number;
+  bulkCostPrice?: number;
 }
 
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
@@ -89,7 +104,7 @@ export default function POS() {
         getCategoryNamesCloud()
       ]);
       
-      // Transform to POS format
+      // Transform to POS format with multi-unit support
       const posProducts: POSProduct[] = cloudProducts.map(p => ({
         id: p.id,
         name: p.name,
@@ -98,6 +113,13 @@ export default function POS() {
         quantity: p.quantity,
         image: p.image,
         barcode: p.barcode,
+        // Multi-unit fields
+        bulkUnit: p.bulkUnit || 'كرتونة',
+        smallUnit: p.smallUnit || 'قطعة',
+        conversionFactor: p.conversionFactor || 1,
+        bulkSalePrice: p.bulkSalePrice || 0,
+        costPrice: p.costPrice,
+        bulkCostPrice: p.bulkCostPrice || 0,
       }));
       
       setProducts(posProducts);
@@ -139,28 +161,65 @@ export default function POS() {
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => currencies[0]);
   const [customerName, setCustomerName] = useState('');
 
-  const addToCart = (product: POSProduct) => {
+  const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
     if (product.quantity === 0) {
       showToast.warning(t('pos.outOfStock').replace('{name}', product.name));
     } else if (product.quantity <= 5) {
       showToast.info(t('pos.lowStockWarning').replace('{name}', product.name).replace('{qty}', String(product.quantity)));
     }
     
+    const priceForUnit = unit === 'bulk' && product.bulkSalePrice ? product.bulkSalePrice : product.price;
+    
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      // Check for existing item with same unit
+      const existing = prev.find(item => item.id === product.id && item.unit === unit);
       if (existing) {
         return prev.map(item =>
-          item.id === product.id
+          item.id === product.id && item.unit === unit
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
+      return [...prev, { 
+        id: product.id, 
+        name: product.name, 
+        price: priceForUnit, 
+        quantity: 1,
+        unit,
+        bulkUnit: product.bulkUnit,
+        smallUnit: product.smallUnit,
+        conversionFactor: product.conversionFactor,
+        bulkSalePrice: product.bulkSalePrice,
+        costPrice: product.costPrice,
+        bulkCostPrice: product.bulkCostPrice,
+      }];
     });
     
     // Play sound effect
     playAddToCart();
-    showToast.success(t('pos.addedToCart').replace('{name}', product.name));
+    const unitLabel = unit === 'bulk' ? (product.bulkUnit || 'كرتونة') : (product.smallUnit || 'قطعة');
+    showToast.success(t('pos.addedToCart').replace('{name}', `${product.name} (${unitLabel})`));
+  };
+
+  // Toggle unit for cart item
+  const toggleCartItemUnit = (itemId: string, currentUnit: 'piece' | 'bulk') => {
+    const product = products.find(p => p.id === itemId);
+    if (!product) return;
+    
+    // Don't toggle if no bulk pricing
+    if (!product.bulkSalePrice || product.bulkSalePrice <= 0) {
+      showToast.warning('لا يوجد سعر جملة لهذا المنتج');
+      return;
+    }
+    
+    const newUnit = currentUnit === 'piece' ? 'bulk' : 'piece';
+    const newPrice = newUnit === 'bulk' ? product.bulkSalePrice : product.price;
+    
+    setCart(prev => prev.map(item =>
+      item.id === itemId && item.unit === currentUnit
+        ? { ...item, unit: newUnit, price: newPrice }
+        : item
+    ));
   };
 
   // Handle barcode scan - show product dialog instead of adding directly
@@ -176,6 +235,13 @@ export default function POS() {
         quantity: cloudProduct.quantity,
         image: cloudProduct.image,
         barcode: cloudProduct.barcode,
+        // Multi-unit fields
+        bulkUnit: cloudProduct.bulkUnit || 'كرتونة',
+        smallUnit: cloudProduct.smallUnit || 'قطعة',
+        conversionFactor: cloudProduct.conversionFactor || 1,
+        bulkSalePrice: cloudProduct.bulkSalePrice || 0,
+        costPrice: cloudProduct.costPrice,
+        bulkCostPrice: cloudProduct.bulkCostPrice || 0,
       };
       setScannedProduct(posProduct);
       setShowScannedDialog(true);
@@ -186,14 +252,15 @@ export default function POS() {
   };
 
   const handleAddScannedProduct = (product: POSProduct) => {
-    addToCart(product);
+    addToCart(product, 'piece');
     setShowScannedDialog(false);
     setScannedProduct(null);
   };
 
-  const updateQuantity = (id: string, change: number) => {
+  const updateQuantity = (id: string, change: number, unit?: 'piece' | 'bulk') => {
     setCart(prev => prev.map(item => {
-      if (item.id === id) {
+      // Match by id and unit (if provided)
+      if (item.id === id && (unit === undefined || item.unit === unit)) {
         const newQty = Math.max(1, item.quantity + change);
         return { ...item, quantity: newQty };
       }
@@ -201,8 +268,8 @@ export default function POS() {
     }));
   };
 
-  const removeItem = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+  const removeItem = (id: string, unit?: 'piece' | 'bulk') => {
+    setCart(prev => prev.filter(item => !(item.id === id && (unit === undefined || item.unit === unit))));
   };
 
   const clearCart = () => {
@@ -298,7 +365,7 @@ export default function POS() {
                 selectedCategory={selectedCategory}
                 onSearchChange={setSearchQuery}
                 onCategoryChange={setSelectedCategory}
-                onProductClick={addToCart}
+                onProductClick={(product) => addToCart(product, 'piece')}
                 onBarcodeScan={handleBarcodeScan}
               />
             ) : (
@@ -325,6 +392,7 @@ export default function POS() {
                 onCurrencyChange={setSelectedCurrency}
                 onDiscountChange={setDiscount}
                 onCustomerNameChange={setCustomerName}
+                onToggleUnit={toggleCartItemUnit}
               />
             </div>
           )}
@@ -346,6 +414,7 @@ export default function POS() {
             onCurrencyChange={setSelectedCurrency}
             onDiscountChange={setDiscount}
             onCustomerNameChange={setCustomerName}
+            onToggleUnit={toggleCartItemUnit}
             onClose={() => setCartOpen(false)}
             isMobile
           />
