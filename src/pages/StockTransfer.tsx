@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { 
   Plus, 
@@ -18,7 +19,9 @@ import {
   Check,
   X,
   Printer,
-  FileText
+  FileText,
+  Search,
+  ScanLine
 } from 'lucide-react';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { 
@@ -34,6 +37,7 @@ import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { printHTML } from '@/lib/print-utils';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { BarcodeScanner } from '@/components/BarcodeScanner';
 
 interface TransferItem {
   productId: string;
@@ -62,6 +66,13 @@ export default function StockTransfer() {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<'piece' | 'bulk'>('piece');
+
+  // Search and scanner state
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [productSuggestions, setProductSuggestions] = useState<Product[]>([]);
+  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load data
   useEffect(() => {
@@ -117,8 +128,43 @@ export default function StockTransfer() {
     }]);
 
     setSelectedProductId('');
+    setProductSearchQuery('');
+    setShowProductSuggestions(false);
     setSelectedQuantity(1);
     setSelectedUnit('piece');
+  };
+
+  // Product search functions
+  const handleProductSearch = (value: string) => {
+    setProductSearchQuery(value);
+    if (value.length >= 2) {
+      const matches = products.filter(p => 
+        p.name.toLowerCase().includes(value.toLowerCase()) ||
+        (p.barcode && p.barcode.includes(value))
+      ).slice(0, 8);
+      setProductSuggestions(matches);
+      setShowProductSuggestions(matches.length > 0);
+    } else {
+      setShowProductSuggestions(false);
+      setProductSuggestions([]);
+    }
+  };
+
+  const selectProduct = (product: Product) => {
+    setSelectedProductId(product.id);
+    setProductSearchQuery(product.name);
+    setShowProductSuggestions(false);
+  };
+
+  const handleBarcodeScan = (barcode: string) => {
+    const product = products.find(p => p.barcode === barcode);
+    if (product) {
+      selectProduct(product);
+      toast.success(`تم العثور على: ${product.name}`);
+    } else {
+      toast.error('لم يتم العثور على منتج بهذا الباركود');
+    }
+    setIsScannerOpen(false);
   };
 
   const removeItemFromTransfer = (productId: string) => {
@@ -289,6 +335,8 @@ export default function StockTransfer() {
     setNotes('');
     setTransferItems([]);
     setSelectedProductId('');
+    setProductSearchQuery('');
+    setShowProductSuggestions(false);
     setSelectedQuantity(1);
     setSelectedUnit('piece');
   };
@@ -364,17 +412,66 @@ export default function StockTransfer() {
                     <CardTitle className="text-sm">إضافة منتج</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                      <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر المنتج" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                      {/* Product Search with Autocomplete */}
+                      <div className="relative sm:col-span-2">
+                        <div className="flex gap-1">
+                          <div className="relative flex-1">
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                            <Input
+                              ref={searchInputRef}
+                              type="text"
+                              placeholder="ابحث بالاسم أو الباركود..."
+                              value={productSearchQuery}
+                              onChange={(e) => handleProductSearch(e.target.value)}
+                              onFocus={() => {
+                                if (productSearchQuery.length >= 2) setShowProductSuggestions(true);
+                              }}
+                              onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
+                              className="pr-9"
+                            />
+                            
+                            {/* Suggestions Dropdown */}
+                            {showProductSuggestions && (
+                              <div className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg">
+                                <Command>
+                                  <CommandList>
+                                    <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                                    <CommandGroup>
+                                      {productSuggestions.map((product) => (
+                                        <CommandItem
+                                          key={product.id}
+                                          onSelect={() => selectProduct(product)}
+                                          className="cursor-pointer"
+                                        >
+                                          <Package className="w-4 h-4 ml-2 flex-shrink-0" />
+                                          <span className="flex-1 truncate">{product.name}</span>
+                                          {product.barcode && (
+                                            <span className="text-xs text-muted-foreground mr-2">
+                                              {product.barcode}
+                                            </span>
+                                          )}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Barcode Scanner Button */}
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsScannerOpen(true)}
+                            title="مسح باركود"
+                            type="button"
+                          >
+                            <ScanLine className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
                       
                       <Input
                         type="number"
@@ -394,12 +491,19 @@ export default function StockTransfer() {
                         </SelectContent>
                       </Select>
                       
-                      <Button onClick={addItemToTransfer}>
+                      <Button onClick={addItemToTransfer} disabled={!selectedProductId}>
                         <Plus className="w-4 h-4" />
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Barcode Scanner Dialog */}
+                <BarcodeScanner
+                  isOpen={isScannerOpen}
+                  onClose={() => setIsScannerOpen(false)}
+                  onScan={handleBarcodeScan}
+                />
 
                 {/* Items List */}
                 {transferItems.length > 0 && (
