@@ -1,7 +1,18 @@
-// Barcode Scanner - Unified component that uses ML Kit on mobile, ZXing on web
-import { Capacitor } from '@capacitor/core';
-import { NativeMLKitScanner } from './barcode/NativeMLKitScanner';
-import { WebBarcodeScanner } from './barcode/WebBarcodeScanner';
+/**
+ * Barcode Scanner - Unified component
+ * ====================================
+ * Uses html5-qrcode for reliable scanning on both web and mobile
+ * 
+ * Previous implementation used:
+ * - @capacitor-mlkit/barcode-scanning for native (had reliability issues)
+ * - react-zxing for web
+ * 
+ * New implementation uses html5-qrcode which works reliably on:
+ * - All browsers (Chrome, Safari, Firefox)
+ * - Capacitor WebView (Android/iOS)
+ */
+
+import { Html5QrcodeScanner } from './barcode/Html5QrcodeScanner';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -9,26 +20,9 @@ interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
 }
 
-/**
- * Unified Barcode Scanner component
- * - On native platforms (Android/iOS): Uses ML Kit for faster, more accurate scanning
- * - On web: Uses react-zxing as fallback
- */
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
-  const isNativePlatform = Capacitor.isNativePlatform();
-
-  if (isNativePlatform) {
-    return (
-      <NativeMLKitScanner 
-        isOpen={isOpen} 
-        onClose={onClose} 
-        onScan={onScan} 
-      />
-    );
-  }
-
   return (
-    <WebBarcodeScanner 
+    <Html5QrcodeScanner 
       isOpen={isOpen} 
       onClose={onClose} 
       onScan={onScan} 
