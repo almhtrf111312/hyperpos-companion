@@ -14,7 +14,8 @@ import {
   ScanLine,
   Tag,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  Boxes
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,10 +37,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UnitSettingsTab } from '@/components/products/UnitSettingsTab';
 import { 
   loadProductsCloud, 
   addProductCloud,
@@ -104,7 +111,17 @@ export default function Products() {
     size: '',
     color: '',
     minStockLevel: 5,
+    // Unit settings
+    bulkUnit: 'كرتونة',
+    smallUnit: 'قطعة',
+    conversionFactor: 1,
+    bulkCostPrice: 0,
+    bulkSalePrice: 0,
+    trackByUnit: 'piece' as 'piece' | 'bulk',
   });
+  
+  // Unit settings collapsible state
+  const [showUnitSettings, setShowUnitSettings] = useState(false);
   
   // Get effective field configuration - reload when page gains focus or storage changes
   const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
@@ -195,7 +212,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
+      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -285,7 +302,7 @@ const filteredProducts = useMemo(() => {
       }
       
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
+      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setCustomFieldValues({});
       toast.success('تم إضافة المنتج بنجاح');
       loadData();
@@ -392,7 +409,18 @@ const filteredProducts = useMemo(() => {
       size: product.size || '',
       color: product.color || '',
       minStockLevel: product.minStockLevel || 5,
+      // Unit settings
+      bulkUnit: product.bulkUnit || 'كرتونة',
+      smallUnit: product.smallUnit || 'قطعة',
+      conversionFactor: product.conversionFactor || 1,
+      bulkCostPrice: product.bulkCostPrice || 0,
+      bulkSalePrice: product.bulkSalePrice || 0,
+      trackByUnit: product.trackByUnit || 'piece',
     });
+    // Check if product has unit settings to auto-expand
+    if (product.conversionFactor && product.conversionFactor > 1) {
+      setShowUnitSettings(true);
+    }
     // Load custom field values from product
     setCustomFieldValues(product.customFields || {});
     setShowEditDialog(true);
@@ -422,7 +450,7 @@ const filteredProducts = useMemo(() => {
             {t('products.categories')}
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5 });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -810,6 +838,38 @@ const filteredProducts = useMemo(() => {
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                 />
               </div>
+              
+              {/* Unit Settings Collapsible */}
+              <div className="sm:col-span-2">
+                <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between" type="button">
+                      <span className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4" />
+                        إعدادات الوحدات (كرتونة / قطعة)
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {showUnitSettings ? 'إخفاء' : 'عرض'}
+                      </span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <UnitSettingsTab
+                      data={{
+                        bulkUnit: formData.bulkUnit,
+                        smallUnit: formData.smallUnit,
+                        conversionFactor: formData.conversionFactor,
+                        bulkCostPrice: formData.bulkCostPrice,
+                        bulkSalePrice: formData.bulkSalePrice,
+                        trackByUnit: formData.trackByUnit,
+                      }}
+                      onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                      quantity={formData.quantity}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+              
               {/* Dynamic Fields based on store type (Fix #16) */}
               {fieldsConfig.expiryDate && (
                 <div className="sm:col-span-2">
@@ -1024,6 +1084,38 @@ const filteredProducts = useMemo(() => {
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                 />
               </div>
+              
+              {/* Unit Settings Collapsible */}
+              <div className="sm:col-span-2">
+                <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between" type="button">
+                      <span className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4" />
+                        إعدادات الوحدات (كرتونة / قطعة)
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {showUnitSettings ? 'إخفاء' : 'عرض'}
+                      </span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <UnitSettingsTab
+                      data={{
+                        bulkUnit: formData.bulkUnit,
+                        smallUnit: formData.smallUnit,
+                        conversionFactor: formData.conversionFactor,
+                        bulkCostPrice: formData.bulkCostPrice,
+                        bulkSalePrice: formData.bulkSalePrice,
+                        trackByUnit: formData.trackByUnit,
+                      }}
+                      onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                      quantity={formData.quantity}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+              
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية (اختياري)</label>
                 <Input
