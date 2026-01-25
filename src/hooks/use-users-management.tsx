@@ -220,14 +220,25 @@ export function useUsersManagement() {
     }
   };
 
-  const updateUserProfile = async (userId: string, fullName: string) => {
+  const updateUserProfile = async (userId: string, fullName: string, userType?: 'cashier' | 'distributor', phone?: string) => {
     try {
+      const updateData: { full_name: string; user_type?: string; phone?: string } = { full_name: fullName };
+      
+      if (userType) {
+        updateData.user_type = userType;
+      }
+      
+      if (phone !== undefined) {
+        updateData.phone = phone;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName })
+        .update(updateData)
         .eq('user_id', userId);
 
       if (error) {
+        console.error('Error updating profile:', error);
         toast({
           title: 'خطأ',
           description: 'فشل في تحديث بيانات المستخدم',
