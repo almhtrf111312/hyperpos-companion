@@ -918,32 +918,34 @@ export function CartPanel({
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-xs md:text-sm line-clamp-2">{item.name}</h4>
-                    {/* Unit Badge with Toggle */}
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        item.unit === 'bulk' 
-                          ? 'bg-primary/20 text-primary' 
-                          : 'bg-muted-foreground/20 text-muted-foreground'
-                      }`}>
-                        {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
-                      </span>
-                      {/* Toggle Unit Button - only show if bulk pricing exists */}
-                      {item.bulkSalePrice && item.bulkSalePrice > 0 && onToggleUnit && (
-                        <button
-                          onClick={() => onToggleUnit(item.id, item.unit)}
-                          className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                          title={item.unit === 'bulk' ? 'تحويل إلى قطعة' : 'تحويل إلى كرتونة'}
-                        >
-                          <Repeat className="w-3 h-3" />
-                        </button>
-                      )}
-                      {/* Show conversion info */}
-                      {item.unit === 'bulk' && item.conversionFactor && item.conversionFactor > 1 && (
-                        <span className="text-[9px] text-muted-foreground">
-                          ({item.conversionFactor} {item.smallUnit || 'قطعة'})
+                    {/* Unit Badge with Toggle - only show for bulk items */}
+                    {item.bulkSalePrice && item.bulkSalePrice > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          item.unit === 'bulk' 
+                            ? 'bg-primary/20 text-primary' 
+                            : 'bg-muted-foreground/20 text-muted-foreground'
+                        }`}>
+                          {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
                         </span>
-                      )}
-                    </div>
+                        {/* Toggle Unit Button */}
+                        {onToggleUnit && (
+                          <button
+                            onClick={() => onToggleUnit(item.id, item.unit)}
+                            className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                            title={item.unit === 'bulk' ? 'تحويل إلى قطعة' : 'تحويل إلى كرتونة'}
+                          >
+                            <Repeat className="w-3 h-3" />
+                          </button>
+                        )}
+                        {/* Show conversion info */}
+                        {item.unit === 'bulk' && item.conversionFactor && item.conversionFactor > 1 && (
+                          <span className="text-[9px] text-muted-foreground">
+                            ({item.conversionFactor} {item.smallUnit || 'قطعة'})
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => onRemoveItem(item.id, item.unit)}
@@ -992,47 +994,56 @@ export function CartPanel({
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                {currency.symbol} {currency.code === 'USD' ? 'USD' : currency.name}
+                {currency.code === 'USD' ? '$ USD' : currency.name}
               </button>
             ))}
           </div>
 
-          {/* Discount with Type Toggle */}
-          <div className="flex items-center gap-2">
-            {/* Discount Type Toggle */}
-            <div className="flex rounded-lg overflow-hidden border border-border flex-shrink-0">
-              <button
-                onClick={() => setDiscountType('percent')}
+          {/* Discount - Two Rows */}
+          <div className="space-y-2">
+            {/* Percentage Discount Row */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
+                <Percent className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="خصم %"
+                value={discountType === 'percent' ? (discount || '') : ''}
+                onChange={(e) => {
+                  setDiscountType('percent');
+                  onDiscountChange(Number(e.target.value));
+                }}
+                onFocus={() => setDiscountType('percent')}
                 className={cn(
-                  "px-2.5 py-1.5 text-xs font-medium transition-colors",
-                  discountType === 'percent' 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  "bg-muted border-0 h-9 text-sm",
+                  discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
                 )}
-              >
-                <Percent className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setDiscountType('fixed')}
-                className={cn(
-                  "px-2.5 py-1.5 text-xs font-medium transition-colors",
-                  discountType === 'fixed' 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                <DollarSign className="w-3.5 h-3.5" />
-              </button>
+                min="0"
+                max="100"
+              />
             </div>
-            <Input
-              type="number"
-              placeholder={discountType === 'percent' ? 'خصم %' : 'خصم $'}
-              value={discount || ''}
-              onChange={(e) => onDiscountChange(Number(e.target.value))}
-              className="bg-muted border-0 h-9 text-sm"
-              min="0"
-              max={discountType === 'percent' ? 100 : undefined}
-            />
+            {/* Fixed Amount Discount Row */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
+                <DollarSign className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="خصم $"
+                value={discountType === 'fixed' ? (discount || '') : ''}
+                onChange={(e) => {
+                  setDiscountType('fixed');
+                  onDiscountChange(Number(e.target.value));
+                }}
+                onFocus={() => setDiscountType('fixed')}
+                className={cn(
+                  "bg-muted border-0 h-9 text-sm",
+                  discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
+                )}
+                min="0"
+              />
+            </div>
           </div>
 
           {/* Summary */}
