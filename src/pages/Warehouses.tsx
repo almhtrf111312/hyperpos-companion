@@ -64,14 +64,33 @@ export default function Warehouses() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get cashiers that belong to this owner (owner_id = current user)
-      const { data, error } = await supabase
+      // Determine current user's role (we need this because Boss users don't have an owner_id,
+      // and legacy cashier records may have owner_id = NULL).
+      const { data: myRoleRow } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const isBoss = myRoleRow?.role === 'boss';
+
+      // Get cashiers that belong to this owner.
+      // For Boss: include legacy rows where owner_id is NULL (otherwise distributors won't appear).
+      const rolesQuery = supabase
         .from('user_roles')
         .select('user_id, role, owner_id')
-        .eq('role', 'cashier')
-        .eq('owner_id', user.id);
+        .eq('role', 'cashier');
+
+      const { data, error } = isBoss
+        ? await rolesQuery.or(`owner_id.eq.${user.id},owner_id.is.null`)
+        : await rolesQuery.eq('owner_id', user.id);
 
       if (data && !error) {
+        if (data.length === 0) {
+          setCashiers([]);
+          return;
+        }
+
         // Get profiles for these cashiers (with phone and user_type)
         const userIds = data.map(r => r.user_id);
         const { data: profiles } = await supabase
