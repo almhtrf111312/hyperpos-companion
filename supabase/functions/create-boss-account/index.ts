@@ -15,25 +15,31 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('No authorization header found');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create authenticated client
+    // Create clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
+    // Use service role client for all operations
+    const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     });
 
-    // Verify the user is authenticated
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    // Get the token and verify the user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await serviceClient.auth.getUser(token);
     
     if (userError || !userData?.user) {
+      console.log('JWT verification failed:', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -41,13 +47,16 @@ Deno.serve(async (req) => {
     }
 
     const callerUserId = userData.user.id;
+    console.log('Authenticated user:', callerUserId);
 
     // Check if caller is a boss
-    const { data: roleData, error: roleError } = await supabase
+    const { data: roleData, error: roleError } = await serviceClient
       .from('user_roles')
       .select('role')
       .eq('user_id', callerUserId)
       .single();
+
+    console.log('Role check result:', roleData, roleError);
 
     if (roleError || roleData?.role !== 'boss') {
       return new Response(
@@ -73,14 +82,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Use service role client to create user
-    const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
 
     // Create the new user
     const { data: newUser, error: createError } = await serviceClient.auth.admin.createUser({
