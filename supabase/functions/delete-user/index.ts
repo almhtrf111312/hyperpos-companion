@@ -1,27 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Allowed origins for CORS
-const allowedOrigins = [
-  'https://propos.lovable.app',
-  'https://id-preview--f922b973-c15b-4c58-86ca-0f04c8a8dada.lovable.app',
-  'capacitor://localhost',
-  'http://localhost:5173',
-  'http://localhost:8080'
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('origin') || '';
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -30,39 +15,48 @@ Deno.serve(async (req) => {
   try {
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('No authorization header found');
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create Supabase client with the user's token to verify they are authenticated
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Client with user token for auth check
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+    // Create admin client with service role
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     });
 
-    // Get the current user
-    const { data: { user: currentUser }, error: userError } = await userClient.auth.getUser();
+    // Verify the user token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
     
-    if (userError || !currentUser) {
+    if (userError || !userData?.user) {
+      console.log('JWT verification failed:', userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const currentUser = userData.user;
+    console.log('Authenticated user:', currentUser.id);
+
     // Check if current user is admin or boss
-    const { data: currentUserRole, error: roleError } = await userClient
+    const { data: currentUserRole, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", currentUser.id)
       .single();
+
+    console.log('Role check result:', currentUserRole, roleError);
 
     const isBoss = currentUserRole?.role === "boss";
     const isAdmin = currentUserRole?.role === "admin";
@@ -102,7 +96,7 @@ Deno.serve(async (req) => {
       }
 
       // Verify target user is also a boss
-      const { data: targetRole } = await userClient
+      const { data: targetRole } = await adminClient
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
@@ -116,13 +110,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create admin client with service role
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    console.log('Deleting user:', userId);
 
     // Delete user role first
     const { error: deleteRoleError } = await adminClient
@@ -165,6 +153,8 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log('User deleted successfully:', userId);
+
     return new Response(
       JSON.stringify({ success: true, message: "User deleted successfully" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -174,7 +164,7 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
