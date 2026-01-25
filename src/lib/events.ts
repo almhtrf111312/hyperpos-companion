@@ -1,4 +1,7 @@
+// Event constants for FlowPOS Pro
 export const EVENTS = {
+  // Sync Queue Events
+  SYNC_QUEUE_UPDATED: 'syncQueueUpdated',
   PRODUCTS_UPDATED: 'hyperpos:products-updated',
   CATEGORIES_UPDATED: 'hyperpos:categories-updated',
   CUSTOMERS_UPDATED: 'hyperpos:customers-updated',

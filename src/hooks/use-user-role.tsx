@@ -17,6 +17,7 @@ interface UserRoleState {
   canAccessPartners: boolean;
   canManageLicenses: boolean;
   canManageUsers: boolean;
+  canEditPrice: boolean; // صلاحية تعديل الأسعار يدوياً
 }
 
 interface UserRoleContextType extends UserRoleState {
@@ -40,6 +41,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     canAccessPartners: false,
     canManageLicenses: false,
     canManageUsers: false,
+    canEditPrice: false,
   });
 
   const fetchRole = useCallback(async () => {
@@ -57,6 +59,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         canAccessPartners: false,
         canManageLicenses: false,
         canManageUsers: false,
+        canEditPrice: false,
       });
       return;
     }
@@ -101,6 +104,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         canAccessPartners: isBoss || isAdmin,
         canManageLicenses: isBoss,
         canManageUsers: isBoss || isAdmin,
+        canEditPrice: isBoss || isAdmin, // فقط المدير والبوس يمكنهم تعديل الأسعار
       });
     } catch (err) {
       console.error('Error in fetchRole:', err);
