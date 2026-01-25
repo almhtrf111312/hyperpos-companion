@@ -430,30 +430,26 @@ export default function StockTransfer() {
                         />
                         
                         {/* Suggestions Dropdown */}
-                        {showProductSuggestions && (
-                          <div className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg">
-                            <Command>
-                              <CommandList>
-                                <CommandEmpty>لا توجد نتائج</CommandEmpty>
-                                <CommandGroup>
-                                  {productSuggestions.map((product) => (
-                                    <CommandItem
-                                      key={product.id}
-                                      onSelect={() => selectProduct(product)}
-                                      className="cursor-pointer"
-                                    >
-                                      <Package className="w-4 h-4 ml-2 flex-shrink-0" />
-                                      <span className="flex-1 truncate">{product.name}</span>
-                                      {product.barcode && (
-                                        <span className="text-xs text-muted-foreground mr-2">
-                                          {product.barcode}
-                                        </span>
-                                      )}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
+                        {showProductSuggestions && productSuggestions.length > 0 && (
+                          <div 
+                            className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            {productSuggestions.map((product) => (
+                              <div
+                                key={product.id}
+                                onClick={() => selectProduct(product)}
+                                className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent transition-colors"
+                              >
+                                <Package className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                                <span className="flex-1 truncate">{product.name}</span>
+                                {product.barcode && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.barcode}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
