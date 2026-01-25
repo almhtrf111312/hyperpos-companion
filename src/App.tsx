@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { HashRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { NotificationsProvider } from "./hooks/use-notifications";
 import { AuthProvider } from "./hooks/use-auth";
@@ -158,7 +158,7 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <BrowserRouter>
+      <HashRouter>
         <LanguageProvider>
           <ThemeProvider>
             <AuthProvider>
@@ -180,7 +180,7 @@ const App = () => (
             </AuthProvider>
           </ThemeProvider>
         </LanguageProvider>
-      </BrowserRouter>
+      </HashRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
