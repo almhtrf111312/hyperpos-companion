@@ -20,6 +20,8 @@ export const EVENTS = {
   // Unified transaction events
   TRANSACTION_COMPLETED: 'hyperpos:transaction-completed',
   REFUND_PROCESSED: 'hyperpos:refund-processed',
+  // Profit tracking events
+  PROFITS_UPDATED: 'hyperpos:profits-updated',
 };
 
 export function emitEvent(name: string, detail?: any) {

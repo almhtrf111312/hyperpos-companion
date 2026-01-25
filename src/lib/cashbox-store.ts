@@ -31,6 +31,9 @@ export interface Shift {
   expensesTotal: number;
   depositsTotal: number;
   withdrawalsTotal: number;
+  // ✅ حقول جديدة لتتبع COGS والربح الإجمالي
+  cogsTotal: number;             // إجمالي تكلفة البضاعة المباعة
+  grossProfitTotal: number;      // إجمالي الربح الإجمالي (المبيعات - التكلفة)
 }
 
 export interface CashboxState {
@@ -120,6 +123,8 @@ export const openShift = (
     expensesTotal: 0,
     depositsTotal: 0,
     withdrawalsTotal: 0,
+    cogsTotal: 0,           // ✅ جديد
+    grossProfitTotal: 0,    // ✅ جديد
   };
   
   shifts.unshift(newShift);
@@ -229,9 +234,35 @@ export const updateCashboxBalance = (
   }
 };
 
-// Add sales to current shift (يعمل بدون وردية الآن)
-export const addSalesToShift = (amount: number): void => {
-  updateCashboxBalance(amount, 'sale');
+/**
+ * Add sales to current shift مع بيانات الربح
+ * ✅ يعمل بدون وردية الآن، ويسجل COGS والربح الإجمالي
+ */
+export const addSalesToShift = (
+  amount: number,
+  grossProfit: number = 0,
+  cogs: number = 0
+): void => {
+  const roundedAmount = roundCurrency(amount);
+  const roundedProfit = roundCurrency(grossProfit);
+  const roundedCogs = roundCurrency(cogs);
+  
+  const state = loadCashboxState();
+  
+  // تحديث رصيد الصندوق
+  state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+  state.lastUpdated = new Date().toISOString();
+  saveCashboxState(state);
+  
+  // إذا كانت هناك وردية نشطة، حدّثها أيضاً
+  const shifts = loadShifts();
+  const activeIndex = shifts.findIndex(s => s.status === 'open');
+  if (activeIndex !== -1) {
+    shifts[activeIndex].salesTotal = addCurrency(shifts[activeIndex].salesTotal, roundedAmount);
+    shifts[activeIndex].grossProfitTotal = addCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit);
+    shifts[activeIndex].cogsTotal = addCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs);
+    saveShifts(shifts);
+  }
 };
 
 // Add expenses to current shift (يعمل بدون وردية الآن)

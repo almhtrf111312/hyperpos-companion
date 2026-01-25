@@ -16,6 +16,9 @@ const STORAGE_KEYS_TO_CLEAR = [
   'hyperpos_shifts_v1',
   'hyperpos_capital_v1',
   'hyperpos_demo_loaded_v2',
+  // ✅ سجلات الأرباح الجديدة
+  'hyperpos_profit_records_v1',
+  'hyperpos_expense_records_v1',
   // Categories are kept as they're useful defaults
 ];
 
