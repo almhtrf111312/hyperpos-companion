@@ -188,12 +188,12 @@ export const updateWarehouseStockCloud = async (
   return true;
 };
 
-// Deduct stock from warehouse
+// Deduct stock from warehouse with validation
 export const deductWarehouseStockCloud = async (
   warehouseId: string,
   productId: string,
   quantity: number
-): Promise<boolean> => {
+): Promise<{ success: boolean; error?: string; available?: number }> => {
   const { supabase } = await import('@/integrations/supabase/client');
   
   // Get current stock
@@ -206,10 +206,22 @@ export const deductWarehouseStockCloud = async (
 
   if (fetchError) {
     console.error('[WarehouseStock] Fetch error:', fetchError);
-    return false;
+    return { success: false, error: 'خطأ في جلب المخزون' };
   }
 
-  const newQuantity = Math.max(0, (currentStock?.quantity || 0) - quantity);
+  const available = currentStock?.quantity || 0;
+  
+  // ✅ التحقق من توفر الكمية الكافية - منع البيع بالسالب
+  if (available < quantity) {
+    console.warn(`[WarehouseStock] Insufficient stock: available=${available}, requested=${quantity}`);
+    return { 
+      success: false, 
+      error: 'الكمية المطلوبة غير متوفرة في المستودع',
+      available 
+    };
+  }
+
+  const newQuantity = available - quantity;
 
   const { error: updateError } = await supabase
     .from('warehouse_stock')
@@ -224,27 +236,48 @@ export const deductWarehouseStockCloud = async (
 
   if (updateError) {
     console.error('[WarehouseStock] Update error:', updateError);
-    return false;
+    return { success: false, error: 'خطأ في تحديث المخزون' };
   }
 
-  return true;
+  return { success: true };
 };
 
-// Batch deduct stock from warehouse (for POS sales)
+// Batch deduct stock from warehouse (for POS sales) with validation
 export const deductWarehouseStockBatchCloud = async (
   warehouseId: string,
-  items: { productId: string; quantity: number }[]
-): Promise<{ success: boolean; deducted: number; failed: number }> => {
+  items: { productId: string; quantity: number; productName?: string }[]
+): Promise<{ 
+  success: boolean; 
+  deducted: number; 
+  failed: number;
+  insufficientItems?: Array<{ productName: string; available: number; requested: number }>;
+}> => {
   let deducted = 0;
   let failed = 0;
+  const insufficientItems: Array<{ productName: string; available: number; requested: number }> = [];
 
   for (const item of items) {
-    const success = await deductWarehouseStockCloud(warehouseId, item.productId, item.quantity);
-    if (success) deducted++;
-    else failed++;
+    const result = await deductWarehouseStockCloud(warehouseId, item.productId, item.quantity);
+    if (result.success) {
+      deducted++;
+    } else {
+      failed++;
+      if (result.available !== undefined) {
+        insufficientItems.push({
+          productName: item.productName || item.productId,
+          available: result.available,
+          requested: item.quantity
+        });
+      }
+    }
   }
 
-  return { success: failed === 0, deducted, failed };
+  return { 
+    success: failed === 0, 
+    deducted, 
+    failed,
+    insufficientItems: insufficientItems.length > 0 ? insufficientItems : undefined
+  };
 };
 
 // Check warehouse stock availability (for POS validation)
