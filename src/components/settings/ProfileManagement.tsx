@@ -74,6 +74,11 @@ export function ProfileManagement() {
   const [showDeleteBossDialog, setShowDeleteBossDialog] = useState(false);
   const [bossToDelete, setBossToDelete] = useState<BossAccount | null>(null);
   const [isDeletingBoss, setIsDeletingBoss] = useState(false);
+  
+  // Email editing (Boss only)
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
 
   useEffect(() => {
     if (profile?.full_name) {
@@ -143,6 +148,64 @@ export function ProfileManagement() {
       toast.error('فشل في تحديث الاسم');
     } finally {
       setIsSavingName(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    if (!newEmail.trim()) {
+      toast.error('البريد الإلكتروني مطلوب');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      toast.error('صيغة البريد الإلكتروني غير صحيحة');
+      return;
+    }
+
+    if (newEmail === user?.email) {
+      setIsEditingEmail(false);
+      return;
+    }
+
+    setIsSavingEmail(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('update-boss-email', {
+        body: { newEmail: newEmail.trim() },
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'فشل في تحديث البريد الإلكتروني');
+      }
+
+      if (response.data?.error) {
+        if (response.data.error === 'Email already in use') {
+          toast.error('البريد الإلكتروني مستخدم بالفعل');
+        } else {
+          throw new Error(response.data.error);
+        }
+        return;
+      }
+
+      toast.success('تم تحديث البريد الإلكتروني بنجاح');
+      setIsEditingEmail(false);
+      
+      // Refresh the session to get updated user info
+      await supabase.auth.refreshSession();
+    } catch (error: any) {
+      console.error('Error updating email:', error);
+      toast.error(error.message || 'فشل في تحديث البريد الإلكتروني');
+    } finally {
+      setIsSavingEmail(false);
     }
   };
 
@@ -381,7 +444,7 @@ export function ProfileManagement() {
             )}
           </div>
 
-          {/* Email - Read Only for non-boss */}
+          {/* Email - Editable for Boss */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-muted-foreground" />
@@ -390,9 +453,56 @@ export function ProfileManagement() {
                 <Badge variant="outline" className="text-xs">للقراءة فقط</Badge>
               )}
             </Label>
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <span>{user?.email}</span>
-            </div>
+            {isBoss && isEditingEmail ? (
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="أدخل البريد الإلكتروني الجديد"
+                  className="flex-1"
+                  dir="ltr"
+                />
+                <Button 
+                  size="icon" 
+                  onClick={handleSaveEmail}
+                  disabled={isSavingEmail}
+                >
+                  {isSavingEmail ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button 
+                  size="icon" 
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditingEmail(false);
+                    setNewEmail(user?.email || '');
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span dir="ltr">{user?.email}</span>
+                {isBoss && (
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => {
+                      setNewEmail(user?.email || '');
+                      setIsEditingEmail(true);
+                    }}
+                  >
+                    <Edit className="w-4 h-4 me-1" />
+                    تعديل
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <Separator />
