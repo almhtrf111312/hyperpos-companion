@@ -36,11 +36,11 @@ import {
 } from "@/components/ui/command";
 import { showToast } from '@/lib/toast-config';
 import { addInvoice } from '@/lib/invoices-store';
-import { findOrCreateCustomer, updateCustomerStats, loadCustomers, Customer } from '@/lib/customers-store';
-import { addDebtFromInvoice } from '@/lib/debts-store';
-import { loadProducts, deductStockBatch } from '@/lib/products-store';
+import { loadCustomers, Customer } from '@/lib/customers-store';
+import { loadProducts } from '@/lib/products-store';
 import { distributeDetailedProfit } from '@/lib/partners-store';
 import { addActivityLog } from '@/lib/activity-log';
+import { addGrossProfit } from '@/lib/profits-store';
 import { useAuth } from '@/hooks/use-auth';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
@@ -55,6 +55,7 @@ import {
 import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
 import { deductStockBatchCloud, checkStockAvailabilityCloud } from '@/lib/cloud/products-cloud';
 import { deductWarehouseStockBatchCloud, checkWarehouseStockAvailability } from '@/lib/cloud/warehouses-cloud';
+import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';
 import { useWarehouse } from '@/hooks/use-warehouse';
 
 interface CartItem {
@@ -212,6 +213,7 @@ export function CartPanel({
       const products = loadProducts();
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
+      let totalCOGS = 0; // تتبع تكلفة البضاعة المباعة
       
       const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
       
@@ -236,9 +238,11 @@ export function CartPanel({
           }
           
           const itemProfit = (item.price - costPrice) * item.quantity;
+          const itemCOGS = costPrice * item.quantity;
           const category = product.category || 'عام';
           profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
           totalProfit += itemProfit;
+          totalCOGS += itemCOGS;
         }
         soldItems.push({ name: item.name, quantity: item.quantity, price: item.price });
       });
@@ -273,6 +277,9 @@ export function CartPanel({
         showToast.error('فشل في إنشاء الفاتورة');
         return;
       }
+      
+      // ✅ تسجيل الربح في سجل الأرباح المركزي
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, total);
       
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
@@ -358,13 +365,14 @@ export function CartPanel({
       return;
     }
     
-    // Find or create customer
-    const customer = findOrCreateCustomer(customerName);
+    // Find or create customer - using Cloud API for consistency
+    const customer = await findOrCreateCustomerCloud(customerName);
     
     // Calculate profit by category for accurate partner distribution
     const products = loadProducts();
     const profitsByCategory: Record<string, number> = {};
     let totalProfit = 0;
+    let totalCOGS = 0; // تتبع تكلفة البضاعة المباعة
     
     // تفاصيل المنتجات لسجل النشاطات
     const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
@@ -390,9 +398,11 @@ export function CartPanel({
         }
         
         const itemProfit = (item.price - costPrice) * item.quantity;
+        const itemCOGS = costPrice * item.quantity;
         const category = product.category || 'عام';
         profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
         totalProfit += itemProfit;
+        totalCOGS += itemCOGS;
       }
       
       // تسجيل تفاصيل المنتجات المباعة
@@ -408,8 +418,8 @@ export function CartPanel({
     const discountedProfit = totalProfit * (1 - discountRatio);
     const discountMultiplier = 1 - discountRatio;
     
-    // Create invoice
-    const invoice = addInvoice({
+    // Create invoice using Cloud API
+    const invoice = await addInvoiceCloud({
       type: 'sale',
       customerName,
       items: cart.map(item => ({
@@ -430,8 +440,16 @@ export function CartPanel({
       profit: discountedProfit,
     });
     
-    // Create debt record
-    addDebtFromInvoice(invoice.id, customerName, customerPhone || '', total);
+    if (!invoice) {
+      showToast.error('فشل في إنشاء الفاتورة');
+      return;
+    }
+    
+    // ✅ تسجيل الربح في سجل الأرباح المركزي
+    addGrossProfit(invoice.id, discountedProfit, totalCOGS, total);
+    
+    // Create debt record using Cloud API
+    await addDebtFromInvoiceCloud(invoice.id, customerName, customerPhone || '', total);
     
     // Distribute profit to partners by category (as pending) - استدعاء واحد لتجنب Race Condition
     const categoryProfits = Object.entries(profitsByCategory)
@@ -464,8 +482,10 @@ export function CartPanel({
       await deductStockBatchCloud(stockItemsToDeduct);
     }
     
-    // Update customer stats
-    updateCustomerStats(customer.id, total, true);
+    // Update customer stats using Cloud API
+    if (customer) {
+      await updateCustomerStatsCloud(customer.id, total, true);
+    }
     
     // Log activity with product details
     if (user) {
@@ -529,13 +549,13 @@ export function CartPanel({
     setCustomerSuggestions([]);
   };
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     if (!newCustomer.name || !newCustomer.phone) {
       showToast.error(t('pos.fillRequired'));
       return;
     }
-    // Add customer to store
-    findOrCreateCustomer(newCustomer.name, newCustomer.phone);
+    // Add customer to store using Cloud API
+    await findOrCreateCustomerCloud(newCustomer.name, newCustomer.phone);
     onCustomerNameChange(newCustomer.name);
     showToast.success(t('pos.customerAdded'));
     setShowCustomerDialog(false);

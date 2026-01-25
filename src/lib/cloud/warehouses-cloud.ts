@@ -216,8 +216,8 @@ export const deductWarehouseStockCloud = async (
     console.warn(`[WarehouseStock] Insufficient stock: available=${available}, requested=${quantity}`);
     return { 
       success: false, 
-      error: 'الكمية المطلوبة غير متوفرة في المستودع',
-      available 
+      error: `الكمية المطلوبة (${quantity}) غير متوفرة - المتاح في المستودع: ${available}`,
+      available
     };
   }
 
