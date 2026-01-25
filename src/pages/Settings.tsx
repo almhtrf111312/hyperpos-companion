@@ -432,19 +432,27 @@ export default function Settings() {
     setIsSavingUser(true);
 
     if (selectedUser) {
-      // Update existing user
+      // Update existing user - update profile with name, userType, and phone
+      const nameChanged = userForm.name !== selectedUser.name;
+      const userTypeChanged = userForm.userType !== selectedUser.userType;
+      const phoneChanged = userForm.phone !== (selectedUser.phone || '');
+      
       let success = true;
       
-      if (userForm.name !== selectedUser.name) {
-        success = await updateUserProfile(selectedUser.user_id, userForm.name);
-      }
-      
-      if (success && userForm.role !== selectedUser.role) {
-        success = await updateUserRole(selectedUser.user_id, userForm.role);
+      // Update profile if anything changed
+      if (nameChanged || userTypeChanged || phoneChanged) {
+        success = await updateUserProfile(
+          selectedUser.user_id, 
+          userForm.name, 
+          userForm.userType,
+          userForm.phone
+        );
       }
       
       if (success) {
         setUserDialogOpen(false);
+        setSelectedUser(null);
+        setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier' });
       }
     } else {
       // Add new user
