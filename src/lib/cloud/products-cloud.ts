@@ -7,6 +7,7 @@ import {
   getCurrentUserId 
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CloudProduct {
   id: string;
@@ -258,16 +259,41 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   return success;
 };
 
-// Delete product from cloud
+// Delete product from cloud (with cascading delete of related records)
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
-  const success = await deleteFromSupabase('products', id);
+  const userId = getCurrentUserId();
+  if (!userId) return false;
   
-  if (success) {
-    invalidateProductsCache();
-    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  try {
+    // ✅ المرحلة 1: حذف السجلات المرتبطة أولاً (بسبب المفاتيح الأجنبية)
+    
+    // حذف من stock_transfer_items
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from('stock_transfer_items')
+      .delete()
+      .eq('product_id', id);
+    
+    // حذف من warehouse_stock
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from('warehouse_stock')
+      .delete()
+      .eq('product_id', id);
+    
+    // ✅ المرحلة 2: حذف المنتج نفسه
+    const success = await deleteFromSupabase('products', id);
+    
+    if (success) {
+      invalidateProductsCache();
+      emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    }
+    
+    return success;
+  } catch (error) {
+    console.error('[deleteProductCloud] Error:', error);
+    return false;
   }
-  
-  return success;
 };
 
 // Get product by ID

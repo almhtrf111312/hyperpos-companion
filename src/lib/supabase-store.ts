@@ -313,27 +313,84 @@ export async function deleteAllUserData(): Promise<boolean> {
   const userId = getCurrentUserId();
   if (!userId) return false;
 
-  const tables = [
-    'invoice_items',
+  // ✅ الترتيب مهم جداً - يجب حذف الجداول المرتبطة أولاً بسبب المفاتيح الأجنبية
+  // المرحلة 1: حذف الجداول المرتبطة بالمنتجات والمخازن أولاً
+  const phase1Tables = [
+    'stock_transfer_items',  // مرتبط بـ products و stock_transfers
+    'warehouse_stock',       // مرتبط بـ products و warehouses
+    'invoice_items',         // مرتبط بـ invoices
+  ];
+  
+  // المرحلة 2: حذف الجداول التي تعتمد عليها المرحلة 1
+  const phase2Tables = [
+    'stock_transfers',       // يعتمد على warehouses
     'invoices',
     'debts',
     'expenses',
     'recurring_expenses',
+    'maintenance_services',
+    'partners',
+  ];
+  
+  // المرحلة 3: حذف الجداول الأساسية
+  const phase3Tables = [
     'products',
     'categories',
     'customers',
-    'partners',
-    'maintenance_services',
+    'warehouses',
   ];
 
   try {
-    for (const table of tables) {
+    // حذف المرحلة 1
+    for (const table of phase1Tables) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from(table)
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // حذف كل شيء
+      
+      if (error) {
+        console.error(`Error deleting from ${table}:`, error);
+        // محاولة الحذف بطريقة بديلة للجداول المرتبطة
+        if (table === 'stock_transfer_items' || table === 'warehouse_stock') {
+          // جلب IDs المنتجات للمستخدم أولاً
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: products } = await (supabase as any)
+            .from('products')
+            .select('id')
+            .eq('user_id', userId);
+          
+          if (products && products.length > 0) {
+            const productIds = products.map((p: { id: string }) => p.id);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any)
+              .from(table)
+              .delete()
+              .in('product_id', productIds);
+          }
+        }
+      }
+    }
+    
+    // حذف المرحلة 2
+    for (const table of phase2Tables) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from(table)
         .delete()
         .eq('user_id', userId);
     }
+    
+    // حذف المرحلة 3
+    for (const table of phase3Tables) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from(table)
+        .delete()
+        .eq('user_id', userId);
+    }
+    
+    console.log('[deleteAllUserData] All user data deleted successfully');
     return true;
   } catch (error) {
     console.error('Error deleting user data:', error);
