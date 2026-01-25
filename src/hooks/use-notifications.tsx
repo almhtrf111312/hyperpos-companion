@@ -36,7 +36,8 @@ interface NotificationsContextType {
   checkLicenseStatus: (expiresAt: string | null, remainingDays: number | null, isTrial?: boolean) => void;
 }
 
-const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
+// Export context for safe usage in components that may render before provider is ready
+export const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
 // Helper to get expiry status from date string
 const getExpiryStatus = (expiryDate: string): 'expired' | 'expiring_soon' | 'valid' => {
@@ -326,10 +327,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Default context value for when hook is used outside provider
+const defaultNotificationsContext: NotificationsContextType = {
+  notifications: [],
+  unreadCount: 0,
+  markAsRead: () => {},
+  markAllAsRead: () => {},
+  clearNotification: () => {},
+  clearAllNotifications: () => {},
+  addNotification: () => {},
+  refreshNotifications: () => {},
+  checkLicenseStatus: () => {},
+};
+
 export function useNotifications() {
   const context = useContext(NotificationsContext);
+  // Return default context if not within provider (safe fallback)
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationsProvider');
+    console.warn('useNotifications called outside NotificationsProvider, using default values');
+    return defaultNotificationsContext;
   }
   return context;
 }
