@@ -362,6 +362,7 @@ export type Database = {
           total: number | null
           updated_at: string | null
           user_id: string
+          warehouse_id: string | null
         }
         Insert: {
           cashier_id?: string | null
@@ -391,6 +392,7 @@ export type Database = {
           total?: number | null
           updated_at?: string | null
           user_id: string
+          warehouse_id?: string | null
         }
         Update: {
           cashier_id?: string | null
@@ -420,8 +422,17 @@ export type Database = {
           total?: number | null
           updated_at?: string | null
           user_id?: string
+          warehouse_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoices_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       maintenance_services: {
         Row: {
@@ -550,7 +561,11 @@ export type Database = {
         Row: {
           archived: boolean | null
           barcode: string | null
+          bulk_cost_price: number | null
+          bulk_sale_price: number | null
+          bulk_unit: string | null
           category: string | null
+          conversion_factor: number | null
           cost_price: number | null
           created_at: string | null
           custom_fields: Json | null
@@ -564,7 +579,9 @@ export type Database = {
           notes: string | null
           quantity: number | null
           sale_price: number | null
+          small_unit: string | null
           supplier: string | null
+          track_by_unit: string | null
           unit: string | null
           updated_at: string | null
           user_id: string
@@ -572,7 +589,11 @@ export type Database = {
         Insert: {
           archived?: boolean | null
           barcode?: string | null
+          bulk_cost_price?: number | null
+          bulk_sale_price?: number | null
+          bulk_unit?: string | null
           category?: string | null
+          conversion_factor?: number | null
           cost_price?: number | null
           created_at?: string | null
           custom_fields?: Json | null
@@ -586,7 +607,9 @@ export type Database = {
           notes?: string | null
           quantity?: number | null
           sale_price?: number | null
+          small_unit?: string | null
           supplier?: string | null
+          track_by_unit?: string | null
           unit?: string | null
           updated_at?: string | null
           user_id: string
@@ -594,7 +617,11 @@ export type Database = {
         Update: {
           archived?: boolean | null
           barcode?: string | null
+          bulk_cost_price?: number | null
+          bulk_sale_price?: number | null
+          bulk_unit?: string | null
           category?: string | null
+          conversion_factor?: number | null
           cost_price?: number | null
           created_at?: string | null
           custom_fields?: Json | null
@@ -608,7 +635,9 @@ export type Database = {
           notes?: string | null
           quantity?: number | null
           sale_price?: number | null
+          small_unit?: string | null
           supplier?: string | null
+          track_by_unit?: string | null
           unit?: string | null
           updated_at?: string | null
           user_id?: string
@@ -683,6 +712,105 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      stock_transfer_items: {
+        Row: {
+          id: string
+          product_id: string
+          quantity: number
+          quantity_in_pieces: number
+          transfer_id: string
+          unit: string | null
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          quantity: number
+          quantity_in_pieces: number
+          transfer_id: string
+          unit?: string | null
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          quantity?: number
+          quantity_in_pieces?: number
+          transfer_id?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          created_at: string | null
+          from_warehouse_id: string
+          id: string
+          notes: string | null
+          status: string | null
+          to_warehouse_id: string
+          transfer_number: string
+          transferred_at: string | null
+          transferred_by: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          from_warehouse_id: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          to_warehouse_id: string
+          transfer_number: string
+          transferred_at?: string | null
+          transferred_by?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          from_warehouse_id?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          to_warehouse_id?: string
+          transfer_number?: string
+          transferred_at?: string | null
+          transferred_by?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_from_warehouse_id_fkey"
+            columns: ["from_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_warehouse_id_fkey"
+            columns: ["to_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stores: {
         Row: {
@@ -770,6 +898,90 @@ export type Database = {
           is_active?: boolean | null
           owner_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      warehouse_stock: {
+        Row: {
+          id: string
+          last_updated: string | null
+          product_id: string
+          quantity: number | null
+          quantity_bulk: number | null
+          warehouse_id: string
+        }
+        Insert: {
+          id?: string
+          last_updated?: string | null
+          product_id: string
+          quantity?: number | null
+          quantity_bulk?: number | null
+          warehouse_id: string
+        }
+        Update: {
+          id?: string
+          last_updated?: string | null
+          product_id?: string
+          quantity?: number | null
+          quantity_bulk?: number | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_stock_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouses: {
+        Row: {
+          address: string | null
+          assigned_cashier_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          phone: string | null
+          type: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_cashier_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          phone?: string | null
+          type?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          assigned_cashier_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          phone?: string | null
+          type?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
