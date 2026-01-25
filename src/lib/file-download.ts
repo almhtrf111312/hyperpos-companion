@@ -1,6 +1,7 @@
 /**
  * Cross-platform file download utility
  * Works on web browsers and Capacitor (Android/iOS)
+ * Supports direct download to Downloads folder on Android
  */
 
 import { Capacitor } from '@capacitor/core';
@@ -18,6 +19,28 @@ interface DownloadOptions {
  */
 export const isNativePlatform = (): boolean => {
   return Capacitor.isNativePlatform();
+};
+
+/**
+ * Request storage permissions on Android
+ */
+const requestStoragePermissions = async (): Promise<boolean> => {
+  try {
+    // Check current permission status
+    const { publicStorage } = await Filesystem.checkPermissions();
+    
+    if (publicStorage === 'granted') {
+      return true;
+    }
+    
+    // Request permissions
+    const result = await Filesystem.requestPermissions();
+    return result.publicStorage === 'granted';
+  } catch (error) {
+    console.log('[FileDownload] Permission check error:', error);
+    // On newer Android versions, permissions might not be needed
+    return true;
+  }
 };
 
 /**
@@ -41,7 +64,7 @@ export const downloadFile = async (options: DownloadOptions): Promise<boolean> =
 };
 
 /**
- * Save file on native platform and share it
+ * Save file on native platform - tries Downloads first, then fallbacks
  */
 const saveFileNative = async (
   filename: string,
@@ -49,34 +72,30 @@ const saveFileNative = async (
   mimeType: string
 ): Promise<boolean> => {
   try {
-    // Save file to cache directory first
-    const result = await Filesystem.writeFile({
-      path: filename,
-      data: content,
-      directory: Directory.Cache,
-      encoding: Encoding.UTF8,
-    });
+    // Request storage permissions first
+    const hasPermission = await requestStoragePermissions();
+    console.log('[FileDownload] Storage permission:', hasPermission);
 
-    console.log('File saved to:', result.uri);
-
-    // Get the file URI for sharing
-    const fileUri = result.uri;
-
-    // Use Share API to let user save/share the file
-    await Share.share({
-      title: filename,
-      text: 'نسخة احتياطية من HyperPOS',
-      url: fileUri,
-      dialogTitle: 'حفظ النسخة الاحتياطية',
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Native save error:', error);
-    
-    // Fallback: try to save to Documents directory
+    // Try to save directly to Downloads (External Storage)
+    // This works on Android 10+ with scoped storage
     try {
-      await Filesystem.writeFile({
+      const result = await Filesystem.writeFile({
+        path: `Download/${filename}`,
+        data: content,
+        directory: Directory.ExternalStorage,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      });
+      
+      console.log('[FileDownload] Saved to Downloads:', result.uri);
+      return true;
+    } catch (externalError) {
+      console.log('[FileDownload] ExternalStorage failed, trying Documents:', externalError);
+    }
+
+    // Fallback 1: Try Documents directory with HyperPOS folder
+    try {
+      const result = await Filesystem.writeFile({
         path: `HyperPOS/${filename}`,
         data: content,
         directory: Directory.Documents,
@@ -84,11 +103,34 @@ const saveFileNative = async (
         recursive: true,
       });
       
+      console.log('[FileDownload] Saved to Documents:', result.uri);
       return true;
-    } catch (fallbackError) {
-      console.error('Fallback save error:', fallbackError);
-      return false;
+    } catch (documentsError) {
+      console.log('[FileDownload] Documents failed, trying Cache + Share:', documentsError);
     }
+
+    // Fallback 2: Save to Cache and open Share dialog
+    const cacheResult = await Filesystem.writeFile({
+      path: filename,
+      data: content,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+    });
+
+    console.log('[FileDownload] Saved to Cache:', cacheResult.uri);
+
+    // Open Share dialog for user to save manually
+    await Share.share({
+      title: filename,
+      text: 'نسخة احتياطية من HyperPOS',
+      url: cacheResult.uri,
+      dialogTitle: 'حفظ النسخة الاحتياطية',
+    });
+
+    return true;
+  } catch (error) {
+    console.error('[FileDownload] All save methods failed:', error);
+    return false;
   }
 };
 
@@ -160,4 +202,14 @@ export const downloadCSV = async (
     content: BOM + content,
     mimeType: 'text/csv;charset=utf-8',
   });
+};
+
+/**
+ * Get the default download directory path for display to user
+ */
+export const getDownloadPath = (): string => {
+  if (isNativePlatform()) {
+    return 'مجلد التنزيلات (Downloads)';
+  }
+  return 'مجلد التنزيلات';
 };

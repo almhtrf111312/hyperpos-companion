@@ -9,6 +9,12 @@
     "Camera": {
       "photoGalleryPermission": "لاختيار صور المنتجات",
       "cameraPermission": "لمسح الباركود وتصوير المنتجات"
+    },
+    "BarcodeScanner": {
+      "cameraPermissionText": "يحتاج التطبيق للوصول للكاميرا لمسح الباركود"
+    },
+    "Filesystem": {
+      "androidExternalStorage": true
     }
   }
 }
