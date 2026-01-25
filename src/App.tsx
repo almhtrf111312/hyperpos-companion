@@ -14,7 +14,7 @@ import { UserRoleProvider } from "./hooks/use-user-role";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
-import { SetupWizard } from "./components/setup/SetupWizard";
+// SetupWizard removed - users go directly to login
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
@@ -54,13 +54,9 @@ const AppContent = () => {
   // Request camera and storage permissions early on native platforms
   useAppPermissions();
 
-  const [setupComplete, setSetupComplete] = useState(() => {
-    try {
-      return localStorage.getItem('hyperpos_setup_complete') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Setup wizard removed - users go directly to login/signup
+  // Settings can be configured from Settings page after login
+  const [setupComplete] = useState(true);
 
   // Handle reset mode
   useEffect(() => {
@@ -104,14 +100,7 @@ const AppContent = () => {
     );
   }
 
-  if (!setupComplete) {
-    return (
-      <>
-        {isDebugClick && <ClickProbe />}
-        <SetupWizard onComplete={() => setSetupComplete(true)} />
-      </>
-    );
-  }
+  // Setup wizard removed - directly show app content
 
   return (
     <>

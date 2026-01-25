@@ -646,17 +646,30 @@ export function CartPanel({
     }
   };
 
-  // Smart customer search handler
-  const handleCustomerSearch = (value: string) => {
+  // Smart customer search handler - using Cloud API
+  const handleCustomerSearch = async (value: string) => {
     onCustomerNameChange(value);
     if (value.length >= 2) {
-      const customers = loadCustomers();
-      const matches = customers.filter(c => 
-        c.name.toLowerCase().includes(value.toLowerCase()) ||
-        (c.phone && c.phone.includes(value))
-      ).slice(0, 5); // Max 5 results
-      setCustomerSuggestions(matches);
-      setShowSuggestions(matches.length > 0);
+      try {
+        // Use cloud API instead of local storage
+        const customers = await loadCustomersCloud();
+        const matches = customers.filter(c => 
+          c.name.toLowerCase().includes(value.toLowerCase()) ||
+          (c.phone && c.phone.includes(value))
+        ).slice(0, 5); // Max 5 results
+        setCustomerSuggestions(matches);
+        setShowSuggestions(matches.length > 0);
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+        // Fallback to local storage
+        const localCustomers = loadCustomers();
+        const matches = localCustomers.filter(c => 
+          c.name.toLowerCase().includes(value.toLowerCase()) ||
+          (c.phone && c.phone.includes(value))
+        ).slice(0, 5);
+        setCustomerSuggestions(matches);
+        setShowSuggestions(matches.length > 0);
+      }
     } else {
       setShowSuggestions(false);
       setCustomerSuggestions([]);
