@@ -34,10 +34,13 @@ import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
 import CashShifts from "./pages/CashShifts";
+import Warehouses from "./pages/Warehouses";
+import StockTransfer from "./pages/StockTransfer";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import BossPanel from "./pages/BossPanel";
+import { WarehouseProvider } from "./hooks/use-warehouse";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +135,8 @@ const AppContent = () => {
         <Route path="/partners" element={<ProtectedRoute><MainLayout><Partners /></MainLayout></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
         <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
+        <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><Warehouses /></RoleGuard></ProtectedRoute>} />
+        <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><StockTransfer /></RoleGuard></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><MainLayout><Reports /></MainLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
@@ -156,13 +161,15 @@ const App = () => (
               <CloudSyncProvider>
                 <LicenseProvider>
                   <UserRoleProvider>
-                    <NotificationsProvider>
-                      {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
-                      <LicenseWarningBadge />
-                      <LicenseGuard>
-                        <AppContent />
-                      </LicenseGuard>
-                    </NotificationsProvider>
+                    <WarehouseProvider>
+                      <NotificationsProvider>
+                        {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
+                        <LicenseWarningBadge />
+                        <LicenseGuard>
+                          <AppContent />
+                        </LicenseGuard>
+                      </NotificationsProvider>
+                    </WarehouseProvider>
                   </UserRoleProvider>
                 </LicenseProvider>
               </CloudSyncProvider>

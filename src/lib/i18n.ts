@@ -30,6 +30,8 @@ export const translations = {
     'nav.partners': 'الشركاء',
     'nav.cashbox': 'الصندوق',
     'nav.cashShifts': 'الصندوق والوردية',
+    'nav.warehouses': 'المستودعات',
+    'nav.stockTransfer': 'تحويل العهدة',
     'nav.reports': 'التقارير',
     'nav.settings': 'الإعدادات',
     

@@ -25,7 +25,17 @@ export const EVENTS = {
   REFUND_PROCESSED: 'hyperpos:refund-processed',
   // Profit tracking events
   PROFITS_UPDATED: 'hyperpos:profits-updated',
+  // Warehouse events
+  WAREHOUSES_UPDATED: 'hyperpos:warehouses-updated',
+  STOCK_TRANSFERS_UPDATED: 'hyperpos:stock-transfers-updated',
 };
+
+// Subscribe to an event and return unsubscribe function
+export function subscribeToEvent(eventName: string, callback: (event: CustomEvent) => void): () => void {
+  const handler = (e: Event) => callback(e as CustomEvent);
+  window.addEventListener(eventName, handler);
+  return () => window.removeEventListener(eventName, handler);
+}
 
 export function emitEvent(name: string, detail?: any) {
   try {

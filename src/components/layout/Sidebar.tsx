@@ -50,6 +50,8 @@ const navItems: NavItem[] = [
   { icon: UserCheck, translationKey: 'nav.partners', path: '/partners', adminOnly: true },
   { icon: Receipt, translationKey: 'nav.expenses', path: '/expenses' },
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts' },
+  { icon: Package, translationKey: 'nav.warehouses' as any, path: '/warehouses', adminOnly: true },
+  { icon: Package, translationKey: 'nav.stockTransfer' as any, path: '/stock-transfer', adminOnly: true },
   { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true },
   { icon: Settings, translationKey: 'nav.settings', path: '/settings', adminOnly: true },
 ];
