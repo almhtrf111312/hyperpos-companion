@@ -69,6 +69,11 @@ export function ProfileManagement() {
   const [showNewBossPassword, setShowNewBossPassword] = useState(false);
   const [isAddingBoss, setIsAddingBoss] = useState(false);
   const [isLoadingBossAccounts, setIsLoadingBossAccounts] = useState(false);
+  
+  // Delete boss account
+  const [showDeleteBossDialog, setShowDeleteBossDialog] = useState(false);
+  const [bossToDelete, setBossToDelete] = useState<BossAccount | null>(null);
+  const [isDeletingBoss, setIsDeletingBoss] = useState(false);
 
   useEffect(() => {
     if (profile?.full_name) {
@@ -239,6 +244,47 @@ export function ProfileManagement() {
       toast.error(error.message || 'فشل في إنشاء الحساب');
     } finally {
       setIsAddingBoss(false);
+    }
+  };
+
+  const handleDeleteBossAccount = async () => {
+    if (!bossToDelete) return;
+
+    setIsDeletingBoss(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: bossToDelete.user_id,
+          deleteType: 'boss'
+        },
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'فشل في حذف الحساب');
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast.success('تم حذف حساب Boss بنجاح');
+      setShowDeleteBossDialog(false);
+      setBossToDelete(null);
+      fetchBossAccounts();
+    } catch (error: any) {
+      console.error('Error deleting boss account:', error);
+      toast.error(error.message || 'فشل في حذف الحساب');
+    } finally {
+      setIsDeletingBoss(false);
     }
   };
 
@@ -417,9 +463,23 @@ export function ProfileManagement() {
                         <p className="text-sm text-muted-foreground">{boss.email}</p>
                       </div>
                     </div>
-                    {boss.user_id === user?.id && (
-                      <Badge variant="outline">حسابك</Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {boss.user_id === user?.id ? (
+                        <Badge variant="outline">حسابك</Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setBossToDelete(boss);
+                            setShowDeleteBossDialog(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -581,6 +641,62 @@ export function ProfileManagement() {
                 <>
                   <Plus className="w-4 h-4 me-2" />
                   إنشاء الحساب
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Boss Account Dialog */}
+      <Dialog open={showDeleteBossDialog} onOpenChange={setShowDeleteBossDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              حذف حساب Boss
+            </DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف حساب Boss هذا؟ لا يمكن التراجع عن هذا الإجراء.
+            </DialogDescription>
+          </DialogHeader>
+          {bossToDelete && (
+            <div className="p-4 bg-muted/30 rounded-lg border my-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="font-medium">{bossToDelete.full_name || 'بدون اسم'}</p>
+                  <p className="text-sm text-muted-foreground">{bossToDelete.email}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowDeleteBossDialog(false);
+                setBossToDelete(null);
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteBossAccount} 
+              disabled={isDeletingBoss}
+            >
+              {isDeletingBoss ? (
+                <>
+                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                  جارٍ الحذف...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 me-2" />
+                  حذف الحساب
                 </>
               )}
             </Button>

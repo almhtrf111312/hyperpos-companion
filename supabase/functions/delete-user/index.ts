@@ -57,22 +57,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if current user is admin
+    // Check if current user is admin or boss
     const { data: currentUserRole, error: roleError } = await userClient
       .from("user_roles")
       .select("role")
       .eq("user_id", currentUser.id)
       .single();
 
-    if (roleError || currentUserRole?.role !== "admin") {
+    const isBoss = currentUserRole?.role === "boss";
+    const isAdmin = currentUserRole?.role === "admin";
+
+    if (roleError || (!isAdmin && !isBoss)) {
       return new Response(
-        JSON.stringify({ error: "Only admins can delete users" }),
+        JSON.stringify({ error: "Only admins or boss can delete users" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Get the user ID to delete from request body
-    const { userId } = await req.json();
+    const { userId, deleteType } = await req.json();
     
     if (!userId) {
       return new Response(
@@ -87,6 +90,30 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Cannot delete your own account" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // If deleting a boss account, only boss can do it
+    if (deleteType === 'boss') {
+      if (!isBoss) {
+        return new Response(
+          JSON.stringify({ error: "Only boss can delete other boss accounts" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Verify target user is also a boss
+      const { data: targetRole } = await userClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      if (targetRole?.role !== "boss") {
+        return new Response(
+          JSON.stringify({ error: "Target user is not a boss" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Create admin client with service role
