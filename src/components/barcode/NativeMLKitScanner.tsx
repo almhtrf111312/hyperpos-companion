@@ -1,11 +1,10 @@
 // Native ML Kit Barcode Scanner - uses Google ML Kit for fast, accurate scanning on mobile
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 import { Camera, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { playBeep } from '@/lib/sound-utils';
-import { Capacitor } from '@capacitor/core';
 
 interface NativeMLKitScannerProps {
   isOpen: boolean;
@@ -14,26 +13,29 @@ interface NativeMLKitScannerProps {
 }
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScannerProps) {
-  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // ✅ Use refs for synchronous locks to prevent multiple camera opens
+  const scanningRef = useRef(false);
+  const hasScannedRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Open app settings for manual permission grant
-  const openSettings = useCallback(async () => {
+  const openSettings = async () => {
     try {
       await BarcodeScanner.openSettings();
     } catch (err) {
       console.error('[MLKit] Failed to open settings:', err);
-      // Fallback: show instructions
       setError('افتح إعدادات التطبيق يدوياً وامنح إذن الكاميرا');
     }
-  }, []);
+  };
 
   // Check and request camera permission
-  const checkPermission = useCallback(async () => {
+  const checkPermission = async (): Promise<boolean> => {
     try {
       const { camera } = await BarcodeScanner.checkPermissions();
-      
       console.log('[MLKit] Current permission status:', camera);
       
       if (camera === 'granted') {
@@ -44,7 +46,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         setError('تم رفض صلاحية الكاميرا. اضغط على "فتح الإعدادات" للسماح بالوصول.');
         return false;
       } else {
-        // Prompt for permission
         console.log('[MLKit] Requesting camera permission...');
         const result = await BarcodeScanner.requestPermissions();
         const granted = result.camera === 'granted';
@@ -60,19 +61,28 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       setError('فشل في التحقق من صلاحيات الكاميرا. حاول فتح الإعدادات يدوياً.');
       return false;
     }
-  }, []);
+  };
 
-  // Start scanning
-  const startScanning = useCallback(async () => {
-    if (isScanning) return;
+  // Start scanning - with synchronous lock
+  const startScanning = async () => {
+    // ✅ Check ref synchronously to prevent multiple opens
+    if (scanningRef.current || hasScannedRef.current) {
+      console.log('[MLKit] Already scanning or scanned, skipping...');
+      return;
+    }
     
-    try {
-      setIsScanning(true);
-      setError(null);
+    // ✅ Set lock immediately (synchronous)
+    scanningRef.current = true;
+    setIsLoading(true);
+    setError(null);
+    
+    console.log('[MLKit] Starting scan...');
 
+    try {
       const hasPerms = await checkPermission();
-      if (!hasPerms) {
-        setIsScanning(false);
+      if (!hasPerms || !mountedRef.current) {
+        scanningRef.current = false;
+        setIsLoading(false);
         return;
       }
 
@@ -101,14 +111,18 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         ],
       });
 
-      setIsScanning(false);
+      // Check if still mounted
+      if (!mountedRef.current) return;
 
       if (result.barcodes.length > 0) {
         const barcode = result.barcodes[0];
         const value = barcode.rawValue || barcode.displayValue;
         
         if (value) {
-          console.log('[MLKit] Scanned:', value);
+          console.log('[MLKit] ✅ Scanned barcode:', value);
+          
+          // ✅ Mark as scanned to prevent re-opening
+          hasScannedRef.current = true;
           
           // Play beep sound
           playBeep();
@@ -118,16 +132,23 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             navigator.vibrate(100);
           }
           
+          // ✅ Call onScan FIRST with the value
           onScan(value);
-          onClose();
+          
+          // ✅ Then close with a small delay to ensure parent receives data
+          setTimeout(() => {
+            if (mountedRef.current) {
+              onClose();
+            }
+          }, 50);
         }
       } else {
         // User cancelled or no barcode found
+        console.log('[MLKit] No barcode found or cancelled');
         onClose();
       }
     } catch (err: any) {
       console.error('[MLKit] Scan error:', err);
-      setIsScanning(false);
       
       // Handle user cancellation gracefully
       if (err?.message?.includes('canceled') || err?.code === 'CANCELED') {
@@ -135,41 +156,46 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
       
-      setError('فشل في مسح الباركود. حاول مرة أخرى.');
+      if (mountedRef.current) {
+        setError('فشل في مسح الباركود. حاول مرة أخرى.');
+      }
+    } finally {
+      scanningRef.current = false;
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [isScanning, checkPermission, onScan, onClose]);
+  };
 
-  // Stop scanning when dialog closes
-  const stopScanning = useCallback(async () => {
-    try {
-      await BarcodeScanner.stopScan();
-    } catch (err) {
-      // Ignore errors when stopping
-    }
-    setIsScanning(false);
-  }, []);
-
-  // Handle dialog open/close
+  // ✅ Optimized useEffect with minimal dependencies
   useEffect(() => {
-    if (isOpen) {
+    mountedRef.current = true;
+    
+    if (isOpen && !scanningRef.current && !hasScannedRef.current) {
       startScanning();
-    } else {
-      stopScanning();
+    }
+    
+    // Reset locks when dialog closes
+    if (!isOpen) {
+      hasScannedRef.current = false;
+      scanningRef.current = false;
+      setError(null);
     }
     
     return () => {
-      stopScanning();
+      mountedRef.current = false;
+      BarcodeScanner.stopScan().catch(() => {});
     };
-  }, [isOpen, startScanning, stopScanning]);
+  }, [isOpen]); // ✅ Only depend on isOpen to prevent multiple triggers
 
   // Show loading/error dialog while native scanner is active
   return (
-    <Dialog open={isOpen && (isScanning || error !== null)} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen && (isLoading || error !== null)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogTitle className="text-center">مسح الباركود</DialogTitle>
         
         <div className="flex flex-col items-center justify-center py-8 gap-4">
-          {isScanning && !error && (
+          {isLoading && !error && (
             <>
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
               <p className="text-muted-foreground text-center">
@@ -183,7 +209,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
               <Camera className="w-12 h-12 text-muted-foreground" />
               <p className="text-destructive text-center">{error}</p>
               <div className="flex flex-col gap-2 w-full max-w-xs">
-                {/* Show "Open Settings" button when permission is denied */}
                 {hasPermission === false && (
                   <Button 
                     onClick={openSettings}
@@ -197,7 +222,11 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
                   <Button variant="outline" onClick={onClose} className="flex-1">
                     إغلاق
                   </Button>
-                  <Button onClick={startScanning} className="flex-1">
+                  <Button onClick={() => {
+                    hasScannedRef.current = false;
+                    scanningRef.current = false;
+                    startScanning();
+                  }} className="flex-1">
                     إعادة المحاولة
                   </Button>
                 </div>
