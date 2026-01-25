@@ -49,6 +49,11 @@ export function ProductGrid({
   });
 
   const handleBarcodeScan = (barcode: string) => {
+    console.log('[ProductGrid] ✅ Received barcode:', barcode);
+    
+    // ✅ Close scanner first
+    setScannerOpen(false);
+    
     // Use external handler if provided, otherwise fall back to search
     if (onBarcodeScan) {
       onBarcodeScan(barcode);
@@ -61,6 +66,7 @@ export function ProductGrid({
         toast.success(t('pos.addedToCart').replace('{name}', product.name));
       } else {
         // If no product found, put barcode in search
+        console.log('[ProductGrid] Product not found, setting search to:', barcode);
         onSearchChange(barcode);
         toast.info(`${t('pos.barcode')}: ${barcode}`, { description: t('pos.barcodeNotFound') });
       }
