@@ -123,12 +123,13 @@ export default function BossPanel() {
 
   // Remote Activation Dialog
   const [activationDialog, setActivationDialog] = useState<{ owner: Owner } | null>(null);
-  const [activationType, setActivationType] = useState<'new' | 'existing' | 'whatsapp'>('new');
+  const [activationType, setActivationType] = useState<'new' | 'existing' | 'whatsapp' | 'manual'>('new');
   const [activationSettings, setActivationSettings] = useState({
     duration_days: 180,
     max_cashiers: 1,
     license_tier: 'basic',
     selected_code_id: '',
+    manual_code: '',
   });
   const [isActivating, setIsActivating] = useState(false);
 
@@ -417,6 +418,53 @@ export default function BossPanel() {
         window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
         toast.success('تم فتح واتساب');
         setActivationDialog(null);
+        return;
+      }
+
+      // Manual code entry activation
+      if (activationType === 'manual') {
+        if (!activationSettings.manual_code.trim()) {
+          toast.error('يرجى إدخال كود التفعيل');
+          return;
+        }
+
+        // Validate the code first
+        const code = activationSettings.manual_code.trim().toUpperCase();
+        const { data: codeData, error: codeError } = await supabase
+          .from('activation_codes')
+          .select('*')
+          .eq('code', code)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (codeError || !codeData) {
+          toast.error('الكود غير صالح أو غير موجود');
+          return;
+        }
+
+        if (codeData.current_uses >= codeData.max_uses) {
+          toast.error('تم استنفاذ عدد استخدامات هذا الكود');
+          return;
+        }
+
+        const response = await supabase.functions.invoke('remote-activate-user', {
+          body: { 
+            target_user_id: activationDialog.owner.user_id, 
+            activation_code_id: codeData.id 
+          },
+          headers: {
+            Authorization: `Bearer ${session.session.access_token}`,
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Failed to activate');
+        }
+
+        toast.success(`تم تفعيل حساب "${activationDialog.owner.full_name || activationDialog.owner.email}" بنجاح باستخدام الكود ${code}`);
+        setActivationDialog(null);
+        setActivationSettings(prev => ({ ...prev, manual_code: '' }));
+        fetchData();
         return;
       }
 
@@ -937,7 +985,11 @@ export default function BossPanel() {
                 </div>
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <RadioGroupItem value="existing" id="existing" />
-                  <Label htmlFor="existing" className="cursor-pointer">استخدام كود موجود</Label>
+                  <Label htmlFor="existing" className="cursor-pointer">استخدام كود موجود من القائمة</Label>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <RadioGroupItem value="manual" id="manual" />
+                  <Label htmlFor="manual" className="cursor-pointer">إدخال كود تفعيل يدوياً</Label>
                 </div>
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <RadioGroupItem value="whatsapp" id="whatsapp" />
@@ -1029,6 +1081,25 @@ export default function BossPanel() {
                   )}
                 </div>
               )}
+
+              {activationType === 'manual' && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label>أدخل كود التفعيل</Label>
+                  <Input
+                    value={activationSettings.manual_code}
+                    onChange={(e) => setActivationSettings(prev => ({ 
+                      ...prev, 
+                      manual_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
+                    }))}
+                    placeholder="HYPER-XXXX-XXXX-XXXX-XXXX"
+                    className="font-mono text-center"
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    أدخل الكود كما هو، سيتم التحقق منه وتطبيقه على حساب المستخدم
+                  </p>
+                </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -1039,6 +1110,8 @@ export default function BossPanel() {
                 onClick={handleRemoteActivation} 
                 disabled={isActivating || (
                   (activationType === 'existing' || activationType === 'whatsapp') && !activationSettings.selected_code_id
+                ) || (
+                  activationType === 'manual' && !activationSettings.manual_code.trim()
                 )}
               >
                 {isActivating ? (
@@ -1048,7 +1121,7 @@ export default function BossPanel() {
                 ) : (
                   <CheckCircle className="w-4 h-4 me-2" />
                 )}
-                {activationType === 'whatsapp' ? 'إرسال عبر واتساب' : 'تفعيل'}
+                {activationType === 'whatsapp' ? 'إرسال عبر واتساب' : activationType === 'manual' ? 'تفعيل بالكود' : 'تفعيل'}
               </Button>
             </DialogFooter>
           </DialogContent>

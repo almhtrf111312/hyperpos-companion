@@ -1,0 +1,40 @@
+{
+  "name": "flowpos-pro",
+  "version": "1.0.0",
+  "description": "FlowPOS Pro - نظام إدارة المبيعات والمخزون",
+  "main": "main.js",
+  "author": "FlowPOS Team",
+  "license": "MIT",
+  "build": {
+    "appId": "app.flowpos.pro",
+    "productName": "FlowPOS Pro",
+    "directories": {
+      "output": "../electron-dist"
+    },
+    "files": [
+      "../dist/**/*",
+      "main.js",
+      "../resources/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "../resources/icon.png",
+      "artifactName": "FlowPOS-Pro-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FlowPOS Pro",
+      "installerIcon": "../resources/icon.png",
+      "uninstallerIcon": "../resources/icon.png",
+      "installerHeaderIcon": "../resources/icon.png"
+    }
+  }
+}
