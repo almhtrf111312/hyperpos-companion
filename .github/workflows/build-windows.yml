@@ -129,12 +129,13 @@ jobs:
           "@ | Out-File -FilePath electron/main.js -Encoding utf8
 
       - name: Create Electron package.json
+        shell: bash
         run: |
-          @"
+          cat > electron-package.json << 'EOF'
           {
             "name": "flowpos-pro",
             "version": "1.0.${{ github.run_number }}",
-            "description": "FlowPOS Pro - نظام إدارة المبيعات والمخزون",
+            "description": "FlowPOS Pro - Sales and Inventory Management System",
             "main": "electron/main.js",
             "author": "FlowPOS Team",
             "license": "MIT",
@@ -157,24 +158,19 @@ jobs:
                   }
                 ],
                 "icon": "resources/icon.png",
-                "artifactName": "FlowPOS-Pro-Setup-\${version}.exe"
+                "artifactName": "FlowPOS-Pro-Setup-${version}.exe"
               },
               "nsis": {
                 "oneClick": false,
                 "allowToChangeInstallationDirectory": true,
                 "createDesktopShortcut": true,
                 "createStartMenuShortcut": true,
-                "shortcutName": "FlowPOS Pro",
-                "installerIcon": "resources/icon.png",
-                "uninstallerIcon": "resources/icon.png",
-                "installerHeaderIcon": "resources/icon.png",
-                "license": null
+                "shortcutName": "FlowPOS Pro"
               }
             }
           }
-          "@ | Out-File -FilePath electron-package.json -Encoding utf8
-          
-          Copy-Item electron-package.json package.json -Force
+          EOF
+          cp electron-package.json package.json
 
       - name: Install Electron and Builder
         run: |
