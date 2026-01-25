@@ -124,8 +124,10 @@ export const deleteCategoryCloud = async (id: string): Promise<boolean> => {
   return success;
 };
 
-// Get category names
+// Get category names (deduplicated)
 export const getCategoryNamesCloud = async (): Promise<string[]> => {
   const categories = await loadCategoriesCloud();
-  return categories.map(c => c.name);
+  // ✅ Remove duplicates using Set
+  const uniqueNames = [...new Set(categories.map(c => c.name))];
+  return uniqueNames;
 };

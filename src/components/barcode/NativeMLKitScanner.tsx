@@ -116,11 +116,13 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
       if (result.barcodes.length > 0) {
         const barcode = result.barcodes[0];
-        const value = barcode.rawValue || barcode.displayValue;
+        // ✅ Try all possible value properties
+        const value = barcode.rawValue || barcode.displayValue || (barcode as any).value || '';
         
-        if (value) {
-          console.log('[MLKit] ✅ Scanned barcode:', value);
-          
+        console.log('[MLKit] ✅ Full barcode object:', JSON.stringify(barcode));
+        console.log('[MLKit] ✅ Extracted value:', value);
+        
+        if (value && value.trim() !== '') {
           // ✅ Mark as scanned to prevent re-opening
           hasScannedRef.current = true;
           
@@ -132,15 +134,22 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             navigator.vibrate(100);
           }
           
-          // ✅ Call onScan FIRST with the value
-          onScan(value);
+          // ✅ Store the value before any async operation
+          const scannedValue = value.trim();
           
-          // ✅ Then close with a small delay to ensure parent receives data
-          setTimeout(() => {
+          // ✅ Call onScan FIRST with the value synchronously
+          console.log('[MLKit] ✅ Calling onScan with:', scannedValue);
+          onScan(scannedValue);
+          
+          // ✅ Use requestAnimationFrame to ensure parent receives data before closing
+          requestAnimationFrame(() => {
             if (mountedRef.current) {
               onClose();
             }
-          }, 50);
+          });
+        } else {
+          console.warn('[MLKit] ⚠️ Barcode scanned but value is empty');
+          onClose();
         }
       } else {
         // User cancelled or no barcode found

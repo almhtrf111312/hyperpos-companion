@@ -99,9 +99,9 @@ export function ProductGrid({
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 md:mx-0 md:px-0">
-          {categories.map((category) => (
+          {categories.map((category, index) => (
             <button
-              key={category}
+              key={`${category}-${index}`}
               onClick={() => onCategoryChange(category)}
               className={cn(
                 "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
