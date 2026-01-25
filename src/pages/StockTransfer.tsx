@@ -71,6 +71,7 @@ export default function StockTransfer() {
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [productSuggestions, setProductSuggestions] = useState<Product[]>([]);
   const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +138,7 @@ export default function StockTransfer() {
   // Product search functions
   const handleProductSearch = (value: string) => {
     setProductSearchQuery(value);
+    setHighlightedIndex(-1);
     if (value.length >= 2) {
       const matches = products.filter(p => 
         p.name.toLowerCase().includes(value.toLowerCase()) ||
@@ -154,6 +156,36 @@ export default function StockTransfer() {
     setSelectedProductId(product.id);
     setProductSearchQuery(product.name);
     setShowProductSuggestions(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showProductSuggestions || productSuggestions.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev < productSuggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev > 0 ? prev - 1 : productSuggestions.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < productSuggestions.length) {
+          selectProduct(productSuggestions[highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowProductSuggestions(false);
+        setHighlightedIndex(-1);
+        break;
+    }
   };
 
   const handleBarcodeScan = (barcode: string) => {
@@ -422,6 +454,7 @@ export default function StockTransfer() {
                           placeholder="ابحث عن المنتج بالاسم أو الباركود..."
                           value={productSearchQuery}
                           onChange={(e) => handleProductSearch(e.target.value)}
+                          onKeyDown={handleSearchKeyDown}
                           onFocus={() => {
                             if (productSearchQuery.length >= 2) setShowProductSuggestions(true);
                           }}
@@ -435,11 +468,15 @@ export default function StockTransfer() {
                             className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto"
                             onMouseDown={(e) => e.preventDefault()}
                           >
-                            {productSuggestions.map((product) => (
+                            {productSuggestions.map((product, index) => (
                               <div
                                 key={product.id}
                                 onClick={() => selectProduct(product)}
-                                className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent transition-colors"
+                                className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
+                                  index === highlightedIndex 
+                                    ? 'bg-accent text-accent-foreground' 
+                                    : 'hover:bg-accent/50'
+                                }`}
                               >
                                 <Package className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
                                 <span className="flex-1 truncate">{product.name}</span>
