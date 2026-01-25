@@ -290,7 +290,9 @@ export default function Settings() {
     name: '',
     email: '',
     password: '',
+    phone: '',
     role: 'cashier' as 'admin' | 'cashier',
+    userType: 'cashier' as 'cashier' | 'distributor',
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -388,13 +390,13 @@ export default function Settings() {
 
   const handleAddUser = () => {
     setSelectedUser(null);
-    setUserForm({ name: '', email: '', password: '', role: 'cashier' });
+    setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier' });
     setUserDialogOpen(true);
   };
 
   const handleEditUser = (user: UserData) => {
     setSelectedUser(user);
-    setUserForm({ name: user.name, email: '', password: '', role: user.role });
+    setUserForm({ name: user.name, email: '', password: '', phone: '', role: user.role, userType: user.userType || 'cashier' });
     setUserDialogOpen(true);
   };
 
@@ -464,7 +466,7 @@ export default function Settings() {
         return;
       }
 
-      const success = await addUser(userForm.email, userForm.password, userForm.name, userForm.role);
+      const success = await addUser(userForm.email, userForm.password, userForm.name, userForm.role, userForm.userType, userForm.phone);
       if (success) {
         setUserDialogOpen(false);
       }
@@ -1369,16 +1371,32 @@ export default function Settings() {
                 </div>
               </>
             )}
+            {!selectedUser && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">رقم الهاتف (اختياري)</label>
+                <Input
+                  type="tel"
+                  value={userForm.phone}
+                  onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                  placeholder="+963 912 345 678"
+                />
+              </div>
+            )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('settings.role')}</label>
+              <label className="text-sm font-medium">نوع المستخدم</label>
               <select
-                value={userForm.role}
-                onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'admin' | 'cashier' })}
+                value={userForm.userType}
+                onChange={(e) => setUserForm({ ...userForm, userType: e.target.value as 'cashier' | 'distributor' })}
                 className="w-full h-10 px-3 rounded-md bg-muted border-0"
               >
-                <option value="cashier">{t('settings.cashier')}</option>
-                <option value="admin">{t('settings.admin')}</option>
+                <option value="cashier">كاشير (نقطة بيع ثابتة)</option>
+                <option value="distributor">موزع (مستودع متنقل)</option>
               </select>
+              <p className="text-xs text-muted-foreground">
+                {userForm.userType === 'cashier' 
+                  ? 'يعمل في نقطة بيع ثابتة داخل المحل'
+                  : 'موزع متجول له مستودع خاص (سيارة)'}
+              </p>
             </div>
           </div>
           <DialogFooter>

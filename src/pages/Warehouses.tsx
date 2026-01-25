@@ -34,6 +34,8 @@ interface CashierUser {
   id: string;
   email: string;
   full_name: string | null;
+  phone: string | null;
+  user_type: 'cashier' | 'distributor';
 }
 
 export default function Warehouses() {
@@ -70,11 +72,11 @@ export default function Warehouses() {
         .eq('owner_id', user.id);
 
       if (data && !error) {
-        // Get profiles for these cashiers
+        // Get profiles for these cashiers (with phone and user_type)
         const userIds = data.map(r => r.user_id);
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, full_name')
+          .select('user_id, full_name, phone, user_type')
           .in('user_id', userIds);
 
         // Get emails via edge function
@@ -84,19 +86,28 @@ export default function Warehouses() {
             authData?.users?.map((u: { user_id: string; email: string }) => [u.user_id, u.email]) || []
           );
 
-          const cashierList: CashierUser[] = data.map(r => ({
-            id: r.user_id,
-            email: emailMap.get(r.user_id) || '',
-            full_name: profiles?.find(p => p.user_id === r.user_id)?.full_name || null
+          // Filter only distributors for warehouse assignment
+          const distributorProfiles = profiles?.filter(p => p.user_type === 'distributor') || [];
+          
+          const cashierList: CashierUser[] = distributorProfiles.map(p => ({
+            id: p.user_id,
+            email: emailMap.get(p.user_id) || '',
+            full_name: p.full_name || null,
+            phone: p.phone || null,
+            user_type: (p.user_type as 'cashier' | 'distributor') || 'cashier'
           }));
 
           setCashiers(cashierList);
         } catch (err) {
-          // Fallback without emails
-          const cashierList: CashierUser[] = data.map(r => ({
-            id: r.user_id,
+          // Fallback without emails - still filter by distributor
+          const distributorProfiles = profiles?.filter(p => p.user_type === 'distributor') || [];
+          
+          const cashierList: CashierUser[] = distributorProfiles.map(p => ({
+            id: p.user_id,
             email: '',
-            full_name: profiles?.find(p => p.user_id === r.user_id)?.full_name || null
+            full_name: p.full_name || null,
+            phone: p.phone || null,
+            user_type: (p.user_type as 'cashier' | 'distributor') || 'cashier'
           }));
           setCashiers(cashierList);
         }
@@ -137,6 +148,26 @@ export default function Warehouses() {
       address: '',
       phone: ''
     });
+  };
+
+  // Auto-fill warehouse data when distributor is selected
+  const handleCashierSelect = (cashierId: string) => {
+    const selectedCashier = cashiers.find(c => c.id === cashierId);
+    
+    if (selectedCashier) {
+      setFormData(prev => ({
+        ...prev,
+        assigned_cashier_id: cashierId,
+        // Auto-fill name and phone from distributor's profile
+        name: `مخزن ${selectedCashier.full_name || 'الموزع'}`,
+        phone: selectedCashier.phone || prev.phone,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        assigned_cashier_id: cashierId,
+      }));
+    }
   };
 
   const handleAdd = async () => {
@@ -287,26 +318,31 @@ export default function Warehouses() {
                         </Button>
                       </div>
                     ) : (
-                      <Select
-                        value={formData.assigned_cashier_id}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_cashier_id: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر الموزع" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cashiers.map(cashier => (
-                            <SelectItem key={cashier.id} value={cashier.id}>
-                              <div className="flex flex-col items-start">
-                                <span>{cashier.full_name || 'موزع'}</span>
-                                {cashier.email && (
-                                  <span className="text-xs text-muted-foreground">{cashier.email}</span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <>
+                        <Select
+                          value={formData.assigned_cashier_id}
+                          onValueChange={handleCashierSelect}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر الموزع" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cashiers.map(cashier => (
+                              <SelectItem key={cashier.id} value={cashier.id}>
+                                <div className="flex flex-col items-start">
+                                  <span>{cashier.full_name || 'موزع'}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {cashier.email}{cashier.phone && ` • ${cashier.phone}`}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          سيتم ملء بيانات المستودع تلقائياً من بيانات الموزع
+                        </p>
+                      </>
                     )}
                   </div>
                 )}
@@ -501,26 +537,28 @@ export default function Warehouses() {
                       </Button>
                     </div>
                   ) : (
-                    <Select
-                      value={formData.assigned_cashier_id}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_cashier_id: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الموزع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cashiers.map(cashier => (
-                          <SelectItem key={cashier.id} value={cashier.id}>
-                            <div className="flex flex-col items-start">
-                              <span>{cashier.full_name || 'موزع'}</span>
-                              {cashier.email && (
-                                <span className="text-xs text-muted-foreground">{cashier.email}</span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <>
+                      <Select
+                        value={formData.assigned_cashier_id}
+                        onValueChange={handleCashierSelect}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر الموزع" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cashiers.map(cashier => (
+                            <SelectItem key={cashier.id} value={cashier.id}>
+                              <div className="flex flex-col items-start">
+                                <span>{cashier.full_name || 'موزع'}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {cashier.email}{cashier.phone && ` • ${cashier.phone}`}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
                   )}
                 </div>
               )}

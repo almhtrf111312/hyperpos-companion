@@ -9,7 +9,9 @@ export interface UserData {
   user_id: string;
   name: string;
   email: string;
+  phone?: string;
   role: 'admin' | 'cashier';
+  userType?: 'cashier' | 'distributor';
   isCurrentUser?: boolean;
   isOwner?: boolean;
 }
@@ -39,10 +41,10 @@ export function useUsersManagement() {
         return;
       }
 
-      // Fetch profiles for each user
+      // Fetch profiles for each user (including phone and user_type)
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, full_name');
+        .select('user_id, full_name, phone, user_type');
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
@@ -65,7 +67,9 @@ export function useUsersManagement() {
           user_id: role.user_id,
           name: userProfile?.full_name || (isCurrentUserFlag ? (profile?.full_name || currentUser?.email?.split('@')[0] || 'مستخدم') : 'مستخدم'),
           email: isCurrentUserFlag ? (currentUser?.email || '') : '',
+          phone: userProfile?.phone || '',
           role: role.role as 'admin' | 'cashier',
+          userType: (userProfile?.user_type as 'cashier' | 'distributor') || 'cashier',
           isCurrentUser: isCurrentUserFlag,
           isOwner: isOwnerFlag,
         };
@@ -92,7 +96,7 @@ export function useUsersManagement() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier') => {
+  const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: 'cashier' | 'distributor' = 'cashier', phone?: string) => {
     try {
       // Create user via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -132,7 +136,25 @@ export function useUsersManagement() {
         });
 
       if (roleError) {
-        console.error('Error creating role:', roleError);
+        // Still try to update profile with user_type and phone
+      }
+
+      // Update profile with user_type and phone
+      const profileUpdate: { user_type: string; phone?: string } = { user_type: userType };
+      if (phone) {
+        profileUpdate.phone = phone;
+      }
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdate)
+        .eq('user_id', authData.user.id);
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+      }
+
+      if (roleError) {
         toast({
           title: 'تحذير',
           description: 'تم إنشاء المستخدم لكن فشل في تعيين الصلاحية',
