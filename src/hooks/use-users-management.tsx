@@ -10,7 +10,7 @@ export interface UserData {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'cashier';
+  role: 'admin' | 'cashier' | 'boss';
   userType?: 'cashier' | 'distributor';
   isCurrentUser?: boolean;
   isOwner?: boolean;
@@ -68,7 +68,7 @@ export function useUsersManagement() {
           name: userProfile?.full_name || (isCurrentUserFlag ? (profile?.full_name || currentUser?.email?.split('@')[0] || 'مستخدم') : 'مستخدم'),
           email: isCurrentUserFlag ? (currentUser?.email || '') : '',
           phone: userProfile?.phone || '',
-          role: role.role as 'admin' | 'cashier',
+          role: role.role as 'admin' | 'cashier' | 'boss',
           userType: (userProfile?.user_type as 'cashier' | 'distributor') || 'cashier',
           isCurrentUser: isCurrentUserFlag,
           isOwner: isOwnerFlag,
