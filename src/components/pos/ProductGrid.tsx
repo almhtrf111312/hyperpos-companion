@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -15,6 +16,9 @@ interface Product {
   category: string;
   image?: string;
   barcode?: string;
+  conversionFactor?: number;
+  bulkUnit?: string;
+  smallUnit?: string;
 }
 
 interface ProductGridProps {
@@ -141,9 +145,14 @@ export function ProductGrid({
                 {product.name}
               </h3>
               <p className="text-primary font-bold text-sm md:text-base">${product.price}</p>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
-                {t('pos.stock')}: {product.quantity}
-              </p>
+              <div className="mt-0.5 md:mt-1">
+                <DualUnitDisplayCompact
+                  totalPieces={product.quantity}
+                  conversionFactor={product.conversionFactor || 1}
+                  bulkUnit={product.bulkUnit}
+                  smallUnit={product.smallUnit}
+                />
+              </div>
             </button>
           ))}
         </div>
