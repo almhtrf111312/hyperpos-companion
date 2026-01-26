@@ -416,6 +416,11 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                         <Calendar className="w-3 h-3" />
                         {debt.dueDate}
                       </span>
+                      {debt.cashierName && (
+                        <span className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded text-[10px] md:text-xs">
+                          👤 {debt.cashierName}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

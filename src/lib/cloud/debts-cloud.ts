@@ -43,10 +43,15 @@ export interface Debt {
   updatedAt: string;
   notes?: string;
   isCashDebt?: boolean;
+  cashierId?: string;
+  cashierName?: string;
 }
 
+// Cache for cashier names
+const cashierNamesCache: Record<string, string> = {};
+
 // Transform cloud to legacy
-function toDebt(cloud: CloudDebt): Debt {
+function toDebt(cloud: CloudDebt & { cashier_name?: string }): Debt {
   const today = new Date().toISOString().split('T')[0];
   let status = cloud.status as DebtStatus;
   
@@ -69,6 +74,8 @@ function toDebt(cloud: CloudDebt): Debt {
     isCashDebt: cloud.is_cash_debt,
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
+    cashierId: (cloud as { cashier_id?: string }).cashier_id || undefined,
+    cashierName: cloud.cashier_name || cashierNamesCache[(cloud as { cashier_id?: string }).cashier_id || ''] || undefined,
   };
 }
 
@@ -86,12 +93,35 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
     return debtsCache;
   }
 
-  const cloudDebts = await fetchFromSupabase<CloudDebt>('debts', {
+  let cloudDebts = await fetchFromSupabase<CloudDebt & { cashier_id?: string }>('debts', {
     column: 'created_at',
     ascending: false,
   });
 
-  debtsCache = cloudDebts.map(toDebt);
+  // Fetch cashier names for debts with cashier_id
+  const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
+  if (cashierIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profiles } = await (supabase as any)
+      .from('profiles')
+      .select('user_id, full_name')
+      .in('user_id', cashierIds);
+    
+    if (profiles) {
+      const nameMap: Record<string, string> = {};
+      profiles.forEach((p: { user_id: string; full_name: string }) => {
+        nameMap[p.user_id] = p.full_name;
+        cashierNamesCache[p.user_id] = p.full_name;
+      });
+      
+      cloudDebts = cloudDebts.map(d => ({
+        ...d,
+        cashier_name: (d as { cashier_id?: string }).cashier_id ? nameMap[(d as { cashier_id: string }).cashier_id] : undefined,
+      }));
+    }
+  }
+
+  debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
   cacheTimestamp = Date.now();
   
   return debtsCache;

@@ -76,6 +76,8 @@ export interface Invoice {
   debtRemaining?: number;
   createdAt: string;
   updatedAt: string;
+  cashierId?: string;
+  cashierName?: string;
 }
 
 // Transform cloud to legacy
@@ -99,6 +101,8 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     debtRemaining: Number(cloud.debt_remaining) || 0,
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
+    cashierId: cloud.cashier_id || undefined,
+    cashierName: cloud.cashier_name || undefined,
   };
 }
 
