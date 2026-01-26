@@ -215,11 +215,15 @@ export function CartPanel({
           : item.quantity
       }));
       
-      // التحقق من توفر الكميات - استخدام المستودع المُسند إذا متاح
+      // التحقق من توفر الكميات
+      // ✅ للمستودع الرئيسي (أو عدم وجود مستودع): استخدم products.quantity
+      // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
       let stockCheck;
-      if (activeWarehouse) {
+      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
+        // مستودع موزع - استخدم warehouse_stock
         stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
       } else {
+        // المستودع الرئيسي أو لا يوجد مستودع - استخدم products.quantity
         stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
       }
       
@@ -345,7 +349,8 @@ export function CartPanel({
           : item.quantity
       }));
       
-      if (activeWarehouse) {
+      // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
+      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
         backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
       } else {
         backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
@@ -439,8 +444,10 @@ export function CartPanel({
       }));
       
       // التحقق من المخزون
+      // ✅ للمستودع الرئيسي: استخدم products.quantity
+      // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
       let stockCheck;
-      if (activeWarehouse) {
+      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
         stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
       } else {
         stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
@@ -580,7 +587,8 @@ export function CartPanel({
           : item.quantity
       }));
       
-      if (activeWarehouse) {
+      // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
+      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
         backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
       } else {
         backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
