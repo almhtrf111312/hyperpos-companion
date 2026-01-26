@@ -19,18 +19,20 @@ import {
   Share2,
   MessageCircle,
   ClipboardList,
-  Truck
+  Truck,
+  Loader2
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { loadInvoices } from '@/lib/invoices-store';
-import { loadProducts } from '@/lib/products-store';
-import { loadCustomers } from '@/lib/customers-store';
-import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
-import { loadCategories } from '@/lib/categories-store';
-import { loadExpenses, Expense, getExpenseStats } from '@/lib/expenses-store';
+// ✅ استخدام Cloud APIs بدلاً من localStorage
+import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
+import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
+import { loadCustomersCloud, Customer } from '@/lib/cloud/customers-cloud';
+import { loadPartnersCloud, Partner, ProfitRecord } from '@/lib/cloud/partners-cloud';
+import { loadCategoriesCloud, Category } from '@/lib/cloud/categories-cloud';
+import { loadExpensesCloud, Expense } from '@/lib/cloud/expenses-cloud';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
 import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
@@ -53,6 +55,7 @@ import {
 } from '@/lib/pdf-export';
 import { useLanguage } from '@/hooks/use-language';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { EVENTS } from '@/lib/events';
 
 export default function Reports() {
   const { t } = useLanguage();
@@ -62,6 +65,67 @@ export default function Reports() {
     to: new Date().toISOString().split('T')[0] 
   });
   const [activeReport, setActiveReport] = useState('sales');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ✅ State للبيانات السحابية
+  const [cloudInvoices, setCloudInvoices] = useState<Invoice[]>([]);
+  const [cloudProducts, setCloudProducts] = useState<Product[]>([]);
+  const [cloudCustomers, setCloudCustomers] = useState<Customer[]>([]);
+  const [cloudPartners, setCloudPartners] = useState<Partner[]>([]);
+  const [cloudCategories, setCloudCategories] = useState<Category[]>([]);
+  const [cloudExpenses, setCloudExpenses] = useState<Expense[]>([]);
+
+  // ✅ تحميل البيانات من Cloud
+  const loadCloudData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [invoices, products, customers, partners, categories, expenses] = await Promise.all([
+        loadInvoicesCloud(),
+        loadProductsCloud(),
+        loadCustomersCloud(),
+        loadPartnersCloud(),
+        loadCategoriesCloud(),
+        loadExpensesCloud()
+      ]);
+      
+      setCloudInvoices(invoices);
+      setCloudProducts(products);
+      setCloudCustomers(customers);
+      setCloudPartners(partners);
+      setCloudCategories(categories);
+      setCloudExpenses(expenses);
+    } catch (error) {
+      console.error('Error loading cloud data for reports:', error);
+      toast.error('فشل في تحميل بيانات التقارير');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ✅ تحميل البيانات عند التحميل والاستماع للتحديثات
+  useEffect(() => {
+    loadCloudData();
+
+    const handleUpdate = () => loadCloudData();
+    
+    window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+    window.addEventListener('focus', loadCloudData);
+    
+    return () => {
+      window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+      window.removeEventListener('focus', loadCloudData);
+    };
+  }, [loadCloudData]);
 
   // Auto-open tab from URL params
   useEffect(() => {
@@ -94,9 +158,9 @@ export default function Reports() {
   };
 
   const reportData = useMemo(() => {
-    const allInvoices = loadInvoices();
-    const products = loadProducts();
-    const customers = loadCustomers();
+    const allInvoices = cloudInvoices;
+    const products = cloudProducts;
+    const customers = cloudCustomers;
     
     // Filter invoices by date range using local timezone
     const filteredInvoices = allInvoices.filter(inv => {
@@ -184,12 +248,12 @@ export default function Reports() {
       allCustomers,
       hasData: filteredInvoices.length > 0,
     };
-  }, [dateRange]);
+  }, [dateRange, cloudInvoices, cloudProducts, cloudCustomers]);
 
   // Partner report data
   const partnerReportData = useMemo(() => {
-    const partners = loadPartners();
-    const categories = loadCategories();
+    const partners = cloudPartners;
+    const categories = cloudCategories;
     
     // Filter partners based on selection
     const filteredPartners = selectedPartnerId === 'all' 
@@ -289,12 +353,12 @@ export default function Reports() {
       aggregatedCategoryProfits: Object.values(aggregatedCategoryProfits).sort((a, b) => b.amount - a.amount),
       hasData: partnerProfitData.some(p => p.totalProfitInPeriod > 0 || p.currentBalance > 0),
     };
-  }, [dateRange, selectedPartnerId]);
+  }, [dateRange, selectedPartnerId, cloudPartners, cloudCategories]);
 
   // Expense report data
   const expenseReportData = useMemo(() => {
-    const allExpenses = loadExpenses();
-    const partners = loadPartners();
+    const allExpenses = cloudExpenses;
+    const partners = cloudPartners;
     
     // Filter expenses by date range
     const filteredExpenses = allExpenses.filter(exp => {
@@ -354,7 +418,7 @@ export default function Reports() {
       hasData: filteredExpenses.length > 0,
       allPartners: partners,
     };
-  }, [dateRange]);
+  }, [dateRange, cloudExpenses, cloudPartners]);
 
   // Get store info for exports
   const getStoreInfo = () => {
@@ -376,10 +440,10 @@ export default function Reports() {
 
   const handleExportPDF = useCallback(async () => {
     const storeInfo = getStoreInfo();
-    const allInvoices = loadInvoices();
-    const products = loadProducts();
-    const customers = loadCustomers();
-    const partners = loadPartners();
+    const allInvoices = cloudInvoices;
+    const products = cloudProducts;
+    const customers = cloudCustomers;
+    const partners = cloudPartners;
     
     try {
       switch (activeReport) {
@@ -483,13 +547,13 @@ export default function Reports() {
       console.error('PDF export error:', error);
       toast.error('فشل في تصدير التقرير');
     }
-  }, [dateRange, activeReport, expenseReportData]);
+  }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners]);
 
   const handleExportExcel = useCallback(async () => {
-    const allInvoices = loadInvoices();
-    const products = loadProducts();
-    const customers = loadCustomers();
-    const partners = loadPartners();
+    const allInvoices = cloudInvoices;
+    const products = cloudProducts;
+    const customers = cloudCustomers;
+    const partners = cloudPartners;
     
     try {
       switch (activeReport) {
@@ -584,7 +648,7 @@ export default function Reports() {
       console.error('Excel export error:', error);
       toast.error('فشل في تصدير التقرير');
     }
-  }, [dateRange, activeReport, reportData, expenseReportData]);
+  }, [dateRange, activeReport, reportData, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners]);
 
   // Export expenses report as Excel
   const handleExportExpensesExcel = useCallback(async () => {
@@ -641,9 +705,9 @@ ${partnerExpenses.map(exp => {
       version: '1.0',
       exportedAt: new Date().toISOString(),
       data: {
-        invoices: loadInvoices(),
-        products: loadProducts(),
-        customers: loadCustomers(),
+        invoices: cloudInvoices,
+        products: cloudProducts,
+        customers: cloudCustomers,
       }
     };
     
@@ -655,7 +719,7 @@ ${partnerExpenses.map(exp => {
     } else {
       toast.error('فشل في إنشاء النسخة الاحتياطية');
     }
-  }, []);
+  }, [cloudInvoices, cloudProducts, cloudCustomers]);
 
   // Find max sales for chart scaling
   const maxSales = Math.max(...reportData.dailySales.map(d => d.sales), 1);
@@ -670,15 +734,21 @@ ${partnerExpenses.map(exp => {
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportPDF}>
+          {isLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">جاري التحميل...</span>
+            </div>
+          )}
+          <Button variant="outline" onClick={handleExportPDF} disabled={isLoading}>
             <FileText className="w-4 h-4 ml-2" />
             PDF
           </Button>
-          <Button variant="outline" onClick={handleExportExcel}>
+          <Button variant="outline" onClick={handleExportExcel} disabled={isLoading}>
             <Download className="w-4 h-4 ml-2" />
             Excel
           </Button>
-          <Button onClick={handleBackup}>
+          <Button onClick={handleBackup} disabled={isLoading}>
             <Download className="w-4 h-4 ml-2" />
             {t('reports.backup')}
           </Button>
@@ -772,8 +842,16 @@ ${partnerExpenses.map(exp => {
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-card rounded-2xl border border-border p-8 text-center">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 text-primary animate-spin" />
+          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+        </div>
+      )}
+
       {/* No Data Message */}
-      {!reportData.hasData && (
+      {!isLoading && !reportData.hasData && (
         <div className="bg-card rounded-2xl border border-border p-8 text-center">
           <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
           <p className="text-muted-foreground">{t('reports.noData')}</p>
