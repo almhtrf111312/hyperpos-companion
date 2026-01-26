@@ -42,6 +42,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
+import { useAuth } from '@/hooks/use-auth';
 
 interface RepairRequest {
   id: string;
@@ -65,6 +66,9 @@ interface RepairRequest {
   profit?: number;           // الربح الصافي
   paymentType?: 'cash' | 'debt';  // نوع الدفع
   deliveredAt?: string;      // تاريخ التسليم
+  // Cashier attribution
+  createdById?: string;
+  createdByName?: string;
 }
 
 const SERVICES_STORAGE_KEY = 'hyperpos_services_v1';
@@ -119,6 +123,7 @@ const getDeviceTypes = (t: (key: string) => string) => [
 
 export default function Services() {
   const { t } = useLanguage();
+  const { user, profile } = useAuth();
   const statusConfig = getStatusConfig(t);
   const filterOptions = getFilterOptions(t);
   const deviceTypes = getDeviceTypes(t);
@@ -225,6 +230,8 @@ export default function Services() {
       technician: formData.technician || undefined,
       status: 'pending',
       createdAt: new Date().toISOString().split('T')[0],
+      createdById: user?.id,
+      createdByName: profile?.full_name || user?.email?.split('@')[0] || undefined,
     };
 
     setRequests([newRequest, ...requests]);
@@ -494,6 +501,11 @@ export default function Services() {
                 <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
                   <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   <span>{request.createdAt}</span>
+                  {request.createdByName && (
+                    <span className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded text-[10px] md:text-xs">
+                      👤 {request.createdByName}
+                    </span>
+                  )}
                 </div>
               </div>
 

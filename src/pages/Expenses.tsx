@@ -422,7 +422,14 @@ export default function Expenses() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">{expense.typeLabel}</h3>
-                    <p className="text-sm text-muted-foreground">{expense.date}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{expense.date}</span>
+                      {expense.cashierName && (
+                        <span className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded text-xs">
+                          👤 {expense.cashierName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="text-left">

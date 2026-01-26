@@ -45,6 +45,8 @@ export interface Expense {
   month: string;
   distributions: ExpenseDistribution[];
   createdAt: string;
+  cashierId?: string;
+  cashierName?: string;
 }
 
 // Expense types with labels
@@ -76,8 +78,11 @@ export const getExpenseCategory = (type: ExpenseType): ExpenseCategory => {
   return expenseTypes.find(t => t.value === type)?.category || 'other';
 };
 
+// Cache for cashier names
+const cashierNamesCache: Record<string, string> = {};
+
 // Transform cloud to legacy
-function toExpense(cloud: CloudExpense): Expense {
+function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
   const type = cloud.expense_type as ExpenseType;
   return {
     id: cloud.id,
@@ -90,6 +95,8 @@ function toExpense(cloud: CloudExpense): Expense {
     month: cloud.date.substring(0, 7),
     distributions: cloud.distributions || [],
     createdAt: cloud.created_at,
+    cashierId: cloud.cashier_id || undefined,
+    cashierName: cloud.cashier_name || cashierNamesCache[cloud.cashier_id || ''] || undefined,
   };
 }
 
@@ -110,7 +117,7 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
   // Check if user is cashier for filtering
   const isCashier = await isCashierUser();
   
-  let cloudExpenses: CloudExpense[];
+  let cloudExpenses: (CloudExpense & { cashier_name?: string })[];
   
   if (isCashier) {
     // Cashiers see only their own expenses
@@ -133,6 +140,29 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
       column: 'created_at',
       ascending: false,
     });
+  }
+
+  // Fetch cashier names for expenses with cashier_id
+  const cashierIds = [...new Set(cloudExpenses.filter(e => e.cashier_id).map(e => e.cashier_id!))];
+  if (cashierIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profiles } = await (supabase as any)
+      .from('profiles')
+      .select('user_id, full_name')
+      .in('user_id', cashierIds);
+    
+    if (profiles) {
+      const nameMap: Record<string, string> = {};
+      profiles.forEach((p: { user_id: string; full_name: string }) => {
+        nameMap[p.user_id] = p.full_name;
+        cashierNamesCache[p.user_id] = p.full_name;
+      });
+      
+      cloudExpenses = cloudExpenses.map(e => ({
+        ...e,
+        cashier_name: e.cashier_id ? nameMap[e.cashier_id] : undefined,
+      }));
+    }
   }
 
   expensesCache = cloudExpenses.map(toExpense);

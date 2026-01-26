@@ -634,10 +634,18 @@ ${footer}`;
                           )
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
                         <span>{invoice.id}</span>
                         <span>•</span>
                         <span>{new Date(invoice.createdAt).toLocaleDateString('ar-SA')}</span>
+                        {invoice.cashierName && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 text-xs bg-muted px-1.5 py-0.5 rounded">
+                              👤 {invoice.cashierName}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
