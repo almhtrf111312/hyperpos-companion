@@ -46,6 +46,7 @@ import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DatePicker } from '@/components/ui/date-picker';
 import { UnitSettingsTab } from '@/components/products/UnitSettingsTab';
 import { 
   loadProductsCloud, 
@@ -933,10 +934,10 @@ const filteredProducts = useMemo(() => {
               {fieldsConfig.expiryDate && (
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية</label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={formData.expiryDate}
-                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                    onChange={(date) => setFormData({ ...formData, expiryDate: date })}
+                    placeholder="اختر تاريخ الصلاحية"
                   />
                 </div>
               )}

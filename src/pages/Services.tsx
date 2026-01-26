@@ -38,6 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
@@ -691,10 +692,10 @@ export default function Services() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={formData.estimatedDate}
-                  onChange={(e) => setFormData({ ...formData, estimatedDate: e.target.value })}
+                  onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
+                  placeholder="اختر تاريخ التسليم"
                 />
               </div>
             </div>
@@ -799,10 +800,10 @@ export default function Services() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={formData.estimatedDate}
-                  onChange={(e) => setFormData({ ...formData, estimatedDate: e.target.value })}
+                  onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
+                  placeholder="اختر تاريخ التسليم"
                 />
               </div>
             </div>

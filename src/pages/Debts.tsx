@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
 import { 
@@ -523,15 +524,11 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('debts.dueDate')} *</label>
-              <div className="relative">
-                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={newDebtForm.dueDate}
-                  onChange={(e) => setNewDebtForm({ ...newDebtForm, dueDate: e.target.value })}
-                  className="pr-10"
-                />
-              </div>
+              <DatePicker
+                value={newDebtForm.dueDate}
+                onChange={(date) => setNewDebtForm({ ...newDebtForm, dueDate: date })}
+                placeholder={t('debts.selectDueDate')}
+              />
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('common.notes')}</label>
