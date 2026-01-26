@@ -56,17 +56,36 @@ export function useUsersManagement() {
       );
       const ownerUserId = sortedRoles.find(r => r.role === 'admin')?.user_id;
 
+      // Fetch emails for all users via edge function
+      const userIds = rolesData.map(r => r.user_id);
+      let emailMap: Record<string, string> = {};
+      
+      try {
+        const { data: emailsData, error: emailsError } = await supabase.functions.invoke('get-users-emails', {
+          body: { userIds },
+        });
+        
+        if (!emailsError && emailsData?.emails) {
+          emailMap = emailsData.emails;
+        }
+      } catch (e) {
+        console.error('Error fetching user emails:', e);
+      }
+
       // Combine data
       const combinedUsers: UserData[] = rolesData.map(role => {
         const userProfile = profilesData?.find(p => p.user_id === role.user_id);
         const isCurrentUserFlag = currentUser?.id === role.user_id;
         const isOwnerFlag = role.user_id === ownerUserId;
         
+        // Get email from emailMap, or use current user's email
+        const userEmail = emailMap[role.user_id] || (isCurrentUserFlag ? (currentUser?.email || '') : '');
+        
         return {
           id: role.id,
           user_id: role.user_id,
           name: userProfile?.full_name || (isCurrentUserFlag ? (profile?.full_name || currentUser?.email?.split('@')[0] || 'مستخدم') : 'مستخدم'),
-          email: isCurrentUserFlag ? (currentUser?.email || '') : '',
+          email: userEmail,
           phone: userProfile?.phone || '',
           role: role.role as 'admin' | 'cashier' | 'boss',
           userType: (userProfile?.user_type as 'cashier' | 'distributor') || 'cashier',
@@ -98,9 +117,10 @@ export function useUsersManagement() {
 
   const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: 'cashier' | 'distributor' = 'cashier', phone?: string) => {
     try {
-      // For cashier/distributor users, link them to the current owner so other screens (e.g. Warehouses)
-      // can fetch them via user_roles.owner_id.
-      if (role === 'cashier' && !currentUser?.id) {
+      // Ensure user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
         toast({
           title: 'خطأ',
           description: 'يجب تسجيل الدخول لإنشاء مستخدمين',
@@ -109,69 +129,28 @@ export function useUsersManagement() {
         return false;
       }
 
-      // Create user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
+      // Call backend function to create the user - this won't affect the current session
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email, password, fullName, role, userType, phone },
       });
 
-      if (authError) {
+      if (error) {
+        console.error('Error calling create-user:', error);
         toast({
           title: 'خطأ',
-          description: authError.message,
+          description: error.message || 'فشل في إنشاء المستخدم',
           variant: 'destructive',
         });
         return false;
       }
 
-      if (!authData.user) {
+      if (!data?.success) {
         toast({
           title: 'خطأ',
-          description: 'فشل في إنشاء المستخدم',
+          description: data?.error || 'فشل في إنشاء المستخدم',
           variant: 'destructive',
         });
         return false;
-      }
-
-      // Create role for the new user
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: role,
-          owner_id: role === 'cashier' ? currentUser?.id : null,
-        });
-
-      if (roleError) {
-        // Still try to update profile with user_type and phone
-      }
-
-      // Update profile with user_type and phone
-      const profileUpdate: { user_type: string; phone?: string } = { user_type: userType };
-      if (phone) {
-        profileUpdate.phone = phone;
-      }
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileUpdate)
-        .eq('user_id', authData.user.id);
-
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-      }
-
-      if (roleError) {
-        toast({
-          title: 'تحذير',
-          description: 'تم إنشاء المستخدم لكن فشل في تعيين الصلاحية',
-          variant: 'destructive',
-        });
       }
 
       // Log activity
@@ -181,7 +160,7 @@ export function useUsersManagement() {
           currentUser.id,
           profile?.full_name || currentUser.email || 'مستخدم',
           `تم إضافة مستخدم جديد: ${fullName} (${role === 'admin' ? 'مدير' : 'كاشير'})`,
-          { email, role, newUserId: authData.user.id }
+          { email, role, newUserId: data.user?.id }
         );
       }
 
