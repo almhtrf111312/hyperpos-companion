@@ -20,7 +20,7 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   stayLoggedIn: boolean;
-  signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null; data?: { user: User; session: Session } }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -201,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchProfile]);
 
-  const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
+  const signIn = async (email: string, password: string, rememberMe: boolean = false): Promise<{ error: Error | null; data?: { user: User; session: Session } }> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -230,7 +230,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       
-      return { error: error ? new Error(error.message) : null };
+      if (error) {
+        return { error: new Error(error.message) };
+      }
+      
+      return { 
+        error: null, 
+        data: data.user && data.session ? { user: data.user, session: data.session } : undefined 
+      };
     } catch (err) {
       return { error: err as Error };
     }

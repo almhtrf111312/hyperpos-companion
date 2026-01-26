@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.update-boss-email]
 verify_jwt = false
+
+[functions.reset-own-device]
+verify_jwt = false
