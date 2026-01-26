@@ -2,19 +2,28 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, Key, MessageCircle, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Lock, Key, MessageCircle, Loader2, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
 import { useLicense } from '@/hooks/use-license';
 import { useLanguage } from '@/hooks/use-language';
+import { useAuth } from '@/hooks/use-auth';
 
 export function ActivationScreen() {
   const { activateCode, isTrial, isExpired } = useLicense();
   const { language } = useLanguage();
+  const { signOut } = useAuth();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const isRTL = language === 'ar';
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    await signOut();
+    // After signout, the auth state will change and redirect to login
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,8 +152,8 @@ export function ActivationScreen() {
             </Button>
           </form>
 
-          <div className="pt-4 border-t">
-            <p className="text-sm text-muted-foreground text-center mb-3">
+          <div className="pt-4 border-t space-y-3">
+            <p className="text-sm text-muted-foreground text-center">
               {isRTL ? 'للحصول على كود التفعيل، تواصل معنا:' : 'To get an activation code, contact us:'}
             </p>
             <Button variant="outline" className="w-full" asChild>
@@ -156,6 +165,22 @@ export function ActivationScreen() {
                 <MessageCircle className="w-4 h-4" />
                 <span className={isRTL ? 'mr-2' : 'ml-2'}>WhatsApp</span>
               </a>
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              className="w-full text-muted-foreground hover:text-foreground" 
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+            >
+              {isSigningOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+              <span className={isRTL ? 'mr-2' : 'ml-2'}>
+                {isRTL ? 'تسجيل الخروج والدخول بحساب آخر' : 'Sign out and use another account'}
+              </span>
             </Button>
           </div>
         </CardContent>
