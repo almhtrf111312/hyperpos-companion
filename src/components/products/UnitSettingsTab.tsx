@@ -1,7 +1,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Package, Boxes, ArrowLeftRight, DollarSign } from 'lucide-react';
+import { Package, Boxes, ArrowLeftRight, DollarSign, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface UnitSettingsData {
   bulkUnit: string;
@@ -15,23 +16,29 @@ interface UnitSettingsData {
 interface UnitSettingsTabProps {
   data: UnitSettingsData;
   onChange: (data: Partial<UnitSettingsData>) => void;
-  quantity: number;
+  /** الكمية الإجمالية بالقطع (الوحدة الصغرى) - دائماً بالقطع */
+  quantityInPieces: number;
+  /** سعر تكلفة القطعة الواحدة */
+  pieceCostPrice: number;
 }
 
-export function UnitSettingsTab({ data, onChange, quantity }: UnitSettingsTabProps) {
-  // Calculate total pieces based on bulk quantity
-  const totalPieces = data.trackByUnit === 'bulk' 
-    ? quantity * data.conversionFactor 
-    : quantity;
+export function UnitSettingsTab({ data, onChange, quantityInPieces, pieceCostPrice }: UnitSettingsTabProps) {
+  const conversionFactor = data.conversionFactor || 1;
   
-  // Calculate bulk quantity from pieces
-  const bulkQuantity = data.trackByUnit === 'piece' 
-    ? Math.floor(quantity / data.conversionFactor)
-    : quantity;
+  // الكمية الإجمالية دائماً بالقطع - لا يتغير الحساب أبداً
+  const totalPieces = quantityInPieces;
   
-  const remainingPieces = data.trackByUnit === 'piece'
-    ? quantity % data.conversionFactor
-    : 0;
+  // حساب عدد الكراتين الكاملة والقطع المتبقية
+  const fullBulkUnits = Math.floor(totalPieces / conversionFactor);
+  const remainingPieces = totalPieces % conversionFactor;
+
+  // حساب سعر تكلفة الكرتونة تلقائياً من سعر القطعة × معامل التحويل
+  const calculatedBulkCostPrice = pieceCostPrice * conversionFactor;
+
+  // تحديد ما يعنيه التتبع
+  const trackingExplanation = data.trackByUnit === 'bulk'
+    ? `إدخال الكمية بالـ${data.bulkUnit || 'كرتونة'} (سيتم تحويلها تلقائياً للقطع)`
+    : `إدخال الكمية بالـ${data.smallUnit || 'قطعة'}`;
 
   return (
     <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/30">
@@ -79,20 +86,24 @@ export function UnitSettingsTab({ data, onChange, quantity }: UnitSettingsTabPro
           </p>
         </div>
         
-        {/* Bulk Cost Price */}
+        {/* Bulk Cost Price - calculated automatically */}
         <div>
           <Label className="text-sm font-medium mb-1.5 flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
-            سعر تكلفة {data.bulkUnit || 'الكرتونة'}
+            سعر تكلفة {data.bulkUnit || 'الكرتونة'} (محسوب تلقائياً)
           </Label>
           <Input
             type="number"
             min="0"
             step="0.01"
             placeholder="0"
-            value={data.bulkCostPrice || ''}
-            onChange={(e) => onChange({ bulkCostPrice: Number(e.target.value) })}
+            value={calculatedBulkCostPrice.toFixed(2)}
+            readOnly
+            className="bg-muted/50"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            = سعر القطعة ({pieceCostPrice.toFixed(2)}$) × معامل التحويل ({conversionFactor})
+          </p>
         </div>
         
         {/* Bulk Sale Price */}
@@ -116,7 +127,7 @@ export function UnitSettingsTab({ data, onChange, quantity }: UnitSettingsTabPro
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm">تتبع المخزون بـ:</span>
+          <span className="text-sm">وحدة إدخال الكمية:</span>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-sm ${data.trackByUnit === 'piece' ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
@@ -132,48 +143,55 @@ export function UnitSettingsTab({ data, onChange, quantity }: UnitSettingsTabPro
         </div>
       </div>
       
-      {/* Stock Summary */}
-      {quantity > 0 && (
+      {/* Tracking Explanation */}
+      <Alert className="bg-blue-500/10 border-blue-500/30">
+        <Info className="h-4 w-4 text-blue-500" />
+        <AlertDescription className="text-sm text-muted-foreground">
+          <strong>ملاحظة:</strong> {trackingExplanation}. 
+          يتم تخزين الكمية دائماً بالقطع في قاعدة البيانات.
+        </AlertDescription>
+      </Alert>
+      
+      {/* Stock Summary - Always shows pieces as the base unit */}
+      {totalPieces > 0 && (
         <div className="bg-primary/10 rounded-lg p-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">إجمالي المخزون:</span>
             <span className="font-semibold text-foreground">
-              {data.trackByUnit === 'bulk' ? (
-                <>
-                  {quantity} {data.bulkUnit || 'كرتونة'} = {totalPieces} {data.smallUnit || 'قطعة'}
-                </>
-              ) : (
-                <>
-                  {quantity} {data.smallUnit || 'قطعة'} = {bulkQuantity} {data.bulkUnit || 'كرتونة'}
-                  {remainingPieces > 0 && ` + ${remainingPieces} ${data.smallUnit || 'قطعة'}`}
-                </>
-              )}
+              {totalPieces} {data.smallUnit || 'قطعة'} = {fullBulkUnits} {data.bulkUnit || 'كرتونة'}
+              {remainingPieces > 0 && ` + ${remainingPieces} ${data.smallUnit || 'قطعة'}`}
             </span>
           </div>
         </div>
       )}
       
       {/* Pricing Summary */}
-      {data.bulkCostPrice > 0 && data.conversionFactor > 1 && (
+      {pieceCostPrice > 0 && conversionFactor > 1 && (
         <div className="bg-success/10 rounded-lg p-3 text-sm space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">تكلفة القطعة الواحدة:</span>
             <span className="font-semibold text-foreground">
-              ${(data.bulkCostPrice / data.conversionFactor).toFixed(2)}
+              ${pieceCostPrice.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">تكلفة {data.bulkUnit || 'الكرتونة'}:</span>
+            <span className="font-semibold text-foreground">
+              ${calculatedBulkCostPrice.toFixed(2)}
             </span>
           </div>
           {data.bulkSalePrice > 0 && (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">سعر بيع القطعة من الكرتونة:</span>
+                <span className="text-muted-foreground">سعر بيع القطعة من {data.bulkUnit || 'الكرتونة'}:</span>
                 <span className="font-semibold text-foreground">
-                  ${(data.bulkSalePrice / data.conversionFactor).toFixed(2)}
+                  ${(data.bulkSalePrice / conversionFactor).toFixed(2)}
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-success/20 pt-1 mt-1">
-                <span className="text-muted-foreground">ربح الكرتونة:</span>
+                <span className="text-muted-foreground">ربح {data.bulkUnit || 'الكرتونة'}:</span>
                 <span className="font-semibold text-success">
-                  ${(data.bulkSalePrice - data.bulkCostPrice).toFixed(2)}
+                  ${(data.bulkSalePrice - calculatedBulkCostPrice).toFixed(2)}
                 </span>
               </div>
             </>

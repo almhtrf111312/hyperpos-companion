@@ -287,8 +287,18 @@ const filteredProducts = useMemo(() => {
     
     setIsSaving(true);
     
+    // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
+    const quantityInPieces = formData.trackByUnit === 'bulk' 
+      ? formData.quantity * formData.conversionFactor 
+      : formData.quantity;
+    
+    // حساب سعر تكلفة الكرتونة تلقائياً
+    const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
+    
     const productData = {
       ...formData,
+      quantity: quantityInPieces, // الكمية دائماً بالقطع
+      bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
@@ -335,8 +345,18 @@ const filteredProducts = useMemo(() => {
     
     setIsSaving(true);
     
+    // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
+    const quantityInPieces = formData.trackByUnit === 'bulk' 
+      ? formData.quantity * formData.conversionFactor 
+      : formData.quantity;
+    
+    // حساب سعر تكلفة الكرتونة تلقائياً
+    const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
+    
     const productData = {
       ...formData,
+      quantity: quantityInPieces, // الكمية دائماً بالقطع
+      bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
@@ -400,13 +420,22 @@ const filteredProducts = useMemo(() => {
 
   const openEditDialog = (product: Product) => {
     setSelectedProduct(product);
+    
+    // الكمية في قاعدة البيانات دائماً بالقطع
+    // نحولها للوحدة المستخدمة للتتبع عند العرض
+    const trackByUnit = product.trackByUnit || 'piece';
+    const conversionFactor = product.conversionFactor || 1;
+    const quantityForDisplay = trackByUnit === 'bulk' 
+      ? Math.floor(product.quantity / conversionFactor)
+      : product.quantity;
+    
     setFormData({
       name: product.name,
       barcode: product.barcode,
       category: product.category,
       costPrice: product.costPrice,
       salePrice: product.salePrice,
-      quantity: product.quantity,
+      quantity: quantityForDisplay,
       expiryDate: product.expiryDate || '',
       image: product.image || '',
       serialNumber: product.serialNumber || '',
@@ -418,10 +447,10 @@ const filteredProducts = useMemo(() => {
       // Unit settings
       bulkUnit: product.bulkUnit || 'كرتونة',
       smallUnit: product.smallUnit || 'قطعة',
-      conversionFactor: product.conversionFactor || 1,
+      conversionFactor: conversionFactor,
       bulkCostPrice: product.bulkCostPrice || 0,
       bulkSalePrice: product.bulkSalePrice || 0,
-      trackByUnit: product.trackByUnit || 'piece',
+      trackByUnit: trackByUnit,
     });
     // Check if product has unit settings to auto-expand
     if (product.conversionFactor && product.conversionFactor > 1) {
@@ -924,7 +953,10 @@ const filteredProducts = useMemo(() => {
                         trackByUnit: formData.trackByUnit,
                       }}
                       onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                      quantity={formData.quantity}
+                      quantityInPieces={formData.trackByUnit === 'bulk' 
+                        ? formData.quantity * formData.conversionFactor 
+                        : formData.quantity}
+                      pieceCostPrice={formData.costPrice}
                     />
                   </CollapsibleContent>
                 </Collapsible>
@@ -1170,7 +1202,10 @@ const filteredProducts = useMemo(() => {
                         trackByUnit: formData.trackByUnit,
                       }}
                       onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                      quantity={formData.quantity}
+                      quantityInPieces={formData.trackByUnit === 'bulk' 
+                        ? formData.quantity * formData.conversionFactor 
+                        : formData.quantity}
+                      pieceCostPrice={formData.costPrice}
                     />
                   </CollapsibleContent>
                 </Collapsible>
