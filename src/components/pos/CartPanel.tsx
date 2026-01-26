@@ -790,6 +790,7 @@ export function CartPanel({
     `;
     
     printHTML(printContent);
+    showToast.success('جاري إرسال الفاتورة للطابعة...');
   };
 
   const handleWhatsApp = () => {

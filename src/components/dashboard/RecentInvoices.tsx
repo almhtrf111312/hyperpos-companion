@@ -116,7 +116,7 @@ export function RecentInvoices() {
     `;
     
     printHTML(printContent);
-    toast.success(`جاري طباعة الفاتورة ${invoice.id}`);
+    toast.success('جاري إرسال الفاتورة للطابعة...');
   };
 
   const handleCopyInvoice = (invoice: Invoice) => {
