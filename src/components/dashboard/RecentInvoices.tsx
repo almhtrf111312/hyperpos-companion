@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy, FileX } from 'lucide-react';
+import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy, FileX, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,16 +17,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
-import { loadInvoices, Invoice, deleteInvoice } from '@/lib/invoices-store';
+import { loadInvoicesCloud, deleteInvoiceCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { EVENTS } from '@/lib/events';
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   paid: 'badge-success',
   pending: 'badge-warning',
   cancelled: 'badge-danger',
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   paid: 'مكتملة',
   pending: 'معلقة',
   cancelled: 'ملغاة',
@@ -36,12 +37,28 @@ export function RecentInvoices() {
   const navigate = useNavigate();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load invoices from localStorage
-  const invoices = useMemo(() => {
-    return loadInvoices().slice(0, 10); // Show last 10 invoices
-  }, [refreshKey]);
+  // Load invoices from Cloud
+  const loadData = useCallback(async () => {
+    try {
+      const data = await loadInvoicesCloud();
+      setInvoices(data.slice(0, 10)); // Show last 10 invoices
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    
+    // Listen for updates
+    window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
+    return () => window.removeEventListener(EVENTS.INVOICES_UPDATED, loadData);
+  }, [loadData]);
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -129,11 +146,11 @@ export function RecentInvoices() {
     navigate('/pos');
   };
 
-  const handleDeleteInvoice = (invoice: Invoice) => {
-    const success = deleteInvoice(invoice.id);
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    const success = await deleteInvoiceCloud(invoice.id);
     if (success) {
       toast.success(`تم حذف الفاتورة ${invoice.id}`);
-      setRefreshKey(prev => prev + 1);
+      loadData();
       setShowViewDialog(false);
     } else {
       toast.error('فشل في حذف الفاتورة');

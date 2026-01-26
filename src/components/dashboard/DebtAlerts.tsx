@@ -1,24 +1,24 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Clock, CheckCircle, Phone, FileX } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, Phone, FileX, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { loadInvoices } from '@/lib/invoices-store';
+import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { useLanguage } from '@/hooks/use-language';
+import { EVENTS } from '@/lib/events';
 
 interface DebtAlert {
   id: string;
   customer: string;
   phone: string;
   amount: number;
-  currency: string;
-  currencySymbol: string;
-  dueDate: string;
   status: 'overdue' | 'due_today' | 'due_soon';
 }
 
 export function DebtAlerts() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const [debts, setDebts] = useState<DebtAlert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const statusConfig = {
     overdue: {
@@ -44,42 +44,56 @@ export function DebtAlerts() {
     },
   };
 
-  // Load debts from invoices
-  const debts = useMemo(() => {
-    const invoices = loadInvoices();
-    const pendingDebts = invoices.filter(
-      inv => inv.paymentType === 'debt' && inv.status === 'pending'
-    );
+  // Load debts from Cloud
+  const loadData = useCallback(async () => {
+    try {
+      const cloudDebts = await loadDebtsCloud();
+      const activeDebts = cloudDebts.filter(d => d.status !== 'fully_paid');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    return pendingDebts.map(inv => {
-      const createdDate = new Date(inv.createdAt);
-      const daysSinceCreated = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+      const mapped = activeDebts.map(debt => {
+        const createdDate = new Date(debt.createdAt);
+        const daysSinceCreated = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Determine status based on days since debt created
+        let status: 'overdue' | 'due_today' | 'due_soon';
+        if (daysSinceCreated > 30 || debt.status === 'overdue') {
+          status = 'overdue';
+        } else if (daysSinceCreated > 14) {
+          status = 'due_today';
+        } else {
+          status = 'due_soon';
+        }
+
+        return {
+          id: debt.id,
+          customer: debt.customerName,
+          phone: debt.customerPhone || '',
+          amount: debt.remainingDebt,
+          status,
+        } as DebtAlert;
+      }).slice(0, 5); // Show top 5 debts
       
-      // Determine status based on days since invoice created
-      let status: 'overdue' | 'due_today' | 'due_soon';
-      if (daysSinceCreated > 30) {
-        status = 'overdue';
-      } else if (daysSinceCreated > 14) {
-        status = 'due_today';
-      } else {
-        status = 'due_soon';
-      }
-
-      return {
-        id: inv.id,
-        customer: inv.customerName,
-        phone: inv.customerPhone || '',
-        amount: inv.totalInCurrency,
-        currency: inv.currency,
-        currencySymbol: inv.currencySymbol,
-        dueDate: inv.createdAt,
-        status,
-      } as DebtAlert;
-    }).slice(0, 5); // Show top 5 debts
+      setDebts(mapped);
+    } catch (error) {
+      console.error('Error loading debts:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+    
+    window.addEventListener(EVENTS.DEBTS_UPDATED, loadData);
+    window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
+    return () => {
+      window.removeEventListener(EVENTS.DEBTS_UPDATED, loadData);
+      window.removeEventListener(EVENTS.INVOICES_UPDATED, loadData);
+    };
+  }, [loadData]);
 
   const handleViewAllDebts = () => {
     navigate('/debts');
@@ -140,7 +154,7 @@ export function DebtAlerts() {
                     </div>
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-lg text-foreground">{debt.currencySymbol}{debt.amount.toLocaleString()}</p>
+                    <p className="font-bold text-lg text-foreground">${debt.amount.toLocaleString()}</p>
                     <p className={cn("text-xs font-medium", config.textColor)}>{t(config.labelKey)}</p>
                   </div>
                 </div>

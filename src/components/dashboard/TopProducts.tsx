@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
-import { TrendingUp, Package, FileX } from 'lucide-react';
-import { loadInvoices } from '@/lib/invoices-store';
+import { useState, useEffect, useCallback } from 'react';
+import { TrendingUp, Package, FileX, Loader2 } from 'lucide-react';
+import { loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
 import { useLanguage } from '@/hooks/use-language';
+import { EVENTS } from '@/lib/events';
 
 interface TopProduct {
   id: string;
@@ -12,31 +13,49 @@ interface TopProduct {
 
 export function TopProducts() {
   const { t } = useLanguage();
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Calculate top products from invoices
-  const topProducts = useMemo(() => {
-    const invoices = loadInvoices();
-    const productSales: Record<string, { name: string; sales: number; revenue: number }> = {};
+  // Calculate top products from cloud invoices
+  const loadData = useCallback(async () => {
+    try {
+      const invoices = await loadInvoicesCloud();
+      const productSales: Record<string, { name: string; sales: number; revenue: number }> = {};
 
-    // Aggregate sales from all invoices
-    invoices.forEach(invoice => {
-      if (invoice.status === 'cancelled') return;
-      
-      invoice.items.forEach(item => {
-        if (!productSales[item.name]) {
-          productSales[item.name] = { name: item.name, sales: 0, revenue: 0 };
-        }
-        productSales[item.name].sales += item.quantity;
-        productSales[item.name].revenue += item.total;
+      // Aggregate sales from all invoices
+      invoices.forEach(invoice => {
+        if (invoice.status === 'cancelled') return;
+        
+        invoice.items?.forEach(item => {
+          const itemName = item.name;
+          if (!productSales[itemName]) {
+            productSales[itemName] = { name: itemName, sales: 0, revenue: 0 };
+          }
+          productSales[itemName].sales += item.quantity || 0;
+          productSales[itemName].revenue += item.total || 0;
+        });
       });
-    });
 
-    // Convert to array and sort by sales
-    return Object.entries(productSales)
-      .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 5); // Top 5 products
+      // Convert to array and sort by sales
+      const sorted = Object.entries(productSales)
+        .map(([id, data]) => ({ id, ...data }))
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, 5); // Top 5 products
+      
+      setTopProducts(sorted);
+    } catch (error) {
+      console.error('Error loading top products:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+    
+    window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
+    return () => window.removeEventListener(EVENTS.INVOICES_UPDATED, loadData);
+  }, [loadData]);
 
   const maxSales = topProducts.length > 0 ? Math.max(...topProducts.map(p => p.sales)) : 1;
 
