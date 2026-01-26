@@ -41,6 +41,19 @@ export function ThemeSection() {
 
   return (
     <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+      {/* Save/Cancel Buttons - Above theme options */}
+      {hasChanges && (
+        <div className="flex gap-3 pb-4 border-b border-border">
+          <Button onClick={handleSave} className="flex-1">
+            <Save className="w-4 h-4 ml-2" />
+            {t('common.save')}
+          </Button>
+          <Button variant="outline" onClick={handleCancel} className="flex-1">
+            {t('common.cancel')}
+          </Button>
+        </div>
+      )}
+
       <div>
         <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">
           {t('settings.theme')}
@@ -140,19 +153,6 @@ export function ThemeSection() {
         </div>
       </div>
 
-
-      {/* Save/Cancel Buttons */}
-      {hasChanges && (
-        <div className="flex gap-3 pt-4 border-t border-border">
-          <Button onClick={handleSave} className="flex-1">
-            <Save className="w-4 h-4 ml-2" />
-            {t('common.save')}
-          </Button>
-          <Button variant="outline" onClick={handleCancel} className="flex-1">
-            {t('common.cancel')}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

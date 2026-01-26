@@ -75,29 +75,29 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Package className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-semibold">إدارة حقول المنتجات</h3>
-            <p className="text-sm text-muted-foreground">
-              تخصيص الحقول الظاهرة في نموذج إضافة/تعديل المنتج
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="w-4 h-4 ml-2" />
-            استعادة الافتراضي
+      {/* Save/Reset Buttons at Top */}
+      <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
+        {hasChanges && (
+          <Button size="sm" onClick={handleSave}>
+            <Save className="w-4 h-4 ml-2" />
+            حفظ التغييرات
           </Button>
-          {hasChanges && (
-            <Button size="sm" onClick={handleSave}>
-              <Save className="w-4 h-4 ml-2" />
-              حفظ
-            </Button>
-          )}
+        )}
+        <Button variant="outline" size="sm" onClick={handleReset}>
+          <RotateCcw className="w-4 h-4 ml-2" />
+          استعادة الافتراضي
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-primary/10">
+          <Package className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-semibold">إدارة حقول المنتجات</h3>
+          <p className="text-sm text-muted-foreground">
+            تخصيص الحقول الظاهرة في نموذج إضافة/تعديل المنتج
+          </p>
         </div>
       </div>
 

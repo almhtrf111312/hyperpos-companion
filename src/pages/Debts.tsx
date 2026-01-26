@@ -12,7 +12,8 @@ import {
   Eye,
   CreditCard,
   Save,
-  User
+  User,
+  Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -133,6 +134,55 @@ export default function Debts() {
   const openViewDialog = (debt: Debt) => {
     setSelectedDebt(debt);
     setShowViewDialog(true);
+  };
+
+  // Share debt via WhatsApp
+  const handleShareDebt = (debt: Debt) => {
+    // Load store settings
+    let storeName = 'HyperPOS Store';
+    let storePhone = '';
+    try {
+      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw);
+        storeName = settings.storeSettings?.name || storeName;
+        storePhone = settings.storeSettings?.phone || '';
+      }
+    } catch {}
+
+    const statusLabel = debt.status === 'fully_paid' ? '✅ مسددة بالكامل' 
+      : debt.status === 'partially_paid' ? '⏳ مسددة جزئياً'
+      : debt.status === 'overdue' ? '🔴 متأخرة' 
+      : '📋 مستحقة';
+
+    const message = `╔══════════════════════╗
+      *${storeName}*
+╚══════════════════════╝
+
+📋 *كشف حساب دين*
+
+━━━━━━━━━━━━━━━━━━━━━
+👤 *العميل:* ${debt.customerName}
+📱 *الهاتف:* ${debt.customerPhone || 'غير محدد'}
+${debt.invoiceId ? `📄 *رقم الفاتورة:* ${debt.invoiceId}` : ''}
+━━━━━━━━━━━━━━━━━━━━━
+
+💰 *إجمالي الدين:* $${debt.totalDebt.toLocaleString()}
+✅ *المدفوع:* $${debt.totalPaid.toLocaleString()}
+🔴 *المتبقي:* $${debt.remainingDebt.toLocaleString()}
+
+📊 *الحالة:* ${statusLabel}
+${debt.dueDate ? `📅 *تاريخ الاستحقاق:* ${new Date(debt.dueDate).toLocaleDateString('ar-SA')}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━
+${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
+
+شكراً لتعاملكم معنا! 🙏`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+    toast.success('تم فتح واتساب للمشاركة');
   };
 
   const handlePayment = async () => {
@@ -398,10 +448,14 @@ export default function Debts() {
                       ${debt.remainingDebt.toLocaleString()}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(debt)}>
                       <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
                       {t('common.view')}
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => handleShareDebt(debt)}>
+                      <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                      {t('common.share')}
                     </Button>
                     {debt.remainingDebt > 0 && (
                       <Button size="sm" className="h-8 md:h-9 bg-success hover:bg-success/90 text-xs md:text-sm" onClick={() => openPaymentDialog(debt)}>
