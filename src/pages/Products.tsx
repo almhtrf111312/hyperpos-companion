@@ -700,27 +700,24 @@ const filteredProducts = useMemo(() => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">المنتج</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الباركود</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">التصنيف</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">سعر الشراء</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">سعر البيع</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الربح</th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">المنتج</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">التصنيف</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">الأسعار</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">الربح</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Boxes className="w-4 h-4" />
-                    الكمية
+                    المخزون
                   </div>
                 </th>
-                <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الحالة</th>
-                <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">إجراءات</th>
+                <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map((product, index) => {
                 const status = statusConfig[product.status];
                 const profit = product.salePrice - product.costPrice;
-                const profitPercentage = ((profit / product.costPrice) * 100).toFixed(0);
+                const profitPercentage = product.costPrice > 0 ? ((profit / product.costPrice) * 100).toFixed(0) : '0';
                 
                 return (
                   <tr 
@@ -728,74 +725,93 @@ const filteredProducts = useMemo(() => {
                     className="border-b border-border/50 hover:bg-muted/30 transition-colors fade-in"
                     style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
+                    {/* المنتج + الباركود */}
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                           {product.image ? (
                             <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                           ) : (
-                            <Package className="w-6 h-6 text-muted-foreground" />
+                            <Package className="w-5 h-5 text-muted-foreground" />
                           )}
                         </div>
-                        <span className="font-medium text-foreground">{product.name}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-foreground text-sm truncate">{product.name}</span>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Barcode className="w-3 h-3 flex-shrink-0" />
+                            <span className="font-mono truncate">{product.barcode}</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
-                        <Barcode className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-mono text-sm text-muted-foreground">{product.barcode}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                    
+                    {/* التصنيف */}
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
                         {product.category}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-muted-foreground">${product.costPrice}</span>
+                    
+                    {/* الأسعار (شراء + بيع) فوق بعض */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col text-sm">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">شراء:</span>
+                          <span className="text-muted-foreground">${product.costPrice}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">بيع:</span>
+                          <span className="font-semibold text-foreground">${product.salePrice}</span>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="font-semibold text-foreground">${product.salePrice}</span>
-                    </td>
-                    <td className="py-4 px-6">
+                    
+                    {/* الربح */}
+                    <td className="py-3 px-3">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-success">${profit}</span>
+                        <span className="font-semibold text-success text-sm">${profit}</span>
                         <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-foreground">{product.quantity} {product.smallUnit || 'قطعة'}</span>
-                        {product.conversionFactor && product.conversionFactor > 1 && (
-                          <span className="text-xs text-muted-foreground">
-                            {Math.floor(product.quantity / product.conversionFactor)} {product.bulkUnit || 'كرتونة'}
-                            {product.quantity % product.conversionFactor > 0 && (
-                              <> + {product.quantity % product.conversionFactor} {product.smallUnit || 'قطعة'}</>
-                            )}
-                          </span>
-                        )}
+                    
+                    {/* المخزون + الحالة */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-foreground text-sm">{product.quantity} {product.smallUnit || 'قطعة'}</span>
+                          {product.conversionFactor && product.conversionFactor > 1 && (
+                            <span className="text-xs text-muted-foreground">
+                              {Math.floor(product.quantity / product.conversionFactor)} {product.bulkUnit || 'كرتونة'}
+                              {product.quantity % product.conversionFactor > 0 && (
+                                <> + {product.quantity % product.conversionFactor} {product.smallUnit || 'قطعة'}</>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit",
+                          status.color
+                        )}>
+                          <status.icon className="w-2.5 h-2.5" />
+                          {status.label}
+                        </span>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className={cn(
-                        "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium",
-                        status.color
-                      )}>
-                        <status.icon className="w-3 h-3" />
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-center gap-2">
+                    
+                    {/* الإجراءات (فوق بعض) */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col items-center gap-1">
                         <button 
-                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           onClick={() => openEditDialog(product)}
+                          title="تعديل"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
-                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
                           onClick={() => openDeleteDialog(product)}
+                          title="حذف"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
