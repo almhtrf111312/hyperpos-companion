@@ -10,6 +10,7 @@ interface LicenseState {
   isExpired: boolean;
   isRevoked: boolean;
   needsActivation: boolean;
+  ownerNeedsActivation: boolean; // For cashiers when their owner hasn't activated
   expiresAt: string | null;
   remainingDays: number | null;
   error: string | null;
@@ -39,6 +40,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     isExpired: false,
     isRevoked: false,
     needsActivation: false,
+    ownerNeedsActivation: false,
     expiresAt: null,
     remainingDays: null,
     error: null,
@@ -108,6 +110,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         isExpired: data.isExpired || false,
         isRevoked: data.isRevoked || false,
         needsActivation: data.needsActivation,
+        ownerNeedsActivation: data.ownerNeedsActivation || false,
         expiresAt: data.expiresAt || null,
         remainingDays: data.remainingDays || null,
         error: null,

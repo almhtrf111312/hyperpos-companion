@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Key, Clock } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LicenseGuardProps {
   children: ReactNode;
@@ -77,7 +78,7 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
   const { user, isLoading: authLoading } = useAuth();
-  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays } = useLicense();
+  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
@@ -169,7 +170,47 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     );
   }
 
+  // If cashier and owner hasn't activated yet, show waiting message
+  if (ownerNeedsActivation && role === 'cashier') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir="rtl">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center pb-2">
+            <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+            </div>
+            <CardTitle className="text-xl">
+              في انتظار تفعيل المالك
+            </CardTitle>
+            <CardDescription>
+              صاحب الحساب لم يقم بتفعيل الترخيص بعد. يرجى التواصل معه لتفعيل الحساب.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => checkLicense()}
+            >
+              إعادة التحقق
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full text-muted-foreground"
+              onClick={async () => {
+                await supabase.auth.signOut();
+              }}
+            >
+              تسجيل الخروج
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // If user has no license and hasn't made a choice yet, show choice screen
+  // But only for admin/owner users - cashiers should never see this
   if (!hasLicense && !isStartingTrial) {
     if (showActivation) {
       return <ActivationScreen />;

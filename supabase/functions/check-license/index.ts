@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
       ? roleData.owner_id 
       : user.id
 
+    // IMPORTANT: Cashiers inherit license from owner - they don't need separate activation
+    const isCashierWithOwner = roleData.role === 'cashier' && roleData.owner_id
+
     // Boss users always have valid license
     if (roleData.role === 'boss') {
       return new Response(
@@ -124,6 +127,21 @@ Deno.serve(async (req) => {
 
     if (licenseError || !license) {
       // No license found
+      // For cashiers, this means owner has no license - cashier should wait for owner to activate
+      if (isCashierWithOwner) {
+        return new Response(
+          JSON.stringify({ 
+            valid: false, 
+            hasLicense: false,
+            needsActivation: false, // Cashier cannot activate - owner must do it
+            ownerNeedsActivation: true,
+            role: roleData.role,
+            message: 'صاحب الحساب لم يقم بتفعيل الترخيص بعد'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
       return new Response(
         JSON.stringify({ 
           valid: false, 
