@@ -41,9 +41,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: ShoppingCart, translationKey: 'nav.pos', path: '/' },
-  { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard' },
+  { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard', adminOnly: true },
   { icon: FileText, translationKey: 'nav.invoices', path: '/invoices' },
-  { icon: Package, translationKey: 'nav.products', path: '/products' },
+  { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true },
   { icon: Users, translationKey: 'nav.customers', path: '/customers' },
   { icon: CreditCard, translationKey: 'nav.debts', path: '/debts' },
   { icon: Wrench, translationKey: 'nav.services', path: '/services' },

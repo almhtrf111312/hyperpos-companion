@@ -189,6 +189,7 @@ export type Database = {
       }
       debts: {
         Row: {
+          cashier_id: string | null
           created_at: string | null
           customer_name: string
           customer_phone: string | null
@@ -205,6 +206,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cashier_id?: string | null
           created_at?: string | null
           customer_name: string
           customer_phone?: string | null
@@ -221,6 +223,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cashier_id?: string | null
           created_at?: string | null
           customer_name?: string
           customer_phone?: string | null
@@ -241,6 +244,7 @@ export type Database = {
       expenses: {
         Row: {
           amount: number | null
+          cashier_id: string | null
           created_at: string | null
           date: string | null
           description: string | null
@@ -252,6 +256,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          cashier_id?: string | null
           created_at?: string | null
           date?: string | null
           description?: string | null
@@ -263,6 +268,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          cashier_id?: string | null
           created_at?: string | null
           date?: string | null
           description?: string | null

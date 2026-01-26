@@ -3,8 +3,10 @@ import {
   fetchFromSupabase, 
   insertToSupabase, 
   deleteFromSupabase,
-  getCurrentUserId 
+  getCurrentUserId,
+  isCashierUser
 } from '../supabase-store';
+import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
 
@@ -21,6 +23,7 @@ export interface ExpenseDistribution {
 export interface CloudExpense {
   id: string;
   user_id: string;
+  cashier_id: string | null; // ✅ Track which cashier created this
   expense_type: string;
   amount: number;
   description: string | null;
@@ -95,7 +98,7 @@ let expensesCache: Expense[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
-// Load expenses
+// Load expenses - cashiers see only their expenses, owners see all
 export const loadExpensesCloud = async (): Promise<Expense[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
@@ -104,10 +107,33 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
     return expensesCache;
   }
 
-  const cloudExpenses = await fetchFromSupabase<CloudExpense>('expenses', {
-    column: 'created_at',
-    ascending: false,
-  });
+  // Check if user is cashier for filtering
+  const isCashier = await isCashierUser();
+  
+  let cloudExpenses: CloudExpense[];
+  
+  if (isCashier) {
+    // Cashiers see only their own expenses
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('expenses')
+      .select('*')
+      .eq('cashier_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching cashier expenses:', error);
+      cloudExpenses = [];
+    } else {
+      cloudExpenses = data || [];
+    }
+  } else {
+    // Owners see all expenses (via RLS)
+    cloudExpenses = await fetchFromSupabase<CloudExpense>('expenses', {
+      column: 'created_at',
+      ascending: false,
+    });
+  }
 
   expensesCache = cloudExpenses.map(toExpense);
   cacheTimestamp = Date.now();
@@ -167,6 +193,8 @@ export const addExpenseCloud = async (expenseData: {
     }
   }
   
+  const userId = getCurrentUserId();
+  
   const inserted = await insertToSupabase<CloudExpense>('expenses', {
     expense_type: expenseData.type,
     amount: expenseData.amount,
@@ -174,6 +202,7 @@ export const addExpenseCloud = async (expenseData: {
     date: expenseData.date,
     notes: expenseData.notes || null,
     distributions,
+    cashier_id: userId, // ✅ Track which user created this expense
   });
   
   if (inserted) {
