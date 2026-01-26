@@ -4,7 +4,8 @@ import {
   insertToSupabase, 
   updateInSupabase, 
   deleteFromSupabase,
-  getCurrentUserId 
+  getCurrentUserId,
+  isCashierUser
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 import { updateInvoiceCloud } from './invoices-cloud';
@@ -85,6 +86,7 @@ let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
 // Load debts
+// ✅ Owners see all debts, cashiers see only their own
 export const loadDebtsCloud = async (): Promise<Debt[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
@@ -93,10 +95,18 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
     return debtsCache;
   }
 
+  // Check if current user is a cashier
+  const isCashier = await isCashierUser();
+  
   let cloudDebts = await fetchFromSupabase<CloudDebt & { cashier_id?: string }>('debts', {
     column: 'created_at',
     ascending: false,
   });
+  
+  // ✅ If cashier, filter to only show their own debts
+  if (isCashier) {
+    cloudDebts = cloudDebts.filter(d => d.cashier_id === userId);
+  }
 
   // Fetch cashier names for debts with cashier_id
   const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
