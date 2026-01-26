@@ -6,15 +6,47 @@ import { showToast } from './toast-config';
 let currentUserId: string | null = null;
 // Owner ID cache (for cashiers who need to write to owner's data)
 let currentOwnerId: string | null = null;
+// Current user role cache
+let currentUserRole: 'admin' | 'boss' | 'cashier' | null = null;
 
 export const setCurrentUserId = (userId: string | null) => {
   currentUserId = userId;
-  // Reset owner ID when user changes
+  // Reset caches when user changes
   currentOwnerId = null;
+  currentUserRole = null;
 };
 
 export const getCurrentUserId = (): string | null => {
   return currentUserId;
+};
+
+// Get user role (cached)
+export const getCurrentUserRole = async (): Promise<'admin' | 'boss' | 'cashier' | null> => {
+  if (currentUserRole) return currentUserRole;
+  
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error || !data) return null;
+    
+    currentUserRole = data.role as 'admin' | 'boss' | 'cashier';
+    return currentUserRole;
+  } catch {
+    return null;
+  }
+};
+
+// Check if current user is cashier
+export const isCashierUser = async (): Promise<boolean> => {
+  const role = await getCurrentUserRole();
+  return role === 'cashier';
 };
 
 // Get owner ID (for cashiers, this returns their owner; for admins/boss, returns themselves)
@@ -37,6 +69,9 @@ export const getOwnerIdForInsert = async (): Promise<string | null> => {
       console.warn('[getOwnerIdForInsert] Could not fetch role, using self as owner');
       return userId;
     }
+    
+    // Cache the role
+    currentUserRole = data.role as 'admin' | 'boss' | 'cashier';
     
     // If admin or boss, they are their own owner
     if (data.role === 'admin' || data.role === 'boss') {
