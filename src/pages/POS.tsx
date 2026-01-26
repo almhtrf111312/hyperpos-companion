@@ -18,7 +18,7 @@ import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
-
+import { useWarehouse } from '@/hooks/use-warehouse';
 // POS Product type for display
 interface POSProduct {
   id: string;
@@ -92,6 +92,7 @@ export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { t } = useLanguage();
+  const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
@@ -131,17 +132,14 @@ export default function POS() {
       }
       
       // Transform to POS format with multi-unit support
-      // ✅ For Admin/Boss: show ALL products from products table (no warehouse filtering)
-      // ✅ For Cashier with assigned warehouse: filter by warehouse stock
       const allPosProducts: POSProduct[] = cloudProducts.map(p => ({
         id: p.id,
         name: p.name,
         price: p.salePrice,
         category: p.category,
-        quantity: p.quantity, // Always use product quantity as default
+        quantity: p.quantity, // Default quantity from products table
         image: p.image,
         barcode: p.barcode,
-        // Multi-unit fields
         bulkUnit: p.bulkUnit || 'كرتونة',
         smallUnit: p.smallUnit || 'قطعة',
         conversionFactor: p.conversionFactor || 1,
@@ -150,10 +148,33 @@ export default function POS() {
         bulkCostPrice: p.bulkCostPrice || 0,
       }));
       
-      // ✅ NO FILTERING for now - show all products
-      // Warehouse-based filtering should only apply to cashiers with assigned vehicle warehouses
-      // Admin/Boss should see all products with their main product quantities
-      setProducts(allPosProducts);
+      // ✅ للموزعين (مستودع vehicle): فلتر وعرض فقط المنتجات الموجودة في عهدتهم
+      // ✅ للإدارة (Boss/Admin): عرض كل المنتجات
+      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
+        // جلب مخزون المستودع المُعيّن للموزع
+        const { loadWarehouseStockCloud } = await import('@/lib/cloud/warehouses-cloud');
+        const warehouseStock = await loadWarehouseStockCloud(activeWarehouse.id);
+        
+        console.log(`[POS] Distributor warehouse ${activeWarehouse.name}, stock items:`, warehouseStock.length);
+        
+        // فلترة المنتجات حسب المخزون المتاح في المستودع
+        const filteredProducts = allPosProducts
+          .map(p => {
+            const stockItem = warehouseStock.find(s => s.product_id === p.id);
+            if (stockItem && stockItem.quantity > 0) {
+              return { ...p, quantity: stockItem.quantity };
+            }
+            return null;
+          })
+          .filter((p): p is POSProduct => p !== null);
+        
+        console.log(`[POS] Filtered products for distributor:`, filteredProducts.length);
+        setProducts(filteredProducts);
+      } else {
+        // للإدارة: عرض كل المنتجات
+        setProducts(allPosProducts);
+      }
+      
       setCategories([t('common.all'), ...cloudCategories]);
     } catch (error) {
       console.error('Error loading POS data:', error);
@@ -167,7 +188,7 @@ export default function POS() {
     } finally {
       setIsLoadingProducts(false);
     }
-  }, [t]);
+  }, [t, activeWarehouse]);
 
   // Reload data when component mounts or when returning to this page
   useEffect(() => {
