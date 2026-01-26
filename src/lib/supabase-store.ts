@@ -4,13 +4,59 @@ import { showToast } from './toast-config';
 
 // Current user ID cache
 let currentUserId: string | null = null;
+// Owner ID cache (for cashiers who need to write to owner's data)
+let currentOwnerId: string | null = null;
 
 export const setCurrentUserId = (userId: string | null) => {
   currentUserId = userId;
+  // Reset owner ID when user changes
+  currentOwnerId = null;
 };
 
 export const getCurrentUserId = (): string | null => {
   return currentUserId;
+};
+
+// Get owner ID (for cashiers, this returns their owner; for admins/boss, returns themselves)
+export const getOwnerIdForInsert = async (): Promise<string | null> => {
+  // If cached, return cached value
+  if (currentOwnerId) return currentOwnerId;
+  
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  
+  try {
+    // Query user_roles to get owner_id
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role, owner_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error || !data) {
+      console.warn('[getOwnerIdForInsert] Could not fetch role, using self as owner');
+      return userId;
+    }
+    
+    // If admin or boss, they are their own owner
+    if (data.role === 'admin' || data.role === 'boss') {
+      currentOwnerId = userId;
+      return userId;
+    }
+    
+    // If cashier with owner_id, use owner_id
+    if (data.role === 'cashier' && data.owner_id) {
+      currentOwnerId = data.owner_id;
+      console.log('[getOwnerIdForInsert] Cashier owner_id:', currentOwnerId);
+      return data.owner_id;
+    }
+    
+    // Fallback to self
+    return userId;
+  } catch (error) {
+    console.error('[getOwnerIdForInsert] Error:', error);
+    return userId;
+  }
 };
 
 // Generic fetch function with error handling
@@ -52,16 +98,17 @@ export async function fetchFromSupabase<T = any>(
 }
 
 // Generic insert function
-// ✅ Uses showToast with throttling to prevent spam
+// ✅ Uses getOwnerIdForInsert to properly set user_id for cashiers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertToSupabase<T = any>(
   tableName: string,
   data: Record<string, unknown>,
   options?: { silent?: boolean }
 ): Promise<T | null> {
-  const userId = getCurrentUserId();
-  if (!userId) {
-    console.warn(`insertToSupabase: No user ID for ${tableName}`);
+  // Get owner ID (for cashiers this returns their owner's ID)
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId) {
+    console.warn(`insertToSupabase: No owner ID for ${tableName}`);
     return null;
   }
 
@@ -69,7 +116,7 @@ export async function insertToSupabase<T = any>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: inserted, error } = await (supabase as any)
       .from(tableName)
-      .insert({ ...data, user_id: userId })
+      .insert({ ...data, user_id: ownerId })
       .select()
       .single();
 
@@ -153,18 +200,19 @@ export async function deleteFromSupabase(
 }
 
 // Batch insert function for migration
+// ✅ Uses getOwnerIdForInsert for proper user_id
 export async function batchInsertToSupabase(
   tableName: string,
   items: Record<string, unknown>[]
 ): Promise<boolean> {
-  const userId = getCurrentUserId();
-  if (!userId || items.length === 0) return true;
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId || items.length === 0) return true;
 
   try {
-    // Add user_id to all items
+    // Add user_id to all items using owner's ID
     const itemsWithUserId = items.map(item => ({
       ...item,
-      user_id: userId,
+      user_id: ownerId,
     }));
 
     // Insert in batches of 100
@@ -188,15 +236,16 @@ export async function batchInsertToSupabase(
 }
 
 // Upsert function (insert or update)
+// ✅ Uses getOwnerIdForInsert for proper user_id
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function upsertToSupabase<T = any>(
   tableName: string,
   data: Record<string, unknown>,
   conflictColumn: string = 'id'
 ): Promise<T | null> {
-  const userId = getCurrentUserId();
-  if (!userId) {
-    console.warn(`upsertToSupabase: No user ID for ${tableName}`);
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId) {
+    console.warn(`upsertToSupabase: No owner ID for ${tableName}`);
     return null;
   }
 
@@ -204,7 +253,7 @@ export async function upsertToSupabase<T = any>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: upserted, error } = await (supabase as any)
       .from(tableName)
-      .upsert({ ...data, user_id: userId }, { onConflict: conflictColumn })
+      .upsert({ ...data, user_id: ownerId }, { onConflict: conflictColumn })
       .select()
       .single();
 
@@ -245,17 +294,19 @@ export async function hasCloudData(tableName: string): Promise<boolean> {
 }
 
 // Fetch store settings
+// ✅ Uses getOwnerIdForInsert to fetch owner's store settings for cashiers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchStoreSettings(): Promise<Record<string, any> | null> {
-  const userId = getCurrentUserId();
-  if (!userId) return null;
+  // For reading, use owner ID so cashiers see their owner's settings
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId) return null;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('stores')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', ownerId)
       .maybeSingle();
 
     if (error) {
@@ -271,17 +322,18 @@ export async function fetchStoreSettings(): Promise<Record<string, any> | null> 
 }
 
 // Save store settings
+// ✅ Uses getOwnerIdForInsert - cashiers should NOT save store settings
 export async function saveStoreSettings(settings: Record<string, unknown>): Promise<boolean> {
-  const userId = getCurrentUserId();
-  if (!userId) return false;
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId) return false;
 
   try {
-    // Check if store exists
+    // Check if store exists using owner's ID
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing } = await (supabase as any)
       .from('stores')
       .select('id')
-      .eq('user_id', userId)
+      .eq('user_id', ownerId)
       .maybeSingle();
 
     if (existing) {
@@ -290,18 +342,18 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
       const { error } = await (supabase as any)
         .from('stores')
         .update(settings)
-        .eq('user_id', userId);
+        .eq('user_id', ownerId);
 
       if (error) {
         console.error('Error updating store settings:', error);
         return false;
       }
     } else {
-      // Insert new
+      // Insert new using owner's ID
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('stores')
-        .insert({ ...settings, user_id: userId });
+        .insert({ ...settings, user_id: ownerId });
 
       if (error) {
         console.error('Error inserting store settings:', error);
