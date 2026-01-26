@@ -47,9 +47,8 @@ let categoriesCache: Category[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 60000; // 1 minute
 
-// ✅ Flag to prevent multiple attempts to create defaults
-let isCreatingDefaults = false;
-let defaultsCreationAttempted = false;
+// ✅ Promise singleton to prevent multiple attempts to create defaults
+let defaultCreationPromise: Promise<void> | null = null;
 
 // Load categories from cloud
 export const loadCategoriesCloud = async (): Promise<Category[]> => {
@@ -66,10 +65,11 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
     ascending: true,
   });
 
-  // If no categories exist and we haven't tried creating defaults yet
-  if (cloudCategories.length === 0 && !isCreatingDefaults && !defaultsCreationAttempted) {
-    await createDefaultCategories();
-    // Reload after creating defaults (but mark as attempted to prevent infinite loop)
+  // If no categories exist and we haven't started creating defaults
+  if (cloudCategories.length === 0 && !defaultCreationPromise) {
+    defaultCreationPromise = createDefaultCategories();
+    await defaultCreationPromise;
+    // Reload after creating defaults
     const reloadedCategories = await fetchFromSupabase<CloudCategory>('categories', {
       column: 'created_at',
       ascending: true,
@@ -88,24 +88,26 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
 // Create default categories for new users
 // ✅ Silently fails if RLS blocks (cashier shouldn't create defaults)
 const createDefaultCategories = async (): Promise<void> => {
-  if (isCreatingDefaults || defaultsCreationAttempted) return;
-  
-  isCreatingDefaults = true;
-  defaultsCreationAttempted = true;
-  
   try {
-    // Use Promise.allSettled to not fail on individual errors
-    // ✅ Use silent mode to prevent toast spam
-    await Promise.allSettled(
-      defaultCategoryNames.map(name => 
-        insertToSupabase('categories', { name }, { silent: true }).catch(() => null)
-      )
+    // Try to create the first category to test permissions
+    const testInsert = await insertToSupabase('categories', 
+      { name: defaultCategoryNames[0] }, 
+      { silent: true }
     );
+    
+    // If successful, create the rest
+    if (testInsert) {
+      await Promise.allSettled(
+        defaultCategoryNames.slice(1).map(name => 
+          insertToSupabase('categories', { name }, { silent: true })
+        )
+      );
+      console.log('[Categories] Default categories created successfully');
+    } else {
+      console.log('[Categories] Default creation skipped (insufficient permissions)');
+    }
   } catch {
-    // Silently ignore - cashiers can't create categories and that's OK
-    console.log('[Categories] Default creation skipped (likely cashier role)');
-  } finally {
-    isCreatingDefaults = false;
+    console.log('[Categories] Default creation failed silently');
   }
 };
 

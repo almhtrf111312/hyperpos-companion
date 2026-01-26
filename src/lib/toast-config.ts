@@ -10,7 +10,11 @@ import { toast } from 'sonner';
 
 // Throttle map to prevent repeated notifications
 const lastToastTime: Map<string, number> = new Map();
-const THROTTLE_MS = 5000; // 5 seconds throttle per message type
+const THROTTLE_MS = 3000; // 3 seconds throttle per unique message
+
+// Additional map to track very recent identical messages (aggressive throttling)
+const recentMessages: Map<string, number> = new Map();
+const AGGRESSIVE_THROTTLE_MS = 500; // Block identical messages within 500ms
 
 // Generate a key for throttling based on message content
 const getThrottleKey = (type: string, message: string): string => {
@@ -20,22 +24,39 @@ const getThrottleKey = (type: string, message: string): string => {
 // Check if we should show the toast (throttle check)
 const shouldShowToast = (key: string): boolean => {
   const now = Date.now();
-  const lastTime = lastToastTime.get(key);
   
+  // ✅ Aggressive throttling - block if same message appeared very recently
+  const recentTime = recentMessages.get(key);
+  if (recentTime && now - recentTime < AGGRESSIVE_THROTTLE_MS) {
+    return false; // Blocked by aggressive throttle
+  }
+  
+  // ✅ Normal throttling
+  const lastTime = lastToastTime.get(key);
   if (lastTime && now - lastTime < THROTTLE_MS) {
-    return false; // Throttled
+    return false; // Blocked by normal throttle
   }
   
   lastToastTime.set(key, now);
+  recentMessages.set(key, now);
   return true;
 };
 
 // Clean up old entries periodically
 setInterval(() => {
   const now = Date.now();
+  
+  // Clean up normal throttle map
   for (const [key, time] of lastToastTime.entries()) {
     if (now - time > THROTTLE_MS * 2) {
       lastToastTime.delete(key);
+    }
+  }
+  
+  // Clean up aggressive throttle map
+  for (const [key, time] of recentMessages.entries()) {
+    if (now - time > AGGRESSIVE_THROTTLE_MS * 2) {
+      recentMessages.delete(key);
     }
   }
 }, 30000);
