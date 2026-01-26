@@ -4,7 +4,8 @@ import {
   insertToSupabase, 
   updateInSupabase, 
   deleteFromSupabase,
-  getCurrentUserId 
+  getCurrentUserId,
+  isCashierUser
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
@@ -126,6 +127,7 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 };
 
 // Load invoices
+// ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
@@ -134,10 +136,18 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     return invoicesCache;
   }
 
-  const cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
+  // Check if user is cashier
+  const isCashier = await isCashierUser();
+  
+  let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
     column: 'created_at',
     ascending: false,
   });
+  
+  // ✅ If cashier, filter to only show their own invoices
+  if (isCashier) {
+    cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
+  }
 
   // Load invoice items for each invoice
   const invoicesWithItems = await Promise.all(
