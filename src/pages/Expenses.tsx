@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { 
   loadExpensesCloud, 
@@ -520,10 +521,10 @@ export default function Expenses() {
 
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('expenses.date')}</label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                onChange={(date) => setFormData({ ...formData, date: date })}
+                placeholder="اختر التاريخ"
               />
             </div>
 
