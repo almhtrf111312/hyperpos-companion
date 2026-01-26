@@ -408,6 +408,7 @@ export default function Invoices() {
     
     // استخدام iframe للطباعة بدلاً من window.open
     printHTML(printContent);
+    toast.success('جاري إرسال الفاتورة للطابعة...');
   };
   const handleWhatsApp = (invoice: Invoice) => {
     // Dynamic store settings with proper defaults
