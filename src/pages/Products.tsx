@@ -48,6 +48,7 @@ import { CategoryManager } from '@/components/CategoryManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DatePicker } from '@/components/ui/date-picker';
 import { UnitSettingsTab } from '@/components/products/UnitSettingsTab';
+import { DualUnitDisplay } from '@/components/products/DualUnitDisplay';
 import { 
   loadProductsCloud, 
   addProductCloud,
@@ -697,17 +698,15 @@ const filteredProducts = useMemo(() => {
               </div>
               
               <div className="flex items-center justify-between pt-3 border-t border-border">
-                <div className="text-sm flex flex-col">
-                  <div>
-                    <span className="text-muted-foreground">المخزون: </span>
-                    <span className="font-semibold">{product.quantity} {product.smallUnit || 'قطعة'}</span>
-                  </div>
-                  {product.conversionFactor && product.conversionFactor > 1 && (
-                    <span className="text-xs text-muted-foreground">
-                      = {Math.floor(product.quantity / product.conversionFactor)} {product.bulkUnit || 'كرتونة'}
-                      {product.quantity % product.conversionFactor > 0 && ` + ${product.quantity % product.conversionFactor}`}
-                    </span>
-                  )}
+                <div className="text-sm">
+                  <DualUnitDisplay
+                    totalPieces={product.quantity}
+                    conversionFactor={product.conversionFactor || 1}
+                    bulkUnit={product.bulkUnit}
+                    smallUnit={product.smallUnit}
+                    showTotal={false}
+                    size="sm"
+                  />
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
@@ -806,18 +805,15 @@ const filteredProducts = useMemo(() => {
                     
                     {/* المخزون + الحالة */}
                     <td className="py-3 px-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-foreground text-sm">{product.quantity} {product.smallUnit || 'قطعة'}</span>
-                          {product.conversionFactor && product.conversionFactor > 1 && (
-                            <span className="text-xs text-muted-foreground">
-                              {Math.floor(product.quantity / product.conversionFactor)} {product.bulkUnit || 'كرتونة'}
-                              {product.quantity % product.conversionFactor > 0 && (
-                                <> + {product.quantity % product.conversionFactor} {product.smallUnit || 'قطعة'}</>
-                              )}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex flex-col gap-1.5">
+                        <DualUnitDisplay
+                          totalPieces={product.quantity}
+                          conversionFactor={product.conversionFactor || 1}
+                          bulkUnit={product.bulkUnit}
+                          smallUnit={product.smallUnit}
+                          showTotal={product.conversionFactor && product.conversionFactor > 1}
+                          size="sm"
+                        />
                         <span className={cn(
                           "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit",
                           status.color
