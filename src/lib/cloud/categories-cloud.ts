@@ -47,6 +47,10 @@ let categoriesCache: Category[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 60000; // 1 minute
 
+// ✅ Flag to prevent multiple attempts to create defaults
+let isCreatingDefaults = false;
+let defaultsCreationAttempted = false;
+
 // Load categories from cloud
 export const loadCategoriesCloud = async (): Promise<Category[]> => {
   const userId = getCurrentUserId();
@@ -62,10 +66,17 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
     ascending: true,
   });
 
-  // If no categories exist, create defaults
-  if (cloudCategories.length === 0) {
+  // If no categories exist and we haven't tried creating defaults yet
+  if (cloudCategories.length === 0 && !isCreatingDefaults && !defaultsCreationAttempted) {
     await createDefaultCategories();
-    return loadCategoriesCloud(); // Reload after creating defaults
+    // Reload after creating defaults (but mark as attempted to prevent infinite loop)
+    const reloadedCategories = await fetchFromSupabase<CloudCategory>('categories', {
+      column: 'created_at',
+      ascending: true,
+    });
+    categoriesCache = reloadedCategories.map(toCategory);
+    cacheTimestamp = Date.now();
+    return categoriesCache;
   }
 
   categoriesCache = cloudCategories.map(toCategory);
@@ -75,9 +86,26 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
 };
 
 // Create default categories for new users
+// ✅ Silently fails if RLS blocks (cashier shouldn't create defaults)
 const createDefaultCategories = async (): Promise<void> => {
-  for (const name of defaultCategoryNames) {
-    await insertToSupabase('categories', { name });
+  if (isCreatingDefaults || defaultsCreationAttempted) return;
+  
+  isCreatingDefaults = true;
+  defaultsCreationAttempted = true;
+  
+  try {
+    // Use Promise.allSettled to not fail on individual errors
+    // ✅ Use silent mode to prevent toast spam
+    await Promise.allSettled(
+      defaultCategoryNames.map(name => 
+        insertToSupabase('categories', { name }, { silent: true }).catch(() => null)
+      )
+    );
+  } catch {
+    // Silently ignore - cashiers can't create categories and that's OK
+    console.log('[Categories] Default creation skipped (likely cashier role)');
+  } finally {
+    isCreatingDefaults = false;
   }
 };
 
