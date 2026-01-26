@@ -1123,6 +1123,9 @@ export default function Settings() {
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{user.name}</p>
+                        {user.email && (
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        )}
                         <p className="text-sm text-muted-foreground">
                           {user.userType === 'distributor' ? 'موزع' : t('settings.cashier')}
                         </p>
