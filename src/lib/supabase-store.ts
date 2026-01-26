@@ -1,6 +1,6 @@
 // Supabase Store - Cloud sync utilities for all data stores
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { showToast } from './toast-config';
 
 // Current user ID cache
 let currentUserId: string | null = null;
@@ -52,10 +52,12 @@ export async function fetchFromSupabase<T = any>(
 }
 
 // Generic insert function
+// ✅ Uses showToast with throttling to prevent spam
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertToSupabase<T = any>(
   tableName: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  options?: { silent?: boolean }
 ): Promise<T | null> {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -73,7 +75,10 @@ export async function insertToSupabase<T = any>(
 
     if (error) {
       console.error(`Error inserting to ${tableName}:`, error);
-      toast.error('فشل في حفظ البيانات');
+      // ✅ Only show toast if not silent mode
+      if (!options?.silent) {
+        showToast.error('فشل في حفظ البيانات');
+      }
       return null;
     }
 
