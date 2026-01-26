@@ -53,20 +53,25 @@ export default function Login() {
   const checkDeviceBinding = async (userId: string): Promise<{ blocked: boolean; allowMultiDevice: boolean }> => {
     try {
       const currentDeviceId = await getDeviceId();
+      console.log('[DeviceCheck] Current device ID:', currentDeviceId);
+      console.log('[DeviceCheck] Checking for user:', userId);
       
       // Check if user is Boss - Boss has unlimited device access
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
         .maybeSingle();
 
+      console.log('[DeviceCheck] Role data:', roleData, 'Error:', roleError);
+
       if (roleData?.role === 'boss') {
+        console.log('[DeviceCheck] User is boss, skipping device check');
         return { blocked: false, allowMultiDevice: true };
       }
       
       // Get user's license with device info
-      const { data: license } = await supabase
+      const { data: license, error: licenseError } = await supabase
         .from('app_licenses')
         .select('device_id, allow_multi_device')
         .eq('user_id', userId)
@@ -75,26 +80,36 @@ export default function Login() {
         .limit(1)
         .maybeSingle();
 
+      console.log('[DeviceCheck] License data:', license, 'Error:', licenseError);
+
       // No license = no blocking
       if (!license) {
+        console.log('[DeviceCheck] No license found, allowing access');
         return { blocked: false, allowMultiDevice: false };
       }
 
       // Multi-device allowed
       if (license.allow_multi_device === true) {
+        console.log('[DeviceCheck] Multi-device allowed');
         return { blocked: false, allowMultiDevice: true };
       }
 
       // No device registered yet
       if (!license.device_id) {
+        console.log('[DeviceCheck] No device registered yet, allowing access');
         return { blocked: false, allowMultiDevice: false };
       }
 
       // Check if device matches
       const blocked = license.device_id !== currentDeviceId;
+      console.log('[DeviceCheck] Device comparison:', {
+        registered: license.device_id,
+        current: currentDeviceId,
+        blocked
+      });
       return { blocked, allowMultiDevice: false };
     } catch (error) {
-      console.error('Error checking device binding:', error);
+      console.error('[DeviceCheck] Error:', error);
       return { blocked: false, allowMultiDevice: false };
     }
   };
@@ -116,14 +131,20 @@ export default function Login() {
       const { blocked } = await checkDeviceBinding(data.user.id);
       
       if (blocked) {
-        // Sign out and show device blocked dialog
-        await supabase.auth.signOut();
+        // Sign out first, then show dialog
+        // Important: Don't navigate away, just show the dialog
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.log('Sign out during device block:', e);
+        }
         setIsLoading(false);
         setShowDeviceBlockedDialog(true);
         return;
       }
     }
 
+    setIsLoading(false);
     toast.success(t('auth.loginSuccess'));
     navigate('/');
   };
