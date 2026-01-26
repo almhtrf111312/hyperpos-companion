@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error('Missing or invalid Authorization header')
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -26,21 +27,28 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    })
-
-    // Verify the user is authenticated
-    const { data: userData, error: userError } = await supabase.auth.getUser()
+    // Use service role client to verify the token
+    const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey)
     
-    if (userError || !userData?.user) {
+    // Extract token and verify user exists
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await serviceClient.auth.getUser(token)
+    
+    if (userError || !user) {
+      console.error('User verification failed:', userError?.message)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const adminUserId = userData.user.id
+    const adminUserId = user.id
+    console.log('Authenticated admin user:', adminUserId)
+
+    // Create a client for RLS-protected queries
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
 
     // Verify the requesting user is an admin or boss
     const { data: roleData, error: roleError } = await supabase
@@ -82,9 +90,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Use service role client to update the target user's password
-    const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey)
-    
+    // Use the already created service client to update the target user's password
     const { error: updateError } = await serviceClient.auth.admin.updateUserById(
       targetUserId,
       { password: newPassword }
