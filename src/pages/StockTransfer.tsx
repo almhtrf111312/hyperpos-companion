@@ -442,7 +442,13 @@ export default function StockTransfer() {
             <p className="text-muted-foreground">إدارة تحويل المخزون من المستودع الرئيسي للموزعين</p>
           </div>
           
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+            setIsCreateDialogOpen(open);
+            if (open) {
+              // Refresh warehouses when opening dialog
+              refreshWarehouses();
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -470,10 +476,16 @@ export default function StockTransfer() {
                       <SelectTrigger>
                         <SelectValue placeholder="اختر المستودع" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {vehicleWarehouses.map(w => (
-                          <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                        ))}
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        {vehicleWarehouses.length > 0 ? (
+                          vehicleWarehouses.map(w => (
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-muted-foreground text-sm">
+                            لا توجد مستودعات موزعين. قم بإضافة مستودع من صفحة المستودعات أولاً.
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
