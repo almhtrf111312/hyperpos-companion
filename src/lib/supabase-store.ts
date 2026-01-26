@@ -14,6 +14,8 @@ export const getCurrentUserId = (): string | null => {
 };
 
 // Generic fetch function with error handling
+// ✅ يعتمد على RLS (get_owner_id) لتصفية البيانات تلقائياً
+// لا نضيف فلتر user_id يدوياً لأن الكاشير يجب أن يرى بيانات المالك
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchFromSupabase<T = any>(
   tableName: string,
@@ -26,9 +28,10 @@ export async function fetchFromSupabase<T = any>(
   }
 
   try {
-    // Use any to bypass strict typing for dynamic table names
+    // ✅ الاستعلام بدون فلتر user_id - RLS ستتعامل مع التصفية
+    // RLS تستخدم get_owner_id(auth.uid()) للسماح للكاشير برؤية بيانات المالك
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any).from(tableName).select('*').eq('user_id', userId);
+    let query = (supabase as any).from(tableName).select('*');
     
     if (orderBy) {
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
