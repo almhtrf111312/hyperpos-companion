@@ -172,14 +172,16 @@ export async function insertToSupabase<T = any>(
 }
 
 // Generic update function
+// ✅ Uses getOwnerIdForInsert to properly handle cashier updates
 export async function updateInSupabase(
   tableName: string,
   id: string,
   updates: Record<string, unknown>
 ): Promise<boolean> {
-  const userId = getCurrentUserId();
-  if (!userId) {
-    console.warn(`updateInSupabase: No user ID for ${tableName}`);
+  // Use owner ID for cashiers (they update owner's records)
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId) {
+    console.warn(`updateInSupabase: No owner ID for ${tableName}`);
     return false;
   }
 
@@ -189,7 +191,7 @@ export async function updateInSupabase(
       .from(tableName)
       .update(updates)
       .eq('id', id)
-      .eq('user_id', userId);
+      .eq('user_id', ownerId);
 
     if (error) {
       console.error(`Error updating ${tableName}:`, error);
@@ -204,13 +206,15 @@ export async function updateInSupabase(
 }
 
 // Generic delete function
+// ✅ Uses getOwnerIdForInsert to properly handle cashier deletes
 export async function deleteFromSupabase(
   tableName: string,
   id: string
 ): Promise<boolean> {
-  const userId = getCurrentUserId();
-  if (!userId) {
-    console.warn(`deleteFromSupabase: No user ID for ${tableName}`);
+  // Use owner ID for cashiers (they delete owner's records)
+  const ownerId = await getOwnerIdForInsert();
+  if (!ownerId) {
+    console.warn(`deleteFromSupabase: No owner ID for ${tableName}`);
     return false;
   }
 
@@ -220,7 +224,7 @@ export async function deleteFromSupabase(
       .from(tableName)
       .delete()
       .eq('id', id)
-      .eq('user_id', userId);
+      .eq('user_id', ownerId);
 
     if (error) {
       console.error(`Error deleting from ${tableName}:`, error);

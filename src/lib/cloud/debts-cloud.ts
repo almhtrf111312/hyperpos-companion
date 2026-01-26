@@ -137,6 +137,7 @@ export const addDebtCloud = async (
   debtData: Omit<Debt, 'id' | 'createdAt' | 'updatedAt' | 'totalPaid' | 'remainingDebt' | 'status'>
 ): Promise<Debt | null> => {
   const today = new Date().toISOString().split('T')[0];
+  const currentCashierId = getCurrentUserId(); // Always capture who created the debt
   
   const inserted = await insertToSupabase<CloudDebt>('debts', {
     invoice_id: debtData.invoiceId || null,
@@ -149,6 +150,7 @@ export const addDebtCloud = async (
     status: debtData.dueDate && debtData.dueDate < today ? 'overdue' : 'due',
     notes: debtData.notes || null,
     is_cash_debt: debtData.isCashDebt || false,
+    cashier_id: currentCashierId, // ✅ Track who created the debt
   });
   
   if (inserted) {
