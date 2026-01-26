@@ -892,7 +892,13 @@ export default function Settings() {
       case 'currencies':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.exchangeRates')}</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
+              <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
+                {isSavingSettings ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+                حفظ العملات
+              </Button>
+            </div>
             
             {/* العملة الأولى */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-4">

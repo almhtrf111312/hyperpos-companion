@@ -97,12 +97,9 @@ export const shareInvoice = async (data: ShareInvoiceData): Promise<boolean> => 
     }
   }
   
-  // Fallback to WhatsApp
-  const phone = data.customerPhone?.replace(/[^\d]/g, '') || '';
+  // Fallback to WhatsApp - always open without phone number to let user choose contact
   const encodedMessage = encodeURIComponent(text);
-  const whatsappUrl = phone 
-    ? `https://wa.me/${phone}?text=${encodedMessage}`
-    : `https://wa.me/?text=${encodedMessage}`;
+  const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
   
   window.open(whatsappUrl, '_blank');
   return true;
