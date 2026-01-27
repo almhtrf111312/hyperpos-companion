@@ -191,17 +191,24 @@ export const addInvoiceCloud = async (
 ): Promise<Invoice | null> => {
   const invoiceNumber = await getNextInvoiceNumber();
   const now = new Date();
-  const currentUserId = getCurrentUserId();
+  
+  // ✅ جلب معرف المستخدم من المتغير أو مباشرة من supabase
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id || null;
+    console.log('[addInvoiceCloud] Fallback to supabase.auth.getUser:', userId);
+  }
   
   // ✅ جلب اسم الكاشير/المستخدم الحالي
   let cashierName = '';
-  if (currentUserId) {
+  if (userId) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: profile } = await (supabase as any)
         .from('profiles')
         .select('full_name')
-        .eq('user_id', currentUserId)
+        .eq('user_id', userId)
         .maybeSingle();
       cashierName = profile?.full_name || '';
     } catch (e) {
@@ -227,7 +234,7 @@ export const addInvoiceCloud = async (
     debt_paid: invoice.debtPaid || 0,
     debt_remaining: invoice.debtRemaining || 0,
     notes: invoice.serviceDescription || null,
-    cashier_id: currentUserId, // ✅ تسجيل معرف الكاشير
+    cashier_id: userId, // ✅ تسجيل معرف الكاشير
     cashier_name: cashierName || invoice.cashierName || null, // ✅ تسجيل اسم الكاشير
   });
   
@@ -257,7 +264,7 @@ export const addInvoiceCloud = async (
       id: invoiceNumber,
       createdAt: inserted.created_at,
       updatedAt: inserted.updated_at,
-      cashierId: currentUserId || undefined,
+      cashierId: userId || undefined,
       cashierName: cashierName || undefined,
     };
   }
