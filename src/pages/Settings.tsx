@@ -46,6 +46,7 @@ import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 import { ThemeSection } from '@/components/settings/ThemeSection';
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
+import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
 import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
@@ -175,6 +176,7 @@ export default function Settings() {
     { id: 'backup', label: t('settings.backup'), icon: Database, adminOnly: true },
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
+    { id: 'diagnostics', label: 'تشخيص النظام', icon: Wrench, bossOnly: true },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
   ];
 
@@ -782,6 +784,12 @@ export default function Settings() {
         return <ThemeSection />;
       case 'activity':
         return <ActivityLogSection />;
+      case 'diagnostics':
+        return (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+            <SystemDiagnostics />
+          </div>
+        );
       case 'store':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
