@@ -40,7 +40,7 @@ import {
 import { toast } from 'sonner';
 import { addMaintenanceService } from '@/lib/maintenance-store';
 import { addInvoice } from '@/lib/invoices-store';
-import { distributeDetailedProfit } from '@/lib/partners-store';
+import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addDebtFromInvoice } from '@/lib/debts-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { addExpense } from '@/lib/expenses-store';
@@ -205,9 +205,9 @@ export function MaintenancePanel({
       });
     }
     
-    // Distribute profit to partners (category: صيانة)
+    // Distribute profit to partners (category: صيانة) - ✅ استخدام Cloud API
     if (profit > 0) {
-      distributeDetailedProfit(
+      distributeDetailedProfitCloud(
         [{ category: 'صيانة', profit }],
         invoice.id,
         customerName,
