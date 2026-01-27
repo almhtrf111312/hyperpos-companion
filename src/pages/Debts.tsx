@@ -249,6 +249,9 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
   };
 
   const handleAddCashDebt = async () => {
+    // ✅ حماية من التكرارات
+    if (isSavingRef.current) return;
+    
     if (!newDebtForm.customerName || !newDebtForm.customerPhone || newDebtForm.amount <= 0) {
       toast.error(t('debts.fillRequiredFields'));
       return;
@@ -259,38 +262,44 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
       return;
     }
 
-    await addDebtCloud({
-      invoiceId: `CASH_${Date.now()}`,
-      customerName: newDebtForm.customerName,
-      customerPhone: newDebtForm.customerPhone,
-      totalDebt: newDebtForm.amount,
-      dueDate: newDebtForm.dueDate,
-      notes: newDebtForm.notes,
-      isCashDebt: true,
-    });
+    isSavingRef.current = true;
 
-    // Log activity
-    if (user) {
-      addActivityLog(
-        'debt_created',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `${t('debts.cashDebtCreated')} ${newDebtForm.customerName} - $${newDebtForm.amount.toLocaleString()}`,
-        { amount: newDebtForm.amount, customerName: newDebtForm.customerName, isCashDebt: true }
-      );
+    try {
+      await addDebtCloud({
+        invoiceId: `CASH_${Date.now()}`,
+        customerName: newDebtForm.customerName,
+        customerPhone: newDebtForm.customerPhone,
+        totalDebt: newDebtForm.amount,
+        dueDate: newDebtForm.dueDate,
+        notes: newDebtForm.notes,
+        isCashDebt: true,
+      });
+
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'debt_created',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `${t('debts.cashDebtCreated')} ${newDebtForm.customerName} - $${newDebtForm.amount.toLocaleString()}`,
+          { amount: newDebtForm.amount, customerName: newDebtForm.customerName, isCashDebt: true }
+        );
+      }
+
+      const debtsData = await loadDebtsCloud();
+      setDebts(debtsData);
+      setShowAddDebtDialog(false);
+      setNewDebtForm({
+        customerName: '',
+        customerPhone: '',
+        amount: 0,
+        dueDate: '',
+        notes: '',
+      });
+      toast.success(t('debts.debtAddedSuccess'));
+    } finally {
+      isSavingRef.current = false;
     }
-
-    const debtsData = await loadDebtsCloud();
-    setDebts(debtsData);
-    setShowAddDebtDialog(false);
-    setNewDebtForm({
-      customerName: '',
-      customerPhone: '',
-      amount: 0,
-      dueDate: '',
-      notes: '',
-    });
-    toast.success(t('debts.debtAddedSuccess'));
   };
 
   return (
