@@ -31,7 +31,8 @@ import {
   Mail,
   Ticket,
   Send,
-  Pencil
+  Pencil,
+  MessageCircle
 } from 'lucide-react';
 import {
   Dialog,
@@ -133,6 +134,10 @@ export default function BossPanel() {
   });
   const [isActivating, setIsActivating] = useState(false);
 
+  // Developer Settings
+  const [developerPhone, setDeveloperPhone] = useState('');
+  const [isSavingDevSettings, setIsSavingDevSettings] = useState(false);
+
   useEffect(() => {
     if (!roleLoading && !isBoss) {
       navigate('/');
@@ -182,9 +187,50 @@ export default function BossPanel() {
     }
   };
 
+  // Fetch developer settings
+  const fetchDeveloperSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'developer_phone')
+        .maybeSingle();
+      
+      if (!error && data?.value) {
+        setDeveloperPhone(data.value);
+      }
+    } catch (err) {
+      console.error('Failed to fetch developer settings:', err);
+    }
+  };
+
+  // Save developer phone
+  const handleSaveDeveloperPhone = async () => {
+    setIsSavingDevSettings(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ 
+          key: 'developer_phone', 
+          value: developerPhone,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+      if (error) throw error;
+      
+      toast.success('تم حفظ رقم المطور بنجاح');
+    } catch (err) {
+      console.error('Error saving developer phone:', err);
+      toast.error('فشل في حفظ رقم المطور');
+    } finally {
+      setIsSavingDevSettings(false);
+    }
+  };
+
   useEffect(() => {
     if (isBoss) {
       fetchData();
+      fetchDeveloperSettings();
     }
   }, [isBoss]);
 
@@ -612,6 +658,42 @@ export default function BossPanel() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Developer Settings */}
+        <Card>
+          <CardHeader className="pb-2 px-3 md:px-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+              إعدادات التواصل
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 md:px-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="developerPhone">رقم واتساب المطور</Label>
+                <Input
+                  id="developerPhone"
+                  value={developerPhone}
+                  onChange={(e) => setDeveloperPhone(e.target.value)}
+                  placeholder="+970599000000"
+                  className="font-mono"
+                  dir="ltr"
+                />
+                <p className="text-xs text-muted-foreground">
+                  سيظهر هذا الرقم في شاشة التفعيل للتواصل مع المطور
+                </p>
+              </div>
+              <Button 
+                onClick={handleSaveDeveloperPhone} 
+                disabled={isSavingDevSettings}
+                className="self-end"
+              >
+                {isSavingDevSettings && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                حفظ الرقم
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Search */}
         <div className="relative">
