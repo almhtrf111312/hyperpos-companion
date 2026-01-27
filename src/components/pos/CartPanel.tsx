@@ -350,7 +350,17 @@ export function CartPanel({
         .map(([category, profit]) => ({ category, profit: profit * discountMultiplier }));
       
       if (categoryProfits.length > 0) {
-        distributeDetailedProfitCloud(categoryProfits, invoice.id, customerNameSnapshot || 'عميل نقدي', false);
+        // Run in the same background batch so it doesn't fail silently
+        backgroundTasks.push(
+          distributeDetailedProfitCloud(
+            categoryProfits,
+            invoice.id,
+            customerNameSnapshot || 'عميل نقدي',
+            false
+          ).catch((err) => {
+            console.error('[CartPanel] Partner profit distribution failed (cash sale):', err);
+          })
+        );
       }
       
       // Deduct stock (parallel)
@@ -590,7 +600,16 @@ export function CartPanel({
         }));
       
       if (categoryProfits.length > 0) {
-        distributeDetailedProfitCloud(categoryProfits, invoice.id, customerNameSnapshot, true);
+        backgroundTasks.push(
+          distributeDetailedProfitCloud(
+            categoryProfits,
+            invoice.id,
+            customerNameSnapshot,
+            true
+          ).catch((err) => {
+            console.error('[CartPanel] Partner profit distribution failed (debt sale):', err);
+          })
+        );
       }
       
       // Deduct stock (parallel)
