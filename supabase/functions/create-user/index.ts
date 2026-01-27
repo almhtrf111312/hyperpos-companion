@@ -115,14 +115,34 @@ Deno.serve(async (req) => {
     console.log('User created:', newUser.user.id);
 
     // Create role for the new user
-    // Both cashiers and distributors (non-admin roles) should be linked to the creating admin/boss
-    const shouldLinkToOwner = role === 'cashier' || role === 'admin'; // admin here means sub-admin, not boss
+    // IMPORTANT: Only Boss can create admin accounts
+    // Regular admins can only create cashier accounts linked to themselves
+    // This prevents privilege escalation
+    let finalRole = role || 'cashier';
+    let ownerId: string | null = null;
+    
+    if (isBoss) {
+      // Boss can create any role
+      // If creating admin, no owner_id (they're independent)
+      // If creating cashier, link to boss (or could be null for boss-created cashiers)
+      if (finalRole === 'cashier') {
+        ownerId = currentUser.id;
+      }
+      // Boss can also create admin accounts without owner_id
+    } else {
+      // Regular admin can ONLY create cashiers, ALWAYS linked to themselves
+      finalRole = 'cashier'; // Force to cashier regardless of what was passed
+      ownerId = currentUser.id;
+    }
+    
+    console.log('Creating role with:', { finalRole, ownerId, isBoss });
+    
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
       .insert({
         user_id: newUser.user.id,
-        role: role || 'cashier',
-        owner_id: shouldLinkToOwner ? currentUser.id : null,
+        role: finalRole,
+        owner_id: ownerId,
       });
 
     if (roleInsertError) {
