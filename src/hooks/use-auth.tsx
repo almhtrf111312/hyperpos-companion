@@ -12,6 +12,7 @@ interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   preferred_language: string | null;
+  user_type: 'cashier' | 'distributor' | 'pos' | null;
 }
 
 interface AuthContextType {

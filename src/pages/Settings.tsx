@@ -308,7 +308,7 @@ export default function Settings() {
     password: '',
     phone: '',
     role: 'cashier' as 'admin' | 'cashier',
-    userType: 'cashier' as 'cashier' | 'distributor',
+    userType: 'cashier' as 'cashier' | 'distributor' | 'pos',
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1167,7 +1167,10 @@ export default function Settings() {
                           <p className="text-xs text-muted-foreground">{user.email}</p>
                         )}
                         <p className="text-sm text-muted-foreground">
-                          {user.role === 'admin' ? 'مالك' : user.userType === 'distributor' ? 'موزع' : t('settings.cashier')}
+                          {user.role === 'admin' ? 'مالك' : 
+                           user.userType === 'distributor' ? 'موزع' : 
+                           user.userType === 'pos' ? 'نقطة بيع' : 
+                           t('settings.cashier')}
                         </p>
                       </div>
                     </div>
@@ -1484,16 +1487,19 @@ export default function Settings() {
               <label className="text-sm font-medium">نوع المستخدم</label>
               <select
                 value={userForm.userType}
-                onChange={(e) => setUserForm({ ...userForm, userType: e.target.value as 'cashier' | 'distributor' })}
+                onChange={(e) => setUserForm({ ...userForm, userType: e.target.value as 'cashier' | 'distributor' | 'pos' })}
                 className="w-full h-10 px-3 rounded-md bg-muted border-0"
               >
-                <option value="cashier">كاشير (نقطة بيع ثابتة)</option>
-                <option value="distributor">موزع (مستودع متنقل)</option>
+                <option value="cashier">كاشير (يرى كل المنتجات)</option>
+                <option value="pos">نقطة بيع (منتجات العهدة فقط)</option>
+                <option value="distributor">موزع متجول (منتجات العهدة فقط)</option>
               </select>
               <p className="text-xs text-muted-foreground">
                 {userForm.userType === 'cashier' 
-                  ? 'يعمل في نقطة بيع ثابتة داخل المحل'
-                  : 'موزع متجول له مستودع خاص (سيارة)'}
+                  ? 'يعمل في المحل ويرى جميع المنتجات المتاحة'
+                  : userForm.userType === 'pos'
+                  ? 'نقطة بيع ثابتة - يرى فقط المنتجات في عهدته'
+                  : 'موزع متجول - يرى فقط المنتجات في سيارته/عهدته'}
               </p>
             </div>
           </div>

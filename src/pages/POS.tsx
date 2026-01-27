@@ -19,6 +19,7 @@ import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
+import { useAuth } from '@/hooks/use-auth';
 // POS Product type for display
 interface POSProduct {
   id: string;
@@ -102,6 +103,7 @@ export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -159,14 +161,17 @@ export default function POS() {
         bulkCostPrice: p.bulkCostPrice || 0,
       }));
       
-      // ✅ للموزعين (مستودع vehicle): فلتر وعرض فقط المنتجات الموجودة في عهدتهم
-      // ✅ للإدارة (Boss/Admin): عرض كل المنتجات
-      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-        // جلب مخزون المستودع المُعيّن للموزع
+      // ✅ تحديد نوع المستخدم من الـ profile
+      const userType = profile?.user_type || 'cashier';
+      
+      // ✅ الكاشير: يرى جميع المنتجات (يعمل في المحل مباشرة)
+      // ✅ الموزع / نقطة البيع: يرى فقط المنتجات في عهدته (المستودع المخصص)
+      if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
+        // جلب مخزون المستودع المُعيّن
         const { loadWarehouseStockCloud } = await import('@/lib/cloud/warehouses-cloud');
         const warehouseStock = await loadWarehouseStockCloud(activeWarehouse.id);
         
-        console.log(`[POS] Distributor warehouse ${activeWarehouse.name}, stock items:`, warehouseStock.length);
+        console.log(`[POS] ${userType} user, warehouse: ${activeWarehouse.name}, stock items:`, warehouseStock.length);
         
         // فلترة المنتجات حسب المخزون المتاح في المستودع
         const filteredProducts = allPosProducts
@@ -179,10 +184,11 @@ export default function POS() {
           })
           .filter((p): p is POSProduct => p !== null);
         
-        console.log(`[POS] Filtered products for distributor:`, filteredProducts.length);
+        console.log(`[POS] Filtered products for ${userType}:`, filteredProducts.length);
         setProducts(filteredProducts);
       } else {
-        // للإدارة: عرض كل المنتجات
+        // الكاشير والإدارة: عرض كل المنتجات
+        console.log(`[POS] Cashier/Admin user, showing all products:`, allPosProducts.length);
         setProducts(allPosProducts);
       }
       
@@ -199,7 +205,7 @@ export default function POS() {
     } finally {
       setIsLoadingProducts(false);
     }
-  }, [t, activeWarehouse]);
+  }, [t, activeWarehouse, profile]);
 
   // Reload data when component mounts or when returning to this page
   useEffect(() => {
