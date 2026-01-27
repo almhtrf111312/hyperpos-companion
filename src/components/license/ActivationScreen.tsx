@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Lock, Key, MessageCircle, Loader2, CheckCircle, AlertCircle, LogOut } f
 import { useLicense } from '@/hooks/use-license';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
+import { supabase } from '@/integrations/supabase/client';
 
 export function ActivationScreen() {
   const { activateCode, isTrial, isExpired } = useLicense();
@@ -16,8 +17,30 @@ export function ActivationScreen() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [developerPhone, setDeveloperPhone] = useState<string>('');
 
   const isRTL = language === 'ar';
+
+  // جلب رقم المطور من الإعدادات العامة
+  useEffect(() => {
+    const fetchDeveloperPhone = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'developer_phone')
+          .maybeSingle();
+        
+        if (!error && data?.value) {
+          setDeveloperPhone(data.value);
+        }
+      } catch (err) {
+        console.error('Failed to fetch developer phone:', err);
+      }
+    };
+    
+    fetchDeveloperPhone();
+  }, []);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -67,6 +90,20 @@ export function ActivationScreen() {
     const formatted = formatCode(e.target.value);
     setCode(formatted);
     setError(null);
+  };
+
+  const handleContactDeveloper = () => {
+    if (!developerPhone) return;
+    
+    const message = encodeURIComponent(
+      isRTL 
+        ? 'أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro'
+        : 'I want to get an activation code for FlowPOS Pro'
+    );
+    
+    // تنظيف الرقم من أي رموز غير رقمية (ما عدا +)
+    const cleanPhone = developerPhone.replace(/[^\d+]/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
   if (success) {
@@ -156,16 +193,19 @@ export function ActivationScreen() {
             <p className="text-sm text-muted-foreground text-center">
               {isRTL ? 'للحصول على كود التفعيل، تواصل معنا:' : 'To get an activation code, contact us:'}
             </p>
-            <Button variant="outline" className="w-full" asChild>
-              <a 
-                href="https://wa.me/+970000000000?text=أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro" 
-                target="_blank" 
-                rel="noopener noreferrer"
+            
+            {developerPhone && (
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleContactDeveloper}
               >
                 <MessageCircle className="w-4 h-4" />
-                <span className={isRTL ? 'mr-2' : 'ml-2'}>WhatsApp</span>
-              </a>
-            </Button>
+                <span className={isRTL ? 'mr-2' : 'ml-2'}>
+                  {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
+                </span>
+              </Button>
+            )}
             
             <Button 
               variant="ghost" 

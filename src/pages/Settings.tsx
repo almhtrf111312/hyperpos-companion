@@ -30,7 +30,6 @@ import {
   Cloud,
   Globe,
   Loader2,
-  Palette,
   Activity,
   Key,
   FileUp,
@@ -44,7 +43,7 @@ import {
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
-import { ThemeSection } from '@/components/settings/ThemeSection';
+// ThemeSection تم نقله لصفحة مستقلة /appearance
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
@@ -166,7 +165,6 @@ export default function Settings() {
     { id: 'store', label: t('settings.store'), icon: Store },
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
     { id: 'language', label: t('settings.language'), icon: Globe },
-    { id: 'theme', label: t('settings.theme'), icon: Palette },
     { id: 'currencies', label: t('settings.currencies'), icon: DollarSign },
     { id: 'sync', label: t('settings.sync'), icon: RefreshCw },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
@@ -182,13 +180,13 @@ export default function Settings() {
 
   const persisted = loadPersistedSettings();
   
-  // Store settings
+  // Store settings - فارغة افتراضياً للحسابات الجديدة
   const [storeSettings, setStoreSettings] = useState({
-    name: persisted?.storeSettings?.name ?? 'HyperPOS Store',
+    name: persisted?.storeSettings?.name ?? '',
     type: persisted?.storeSettings?.type ?? 'phones',
-    phone: persisted?.storeSettings?.phone ?? '+963 912 345 678',
-    email: persisted?.storeSettings?.email ?? 'store@hyperpos.com',
-    address: persisted?.storeSettings?.address ?? 'دمشق، شارع النيل',
+    phone: persisted?.storeSettings?.phone ?? '',
+    email: persisted?.storeSettings?.email ?? '',
+    address: persisted?.storeSettings?.address ?? '',
     logo: persisted?.storeSettings?.logo ?? '',
   });
 
@@ -780,8 +778,7 @@ export default function Settings() {
         );
       case 'language':
         return <LanguageSection />;
-      case 'theme':
-        return <ThemeSection />;
+      // تم نقل theme إلى صفحة /appearance
       case 'activity':
         return <ActivityLogSection />;
       case 'diagnostics':

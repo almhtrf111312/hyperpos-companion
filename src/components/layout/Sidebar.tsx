@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   User,
+  Palette,
   FileText,
   Receipt,
   Wallet
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { icon: Package, translationKey: 'nav.warehouses' as any, path: '/warehouses', adminOnly: true },
   { icon: Package, translationKey: 'nav.stockTransfer' as any, path: '/stock-transfer', adminOnly: true },
   { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true },
+  { icon: Palette, translationKey: 'settings.theme' as any, path: '/appearance' },
   { icon: Settings, translationKey: 'nav.settings', path: '/settings', adminOnly: true },
 ];
 
