@@ -37,7 +37,7 @@ import {
 import { showToast } from '@/lib/toast-config';
 import { addInvoice } from '@/lib/invoices-store';
 import { loadCustomers, Customer } from '@/lib/customers-store';
-import { loadProducts } from '@/lib/products-store';
+import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
@@ -254,7 +254,7 @@ export function CartPanel({
       const customer = customerNameSnapshot ? await findOrCreateCustomerCloud(customerNameSnapshot) : null;
       
       // Calculate profit by category for accurate partner distribution
-      const products = loadProducts();
+      const products = await loadProductsCloud();
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
       let totalCOGS = 0;
@@ -493,7 +493,7 @@ export function CartPanel({
       const customer = await findOrCreateCustomerCloud(customerNameSnapshot);
       
       // Calculate profit by category
-      const products = loadProducts();
+      const products = await loadProductsCloud();
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
       let totalCOGS = 0;
