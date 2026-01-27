@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { addActivityLog } from '@/lib/activity-log';
 
+export type UserType = 'cashier' | 'distributor' | 'pos';
+
 export interface UserData {
   id: string;
   user_id: string;
@@ -11,7 +13,7 @@ export interface UserData {
   email: string;
   phone?: string;
   role: 'admin' | 'cashier' | 'boss';
-  userType?: 'cashier' | 'distributor';
+  userType?: UserType;
   isCurrentUser?: boolean;
   isOwner?: boolean;
 }
@@ -82,13 +84,13 @@ export function useUsersManagement() {
         const userEmail = emailMap[role.user_id] || (isCurrentUserFlag ? (currentUser?.email || '') : '');
         
         // For admin/boss roles, userType should be derived from role, not profiles.user_type
-        // user_type in profiles is only relevant for cashier role (cashier vs distributor)
+        // user_type in profiles is only relevant for cashier role (cashier vs distributor vs pos)
         const dbRole = role.role as 'admin' | 'cashier' | 'boss';
-        let userType: 'cashier' | 'distributor' = 'cashier';
+        let userType: UserType = 'cashier';
         
         // Only use user_type from profiles for cashier role
         if (dbRole === 'cashier') {
-          userType = (userProfile?.user_type as 'cashier' | 'distributor') || 'cashier';
+          userType = (userProfile?.user_type as UserType) || 'cashier';
         }
         
         return {
@@ -125,7 +127,7 @@ export function useUsersManagement() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: 'cashier' | 'distributor' = 'cashier', phone?: string) => {
+  const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: UserType = 'cashier', phone?: string) => {
     try {
       // Ensure user is logged in
       const { data: { session } } = await supabase.auth.getSession();
@@ -221,7 +223,7 @@ export function useUsersManagement() {
     }
   };
 
-  const updateUserProfile = async (userId: string, fullName: string, userType?: 'cashier' | 'distributor', phone?: string) => {
+  const updateUserProfile = async (userId: string, fullName: string, userType?: UserType, phone?: string) => {
     try {
       const updateData: { full_name: string; user_type?: string; phone?: string } = { full_name: fullName };
       
