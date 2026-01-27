@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
@@ -77,6 +77,8 @@ export default function Expenses() {
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => loadRecurringExpenses());
   const [dueExpenses, setDueExpenses] = useState<RecurringExpense[]>(() => getDueExpenses());
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
@@ -167,6 +169,9 @@ export default function Expenses() {
   };
 
   const handleAddExpense = async () => {
+    // ✅ منع تكرار الإدخال عند الضغط المتعدد
+    if (isSaving || savingRef.current) return;
+
     if (formData.amount <= 0) {
       toast.error(t('expenses.enterValidAmount'));
       return;
@@ -177,22 +182,34 @@ export default function Expenses() {
       return;
     }
 
-    await addExpenseCloud({
-      type: formData.type,
-      customType: formData.customType,
-      amount: formData.amount,
-      notes: formData.notes,
-      date: formData.date,
-    });
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      const created = await addExpenseCloud({
+        type: formData.type,
+        customType: formData.customType,
+        amount: formData.amount,
+        notes: formData.notes,
+        date: formData.date,
+      });
 
-    // ✅ خصم المبلغ من الصندوق تلقائياً (الترابط الجديد)
-    processExpense(formData.amount, formData.type);
+      if (!created) {
+        toast.error('فشل في إضافة المصروف');
+        return;
+      }
 
-    const expensesData = await loadExpensesCloud();
-    setExpenses(expensesData);
-    setShowAddDialog(false);
-    resetForm();
-    toast.success(t('expenses.expenseAdded'));
+      // ✅ خصم المبلغ من الصندوق تلقائياً (الترابط الجديد)
+      processExpense(formData.amount, formData.type);
+
+      const expensesData = await loadExpensesCloud();
+      setExpenses(expensesData);
+      setShowAddDialog(false);
+      resetForm();
+      toast.success(t('expenses.expenseAdded'));
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   const handleAddRecurringExpense = () => {
@@ -549,9 +566,9 @@ export default function Expenses() {
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
                 {t('expenses.cancel')}
               </Button>
-              <Button className="flex-1" onClick={handleAddExpense}>
+              <Button className="flex-1" onClick={handleAddExpense} disabled={isSaving}>
                 <Save className="w-4 h-4 ml-2" />
-                {t('expenses.save')}
+                {isSaving ? 'جاري الحفظ...' : t('expenses.save')}
               </Button>
             </div>
           </div>

@@ -49,6 +49,7 @@ import { recordActivity } from '@/lib/auto-backup';
 import { useLanguage } from '@/hooks/use-language';
 import { 
   loadCustomersCloud, 
+  addCustomerCloud,
   findOrCreateCustomerCloud, 
   updateCustomerStatsCloud 
 } from '@/lib/cloud/customers-cloud';
@@ -129,6 +130,8 @@ export function CartPanel({
   const [customerPhone, setCustomerPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false); // ✅ Mutex lock لمنع التكرارات
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+  const addCustomerRef = useRef(false);
   
   // Loaded customers for search
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -705,16 +708,46 @@ export function CartPanel({
   };
 
   const handleAddCustomer = async () => {
+    // ✅ منع التكرار عند الضغط المتعدد
+    if (isAddingCustomer || addCustomerRef.current) return;
+
     if (!newCustomer.name || !newCustomer.phone) {
       showToast.error(t('pos.fillRequired'));
       return;
     }
-    // Add customer to store using Cloud API
-    await findOrCreateCustomerCloud(newCustomer.name, newCustomer.phone);
-    onCustomerNameChange(newCustomer.name);
-    showToast.success(t('pos.customerAdded'));
-    setShowCustomerDialog(false);
-    setNewCustomer({ name: '', phone: '', email: '' });
+
+    addCustomerRef.current = true;
+    setIsAddingCustomer(true);
+
+    try {
+      // هذا الحوار مخصص لإضافة عميل جديد: إذا كان الاسم موجوداً نُظهر تحذيراً
+      const created = await addCustomerCloud({
+        name: newCustomer.name,
+        phone: newCustomer.phone,
+        email: newCustomer.email || undefined,
+      });
+
+      if (!created) {
+        showToast.error('هذا الاسم موجود مسبقاً، يرجى اختيار اسم مختلف');
+        return;
+      }
+
+      // تحديث الحالة حتى لا يطلب الهاتف مرة أخرى
+      onCustomerNameChange(created.name);
+      setCustomerPhone(created.phone || '');
+      setIsNewCustomer(false);
+
+      // تحديث قائمة العملاء للبحث التلقائي
+      const refreshed = await loadCustomersCloud();
+      setAllCustomers(refreshed);
+
+      showToast.success(t('pos.customerAdded'));
+      setShowCustomerDialog(false);
+      setNewCustomer({ name: '', phone: '', email: '' });
+    } finally {
+      addCustomerRef.current = false;
+      setIsAddingCustomer(false);
+    }
   };
 
   const handlePrint = () => {
@@ -1278,9 +1311,9 @@ export function CartPanel({
               <Button variant="outline" className="flex-1" onClick={() => setShowCustomerDialog(false)}>
                 إلغاء
               </Button>
-              <Button className="flex-1" onClick={handleAddCustomer}>
+              <Button className="flex-1" onClick={handleAddCustomer} disabled={isAddingCustomer}>
                 <UserPlus className="w-4 h-4 ml-2" />
-                إضافة العميل
+                {isAddingCustomer ? 'جاري الحفظ...' : 'إضافة العميل'}
               </Button>
             </div>
           </div>
