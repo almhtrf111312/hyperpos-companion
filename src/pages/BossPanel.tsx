@@ -376,11 +376,16 @@ export default function BossPanel() {
 
   const handleDeleteOwner = async (ownerId: string) => {
     try {
-      const { data, error } = await supabase.rpc('delete_owner_cascade', { _owner_id: ownerId });
+      // IMPORTANT: deleting an owner must remove the auth account too (email reuse)
+      // so we call the backend delete-user function in "owner" mode.
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: ownerId, deleteType: 'owner' },
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete owner');
 
-      toast.success('تم حذف المالك وجميع بياناته');
+      toast.success('تم حذف المالك بالكامل من النظام');
       setDeleteConfirm(null);
       fetchData();
     } catch (error) {
