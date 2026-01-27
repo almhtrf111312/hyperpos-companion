@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
@@ -53,6 +53,7 @@ export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Dialogs
@@ -123,6 +124,8 @@ export default function Customers() {
   );
 
   const handleAddCustomer = async () => {
+    if (isSaving || savingRef.current) return;
+
     if (!formData.name || !formData.phone) {
       toast.error('يرجى ملء الحقول المطلوبة');
       return;
@@ -137,22 +140,27 @@ export default function Customers() {
       return;
     }
     
+    savingRef.current = true;
     setIsSaving(true);
-    const newCustomer = await addCustomerCloud({
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email || undefined,
-      address: formData.address || undefined,
-    });
-    setIsSaving(false);
-    
-    if (newCustomer) {
-      setShowAddDialog(false);
-      setFormData({ name: '', phone: '', email: '', address: '' });
-      toast.success('تم إضافة العميل بنجاح');
-      loadData();
-    } else {
-      toast.error('هذا الاسم موجود مسبقاً أو فشل في إضافة العميل');
+    try {
+      const newCustomer = await addCustomerCloud({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || undefined,
+        address: formData.address || undefined,
+      });
+      
+      if (newCustomer) {
+        setShowAddDialog(false);
+        setFormData({ name: '', phone: '', email: '', address: '' });
+        toast.success('تم إضافة العميل بنجاح');
+        loadData();
+      } else {
+        toast.error('هذا الاسم موجود مسبقاً أو فشل في إضافة العميل');
+      }
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -431,9 +439,9 @@ export default function Customers() {
               <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button className="flex-1" onClick={handleAddCustomer}>
+              <Button className="flex-1" onClick={handleAddCustomer} disabled={isSaving}>
                 <Save className="w-4 h-4 ml-2" />
-                {t('common.save')}
+                {isSaving ? 'جاري الحفظ...' : t('common.save')}
               </Button>
             </div>
           </div>

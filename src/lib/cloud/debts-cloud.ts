@@ -5,6 +5,7 @@ import {
   updateInSupabase, 
   deleteFromSupabase,
   getCurrentUserId,
+  setCurrentUserId,
   isCashierUser
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
@@ -88,7 +89,14 @@ const CACHE_TTL = 30000;
 // Load debts
 // ✅ Owners see all debts, cashiers see only their own
 export const loadDebtsCloud = async (): Promise<Debt[]> => {
-  const userId = getCurrentUserId();
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      userId = user.id;
+      setCurrentUserId(user.id);
+    }
+  }
   if (!userId) return [];
 
   if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {

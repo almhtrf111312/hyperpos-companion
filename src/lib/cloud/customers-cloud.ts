@@ -88,10 +88,12 @@ export const invalidateCustomersCache = () => {
 export const addCustomerCloud = async (
   customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalPurchases' | 'totalDebt' | 'invoiceCount' | 'lastPurchase'>
 ): Promise<Customer | null> => {
+  const normalizedName = customer.name.trim();
+
   // ✅ التحقق من عدم وجود عميل بنفس الاسم
   const existingCustomers = await loadCustomersCloud();
   const duplicate = existingCustomers.find(c => 
-    c.name.toLowerCase().trim() === customer.name.toLowerCase().trim()
+    c.name.toLowerCase().trim() === normalizedName.toLowerCase().trim()
   );
   
   if (duplicate) {
@@ -101,7 +103,7 @@ export const addCustomerCloud = async (
   }
   
   const inserted = await insertToSupabase<CloudCustomer>('customers', {
-    name: customer.name,
+    name: normalizedName,
     phone: customer.phone || null,
     email: customer.email || null,
     address: customer.address || null,
@@ -159,15 +161,26 @@ export const deleteCustomerCloud = async (id: string): Promise<boolean> => {
 
 // Find or create customer
 export const findOrCreateCustomerCloud = async (name: string, phone?: string): Promise<Customer | null> => {
+  const normalizedName = name.trim();
+  const normalizedPhone = phone?.trim();
   const customers = await loadCustomersCloud();
   
   let customer = customers.find(c => 
-    c.name.toLowerCase() === name.toLowerCase() || 
-    (phone && c.phone === phone)
+    c.name.trim().toLowerCase() === normalizedName.toLowerCase() || 
+    (normalizedPhone && c.phone === normalizedPhone)
   );
+
+  // ✅ إذا كان العميل موجوداً وتم تمرير رقم هاتف جديد/مفقود: حدّث الهاتف حتى لا يُطلب مرة أخرى
+  if (customer && normalizedPhone) {
+    const currentPhone = (customer.phone || '').trim();
+    if (!currentPhone || currentPhone !== normalizedPhone) {
+      await updateCustomerCloud(customer.id, { phone: normalizedPhone });
+      customer = { ...customer, phone: normalizedPhone };
+    }
+  }
   
   if (!customer) {
-    customer = await addCustomerCloud({ name, phone: phone || '' });
+    customer = await addCustomerCloud({ name: normalizedName, phone: normalizedPhone || '' });
   }
   
   return customer;

@@ -5,8 +5,8 @@ import {
   updateInSupabase, 
   deleteFromSupabase,
   getCurrentUserId,
-  isCashierUser,
-  getOwnerIdForInsert
+  setCurrentUserId,
+  isCashierUser
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
@@ -130,7 +130,16 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 // Load invoices
 // ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
-  const userId = getCurrentUserId();
+  // قد يحدث أن CloudSyncProvider لم يضبط currentUserId بعد (خصوصاً بعد إعادة فتح التطبيق)
+  // لذا نستخدم fallback من جلسة المصادقة لضمان عدم اختفاء الفواتير.
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      userId = user.id;
+      setCurrentUserId(user.id);
+    }
+  }
   if (!userId) return [];
 
   if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
