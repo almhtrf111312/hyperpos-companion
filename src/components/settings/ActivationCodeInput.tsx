@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Key, Loader2, CheckCircle, AlertCircle, Calendar, Shield } from 'lucide-react';
+import { Key, Loader2, CheckCircle, AlertCircle, Calendar, Shield, MessageCircle } from 'lucide-react';
 import { useLicense } from '@/hooks/use-license';
 import { useLanguage } from '@/hooks/use-language';
+import { supabase } from '@/integrations/supabase/client';
 
 export function ActivationCodeInput() {
   const { activateCode, isTrial, isExpired, expiresAt, remainingDays } = useLicense();
@@ -14,6 +15,29 @@ export function ActivationCodeInput() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [developerPhone, setDeveloperPhone] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDeveloperPhone = async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'developer_phone')
+        .single();
+      
+      if (data?.value) {
+        setDeveloperPhone(data.value);
+      }
+    };
+    fetchDeveloperPhone();
+  }, []);
+
+  const handleContactDeveloper = () => {
+    if (!developerPhone) return;
+    const cleanPhone = developerPhone.replace(/[^0-9]/g, '');
+    const message = encodeURIComponent(isRTL ? 'مرحباً، أحتاج مساعدة بخصوص تفعيل التطبيق' : 'Hello, I need help with app activation');
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+  };
 
   const formatCode = (value: string) => {
     // Remove non-alphanumeric characters and convert to uppercase
@@ -189,6 +213,18 @@ export function ActivationCodeInput() {
           </form>
         )}
       </div>
+
+      {/* Contact Developer Button */}
+      {developerPhone && (
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={handleContactDeveloper}
+        >
+          <MessageCircle className="w-4 h-4" />
+          {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
+        </Button>
+      )}
     </div>
   );
 }
