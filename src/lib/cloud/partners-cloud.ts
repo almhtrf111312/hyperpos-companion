@@ -396,3 +396,179 @@ export const getPartnersStatsCloud = async () => {
     totalProfitEarned: partners.reduce((sum, p) => sum + p.totalProfitEarned, 0),
   };
 };
+
+// ✅ توزيع الأرباح على الشركاء - النسخة السحابية
+export interface CategoryProfit {
+  category: string;
+  profit: number;
+}
+
+export interface ProfitDistribution {
+  partnerId: string;
+  partnerName: string;
+  amount: number;
+  percentage: number;
+}
+
+export const distributeDetailedProfitCloud = async (
+  profits: CategoryProfit[],
+  invoiceId: string,
+  customerName: string,
+  isDebt: boolean
+): Promise<ProfitDistribution[]> => {
+  const partners = await loadPartnersCloud();
+  const allDistributions: ProfitDistribution[] = [];
+  
+  if (partners.length === 0 || profits.length === 0) return allDistributions;
+  
+  const updatedPartners: Map<string, Partner> = new Map();
+  
+  // Process each category profit
+  profits.forEach(({ category, profit }) => {
+    if (profit <= 0) return;
+    
+    let remainingProfit = profit;
+    
+    // ======= المرحلة 1: الشركاء المتخصصون في الصنف =======
+    const specializedPartners = partners.filter(p => 
+      !p.accessAll && p.categoryShares.some(cs => cs.enabled && cs.categoryName === category)
+    );
+    
+    specializedPartners.forEach(partner => {
+      const categoryShare = partner.categoryShares.find(
+        cs => cs.enabled && cs.categoryName === category
+      );
+      
+      if (categoryShare && categoryShare.percentage > 0) {
+        const partnerShare = (profit * categoryShare.percentage) / 100;
+        remainingProfit -= partnerShare;
+        
+        allDistributions.push({
+          partnerId: partner.id,
+          partnerName: partner.name,
+          amount: partnerShare,
+          percentage: categoryShare.percentage,
+        });
+        
+        // Get or create updated partner
+        let updatedPartner = updatedPartners.get(partner.id) || { ...partner };
+        
+        const profitRecord: ProfitRecord = {
+          id: Date.now().toString() + partner.id + category,
+          invoiceId,
+          amount: partnerShare,
+          category,
+          isDebt,
+          createdAt: new Date().toISOString(),
+        };
+        
+        if (isDebt) {
+          updatedPartner.pendingProfit += partnerShare;
+          updatedPartner.pendingProfitDetails = [
+            ...updatedPartner.pendingProfitDetails,
+            { invoiceId, amount: partnerShare, customerName, createdAt: new Date().toISOString() }
+          ];
+        } else {
+          updatedPartner.confirmedProfit += partnerShare;
+          updatedPartner.currentBalance += partnerShare;
+          updatedPartner.totalProfitEarned += partnerShare;
+        }
+        
+        updatedPartner.profitHistory = [...updatedPartner.profitHistory, profitRecord];
+        updatedPartners.set(partner.id, updatedPartner);
+      }
+    });
+    
+    // ======= المرحلة 2: الشركاء الكاملون =======
+    if (remainingProfit > 0) {
+      const fullPartners = partners.filter(p => p.accessAll);
+      const totalFullShare = fullPartners.reduce((sum, p) => sum + p.sharePercentage, 0);
+      
+      fullPartners.forEach(partner => {
+        if (partner.sharePercentage > 0 && totalFullShare > 0) {
+          const partnerRatio = partner.sharePercentage / totalFullShare;
+          const partnerShare = remainingProfit * partnerRatio;
+          
+          allDistributions.push({
+            partnerId: partner.id,
+            partnerName: partner.name,
+            amount: partnerShare,
+            percentage: partner.sharePercentage,
+          });
+          
+          let updatedPartner = updatedPartners.get(partner.id) || { ...partner };
+          
+          const profitRecord: ProfitRecord = {
+            id: Date.now().toString() + partner.id + category,
+            invoiceId,
+            amount: partnerShare,
+            category,
+            isDebt,
+            createdAt: new Date().toISOString(),
+          };
+          
+          if (isDebt) {
+            updatedPartner.pendingProfit += partnerShare;
+            updatedPartner.pendingProfitDetails = [
+              ...updatedPartner.pendingProfitDetails,
+              { invoiceId, amount: partnerShare, customerName, createdAt: new Date().toISOString() }
+            ];
+          } else {
+            updatedPartner.confirmedProfit += partnerShare;
+            updatedPartner.currentBalance += partnerShare;
+            updatedPartner.totalProfitEarned += partnerShare;
+          }
+          
+          updatedPartner.profitHistory = [...updatedPartner.profitHistory, profitRecord];
+          updatedPartners.set(partner.id, updatedPartner);
+        }
+      });
+    }
+  });
+  
+  // ✅ حفظ التحديثات في السحابة
+  await Promise.all(
+    Array.from(updatedPartners.values()).map(p => updatePartnerCloud(p.id, {
+      confirmedProfit: p.confirmedProfit,
+      pendingProfit: p.pendingProfit,
+      pendingProfitDetails: p.pendingProfitDetails,
+      currentBalance: p.currentBalance,
+      totalProfitEarned: p.totalProfitEarned,
+      profitHistory: p.profitHistory,
+    }))
+  );
+  
+  return allDistributions;
+};
+
+// ✅ تأكيد الأرباح المعلقة عند سداد الدين - النسخة السحابية
+export const confirmPendingProfitCloud = async (invoiceId: string, ratio: number = 1): Promise<void> => {
+  if (!invoiceId || invoiceId.startsWith('CASH_')) return;
+  
+  const partners = await loadPartnersCloud();
+  
+  for (const partner of partners) {
+    const pendingDetails = partner.pendingProfitDetails.filter(d => d.invoiceId === invoiceId);
+    if (pendingDetails.length === 0) continue;
+    
+    let totalConfirmed = 0;
+    const updatedDetails = partner.pendingProfitDetails.map(detail => {
+      if (detail.invoiceId !== invoiceId) return detail;
+      
+      const amountToConfirm = Math.min(detail.amount, detail.amount * ratio);
+      totalConfirmed += amountToConfirm;
+      
+      return { ...detail, amount: Math.max(0, detail.amount - amountToConfirm) };
+    }).filter(d => d.amount > 0);
+    
+    if (totalConfirmed > 0) {
+      await updatePartnerCloud(partner.id, {
+        pendingProfit: Math.max(0, partner.pendingProfit - totalConfirmed),
+        confirmedProfit: partner.confirmedProfit + totalConfirmed,
+        currentBalance: partner.currentBalance + totalConfirmed,
+        totalProfitEarned: partner.totalProfitEarned + totalConfirmed,
+        pendingProfitDetails: updatedDetails,
+      });
+    }
+  }
+};

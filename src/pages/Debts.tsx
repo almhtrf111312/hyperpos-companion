@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
@@ -13,7 +13,8 @@ import {
   CreditCard,
   Save,
   User,
-  Share2
+  Share2,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,9 +34,20 @@ import {
   addDebtCloud, 
   recordPaymentWithInvoiceSyncCloud,
   getDebtsStatsCloud,
+  deleteDebtCloud,
   Debt 
 } from '@/lib/cloud/debts-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
@@ -53,7 +65,10 @@ export default function Debts() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showAddDebtDialog, setShowAddDebtDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
 
   // Form for adding cash debt
@@ -469,6 +484,19 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                         {t('debts.payment')}
                       </Button>
                     )}
+                    {/* ✅ زر حذف الدين */}
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      className="h-8 md:h-9 text-xs md:text-sm" 
+                      onClick={() => {
+                        setSelectedDebt(debt);
+                        setShowDeleteDialog(true);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                      {t('common.delete')}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -701,6 +729,57 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              {t('common.confirmDelete')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedDebt && (
+                <>
+                  هل أنت متأكد من حذف دين <strong>{selectedDebt.customerName}</strong> بقيمة <strong>${selectedDebt.totalDebt.toLocaleString()}</strong>؟
+                  <br />
+                  <span className="text-destructive">هذا الإجراء لا يمكن التراجع عنه.</span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={async () => {
+                if (!selectedDebt || isDeleting) return;
+                setIsDeleting(true);
+                try {
+                  const success = await deleteDebtCloud(selectedDebt.id);
+                  if (success) {
+                    toast.success('تم حذف الدين بنجاح');
+                    const debtsData = await loadDebtsCloud();
+                    setDebts(debtsData);
+                  } else {
+                    toast.error('فشل في حذف الدين');
+                  }
+                } catch (error) {
+                  console.error('Delete debt error:', error);
+                  toast.error('حدث خطأ أثناء الحذف');
+                } finally {
+                  setIsDeleting(false);
+                  setShowDeleteDialog(false);
+                  setSelectedDebt(null);
+                }
+              }}
+            >
+              {isDeleting ? 'جاري الحذف...' : t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

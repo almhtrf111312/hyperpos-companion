@@ -128,6 +128,15 @@ export default function Customers() {
       return;
     }
     
+    // ✅ التحقق من عدم تكرار الاسم
+    const duplicate = customers.find(c => 
+      c.name.toLowerCase().trim() === formData.name.toLowerCase().trim()
+    );
+    if (duplicate) {
+      toast.error('هذا الاسم موجود مسبقاً، يرجى اختيار اسم مختلف');
+      return;
+    }
+    
     setIsSaving(true);
     const newCustomer = await addCustomerCloud({
       name: formData.name,
@@ -143,7 +152,7 @@ export default function Customers() {
       toast.success('تم إضافة العميل بنجاح');
       loadData();
     } else {
-      toast.error('فشل في إضافة العميل');
+      toast.error('هذا الاسم موجود مسبقاً أو فشل في إضافة العميل');
     }
   };
 

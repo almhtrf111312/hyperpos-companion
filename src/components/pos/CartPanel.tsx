@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { 
+import { useState, useMemo, useEffect, useRef } from 'react';
+import {
   ShoppingCart, 
   Plus, 
   Minus, 
@@ -38,7 +38,7 @@ import { showToast } from '@/lib/toast-config';
 import { addInvoice } from '@/lib/invoices-store';
 import { loadCustomers, Customer } from '@/lib/customers-store';
 import { loadProducts } from '@/lib/products-store';
-import { distributeDetailedProfit } from '@/lib/partners-store';
+import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
 import { useAuth } from '@/hooks/use-auth';
@@ -128,6 +128,7 @@ export function CartPanel({
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [customerPhone, setCustomerPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false); // ✅ Mutex lock لمنع التكرارات
   
   // Loaded customers for search
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -166,18 +167,26 @@ export function CartPanel({
       return;
     }
     
-    // التحقق إذا كان العميل موجوداً في قاعدة البيانات
-    const customerExists = allCustomers.some(c => 
+    // ✅ التحقق إذا كان العميل موجوداً في قاعدة البيانات واستخدام رقم هاتفه
+    const existingCustomer = allCustomers.find(c => 
       c.name.toLowerCase() === customerName.toLowerCase().trim()
     );
-    setIsNewCustomer(!customerExists);
-    setCustomerPhone('');
+    
+    if (existingCustomer) {
+      setIsNewCustomer(false);
+      setCustomerPhone(existingCustomer.phone || ''); // ✅ استخدام الهاتف المحفوظ
+    } else {
+      setIsNewCustomer(true);
+      setCustomerPhone('');
+    }
     
     setShowDebtDialog(true);
   };
 
   const confirmCashSale = async () => {
-    if (isSaving) return;
+    // ✅ حماية مزدوجة: state + ref لمنع التكرارات
+    if (isSaving || savingRef.current) return;
+    savingRef.current = true;
     setIsSaving(true);
     
     // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
@@ -338,7 +347,7 @@ export function CartPanel({
         .map(([category, profit]) => ({ category, profit: profit * discountMultiplier }));
       
       if (categoryProfits.length > 0) {
-        distributeDetailedProfit(categoryProfits, invoice.id, customerNameSnapshot || 'عميل نقدي', false);
+        distributeDetailedProfitCloud(categoryProfits, invoice.id, customerNameSnapshot || 'عميل نقدي', false);
       }
       
       // Deduct stock (parallel)
@@ -397,12 +406,15 @@ export function CartPanel({
       failSync('تم حفظ الفاتورة محلياً، سيتم الرفع لاحقاً');
       showToast.error('حدث خطأ أثناء معالجة البيع');
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
 
   const confirmDebtSale = async () => {
-    if (isSaving) return;
+    // ✅ حماية مزدوجة: state + ref لمنع التكرارات
+    if (isSaving || savingRef.current) return;
+    savingRef.current = true;
     setIsSaving(true);
     
     // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
@@ -575,7 +587,7 @@ export function CartPanel({
         }));
       
       if (categoryProfits.length > 0) {
-        distributeDetailedProfit(categoryProfits, invoice.id, customerNameSnapshot, true);
+        distributeDetailedProfitCloud(categoryProfits, invoice.id, customerNameSnapshot, true);
       }
       
       // Deduct stock (parallel)
@@ -650,6 +662,7 @@ export function CartPanel({
       failSync('تم حفظ الفاتورة محلياً، سيتم الرفع لاحقاً');
       showToast.error('حدث خطأ أثناء معالجة البيع بالدين');
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
