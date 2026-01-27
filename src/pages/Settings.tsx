@@ -1167,7 +1167,7 @@ export default function Settings() {
                           <p className="text-xs text-muted-foreground">{user.email}</p>
                         )}
                         <p className="text-sm text-muted-foreground">
-                          {user.userType === 'distributor' ? 'موزع' : t('settings.cashier')}
+                          {user.role === 'admin' ? 'مالك' : user.userType === 'distributor' ? 'موزع' : t('settings.cashier')}
                         </p>
                       </div>
                     </div>
