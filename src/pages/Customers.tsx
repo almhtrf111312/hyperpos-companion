@@ -37,13 +37,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { 
-  loadCustomersCloud, 
+  loadCustomersWithCashierNamesCloud, 
   addCustomerCloud, 
   updateCustomerCloud, 
   deleteCustomerCloud,
   getCustomersStatsCloud,
   Customer 
 } from '@/lib/cloud/customers-cloud';
+import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 
@@ -71,11 +72,15 @@ export default function Customers() {
     address: '',
   });
 
+  const { role } = useUserRole();
+  const isOwner = role === 'admin' || role === 'boss';
+
   // Load customers from cloud
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await loadCustomersCloud();
+      // ✅ للمالك: تحميل مع أسماء الكاشير
+      const data = await loadCustomersWithCashierNamesCloud();
       setCustomers(data);
     } catch (error) {
       console.error('Error loading customers:', error);
@@ -322,7 +327,15 @@ export default function Customers() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm md:text-base">{customer.name}</h3>
-                  <p className="text-xs md:text-sm text-muted-foreground">{customer.invoiceCount} {t('customers.invoices')}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs md:text-sm text-muted-foreground">{customer.invoiceCount} {t('customers.invoices')}</p>
+                    {/* ✅ شارة الكاشير للمالك */}
+                    {isOwner && customer.cashierName && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        👤 {customer.cashierName}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               {customer.totalDebt > 0 && (

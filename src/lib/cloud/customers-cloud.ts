@@ -7,6 +7,7 @@ import {
   getCurrentUserId 
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CloudCustomer {
   id: string;
@@ -21,6 +22,7 @@ export interface CloudCustomer {
   last_purchase: string | null;
   created_at: string;
   updated_at: string;
+  cashier_id: string | null; // ✅ من أضاف العميل
 }
 
 export interface Customer {
@@ -35,6 +37,8 @@ export interface Customer {
   lastPurchase: string;
   createdAt: string;
   updatedAt: string;
+  cashierId?: string; // ✅ معرف الكاشير
+  cashierName?: string; // ✅ اسم الكاشير (يُحمّل لاحقاً)
 }
 
 // Transform cloud to legacy format
@@ -51,6 +55,7 @@ function toCustomer(cloud: CloudCustomer): Customer {
     lastPurchase: cloud.last_purchase || '',
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
+    cashierId: cloud.cashier_id || undefined,
   };
 }
 
@@ -79,6 +84,28 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
   return customersCache;
 };
 
+// ✅ تحميل العملاء مع أسماء الكاشير
+export const loadCustomersWithCashierNamesCloud = async (): Promise<Customer[]> => {
+  const customers = await loadCustomersCloud();
+  
+  // جلب أسماء الكاشير من profiles
+  const cashierIds = [...new Set(customers.filter(c => c.cashierId).map(c => c.cashierId!))];
+  
+  if (cashierIds.length === 0) return customers;
+  
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('user_id, full_name')
+    .in('user_id', cashierIds);
+  
+  const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+  
+  return customers.map(c => ({
+    ...c,
+    cashierName: c.cashierId ? profileMap.get(c.cashierId) || undefined : undefined,
+  }));
+};
+
 export const invalidateCustomersCache = () => {
   customersCache = null;
   cacheTimestamp = 0;
@@ -102,6 +129,13 @@ export const addCustomerCloud = async (
     return null;
   }
   
+  // ✅ جلب معرف الكاشير الحالي لحفظه مع العميل
+  let cashierId = getCurrentUserId();
+  if (!cashierId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    cashierId = user?.id || null;
+  }
+  
   const inserted = await insertToSupabase<CloudCustomer>('customers', {
     name: normalizedName,
     phone: customer.phone || null,
@@ -110,6 +144,7 @@ export const addCustomerCloud = async (
     total_purchases: 0,
     total_debt: 0,
     invoice_count: 0,
+    cashier_id: cashierId, // ✅ حفظ من أضاف العميل
   });
   
   if (inserted) {

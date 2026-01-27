@@ -497,7 +497,7 @@ export default function POS() {
       {(isMobile || isTablet) && (
         <Button
           onClick={() => setCartOpen(true)}
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 
                      w-16 h-16 rounded-full 
                      shadow-lg shadow-primary/30
                      flex items-center justify-center
