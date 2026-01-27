@@ -81,14 +81,24 @@ export function useUsersManagement() {
         // Get email from emailMap, or use current user's email
         const userEmail = emailMap[role.user_id] || (isCurrentUserFlag ? (currentUser?.email || '') : '');
         
+        // For admin/boss roles, userType should be derived from role, not profiles.user_type
+        // user_type in profiles is only relevant for cashier role (cashier vs distributor)
+        const dbRole = role.role as 'admin' | 'cashier' | 'boss';
+        let userType: 'cashier' | 'distributor' = 'cashier';
+        
+        // Only use user_type from profiles for cashier role
+        if (dbRole === 'cashier') {
+          userType = (userProfile?.user_type as 'cashier' | 'distributor') || 'cashier';
+        }
+        
         return {
           id: role.id,
           user_id: role.user_id,
           name: userProfile?.full_name || (isCurrentUserFlag ? (profile?.full_name || currentUser?.email?.split('@')[0] || 'مستخدم') : 'مستخدم'),
           email: userEmail,
           phone: userProfile?.phone || '',
-          role: role.role as 'admin' | 'cashier' | 'boss',
-          userType: (userProfile?.user_type as 'cashier' | 'distributor') || 'cashier',
+          role: dbRole,
+          userType: userType,
           isCurrentUser: isCurrentUserFlag,
           isOwner: isOwnerFlag,
         };
