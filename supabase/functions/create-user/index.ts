@@ -114,6 +114,20 @@ Deno.serve(async (req) => {
 
     console.log('User created:', newUser.user.id);
 
+    // ✅ CRITICAL FIX: Delete any auto-created role from the trigger FIRST
+    // The handle_new_user_role trigger auto-creates an 'admin' role for ALL new users
+    // We need to delete it before inserting the correct role
+    const { error: deleteRoleError } = await adminClient
+      .from("user_roles")
+      .delete()
+      .eq("user_id", newUser.user.id);
+    
+    if (deleteRoleError) {
+      console.log('No existing role to delete or delete failed:', deleteRoleError);
+    } else {
+      console.log('Deleted auto-created role for user:', newUser.user.id);
+    }
+
     // Create role for the new user
     // IMPORTANT: Only Boss can create admin accounts
     // Regular admins can only create cashier accounts linked to themselves
@@ -137,6 +151,7 @@ Deno.serve(async (req) => {
     
     console.log('Creating role with:', { finalRole, ownerId, isBoss });
     
+    // ✅ Now insert the correct role
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
       .insert({
@@ -147,8 +162,15 @@ Deno.serve(async (req) => {
 
     if (roleInsertError) {
       console.error("Error creating user role:", roleInsertError);
-      // Don't fail - the user is created, just the role failed
+      // This is critical - if role creation fails, delete the user
+      await adminClient.auth.admin.deleteUser(newUser.user.id);
+      return new Response(
+        JSON.stringify({ error: "Failed to assign role to user" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    
+    console.log('Role created successfully:', finalRole, 'with owner_id:', ownerId);
 
     // Update profile with user_type and phone if provided
     const profileUpdate: { user_type?: string; phone?: string } = {};
