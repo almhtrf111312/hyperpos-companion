@@ -126,6 +126,12 @@ export default function POS() {
 
   // Load products and categories from cloud with retry logic
   const loadData = useCallback(async (retryCount = 0) => {
+    // ✅ انتظار تحميل الـ profile أولاً
+    if (profile === undefined) {
+      console.log('[POS] Profile not loaded yet, waiting...');
+      return;
+    }
+    
     setIsLoadingProducts(true);
     
     // ✅ إبطال الـ Cache قبل التحميل لضمان الحصول على أحدث البيانات
@@ -161,8 +167,10 @@ export default function POS() {
         bulkCostPrice: p.bulkCostPrice || 0,
       }));
       
-      // ✅ تحديد نوع المستخدم من الـ profile
+      // ✅ تحديد نوع المستخدم من الـ profile - الافتراضي هو كاشير (يرى كل شيء)
       const userType = profile?.user_type || 'cashier';
+      
+      console.log(`[POS] User type from profile: ${userType}, profile:`, profile);
       
       // ✅ الكاشير: يرى جميع المنتجات (يعمل في المحل مباشرة)
       // ✅ الموزع / نقطة البيع: يرى فقط المنتجات في عهدته (المستودع المخصص)
@@ -187,8 +195,8 @@ export default function POS() {
         console.log(`[POS] Filtered products for ${userType}:`, filteredProducts.length);
         setProducts(filteredProducts);
       } else {
-        // الكاشير والإدارة: عرض كل المنتجات
-        console.log(`[POS] Cashier/Admin user, showing all products:`, allPosProducts.length);
+        // ✅ الكاشير والإدارة: عرض كل المنتجات (الوصول الكامل)
+        console.log(`[POS] Cashier/Admin user (type: ${userType}), showing ALL products:`, allPosProducts.length);
         setProducts(allPosProducts);
       }
       
