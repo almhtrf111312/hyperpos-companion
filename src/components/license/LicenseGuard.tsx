@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useDeviceBinding } from '@/hooks/use-device-binding';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActivationScreen } from './ActivationScreen';
-import { TrialBanner } from './TrialBanner';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -160,14 +159,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
 
   // If there was a network error but user is authenticated, allow access
   if (isValid && hasLicense) {
-    return (
-      <>
-        {isTrial && <TrialBanner />}
-        <div className={isTrial ? 'pt-10' : ''}>
-          {children}
-        </div>
-      </>
-    );
+    return <>{children}</>;
   }
 
   // If cashier and owner hasn't activated yet, show waiting message
@@ -246,13 +238,6 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     return <ActivationScreen />;
   }
 
-  // License is valid - show the app with trial banner if applicable
-  return (
-    <>
-      {isTrial && <TrialBanner />}
-      <div className={isTrial ? 'pt-10' : ''}>
-        {children}
-      </div>
-    </>
-  );
+  // License is valid - show the app
+  return <>{children}</>;
 }
