@@ -39,6 +39,16 @@ interface POSProduct {
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
+const loadHideMaintenanceSetting = (): boolean => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return parsed?.hideMaintenanceSection ?? false;
+  } catch {
+    return false;
+  }
+};
 const loadExchangeRates = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -96,6 +106,7 @@ export default function POS() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
+  const hideMaintenanceSection = loadHideMaintenanceSetting();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
@@ -393,8 +404,8 @@ export default function POS() {
           showCartButton={false}
         />
 
-        {/* Mode Tabs - Mobile Only */}
-        {isMobile && (
+        {/* Mode Tabs - Mobile Only (hidden if maintenance section is hidden) */}
+        {isMobile && !hideMaintenanceSection && (
           <div className="px-3 py-2 border-b border-border bg-card">
             <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as 'products' | 'maintenance')}>
               <TabsList className="grid w-full grid-cols-2">
@@ -418,7 +429,7 @@ export default function POS() {
             "flex-1 flex flex-col h-full overflow-hidden",
             !isMobile && "border-l border-border"
           )}>
-            {activeMode === 'products' ? (
+            {activeMode === 'products' || hideMaintenanceSection ? (
               <ProductGrid
                 products={products}
                 categories={categories}

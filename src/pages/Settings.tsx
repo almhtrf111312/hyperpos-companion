@@ -38,7 +38,8 @@ import {
   Banknote,
   Package,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Wrench
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
@@ -110,6 +111,7 @@ type PersistedSettings = {
   printSettings?: Partial<PrintSettingsType>;
   backupSettings?: Partial<BackupSettingsType>;
   currencySymbol?: string;
+  hideMaintenanceSection?: boolean;
 };
 
 const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
@@ -286,6 +288,11 @@ export default function Settings() {
     keepDays: String(persisted?.backupSettings?.keepDays ?? 30),
   });
 
+  // POS options
+  const [hideMaintenanceSection, setHideMaintenanceSection] = useState(
+    persisted?.hideMaintenanceSection ?? false
+  );
+
   // Dialogs
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
@@ -354,6 +361,7 @@ export default function Settings() {
       notificationSettings,
       printSettings,
       backupSettings,
+      hideMaintenanceSection,
     });
 
     // Save to cloud
@@ -884,6 +892,24 @@ export default function Settings() {
                   </label>
                   <p className="text-xs text-muted-foreground mt-1">{t('settings.logoRequirements')}</p>
                 </div>
+              </div>
+            </div>
+
+            {/* POS Options */}
+            <div className="space-y-4 pt-4 border-t border-border">
+              <h3 className="text-base font-semibold text-foreground">خيارات نقطة البيع</h3>
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Wrench className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">إخفاء قسم الصيانة</p>
+                    <p className="text-sm text-muted-foreground">إخفاء تبويب الصيانة من شاشة نقطة البيع</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={hideMaintenanceSection}
+                  onCheckedChange={setHideMaintenanceSection}
+                />
               </div>
             </div>
           </div>

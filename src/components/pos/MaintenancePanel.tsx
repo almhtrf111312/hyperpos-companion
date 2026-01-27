@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { 
   Wrench, 
   User, 
@@ -17,7 +17,8 @@ import {
   Tablet,
   Headphones,
   Monitor,
-  Package
+  Package,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,14 +39,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from 'sonner';
-import { addMaintenanceService } from '@/lib/maintenance-store';
-import { addInvoice } from '@/lib/invoices-store';
+import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
-import { addDebtFromInvoice } from '@/lib/debts-store';
+import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';
+import { addExpenseCloud } from '@/lib/cloud/expenses-cloud';
+import { loadCustomersCloud } from '@/lib/cloud/customers-cloud';
 import { addActivityLog } from '@/lib/activity-log';
-import { addExpense } from '@/lib/expenses-store';
 import { useAuth } from '@/hooks/use-auth';
-import { loadCustomers } from '@/lib/customers-store';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
@@ -87,6 +87,10 @@ export function MaintenancePanel({
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  
+  // ✅ Mutex lock to prevent duplicate saves
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const profit = servicePrice - partsCost;
   const servicePriceInCurrency = servicePrice * selectedCurrency.rate;
@@ -142,11 +146,11 @@ export function MaintenancePanel({
     setShowCashDialog(true);
   };
 
-  const handleDebtSale = () => {
+  const handleDebtSale = async () => {
     if (!validateForm()) return;
     
     // التحقق إذا كان العميل موجوداً في قاعدة البيانات
-    const existingCustomers = loadCustomers();
+    const existingCustomers = await loadCustomersCloud();
     const customerExists = existingCustomers.some(c => 
       c.name.toLowerCase() === customerName.toLowerCase().trim()
     );
@@ -155,117 +159,128 @@ export function MaintenancePanel({
     setShowDebtDialog(true);
   };
 
-  const confirmSale = (paymentType: 'cash' | 'debt') => {
-    const fullDescription = [
-      getServiceLabel(),
-      getProductLabel(),
-      description
-    ].filter(Boolean).join(' - ');
-
-    // Add to maintenance store
-    addMaintenanceService({
-      customerName,
-      customerPhone,
-      description: fullDescription,
-      servicePrice,
-      partsCost,
-      paymentType,
-      status: 'completed',
-    });
-
-    // Add to invoices store
-    const invoice = addInvoice({
-      type: 'maintenance',
-      customerName,
-      customerPhone,
-      items: [],
-      subtotal: servicePrice,
-      discount: 0,
-      total: servicePrice,
-      totalInCurrency: servicePriceInCurrency,
-      currency: selectedCurrency.code,
-      currencySymbol: selectedCurrency.symbol,
-      paymentType,
-      status: paymentType === 'cash' ? 'paid' : 'pending',
-      serviceDescription: fullDescription,
-      serviceType: getServiceLabel(),
-      productType: getProductLabel(),
-      partsCost,
-      profit,
-    });
-    
-    // تسجيل تكلفة القطع كمصروف تلقائي (إذا كانت أكبر من 0)
-    if (partsCost > 0) {
-      addExpense({
-        type: 'equipment',
-        customType: 'قطع غيار صيانة',
-        amount: partsCost,
-        notes: `قطع غيار لخدمة صيانة - العميل: ${customerName} - الفاتورة: ${invoice.id}`,
-        date: new Date().toISOString().split('T')[0],
-      });
+  const confirmSale = async (paymentType: 'cash' | 'debt') => {
+    // ✅ Mutex lock to prevent duplicate saves
+    if (isSaving || savingRef.current) {
+      console.log('[MaintenancePanel] Already saving, ignoring click');
+      return;
     }
     
-    // Distribute profit to partners (category: صيانة) - ✅ استخدام Cloud API
-    if (profit > 0) {
-      distributeDetailedProfitCloud(
-        [{ category: 'صيانة', profit }],
-        invoice.id,
+    savingRef.current = true;
+    setIsSaving(true);
+    
+    try {
+      const fullDescription = [
+        getServiceLabel(),
+        getProductLabel(),
+        description
+      ].filter(Boolean).join(' - ');
+
+      // ✅ Add to invoices using Cloud API
+      const invoice = await addInvoiceCloud({
+        type: 'maintenance',
         customerName,
-        paymentType === 'debt'
-      );
-    }
-    
-    // Create debt record if payment is debt
-    if (paymentType === 'debt') {
-      addDebtFromInvoice(invoice.id, customerName, customerPhone, servicePrice);
-    }
-    
-    // Log activity with detailed information
-    if (user) {
-      addActivityLog(
-        'maintenance',
-        user.id,
-        profile?.full_name || user.email || 'مستخدم',
-        `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${servicePrice.toLocaleString()} للعميل ${customerName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
-        { 
-          invoiceId: invoice.id, 
-          total: servicePrice, 
-          customerName, 
-          paymentType, 
-          serviceType: getServiceLabel(),
-          productType: getProductLabel(),
-          partsCost,
-          profit,
-          description: fullDescription
-        }
-      );
+        customerPhone,
+        items: [],
+        subtotal: servicePrice,
+        discount: 0,
+        total: servicePrice,
+        totalInCurrency: servicePriceInCurrency,
+        currency: selectedCurrency.code,
+        currencySymbol: selectedCurrency.symbol,
+        paymentType,
+        status: paymentType === 'cash' ? 'paid' : 'pending',
+        serviceDescription: fullDescription,
+        serviceType: getServiceLabel(),
+        productType: getProductLabel(),
+        partsCost,
+        profit,
+      });
       
-      if (paymentType === 'debt') {
-        addActivityLog(
-          'debt_created',
-          user.id,
-          profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين صيانة للعميل ${customerName} بقيمة $${servicePrice.toLocaleString()}`,
-          { invoiceId: invoice.id, amount: servicePrice, customerName }
+      if (!invoice) {
+        toast.error('فشل في حفظ الفاتورة');
+        return;
+      }
+      
+      // ✅ تسجيل تكلفة القطع كمصروف تلقائي (إذا كانت أكبر من 0) - Cloud API
+      if (partsCost > 0) {
+        await addExpenseCloud({
+          type: 'equipment',
+          customType: 'قطع غيار صيانة',
+          amount: partsCost,
+          notes: `قطع غيار لخدمة صيانة - العميل: ${customerName} - الفاتورة: ${invoice.id}`,
+          date: new Date().toISOString().split('T')[0],
+        });
+      }
+      
+      // ✅ Distribute profit to partners (category: صيانة) - Cloud API
+      if (profit > 0) {
+        await distributeDetailedProfitCloud(
+          [{ category: 'صيانة', profit }],
+          invoice.id,
+          customerName,
+          paymentType === 'debt'
         );
       }
+      
+      // ✅ Create debt record if payment is debt - Cloud API
+      if (paymentType === 'debt') {
+        await addDebtFromInvoiceCloud(invoice.id, customerName, customerPhone, servicePrice);
+      }
+      
+      // Log activity with detailed information
+      if (user) {
+        addActivityLog(
+          'maintenance',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${servicePrice.toLocaleString()} للعميل ${customerName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
+          { 
+            invoiceId: invoice.id, 
+            total: servicePrice, 
+            customerName, 
+            paymentType, 
+            serviceType: getServiceLabel(),
+            productType: getProductLabel(),
+            partsCost,
+            profit,
+            description: fullDescription
+          }
+        );
+        
+        if (paymentType === 'debt') {
+          addActivityLog(
+            'debt_created',
+            user.id,
+            profile?.full_name || user.email || 'مستخدم',
+            `تم إنشاء دين صيانة للعميل ${customerName} بقيمة $${servicePrice.toLocaleString()}`,
+            { invoiceId: invoice.id, amount: servicePrice, customerName }
+          );
+        }
+      }
+      
+      // Play appropriate sound
+      if (paymentType === 'cash') {
+        playSaleComplete();
+      } else {
+        playDebtRecorded();
+      }
+      
+      toast.success(paymentType === 'cash' 
+        ? t('maintenance.cashRecorded')
+        : t('maintenance.debtRecorded')
+      );
+      
+      setShowCashDialog(false);
+      setShowDebtDialog(false);
+      resetForm();
+    } catch (error) {
+      console.error('[MaintenancePanel] Error saving:', error);
+      toast.error('حدث خطأ أثناء الحفظ');
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
-    
-    // Play appropriate sound
-    if (paymentType === 'cash') {
-      playSaleComplete();
-    } else {
-      playDebtRecorded();
-    }
-    
-    toast.success(paymentType === 'cash' 
-      ? t('maintenance.cashRecorded')
-      : t('maintenance.debtRecorded')
-    );
-    
-    setShowCashDialog(false);
-    setShowDebtDialog(false);
-    resetForm();
   };
 
   const handlePrint = () => {
@@ -472,14 +487,14 @@ ${footer}`;
                     </Select>
                   </div>
                 </div>
-
+                
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.additionalDetails')}</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.description')}</label>
                   <Textarea
-                    placeholder={t('maintenance.serviceDescription')}
+                    placeholder="تفاصيل إضافية عن الخدمة..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-muted border-0 min-h-[80px]"
+                    className="bg-muted border-0 min-h-[60px] resize-none"
                   />
                 </div>
               </div>
@@ -487,79 +502,78 @@ ${footer}`;
 
             {/* Right Column - Pricing */}
             <div className="space-y-4">
-              <div className="space-y-3 pt-3 md:pt-0 border-t md:border-t-0 border-border">
-                <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.pricing')}</h3>
+              <div className="space-y-3 pt-3 border-t border-border md:border-t-0 md:pt-0">
+                <h3 className="font-medium text-sm text-muted-foreground">تفاصيل السعر</h3>
                 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-success" />
-                    {t('maintenance.amountCollected')}
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={servicePrice || ''}
-                    onChange={(e) => setServicePrice(Number(e.target.value))}
-                    className="bg-muted border-0 text-lg font-bold"
-                  />
+                  <label className="text-sm font-medium mb-1.5 block">سعر الخدمة (دولار)</label>
+                  <div className="relative">
+                    <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={servicePrice || ''}
+                      onChange={(e) => setServicePrice(Number(e.target.value))}
+                      className="pr-9 bg-muted border-0 text-lg font-bold"
+                    />
+                  </div>
                 </div>
-
+                
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
-                    <Calculator className="w-4 h-4 text-warning" />
-                    {t('maintenance.costPrice')}
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={partsCost || ''}
-                    onChange={(e) => setPartsCost(Number(e.target.value))}
-                    className="bg-muted border-0"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{t('maintenance.notShownToCustomer')}</p>
+                  <label className="text-sm font-medium mb-1.5 block">تكلفة القطع (دولار)</label>
+                  <div className="relative">
+                    <Calculator className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={partsCost || ''}
+                      onChange={(e) => setPartsCost(Number(e.target.value))}
+                      className="pr-9 bg-muted border-0"
+                    />
+                  </div>
                 </div>
 
                 {/* Profit Display */}
-                <div className="bg-success/10 rounded-lg p-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{t('maintenance.netProfit')}</span>
+                <div className={cn(
+                  "p-3 rounded-lg",
+                  profit >= 0 ? "bg-green-500/10" : "bg-red-500/10"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t('maintenance.netProfit')}</span>
                     <span className={cn(
                       "text-lg font-bold",
-                      profit >= 0 ? "text-success" : "text-destructive"
+                      profit >= 0 ? "text-green-500" : "text-red-500"
                     )}>
                       ${profit.toLocaleString()}
                     </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Currency Selector */}
-              <div className="space-y-3 pt-3 border-t border-border">
-                <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.currency')}</h3>
-                <div className="flex gap-1.5 md:gap-2">
-                  {currencies.map((currency) => (
-                    <button
-                      key={currency.code}
-                      onClick={() => onCurrencyChange(currency)}
-                      className={cn(
-                        "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
-                        selectedCurrency.code === currency.code
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      )}
+                {/* Currency Display */}
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">المجموع بالعملة</span>
+                    <Select 
+                      value={selectedCurrency.code} 
+                      onValueChange={(code) => {
+                        const currency = currencies.find(c => c.code === code);
+                        if (currency) onCurrencyChange(currency);
+                      }}
                     >
-                      {currency.symbol} {currency.code}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Summary */}
-                <div className="bg-muted rounded-lg p-3">
-                  <div className="flex justify-between items-center text-lg font-bold">
-                    <span>{t('maintenance.total')}</span>
-                    <span className="text-primary">
-                      {selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}
-                    </span>
+                      <SelectTrigger className="w-auto h-7 text-xs bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map(c => (
+                          <SelectItem key={c.code} value={c.code}>
+                            {c.symbol} {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-xl font-bold">
+                    {selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -567,154 +581,127 @@ ${footer}`;
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={cn(
-          "border-t border-border p-3 md:p-4 space-y-3",
-          fullWidth ? "max-w-3xl mx-auto w-full" : ""
-        )}>
-          {/* Payment Buttons */}
-          <div className="grid grid-cols-2 gap-2 md:gap-3">
-            <Button
-              className="h-11 md:h-14 bg-success hover:bg-success/90 text-sm md:text-base"
+        {/* Actions */}
+        <div className="p-3 md:p-4 border-t border-border space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <Button 
               onClick={handleCashSale}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={isSaving}
             >
-              <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-              {t('maintenance.cash')}
+              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Banknote className="w-4 h-4 ml-2" />}
+              نقداً
             </Button>
-            <Button
-              variant="outline"
-              className="h-11 md:h-14 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-base"
+            <Button 
               onClick={handleDebtSale}
+              variant="outline"
+              className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
+              disabled={isSaving}
             >
-              <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-              {t('maintenance.debt')}
+              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <CreditCard className="w-4 h-4 ml-2" />}
+              بالدين
             </Button>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
-              onClick={handlePrint}
-            >
-              <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              {t('maintenance.print')}
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={handlePrint} className="text-sm">
+              <Printer className="w-4 h-4 ml-1" />
+              {t('common.print')}
             </Button>
-            <Button 
-              variant="outline" 
-              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
-              onClick={handleWhatsApp}
-            >
-              <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-              {t('maintenance.whatsapp')}
+            <Button variant="outline" onClick={handleWhatsApp} className="text-sm">
+              <Send className="w-4 h-4 ml-1" />
+              واتساب
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Cash Sale Dialog */}
+      {/* Cash Confirmation Dialog */}
       <Dialog open={showCashDialog} onOpenChange={setShowCashDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-success" />
-              {t('maintenance.confirmCashPayment')}
+              <Banknote className="w-5 h-5 text-green-500" />
+              تأكيد الدفع النقدي
             </DialogTitle>
             <DialogDescription>
-              {t('maintenance.cashPaymentDesc')}
+              {`سيتم تسجيل مبلغ ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()} كدفع نقدي`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-muted rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{t('maintenance.customer')}:</span>
-                <span className="font-semibold">{customerName}</span>
-              </div>
-              {description && (
-                <div className="flex justify-between text-sm">
-                  <span>{t('maintenance.description')}:</span>
-                  <span className="font-semibold text-muted-foreground">{description}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>{t('maintenance.serviceValue')}:</span>
-                <span className="text-primary">{selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}</span>
-              </div>
+          <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('maintenance.customer')}</span>
+              <span className="font-medium">{customerName}</span>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowCashDialog(false)}>
-                {t('maintenance.cancel')}
-              </Button>
-              <Button className="flex-1 bg-success hover:bg-success/90" onClick={() => confirmSale('cash')}>
-                <Check className="w-4 h-4 ml-2" />
-                {t('maintenance.confirm')}
-              </Button>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">الخدمة</span>
+              <span className="font-medium">{getServiceLabel() || 'غير محدد'}</span>
             </div>
+            <div className="flex justify-between border-t pt-2 mt-2">
+              <span className="text-muted-foreground">{t('maintenance.netProfit')}</span>
+              <span className={cn("font-bold", profit >= 0 ? "text-green-500" : "text-red-500")}>
+                ${profit.toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowCashDialog(false)} className="flex-1" disabled={isSaving}>
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              onClick={() => confirmSale('cash')} 
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Check className="w-4 h-4 ml-2" />}
+              {t('common.confirm')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Debt Sale Dialog */}
+      {/* Debt Confirmation Dialog */}
       <Dialog open={showDebtDialog} onOpenChange={setShowDebtDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-warning" />
-              {t('maintenance.confirmDebt')}
+              <CreditCard className="w-5 h-5 text-orange-500" />
+              تأكيد تسجيل الدين
             </DialogTitle>
             <DialogDescription>
-              {t('maintenance.debtDesc')}
+              {isNewCustomer 
+                ? `سيتم إنشاء عميل جديد باسم ${customerName} وتسجيل دين بمبلغ ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}`
+                : `سيتم إضافة دين بمبلغ ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()} للعميل ${customerName}`
+              }
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-muted rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{t('maintenance.customer')}:</span>
-                <span className="font-semibold">{customerName}</span>
-              </div>
-              {isNewCustomer && !customerPhone.trim() && (
-                <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <label className="text-sm font-medium mb-1.5 block text-warning">
-                    {t('maintenance.phoneRequiredNewCustomer')}
-                  </label>
-                  <Input
-                    placeholder="+963 xxx xxx xxx"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="bg-background border-warning"
-                  />
-                </div>
-              )}
-              {description && (
-                <div className="flex justify-between text-sm">
-                  <span>{t('maintenance.description')}:</span>
-                  <span className="font-semibold text-muted-foreground">{description}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
-                <span>{t('maintenance.debtAmount')}:</span>
-                <span>{selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}</span>
-              </div>
+          <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('maintenance.customer')}</span>
+              <span className="font-medium">{customerName}</span>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
-                {t('maintenance.cancel')}
-              </Button>
-              <Button 
-                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
-                onClick={() => {
-                  if (isNewCustomer && !customerPhone.trim()) {
-                    toast.error(t('maintenance.enterPhoneNewCustomer'));
-                    return;
-                  }
-                  confirmSale('debt');
-                }}
-              >
-                <Check className="w-4 h-4 ml-2" />
-                {t('maintenance.confirmDebtBtn')}
-              </Button>
+            {customerPhone && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">الهاتف</span>
+                <span className="font-medium">{customerPhone}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('maintenance.debtAmount')}</span>
+              <span className="font-bold text-orange-500">${servicePrice.toLocaleString()}</span>
             </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowDebtDialog(false)} className="flex-1" disabled={isSaving}>
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              onClick={() => confirmSale('debt')} 
+              className="flex-1 bg-orange-500 hover:bg-orange-600"
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Check className="w-4 h-4 ml-2" />}
+              تسجيل الدين
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
