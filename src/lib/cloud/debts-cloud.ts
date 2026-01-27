@@ -310,6 +310,18 @@ export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boo
   }
 };
 
+// Delete debt by ID
+export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
+  const success = await deleteFromSupabase('debts', debtId);
+  
+  if (success) {
+    invalidateDebtsCache();
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+  }
+  
+  return success;
+};
+
 // Get debts stats
 export const getDebtsStatsCloud = async () => {
   const debts = await loadDebtsCloud();

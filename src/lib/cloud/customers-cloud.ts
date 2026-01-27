@@ -88,6 +88,18 @@ export const invalidateCustomersCache = () => {
 export const addCustomerCloud = async (
   customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalPurchases' | 'totalDebt' | 'invoiceCount' | 'lastPurchase'>
 ): Promise<Customer | null> => {
+  // ✅ التحقق من عدم وجود عميل بنفس الاسم
+  const existingCustomers = await loadCustomersCloud();
+  const duplicate = existingCustomers.find(c => 
+    c.name.toLowerCase().trim() === customer.name.toLowerCase().trim()
+  );
+  
+  if (duplicate) {
+    // إرجاع null مع تسجيل التحذير (الواجهة ستتعامل مع هذا)
+    console.warn('[addCustomerCloud] Customer with same name already exists:', customer.name);
+    return null;
+  }
+  
   const inserted = await insertToSupabase<CloudCustomer>('customers', {
     name: customer.name,
     phone: customer.phone || null,

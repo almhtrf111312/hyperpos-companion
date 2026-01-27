@@ -5,7 +5,8 @@ import {
   updateInSupabase, 
   deleteFromSupabase,
   getCurrentUserId,
-  isCashierUser
+  isCashierUser,
+  getOwnerIdForInsert
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
@@ -190,6 +191,23 @@ export const addInvoiceCloud = async (
 ): Promise<Invoice | null> => {
   const invoiceNumber = await getNextInvoiceNumber();
   const now = new Date();
+  const currentUserId = getCurrentUserId();
+  
+  // ✅ جلب اسم الكاشير/المستخدم الحالي
+  let cashierName = '';
+  if (currentUserId) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profile } = await (supabase as any)
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+      cashierName = profile?.full_name || '';
+    } catch (e) {
+      console.warn('[addInvoiceCloud] Could not fetch cashier name:', e);
+    }
+  }
   
   const inserted = await insertToSupabase<CloudInvoice>('invoices', {
     invoice_number: invoiceNumber,
@@ -209,6 +227,8 @@ export const addInvoiceCloud = async (
     debt_paid: invoice.debtPaid || 0,
     debt_remaining: invoice.debtRemaining || 0,
     notes: invoice.serviceDescription || null,
+    cashier_id: currentUserId, // ✅ تسجيل معرف الكاشير
+    cashier_name: cashierName || invoice.cashierName || null, // ✅ تسجيل اسم الكاشير
   });
   
   if (inserted) {
@@ -237,6 +257,8 @@ export const addInvoiceCloud = async (
       id: invoiceNumber,
       createdAt: inserted.created_at,
       updatedAt: inserted.updated_at,
+      cashierId: currentUserId || undefined,
+      cashierName: cashierName || undefined,
     };
   }
   
