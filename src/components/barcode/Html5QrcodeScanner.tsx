@@ -36,7 +36,8 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [useFrontCamera, setUseFrontCamera] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [maxZoom, setMaxZoom] = useState(1);
   const [retryCount, setRetryCount] = useState(0);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -44,6 +45,7 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
   const hasScannedRef = useRef(false);
   const isMountedRef = useRef(true);
   const isStartingRef = useRef(false);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
 
   const SCANNER_ID = 'html5-qrcode-scanner';
 
@@ -88,6 +90,7 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       console.warn('[Html5Qrcode] Error releasing media streams:', err);
     }
     
+    videoTrackRef.current = null;
     isStartingRef.current = false;
   }, []);
 
@@ -123,11 +126,10 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       const qrboxHeight = Math.floor(qrboxWidth * 0.6);
       
       // Use facingMode constraint (most compatible method)
-      // Lower fps and simpler config for better device support
       await scannerRef.current.start(
         { facingMode },
         {
-          fps: 5, // Lower FPS for better compatibility on slow devices
+          fps: 15, // Higher FPS for better scanning experience
           qrbox: { width: qrboxWidth, height: qrboxHeight },
           aspectRatio: 1.333,
           disableFlip: false,
@@ -166,6 +168,25 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       
       console.log('[Html5Qrcode] ✅ Scanner started successfully');
       setRetryCount(0);
+      
+      // Get video track for zoom control
+      try {
+        const videoElement = document.querySelector(`#${SCANNER_ID} video`) as HTMLVideoElement;
+        if (videoElement?.srcObject) {
+          const stream = videoElement.srcObject as MediaStream;
+          const track = stream.getVideoTracks()[0];
+          if (track) {
+            videoTrackRef.current = track;
+            const capabilities = track.getCapabilities() as any;
+            if (capabilities?.zoom) {
+              setMaxZoom(Math.min(capabilities.zoom.max || 4, 4));
+              console.log('[Html5Qrcode] Zoom capability:', capabilities.zoom);
+            }
+          }
+        }
+      } catch (zoomErr) {
+        console.warn('[Html5Qrcode] Could not get zoom capability:', zoomErr);
+      }
       
       if (isMountedRef.current) {
         setIsLoading(false);
@@ -264,7 +285,7 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       await scannerRef.current.start(
         selectedCamera.id,
         {
-          fps: 5,
+          fps: 15,
           qrbox: { width: qrboxWidth, height: Math.floor(qrboxWidth * 0.6) },
         },
         (decodedText) => {
@@ -300,19 +321,37 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
   const switchCamera = useCallback(async () => {
     setUseFrontCamera(prev => !prev);
     setRetryCount(0);
+    setZoomLevel(1);
+    setMaxZoom(1);
     hasScannedRef.current = false;
+    videoTrackRef.current = null;
     await startScanner(!useFrontCamera);
   }, [useFrontCamera, startScanner]);
 
-  // Toggle zoom (CSS-based)
-  const toggleZoom = useCallback(() => {
-    setIsZoomed(prev => !prev);
-  }, []);
+  // Toggle zoom using camera's native zoom capability
+  const toggleZoom = useCallback(async () => {
+    if (!videoTrackRef.current) return;
+    
+    try {
+      const capabilities = videoTrackRef.current.getCapabilities() as any;
+      if (capabilities?.zoom) {
+        const newZoom = zoomLevel >= maxZoom ? 1 : Math.min(zoomLevel + 1, maxZoom);
+        await videoTrackRef.current.applyConstraints({ advanced: [{ zoom: newZoom } as any] });
+        setZoomLevel(newZoom);
+        console.log('[Html5Qrcode] Zoom set to:', newZoom);
+      }
+    } catch (err) {
+      console.warn('[Html5Qrcode] Zoom not supported:', err);
+    }
+  }, [zoomLevel, maxZoom]);
 
   // Handle retry
   const handleRetry = useCallback(async () => {
     hasScannedRef.current = false;
     setRetryCount(0);
+    setZoomLevel(1);
+    setMaxZoom(1);
+    videoTrackRef.current = null;
     await startScanner(true);
   }, [startScanner]);
 
@@ -330,6 +369,9 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       hasScannedRef.current = false;
       setRetryCount(0);
       setUseFrontCamera(false);
+      setZoomLevel(1);
+      setMaxZoom(1);
+      videoTrackRef.current = null;
       // Longer delay for some Android devices
       const timer = setTimeout(() => {
         startScanner(true);
@@ -369,14 +411,10 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
           ref={containerRef}
           className="relative pt-12 pb-20 min-h-[350px] overflow-hidden"
         >
-          {/* Scanner viewport */}
+          {/* Scanner viewport - no CSS zoom, using native camera zoom */}
           <div 
             id={SCANNER_ID}
-            className="w-full transition-transform duration-200"
-            style={{
-              transform: isZoomed ? 'scale(1.5)' : 'scale(1)',
-              transformOrigin: 'center center',
-            }}
+            className="w-full"
           />
           
           {/* Loading overlay */}
@@ -411,9 +449,9 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
           {/* Camera indicator */}
           {!isLoading && !error && (
             <div className={`absolute bottom-24 left-1/2 -translate-x-1/2 text-white text-xs px-3 py-1 rounded-full font-medium transition-colors z-10 ${
-              isZoomed ? 'bg-primary' : 'bg-black/60'
+              zoomLevel > 1 ? 'bg-primary' : 'bg-black/60'
             }`}>
-              {useFrontCamera ? 'الكاميرا الأمامية' : 'الكاميرا الخلفية'} {isZoomed ? '• 2x' : '• 1x'}
+              {useFrontCamera ? 'الكاميرا الأمامية' : 'الكاميرا الخلفية'} • {zoomLevel}x
             </div>
           )}
         </div>
@@ -435,14 +473,15 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
               variant="outline"
               size="icon"
               onClick={toggleZoom}
-              disabled={isLoading || !!error}
+              disabled={isLoading || !!error || maxZoom <= 1}
               className={`rounded-full border-2 transition-all h-9 w-9 ${
-                isZoomed 
+                zoomLevel > 1 
                   ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/80' 
                   : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
               }`}
+              title={maxZoom > 1 ? `زوم (الحد الأقصى: ${maxZoom}x)` : 'الزوم غير مدعوم'}
             >
-              {isZoomed ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
+              {zoomLevel > 1 ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
             </Button>
             
             <Button
