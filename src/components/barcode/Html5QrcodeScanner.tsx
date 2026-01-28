@@ -1,8 +1,8 @@
 /**
- * Html5Qrcode Barcode Scanner
- * ============================
+ * Html5Qrcode Barcode Scanner - Improved Compatibility
+ * =====================================================
  * Reliable barcode scanner using html5-qrcode library
- * Works on both web and mobile (via Capacitor WebView)
+ * Optimized for wide Android device compatibility (Samsung, Tecno, Infinix, etc.)
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -35,9 +35,9 @@ const SUPPORTED_FORMATS = [
 export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
-  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+  const [useFrontCamera, setUseFrontCamera] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,8 +47,10 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
 
   const SCANNER_ID = 'html5-qrcode-scanner';
 
-  // Cleanup scanner instance
+  // Cleanup scanner instance - force release camera
   const stopScanner = useCallback(async () => {
+    console.log('[Html5Qrcode] Stopping scanner...');
+    
     if (scannerRef.current) {
       try {
         const state = scannerRef.current.getState();
@@ -68,76 +70,67 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       
       scannerRef.current = null;
     }
+    
+    // Force release any lingering media streams
+    try {
+      const videoElements = document.querySelectorAll('video');
+      videoElements.forEach(video => {
+        const stream = video.srcObject as MediaStream;
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            track.stop();
+            console.log('[Html5Qrcode] Force stopped track:', track.label);
+          });
+          video.srcObject = null;
+        }
+      });
+    } catch (err) {
+      console.warn('[Html5Qrcode] Error releasing media streams:', err);
+    }
+    
     isStartingRef.current = false;
   }, []);
 
-  // Start scanner with specific camera
-  const startScanner = useCallback(async (cameraId?: string) => {
+  // Start scanner using facingMode (more compatible than camera ID)
+  const startScanner = useCallback(async (useBack = true) => {
     if (!isMountedRef.current || isStartingRef.current) return;
     
     isStartingRef.current = true;
     setIsLoading(true);
     setError(null);
     
-    console.log('[Html5Qrcode] Starting scanner...');
+    const facingMode = useBack ? 'environment' : 'user';
+    console.log('[Html5Qrcode] Starting scanner with facingMode:', facingMode);
     
     try {
       // Stop any existing scanner
       await stopScanner();
       
-      // Get available cameras
-      const devices = await Html5Qrcode.getCameras();
-      console.log('[Html5Qrcode] Available cameras:', devices.length);
+      // Wait a bit for camera release on some devices
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       if (!isMountedRef.current) return;
       
-      if (devices.length === 0) {
-        setError('لم يتم العثور على كاميرا');
-        setIsLoading(false);
-        isStartingRef.current = false;
-        return;
-      }
-      
-      setCameras(devices);
-      
-      // Find back camera (prefer environment-facing)
-      let selectedIndex = 0;
-      const backCameraIndex = devices.findIndex(
-        d => d.label.toLowerCase().includes('back') || 
-             d.label.toLowerCase().includes('rear') ||
-             d.label.toLowerCase().includes('environment') ||
-             d.label.toLowerCase().includes('خلفي')
-      );
-      
-      if (backCameraIndex >= 0) {
-        selectedIndex = backCameraIndex;
-      }
-      
-      if (cameraId) {
-        const camIndex = devices.findIndex(d => d.id === cameraId);
-        if (camIndex >= 0) selectedIndex = camIndex;
-      }
-      
-      setCurrentCameraIndex(selectedIndex);
-      const selectedCamera = devices[selectedIndex];
-      
-      // Create scanner instance
+      // Create scanner instance with minimal config
       scannerRef.current = new Html5Qrcode(SCANNER_ID, {
         formatsToSupport: SUPPORTED_FORMATS,
         verbose: false,
       });
       
-      // Calculate optimal dimensions
-      const containerWidth = containerRef.current?.clientWidth || 300;
-      const qrboxSize = Math.min(containerWidth - 40, 280);
+      // Calculate optimal dimensions - use smaller qrbox for better compatibility
+      const containerWidth = containerRef.current?.clientWidth || 280;
+      const qrboxWidth = Math.min(containerWidth - 60, 220);
+      const qrboxHeight = Math.floor(qrboxWidth * 0.6);
       
-      // Start scanning
+      // Use facingMode constraint (most compatible method)
+      // Lower fps and simpler config for better device support
       await scannerRef.current.start(
-        selectedCamera.id,
+        { facingMode },
         {
-          fps: 10,
-          qrbox: { width: qrboxSize, height: Math.floor(qrboxSize * 0.6) },
-          aspectRatio: 1.333, // 4:3 aspect ratio
+          fps: 5, // Lower FPS for better compatibility on slow devices
+          qrbox: { width: qrboxWidth, height: qrboxHeight },
+          aspectRatio: 1.333,
+          disableFlip: false,
         },
         (decodedText) => {
           if (hasScannedRef.current) return;
@@ -164,14 +157,15 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
           // Close after small delay to ensure data is captured
           setTimeout(() => {
             onClose();
-          }, 100);
+          }, 150);
         },
         (_errorMessage) => {
           // Ignore decode errors (normal when no barcode in view)
         }
       );
       
-      console.log('[Html5Qrcode] Scanner started successfully');
+      console.log('[Html5Qrcode] ✅ Scanner started successfully');
+      setRetryCount(0);
       
       if (isMountedRef.current) {
         setIsLoading(false);
@@ -179,21 +173,124 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
     } catch (err: any) {
       console.error('[Html5Qrcode] Start error:', err);
       
-      if (isMountedRef.current) {
-        // Handle specific error cases
-        if (err.message?.includes('Permission')) {
-          setError('يرجى السماح بالوصول للكاميرا');
-        } else if (err.message?.includes('NotAllowed')) {
-          setError('تم رفض صلاحية الكاميرا');
-        } else if (err.message?.includes('NotFound')) {
-          setError('لم يتم العثور على كاميرا');
-        } else if (err.message?.includes('NotReadable') || err.message?.includes('in use')) {
-          setError('الكاميرا قيد الاستخدام من تطبيق آخر');
-        } else {
-          setError('فشل في فتح الكاميرا. حاول مرة أخرى.');
-        }
-        setIsLoading(false);
+      if (!isMountedRef.current) return;
+      
+      // If back camera fails, try front camera automatically
+      if (useBack && retryCount === 0) {
+        console.log('[Html5Qrcode] Back camera failed, trying front camera...');
+        setRetryCount(1);
+        isStartingRef.current = false;
+        await startScanner(false);
+        return;
       }
+      
+      // If facingMode fails, try with camera ID as last resort
+      if (retryCount < 2) {
+        console.log('[Html5Qrcode] FacingMode failed, trying camera ID method...');
+        setRetryCount(2);
+        isStartingRef.current = false;
+        await startWithCameraId();
+        return;
+      }
+      
+      // All methods failed - show error
+      if (err.message?.includes('Permission') || err.message?.includes('NotAllowed')) {
+        setError('يرجى السماح بالوصول للكاميرا من إعدادات التطبيق');
+      } else if (err.message?.includes('NotFound') || err.message?.includes('Requested device not found')) {
+        setError('لم يتم العثور على كاميرا في هذا الجهاز');
+      } else if (err.message?.includes('NotReadable') || err.message?.includes('in use') || err.message?.includes('Could not start')) {
+        setError('الكاميرا قيد الاستخدام. أغلق التطبيقات الأخرى التي تستخدم الكاميرا');
+      } else if (err.message?.includes('OverconstrainedError')) {
+        setError('الكاميرا لا تدعم الإعدادات المطلوبة');
+      } else {
+        setError('فشل في فتح الكاميرا. تأكد من إعطاء صلاحية الكاميرا للتطبيق');
+      }
+      setIsLoading(false);
+    } finally {
+      isStartingRef.current = false;
+    }
+  }, [onScan, onClose, stopScanner, retryCount]);
+
+  // Fallback: Start scanner with specific camera ID
+  const startWithCameraId = useCallback(async () => {
+    if (!isMountedRef.current || isStartingRef.current) return;
+    
+    isStartingRef.current = true;
+    console.log('[Html5Qrcode] Trying camera ID method...');
+    
+    try {
+      await stopScanner();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      if (!isMountedRef.current) return;
+      
+      // Get available cameras
+      const devices = await Html5Qrcode.getCameras();
+      console.log('[Html5Qrcode] Found cameras:', devices.length, devices.map(d => d.label));
+      
+      if (devices.length === 0) {
+        setError('لم يتم العثور على كاميرا');
+        setIsLoading(false);
+        isStartingRef.current = false;
+        return;
+      }
+      
+      // Find back camera
+      let selectedCamera = devices[0];
+      const backCamera = devices.find(
+        d => d.label.toLowerCase().includes('back') || 
+             d.label.toLowerCase().includes('rear') ||
+             d.label.toLowerCase().includes('environment') ||
+             d.label.toLowerCase().includes('0') ||
+             d.label.toLowerCase().includes('خلفي')
+      );
+      
+      if (backCamera) {
+        selectedCamera = backCamera;
+      }
+      
+      console.log('[Html5Qrcode] Selected camera:', selectedCamera.label);
+      
+      // Create scanner instance
+      scannerRef.current = new Html5Qrcode(SCANNER_ID, {
+        formatsToSupport: SUPPORTED_FORMATS,
+        verbose: false,
+      });
+      
+      const containerWidth = containerRef.current?.clientWidth || 280;
+      const qrboxWidth = Math.min(containerWidth - 60, 200);
+      
+      // Start with camera ID
+      await scannerRef.current.start(
+        selectedCamera.id,
+        {
+          fps: 5,
+          qrbox: { width: qrboxWidth, height: Math.floor(qrboxWidth * 0.6) },
+        },
+        (decodedText) => {
+          if (hasScannedRef.current) return;
+          
+          const text = decodedText.trim();
+          if (text.length < 3 || text.length > 50) return;
+          
+          hasScannedRef.current = true;
+          console.log('[Html5Qrcode] ✅ Scanned:', text);
+          
+          playBeep();
+          if (navigator.vibrate) navigator.vibrate(100);
+          
+          onScan(text);
+          setTimeout(() => onClose(), 150);
+        },
+        () => {}
+      );
+      
+      console.log('[Html5Qrcode] ✅ Scanner started with camera ID');
+      setIsLoading(false);
+    } catch (err: any) {
+      console.error('[Html5Qrcode] Camera ID method failed:', err);
+      setError('فشل في فتح الكاميرا. تأكد من إعطاء صلاحية الكاميرا');
+      setIsLoading(false);
     } finally {
       isStartingRef.current = false;
     }
@@ -201,17 +298,13 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
 
   // Switch camera
   const switchCamera = useCallback(async () => {
-    if (cameras.length <= 1) return;
-    
-    const nextIndex = (currentCameraIndex + 1) % cameras.length;
-    const nextCamera = cameras[nextIndex];
-    
-    setIsLoading(true);
-    await stopScanner();
-    await startScanner(nextCamera.id);
-  }, [cameras, currentCameraIndex, stopScanner, startScanner]);
+    setUseFrontCamera(prev => !prev);
+    setRetryCount(0);
+    hasScannedRef.current = false;
+    await startScanner(!useFrontCamera);
+  }, [useFrontCamera, startScanner]);
 
-  // Toggle zoom (CSS-based for simplicity)
+  // Toggle zoom (CSS-based)
   const toggleZoom = useCallback(() => {
     setIsZoomed(prev => !prev);
   }, []);
@@ -219,7 +312,8 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
   // Handle retry
   const handleRetry = useCallback(async () => {
     hasScannedRef.current = false;
-    await startScanner();
+    setRetryCount(0);
+    await startScanner(true);
   }, [startScanner]);
 
   // Handle close
@@ -234,10 +328,12 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
     
     if (isOpen) {
       hasScannedRef.current = false;
-      // Small delay to ensure dialog is rendered
+      setRetryCount(0);
+      setUseFrontCamera(false);
+      // Longer delay for some Android devices
       const timer = setTimeout(() => {
-        startScanner();
-      }, 300);
+        startScanner(true);
+      }, 500);
       
       return () => clearTimeout(timer);
     } else {
@@ -289,6 +385,7 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
               <div className="text-center">
                 <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-3" />
                 <p className="text-white text-sm">جاري فتح الكاميرا...</p>
+                <p className="text-white/50 text-xs mt-2">قد يستغرق بضع ثوانٍ</p>
               </div>
             </div>
           )}
@@ -298,7 +395,7 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
             <div className="absolute inset-0 flex items-center justify-center bg-black/90 pt-12 pb-20 z-10">
               <div className="text-center p-6 max-w-xs">
                 <Camera className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-white mb-4 text-sm">{error}</p>
+                <p className="text-white mb-4 text-sm leading-relaxed">{error}</p>
                 <Button 
                   onClick={handleRetry}
                   className="w-full"
@@ -311,12 +408,12 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
             </div>
           )}
           
-          {/* Zoom indicator */}
+          {/* Camera indicator */}
           {!isLoading && !error && (
             <div className={`absolute bottom-24 left-1/2 -translate-x-1/2 text-white text-xs px-3 py-1 rounded-full font-medium transition-colors z-10 ${
               isZoomed ? 'bg-primary' : 'bg-black/60'
             }`}>
-              {isZoomed ? '2x' : '1x'}
+              {useFrontCamera ? 'الكاميرا الأمامية' : 'الكاميرا الخلفية'} {isZoomed ? '• 2x' : '• 1x'}
             </div>
           )}
         </div>
@@ -348,17 +445,15 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
               {isZoomed ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
             </Button>
             
-            {cameras.length > 1 && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={switchCamera}
-                disabled={isLoading || !!error}
-                className="rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20 h-9 w-9"
-              >
-                <SwitchCamera className="w-4 h-4" />
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={switchCamera}
+              disabled={isLoading || !!error}
+              className="rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20 h-9 w-9"
+            >
+              <SwitchCamera className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </DialogContent>
