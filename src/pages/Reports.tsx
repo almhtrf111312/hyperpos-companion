@@ -163,10 +163,12 @@ export default function Reports() {
     const customers = cloudCustomers;
     
     // Filter invoices by date range using local timezone
+    // ✅ تضمين فواتير البيع والصيانة معاً في حسابات الأرباح
     const filteredInvoices = allInvoices.filter(inv => {
       // Parse invoice date and convert to local date string
       const invDate = getLocalDateString(new Date(inv.createdAt));
-      return invDate >= dateRange.from && invDate <= dateRange.to && inv.type === 'sale';
+      const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
+      return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
     });
     
     // Calculate summary stats
