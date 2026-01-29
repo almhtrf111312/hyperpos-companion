@@ -21,6 +21,7 @@ import { getInvoiceStatsCloud, loadInvoicesCloud } from '@/lib/cloud/invoices-cl
 import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
 import { loadExpensesCloud } from '@/lib/cloud/expenses-cloud';
+import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { loadCashboxState } from '@/lib/cashbox-store';
 import { getTodayProfit } from '@/lib/profits-store';
 import { useLanguage } from '@/hooks/use-language';
@@ -60,11 +61,12 @@ export default function Dashboard() {
   const loadStats = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [invoices, products, partners, expenses] = await Promise.all([
+      const [invoices, products, partners, expenses, debts] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
         loadPartnersCloud(),
-        loadExpensesCloud()
+        loadExpensesCloud(),
+        loadDebtsCloud()
       ]);
       
       // Calculate today's sales
@@ -81,10 +83,10 @@ export default function Dashboard() {
       const todayExpenses = todayProfitData.totalOperatingExpenses;
       const netProfit = todayProfitData.netProfit;
       
-      // Calculate pending debts
-      const pendingDebts = invoices.filter(inv => inv.paymentType === 'debt' && inv.status === 'pending');
-      const totalDebtAmount = pendingDebts.reduce((sum, inv) => sum + inv.total, 0);
-      const debtCustomers = new Set(pendingDebts.map(inv => inv.customerName)).size;
+      // ✅ حساب الديون من جدول الديون الفعلي (أكثر دقة)
+      const activeDebts = debts.filter(d => d.status !== 'fully_paid');
+      const totalDebtAmount = activeDebts.reduce((sum, d) => sum + d.remainingDebt, 0);
+      const debtCustomers = new Set(activeDebts.map(d => d.customerName)).size;
       
       // Calculate profit margin
       const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;

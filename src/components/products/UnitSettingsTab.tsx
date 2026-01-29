@@ -75,11 +75,30 @@ export function UnitSettingsTab({ data, onChange, quantityInPieces, pieceCostPri
             معامل التحويل (عدد القطع في الوحدة الكبرى)
           </Label>
           <Input
-            type="number"
-            min="1"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             placeholder="مثال: 20 قطعة في الكرتونة"
-            value={data.conversionFactor || ''}
-            onChange={(e) => onChange({ conversionFactor: Math.max(1, Number(e.target.value)) })}
+            value={data.conversionFactor === 0 ? '' : data.conversionFactor?.toString() || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // السماح بحقل فارغ أثناء الكتابة
+              if (value === '') {
+                onChange({ conversionFactor: 0 });
+              } else {
+                const num = parseInt(value, 10);
+                if (!isNaN(num) && num >= 0) {
+                  onChange({ conversionFactor: num });
+                }
+              }
+            }}
+            onBlur={(e) => {
+              // عند مغادرة الحقل، تأكد من أن القيمة لا تقل عن 1
+              const value = parseInt(e.target.value, 10);
+              if (isNaN(value) || value < 1) {
+                onChange({ conversionFactor: 1 });
+              }
+            }}
           />
           <p className="text-xs text-muted-foreground mt-1">
             1 {data.bulkUnit || 'كرتونة'} = {data.conversionFactor || 1} {data.smallUnit || 'قطعة'}
