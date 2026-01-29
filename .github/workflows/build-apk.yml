@@ -15,7 +15,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    # 1. نبدأ بـ Node.js أولاً لأننا نحتاجه لتوليد مجلد الأندرويد
+    # 1. Node.js أولاً
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -33,12 +33,11 @@ jobs:
         npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets --save-dev
         npm install @capacitor-mlkit/barcode-scanning@6
         
-    # 2. نقوم بتوليد مجلد الأندرويد والملفات الآن
+    # 2. توليد الأندرويد + إضافة أذونات التخزين والكاميرا
     - name: Initialize Capacitor & Permissions
       run: |
         rm -rf android
         
-        # إنشاء ملف الكونفيج
         cat > capacitor.config.json << 'EOF'
         {
           "appId": "com.flowpos.pro",
@@ -47,19 +46,26 @@ jobs:
           "server": { "androidScheme": "https" },
           "plugins": {
             "Camera": { "cameraPermission": "لمسح الباركود وتصوير المنتجات" },
-            "BarcodeScanner": { "cameraPermissionText": "الوصول للكاميرا مطلوب" }
+            "BarcodeScanner": { "cameraPermissionText": "الوصول للكاميرا مطلوب" },
+            "Filesystem": { "androidExternalStorage": true }
           }
         }
         EOF
         
         npx cap add android
         
-        # تعديل المانيفيست
+        # قائمة الأذونات (كاميرا + تخزين + إنترنت)
+        PERMISSIONS='<uses-permission android:name="android.permission.CAMERA" />\n'
+        PERMISSIONS+='    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n'
+        PERMISSIONS+='    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n'
+        PERMISSIONS+='    <uses-permission android:name="android.permission.INTERNET" />\n'
+        PERMISSIONS+='    <application'
+        
         MANIFEST="android/app/src/main/AndroidManifest.xml"
-        sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA" \/>\n    <application/' "$MANIFEST"
+        sed -i "s|<application|$PERMISSIONS|" "$MANIFEST"
+        echo "✅ Permissions injected successfully"
 
-    # 3. الآن وبعد أن أصبح مجلد android موجوداً، نقوم بإعداد Java مع الكاش
-    # الآن سيجد الملفات ولن يعطيك Error
+    # 3. Java بعد توليد المجلد (لإصلاح مشكلة الكاش)
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
@@ -129,6 +135,4 @@ jobs:
         echo "| Type | Status | Version |" >> $GITHUB_STEP_SUMMARY
         echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
         echo "| **Result** | ✅ Success | v1.0.${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "⬇️ **[تحميل التطبيق من Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})**" >> $GITHUB_STEP_SUMMARY
- 
+        echo "- **Permissions Added:** Camera, Storage (Read/Write), Internet" >> $GITHUB_STEP_SUMMARY
