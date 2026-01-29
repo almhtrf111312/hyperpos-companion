@@ -2,7 +2,9 @@ name: Build FlowPOS Pro APK
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'v*'           # يعمل عند إنشاء تاج (v1.0.0) لإصدار نسخة رسمية
+    branches: [ main ] # يعمل عند التحديث للكود
   workflow_dispatch:
 
 jobs:
@@ -13,6 +15,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    # تحسين 1: إعداد Java مع تفعيل الكاش لتسريع بناء Gradle
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle' # ⚡ هذا السطر سيوفر الكثير من الوقت في المرات القادمة
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -21,90 +31,59 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-    
+
+    # تحسين 2: خطوة اختيارية للتأكد من جودة الكود قبل البناء
+    # - name: Run Linter & Tests
+    #   run: |
+    #     npm run lint
+    #     npm test
+
     - name: Build web app
       run: npm run build
     
     - name: Install Capacitor packages
       run: |
         npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets --save-dev
-        # Install ML Kit Barcode Scanner for native camera permissions
         npm install @capacitor-mlkit/barcode-scanning@6
         
-    - name: Initialize Capacitor
+    - name: Initialize Capacitor & Permissions
+      # قمت بدمج خطوات التعديل لتقليل الفوضى
       run: |
-        # Remove existing android folder if exists
         rm -rf android
         
-        # Create capacitor config with BarcodeScanner permissions
+        # إنشاء ملف الكونفيج
         cat > capacitor.config.json << 'EOF'
         {
           "appId": "com.flowpos.pro",
           "appName": "FlowPOS Pro",
           "webDir": "dist",
-          "server": {
-            "androidScheme": "https"
-          },
+          "server": { "androidScheme": "https" },
           "plugins": {
-            "Camera": {
-              "photoGalleryPermission": "لاختيار صور المنتجات",
-              "cameraPermission": "لمسح الباركود وتصوير المنتجات"
-            },
-            "BarcodeScanner": {
-              "cameraPermissionText": "يحتاج التطبيق للوصول للكاميرا لمسح الباركود"
-            },
-            "Filesystem": {
-              "androidExternalStorage": true
-            }
+            "Camera": { "cameraPermission": "لمسح الباركود وتصوير المنتجات" },
+            "BarcodeScanner": { "cameraPermissionText": "الوصول للكاميرا مطلوب" }
           }
         }
         EOF
         
-        # Add Android platform
         npx cap add android
         
-    - name: Add Camera Permission to AndroidManifest
-      run: |
-        # Ensure camera permission is in AndroidManifest.xml
+        # تعديل المانيفيست
         MANIFEST="android/app/src/main/AndroidManifest.xml"
+        sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA" \/>\n    <application/' "$MANIFEST"
         
-        # Check if CAMERA permission already exists
-        if ! grep -q "android.permission.CAMERA" "$MANIFEST"; then
-          # Add camera permission after the first <uses-permission> or before <application>
-          sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA" \/>\n    <application/' "$MANIFEST"
-          echo "✅ Added CAMERA permission to AndroidManifest.xml"
-        else
-          echo "✅ CAMERA permission already exists"
-        fi
-        
-        # Also ensure INTERNET permission exists
-        if ! grep -q "android.permission.INTERNET" "$MANIFEST"; then
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <application/' "$MANIFEST"
-          echo "✅ Added INTERNET permission"
-        fi
-        
-        cat "$MANIFEST"
-        
-    - name: Generate App Icons
+    - name: Generate Assets & Sync
       run: |
         npx capacitor-assets generate --android --iconBackgroundColor "#1e40af"
-        
-    - name: Sync Capacitor
-      run: npx cap sync android
+        npx cap sync android
     
     - name: Update Version Code
       run: |
         VERSION_CODE=${{ github.run_number }}
+        # تعديل build.gradle لزيادة رقم الإصدار تلقائياً
         sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
         sed -i 's/versionName "1.0"/versionName "1.0.'$VERSION_CODE'"/' android/app/build.gradle
-        echo "✅ Updated to versionCode: $VERSION_CODE, versionName: 1.0.$VERSION_CODE"
-        
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-    
+
+    # فحص وجود مفاتيح التوقيع
     - name: Check for Keystore
       id: keystore_check
       run: |
@@ -114,12 +93,12 @@ jobs:
           echo "has_keystore=false" >> $GITHUB_OUTPUT
         fi
     
+    # فك تشفير المفتاح (فقط إذا وجد)
     - name: Decode Keystore
       if: steps.keystore_check.outputs.has_keystore == 'true'
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
-        echo "✅ Keystore decoded successfully"
-        
+      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
+
+    # بناء النسخة الموقعة (Release)
     - name: Build Signed Release APK
       if: steps.keystore_check.outputs.has_keystore == 'true'
       run: |
@@ -130,39 +109,39 @@ jobs:
           -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-        echo "✅ Signed APK built successfully"
-    
+
+    # بناء نسخة التجربة (Debug) إذا لم يوجد مفتاح
     - name: Build Debug APK
       if: steps.keystore_check.outputs.has_keystore != 'true'
-      run: |
-        cd android
-        chmod +x gradlew
-        ./gradlew assembleDebug
-        echo "✅ Debug APK built successfully"
-        
-    - name: Upload Signed APK
+      run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+
+    # تحسين 3: إنشاء GitHub Release رسمي (فقط إذا كان هناك مفتاح توقيع)
+    - name: Create GitHub Release
       if: steps.keystore_check.outputs.has_keystore == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Release v1.0.${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: android/app/build/outputs/apk/release/app-release.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # رفع الملفات كـ Artifacts (للوصول السريع أو لنسخ الديباج)
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: FlowPOS-Pro-v1.0.${{ github.run_number }}-release
-        path: android/app/build/outputs/apk/release/app-release.apk
-        retention-days: 30
-        if-no-files-found: error
-        
-    - name: Upload Debug APK
-      if: steps.keystore_check.outputs.has_keystore != 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: FlowPOS-Pro-v1.0.${{ github.run_number }}-debug
-        path: android/app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 30
-        if-no-files-found: error
-        
+        name: FlowPOS-APK
+        path: android/app/build/outputs/apk/**/*.apk
+        retention-days: 14
+
     - name: Build Summary
       run: |
-        echo "## 📱 FlowPOS Pro APK Build Complete" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 FlowPOS Build Result" >> $GITHUB_STEP_SUMMARY
+        echo "| Type | Status | Version |" >> $GITHUB_STEP_SUMMARY
+        echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Result** | ✅ Success | v1.0.${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Version:** 1.0.${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Build Type:** ${{ steps.keystore_check.outputs.has_keystore == 'true' && 'Release (Signed)' || 'Debug' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Camera Permission:** ✅ Included" >> $GITHUB_STEP_SUMMARY
+        echo "⬇️ **[تحميل التطبيق من Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})**" >> $GITHUB_STEP_SUMMARY
+ 
