@@ -3,8 +3,8 @@ name: Build FlowPOS Pro APK
 on:
   push:
     tags:
-      - 'v*'           # يعمل عند إنشاء تاج (v1.0.0) لإصدار نسخة رسمية
-    branches: [ main ] # يعمل عند التحديث للكود
+      - 'v*'
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -15,14 +15,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    # تحسين 1: إعداد Java مع تفعيل الكاش لتسريع بناء Gradle
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        cache: 'gradle' # ⚡ هذا السطر سيوفر الكثير من الوقت في المرات القادمة
-
+    # 1. نبدأ بـ Node.js أولاً لأننا نحتاجه لتوليد مجلد الأندرويد
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -31,13 +24,7 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-
-    # تحسين 2: خطوة اختيارية للتأكد من جودة الكود قبل البناء
-    # - name: Run Linter & Tests
-    #   run: |
-    #     npm run lint
-    #     npm test
-
+    
     - name: Build web app
       run: npm run build
     
@@ -46,8 +33,8 @@ jobs:
         npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets --save-dev
         npm install @capacitor-mlkit/barcode-scanning@6
         
+    # 2. نقوم بتوليد مجلد الأندرويد والملفات الآن
     - name: Initialize Capacitor & Permissions
-      # قمت بدمج خطوات التعديل لتقليل الفوضى
       run: |
         rm -rf android
         
@@ -70,7 +57,16 @@ jobs:
         # تعديل المانيفيست
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA" \/>\n    <application/' "$MANIFEST"
-        
+
+    # 3. الآن وبعد أن أصبح مجلد android موجوداً، نقوم بإعداد Java مع الكاش
+    # الآن سيجد الملفات ولن يعطيك Error
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle' 
+
     - name: Generate Assets & Sync
       run: |
         npx capacitor-assets generate --android --iconBackgroundColor "#1e40af"
@@ -79,11 +75,9 @@ jobs:
     - name: Update Version Code
       run: |
         VERSION_CODE=${{ github.run_number }}
-        # تعديل build.gradle لزيادة رقم الإصدار تلقائياً
         sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
         sed -i 's/versionName "1.0"/versionName "1.0.'$VERSION_CODE'"/' android/app/build.gradle
 
-    # فحص وجود مفاتيح التوقيع
     - name: Check for Keystore
       id: keystore_check
       run: |
@@ -93,12 +87,10 @@ jobs:
           echo "has_keystore=false" >> $GITHUB_OUTPUT
         fi
     
-    # فك تشفير المفتاح (فقط إذا وجد)
     - name: Decode Keystore
       if: steps.keystore_check.outputs.has_keystore == 'true'
       run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
 
-    # بناء النسخة الموقعة (Release)
     - name: Build Signed Release APK
       if: steps.keystore_check.outputs.has_keystore == 'true'
       run: |
@@ -110,25 +102,20 @@ jobs:
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
-    # بناء نسخة التجربة (Debug) إذا لم يوجد مفتاح
     - name: Build Debug APK
       if: steps.keystore_check.outputs.has_keystore != 'true'
       run: cd android && chmod +x gradlew && ./gradlew assembleDebug
 
-    # تحسين 3: إنشاء GitHub Release رسمي (فقط إذا كان هناك مفتاح توقيع)
     - name: Create GitHub Release
       if: steps.keystore_check.outputs.has_keystore == 'true'
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v1.0.${{ github.run_number }}
         name: Release v1.0.${{ github.run_number }}
-        draft: false
-        prerelease: false
         files: android/app/build/outputs/apk/release/app-release.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # رفع الملفات كـ Artifacts (للوصول السريع أو لنسخ الديباج)
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
