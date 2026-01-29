@@ -5,7 +5,7 @@ import { useDeviceBinding } from '@/hooks/use-device-binding';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActivationScreen } from './ActivationScreen';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Key, Clock } from 'lucide-react';
@@ -22,7 +22,49 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
   isStartingTrial: boolean;
 }) {
   const { language } = useLanguage();
+  const { signOut } = useAuth();
   const isRTL = language === 'ar';
+  const [developerPhone, setDeveloperPhone] = useState<string>('');
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Fetch developer phone
+  useEffect(() => {
+    const fetchDeveloperPhone = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'developer_phone')
+          .maybeSingle();
+        
+        if (!error && data?.value) {
+          setDeveloperPhone(data.value);
+        }
+      } catch (err) {
+        console.error('Failed to fetch developer phone:', err);
+      }
+    };
+    
+    fetchDeveloperPhone();
+  }, []);
+
+  const handleContactDeveloper = () => {
+    if (!developerPhone) return;
+    
+    const message = encodeURIComponent(
+      isRTL 
+        ? 'أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro'
+        : 'I want to get an activation code for FlowPOS Pro'
+    );
+    
+    const cleanPhone = developerPhone.replace(/[^\d+]/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+  };
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -68,6 +110,38 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
             <span className="text-xs opacity-80">
               {isRTL ? 'جرب التطبيق مجاناً قبل الشراء' : 'Try the app free before purchasing'}
             </span>
+          </Button>
+
+          {/* Contact Developer Button */}
+          {developerPhone && (
+            <div className="pt-4 border-t space-y-3">
+              <p className="text-sm text-muted-foreground text-center">
+                {isRTL ? 'للحصول على كود التفعيل، تواصل معنا:' : 'To get an activation code, contact us:'}
+              </p>
+              <Button 
+                variant="secondary" 
+                className="w-full gap-2" 
+                onClick={handleContactDeveloper}
+              >
+                <MessageCircle className="w-4 h-4" />
+                {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
+              </Button>
+            </div>
+          )}
+
+          {/* Sign Out Button */}
+          <Button 
+            variant="ghost" 
+            className="w-full text-muted-foreground hover:text-foreground gap-2" 
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+          >
+            {isSigningOut ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4" />
+            )}
+            {isRTL ? 'تسجيل الخروج والدخول بحساب آخر' : 'Sign out and use another account'}
           </Button>
         </CardContent>
       </Card>
