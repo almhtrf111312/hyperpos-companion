@@ -120,18 +120,18 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
         verbose: false,
       });
       
-      // Calculate optimal dimensions - use smaller qrbox for better compatibility
+      // Calculate optimal dimensions - square qrbox for QR compatibility
       const containerWidth = containerRef.current?.clientWidth || 280;
-      const qrboxWidth = Math.min(containerWidth - 60, 220);
-      const qrboxHeight = Math.floor(qrboxWidth * 0.6);
+      // استخدام qrbox مربع أكبر لدعم QR والباركود معاً
+      const qrboxSize = Math.min(containerWidth - 40, 250);
       
       // Use facingMode constraint (most compatible method)
       await scannerRef.current.start(
         { facingMode },
         {
-          fps: 15, // Higher FPS for better scanning experience
-          qrbox: { width: qrboxWidth, height: qrboxHeight },
-          aspectRatio: 1.333,
+          fps: 10, // Balanced FPS for better detection
+          qrbox: { width: qrboxSize, height: qrboxSize }, // مربع لدعم QR
+          aspectRatio: 1.0, // نسبة 1:1 للتوافق مع QR
           disableFlip: false,
         },
         (decodedText) => {
@@ -279,14 +279,14 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       });
       
       const containerWidth = containerRef.current?.clientWidth || 280;
-      const qrboxWidth = Math.min(containerWidth - 60, 200);
+      const qrboxSize = Math.min(containerWidth - 40, 250);
       
       // Start with camera ID
       await scannerRef.current.start(
         selectedCamera.id,
         {
-          fps: 15,
-          qrbox: { width: qrboxWidth, height: Math.floor(qrboxWidth * 0.6) },
+          fps: 10,
+          qrbox: { width: qrboxSize, height: qrboxSize }, // مربع لدعم QR
         },
         (decodedText) => {
           if (hasScannedRef.current) return;
