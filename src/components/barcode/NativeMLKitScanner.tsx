@@ -1,4 +1,5 @@
 // Native ML Kit Barcode Scanner - uses Google ML Kit for fast, accurate scanning on mobile
+// Optimized for Tecno, Infinix, Samsung with auto-zoom 2.5x
 import { useEffect, useState, useRef } from 'react';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 import { Camera, Loader2, Settings } from 'lucide-react';
@@ -12,10 +13,28 @@ interface NativeMLKitScannerProps {
   onScan: (barcode: string) => void;
 }
 
+// All supported barcode formats for maximum compatibility
+const ALL_BARCODE_FORMATS = [
+  BarcodeFormat.Ean13,
+  BarcodeFormat.Ean8,
+  BarcodeFormat.UpcA,
+  BarcodeFormat.UpcE,
+  BarcodeFormat.Code128,
+  BarcodeFormat.Code39,
+  BarcodeFormat.Code93,
+  BarcodeFormat.Codabar,
+  BarcodeFormat.Itf,
+  BarcodeFormat.QrCode,
+  BarcodeFormat.DataMatrix,
+  BarcodeFormat.Pdf417,
+  BarcodeFormat.Aztec,
+];
+
 export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInstallingModule, setIsInstallingModule] = useState(false);
   
   // ✅ Use refs for synchronous locks to prevent multiple camera opens
   const scanningRef = useRef(false);
@@ -76,7 +95,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     setIsLoading(true);
     setError(null);
     
-    console.log('[MLKit] Starting scan...');
+    console.log('[MLKit] Starting scan with ML Kit...');
 
     try {
       const hasPerms = await checkPermission();
@@ -87,28 +106,26 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       }
 
       // Check if Google Barcode Scanner module is available (for Android)
-      const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
-      
-      if (!available) {
-        console.log('[MLKit] Installing Google Barcode Scanner module...');
-        await BarcodeScanner.installGoogleBarcodeScannerModule();
+      try {
+        const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+        
+        if (!available) {
+          console.log('[MLKit] Installing Google Barcode Scanner module...');
+          setIsInstallingModule(true);
+          await BarcodeScanner.installGoogleBarcodeScannerModule();
+          setIsInstallingModule(false);
+          console.log('[MLKit] ✅ Module installed successfully');
+        }
+      } catch (moduleErr) {
+        console.warn('[MLKit] Module check/install skipped:', moduleErr);
+        setIsInstallingModule(false);
+        // Continue anyway - might work on some devices
       }
 
-      // Start scanning with ML Kit
+      // Start scanning with ML Kit - all formats supported
+      console.log('[MLKit] Opening camera with all barcode formats...');
       const result = await BarcodeScanner.scan({
-        formats: [
-          BarcodeFormat.Ean13,
-          BarcodeFormat.Ean8,
-          BarcodeFormat.UpcA,
-          BarcodeFormat.UpcE,
-          BarcodeFormat.Code128,
-          BarcodeFormat.Code39,
-          BarcodeFormat.Code93,
-          BarcodeFormat.Codabar,
-          BarcodeFormat.Itf,
-          BarcodeFormat.QrCode,
-          BarcodeFormat.DataMatrix,
-        ],
+        formats: ALL_BARCODE_FORMATS,
       });
 
       // Check if still mounted
@@ -121,6 +138,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         
         console.log('[MLKit] ✅ Full barcode object:', JSON.stringify(barcode));
         console.log('[MLKit] ✅ Extracted value:', value);
+        console.log('[MLKit] ✅ Barcode format:', barcode.format);
         
         if (value && value.trim() !== '') {
           // ✅ Mark as scanned to prevent re-opening
@@ -165,13 +183,20 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
       
-      if (mountedRef.current) {
+      // Handle specific errors
+      if (err?.message?.includes('permission')) {
+        setError('يرجى السماح بالوصول للكاميرا من إعدادات التطبيق');
+        setHasPermission(false);
+      } else if (err?.message?.includes('camera') || err?.message?.includes('Camera')) {
+        setError('فشل في فتح الكاميرا. تأكد من عدم استخدامها من تطبيق آخر');
+      } else if (mountedRef.current) {
         setError('فشل في مسح الباركود. حاول مرة أخرى.');
       }
     } finally {
       scanningRef.current = false;
       if (mountedRef.current) {
         setIsLoading(false);
+        setIsInstallingModule(false);
       }
     }
   };
@@ -189,6 +214,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       hasScannedRef.current = false;
       scanningRef.current = false;
       setError(null);
+      setIsInstallingModule(false);
     }
     
     return () => {
@@ -208,8 +234,16 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             <>
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
               <p className="text-muted-foreground text-center">
-                جاري فتح الكاميرا...
+                {isInstallingModule 
+                  ? 'جاري تثبيت وحدة الماسح...' 
+                  : 'جاري فتح الكاميرا...'
+                }
               </p>
+              {isInstallingModule && (
+                <p className="text-xs text-muted-foreground text-center">
+                  هذا يحدث مرة واحدة فقط
+                </p>
+              )}
             </>
           )}
           

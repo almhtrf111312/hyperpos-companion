@@ -1,8 +1,14 @@
 /**
- * Html5Qrcode Barcode Scanner - Improved Compatibility
- * =====================================================
+ * Html5Qrcode Barcode Scanner - Improved with Auto-Zoom 2.5x
+ * ===========================================================
  * Reliable barcode scanner using html5-qrcode library
  * Optimized for wide Android device compatibility (Samsung, Tecno, Infinix, etc.)
+ * 
+ * Features:
+ * - Auto-zoom 2.5x on start for better scanning distance
+ * - All barcode formats (EAN, UPC, QR, Code128, etc.)
+ * - Continuous video focus mode
+ * - Low latency scanning at 15 FPS
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -18,6 +24,7 @@ interface Html5QrcodeScannerProps {
   onScan: (barcode: string) => void;
 }
 
+// All supported formats for maximum compatibility
 const SUPPORTED_FORMATS = [
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
@@ -30,7 +37,12 @@ const SUPPORTED_FORMATS = [
   Html5QrcodeSupportedFormats.ITF,
   Html5QrcodeSupportedFormats.QR_CODE,
   Html5QrcodeSupportedFormats.DATA_MATRIX,
+  Html5QrcodeSupportedFormats.PDF_417,
+  Html5QrcodeSupportedFormats.AZTEC,
 ];
+
+// Target zoom level (2.5x as specified)
+const TARGET_ZOOM = 2.5;
 
 export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScannerProps) {
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +181,7 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
       console.log('[Html5Qrcode] ✅ Scanner started successfully');
       setRetryCount(0);
       
-      // Get video track for zoom control
+      // Get video track for zoom control and apply auto-zoom 2.5x
       try {
         const videoElement = document.querySelector(`#${SCANNER_ID} video`) as HTMLVideoElement;
         if (videoElement?.srcObject) {
@@ -178,9 +190,33 @@ export function Html5QrcodeScanner({ isOpen, onClose, onScan }: Html5QrcodeScann
           if (track) {
             videoTrackRef.current = track;
             const capabilities = track.getCapabilities() as any;
+            
             if (capabilities?.zoom) {
-              setMaxZoom(Math.min(capabilities.zoom.max || 4, 4));
+              const maxZoomAvailable = Math.min(capabilities.zoom.max || 4, 4);
+              setMaxZoom(maxZoomAvailable);
               console.log('[Html5Qrcode] Zoom capability:', capabilities.zoom);
+              
+              // ✅ AUTO-ZOOM: Apply 2.5x zoom automatically on start
+              const autoZoom = Math.min(TARGET_ZOOM, maxZoomAvailable);
+              if (autoZoom > 1) {
+                try {
+                  await track.applyConstraints({ advanced: [{ zoom: autoZoom } as any] });
+                  setZoomLevel(autoZoom);
+                  console.log('[Html5Qrcode] ✅ Auto-zoom applied:', autoZoom, 'x');
+                } catch (zoomApplyErr) {
+                  console.warn('[Html5Qrcode] Could not apply auto-zoom:', zoomApplyErr);
+                }
+              }
+            }
+            
+            // ✅ Try to enable continuous focus for better scanning
+            if (capabilities?.focusMode?.includes('continuous')) {
+              try {
+                await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] });
+                console.log('[Html5Qrcode] ✅ Continuous focus enabled');
+              } catch (focusErr) {
+                console.warn('[Html5Qrcode] Could not enable continuous focus:', focusErr);
+              }
             }
           }
         }

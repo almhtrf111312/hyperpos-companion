@@ -13,6 +13,10 @@
     "BarcodeScanner": {
       "cameraPermissionText": "يحتاج التطبيق للوصول للكاميرا لمسح الباركود"
     },
+    "BarcodeScannerOptions": {
+      "formats": "ALL",
+      "lensFacing": "BACK"
+    },
     "Filesystem": {
       "androidExternalStorage": true
     }
