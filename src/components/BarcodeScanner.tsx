@@ -27,6 +27,7 @@ interface BarcodeScannerProps {
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const [useNativeScanner, setUseNativeScanner] = useState(false);
   const [scannerChecked, setScannerChecked] = useState(false);
+  const [nativeFailed, setNativeFailed] = useState(false);
 
   // Check if we should use native ML Kit scanner
   useEffect(() => {
@@ -36,7 +37,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         const isNative = Capacitor.isNativePlatform();
         console.log('[BarcodeScanner] Platform check - isNative:', isNative);
         
-        if (isNative) {
+        if (isNative && !nativeFailed) {
           // Try to import and check ML Kit availability
           try {
             const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
@@ -61,7 +62,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     };
 
     checkNativeScanner();
-  }, []);
+  }, [nativeFailed]);
 
   // Don't render until we've checked which scanner to use
   if (!scannerChecked) {
@@ -76,6 +77,11 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         isOpen={isOpen} 
         onClose={onClose} 
         onScan={onScan} 
+        onFallback={() => {
+          console.warn('[BarcodeScanner] Falling back to Html5-qrcode due to ML Kit failure');
+          setNativeFailed(true);
+          setUseNativeScanner(false);
+        }}
       />
     );
   }
