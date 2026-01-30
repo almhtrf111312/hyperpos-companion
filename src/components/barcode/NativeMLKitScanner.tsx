@@ -11,6 +11,8 @@ interface NativeMLKitScannerProps {
   isOpen: boolean;
   onClose: () => void;
   onScan: (barcode: string) => void;
+  /** Optional callback to allow parent to switch to a fallback scanner on problematic devices */
+  onFallback?: () => void;
 }
 
 // All supported barcode formats for maximum compatibility
@@ -30,7 +32,7 @@ const ALL_BARCODE_FORMATS = [
   BarcodeFormat.Aztec,
 ];
 
-export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScannerProps) {
+export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -252,6 +254,22 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
               <Camera className="w-12 h-12 text-muted-foreground" />
               <p className="text-destructive text-center">{error}</p>
               <div className="flex flex-col gap-2 w-full max-w-xs">
+                 {onFallback && (
+                   <Button
+                     variant="secondary"
+                     onClick={() => {
+                       // Switch to fallback scanner while keeping the scan dialog open
+                       hasScannedRef.current = false;
+                       scanningRef.current = false;
+                       setError(null);
+                       setIsInstallingModule(false);
+                       onFallback();
+                     }}
+                     className="w-full"
+                   >
+                     استخدام ماسح بديل
+                   </Button>
+                 )}
                 {hasPermission === false && (
                   <Button 
                     onClick={openSettings}
