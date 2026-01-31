@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.reset-own-device]
 verify_jwt = false
+
+[functions.start-trial]
+verify_jwt = false
