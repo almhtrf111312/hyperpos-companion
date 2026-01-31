@@ -1,8 +1,8 @@
-// Native ML Kit Barcode Scanner - uses Google ML Kit for fast, accurate scanning on mobile
-// Optimized for Tecno, Infinix, Samsung with auto-zoom 2.5x
+// Native Scanner using @capacitor-community/barcode-scanner (Better Transparency Support)
+// Optimized for Tecno, Infinix, Samsung with auto-zoom
 import { useEffect, useState, useRef } from 'react';
-import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
-import { Camera, Loader2, Settings } from 'lucide-react';
+import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
+import { Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { playBeep } from '@/lib/sound-utils';
@@ -11,28 +11,10 @@ interface NativeMLKitScannerProps {
   isOpen: boolean;
   onClose: () => void;
   onScan: (barcode: string) => void;
-  /** Optional callback to allow parent to switch to a fallback scanner on problematic devices */
   onFallback?: () => void;
 }
 
-// All supported barcode formats for maximum compatibility
-const ALL_BARCODE_FORMATS = [
-  BarcodeFormat.Ean13,
-  BarcodeFormat.Ean8,
-  BarcodeFormat.UpcA,
-  BarcodeFormat.UpcE,
-  BarcodeFormat.Code128,
-  BarcodeFormat.Code39,
-  BarcodeFormat.Code93,
-  BarcodeFormat.Codabar,
-  BarcodeFormat.Itf,
-  BarcodeFormat.QrCode,
-  BarcodeFormat.DataMatrix,
-  BarcodeFormat.Pdf417,
-  BarcodeFormat.Aztec,
-];
-
-// ✅ Radical Transparency Helper
+// Radical Transparency Helper (Still useful as extra enforcement)
 const makeAppTransparent = () => {
   const elements = document.querySelectorAll('html, body, ion-app, ion-router-outlet, .ion-page, ion-content');
   elements.forEach(el => {
@@ -59,262 +41,141 @@ const cleanupAppTransparency = () => {
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
   const [error, setError] = useState<string | null>(null);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInstallingModule, setIsInstallingModule] = useState(false);
 
-  // ✅ Use refs for synchronous locks to prevent multiple camera opens
+  // Synchronous locks
   const scanningRef = useRef(false);
   const hasScannedRef = useRef(false);
-  const isProcessingRef = useRef(false);
   const mountedRef = useRef(true);
 
-  // Open app settings for manual permission grant
-  const openSettings = async () => {
-    try {
-      await BarcodeScanner.openSettings();
-    } catch (err) {
-      console.error('[MLKit] Failed to open settings:', err);
-      setError('افتح إعدادات التطبيق يدوياً وامنح إذن الكاميرا');
-    }
-  };
-
-  // Check and request camera permission
   const checkPermission = async (): Promise<boolean> => {
     try {
-      const { camera } = await BarcodeScanner.checkPermissions();
-      console.log('[MLKit] Current permission status:', camera);
-
-      if (camera === 'granted') {
-        setHasPermission(true);
-        return true;
-      } else if (camera === 'denied') {
-        setHasPermission(false);
-        setError('تم رفض صلاحية الكاميرا. اضغط على "فتح الإعدادات" للسماح بالوصول.');
+      const status = await BarcodeScanner.checkPermission({ force: true });
+      if (status.granted) return true;
+      if (status.denied) {
+        setError('تم رفض صلاحية الكاميرا. يرجى تفعيلها من الإعدادات.');
         return false;
-      } else {
-        console.log('[MLKit] Requesting camera permission...');
-        const result = await BarcodeScanner.requestPermissions();
-        const granted = result.camera === 'granted';
-        setHasPermission(granted);
-
-        if (!granted) {
-          setError('يرجى السماح بالوصول للكاميرا لمسح الباركود');
-        }
-        return granted;
       }
+      return false;
     } catch (err) {
-      console.error('[MLKit] Permission check failed:', err);
-      setError('فشل في التحقق من صلاحيات الكاميرا. حاول فتح الإعدادات يدوياً.');
+      console.error('[Scanner] Permission check failed:', err);
       return false;
     }
   };
 
-  // Start scanning - with synchronous lock
   const startScanning = async () => {
-    // ✅ Check ref synchronously to prevent multiple opens
-    if (scanningRef.current || hasScannedRef.current || isProcessingRef.current) {
-      console.log('[MLKit] Already scanning, scanned, or processing, skipping...');
-      return;
-    }
+    if (scanningRef.current || hasScannedRef.current) return;
 
-    // ✅ Set lock immediately (synchronous)
     scanningRef.current = true;
     setIsLoading(true);
     setError(null);
 
-    console.log('[MLKit] Starting scan with ML Kit...');
-
     try {
-      const hasPerms = await checkPermission();
-      if (!hasPerms || !mountedRef.current) {
+      const hasPerm = await checkPermission();
+      if (!hasPerm) {
+        setIsLoading(false);
         scanningRef.current = false;
-        setIsLoading(false);
         return;
       }
 
-      // Check if Google Barcode Scanner module is available (for Android)
-      try {
-        const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+      console.log('[Scanner] Starting scan...');
 
-        if (!available) {
-          console.log('[MLKit] Installing Google Barcode Scanner module...');
-          setIsInstallingModule(true);
-          await BarcodeScanner.installGoogleBarcodeScannerModule();
-          setIsInstallingModule(false);
-          console.log('[MLKit] ✅ Module installed successfully');
-        }
-      } catch (moduleErr) {
-        console.warn('[MLKit] Module check/install skipped:', moduleErr);
-        setIsInstallingModule(false);
-        // Continue anyway - might work on some devices
-      }
+      // 1. Hide Background (Community Plugin Method)
+      await BarcodeScanner.hideBackground();
 
-      // Start scanning with ML Kit - all formats supported
-      console.log('[MLKit] Opening camera with all barcode formats...');
-
-      // ✅ Use Radical Transparency Helper
-      await (BarcodeScanner as any).hideBackground();
+      // 2. Extra Enforcement
       makeAppTransparent();
+      document.body.classList.add('barcode-scanner-active');
 
-      const result = await BarcodeScanner.scan({
-        formats: ALL_BARCODE_FORMATS,
-      });
+      // 3. Start Scan
+      const result = await BarcodeScanner.startScan();
 
-      // Check if still mounted
-      if (!mountedRef.current) return;
+      // Check if result has content
+      if (result.hasContent) {
+        console.log('[Scanner] Scanned content:', result.content);
 
-      if (result.barcodes.length > 0) {
-        // Validation: Ignore if already processing to preventing double-fire
-        if (isProcessingRef.current) {
-          console.log('[MLKit] Scan ignored - already processing');
-          return;
-        }
+        // Prevent duplicate processing
+        if (hasScannedRef.current) return;
+        hasScannedRef.current = true;
 
-        const barcode = result.barcodes[0];
-        // ✅ Try all possible value properties
-        const value = barcode.rawValue || barcode.displayValue || (barcode as any).value || '';
+        // Cleanup immediately
+        await stopScanning();
 
-        console.log('[MLKit] ✅ Full barcode object:', JSON.stringify(barcode));
-        console.log('[MLKit] ✅ Extracted value:', value);
+        // Audio & Vibrate
+        playBeep();
+        if (navigator.vibrate) navigator.vibrate(200);
 
-        if (value && value.trim() !== '') {
-          // ✅ Mark as processing immediately
-          isProcessingRef.current = true;
-          hasScannedRef.current = true;
+        // Send value
+        onScan(result.content);
 
-          // CRITICAL: Stop generic listeners and stop scan to prevent native crash
-          try {
-            await BarcodeScanner.removeAllListeners();
-            await BarcodeScanner.stopScan();
-          } catch (stopErr) {
-            console.warn('[MLKit] Stop scan warning:', stopErr);
-          }
-
-          // Play beep sound - FORCE AUDIO
-          const audio = new Audio('/assets/beep.mp3'); // Try standard path or fallback
-          audio.play().catch(e => console.warn('Audio play failed', e));
-          playBeep(); // Try util as well
-
-          // Vibrate - 200ms as requested
-          if (navigator.vibrate) {
-            navigator.vibrate(200);
-          }
-
-          // ✅ Store the value before any async operation
-          const scannedValue = value.trim();
-
-          console.log('Scanned:', scannedValue);
-
-          // ✅ Call onScan FIRST with the value synchronously
-          onScan(scannedValue);
-
-          // Debug check
-          console.log('[MLKit] Passed value to parent:', scannedValue);
-
-          // ✅ Delay Close to allow native view to detach gracefully (bypassing crash)
-          setTimeout(() => {
-            if (mountedRef.current) {
-              onClose();
-            }
-          }, 500);
-
-        } else {
-          console.warn('[MLKit] ⚠️ Barcode scanned but value is empty');
-          onClose();
-        }
+        // Delay close
+        setTimeout(() => {
+          if (mountedRef.current) onClose();
+        }, 500);
       } else {
-        // User cancelled or no barcode found
-        console.log('[MLKit] No barcode found or cancelled');
+        // User cancelled or back button?
+        // Usually startScan resolves on success. Back button on Android handles native cancel.
+        await stopScanning();
         onClose();
       }
+
     } catch (err: any) {
-      // ... error handling ...
-      console.error('[MLKit] Scan error:', err);
+      console.error('[Scanner] Scan error:', err);
+      await stopScanning();
 
-      // Handle user cancellation gracefully
-      if (err?.message?.includes('canceled') || err?.code === 'CANCELED') {
-        onClose();
-        return;
-      }
-      // ...
+      // Handle known cancellation message from plugin if any
+      // but usually plugin handles lifecycle well
+      setError('حدث خطأ أثناء تشغيل الماسح');
     } finally {
-      // ✅ Cleanup Transparency
-      cleanupAppTransparency();
-      void (BarcodeScanner as any).showBackground().catch(() => { });
-
-      scanningRef.current = false;
-      if (mountedRef.current) {
-        setIsLoading(false);
-        setIsInstallingModule(false);
-      }
+      setIsLoading(false);
     }
   };
 
-  // Zoom Control
-  const [zoomRatio, setZoomRatio] = useState(1.0);
-
-  const handleZoomChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newZoom = parseFloat(e.target.value);
-    setZoomRatio(newZoom);
+  const stopScanning = async () => {
     try {
-      await BarcodeScanner.setZoomRatio({ zoomRatio: newZoom });
-    } catch (err) {
-      console.error('[MLKit] Zoom failed:', err);
-    }
+      await BarcodeScanner.showBackground();
+      await BarcodeScanner.stopScan();
+    } catch (e) { }
+    cleanupAppTransparency();
+    document.body.classList.remove('barcode-scanner-active');
+    scanningRef.current = false;
   };
 
-  // ✅ Handle Lifecycle & Cleanup
   useEffect(() => {
+    mountedRef.current = true;
     if (isOpen) {
       startScanning();
     }
-
     return () => {
-      cleanupAppTransparency();
-      (BarcodeScanner as any).showBackground().catch(() => { });
-      BarcodeScanner.stopScan().catch(() => { });
+      mountedRef.current = false;
+      stopScanning();
     };
   }, [isOpen]);
 
-  // Show loading/error dialog while native scanner is active
   return (
     <>
-      {/* Zoom Control Overlay - Only show when scanning (scanningRef or isOpen?) */}
+      {/* Fallback Close Button (In case native back fails or users wants to cancel) */}
       {isOpen && !error && !isLoading && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] w-64 bg-black/50 backdrop-blur-sm p-4 rounded-xl border border-white/20">
-          <div className="flex items-center gap-2">
-            <span className="text-white text-xs font-medium">1x</span>
-            <input
-              type="range"
-              min="1.0"
-              max="5.0"
-              step="0.1"
-              value={zoomRatio}
-              onChange={handleZoomChange}
-              className="flex-1 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-            <span className="text-white text-xs font-medium">5x</span>
-          </div>
-          <p className="text-center text-white/80 text-[10px] mt-1">Zoom: {zoomRatio.toFixed(1)}x</p>
+        <div className="fixed top-12 left-4 z-[9999]">
+          <Button variant="secondary" size="sm" onClick={() => {
+            hasScannedRef.current = false; // Allow retry if explicitly closed? 
+            // actually onClose will unmount this, so refs reset anyway
+            stopScanning();
+            onClose();
+          }} className="rounded-full opacity-80 backdrop-blur-md">
+            إغلاق
+          </Button>
         </div>
       )}
 
       <Dialog open={isOpen && (isLoading || error !== null)} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-sm">
-          {/* ... dialog content ... */}
           <DialogTitle className="text-center">مسح الباركود</DialogTitle>
-
           <div className="flex flex-col items-center justify-center py-8 gap-4">
             {isLoading && !error && (
               <>
                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                <p className="text-muted-foreground text-center">
-                  {isInstallingModule
-                    ? 'جاري تثبيت وحدة الماسح...'
-                    : 'جاري فتح الكاميرا...'
-                  }
-                </p>
+                <p className="text-muted-foreground text-center">جاري فتح الكاميرا...</p>
               </>
             )}
 
@@ -322,7 +183,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
               <>
                 <Camera className="w-12 h-12 text-muted-foreground" />
                 <p className="text-destructive text-center">{error}</p>
-                {/* ... error buttons ... */}
                 <div className="flex gap-2 w-full">
                   <Button variant="outline" onClick={onClose} className="flex-1">
                     إغلاق
