@@ -174,27 +174,28 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Calculate trial expiry
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + TRIAL_DAYS);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'يجب تسجيل الدخول أولاً' };
+      }
 
-      // Insert trial license
-      const { error } = await supabase
-        .from('app_licenses')
-        .insert({
-          user_id: user.id,
-          expires_at: expiresAt.toISOString(),
-          is_trial: true,
-        });
+      // Use secure Edge Function to start trial
+      // This prevents client-side manipulation of trial parameters
+      const response = await supabase.functions.invoke('start-trial', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-      if (error) {
-        // Check if license already exists
-        if (error.code === '23505') {
-          // Unique violation - license already exists
-          await checkLicense();
-          return { success: true };
-        }
-        throw error;
+      if (response.error) {
+        console.error('Error starting trial:', response.error);
+        return { success: false, error: response.error.message || 'حدث خطأ أثناء بدء الفترة التجريبية' };
+      }
+
+      const data = response.data;
+
+      if (!data.success) {
+        return { success: false, error: data.error || 'حدث خطأ أثناء بدء الفترة التجريبية' };
       }
 
       // Refresh license state
