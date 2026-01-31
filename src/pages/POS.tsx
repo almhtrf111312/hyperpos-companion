@@ -308,32 +308,49 @@ export default function POS() {
     ));
   };
 
-  // Handle barcode scan - show product dialog instead of adding directly
+  // Handle barcode scan
   const handleBarcodeScan = async (barcode: string) => {
-    const cloudProduct = await getProductByBarcodeCloud(barcode);
+    console.log('[POS] Scanned:', barcode);
 
-    if (cloudProduct) {
-      const posProduct: POSProduct = {
-        id: cloudProduct.id,
-        name: cloudProduct.name,
-        price: cloudProduct.salePrice,
-        category: cloudProduct.category,
-        quantity: cloudProduct.quantity,
-        image: cloudProduct.image,
-        barcode: cloudProduct.barcode,
-        // Multi-unit fields
-        bulkUnit: cloudProduct.bulkUnit || 'carton',
-        smallUnit: cloudProduct.smallUnit || 'piece',
-        conversionFactor: cloudProduct.conversionFactor || 1,
-        bulkSalePrice: cloudProduct.bulkSalePrice || 0,
-        costPrice: cloudProduct.costPrice,
-        bulkCostPrice: cloudProduct.bulkCostPrice || 0,
-      };
-      setScannedProduct(posProduct);
-      setShowScannedDialog(true);
-    } else {
+    // 1. Try local products first (FAST)
+    const localProduct = products.find(p => p.barcode === barcode);
+    if (localProduct) {
+      addToCart(localProduct, 'piece');
+      showToast.success(t('pos.addedToCart').replace('{name}', localProduct.name));
+      return;
+    }
+
+    // 2. Try Cloud (Slow)
+    try {
+      const cloudProduct = await getProductByBarcodeCloud(barcode);
+      if (cloudProduct) {
+        const posProduct: POSProduct = {
+          id: cloudProduct.id,
+          name: cloudProduct.name,
+          price: cloudProduct.salePrice,
+          category: cloudProduct.category,
+          quantity: cloudProduct.quantity,
+          image: cloudProduct.image,
+          barcode: cloudProduct.barcode,
+          bulkUnit: cloudProduct.bulkUnit || 'carton',
+          smallUnit: cloudProduct.smallUnit || 'piece',
+          conversionFactor: cloudProduct.conversionFactor || 1,
+          bulkSalePrice: cloudProduct.bulkSalePrice || 0,
+          costPrice: cloudProduct.costPrice,
+          bulkCostPrice: cloudProduct.bulkCostPrice || 0,
+        };
+        // Add directly or show dialog? Logic was show dialog.
+        // User wants "Add to Cart / Fill Input". 
+        // Let's stick to existing logic but ensure it runs.
+        setScannedProduct(posProduct);
+        setShowScannedDialog(true);
+      } else {
+        setSearchQuery(barcode);
+        showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));
+      }
+    } catch (err) {
+      console.error('Cloud lookup error:', err);
       setSearchQuery(barcode);
-      showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));
     }
   };
 

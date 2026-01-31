@@ -1325,10 +1325,14 @@ export default function Products() {
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={(barcode) => {
+          console.log('[Products] Scanned:', barcode);
           setScannerOpen(false);
+
           if (scanTarget === 'form') {
-            setFormData((prev) => ({ ...prev, barcode }));
-            toast.success(t('pos.scanned'), { description: barcode });
+            const cleanBarcode = barcode.trim();
+            console.log('[Products] Setting form barcode:', cleanBarcode);
+            setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
+            toast.success(t('pos.scanned'), { description: cleanBarcode });
             return;
           }
 

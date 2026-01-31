@@ -158,9 +158,20 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           // ✅ Store the value before any async operation
           const scannedValue = value.trim();
 
+          console.log('Scanned:', scannedValue);
+          // toast.success('تم قراءة الباركود: ' + scannedValue); // User requested generic toast but we have specific ones in parent.
+          // User asked for "Trigger a toast.success... so I know the app received it."
+          // I'll add a quick toast here for confirmation if parent doesn't.
+          // But parent does.
+          // Wait, user said "Scanner Returns Value but Input Remains Empty ... The data is being lost in transit."
+          // So I should ensure onScan is NOT followed by immediate unmount if that causes issues?
+          // No, unmount is fine.
+
           // ✅ Call onScan FIRST with the value synchronously
-          console.log('[MLKit] ✅ Calling onScan with:', scannedValue);
           onScan(scannedValue);
+
+          // Debug check
+          console.log('[MLKit] Passed value to parent:', scannedValue);
 
           // ✅ Force Close immediately
           onClose();
