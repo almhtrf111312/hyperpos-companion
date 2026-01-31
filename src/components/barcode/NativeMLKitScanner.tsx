@@ -41,6 +41,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   // ✅ Use refs for synchronous locks to prevent multiple camera opens
   const scanningRef = useRef(false);
   const hasScannedRef = useRef(false);
+  const isProcessingRef = useRef(false);
   const mountedRef = useRef(true);
 
   // Open app settings for manual permission grant
@@ -87,8 +88,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   // Start scanning - with synchronous lock
   const startScanning = async () => {
     // ✅ Check ref synchronously to prevent multiple opens
-    if (scanningRef.current || hasScannedRef.current) {
-      console.log('[MLKit] Already scanning or scanned, skipping...');
+    if (scanningRef.current || hasScannedRef.current || isProcessingRef.current) {
+      console.log('[MLKit] Already scanning, scanned, or processing, skipping...');
       return;
     }
 
@@ -134,6 +135,12 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       if (!mountedRef.current) return;
 
       if (result.barcodes.length > 0) {
+        // Validation: Ignore if already processing to preventing double-fire
+        if (isProcessingRef.current) {
+          console.log('[MLKit] Scan ignored - already processing');
+          return;
+        }
+
         const barcode = result.barcodes[0];
         // ✅ Try all possible value properties
         const value = barcode.rawValue || barcode.displayValue || (barcode as any).value || '';
@@ -142,8 +149,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         console.log('[MLKit] ✅ Extracted value:', value);
 
         if (value && value.trim() !== '') {
-          // ✅ Mark as scanned to prevent re-opening
+          // ✅ Mark as processing immediately
+          isProcessingRef.current = true;
           hasScannedRef.current = true;
+
+          // CRITICAL: Stop generic listeners and stop scan to prevent native crash
+          try {
+            await BarcodeScanner.removeAllListeners();
+            await BarcodeScanner.stopScan();
+          } catch (stopErr) {
+            console.warn('[MLKit] Stop scan warning:', stopErr);
+          }
 
           // Play beep sound - FORCE AUDIO
           const audio = new Audio('/assets/beep.mp3'); // Try standard path or fallback
@@ -159,13 +175,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           const scannedValue = value.trim();
 
           console.log('Scanned:', scannedValue);
-          // toast.success('تم قراءة الباركود: ' + scannedValue); // User requested generic toast but we have specific ones in parent.
-          // User asked for "Trigger a toast.success... so I know the app received it."
-          // I'll add a quick toast here for confirmation if parent doesn't.
-          // But parent does.
-          // Wait, user said "Scanner Returns Value but Input Remains Empty ... The data is being lost in transit."
-          // So I should ensure onScan is NOT followed by immediate unmount if that causes issues?
-          // No, unmount is fine.
 
           // ✅ Call onScan FIRST with the value synchronously
           onScan(scannedValue);
@@ -173,8 +182,13 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           // Debug check
           console.log('[MLKit] Passed value to parent:', scannedValue);
 
-          // ✅ Force Close immediately
-          onClose();
+          // ✅ Delay Close to allow native view to detach gracefully (bypassing crash)
+          setTimeout(() => {
+            if (mountedRef.current) {
+              onClose();
+            }
+          }, 500);
+
         } else {
           console.warn('[MLKit] ⚠️ Barcode scanned but value is empty');
           onClose();
