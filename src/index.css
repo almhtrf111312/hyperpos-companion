@@ -268,6 +268,7 @@
 }
 
 @layer components {
+
   /* Glass morphism effect */
   .glass {
     @apply bg-card/80 backdrop-blur-xl border border-border/50;
@@ -363,10 +364,12 @@
       transform: scale(0.8);
       opacity: 0.8;
     }
+
     50% {
       transform: scale(1);
       opacity: 0.4;
     }
+
     100% {
       transform: scale(0.8);
       opacity: 0.8;
@@ -383,6 +386,7 @@
       transform: translateX(100%);
       opacity: 0;
     }
+
     to {
       transform: translateX(0);
       opacity: 1;
@@ -399,6 +403,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -415,6 +420,7 @@
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -430,9 +436,11 @@
     0% {
       top: 0;
     }
+
     50% {
       top: calc(100% - 2px);
     }
+
     100% {
       top: 0;
     }
@@ -467,6 +475,7 @@
       opacity: 0;
       transform: translateY(8px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -479,8 +488,15 @@
 
   /* Subtle pulse for notifications */
   @keyframes subtle-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.85; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.85;
+    }
   }
 
   .animate-subtle-pulse {
@@ -527,17 +543,28 @@
 #html5-qrcode-button-camera-permission,
 #html5-qrcode-anchor-scan-type-change,
 #qr-code-full-region__header_message,
-#qr-code-full-region__scan_region > img,
-#qr-code-full-region > div:last-child {
+#qr-code-full-region__scan_region>img,
+#qr-code-full-region>div:last-child {
   display: none !important;
 }
 
-/* Native Scanner Transparency */
-body.barcode-scanner-active {
-  background: transparent !important;
-}
-
-body.barcode-scanner-active ion-content {
+/* Native Scanner Transparency - Force Transparent Backgrounds */
+html.barcode-scanner-active,
+body.barcode-scanner-active,
+#root.barcode-scanner-active,
+ion-app.barcode-scanner-active,
+ion-content.barcode-scanner-active,
+ion-router-outlet.barcode-scanner-active,
+div[data-radix-portal].barcode-scanner-active,
+div[role="dialog"].barcode-scanner-active {
   --background: transparent !important;
   background: transparent !important;
+  --ion-background-color: transparent !important;
+  opacity: 1 !important;
+  /* Ensure content is visible but background is gone */
+}
+
+/* Ensure Dialog Overlay is also transparent when scanning */
+body.barcode-scanner-active div[data-state="open"] {
+  background-color: transparent !important;
 }

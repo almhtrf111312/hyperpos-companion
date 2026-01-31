@@ -131,6 +131,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       // ✅ Hide Background & Add Class for Transparency
       await (BarcodeScanner as any).hideBackground();
       document.body.classList.add('barcode-scanner-active');
+      document.documentElement.classList.add('barcode-scanner-active'); // Add to HTML tag
 
       const result = await BarcodeScanner.scan({
         formats: ALL_BARCODE_FORMATS,
@@ -216,6 +217,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     } finally {
       // ✅ Cleanup Transparency
       document.body.classList.remove('barcode-scanner-active');
+      document.documentElement.classList.remove('barcode-scanner-active');
       void (BarcodeScanner as any).showBackground().catch(() => { });
 
       scanningRef.current = false;
@@ -247,6 +249,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
 
     return () => {
       document.body.classList.remove('barcode-scanner-active');
+      document.documentElement.classList.remove('barcode-scanner-active');
       (BarcodeScanner as any).showBackground().catch(() => { });
       BarcodeScanner.stopScan().catch(() => { });
     };
