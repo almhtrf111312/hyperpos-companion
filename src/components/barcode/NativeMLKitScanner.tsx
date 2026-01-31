@@ -32,6 +32,31 @@ const ALL_BARCODE_FORMATS = [
   BarcodeFormat.Aztec,
 ];
 
+// ✅ Radical Transparency Helper
+const makeAppTransparent = () => {
+  const elements = document.querySelectorAll('html, body, ion-app, ion-router-outlet, .ion-page, ion-content');
+  elements.forEach(el => {
+    try {
+      (el as HTMLElement).style.setProperty('background', 'transparent', 'important');
+      (el as HTMLElement).style.setProperty('--background', 'transparent', 'important');
+      el.classList.add('barcode-scanner-active');
+    } catch (e) {
+      console.warn('Failed to set transparency on:', el);
+    }
+  });
+};
+
+const cleanupAppTransparency = () => {
+  const elements = document.querySelectorAll('html, body, ion-app, ion-router-outlet, .ion-page, ion-content');
+  elements.forEach(el => {
+    try {
+      (el as HTMLElement).style.removeProperty('background');
+      (el as HTMLElement).style.removeProperty('--background');
+      el.classList.remove('barcode-scanner-active');
+    } catch (e) { }
+  });
+};
+
 export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -128,10 +153,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       // Start scanning with ML Kit - all formats supported
       console.log('[MLKit] Opening camera with all barcode formats...');
 
-      // ✅ Hide Background & Add Class for Transparency
+      // ✅ Use Radical Transparency Helper
       await (BarcodeScanner as any).hideBackground();
-      document.body.classList.add('barcode-scanner-active');
-      document.documentElement.classList.add('barcode-scanner-active'); // Add to HTML tag
+      makeAppTransparent();
 
       const result = await BarcodeScanner.scan({
         formats: ALL_BARCODE_FORMATS,
@@ -216,8 +240,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       // ...
     } finally {
       // ✅ Cleanup Transparency
-      document.body.classList.remove('barcode-scanner-active');
-      document.documentElement.classList.remove('barcode-scanner-active');
+      cleanupAppTransparency();
       void (BarcodeScanner as any).showBackground().catch(() => { });
 
       scanningRef.current = false;
@@ -248,8 +271,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     }
 
     return () => {
-      document.body.classList.remove('barcode-scanner-active');
-      document.documentElement.classList.remove('barcode-scanner-active');
+      cleanupAppTransparency();
       (BarcodeScanner as any).showBackground().catch(() => { });
       BarcodeScanner.stopScan().catch(() => { });
     };
