@@ -161,7 +161,7 @@ export default function Settings() {
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
 
   const settingsTabs = [
-    { id: 'profile', label: 'الملف الشخصي', icon: User },
+    { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'store', label: t('settings.store'), icon: Store },
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
     { id: 'language', label: t('settings.language'), icon: Globe },
@@ -174,7 +174,7 @@ export default function Settings() {
     { id: 'backup', label: t('settings.backup'), icon: Database, adminOnly: true },
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
-    { id: 'diagnostics', label: 'تشخيص النظام', icon: Wrench, bossOnly: true },
+    { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
   ];
 
@@ -239,8 +239,8 @@ export default function Settings() {
 
   // Custom currency names
   const [currencyNames, setCurrencyNames] = useState({
-    TRY: persisted?.currencyNames?.TRY ?? 'الليرة التركية',
-    SYP: persisted?.currencyNames?.SYP ?? 'الليرة السورية',
+    TRY: persisted?.currencyNames?.TRY ?? t('settings.tryName'),
+    SYP: persisted?.currencyNames?.SYP ?? t('settings.sypName'),
   });
 
   // Sync settings
@@ -270,7 +270,7 @@ export default function Settings() {
     showPhone: true,
     paperSize: '80mm',
     copies: String(persisted?.printSettings?.copies ?? 1),
-    footer: 'شكراً لتسوقكم معنا!',
+    footer: t('settings.defaultFooter'),
   });
 
   // Users are now managed by useUsersManagement hook

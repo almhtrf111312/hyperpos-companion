@@ -220,7 +220,7 @@ export default function Dashboard() {
         <StatCard
           title={t('dashboard.netProfit')}
           value={`$${stats.netProfit.toLocaleString()}`}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | مصاريف: $${stats.todayExpenses.toLocaleString()}`}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: $${stats.todayExpenses.toLocaleString()}`}
           icon={<TrendingUp className="w-6 h-6" />}
           variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"

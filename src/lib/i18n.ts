@@ -190,6 +190,11 @@ export const translations = {
     'common.filter': 'تصفية',
     'common.noData': 'لا توجد بيانات',
     'common.actions': 'الإجراءات',
+    'common.show': 'عرض',
+    'common.hide': 'إخفاء',
+    'common.found': 'تم العثور على',
+
+
     'common.export': 'تصدير',
     'common.import': 'استيراد',
     'common.refresh': 'تحديث',
@@ -228,6 +233,16 @@ export const translations = {
     'products.chooseImage': 'اختيار صورة',
     'products.takePhoto': 'التقاط صورة',
     'products.removeImage': 'حذف الصورة',
+
+    // Placeholders
+    'products.exampleName': 'مثال: iPhone 15 Pro',
+    'products.exampleBarcode': '123456789012',
+    'products.selectExpiryDate': 'اختر تاريخ الصلاحية',
+    'products.exampleSerial': 'مثال: 123456789012345',
+    'products.exampleWarranty': 'مثال: 12 شهر',
+    'products.exampleSize': 'مثال: XL',
+    'products.exampleColor': 'مثال: أسود',
+
     'products.serialNumber': 'الرقم التسلسلي',
     'products.warranty': 'الضمان',
     'products.wholesalePrice': 'سعر الجملة',
@@ -241,6 +256,15 @@ export const translations = {
     'products.deleteConfirm': 'هل أنت متأكد من حذف هذا المنتج؟',
     'products.fillRequired': 'يرجى ملء جميع الحقول المطلوبة',
     'products.noProducts': 'لا توجد منتجات',
+
+    // Units
+    'units.piece': 'قطعة',
+    'units.carton': 'كرتونة',
+    'units.box': 'علبة',
+    'units.kg': 'كغ',
+    'units.meter': 'متر',
+    'units.bulk': 'جملة',
+
 
     // Customers
     'customers.title': 'العملاء',
@@ -625,7 +649,9 @@ export const translations = {
     'pos.lowStockWarning': 'تنبيه: كمية "{name}" منخفضة ({qty} فقط)',
     'pos.addedToCart': 'تمت إضافة "{name}" إلى السلة',
     'pos.barcode': 'الباركود',
-    'pos.barcodeNotFound': 'لم يتم العثور على منتج بهذا الباركود',
+    'pos.barcodeNotFound': 'الباركود غير موجود',
+    'pos.productNotFound': 'المنتج غير موجود',
+    'pos.scanned': 'تمت القراءة بنجاح',
     'pos.cashSaleShortcut': 'اضغط F1 لتأكيد البيع النقدي',
     'pos.debtSaleShortcut': 'اضغط F2 لتأكيد البيع بالدين',
     'pos.enterCustomerName': 'يجب إدخال اسم العميل أولاً',
@@ -715,6 +741,7 @@ export const translations = {
 
     // Settings
     'settings.title': 'الإعدادات',
+    'settings.profile': 'الملف الشخصي',
     'settings.general': 'عام',
     'settings.backup': 'النسخ الاحتياطي',
     'settings.users': 'المستخدمين',
@@ -996,6 +1023,10 @@ export const translations = {
     'services.saveChanges': 'حفظ التغييرات',
     'services.requestDetails': 'تفاصيل طلب الصيانة',
     'services.device': 'الجهاز',
+    'settings.diagnostics': 'تشخيص النظام',
+    'settings.defaultFooter': 'شكراً لتسوقكم معنا!',
+    'settings.tryName': 'الليرة التركية',
+    'settings.sypName': 'الليرة السورية',
     'services.diagnosis': 'التشخيص',
     'services.technician': 'الفني',
     'services.receiveDate': 'تاريخ الاستلام',
@@ -1136,6 +1167,7 @@ export const translations = {
     'maintenance.deviceTypes.phone': 'هاتف',
     'maintenance.deviceTypes.tablet': 'تابلت',
     'maintenance.deviceTypes.laptop': 'لابتوب',
+    'maintenance.deviceTypes.computer': 'كمبيوتر',
     'maintenance.deviceTypes.watch': 'ساعة ذكية',
     'maintenance.deviceTypes.headphones': 'سماعات',
     'maintenance.deviceTypes.monitor': 'شاشة',
@@ -1366,6 +1398,11 @@ export const translations = {
     'common.filter': 'Filter',
     'common.noData': 'No data',
     'common.actions': 'Actions',
+    'common.show': 'Show',
+    'common.hide': 'Hide',
+    'common.found': 'Found',
+
+
     'common.export': 'Export',
     'common.import': 'Import',
     'common.refresh': 'Refresh',
@@ -1416,7 +1453,16 @@ export const translations = {
     'products.deleteSuccess': 'Product deleted successfully',
     'products.deleteConfirm': 'Are you sure you want to delete this product?',
     'products.fillRequired': 'Please fill all required fields',
-    'products.noProducts': 'No products',
+
+
+    // Units
+    'units.piece': 'Piece',
+    'units.carton': 'Carton',
+    'units.box': 'Box',
+    'units.kg': 'Kg',
+    'units.meter': 'Meter',
+    'units.bulk': 'Bulk',
+
 
     // Customers
     'customers.title': 'Customers',
@@ -2123,7 +2169,10 @@ export const translations = {
     'services.saveChanges': 'Save Changes',
     'services.requestDetails': 'Service Request Details',
     'services.device': 'Device',
-    'services.diagnosis': 'Diagnosis',
+    'settings.diagnostics': 'System Diagnostics',
+    'settings.defaultFooter': 'Thank you for shopping with us!',
+    'settings.tryName': 'Turkish Lira',
+    'settings.sypName': 'Syrian Lira',
     'services.technician': 'Technician',
     'services.receiveDate': 'Receive Date',
     'services.completionDate': 'Completion Date',
@@ -2322,8 +2371,9 @@ export const translations = {
     'notifications.licenseExpired': 'License expired',
 
   },
-  en: {
+  en_backup: {
     // Navigation
+
     'nav.pos': 'POS',
     'nav.dashboard': 'Dashboard',
     'nav.products': 'Products',
@@ -2936,6 +2986,9 @@ export const translations = {
     'pos.addedToCart': 'Added "{name}" to cart',
     'pos.barcode': 'Barcode',
     'pos.barcodeNotFound': 'Barcode not found',
+    'pos.productNotFound': 'Product not found',
+    'pos.scanned': 'Scanned successfully',
+
     'pos.cashSaleShortcut': 'F1 for Cash Sale',
     'pos.debtSaleShortcut': 'F2 for Debt Sale',
     'pos.enterCustomerName': 'Enter customer name first',

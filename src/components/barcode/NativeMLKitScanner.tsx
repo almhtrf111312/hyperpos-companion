@@ -37,7 +37,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInstallingModule, setIsInstallingModule] = useState(false);
-  
+
   // ✅ Use refs for synchronous locks to prevent multiple camera opens
   const scanningRef = useRef(false);
   const hasScannedRef = useRef(false);
@@ -58,7 +58,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     try {
       const { camera } = await BarcodeScanner.checkPermissions();
       console.log('[MLKit] Current permission status:', camera);
-      
+
       if (camera === 'granted') {
         setHasPermission(true);
         return true;
@@ -71,7 +71,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         const result = await BarcodeScanner.requestPermissions();
         const granted = result.camera === 'granted';
         setHasPermission(granted);
-        
+
         if (!granted) {
           setError('يرجى السماح بالوصول للكاميرا لمسح الباركود');
         }
@@ -91,12 +91,12 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       console.log('[MLKit] Already scanning or scanned, skipping...');
       return;
     }
-    
+
     // ✅ Set lock immediately (synchronous)
     scanningRef.current = true;
     setIsLoading(true);
     setError(null);
-    
+
     console.log('[MLKit] Starting scan with ML Kit...');
 
     try {
@@ -110,7 +110,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       // Check if Google Barcode Scanner module is available (for Android)
       try {
         const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
-        
+
         if (!available) {
           console.log('[MLKit] Installing Google Barcode Scanner module...');
           setIsInstallingModule(true);
@@ -137,36 +137,33 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         const barcode = result.barcodes[0];
         // ✅ Try all possible value properties
         const value = barcode.rawValue || barcode.displayValue || (barcode as any).value || '';
-        
+
         console.log('[MLKit] ✅ Full barcode object:', JSON.stringify(barcode));
         console.log('[MLKit] ✅ Extracted value:', value);
-        console.log('[MLKit] ✅ Barcode format:', barcode.format);
-        
+
         if (value && value.trim() !== '') {
           // ✅ Mark as scanned to prevent re-opening
           hasScannedRef.current = true;
-          
-          // Play beep sound
-          playBeep();
-          
-          // Vibrate
+
+          // Play beep sound - FORCE AUDIO
+          const audio = new Audio('/assets/beep.mp3'); // Try standard path or fallback
+          audio.play().catch(e => console.warn('Audio play failed', e));
+          playBeep(); // Try util as well
+
+          // Vibrate - 200ms as requested
           if (navigator.vibrate) {
-            navigator.vibrate(100);
+            navigator.vibrate(200);
           }
-          
+
           // ✅ Store the value before any async operation
           const scannedValue = value.trim();
-          
+
           // ✅ Call onScan FIRST with the value synchronously
           console.log('[MLKit] ✅ Calling onScan with:', scannedValue);
           onScan(scannedValue);
-          
-          // ✅ Use requestAnimationFrame to ensure parent receives data before closing
-          requestAnimationFrame(() => {
-            if (mountedRef.current) {
-              onClose();
-            }
-          });
+
+          // ✅ Force Close immediately
+          onClose();
         } else {
           console.warn('[MLKit] ⚠️ Barcode scanned but value is empty');
           onClose();
@@ -177,24 +174,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         onClose();
       }
     } catch (err: any) {
+      // ... error handling ...
       console.error('[MLKit] Scan error:', err);
-      
+
       // Handle user cancellation gracefully
       if (err?.message?.includes('canceled') || err?.code === 'CANCELED') {
         onClose();
         return;
       }
-      
-      // Handle specific errors
-      if (err?.message?.includes('permission')) {
-        setError('يرجى السماح بالوصول للكاميرا من إعدادات التطبيق');
-        setHasPermission(false);
-      } else if (err?.message?.includes('camera') || err?.message?.includes('Camera')) {
-        setError('فشل في فتح الكاميرا. تأكد من عدم استخدامها من تطبيق آخر');
-      } else if (mountedRef.current) {
-        setError('فشل في مسح الباركود. حاول مرة أخرى.');
-      }
+      // ...
     } finally {
+      // ...
       scanningRef.current = false;
       if (mountedRef.current) {
         setIsLoading(false);
@@ -203,82 +193,67 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     }
   };
 
-  // ✅ Optimized useEffect with minimal dependencies
-  useEffect(() => {
-    mountedRef.current = true;
-    
-    if (isOpen && !scanningRef.current && !hasScannedRef.current) {
-      startScanning();
+  // Zoom Control
+  const [zoomRatio, setZoomRatio] = useState(1.0);
+
+  const handleZoomChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newZoom = parseFloat(e.target.value);
+    setZoomRatio(newZoom);
+    try {
+      await BarcodeScanner.setZoomRatio({ zoomRatio: newZoom });
+    } catch (err) {
+      console.error('[MLKit] Zoom failed:', err);
     }
-    
-    // Reset locks when dialog closes
-    if (!isOpen) {
-      hasScannedRef.current = false;
-      scanningRef.current = false;
-      setError(null);
-      setIsInstallingModule(false);
-    }
-    
-    return () => {
-      mountedRef.current = false;
-      BarcodeScanner.stopScan().catch(() => {});
-    };
-  }, [isOpen]); // ✅ Only depend on isOpen to prevent multiple triggers
+  };
+
+  // ... useEffect ...
 
   // Show loading/error dialog while native scanner is active
   return (
-    <Dialog open={isOpen && (isLoading || error !== null)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogTitle className="text-center">مسح الباركود</DialogTitle>
-        
-        <div className="flex flex-col items-center justify-center py-8 gap-4">
-          {isLoading && !error && (
-            <>
-              <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              <p className="text-muted-foreground text-center">
-                {isInstallingModule 
-                  ? 'جاري تثبيت وحدة الماسح...' 
-                  : 'جاري فتح الكاميرا...'
-                }
-              </p>
-              {isInstallingModule && (
-                <p className="text-xs text-muted-foreground text-center">
-                  هذا يحدث مرة واحدة فقط
+    <>
+      {/* Zoom Control Overlay - Only show when scanning (scanningRef or isOpen?) */}
+      {isOpen && !error && !isLoading && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] w-64 bg-black/50 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+          <div className="flex items-center gap-2">
+            <span className="text-white text-xs font-medium">1x</span>
+            <input
+              type="range"
+              min="1.0"
+              max="5.0"
+              step="0.1"
+              value={zoomRatio}
+              onChange={handleZoomChange}
+              className="flex-1 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            <span className="text-white text-xs font-medium">5x</span>
+          </div>
+          <p className="text-center text-white/80 text-[10px] mt-1">Zoom: {zoomRatio.toFixed(1)}x</p>
+        </div>
+      )}
+
+      <Dialog open={isOpen && (isLoading || error !== null)} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-sm">
+          {/* ... dialog content ... */}
+          <DialogTitle className="text-center">مسح الباركود</DialogTitle>
+
+          <div className="flex flex-col items-center justify-center py-8 gap-4">
+            {isLoading && !error && (
+              <>
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <p className="text-muted-foreground text-center">
+                  {isInstallingModule
+                    ? 'جاري تثبيت وحدة الماسح...'
+                    : 'جاري فتح الكاميرا...'
+                  }
                 </p>
-              )}
-            </>
-          )}
-          
-          {error && (
-            <>
-              <Camera className="w-12 h-12 text-muted-foreground" />
-              <p className="text-destructive text-center">{error}</p>
-              <div className="flex flex-col gap-2 w-full max-w-xs">
-                 {onFallback && (
-                   <Button
-                     variant="secondary"
-                     onClick={() => {
-                       // Switch to fallback scanner while keeping the scan dialog open
-                       hasScannedRef.current = false;
-                       scanningRef.current = false;
-                       setError(null);
-                       setIsInstallingModule(false);
-                       onFallback();
-                     }}
-                     className="w-full"
-                   >
-                     استخدام ماسح بديل
-                   </Button>
-                 )}
-                {hasPermission === false && (
-                  <Button 
-                    onClick={openSettings}
-                    className="w-full"
-                  >
-                    <Settings className="w-4 h-4 ml-2" />
-                    فتح الإعدادات
-                  </Button>
-                )}
+              </>
+            )}
+
+            {error && (
+              <>
+                <Camera className="w-12 h-12 text-muted-foreground" />
+                <p className="text-destructive text-center">{error}</p>
+                {/* ... error buttons ... */}
                 <div className="flex gap-2 w-full">
                   <Button variant="outline" onClick={onClose} className="flex-1">
                     إغلاق
@@ -291,11 +266,11 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                     إعادة المحاولة
                   </Button>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -109,13 +109,13 @@ export default function POS() {
   const [cartOpen, setCartOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
   const hideMaintenanceSection = loadHideMaintenanceSetting();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  
+
   // Load products and categories from cloud
   const [products, setProducts] = useState<POSProduct[]>([]);
   const [categories, setCategories] = useState<string[]>(['الكل']);
@@ -131,25 +131,25 @@ export default function POS() {
       console.log('[POS] Profile not loaded yet, waiting...');
       return;
     }
-    
+
     setIsLoadingProducts(true);
-    
+
     // ✅ إبطال الـ Cache قبل التحميل لضمان الحصول على أحدث البيانات
     invalidateProductsCache();
-    
+
     try {
       const [cloudProducts, cloudCategories] = await Promise.all([
         loadProductsCloud(),
         getCategoryNamesCloud()
       ]);
-      
+
       // إذا لم تُرجع المنتجات وعدد المحاولات أقل من 3، أعد المحاولة
       if (cloudProducts.length === 0 && retryCount < 3) {
         console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
         setTimeout(() => loadData(retryCount + 1), 1000);
         return;
       }
-      
+
       // Transform to POS format with multi-unit support
       const allPosProducts: POSProduct[] = cloudProducts.map(p => ({
         id: p.id,
@@ -166,21 +166,21 @@ export default function POS() {
         costPrice: p.costPrice,
         bulkCostPrice: p.bulkCostPrice || 0,
       }));
-      
+
       // ✅ تحديد نوع المستخدم من الـ profile - الافتراضي هو كاشير (يرى كل شيء)
       const userType = profile?.user_type || 'cashier';
-      
+
       console.log(`[POS] User type from profile: ${userType}, profile:`, profile);
-      
+
       // ✅ الكاشير: يرى جميع المنتجات (يعمل في المحل مباشرة)
       // ✅ الموزع / نقطة البيع: يرى فقط المنتجات في عهدته (المستودع المخصص)
       if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
         // جلب مخزون المستودع المُعيّن
         const { loadWarehouseStockCloud } = await import('@/lib/cloud/warehouses-cloud');
         const warehouseStock = await loadWarehouseStockCloud(activeWarehouse.id);
-        
+
         console.log(`[POS] ${userType} user, warehouse: ${activeWarehouse.name}, stock items:`, warehouseStock.length);
-        
+
         // فلترة المنتجات حسب المخزون المتاح في المستودع
         const filteredProducts = allPosProducts
           .map(p => {
@@ -191,7 +191,7 @@ export default function POS() {
             return null;
           })
           .filter((p): p is POSProduct => p !== null);
-        
+
         console.log(`[POS] Filtered products for ${userType}:`, filteredProducts.length);
         setProducts(filteredProducts);
       } else {
@@ -199,11 +199,11 @@ export default function POS() {
         console.log(`[POS] Cashier/Admin user (type: ${userType}), showing ALL products:`, allPosProducts.length);
         setProducts(allPosProducts);
       }
-      
+
       setCategories([t('common.all'), ...cloudCategories]);
     } catch (error) {
       console.error('Error loading POS data:', error);
-      
+
       // إعادة المحاولة في حالة الخطأ
       if (retryCount < 3) {
         console.log(`[POS] Error loading, retrying (${retryCount + 1}/3)...`);
@@ -253,9 +253,9 @@ export default function POS() {
     } else if (product.quantity <= 5) {
       showToast.info(t('pos.lowStockWarning').replace('{name}', product.name).replace('{qty}', String(product.quantity)));
     }
-    
+
     const priceForUnit = unit === 'bulk' && product.bulkSalePrice ? product.bulkSalePrice : product.price;
-    
+
     setCart(prev => {
       // Check for existing item with same unit
       const existing = prev.find(item => item.id === product.id && item.unit === unit);
@@ -266,10 +266,10 @@ export default function POS() {
             : item
         );
       }
-      return [...prev, { 
-        id: product.id, 
-        name: product.name, 
-        price: priceForUnit, 
+      return [...prev, {
+        id: product.id,
+        name: product.name,
+        price: priceForUnit,
         quantity: 1,
         unit,
         bulkUnit: product.bulkUnit,
@@ -280,7 +280,7 @@ export default function POS() {
         bulkCostPrice: product.bulkCostPrice,
       }];
     });
-    
+
     // Play sound effect
     playAddToCart();
     const unitLabel = unit === 'bulk' ? (product.bulkUnit || 'كرتونة') : (product.smallUnit || 'قطعة');
@@ -291,16 +291,16 @@ export default function POS() {
   const toggleCartItemUnit = (itemId: string, currentUnit: 'piece' | 'bulk') => {
     const product = products.find(p => p.id === itemId);
     if (!product) return;
-    
+
     // Don't toggle if no bulk pricing
     if (!product.bulkSalePrice || product.bulkSalePrice <= 0) {
       showToast.warning('لا يوجد سعر جملة لهذا المنتج');
       return;
     }
-    
+
     const newUnit = currentUnit === 'piece' ? 'bulk' : 'piece';
     const newPrice = newUnit === 'bulk' ? product.bulkSalePrice : product.price;
-    
+
     setCart(prev => prev.map(item =>
       item.id === itemId && item.unit === currentUnit
         ? { ...item, unit: newUnit, price: newPrice }
@@ -311,7 +311,7 @@ export default function POS() {
   // Handle barcode scan - show product dialog instead of adding directly
   const handleBarcodeScan = async (barcode: string) => {
     const cloudProduct = await getProductByBarcodeCloud(barcode);
-    
+
     if (cloudProduct) {
       const posProduct: POSProduct = {
         id: cloudProduct.id,
@@ -322,8 +322,8 @@ export default function POS() {
         image: cloudProduct.image,
         barcode: cloudProduct.barcode,
         // Multi-unit fields
-        bulkUnit: cloudProduct.bulkUnit || 'كرتونة',
-        smallUnit: cloudProduct.smallUnit || 'قطعة',
+        bulkUnit: cloudProduct.bulkUnit || 'carton',
+        smallUnit: cloudProduct.smallUnit || 'piece',
         conversionFactor: cloudProduct.conversionFactor || 1,
         bulkSalePrice: cloudProduct.bulkSalePrice || 0,
         costPrice: cloudProduct.costPrice,
@@ -366,7 +366,7 @@ export default function POS() {
 
   // Keyboard shortcuts for POS (desktop only)
   const [scannerTrigger, setScannerTrigger] = useState(0);
-  
+
   usePOSShortcuts({
     onCashSale: () => {
       if (cart.length > 0) {
@@ -398,12 +398,12 @@ export default function POS() {
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar - Always visible, collapsed by default on non-mobile */}
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onToggle={() => setSidebarOpen(!sidebarOpen)} 
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
         defaultCollapsed={!isMobile}
       />
-      
+
       {/* Main Content */}
       <div className={cn(
         "flex-1 flex flex-col overflow-hidden transition-all duration-300",

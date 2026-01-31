@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Search, 
-  Plus, 
+  Search,
+  Plus,
   Package,
   Edit,
   Trash2,
@@ -49,13 +49,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DatePicker } from '@/components/ui/date-picker';
 import { UnitSettingsTab } from '@/components/products/UnitSettingsTab';
 import { DualUnitDisplay } from '@/components/products/DualUnitDisplay';
-import { 
-  loadProductsCloud, 
+import {
+  loadProductsCloud,
   addProductCloud,
   updateProductCloud,
   deleteProductCloud,
   getStatus,
-  Product 
+  Product
 } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { uploadProductImage } from '@/lib/image-upload';
@@ -71,7 +71,7 @@ export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { t } = useLanguage();
-  
+
   const statusConfig = {
     in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
     low_stock: { label: t('products.low'), color: 'badge-warning', icon: AlertTriangle },
@@ -90,13 +90,13 @@ export default function Products() {
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
-  
+
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  
+
   // Form state with dynamic fields
   const [formData, setFormData] = useState({
     name: '',
@@ -122,30 +122,30 @@ export default function Products() {
     bulkSalePrice: 0,
     trackByUnit: 'piece' as 'piece' | 'bulk',
   });
-  
+
   // Unit settings collapsible state
   const [showUnitSettings, setShowUnitSettings] = useState(false);
-  
+
   // Get effective field configuration - reload when page gains focus or storage changes
   const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
   const [customFields, setCustomFields] = useState<CustomField[]>(() => getEnabledCustomFields());
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({});
-  
+
   // Reload fields config when navigating to this page or when settings change
   useEffect(() => {
     const reloadFieldsConfig = () => {
       setFieldsConfig(getEffectiveFieldsConfig());
       setCustomFields(getEnabledCustomFields());
     };
-    
+
     // Listen for custom events (same tab)
     const handleFieldsUpdated = () => reloadFieldsConfig();
     window.addEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
     window.addEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
-    
+
     // Reload on focus (when user comes back from settings)
     window.addEventListener('focus', reloadFieldsConfig);
-    
+
     // Reload on storage change (different tabs)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key?.includes('hyperpos_product_fields') || e.key?.includes('hyperpos_custom_fields')) {
@@ -153,10 +153,10 @@ export default function Products() {
       }
     };
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Initial load
     reloadFieldsConfig();
-    
+
     return () => {
       window.removeEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
       window.removeEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
@@ -164,7 +164,7 @@ export default function Products() {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
-  
+
   // Use Capacitor Camera hook
   const { pickFromGallery, isLoading: isCameraLoading } = useCamera({ maxSize: 640, quality: 70 });
 
@@ -197,14 +197,14 @@ export default function Products() {
   // Memory leak prevention - proper cleanup for storage events
   useEffect(() => {
     loadData();
-    
+
     const handleProductsUpdated = () => loadData();
     const handleCategoriesUpdated = () => loadData();
-    
+
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
     window.addEventListener('focus', loadData);
-    
+
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
@@ -250,19 +250,19 @@ export default function Products() {
 
   const categories = ['الكل', ...categoryOptions];
 
-// Memoized filtered results for performance
-const filteredProducts = useMemo(() => {
-  return products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                         product.barcode.includes(debouncedSearch);
-    const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
-    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-    const matchesUnit = unitFilter === 'all' || 
-                       (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
-                       (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
-    return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
-  });
-}, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter]);
+  // Memoized filtered results for performance
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        product.barcode.includes(debouncedSearch);
+      const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
+      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+      const matchesUnit = unitFilter === 'all' ||
+        (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
+        (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
+      return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
+    });
+  }, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter]);
 
   const stats = {
     total: products.length,
@@ -285,17 +285,17 @@ const filteredProducts = useMemo(() => {
         return;
       }
     }
-    
+
     setIsSaving(true);
-    
+
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
-    const quantityInPieces = formData.trackByUnit === 'bulk' 
-      ? formData.quantity * formData.conversionFactor 
+    const quantityInPieces = formData.trackByUnit === 'bulk'
+      ? formData.quantity * formData.conversionFactor
       : formData.quantity;
-    
+
     // حساب سعر تكلفة الكرتونة تلقائياً
     const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
-    
+
     const productData = {
       ...formData,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
@@ -303,9 +303,9 @@ const filteredProducts = useMemo(() => {
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
-    
+
     const newProduct = await addProductCloud(productData);
-    
+
     if (newProduct) {
       // Log activity
       if (user) {
@@ -317,7 +317,7 @@ const filteredProducts = useMemo(() => {
           { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
         );
       }
-      
+
       setShowAddDialog(false);
       setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setCustomFieldValues({});
@@ -326,7 +326,7 @@ const filteredProducts = useMemo(() => {
     } else {
       toast.error('فشل في إضافة المنتج');
     }
-    
+
     setIsSaving(false);
   };
 
@@ -343,17 +343,17 @@ const filteredProducts = useMemo(() => {
         return;
       }
     }
-    
+
     setIsSaving(true);
-    
+
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
-    const quantityInPieces = formData.trackByUnit === 'bulk' 
-      ? formData.quantity * formData.conversionFactor 
+    const quantityInPieces = formData.trackByUnit === 'bulk'
+      ? formData.quantity * formData.conversionFactor
       : formData.quantity;
-    
+
     // حساب سعر تكلفة الكرتونة تلقائياً
     const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
-    
+
     const productData = {
       ...formData,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
@@ -361,9 +361,9 @@ const filteredProducts = useMemo(() => {
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
-    
+
     const success = await updateProductCloud(selectedProduct.id, productData);
-    
+
     if (success) {
       // Log activity
       if (user) {
@@ -375,7 +375,7 @@ const filteredProducts = useMemo(() => {
           { productId: selectedProduct.id, name: formData.name }
         );
       }
-      
+
       setShowEditDialog(false);
       setSelectedProduct(null);
       setCustomFieldValues({});
@@ -384,18 +384,18 @@ const filteredProducts = useMemo(() => {
     } else {
       toast.error('فشل في تعديل المنتج');
     }
-    
+
     setIsSaving(false);
   };
 
   const handleDeleteProduct = async () => {
     if (!selectedProduct) return;
-    
+
     setIsSaving(true);
-    
+
     const productName = selectedProduct.name;
     const success = await deleteProductCloud(selectedProduct.id);
-    
+
     if (success) {
       // Log activity
       if (user) {
@@ -403,11 +403,11 @@ const filteredProducts = useMemo(() => {
           'product_deleted',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `تم حذف منتج: ${productName}`,
+          `تم حذف منتج: ${productName}`, // This log message might need translation
           { productId: selectedProduct.id, name: productName }
         );
       }
-      
+
       setShowDeleteDialog(false);
       setSelectedProduct(null);
       toast.success('تم حذف المنتج بنجاح');
@@ -415,21 +415,21 @@ const filteredProducts = useMemo(() => {
     } else {
       toast.error('فشل في حذف المنتج');
     }
-    
+
     setIsSaving(false);
   };
 
   const openEditDialog = (product: Product) => {
     setSelectedProduct(product);
-    
+
     // الكمية في قاعدة البيانات دائماً بالقطع
     // نحولها للوحدة المستخدمة للتتبع عند العرض
     const trackByUnit = product.trackByUnit || 'piece';
     const conversionFactor = product.conversionFactor || 1;
-    const quantityForDisplay = trackByUnit === 'bulk' 
+    const quantityForDisplay = trackByUnit === 'bulk'
       ? Math.floor(product.quantity / conversionFactor)
       : product.quantity;
-    
+
     setFormData({
       name: product.name,
       barcode: product.barcode,
@@ -470,6 +470,8 @@ const filteredProducts = useMemo(() => {
   const openBarcodeScannerForForm = () => {
     setScanTarget('form');
     setScannerOpen(true);
+
+
   };
 
   return (
@@ -486,7 +488,7 @@ const filteredProducts = useMemo(() => {
             {t('products.categories')}
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -497,7 +499,7 @@ const filteredProducts = useMemo(() => {
 
       {/* Stats - Clickable for filtering */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-        <button 
+        <button
           onClick={() => setStatusFilter('all')}
           className={cn(
             "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
@@ -510,11 +512,11 @@ const filteredProducts = useMemo(() => {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">إجمالي</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.total')}</p>
             </div>
           </div>
         </button>
-        <button 
+        <button
           onClick={() => setStatusFilter('in_stock')}
           className={cn(
             "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
@@ -527,11 +529,11 @@ const filteredProducts = useMemo(() => {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.inStock}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">متوفر</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.available')}</p>
             </div>
           </div>
         </button>
-        <button 
+        <button
           onClick={() => setStatusFilter('low_stock')}
           className={cn(
             "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
@@ -544,11 +546,11 @@ const filteredProducts = useMemo(() => {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">منخفض</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.low')}</p>
             </div>
           </div>
         </button>
-        <button 
+        <button
           onClick={() => setStatusFilter('out_of_stock')}
           className={cn(
             "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
@@ -561,7 +563,7 @@ const filteredProducts = useMemo(() => {
             </div>
             <div>
               <p className="text-lg md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">نفذ</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
             </div>
           </div>
         </button>
@@ -574,15 +576,15 @@ const filteredProducts = useMemo(() => {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="بحث بالاسم أو الباركود..."
+              placeholder={t('products.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pr-9 md:pr-10 bg-muted border-0"
             />
           </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             className="h-10 w-10 flex-shrink-0"
             onClick={() => {
               setScanTarget('search');
@@ -607,7 +609,7 @@ const filteredProducts = useMemo(() => {
               {category}
             </button>
           ))}
-          
+
           {/* Unit Filter */}
           <div className="h-6 w-px bg-border mx-1 self-center" />
           <button
@@ -654,73 +656,73 @@ const filteredProducts = useMemo(() => {
           ))}
         </div>
       ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
-        {filteredProducts.map((product, index) => {
-          const status = statusConfig[product.status];
-          const profit = product.salePrice - product.costPrice;
-          
-          return (
-            <div 
-              key={product.id}
-              className="bg-card rounded-xl border border-border p-4 fade-in"
-              style={{ animationDelay: `${index * 30}ms` }}
-            >
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {product.image ? (
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Package className="w-6 h-6 text-muted-foreground" />
-                  )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
+          {filteredProducts.map((product, index) => {
+            const status = statusConfig[product.status];
+            const profit = product.salePrice - product.costPrice;
+
+            return (
+              <div
+                key={product.id}
+                className="bg-card rounded-xl border border-border p-4 fade-in"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {product.image ? (
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-6 h-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
+                    <p className="text-xs text-muted-foreground">{product.category}</p>
+                  </div>
+                  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", status.color)}>
+                    {status.label}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
-                  <p className="text-xs text-muted-foreground">{product.category}</p>
+
+                <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">الشراء</p>
+                    <p className="font-semibold text-sm">${product.costPrice}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">البيع</p>
+                    <p className="font-semibold text-sm text-primary">${product.salePrice}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">الربح</p>
+                    <p className="font-semibold text-sm text-success">${profit}</p>
+                  </div>
                 </div>
-                <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", status.color)}>
-                  {status.label}
-                </span>
+
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <div className="text-sm">
+                    <DualUnitDisplay
+                      totalPieces={product.quantity}
+                      conversionFactor={product.conversionFactor || 1}
+                      bulkUnit={product.bulkUnit}
+                      smallUnit={product.smallUnit}
+                      showTotal={false}
+                      size="sm"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
+                      <Edit className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-              
-              <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">الشراء</p>
-                  <p className="font-semibold text-sm">${product.costPrice}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">البيع</p>
-                  <p className="font-semibold text-sm text-primary">${product.salePrice}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">الربح</p>
-                  <p className="font-semibold text-sm text-success">${profit}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between pt-3 border-t border-border">
-                <div className="text-sm">
-                  <DualUnitDisplay
-                    totalPieces={product.quantity}
-                    conversionFactor={product.conversionFactor || 1}
-                    bulkUnit={product.bulkUnit}
-                    smallUnit={product.smallUnit}
-                    showTotal={false}
-                    size="sm"
-                  />
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
-                    <Edit className="w-5 h-5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Products Table - Desktop */}
@@ -729,17 +731,17 @@ const filteredProducts = useMemo(() => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">المنتج</th>
-                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">التصنيف</th>
-                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">الأسعار</th>
-                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">الربح</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.name')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.category')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('invoices.profit')}</th>
                 <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Boxes className="w-4 h-4" />
-                    المخزون
+                    {t('products.stock')}
                   </div>
                 </th>
-                <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">إجراءات</th>
+                <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -747,9 +749,9 @@ const filteredProducts = useMemo(() => {
                 const status = statusConfig[product.status];
                 const profit = product.salePrice - product.costPrice;
                 const profitPercentage = product.costPrice > 0 ? ((profit / product.costPrice) * 100).toFixed(0) : '0';
-                
+
                 return (
-                  <tr 
+                  <tr
                     key={product.id}
                     className="border-b border-border/50 hover:bg-muted/30 transition-colors fade-in"
                     style={{ animationDelay: `${index * 30}ms` }}
@@ -773,28 +775,28 @@ const filteredProducts = useMemo(() => {
                         </div>
                       </div>
                     </td>
-                    
+
                     {/* التصنيف */}
                     <td className="py-3 px-3">
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
                         {product.category}
                       </span>
                     </td>
-                    
+
                     {/* الأسعار (شراء + بيع) فوق بعض */}
                     <td className="py-3 px-3">
                       <div className="flex flex-col text-sm">
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">شراء:</span>
+                          <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
                           <span className="text-muted-foreground">${product.costPrice}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">بيع:</span>
+                          <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
                           <span className="font-semibold text-foreground">${product.salePrice}</span>
                         </div>
                       </div>
                     </td>
-                    
+
                     {/* الربح */}
                     <td className="py-3 px-3">
                       <div className="flex flex-col">
@@ -802,7 +804,7 @@ const filteredProducts = useMemo(() => {
                         <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
                       </div>
                     </td>
-                    
+
                     {/* المخزون + الحالة */}
                     <td className="py-3 px-3">
                       <div className="flex flex-col gap-1.5">
@@ -823,18 +825,18 @@ const filteredProducts = useMemo(() => {
                         </span>
                       </div>
                     </td>
-                    
+
                     {/* الإجراءات (فوق بعض) */}
                     <td className="py-3 px-3">
                       <div className="flex flex-col items-center gap-1">
-                        <button 
+                        <button
                           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           onClick={() => openEditDialog(product)}
                           title="تعديل"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
                           onClick={() => openDeleteDialog(product)}
                           title="حذف"
@@ -864,29 +866,32 @@ const filteredProducts = useMemo(() => {
           <div className="space-y-4 py-4 pb-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">اسم المنتج *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                 <Input
-                  placeholder="مثال: iPhone 15 Pro"
+                  placeholder={t('products.exampleName')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">الباركود *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')}</label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="123456789012"
+                    placeholder={t('products.exampleBarcode')}
                     value={formData.barcode}
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                   />
-                  <Button variant="outline" onClick={openBarcodeScannerForForm} type="button">
-                    <ScanLine className="w-4 h-4" />
+                  <Button variant="outline" size="icon" onClick={() => {
+                    setScanTarget('form');
+                    setScannerOpen(true);
+                  }}>
+                    <Barcode className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
-                <select 
+                <select
                   className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -923,7 +928,7 @@ const filteredProducts = useMemo(() => {
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                 />
               </div>
-              
+
               {/* Unit Settings Collapsible */}
               <div className="sm:col-span-2">
                 <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
@@ -949,31 +954,31 @@ const filteredProducts = useMemo(() => {
                         trackByUnit: formData.trackByUnit,
                       }}
                       onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                      quantityInPieces={formData.trackByUnit === 'bulk' 
-                        ? formData.quantity * formData.conversionFactor 
+                      quantityInPieces={formData.trackByUnit === 'bulk'
+                        ? formData.quantity * formData.conversionFactor
                         : formData.quantity}
                       pieceCostPrice={formData.costPrice}
                     />
                   </CollapsibleContent>
                 </Collapsible>
               </div>
-              
+
               {/* Dynamic Fields based on store type (Fix #16) */}
               {fieldsConfig.expiryDate && (
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
                   <DatePicker
                     value={formData.expiryDate}
                     onChange={(date) => setFormData({ ...formData, expiryDate: date })}
-                    placeholder="اختر تاريخ الصلاحية"
+                    placeholder={t('products.selectExpiryDate')}
                   />
                 </div>
               )}
               {fieldsConfig.serialNumber && (
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">الرقم التسلسلي / IMEI</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
                   <Input
-                    placeholder="مثال: 123456789012345"
+                    placeholder={t('products.exampleSerial')}
                     value={formData.serialNumber}
                     onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
                   />
@@ -981,9 +986,9 @@ const filteredProducts = useMemo(() => {
               )}
               {fieldsConfig.warranty && (
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">مدة الضمان</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.warranty')}</label>
                   <Input
-                    placeholder="مثال: 12 شهر"
+                    placeholder={t('products.exampleWarranty')}
                     value={formData.warranty}
                     onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
                   />
@@ -1003,17 +1008,17 @@ const filteredProducts = useMemo(() => {
               {fieldsConfig.sizeColor && (
                 <>
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">المقاس</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
                     <Input
-                      placeholder="مثال: XL"
+                      placeholder={t('products.exampleSize')}
                       value={formData.size}
                       onChange={(e) => setFormData({ ...formData, size: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">اللون</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
                     <Input
-                      placeholder="مثال: أسود"
+                      placeholder={t('products.exampleColor')}
                       value={formData.color}
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                     />
@@ -1043,7 +1048,7 @@ const filteredProducts = useMemo(() => {
                       value={customFieldValues[field.id] || ''}
                       onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
                     >
-                      <option value="">اختر...</option>
+                      <option value="">{t('maintenance.select')}</option>
                       {field.options.map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
@@ -1053,9 +1058,9 @@ const filteredProducts = useMemo(() => {
                       type={field.type === 'number' ? 'number' : 'text'}
                       placeholder={field.placeholder || ''}
                       value={customFieldValues[field.id] || ''}
-                      onChange={(e) => setCustomFieldValues({ 
-                        ...customFieldValues, 
-                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value 
+                      onChange={(e) => setCustomFieldValues({
+                        ...customFieldValues,
+                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
                       })}
                     />
                   )}
@@ -1116,29 +1121,29 @@ const filteredProducts = useMemo(() => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              تعديل المنتج
+              {t('products.editProduct')}
             </DialogTitle>
-            <DialogDescription>تعديل بيانات المنتج</DialogDescription>
+            <DialogDescription>{t('products.pageSubtitle')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 pb-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">اسم المنتج *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">الباركود</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')}</label>
                 <Input
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
-                <select 
+                <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
+                <select
                   className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -1149,7 +1154,7 @@ const filteredProducts = useMemo(() => {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">الكمية</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
                 <Input
                   type="number"
                   value={formData.quantity || ''}
@@ -1157,7 +1162,7 @@ const filteredProducts = useMemo(() => {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ($)</label>
                 <Input
                   type="number"
                   value={formData.costPrice || ''}
@@ -1165,14 +1170,14 @@ const filteredProducts = useMemo(() => {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ($)</label>
                 <Input
                   type="number"
                   value={formData.salePrice || ''}
                   onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                 />
               </div>
-              
+
               {/* Unit Settings Collapsible */}
               <div className="sm:col-span-2">
                 <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
@@ -1183,7 +1188,7 @@ const filteredProducts = useMemo(() => {
                         إعدادات الوحدات (كرتونة / قطعة)
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {showUnitSettings ? 'إخفاء' : 'عرض'}
+                        {showUnitSettings ? t('common.hide') : t('common.show')}
                       </span>
                     </Button>
                   </CollapsibleTrigger>
@@ -1198,22 +1203,25 @@ const filteredProducts = useMemo(() => {
                         trackByUnit: formData.trackByUnit,
                       }}
                       onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                      quantityInPieces={formData.trackByUnit === 'bulk' 
-                        ? formData.quantity * formData.conversionFactor 
+                      quantityInPieces={formData.trackByUnit === 'bulk'
+                        ? formData.quantity * formData.conversionFactor
                         : formData.quantity}
                       pieceCostPrice={formData.costPrice}
                     />
                   </CollapsibleContent>
                 </Collapsible>
               </div>
-              
+
               <div className="sm:col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">تاريخ الصلاحية (اختياري)</label>
-                <Input
-                  type="date"
-                  value={formData.expiryDate}
-                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                />
+                <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    placeholder={t('products.selectExpiryDate')}
+                    value={formData.expiryDate}
+                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  />
+                </div>
               </div>
               {/* Custom Fields in Edit Dialog */}
               {customFields.map((field) => (
@@ -1237,9 +1245,9 @@ const filteredProducts = useMemo(() => {
                       type={field.type === 'number' ? 'number' : 'text'}
                       placeholder={field.placeholder || ''}
                       value={customFieldValues[field.id] || ''}
-                      onChange={(e) => setCustomFieldValues({ 
-                        ...customFieldValues, 
-                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value 
+                      onChange={(e) => setCustomFieldValues({
+                        ...customFieldValues,
+                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
                       })}
                     />
                   )}
@@ -1276,18 +1284,18 @@ const filteredProducts = useMemo(() => {
                     ) : (
                       <ImageIcon className="w-4 h-4 ml-2" />
                     )}
-                    إضافة صورة
+                    {t('products.chooseImage')}
                   </Button>
                 </div>
               </div>
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditProduct}>
                 <Save className="w-4 h-4 ml-2" />
-                حفظ التعديلات
+                {t('common.save')}
               </Button>
             </div>
           </div>
@@ -1298,15 +1306,15 @@ const filteredProducts = useMemo(() => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogTitle>{t('products.deleteConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف المنتج "{selectedProduct?.name}"؟ لا يمكن التراجع عن هذا الإجراء.
+              {t('products.deleteConfirm')} "{selectedProduct?.name}"?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90">
-              حذف
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1317,18 +1325,19 @@ const filteredProducts = useMemo(() => {
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={(barcode) => {
+          setScannerOpen(false);
           if (scanTarget === 'form') {
             setFormData((prev) => ({ ...prev, barcode }));
-            toast.success('تمت قراءة الباركود', { description: barcode });
+            toast.success(t('pos.scanned'), { description: barcode });
             return;
           }
 
           setSearchQuery(barcode);
           const product = products.find((p) => p.barcode === barcode);
           if (product) {
-            toast.success(`تم العثور على: ${product.name}`);
+            toast.success(`${t('common.found')}: ${product.name}`);
           } else {
-            toast.info(`الباركود: ${barcode}`, { description: 'لم يتم العثور على منتج' });
+            toast.info(`${t('pos.barcode')}: ${barcode}`, { description: t('pos.productNotFound') || 'Product not found' });
           }
         }}
       />
