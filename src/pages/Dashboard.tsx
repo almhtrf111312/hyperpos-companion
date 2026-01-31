@@ -278,7 +278,7 @@ export default function Dashboard() {
               <Banknote className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance') || 'رصيد الصندوق'}</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance')}</p>
               <p className="text-xl font-bold text-success">${stats.cashboxBalance.toLocaleString()}</p>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function Dashboard() {
               <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital') || 'رأس المال المتاح'}</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital')}</p>
               <p className={`text-xl font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                 ${stats.liquidCapital.toLocaleString()}
               </p>
@@ -309,14 +309,14 @@ export default function Dashboard() {
                 <TrendingDown className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <p className="text-sm text-destructive/80">{t('dashboard.deficit') || 'العجز'}</p>
+                <p className="text-sm text-destructive/80">{t('dashboard.deficit')}</p>
                 <p className="text-2xl font-bold text-destructive">
                   ${stats.deficit.toLocaleString()}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-destructive/80">{t('dashboard.deficitPercentage') || 'نسبة العجز'}</p>
+              <p className="text-sm text-destructive/80">{t('dashboard.deficitPercentage')}</p>
               <p className="text-xl font-bold text-destructive">{stats.deficitPercentage.toFixed(1)}%</p>
             </div>
           </div>

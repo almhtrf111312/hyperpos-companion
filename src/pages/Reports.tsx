@@ -96,7 +96,7 @@ export default function Reports() {
       setCloudExpenses(expenses);
     } catch (error) {
       console.error('Error loading cloud data for reports:', error);
-      toast.error('فشل في تحميل بيانات التقارير');
+      toast.error(t('reports.loadError'));
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +145,7 @@ export default function Reports() {
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
-    { id: 'distributor-inventory', label: 'جرد العهدة', icon: Truck },
+    { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
   ];
 
   // Calculate real data from stores
@@ -237,8 +237,8 @@ export default function Reports() {
       .sort((a, b) => b.total - a.total);
 
     // Find top product name
-    const topProduct = topProducts.length > 0 ? topProducts[0].name : 'لا يوجد';
-    const topCustomer = topCustomers.length > 0 ? topCustomers[0].name : 'لا يوجد';
+    const topProduct = topProducts.length > 0 ? topProducts[0].name : t('common.noData');
+    const topCustomer = topCustomers.length > 0 ? topCustomers[0].name : t('common.noData');
 
     return {
       summary: { totalSales, totalProfit, totalOrders, avgOrderValue, topProduct, topCustomer },
@@ -544,10 +544,10 @@ export default function Reports() {
           );
         }
       }
-      toast.success('تم تصدير التقرير بصيغة PDF بنجاح');
+      toast.success(t('reports.exportSuccessPDF'));
     } catch (error) {
       console.error('PDF export error:', error);
-      toast.error('فشل في تصدير التقرير');
+      toast.error(t('reports.exportError'));
     }
   }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners]);
 
@@ -645,10 +645,10 @@ export default function Reports() {
           );
         }
       }
-      toast.success('تم تصدير التقرير بصيغة Excel بنجاح');
+      toast.success(t('reports.exportSuccessExcel'));
     } catch (error) {
       console.error('Excel export error:', error);
-      toast.error('فشل في تصدير التقرير');
+      toast.error(t('reports.exportError'));
     }
   }, [dateRange, activeReport, reportData, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners]);
 
@@ -665,10 +665,10 @@ export default function Reports() {
         })),
         { start: dateRange.from, end: dateRange.to }
       );
-      toast.success('تم تصدير تقرير المصاريف بنجاح');
+      toast.success(t('reports.exportSuccessExcel'));
     } catch (error) {
       console.error('Expenses export error:', error);
-      toast.error('فشل في تصدير تقرير المصاريف');
+      toast.error(t('reports.exportError'));
     }
   }, [dateRange, expenseReportData]);
 
@@ -699,7 +699,7 @@ ${partnerExpenses.map(exp => {
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(report)}`;
     window.open(whatsappUrl, '_blank');
-    toast.success('تم فتح واتساب للمشاركة');
+    toast.success(t('reports.shareWhatsapp'));
   };
 
   const handleBackup = useCallback(async () => {
@@ -717,9 +717,9 @@ ${partnerExpenses.map(exp => {
     const success = await downloadJSON(filename, backupData);
 
     if (success) {
-      toast.success(isNativePlatform() ? 'تم حفظ النسخة الاحتياطية بنجاح' : 'تم إنشاء النسخة الاحتياطية بنجاح');
+      toast.success(t('reports.backupSuccess'));
     } else {
-      toast.error('فشل في إنشاء النسخة الاحتياطية');
+      toast.error(t('reports.backupError'));
     }
   }, [cloudInvoices, cloudProducts, cloudCustomers]);
 
@@ -739,7 +739,7 @@ ${partnerExpenses.map(exp => {
             {isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">جاري التحميل...</span>
+                <span className="text-sm">{t('common.loading')}</span>
               </div>
             )}
             <Button variant="outline" onClick={handleExportPDF} disabled={isLoading}>

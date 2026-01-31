@@ -34,7 +34,7 @@ export const translations = {
     'nav.stockTransfer': 'تحويل العهدة',
     'nav.reports': 'التقارير',
     'nav.settings': 'الإعدادات',
-    
+
     // Dashboard
     'dashboard.title': 'لوحة التحكم',
     'dashboard.welcome': 'مرحباً بك',
@@ -62,7 +62,7 @@ export const translations = {
     'dashboard.lowStockAlerts': 'تنبيهات المخزون',
     'dashboard.debtAlerts': 'تنبيهات الديون',
     'dashboard.quickActions': 'إجراءات سريعة',
-    
+
     // Quick Actions
     'quickActions.title': 'إجراءات سريعة',
     'quickActions.newInvoice': 'فاتورة جديدة',
@@ -79,7 +79,7 @@ export const translations = {
     'quickActions.addExpenseDesc': 'تسجيل مصروف جديد',
     'quickActions.inventory': 'جرد المخزون',
     'quickActions.inventoryDesc': 'فحص المخزون',
-    
+
     // Recent Invoices
     'recentInvoices.title': 'آخر الفواتير',
     'recentInvoices.viewAll': 'عرض الكل',
@@ -111,14 +111,14 @@ export const translations = {
     'recentInvoices.date': 'التاريخ',
     'recentInvoices.phone': 'الهاتف',
     'recentInvoices.paymentType': 'نوع الدفع',
-    
+
     // Top Products
     'topProducts.title': 'المنتجات الأكثر مبيعاً',
     'topProducts.fromInvoices': 'من الفواتير',
     'topProducts.noData': 'لا توجد بيانات مبيعات بعد',
     'topProducts.willAppear': 'ستظهر هنا المنتجات الأكثر مبيعاً',
     'topProducts.sold': 'مبيعة',
-    
+
     // Low Stock Alerts
     'lowStock.title': 'تنبيهات المخزون',
     'lowStock.critical': 'حرج',
@@ -126,7 +126,7 @@ export const translations = {
     'lowStock.minLevel': 'الحد الأدنى',
     'lowStock.remaining': 'متبقي',
     'lowStock.totalLowStock': 'إجمالي المنتجات منخفضة المخزون',
-    
+
     // Debt Alerts
     'debtAlerts.title': 'تنبيهات الديون',
     'debtAlerts.overdue': 'متأخرة',
@@ -135,10 +135,10 @@ export const translations = {
     'debtAlerts.overdueLabel': 'متأخر',
     'debtAlerts.dueToday': 'اليوم',
     'debtAlerts.dueSoon': 'قريباً',
-    
+
     // Sidebar
     'sidebar.systemDesc': 'نظام إدارة متكامل',
-    
+
     // Auth
     'auth.login': 'تسجيل الدخول',
     'auth.signup': 'إنشاء حساب',
@@ -159,11 +159,11 @@ export const translations = {
     'auth.loginSubtitle': 'سجل دخولك للمتابعة',
     'auth.signupSubtitle': 'أنشئ حسابك الجديد',
     'auth.loading': 'جاري التحميل...',
-    
+
     // Roles
     'role.admin': 'مشرف',
     'role.cashier': 'كاشير',
-    
+
     // Common
     'common.save': 'حفظ',
     'common.cancel': 'إلغاء',
@@ -201,7 +201,7 @@ export const translations = {
     'common.name': 'الاسم',
     'common.phone': 'الهاتف',
     'common.notes': 'ملاحظات',
-    
+
     // Products
     'products.title': 'المنتجات',
     'products.pageTitle': 'إدارة المنتجات',
@@ -241,7 +241,7 @@ export const translations = {
     'products.deleteConfirm': 'هل أنت متأكد من حذف هذا المنتج؟',
     'products.fillRequired': 'يرجى ملء جميع الحقول المطلوبة',
     'products.noProducts': 'لا توجد منتجات',
-    
+
     // Customers
     'customers.title': 'العملاء',
     'customers.pageTitle': 'إدارة العملاء',
@@ -270,7 +270,7 @@ export const translations = {
     'customers.createdAt': 'تاريخ التسجيل',
     'customers.noCustomers': 'لا يوجد عملاء',
     'customers.deleteConfirm': 'هل أنت متأكد من حذف هذا العميل؟',
-    
+
     // Invoices
     'invoices.title': 'الفواتير',
     'invoices.subtitle': 'عرض وإدارة جميع الفواتير',
@@ -304,7 +304,7 @@ export const translations = {
     'invoices.discount': 'الخصم',
     'invoices.total': 'الإجمالي',
     'invoices.profit': 'الربح',
-    
+
     // Debts
     'debts.title': 'الديون',
     'debts.pageTitle': 'إدارة الديون',
@@ -374,7 +374,7 @@ export const translations = {
     'debts.selectDueDate': 'يرجى تحديد تاريخ الاستحقاق',
     'debts.cashDebtCreated': 'تم إنشاء دين نقدي:',
     'debts.debtAddedSuccess': 'تم إضافة الدين بنجاح',
-    
+
     // Expenses
     'expenses.title': 'المصاريف',
     'expenses.pageTitle': 'المصاريف',
@@ -411,7 +411,7 @@ export const translations = {
     'expenses.interval': 'الفترة',
     'expenses.startDate': 'تاريخ البدء',
     'expenses.manageRecurring': 'إدارة المصاريف الثابتة',
-    
+
     // Partners
     'partners.title': 'الشركاء',
     'partners.pageTitle': 'إدارة الشركاء',
@@ -533,13 +533,13 @@ export const translations = {
     'partners.confirmDeposit': 'تأكيد الإيداع',
     'partners.deleteConfirmation': 'هل أنت متأكد من حذف الشريك',
     'partners.total': 'الإجمالي',
-    
+
     // Common Extra
     'common.email': 'البريد الإلكتروني',
     'common.saveChanges': 'حفظ التغييرات',
     'common.optional': 'اختياري',
     'common.confirmDelete': 'تأكيد الحذف',
-    
+
     // Cash Shifts
     'cashShifts.title': 'الصندوق والورديات',
     'cashShifts.pageTitle': 'الصندوق والورديات',
@@ -585,7 +585,7 @@ export const translations = {
     'cashShifts.shiftClosed': 'تم إغلاق الوردية بنجاح',
     'cashShifts.shiftClosedWithDiscrepancy': 'تم إغلاق الوردية',
     'cashShifts.enterValidAmount': 'يرجى إدخال مبلغ صحيح',
-    
+
     // Cashbox and Services keys are defined in Extended Keys section below
     // POS
     'pos.title': 'نقطة البيع',
@@ -662,7 +662,7 @@ export const translations = {
     'pos.name': 'الاسم',
     'pos.phone': 'رقم الهاتف',
     'pos.email': 'البريد الإلكتروني',
-    
+
     // Reports
     'reports.title': 'التقارير',
     'reports.pageTitle': 'التقارير والإحصائيات',
@@ -704,7 +704,15 @@ export const translations = {
     'reports.currentBalance': 'الرصيد الحالي',
     'reports.expenseBreakdown': 'توزيع المصاريف',
     'reports.noExpenses': 'لا توجد مصاريف',
-    
+    'reports.distributorInventory': 'جرد العهدة',
+    'reports.loadError': 'فشل في تحميل بيانات التقارير',
+    'reports.exportSuccessPDF': 'تم تصدير التقرير بصيغة PDF بنجاح',
+    'reports.exportSuccessExcel': 'تم تصدير التقرير بصيغة Excel بنجاح',
+    'reports.exportError': 'فشل في تصدير التقرير',
+    'reports.shareWhatsapp': 'تم فتح واتساب للمشاركة',
+    'reports.backupSuccess': 'تم إنشاء النسخة الاحتياطية بنجاح',
+    'reports.backupError': 'فشل في إنشاء النسخة الاحتياطية',
+
     // Settings
     'settings.title': 'الإعدادات',
     'settings.general': 'عام',
@@ -847,11 +855,11 @@ export const translations = {
     'settings.noBackups': 'لا توجد نسخ احتياطية',
     'settings.deleteBackup': 'حذف النسخة',
     'settings.confirmDeleteBackup': 'هل أنت متأكد من حذف هذه النسخة الاحتياطية؟',
-    
+
     // Common Extra
     'common.deleted': 'تم الحذف',
     'common.saved': 'تم الحفظ',
-    
+
     // Additional Settings Keys
     'settings.backupDeleted': 'تم حذف النسخة الاحتياطية',
     'settings.exportComplete': 'اكتمل التصدير',
@@ -894,7 +902,7 @@ export const translations = {
     'settings.selectRole': 'اختر الصلاحية',
     'settings.role': 'الصلاحية',
     'settings.confirmDeleteUser': 'هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.',
-    
+
     // Expenses Page - Extended Keys (non-duplicate only)
     'expenses.subtitle': 'إدارة المصاريف والنفقات الشهرية',
     'expenses.recurringExpense': 'مصروف ثابت',
@@ -936,7 +944,7 @@ export const translations = {
     'expenses.expensePaid': 'تم دفع المصروف بنجاح',
     'expenses.paymentSkipped': 'تم تخطي هذه الدفعة',
     'expenses.fixedExpenseDeleted': 'تم حذف المصروف الثابت',
-    
+
     // Services Page - Extended Keys
     'services.title': 'إدارة الصيانة',
     'services.subtitle': 'تتبع وإدارة طلبات إصلاح الأجهزة',
@@ -1020,7 +1028,7 @@ export const translations = {
     'services.deviceTypes.computer': 'كمبيوتر',
     'services.deviceTypes.smartwatch': 'ساعة ذكية',
     'services.deviceTypes.other': 'أخرى',
-    
+
     // Cashbox Page - Extended Keys
     'cashbox.title': 'الصندوق',
     'cashbox.subtitle': 'إدارة الورديات والمصالحة اليومية',
@@ -1075,7 +1083,7 @@ export const translations = {
     'cashbox.shiftClosedWithSurplus': 'تم إغلاق الوردية مع فائض: {amount}',
     'cashbox.shiftClosedWithShortage': 'تم إغلاق الوردية مع عجز: {amount}',
     'cashbox.shiftClosedMatched': 'تم إغلاق الوردية بنجاح - الصندوق متطابق',
-    
+
     // Maintenance Panel
     'maintenance.quickService': 'خدمة صيانة سريعة',
     'maintenance.directBilling': 'فوترة مباشرة للخدمات السريعة',
@@ -1132,7 +1140,7 @@ export const translations = {
     'maintenance.deviceTypes.headphones': 'سماعات',
     'maintenance.deviceTypes.monitor': 'شاشة',
     'maintenance.deviceTypes.other': 'أخرى',
-    
+
     // Scanned Product Dialog
     'scannedProduct.productFound': 'تم العثور على المنتج',
     'scannedProduct.availableStock': 'المخزون المتاح',
@@ -1140,7 +1148,7 @@ export const translations = {
     'scannedProduct.barcode': 'الباركود',
     'scannedProduct.close': 'إغلاق',
     'scannedProduct.addToCart': 'إضافة للسلة',
-    
+
     // Keyboard Shortcuts
     'shortcuts.title': 'اختصارات لوحة المفاتيح',
     'shortcuts.cashSale': 'بيع نقدي',
@@ -1150,7 +1158,7 @@ export const translations = {
     'shortcuts.scanBarcode': 'مسح الباركود',
     'shortcuts.toggleMode': 'تبديل الوضع (منتجات/صيانة)',
     'shortcuts.useToSpeedUp': 'استخدم هذه الاختصارات لتسريع عملية البيع',
-    
+
     // Data Reset
     'settings.resetData': 'تصفير البيانات',
     'settings.resetDataWarning': 'تحذير! هذا الإجراء لا يمكن التراجع عنه',
@@ -1168,7 +1176,7 @@ export const translations = {
     'settings.confirmReset': 'تأكيد التصفير',
     'settings.bossPanel': 'لوحة المالك',
     'settings.goToBossPanel': 'الذهاب للوحة التحكم',
-    
+
     // Common items for reset section
     'common.products': 'المنتجات',
     'common.invoices': 'الفواتير',
@@ -1178,14 +1186,14 @@ export const translations = {
     'common.partners': 'الشركاء',
     'common.services': 'الخدمات',
     'common.categories': 'الفئات',
-    
+
     // License Notifications
     'notifications.licenseStatus': 'حالة الترخيص',
     'notifications.licenseValidUntil': 'الترخيص صالح حتى',
     'notifications.licenseExpiring': 'الترخيص ينتهي قريباً',
     'notifications.daysRemaining': 'متبقي {days} يوم',
     'notifications.licenseExpired': 'انتهى الترخيص',
-    
+
   },
   en: {
     // Navigation
@@ -1202,7 +1210,7 @@ export const translations = {
     'nav.cashShifts': 'Cash & Shifts',
     'nav.reports': 'Reports',
     'nav.settings': 'Settings',
-    
+
     // Dashboard
     'dashboard.title': 'Dashboard',
     'dashboard.welcome': 'Welcome',
@@ -1230,7 +1238,7 @@ export const translations = {
     'dashboard.lowStockAlerts': 'Low Stock Alerts',
     'dashboard.debtAlerts': 'Debt Alerts',
     'dashboard.quickActions': 'Quick Actions',
-    
+
     // Quick Actions
     'quickActions.title': 'Quick Actions',
     'quickActions.newInvoice': 'New Invoice',
@@ -1247,7 +1255,7 @@ export const translations = {
     'quickActions.addExpenseDesc': 'Record new expense',
     'quickActions.inventory': 'Inventory Check',
     'quickActions.inventoryDesc': 'Check stock',
-    
+
     // Recent Invoices
     'recentInvoices.title': 'Recent Invoices',
     'recentInvoices.viewAll': 'View All',
@@ -1279,14 +1287,14 @@ export const translations = {
     'recentInvoices.date': 'Date',
     'recentInvoices.phone': 'Phone',
     'recentInvoices.paymentType': 'Payment Type',
-    
+
     // Top Products
     'topProducts.title': 'Top Selling Products',
     'topProducts.fromInvoices': 'From invoices',
     'topProducts.noData': 'No sales data yet',
     'topProducts.willAppear': 'Top products will appear here',
     'topProducts.sold': 'sold',
-    
+
     // Low Stock Alerts
     'lowStock.title': 'Low Stock Alerts',
     'lowStock.critical': 'Critical',
@@ -1294,7 +1302,7 @@ export const translations = {
     'lowStock.minLevel': 'Min Level',
     'lowStock.remaining': 'remaining',
     'lowStock.totalLowStock': 'Total low stock products',
-    
+
     // Debt Alerts
     'debtAlerts.title': 'Debt Alerts',
     'debtAlerts.overdue': 'overdue',
@@ -1303,10 +1311,10 @@ export const translations = {
     'debtAlerts.overdueLabel': 'Overdue',
     'debtAlerts.dueToday': 'Today',
     'debtAlerts.dueSoon': 'Soon',
-    
+
     // Sidebar
     'sidebar.systemDesc': 'Integrated Management System',
-    
+
     // Auth
     'auth.login': 'Login',
     'auth.signup': 'Sign Up',
@@ -1327,11 +1335,11 @@ export const translations = {
     'auth.loginSubtitle': 'Sign in to continue',
     'auth.signupSubtitle': 'Create your new account',
     'auth.loading': 'Loading...',
-    
+
     // Roles
     'role.admin': 'Admin',
     'role.cashier': 'Cashier',
-    
+
     // Common
     'common.save': 'Save',
     'common.cancel': 'Cancel',
@@ -1369,7 +1377,7 @@ export const translations = {
     'common.name': 'Name',
     'common.phone': 'Phone',
     'common.notes': 'Notes',
-    
+
     // Products
     'products.title': 'Products',
     'products.pageTitle': 'Product Management',
@@ -1409,7 +1417,7 @@ export const translations = {
     'products.deleteConfirm': 'Are you sure you want to delete this product?',
     'products.fillRequired': 'Please fill all required fields',
     'products.noProducts': 'No products',
-    
+
     // Customers
     'customers.title': 'Customers',
     'customers.pageTitle': 'Customer Management',
@@ -1438,7 +1446,7 @@ export const translations = {
     'customers.createdAt': 'Registration Date',
     'customers.noCustomers': 'No customers',
     'customers.deleteConfirm': 'Are you sure you want to delete this customer?',
-    
+
     // Invoices
     'invoices.title': 'Invoices',
     'invoices.subtitle': 'View and manage all invoices',
@@ -1472,7 +1480,7 @@ export const translations = {
     'invoices.discount': 'Discount',
     'invoices.total': 'Total',
     'invoices.profit': 'Profit',
-    
+
     // Debts
     'debts.title': 'Debts',
     'debts.pageTitle': 'Debt Management',
@@ -1542,7 +1550,7 @@ export const translations = {
     'debts.selectDueDate': 'Please select due date',
     'debts.cashDebtCreated': 'Cash debt created:',
     'debts.debtAddedSuccess': 'Debt added successfully',
-    
+
     // Expenses
     'expenses.title': 'Expenses',
     'expenses.pageTitle': 'Expenses',
@@ -1579,7 +1587,7 @@ export const translations = {
     'expenses.interval': 'Interval',
     'expenses.startDate': 'Start Date',
     'expenses.manageRecurring': 'Manage Recurring Expenses',
-    
+
     // Partners
     'partners.title': 'Partners',
     'partners.pageTitle': 'Partner Management',
@@ -1672,7 +1680,7 @@ export const translations = {
     'partners.enterCapitalAmount': 'Enter capital amount',
     'partners.noPartners': 'No partners',
     'partners.addFirstPartner': 'Add your first partner to start',
-    
+
     // Cash Shifts
     'cashShifts.title': 'Cash & Shifts',
     'cashShifts.pageTitle': 'Cash & Shifts',
@@ -1718,7 +1726,7 @@ export const translations = {
     'cashShifts.shiftClosed': 'Shift closed successfully',
     'cashShifts.shiftClosedWithDiscrepancy': 'Shift closed',
     'cashShifts.enterValidAmount': 'Please enter a valid amount',
-    
+
     // Cashbox and Services keys are defined in Extended Keys section below
     // POS
     'pos.title': 'Point of Sale',
@@ -1795,7 +1803,7 @@ export const translations = {
     'pos.name': 'Name',
     'pos.phone': 'Phone Number',
     'pos.email': 'Email',
-    
+
     // Reports
     'reports.title': 'Reports',
     'reports.pageTitle': 'Reports & Statistics',
@@ -1837,7 +1845,7 @@ export const translations = {
     'reports.currentBalance': 'Current Balance',
     'reports.expenseBreakdown': 'Expense Breakdown',
     'reports.noExpenses': 'No expenses',
-    
+
     // Settings
     'settings.title': 'Settings',
     'settings.general': 'General',
@@ -2021,7 +2029,7 @@ export const translations = {
     'settings.selectRole': 'Select Role',
     'settings.role': 'Role',
     'settings.confirmDeleteUser': 'Are you sure you want to delete this user? This action cannot be undone.',
-    
+
     // Expenses Page - Extended Keys (English)
     'expenses.subtitle': 'Manage expenses and monthly costs',
     'expenses.recurringExpense': 'Fixed Expense',
@@ -2063,7 +2071,7 @@ export const translations = {
     'expenses.expensePaid': 'Expense paid successfully',
     'expenses.paymentSkipped': 'Payment skipped',
     'expenses.fixedExpenseDeleted': 'Fixed expense deleted',
-    
+
     // Services Page - Extended Keys (English)
     'services.title': 'Service Management',
     'services.subtitle': 'Track and manage device repair requests',
@@ -2147,7 +2155,7 @@ export const translations = {
     'services.deviceTypes.computer': 'Computer',
     'services.deviceTypes.smartwatch': 'Smart Watch',
     'services.deviceTypes.other': 'Other',
-    
+
     // Cashbox Page - Extended Keys (English)
     'cashbox.title': 'Cashbox',
     'cashbox.subtitle': 'Shift management and daily reconciliation',
@@ -2202,7 +2210,7 @@ export const translations = {
     'cashbox.shiftClosedWithSurplus': 'Shift closed with surplus: {amount}',
     'cashbox.shiftClosedWithShortage': 'Shift closed with shortage: {amount}',
     'cashbox.shiftClosedMatched': 'Shift closed successfully - Cash box matched',
-    
+
     // Maintenance Panel
     'maintenance.quickService': 'Quick Maintenance Service',
     'maintenance.directBilling': 'Direct billing for quick services',
@@ -2259,7 +2267,7 @@ export const translations = {
     'maintenance.deviceTypes.headphones': 'Headphones',
     'maintenance.deviceTypes.monitor': 'Monitor',
     'maintenance.deviceTypes.other': 'Other',
-    
+
     // Scanned Product Dialog
     'scannedProduct.productFound': 'Product Found',
     'scannedProduct.availableStock': 'Available Stock',
@@ -2267,7 +2275,7 @@ export const translations = {
     'scannedProduct.barcode': 'Barcode',
     'scannedProduct.close': 'Close',
     'scannedProduct.addToCart': 'Add to Cart',
-    
+
     // Keyboard Shortcuts
     'shortcuts.title': 'Keyboard Shortcuts',
     'shortcuts.cashSale': 'Cash Sale',
@@ -2277,7 +2285,7 @@ export const translations = {
     'shortcuts.scanBarcode': 'Scan Barcode',
     'shortcuts.toggleMode': 'Toggle Mode (Products/Maintenance)',
     'shortcuts.useToSpeedUp': 'Use these shortcuts to speed up sales',
-    
+
     // Data Reset
     'settings.resetData': 'Reset Data',
     'settings.resetDataWarning': 'Warning! This action cannot be undone',
@@ -2295,7 +2303,7 @@ export const translations = {
     'settings.confirmReset': 'Confirm Reset',
     'settings.bossPanel': 'Owner Panel',
     'settings.goToBossPanel': 'Go to Control Panel',
-    
+
     // Common items for reset section
     'common.products': 'Products',
     'common.invoices': 'Invoices',
@@ -2305,14 +2313,832 @@ export const translations = {
     'common.partners': 'Partners',
     'common.services': 'Services',
     'common.categories': 'Categories',
-    
+
     // License Notifications
     'notifications.licenseStatus': 'License Status',
     'notifications.licenseValidUntil': 'License valid until',
     'notifications.licenseExpiring': 'License expiring soon',
     'notifications.daysRemaining': '{days} days remaining',
     'notifications.licenseExpired': 'License expired',
-    
+
+  },
+  en: {
+    // Navigation
+    'nav.pos': 'POS',
+    'nav.dashboard': 'Dashboard',
+    'nav.products': 'Products',
+    'nav.customers': 'Customers',
+    'nav.debts': 'Debts',
+    'nav.services': 'Services',
+    'nav.invoices': 'Invoices',
+    'nav.expenses': 'Expenses',
+    'nav.partners': 'Partners',
+    'nav.cashbox': 'Cashbox',
+    'nav.cashShifts': 'Cash & Shifts',
+    'nav.warehouses': 'Warehouses',
+    'nav.stockTransfer': 'Stock Transfer',
+    'nav.reports': 'Reports',
+    'nav.settings': 'Settings',
+
+    // Dashboard
+    'dashboard.title': 'Dashboard',
+    'dashboard.welcome': 'Welcome',
+    'dashboard.synced': 'Synced',
+    'dashboard.netProfit': 'Net Profit',
+    'dashboard.profitMargin': 'Margin',
+    'dashboard.dueDebts': 'Due Debts',
+    'dashboard.client': 'Client',
+    'dashboard.customersThisMonth': 'Customers This Month',
+    'dashboard.uniqueCustomers': 'Unique Customers',
+    'dashboard.inventoryValue': 'Inventory Value',
+    'dashboard.totalCapital': 'Total Capital',
+    'dashboard.availableCapital': 'Available Capital',
+    'dashboard.cashboxBalance': 'Cashbox Balance',
+    'dashboard.liquidCapital': 'Liquid Capital',
+    'dashboard.deficit': 'Deficit',
+    'dashboard.deficitPercentage': 'Deficit %',
+    'dashboard.invoice': 'Invoice',
+    'dashboard.totalSales': 'Total Sales',
+    'dashboard.todaySales': 'Today\'s Sales',
+    'dashboard.totalCustomers': 'Total Customers',
+    'dashboard.totalProducts': 'Total Products',
+    'dashboard.recentInvoices': 'Recent Invoices',
+    'dashboard.topProducts': 'Top Products',
+    'dashboard.lowStockAlerts': 'Low Stock Alerts',
+    'dashboard.debtAlerts': 'Debt Alerts',
+    'dashboard.quickActions': 'Quick Actions',
+
+    // Quick Actions
+    'quickActions.title': 'Quick Actions',
+    'quickActions.newInvoice': 'New Invoice',
+    'quickActions.newInvoiceDesc': 'Create sales invoice',
+    'quickActions.newProduct': 'New Product',
+    'quickActions.newProductDesc': 'Add product to inventory',
+    'quickActions.newCustomer': 'New Customer',
+    'quickActions.newCustomerDesc': 'Register new client',
+    'quickActions.recordPayment': 'Record Payment',
+    'quickActions.recordPaymentDesc': 'Register debt payment',
+    'quickActions.maintenanceRequest': 'Maintenance',
+    'quickActions.maintenanceRequestDesc': 'New service request',
+    'quickActions.addExpense': 'Add Expense',
+    'quickActions.addExpenseDesc': 'Register new expense',
+    'quickActions.inventory': 'Stock Check',
+    'quickActions.inventoryDesc': 'Verify inventory',
+
+    // Recent Invoices
+    'recentInvoices.title': 'Recent Invoices',
+    'recentInvoices.viewAll': 'View All',
+    'recentInvoices.noInvoices': 'No invoices yet',
+    'recentInvoices.startNew': 'Start by creating a new invoice from POS',
+    'recentInvoices.goToPOS': 'Go to POS',
+    'recentInvoices.invoiceNumber': 'Invoice #',
+    'recentInvoices.customer': 'Customer',
+    'recentInvoices.amount': 'Amount',
+    'recentInvoices.status': 'Status',
+    'recentInvoices.time': 'Time',
+    'recentInvoices.actions': 'Actions',
+    'recentInvoices.viewDetails': 'View Details',
+    'recentInvoices.copyNumber': 'Copy Number',
+    'recentInvoices.edit': 'Edit',
+    'recentInvoices.delete': 'Delete',
+    'recentInvoices.completed': 'Completed',
+    'recentInvoices.pending': 'Pending',
+    'recentInvoices.cancelled': 'Cancelled',
+    'recentInvoices.products': 'Products',
+    'recentInvoices.quantity': 'Qty',
+    'recentInvoices.discount': 'Discount',
+    'recentInvoices.total': 'Total',
+    'recentInvoices.cash': 'Cash',
+    'recentInvoices.credit': 'Credit',
+    'recentInvoices.print': 'Print',
+    'recentInvoices.close': 'Close',
+    'recentInvoices.details': 'Invoice Details',
+    'recentInvoices.date': 'Date',
+    'recentInvoices.phone': 'Phone',
+    'recentInvoices.paymentType': 'Payment Type',
+
+    // Top Products
+    'topProducts.title': 'Top Selling Products',
+    'topProducts.fromInvoices': 'Based on invoices',
+    'topProducts.noData': 'No sales data yet',
+    'topProducts.willAppear': 'Top products will appear here',
+    'topProducts.sold': 'Sold',
+
+    // Low Stock Alerts
+    'lowStock.title': 'Low Stock Alerts',
+    'lowStock.critical': 'Critical',
+    'lowStock.viewAll': 'View All',
+    'lowStock.minLevel': 'Min Level',
+    'lowStock.remaining': 'Remaining',
+    'lowStock.totalLowStock': 'Total Low Stock Items',
+
+    // Debt Alerts
+    'debtAlerts.title': 'Debt Alerts',
+    'debtAlerts.overdue': 'Overdue',
+    'debtAlerts.noDebts': 'No overdue debts',
+    'debtAlerts.viewAllDebts': 'View All Debts',
+    'debtAlerts.overdueLabel': 'Overdue',
+    'debtAlerts.dueToday': 'Due Today',
+    'debtAlerts.dueSoon': 'Due Soon',
+
+    // Sidebar
+    'sidebar.systemDesc': 'Integrated Management System',
+
+    // Auth
+    'auth.login': 'Login',
+    'auth.signup': 'Sign Up',
+    'auth.logout': 'Logout',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.confirmPassword': 'Confirm Password',
+    'auth.fullName': 'Full Name',
+    'auth.forgotPassword': 'Forgot Password?',
+    'auth.noAccount': 'Don\'t have an account?',
+    'auth.hasAccount': 'Already have an account?',
+    'auth.loginSuccess': 'Logged in successfully',
+    'auth.signupSuccess': 'Account created successfully',
+    'auth.logoutSuccess': 'Logged out successfully',
+    'auth.invalidCredentials': 'Invalid credentials',
+    'auth.passwordMismatch': 'Passwords do not match',
+    'auth.welcome': 'Welcome to FlowPOS Pro',
+    'auth.loginSubtitle': 'Login to continue',
+    'auth.signupSubtitle': 'Create your new account',
+    'auth.loading': 'Loading...',
+
+    // Roles
+    'role.admin': 'Admin',
+    'role.cashier': 'Cashier',
+
+    // Common
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.delete': 'Delete',
+    'common.edit': 'Edit',
+    'common.add': 'Add',
+    'common.search': 'Search',
+    'common.loading': 'Loading...',
+    'common.error': 'Error occurred',
+    'common.success': 'Success',
+    'common.confirm': 'Confirm',
+    'common.back': 'Back',
+    'common.next': 'Next',
+    'common.previous': 'Previous',
+    'common.close': 'Close',
+    'common.yes': 'Yes',
+    'common.no': 'No',
+    'common.saving': 'Saving...',
+    'common.view': 'View',
+    'common.print': 'Print',
+    'common.share': 'Share',
+    'common.whatsapp': 'WhatsApp',
+    'common.all': 'All',
+    'common.filter': 'Filter',
+    'common.noData': 'No data',
+    'common.actions': 'Actions',
+    'common.export': 'Export',
+    'common.import': 'Import',
+    'common.refresh': 'Refresh',
+    'common.status': 'Status',
+    'common.date': 'Date',
+    'common.time': 'Time',
+    'common.amount': 'Amount',
+    'common.total': 'Total',
+    'common.name': 'Name',
+    'common.phone': 'Phone',
+    'common.notes': 'Notes',
+    'common.email': 'Email',
+    'common.saveChanges': 'Save Changes',
+    'common.optional': 'Optional',
+    'common.confirmDelete': 'Confirm Delete',
+    'common.products': 'Products',
+    'common.invoices': 'Invoices',
+    'common.customers': 'Customers',
+    'common.debts': 'Debts',
+    'common.expenses': 'Expenses',
+    'common.partners': 'Partners',
+    'common.services': 'Services',
+    'common.categories': 'Categories',
+
+    // Products
+    'products.title': 'Products',
+    'products.pageTitle': 'Product Management',
+    'products.pageSubtitle': 'Manage inventory and pricing',
+    'products.addProduct': 'Add Product',
+    'products.editProduct': 'Edit Product',
+    'products.categories': 'Categories',
+    'products.all': 'All',
+    'products.total': 'Total',
+    'products.available': 'Available',
+    'products.low': 'Low Stock',
+    'products.outOfStock': 'Out of Stock',
+    'products.searchPlaceholder': 'Search by name or barcode...',
+    'products.name': 'Product Name',
+    'products.barcode': 'Barcode',
+    'products.category': 'Category',
+    'products.stock': 'Stock',
+    'products.lowStock': 'Low Stock',
+    'products.costPrice': 'Cost Price',
+    'products.salePrice': 'Sale Price',
+    'products.quantity': 'Quantity',
+    'products.description': 'Description',
+    'products.image': 'Image',
+    'products.chooseImage': 'Choose Image',
+    'products.takePhoto': 'Take Photo',
+    'products.removeImage': 'Remove Image',
+    'products.serialNumber': 'Serial Number',
+    'products.warranty': 'Warranty',
+    'products.wholesalePrice': 'Wholesale Price',
+    'products.size': 'Size',
+    'products.color': 'Color',
+    'products.minStockLevel': 'Alert Level',
+    'products.expiryDate': 'Expiry Date',
+    'products.addSuccess': 'Product added successfully',
+    'products.editSuccess': 'Product updated successfully',
+    'products.deleteSuccess': 'Product deleted successfully',
+    'products.deleteConfirm': 'Are you sure you want to delete this product?',
+    'products.fillRequired': 'Please fill all required fields',
+    'products.noProducts': 'No products found',
+
+    // Customers
+    'customers.title': 'Customers',
+    'customers.pageTitle': 'Customer Management',
+    'customers.pageSubtitle': 'Customer list and debts',
+    'customers.addCustomer': 'Add Customer',
+    'customers.editCustomer': 'Edit Customer',
+    'customers.name': 'Customer Name',
+    'customers.phone': 'Phone Number',
+    'customers.email': 'Email',
+    'customers.address': 'Address',
+    'customers.balance': 'Balance',
+    'customers.totalPurchases': 'Total Purchases',
+    'customers.totalDebt': 'Total Debt',
+    'customers.total': 'Total',
+    'customers.debtors': 'Debtors',
+    'customers.debts': 'Debts',
+    'customers.purchases': 'Purchases',
+    'customers.searchPlaceholder': 'Search by name or phone...',
+    'customers.addSuccess': 'Customer added successfully',
+    'customers.editSuccess': 'Customer updated successfully',
+    'customers.deleteSuccess': 'Customer deleted successfully',
+    'customers.fillRequired': 'Please fill required fields',
+    'customers.invoices': 'Invoice',
+    'customers.debtor': 'Debtor',
+    'customers.details': 'Customer Details',
+    'customers.createdAt': 'Joined Date',
+    'customers.noCustomers': 'No customers found',
+    'customers.deleteConfirm': 'Are you sure you want to delete this customer?',
+
+    // Invoices
+    'invoices.title': 'Invoices',
+    'invoices.subtitle': 'View and manage all invoices',
+    'invoices.totalInvoices': 'Total Invoices',
+    'invoices.todaySales': 'Today\'s Sales',
+    'invoices.pendingDebts': 'Pending Debts',
+    'invoices.totalProfit': 'Total Profit',
+    'invoices.searchPlaceholder': 'Search name or invoice #...',
+    'invoices.invoiceType': 'Invoice Type',
+    'invoices.paymentMethod': 'Payment Method',
+    'invoices.sales': 'Sales',
+    'invoices.maintenance': 'Maintenance',
+    'invoices.cash': 'Cash',
+    'invoices.credit': 'Credit',
+    'invoices.unpaid': 'Unpaid',
+    'invoices.markAsPaid': 'Mark as Paid',
+    'invoices.deleteInvoice': 'Delete Invoice',
+    'invoices.deleteConfirm': 'Are you sure? This cannot be undone.',
+    'invoices.deleteSuccess': 'Invoice deleted successfully',
+    'invoices.statusUpdated': 'Invoice status updated',
+    'invoices.noInvoices': 'No invoices found',
+    'invoices.details': 'Invoice Details',
+    'invoices.invoiceNumber': 'Invoice #',
+    'invoices.date': 'Date',
+    'invoices.customer': 'Customer',
+    'invoices.phone': 'Phone',
+    'invoices.type': 'Type',
+    'invoices.payment': 'Payment',
+    'invoices.service': 'Service',
+    'invoices.products': 'Products',
+    'invoices.discount': 'Discount',
+    'invoices.total': 'Total',
+    'invoices.profit': 'Profit',
+
+    // Debts
+    'debts.title': 'Debts',
+    'debts.pageTitle': 'Debt Management',
+    'debts.pageSubtitle': 'Track and manage customer debts',
+    'debts.addDebt': 'Add Cash Debt',
+    'debts.addDebtDesc': 'Add new debt without invoice',
+    'debts.totalDebt': 'Total Debt',
+    'debts.remaining': 'Remaining',
+    'debts.paid': 'Paid',
+    'debts.overdue': 'Overdue',
+    'debts.customersInDebt': 'Debtors',
+    'debts.overdueDebts': 'Overdue Debts',
+    'debts.paidThisMonth': 'Paid This Month',
+    'debts.payDebt': 'Pay',
+    'debts.debtHistory': 'Debt History',
+    'debts.amount': 'Amount ($) *',
+    'debts.dueDate': 'Due Date *',
+    'debts.status': 'Status',
+    'debts.pending': 'Pending',
+    'debts.customerName': 'Customer Name *',
+    'debts.customerPhone': 'Phone Number *',
+    'debts.progress': 'Progress',
+    'debts.paidAmount': 'Paid Amount',
+    'debts.totalAmount': 'Total Amount',
+    'debts.remainingAmount': 'Remaining Amount',
+    'debts.cashDebt': 'Cash Debt',
+    'debts.recordPayment': 'Record Payment',
+    'debts.paymentAmount': 'Payment Amount',
+    'debts.paymentRecorded': 'Payment recorded successfully',
+    'debts.debtAdded': 'Cash debt added successfully',
+    'debts.fillRequired': 'Please fill all required fields',
+    'debts.specifyDueDate': 'Please specify due date',
+    'debts.amountExceeds': 'Amount exceeds remaining debt',
+    'debts.enterValidAmount': 'Please enter a valid amount',
+    'debts.status.due': 'Due',
+    'debts.status.partiallyPaid': 'Partially Paid',
+    'debts.status.overdue': 'Overdue',
+    'debts.status.fullyPaid': 'Fully Paid',
+    'debts.filters.all': 'All',
+    'debts.filters.due': 'Due',
+    'debts.filters.partial': 'Partial',
+    'debts.filters.overdue': 'Overdue',
+    'debts.filters.paid': 'Fully Paid',
+    'debts.statusDue': 'Due',
+    'debts.statusPartiallyPaid': 'Partially Paid',
+    'debts.statusOverdue': 'Overdue',
+    'debts.statusFullyPaid': 'Fully Paid',
+    'debts.subtitle': 'Track customer debts',
+    'debts.total': 'Total',
+    'debts.addCashDebt': 'Add Cash Debt',
+    'debts.searchPlaceholder': 'Search name or phone...',
+    'debts.cash': 'Cash',
+    'debts.payment': 'Payment',
+    'debts.addDebtWithoutInvoice': 'Add Debt (No Invoice)',
+    'debts.notesPlaceholder': 'Extra notes...',
+    'debts.recordPaymentFor': 'Record Payment for',
+    'debts.paidSoFar': 'Paid so far',
+    'debts.payFull': 'Pay Full',
+    'debts.payHalf': 'Pay Half',
+    'debts.confirmPayment': 'Confirm Payment',
+    'debts.debtDetails': 'Debt Details',
+    'debts.invoiceId': 'Invoice #',
+    'debts.createdAt': 'Created At',
+    'debts.amountExceedsRemaining': 'Amount exceeds remaining',
+    'debts.paymentSuccess': 'Payment recorded',
+    'debts.fillRequiredFields': 'Please fill required fields',
+    'debts.selectDueDate': 'Please select due date',
+    'debts.cashDebtCreated': 'Cash debt created:',
+    'debts.debtAddedSuccess': 'Debt added successfully',
+
+    // Expenses
+    'expenses.title': 'Expenses',
+    'expenses.pageTitle': 'Expenses',
+    'expenses.pageSubtitle': 'Manage monthly expenses',
+    'expenses.addExpense': 'Add Expense',
+    'expenses.addRecurring': 'Recurring Expense',
+    'expenses.type': 'Expense Type *',
+    'expenses.amount': 'Amount ($) *',
+    'expenses.date': 'Date',
+    'expenses.notes': 'Notes',
+    'expenses.noExpenses': 'No expenses recorded',
+    'expenses.startAdding': 'Start adding expenses',
+    'expenses.thisMonth': 'This Month',
+    'expenses.monthlyCount': 'Count',
+    'expenses.total': 'Total',
+    'expenses.recurring': 'Recurring',
+    'expenses.monthlyBreakdown': 'Monthly Breakdown',
+    'expenses.addSuccess': 'Expense added',
+    'expenses.deleteSuccess': 'Expense deleted',
+    'expenses.recurringAdded': 'Recurring expense added',
+    'expenses.recurringPaid': 'Expense paid',
+    'expenses.recurringSkipped': 'Payment skipped',
+    'expenses.recurringDeleted': 'Recurring expense deleted',
+    'expenses.dueExpenses': 'Due Expenses',
+    'expenses.pay': 'Pay',
+    'expenses.skip': 'Skip',
+    'expenses.confirmPay': 'Confirm Payment',
+    'expenses.confirmPayDesc': 'Are you sure you want to pay this expense?',
+    'expenses.deleteConfirm': 'Delete this expense?',
+    'expenses.partnerShare': 'Split with Partners',
+    'expenses.customType': 'Custom Type',
+    'expenses.selectType': 'Select Type',
+    'expenses.recurringName': 'Name *',
+    'expenses.interval': 'Interval',
+    'expenses.startDate': 'Start Date',
+    'expenses.manageRecurring': 'Manage Recurring',
+
+    // Partners
+    'partners.title': 'Partners',
+    'partners.pageTitle': 'Partners',
+    'partners.pageSubtitle': 'Manage partners and profit sharing',
+    'partners.addPartner': 'Add Partner',
+    'partners.editPartner': 'Edit Partner',
+    'partners.name': 'Partner Name',
+    'partners.phone': 'Phone',
+    'partners.email': 'Email',
+    'partners.sharePercentage': 'Share %',
+    'partners.capital': 'Capital',
+    'partners.currentBalance': 'Current Balance',
+    'partners.totalProfit': 'Total Profit',
+    'partners.withdraw': 'Withdraw',
+    'partners.deposit': 'Deposit',
+    'partners.categories': 'Categories',
+    'partners.totalPartners': 'Partners',
+    'partners.distributed': 'Distributed',
+    'partners.balances': 'Balances',
+    'partners.profits': 'Profits',
+    'partners.accessAll': 'Access All',
+    'partners.percentage': 'Percentage',
+    'partners.addSuccess': 'Partner added',
+    'partners.editSuccess': 'Partner updated',
+    'partners.deleteSuccess': 'Partner deleted',
+    'partners.withdrawSuccess': 'Withdrawn successfully',
+    'partners.depositSuccess': 'Deposited successfully',
+    'partners.fillRequired': 'Fill required fields',
+    'partners.invalidPercentage': 'Invalid percentage',
+    'partners.withdrawFrom': 'Withdraw From',
+    'partners.withdrawType': 'Withdraw Type',
+    'partners.withdrawType.profit': 'From Profit',
+    'partners.withdrawType.capital': 'From Capital',
+    'partners.withdrawType.auto': 'Auto (Profit First)',
+    'partners.profitAvailable': 'Profit Available',
+    'partners.capitalAvailable': 'Capital Available',
+    'partners.totalAvailable': 'Total Available',
+    'partners.withdrawAmount': 'Amount',
+    'partners.withdrawNotes': 'Notes',
+    'partners.addCapital': 'Add Capital',
+    'partners.capitalAmount': 'Capital Amount',
+    'partners.deleteConfirm': 'Delete this partner?',
+    'partners.viewDetails': 'View Details',
+    'partners.joinedDate': 'Joined Date',
+    'partners.sharesExpenses': 'Shares Expenses',
+    'partners.expenseShare': 'Expense Share',
+    'partners.confirmedProfit': 'Confirmed Profit',
+    'partners.pendingProfit': 'Pending Profit',
+    'partners.capitalWithdrawals': 'Capital Withdrawals',
+    'partners.profitWithdrawals': 'Profit Withdrawals',
+    'partners.fillRequiredFields': 'Fill required fields',
+    'partners.invalidSharePercentage': 'Invalid share percentage',
+    'partners.partnerAdded': 'Partner added',
+    'partners.partnerUpdated': 'Partner updated',
+    'partners.partnerDeleted': 'Partner deleted',
+    'partners.enterValidAmount': 'Enter valid amount',
+    'partners.amountExceedsProfit': 'Exceeds available profit',
+    'partners.amountExceedsCapital': 'Exceeds available capital',
+    'partners.amountExceedsTotal': 'Exceeds total available',
+    'partners.withdrawnFromProfit': 'Withdrawn from profit',
+    'partners.withdrawnFromCapital': 'Withdrawn from capital',
+    'partners.fromProfit': 'From Profit',
+    'partners.fromCapital': 'From Capital',
+    'partners.withdrawn': 'Withdrawn',
+    'partners.withdrawError': 'Withdrawal error',
+    'partners.capitalAdded': 'Capital added',
+    'partners.capitalAddError': 'Error adding capital',
+    'partners.error': 'Error',
+    'partners.subtitle': 'Manage partners',
+    'partners.partners': 'Partners',
+    'partners.searchPlaceholder': 'Search name...',
+    'partners.since': 'Since',
+    'partners.fullStore': 'Full Store',
+    'partners.specificCategories': 'Specific Categories',
+    'partners.addNewPartner': 'Add New Partner',
+    'partners.addPartnerDesc': 'Enter partner details',
+    'partners.partnerName': 'Name',
+    'partners.profitShare': 'Share %',
+    'partners.select': 'Select',
+    'partners.expenseContribution': 'Expense Contribution',
+    'partners.currentCapital': 'Current Capital',
+    'partners.allCategories': 'All Categories',
+    'partners.editPartnerData': 'Edit Partner Data',
+    'partners.updatePartnerInfo': 'Update Info',
+    'partners.deletePartner': 'Delete Partner',
+    'partners.deletePartnerConfirm': 'Confirm Delete Partner?',
+    'partners.withdrawFromPartner': 'Withdraw',
+    'partners.enterWithdrawAmount': 'Enter Amount',
+    'partners.addCapitalToPartner': 'Add Capital',
+    'partners.enterCapitalAmount': 'Enter Amount',
+    'partners.noPartners': 'No partners found',
+    'partners.addFirstPartner': 'Add first partner to start',
+    'partners.accessFullStore': 'Access Full Store',
+    'partners.uniformPercentage': 'Uniform Percentage',
+    'partners.expenseSharing': 'Expense Sharing',
+    'partners.expenseSharingDesc': 'Does this partner share expenses?',
+    'partners.expenseSharePercentage': 'Expense Share %',
+    'partners.expenseShareDesc': 'Percentage of expenses covered',
+    'partners.profitPercentageAll': 'Profit % (All)',
+    'partners.profitPerCategory': 'Profit % Per Category',
+    'partners.partnerDetails': 'Partner Details',
+    'partners.totalProfitEarned': 'Total Profit Earned',
+    'partners.totalWithdrawn': 'Total Withdrawn',
+    'partners.totalCapital': 'Total Capital',
+    'partners.addBalance': 'Add Balance',
+    'partners.withdrawBalance': 'Withdraw Balance',
+    'partners.withdrawFor': 'Withdraw for',
+    'partners.withdrawFromProfitOnly': 'Profit Only',
+    'partners.withdrawFromCapitalOnly': 'Capital Only',
+    'partners.withdrawAuto': 'Auto',
+    'partners.allProfit': 'All Profit',
+    'partners.allCapital': 'All Capital',
+    'partners.withdrawAll': 'Withdraw All',
+    'partners.addNote': 'Add note...',
+    'partners.confirmWithdraw': 'Confirm Withdraw',
+    'partners.addCapitalFor': 'Add Capital for',
+    'partners.depositAmount': 'Deposit Amount ($)',
+    'partners.depositExample': 'e.g. New investment',
+    'partners.confirmDeposit': 'Confirm Deposit',
+    'partners.deleteConfirmation': 'Delete partner',
+    'partners.total': 'Total',
+
+    // Cash Shifts
+    'cashShifts.title': 'Cash & Shifts',
+    'cashShifts.pageTitle': 'Cash Shifts',
+    'cashShifts.pageSubtitle': 'Manage cash shifts and monitoring',
+    'cashShifts.startShift': 'Start Shift',
+    'cashShifts.closeShift': 'Close Shift',
+    'cashShifts.refresh': 'Refresh',
+    'cashShifts.openingCash': 'Opening Balance',
+    'cashShifts.closingCash': 'Closing Balance',
+    'cashShifts.expectedCash': 'Expected Cash',
+    'cashShifts.cashSales': 'Cash Sales',
+    'cashShifts.cashExpenses': 'Expenses',
+    'cashShifts.discrepancy': 'Discrepancy',
+    'cashShifts.status.open': 'Open',
+    'cashShifts.status.closed': 'Closed',
+    'cashShifts.noOpenShift': 'No open shift',
+    'cashShifts.startNewShift': 'Start new shift to track cash',
+    'cashShifts.currentShift': 'Current Shift',
+    'cashShifts.startedAt': 'Started at',
+    'cashShifts.recentShifts': 'Recent Shifts',
+    'cashShifts.last10Shifts': 'Last 10 Shifts',
+    'cashShifts.noShifts': 'No previous shifts',
+    'cashShifts.user': 'User',
+    'cashShifts.openTime': 'Open Time',
+    'cashShifts.closeTime': 'Close Time',
+    'cashShifts.opening': 'Opening',
+    'cashShifts.sales': 'Sales',
+    'cashShifts.expected': 'Expected',
+    'cashShifts.actual': 'Actual',
+    'cashShifts.active': 'Active',
+    'cashShifts.startShiftTitle': 'Start New Shift',
+    'cashShifts.startShiftDesc': 'Enter cash amount in drawer',
+    'cashShifts.employee': 'Employee',
+    'cashShifts.closeShiftTitle': 'Close Shift',
+    'cashShifts.closeShiftDesc': 'Enter actual cash amount now',
+    'cashShifts.summary': 'Shift Summary',
+    'cashShifts.noDiscrepancy': 'Matched',
+    'cashShifts.surplus': 'Surplus',
+    'cashShifts.shortage': 'Shortage',
+    'cashShifts.createAdjustment': 'Create Adjustment',
+    'cashShifts.adjustmentNote': 'Adjustment note will be created',
+    'cashShifts.shiftOpened': 'Shift opened',
+    'cashShifts.shiftClosed': 'Shift closed',
+    'cashShifts.shiftClosedWithDiscrepancy': 'Shift closed',
+    'cashShifts.enterValidAmount': 'Enter valid amount',
+
+    // POS
+    'pos.title': 'POS',
+    'pos.cart': 'Cart',
+    'pos.total': 'Total',
+    'pos.checkout': 'Checkout',
+    'pos.emptyCart': 'Cart is empty',
+    'pos.addToCart': 'Add to Cart',
+    'pos.removeFromCart': 'Remove',
+    'pos.quantity': 'Qty',
+    'pos.price': 'Price',
+    'pos.discount': 'Discount',
+    'pos.subtotal': 'Subtotal',
+    'pos.tax': 'Tax',
+    'pos.products': 'Products',
+    'pos.maintenance': 'Maintenance',
+    'pos.cash': 'Cash',
+    'pos.debt': 'Debt',
+    'pos.customer': 'Customer',
+    'pos.addCustomer': 'Add Customer',
+    'pos.clearCart': 'Clear Cart',
+    'pos.items': 'items',
+    'pos.searchProducts': 'Search product or barcode...',
+    'pos.scanBarcode': 'Scan Barcode',
+    'pos.noProducts': 'No products',
+    'pos.selectCustomer': 'Select Customer',
+    'pos.cashCustomer': 'Cash Customer',
+    'pos.confirmCashSale': 'Confirm Cash Sale',
+    'pos.confirmDebtSale': 'Confirm Debt Sale',
+    'pos.cashSaleDesc': 'Invoice will be created and stock updated',
+    'pos.debtSaleDesc': 'Invoice created and debt added to customer',
+    'pos.currency': 'Currency',
+    'pos.stock': 'Stock',
+    'pos.keyboardShortcuts': 'Shortcuts',
+    'pos.shortcutsHelp': 'Use shortcuts to speed up',
+    'pos.outOfStock': 'Warning: "{name}" is out of stock!',
+    'pos.lowStockWarning': 'Warning: "{name}" low stock ({qty})',
+    'pos.addedToCart': 'Added "{name}" to cart',
+    'pos.barcode': 'Barcode',
+    'pos.barcodeNotFound': 'Barcode not found',
+    'pos.cashSaleShortcut': 'F1 for Cash Sale',
+    'pos.debtSaleShortcut': 'F2 for Debt Sale',
+    'pos.enterCustomerName': 'Enter customer name first',
+    'pos.cartCleared': 'Cart cleared',
+    'pos.switchedToMaintenance': 'Switched to Maintenance',
+    'pos.switchedToProducts': 'Switched to Products',
+    'pos.shoppingCart': 'Shopping Cart',
+    'pos.clear': 'Clear',
+    'pos.clickToAdd': 'Click to add',
+    'pos.customerName': 'Customer Name',
+    'pos.print': 'Print',
+    'pos.whatsapp': 'WhatsApp',
+    'pos.productCount': 'Product Count',
+    'pos.noName': 'No Name',
+    'pos.phoneRequired': 'Phone * (Required for new customer)',
+    'pos.debtAmount': 'Debt Amount',
+    'pos.confirmDebt': 'Confirm Debt',
+    'pos.addCustomerDesc': 'Enter new customer details',
+    'pos.namePlaceholder': 'Name',
+    'pos.phonePlaceholder': '+963 ...',
+    'pos.emailPlaceholder': 'email@example.com',
+    'pos.addCustomerBtn': 'Add Customer',
+    'pos.enterPhone': 'Enter phone number',
+    'pos.fillRequired': 'Fill required fields',
+    'pos.customerAdded': 'Customer added',
+    'pos.invoiceCreated': 'Invoice created',
+    'pos.success': 'Success',
+    'pos.debtInvoiceCreated': 'Debt invoice created',
+    'pos.openingWhatsapp': 'Opening WhatsApp...',
+    'pos.insufficientStock': 'Insufficient stock',
+    'pos.closeToConfirm': 'Close to confirm',
+    'pos.confirmCashSaleDesc': 'Confirm cash sale?',
+    'pos.confirmDebtSaleDesc': 'Debt will be recorded',
+    'pos.name': 'Name',
+    'pos.phone': 'Phone',
+    'pos.email': 'Email',
+
+    // Reports
+    'reports.title': 'Reports',
+    'reports.pageTitle': 'Reports & Statistics',
+    'reports.pageSubtitle': 'Comprehensive business analysis',
+    'reports.from': 'From',
+    'reports.to': 'To',
+    'reports.backup': 'Backup',
+    'reports.totalSales': 'Total Sales',
+    'reports.totalProfit': 'Total Profit',
+    'reports.ordersCount': 'Orders Count',
+    'reports.avgOrderValue': 'Avg Order Value',
+    'reports.topProduct': 'Top Product',
+    'reports.topCustomer': 'Top Customer',
+    'reports.sales': 'Sales',
+    'reports.profits': 'Profits',
+    'reports.products': 'Products',
+    'reports.customers': 'Customers',
+    'reports.partners': 'Partners',
+    'reports.expenses': 'Expenses',
+    'reports.partnerDetailedReport': 'Profit Details',
+    'reports.dateRange': 'Date Range',
+    'reports.exportPDF': 'Export PDF',
+    'reports.exportExcel': 'Export Excel',
+    'reports.noData': 'No data in selected period',
+    'reports.tryChangeDateRange': 'Try changing date range',
+    'reports.dailySales': 'Daily Sales',
+    'reports.dailyProfit': 'Daily Profit',
+    'reports.noDailyData': 'No daily data',
+    'reports.bestProducts': 'Best Selling Products',
+    'reports.noProductsSold': 'No products sold',
+    'reports.pieces': 'pcs',
+    'reports.bestCustomers': 'Top Customers',
+    'reports.order': 'order',
+    'reports.noCustomers': 'No customers',
+    'reports.selectPartnerLabel': 'Select Partner:',
+    'reports.allPartners': 'All Partners',
+    'reports.profitInPeriod': 'Profit in Period',
+    'reports.withdrawalsInPeriod': 'Withdrawals',
+    'reports.currentBalance': 'Current Balance',
+    'reports.expenseBreakdown': 'Expense Breakdown',
+    'reports.noExpenses': 'No expenses',
+    'reports.distributorInventory': 'Distributor Inventory',
+    'reports.loadError': 'Failed to load report data',
+    'reports.exportSuccessPDF': 'Report exported to PDF successfully',
+    'reports.exportSuccessExcel': 'Report exported to Excel successfully',
+    'reports.exportError': 'Failed to export report',
+    'reports.shareWhatsapp': 'WhatsApp opened for sharing',
+    'reports.backupSuccess': 'Backup created successfully',
+    'reports.backupError': 'Failed to create backup',
+
+    // Settings
+    'settings.title': 'Settings',
+    'settings.general': 'General',
+    'settings.backup': 'Backup',
+    'settings.users': 'Users',
+    'settings.language': 'Language',
+    'settings.changeLanguage': 'Change Language',
+    'settings.selectLanguage': 'Select Language',
+    'settings.languageChanged': 'Language changed successfully',
+    'settings.theme': 'Theme',
+    'settings.lightMode': 'Light Mode',
+    'settings.darkMode': 'Dark Mode',
+    'settings.colorTheme': 'App Color',
+    'settings.themePreview': 'Theme Preview',
+    'settings.productFields': 'Product Fields',
+    'settings.notifications': 'Notifications',
+    'settings.printing': 'Printing',
+    'settings.sync': 'Sync',
+    'settings.license': 'License',
+    'settings.licenses': 'Licenses',
+    'settings.activityLog': 'Activity Log',
+    'settings.storeSettings': 'Store Info',
+    'settings.storeName': 'Store Name',
+    'settings.storePhone': 'Phone Number',
+    'settings.storeAddress': 'Address',
+    'settings.storeInfo': 'Store Information',
+    'settings.storeType': 'Store Type',
+    'settings.storeTypePhones': 'Phones & Electronics',
+    'settings.storeTypeGrocery': 'Grocery',
+    'settings.storeTypePharmacy': 'Pharmacy',
+    'settings.storeTypeClothing': 'Clothing',
+    'settings.storeTypeGeneral': 'General Store',
+    'settings.storeLogo': 'Logo',
+    'settings.uploadLogo': 'Upload Logo',
+    'settings.removeLogo': 'Remove Logo',
+    'settings.exchangeRates': 'Exchange Rates',
+    'settings.currencies': 'Currencies',
+    'settings.turkishLira': 'Turkish Lira',
+    'settings.syrianPound': 'Syrian Pound',
+    'settings.oneDollarEquals': '1 USD =',
+    'settings.syncLocal': 'Local Sync',
+    'settings.lastSync': 'Last Sync',
+    'settings.syncNow': 'Sync Now',
+    'settings.sound': 'Sound',
+    'settings.soundDesc': 'Play sound on notifications',
+    'settings.newSale': 'New Sale',
+    'settings.lowStock': 'Low Stock',
+    'settings.newDebt': 'New Debt',
+    'settings.paymentReceived': 'Payment Received',
+    'settings.dailyReport': 'Daily Report',
+    'settings.autoPrint': 'Auto Print',
+    'settings.autoPrintDesc': 'Print invoice after sale',
+    'settings.printLogo': 'Show Logo',
+    'settings.printAddress': 'Show Address',
+    'settings.printPhone': 'Show Phone',
+    'settings.paperSize': 'Paper Size',
+    'settings.copies': 'Copies',
+    'settings.printFooter': 'Footer Text',
+    'settings.testPrint': 'Test Print',
+    'settings.addUser': 'Add User',
+    'settings.editUser': 'Edit User',
+    'settings.deleteUser': 'Delete User',
+    'settings.deleteUserConfirm': 'Delete user?',
+    'settings.userName': 'Name',
+    'settings.userEmail': 'Email',
+    'settings.userRole': 'Role',
+    'settings.userPassword': 'Password',
+    'settings.changePassword': 'Change Password',
+    'settings.changeUserPassword': 'Change User Password',
+    'settings.currentPassword': 'Current Password',
+    'settings.newPassword': 'New Password',
+    'settings.confirmPassword': 'Confirm Password',
+    'settings.enterCurrentPassword': 'Enter current password',
+    'settings.enterNewPassword': 'Enter new password',
+    'settings.passwordMinLength': 'Min 6 characters',
+    'settings.passwordsNotMatch': 'Passwords do not match',
+    'settings.currentPasswordIncorrect': 'Incorrect current password',
+    'settings.passwordChanged': 'Password changed',
+    'settings.passwordChangeFailed': 'Failed to change password',
+    'settings.changingPasswordFor': 'Changing password for',
+    'settings.clearLog': 'Clear Log',
+    'settings.noActivity': 'No activity',
+    'settings.totalActivities': 'Total Activities',
+    'settings.confirmClear': 'Confirm Clear',
+    'settings.clearLogConfirm': 'Clear all activity log?',
+    'settings.autoBackupEnabled': 'Auto Backup Enabled',
+    'settings.backupInterval': 'Backup Interval',
+    'settings.backupDaily': 'Daily',
+    'settings.backupWeekly': 'Weekly',
+    'settings.backupMonthly': 'Monthly',
+    'settings.keepBackups': 'Keep Backups',
+    'settings.days': 'days',
+    'settings.backupNow': 'Backup Now',
+    'settings.resetData': 'Reset Data',
+    'settings.resetDataWarning': 'Warning! Cannot be undone',
+    'settings.resetDataDescription': 'All data will be permanently deleted',
+    'settings.dataToBeDeleted': 'Data to be deleted',
+    'settings.resetAllData': 'Reset All Data',
+    'settings.resetDataConfirm': 'Confirm Data Reset',
+    'settings.resetDataConfirmDescription': 'Enter password to confirm. This is permanent.',
+    'settings.enterPasswordToConfirm': 'Enter password',
+    'settings.wrongPassword': 'Wrong password',
+    'settings.resetDataSuccess': 'Data reset successfully',
+    'settings.resetDataFailed': 'Failed to reset data',
+    'settings.loginRequired': 'Login required',
+    'settings.verifying': 'Verifying...',
+    'settings.confirmReset': 'Confirm Reset',
+    'settings.bossPanel': 'Owner Panel',
+    'settings.goToBossPanel': 'Go to Control Panel',
+
+    // License Notifications
+    'notifications.licenseStatus': 'License Status',
+    'notifications.licenseValidUntil': 'License valid until',
+    'notifications.licenseExpiring': 'Expiring soon',
+    'notifications.daysRemaining': '{days} days remaining',
+    'notifications.licenseExpired': 'License expired',
   },
 };
 
@@ -2328,7 +3154,7 @@ export function setLanguage(lang: Language): void {
   localStorage.setItem('hyperpos_language', lang);
   document.documentElement.dir = languages.find(l => l.code === lang)?.direction || 'rtl';
   document.documentElement.lang = lang;
-  
+
   // Dispatch event for components to react
   window.dispatchEvent(new CustomEvent('languagechange', { detail: lang }));
 }
@@ -2336,12 +3162,12 @@ export function setLanguage(lang: Language): void {
 export function t(key: TranslationKey, lang?: Language): string {
   const currentLang = lang || getCurrentLanguage();
   const translation = translations[currentLang]?.[key];
-  
+
   // Fallback chain: current language -> Arabic -> English -> key
   if (translation) return translation;
   if (currentLang !== 'ar' && translations.ar[key]) return translations.ar[key];
   if (currentLang !== 'en' && translations.en[key]) return translations.en[key];
-  
+
   return key;
 }
 
