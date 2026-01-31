@@ -164,7 +164,14 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   // Update license notification when license data changes
   useEffect(() => {
     if (isValid && hasLicense && expiresAt && remainingDays !== null) {
+      // Always check license status to show notifications
       checkLicenseStatus(expiresAt, remainingDays, isTrial);
+      console.log('[LicenseGuard] License status updated:', { 
+        expiresAt, 
+        remainingDays, 
+        isTrial, 
+        isValid 
+      });
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
