@@ -164,12 +164,30 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       
       // Show toast for expiring
       toast.warning(newNotification.title, { description: newNotification.message });
-    } else {
-      // Info: License status
+    } else if (remainingDays <= 30 || isTrial) {
+      // Show notification for trial users or when 30 days or less remaining
       const newNotification: Notification = {
         id: 'license_status_' + Date.now(),
         type: 'license_status',
         title: `🔑 ${trialPrefix}حالة الترخيص`,
+        message: isTrial 
+          ? `متبقي ${remainingDays} يوم من الفترة التجريبية` 
+          : `الترخيص صالح حتى ${expiryDate} (متبقي ${remainingDays} يوم)`,
+        timestamp: new Date(),
+        read: false, // Mark as unread to show badge
+        persistent: true,
+        data: {
+          licenseExpiresAt: expiresAt,
+          licenseDaysRemaining: remainingDays,
+        },
+      };
+      setNotifications(prev => [newNotification, ...prev]);
+    } else {
+      // Info: License status for long-term licenses
+      const newNotification: Notification = {
+        id: 'license_status_' + Date.now(),
+        type: 'license_status',
+        title: `✅ الترخيص مفعّل`,
         message: `الترخيص صالح حتى ${expiryDate}`,
         timestamp: new Date(),
         read: true, // Mark as read by default (informational)
