@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from '@/lib/device-fingerprint';
 
 // Google Icon Component
+import { NativeMLKitScanner } from '@/components/barcode/NativeMLKitScanner';
+
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
     <path
@@ -45,6 +47,11 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showDeviceBlockedDialog, setShowDeviceBlockedDialog] = useState(false);
   const [isResettingDevice, setIsResettingDevice] = useState(false);
+
+  // Scanner Test State
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedCode, setScannedCode] = useState('');
+
   const { signIn, signInWithGoogle } = useAuth();
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
@@ -55,7 +62,7 @@ export default function Login() {
       const currentDeviceId = await getDeviceId();
       console.log('[DeviceCheck] Current device ID:', currentDeviceId);
       console.log('[DeviceCheck] Checking for user:', userId);
-      
+
       // Check if user is Boss - Boss has unlimited device access
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
@@ -69,7 +76,7 @@ export default function Login() {
         console.log('[DeviceCheck] User is boss, skipping device check');
         return { blocked: false, allowMultiDevice: true };
       }
-      
+
       // Get user's license with device info
       const { data: license, error: licenseError } = await supabase
         .from('app_licenses')
@@ -129,7 +136,7 @@ export default function Login() {
     // Check device binding after successful login
     if (data?.user) {
       const { blocked } = await checkDeviceBinding(data.user.id);
-      
+
       if (blocked) {
         // Sign out first, then show dialog
         // Important: Don't navigate away, just show the dialog
@@ -172,11 +179,11 @@ export default function Login() {
       if (data?.success) {
         toast.success(data.message || 'تم إعادة تعيين الجهاز بنجاح');
         setShowDeviceBlockedDialog(false);
-        
+
         // Now try to login again
         setIsLoading(true);
         const { error: loginError } = await signIn(email, password, stayLoggedIn);
-        
+
         if (loginError) {
           toast.error(t('auth.invalidCredentials'));
           setIsLoading(false);
@@ -199,7 +206,7 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const { error } = await signInWithGoogle();
-    
+
     if (error) {
       toast.error('فشل تسجيل الدخول بـ Google');
       setIsGoogleLoading(false);
@@ -219,7 +226,7 @@ export default function Login() {
             <CardDescription className="mt-2">{t('auth.loginSubtitle')}</CardDescription>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           {/* Google Sign In Button */}
           <Button
@@ -258,7 +265,7 @@ export default function Login() {
                 className="h-11"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">{t('auth.password')}</Label>
               <div className="relative">
@@ -290,8 +297,8 @@ export default function Login() {
                 onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
                 disabled={isLoading || isGoogleLoading}
               />
-              <Label 
-                htmlFor="stayLoggedIn" 
+              <Label
+                htmlFor="stayLoggedIn"
                 className="text-sm font-normal cursor-pointer select-none"
               >
                 تذكرني على هذا الجهاز
@@ -310,8 +317,38 @@ export default function Login() {
             </Button>
           </form>
         </CardContent>
-        
+
         <CardFooter className="flex flex-col gap-4">
+          <div className="w-full space-y-2 border-t pt-4">
+            <Label className="text-xs text-muted-foreground">Scanner Test (Debug)</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1 gap-2"
+                onClick={() => setShowScanner(true)}
+              >
+                <Smartphone className="w-4 h-4" />
+                Test Scanner
+              </Button>
+              <Input
+                readOnly
+                placeholder="Scanned code..."
+                value={scannedCode}
+                className="flex-[2] bg-muted/50 font-mono text-sm"
+              />
+            </div>
+            <NativeMLKitScanner
+              isOpen={showScanner}
+              onClose={() => setShowScanner(false)}
+              onScan={(code) => {
+                setScannedCode(code);
+                toast.success(`Scanned: ${code}`);
+                // Don't close immediately here, let the scanner component handle its own lifecycle/delay
+              }}
+            />
+          </div>
+
           <p className="text-sm text-muted-foreground text-center">
             {t('auth.noAccount')}{' '}
             <Link to="/signup" className="text-primary hover:underline font-medium">

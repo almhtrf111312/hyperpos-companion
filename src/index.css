@@ -555,6 +555,7 @@ body.barcode-scanner-active,
 ion-app.barcode-scanner-active,
 ion-content.barcode-scanner-active,
 ion-router-outlet.barcode-scanner-active,
+.ion-page.barcode-scanner-active,
 div[data-radix-portal].barcode-scanner-active,
 div[role="dialog"].barcode-scanner-active {
   --background: transparent !important;
