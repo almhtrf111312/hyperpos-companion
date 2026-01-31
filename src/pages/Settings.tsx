@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
+import {
   Store,
   DollarSign,
   RefreshCw,
@@ -179,7 +179,7 @@ export default function Settings() {
   ];
 
   const persisted = loadPersistedSettings();
-  
+
   // Store settings - فارغة افتراضياً للحسابات الجديدة
   const [storeSettings, setStoreSettings] = useState({
     name: persisted?.storeSettings?.name ?? '',
@@ -236,7 +236,7 @@ export default function Settings() {
     TRY: persisted?.exchangeRates?.TRY ?? '32',
     SYP: persisted?.exchangeRates?.SYP ?? '14500',
   });
-  
+
   // Custom currency names
   const [currencyNames, setCurrencyNames] = useState({
     TRY: persisted?.currencyNames?.TRY ?? 'الليرة التركية',
@@ -415,13 +415,13 @@ export default function Settings() {
     // Convert boss/admin roles to 'cashier' for the form since we only allow cashier role for new users
     const formRole = user.role === 'boss' || user.role === 'admin' ? 'cashier' : user.role;
     // Populate phone from user data
-    setUserForm({ 
-      name: user.name, 
-      email: '', 
-      password: '', 
-      phone: user.phone || '', 
-      role: formRole as 'admin' | 'cashier', 
-      userType: user.userType || 'cashier' 
+    setUserForm({
+      name: user.name,
+      email: '',
+      password: '',
+      phone: user.phone || '',
+      role: formRole as 'admin' | 'cashier',
+      userType: user.userType || 'cashier'
     });
     setUserDialogOpen(true);
   };
@@ -460,19 +460,19 @@ export default function Settings() {
       const nameChanged = userForm.name !== selectedUser.name;
       const userTypeChanged = userForm.userType !== selectedUser.userType;
       const phoneChanged = userForm.phone !== (selectedUser.phone || '');
-      
+
       let success = true;
-      
+
       // Update profile if anything changed
       if (nameChanged || userTypeChanged || phoneChanged) {
         success = await updateUserProfile(
-          selectedUser.user_id, 
-          userForm.name, 
+          selectedUser.user_id,
+          userForm.name,
           userForm.userType,
           userForm.phone
         );
       }
-      
+
       if (success) {
         setUserDialogOpen(false);
         setSelectedUser(null);
@@ -505,75 +505,37 @@ export default function Settings() {
         setUserDialogOpen(false);
       }
     }
-    
+
     setIsSavingUser(false);
   };
 
-  const handleBackupNow = () => {
+  const handleBackupNow = async () => {
     setIsBackingUp(true);
-    setTimeout(async () => {
-      const newBackup: BackupData = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString('ar-SA'),
-        size: '2.6 MB',
-        type: 'manual',
-      };
-      setBackups([newBackup, ...backups]);
-      setIsBackingUp(false);
+    try {
+      const { generateBackupData } = await import('@/lib/auto-backup');
+      const backupData = await generateBackupData();
 
-      // Create backup payload with ALL localStorage data
-      const allData: Record<string, unknown> = {};
-      
-      // Get all localStorage keys and their values
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value) {
-              // Try to parse JSON, if fails store as string
-              try {
-                allData[key] = JSON.parse(value);
-              } catch {
-                allData[key] = value;
-              }
-            }
-          } catch {
-            // skip problematic keys
-          }
-        }
-      }
-
-      const payload = {
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        settings: {
-          storeSettings,
-          exchangeRates,
-          syncSettings,
-          notificationSettings,
-          printSettings,
-          backupSettings,
-        },
-        users,
-        backups: [newBackup, ...backups],
-        // Include all localStorage data
-        localStorageData: allData,
-      };
-
-      // Generate filename with store name and date
       const storeName = storeSettings.name.replace(/[^a-zA-Z0-9أ-ي\s_-]/g, '').trim() || 'hyperpos';
       const dateStr = new Date().toISOString().split('T')[0];
       const filename = `backup_${storeName}_${dateStr}.json`;
 
       // Use cross-platform download utility
-      const success = await downloadJSON(filename, payload);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const success = await downloadJSON(filename, backupData as any);
+
+      const newBackup: BackupData = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleString('ar-SA'),
+        size: (JSON.stringify(backupData).length / 1024 / 1024).toFixed(2) + ' MB',
+        type: 'manual',
+      };
+      setBackups([newBackup, ...backups]);
 
       if (success) {
         toast({
           title: t('settings.backupComplete'),
-          description: isNativePlatform() 
-            ? t('settings.backupSavedDevice') 
+          description: isNativePlatform()
+            ? t('settings.backupSavedDevice')
             : t('settings.backupDownloaded'),
         });
       } else {
@@ -583,7 +545,16 @@ export default function Settings() {
           variant: 'destructive',
         });
       }
-    }, 800);
+    } catch (error) {
+      console.error('Backup error:', error);
+      toast({
+        title: t('common.error'),
+        description: t('settings.backupFailed'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBackingUp(false);
+    }
   };
 
   // Import backup file (JSON format)
@@ -593,11 +564,11 @@ export default function Settings() {
 
     setIsImporting(true);
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       try {
         const fileContent = e.target?.result as string;
-        
+
         // Parse JSON backup
         let data: any;
         try {
@@ -637,7 +608,7 @@ export default function Settings() {
             }
           });
         }
-        
+
         if (data.settings) {
           if (data.settings.storeSettings) setStoreSettings(data.settings.storeSettings);
           if (data.settings.exchangeRates) setExchangeRates(data.settings.exchangeRates);
@@ -646,7 +617,7 @@ export default function Settings() {
           if (data.settings.printSettings) setPrintSettings(data.settings.printSettings);
           if (data.settings.backupSettings) setBackupSettings(data.settings.backupSettings);
         }
-        
+
         if (data.backups) setBackups(data.backups);
 
         // Save to local storage
@@ -658,7 +629,7 @@ export default function Settings() {
           printSettings: data.settings?.printSettings || printSettings,
           backupSettings: data.settings?.backupSettings || backupSettings,
         });
-        
+
         // Dispatch standardized events to update all components
         emitEvent(EVENTS.CUSTOMERS_UPDATED);
         emitEvent(EVENTS.DEBTS_UPDATED);
@@ -669,7 +640,7 @@ export default function Settings() {
           title: t('settings.restoreComplete'),
           description: t('settings.pageReloading'),
         });
-        
+
         // Reload the page after a short delay to apply all changes
         setTimeout(() => {
           window.location.reload();
@@ -682,7 +653,7 @@ export default function Settings() {
           variant: 'destructive',
         });
       }
-      
+
       setIsImporting(false);
       // Reset the input
       if (importInputRef.current) {
@@ -718,32 +689,32 @@ export default function Settings() {
   };
 
   const handleExportData = async () => {
-    const payload = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      settings: {
-        storeSettings,
-        exchangeRates,
-        syncSettings,
-        notificationSettings,
-        printSettings,
-        backupSettings,
-      },
-      users,
-      backups,
-    };
+    try {
+      const { generateBackupData } = await import('@/lib/auto-backup');
+      const backupData = await generateBackupData();
 
-    const filename = `hyperpos_export_${new Date().toISOString().split('T')[0]}.json`;
-    const success = await downloadJSON(filename, payload);
+      const filename = `hyperpos_export_${new Date().toISOString().split('T')[0]}.json`;
 
-    if (success) {
-      toast({
-        title: t('settings.exportComplete'),
-        description: isNativePlatform() 
-          ? t('settings.dataSavedDevice') 
-          : t('settings.dataDownloaded'),
-      });
-    } else {
+      // Use cross-platform download utility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const success = await downloadJSON(filename, backupData as any);
+
+      if (success) {
+        toast({
+          title: t('settings.exportComplete'),
+          description: isNativePlatform()
+            ? t('settings.dataSavedDevice')
+            : t('settings.dataDownloaded'),
+        });
+      } else {
+        toast({
+          title: t('common.error'),
+          description: t('settings.exportFailed'),
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Export error:', error);
       toast({
         title: t('common.error'),
         description: t('settings.exportFailed'),
@@ -860,9 +831,9 @@ export default function Settings() {
               <div className="flex items-center gap-4">
                 {storeSettings.logo ? (
                   <div className="relative">
-                    <img 
-                      src={storeSettings.logo} 
-                      alt={t('settings.storeLogo')} 
+                    <img
+                      src={storeSettings.logo}
+                      alt={t('settings.storeLogo')}
                       className="w-20 h-20 rounded-lg object-cover border border-border"
                     />
                     <Button
@@ -930,7 +901,7 @@ export default function Settings() {
                 حفظ العملات
               </Button>
             </div>
-            
+
             {/* العملة الأولى */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-4">
               <div className="space-y-2">
@@ -956,7 +927,7 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
               </div>
             </div>
-            
+
             {/* العملة الثانية */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-4">
               <div className="space-y-2">
@@ -988,7 +959,7 @@ export default function Settings() {
       case 'sync':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <GoogleDriveSection 
+            <GoogleDriveSection
               getBackupData={() => {
                 const data: Record<string, any> = {};
                 for (let i = 0; i < localStorage.length; i++) {
@@ -1153,53 +1124,53 @@ export default function Settings() {
                 users
                   .filter((user) => user.role !== 'boss') // Hide boss accounts from this list
                   .map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{user.name}</p>
+                          {user.email && (
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            {user.role === 'admin' ? 'مالك' :
+                              user.userType === 'distributor' ? 'موزع' :
+                                user.userType === 'pos' ? 'نقطة بيع' :
+                                  t('settings.cashier')}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{user.name}</p>
-                        {user.email && (
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <div className="flex items-center gap-2">
+                        {/* Only show password change for non-owner users */}
+                        {!user.isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setPasswordChangeUserId(user.user_id);
+                              setPasswordDialogOpen(true);
+                            }}
+                          >
+                            <Key className="w-4 h-4" />
+                          </Button>
                         )}
-                        <p className="text-sm text-muted-foreground">
-                          {user.role === 'admin' ? 'مالك' : 
-                           user.userType === 'distributor' ? 'موزع' : 
-                           user.userType === 'pos' ? 'نقطة بيع' : 
-                           t('settings.cashier')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Only show password change for non-owner users */}
-                      {!user.isOwner && (
+                        <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            setPasswordChangeUserId(user.user_id);
-                            setPasswordDialogOpen(true);
-                          }}
+                          className="text-destructive"
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={user.user_id === currentUser?.id || user.isOwner}
                         >
-                          <Key className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => handleDeleteUser(user)}
-                        disabled={user.user_id === currentUser?.id || user.isOwner}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))
               )}
             </div>
           </div>
@@ -1209,7 +1180,7 @@ export default function Settings() {
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
             <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.backup')}</h2>
-            
+
             {/* Backup Section */}
             <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 space-y-4">
               <div className="flex items-center gap-2">
@@ -1370,7 +1341,7 @@ export default function Settings() {
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
         </div>
-        
+
         <Button size="lg" className="px-6 md:px-8 py-3 text-base shrink-0" onClick={handleSaveSettings}>
           <Save className="w-5 h-5 ml-2" />
           <span className="hidden sm:inline">{t('common.save')}</span>
@@ -1389,32 +1360,32 @@ export default function Settings() {
             return !tab.adminOnly && !(tab as any).bossOnly;
           })
           .map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200",
-              activeTab === tab.id
-                ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
-                : "border-border bg-card hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
-            )}
-          >
-            <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
-              activeTab === tab.id 
-                ? "bg-primary text-primary-foreground" 
-                : "bg-muted text-muted-foreground"
-            )}>
-              <tab.icon className="w-6 h-6" />
-            </div>
-            <span className={cn(
-              "font-medium text-sm text-center leading-tight",
-              activeTab === tab.id ? "text-primary" : "text-foreground"
-            )}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200",
+                activeTab === tab.id
+                  ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
+                  : "border-border bg-card hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
+              )}
+            >
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                activeTab === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                <tab.icon className="w-6 h-6" />
+              </div>
+              <span className={cn(
+                "font-medium text-sm text-center leading-tight",
+                activeTab === tab.id ? "text-primary" : "text-foreground"
+              )}>
+                {tab.label}
+              </span>
+            </button>
+          ))}
       </div>
 
       {/* Content */}
@@ -1492,11 +1463,11 @@ export default function Settings() {
                 <option value="distributor">موزع متجول (منتجات العهدة فقط)</option>
               </select>
               <p className="text-xs text-muted-foreground">
-                {userForm.userType === 'cashier' 
+                {userForm.userType === 'cashier'
                   ? 'يعمل في المحل ويرى جميع المنتجات المتاحة'
                   : userForm.userType === 'pos'
-                  ? 'نقطة بيع ثابتة - يرى فقط المنتجات في عهدته'
-                  : 'موزع متجول - يرى فقط المنتجات في سيارته/عهدته'}
+                    ? 'نقطة بيع ثابتة - يرى فقط المنتجات في عهدته'
+                    : 'موزع متجول - يرى فقط المنتجات في سيارته/عهدته'}
               </p>
             </div>
           </div>

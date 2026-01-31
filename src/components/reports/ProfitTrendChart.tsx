@@ -34,24 +34,24 @@ const chartConfig = {
 
 export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendChartProps) {
   const { t, isRTL } = useLanguage();
-  
+
   const chartData = useMemo(() => {
     const stats = getDailyProfitStats(days);
-    
+
     // Filter by date range if provided
     let filteredStats = stats;
     if (startDate && endDate) {
       filteredStats = stats.filter(s => s.date >= startDate && s.date <= endDate);
     }
-    
+
     // Sort ascending for chart display
     return filteredStats
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(stat => ({
         ...stat,
-        dateLabel: new Date(stat.date).toLocaleDateString('ar-SA', { 
-          month: 'short', 
-          day: 'numeric' 
+        dateLabel: new Date(stat.date).toLocaleDateString('ar-SA', {
+          month: 'short',
+          day: 'numeric'
         }),
       }));
   }, [days, startDate, endDate]);
@@ -63,17 +63,17 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
     const totalSales = chartData.reduce((sum, d) => sum + d.sales, 0);
     const totalExpenses = chartData.reduce((sum, d) => sum + d.expenses, 0);
     const avgDailyProfit = chartData.length > 0 ? totalNetProfit / chartData.length : 0;
-    
+
     // Calculate trend (compare last 7 days to previous 7 days)
     const recentDays = chartData.slice(-7);
     const previousDays = chartData.slice(-14, -7);
-    
+
     const recentProfit = recentDays.reduce((sum, d) => sum + d.netProfit, 0);
     const previousProfit = previousDays.reduce((sum, d) => sum + d.netProfit, 0);
-    
+
     let trend: 'up' | 'down' | 'stable' = 'stable';
     let trendPercentage = 0;
-    
+
     if (previousProfit > 0) {
       trendPercentage = ((recentProfit - previousProfit) / previousProfit) * 100;
       trend = trendPercentage > 5 ? 'up' : trendPercentage < -5 ? 'down' : 'stable';
@@ -81,7 +81,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
       trend = 'up';
       trendPercentage = 100;
     }
-    
+
     return {
       totalGrossProfit,
       totalNetProfit,
@@ -130,7 +130,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
       </CardHeader>
       <CardContent>
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
             <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
@@ -160,28 +160,28 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
         {/* Chart */}
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart 
+            <LineChart
               data={chartData}
               margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey="dateLabel" 
+              <XAxis
+                dataKey="dateLabel"
                 tickLine={false}
                 axisLine={false}
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
               />
-              <YAxis 
+              <YAxis
                 tickLine={false}
                 axisLine={false}
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
                 tickFormatter={(value) => `$${value}`}
               />
-              <ChartTooltip 
+              <ChartTooltip
                 content={
-                  <ChartTooltipContent 
+                  <ChartTooltipContent
                     labelFormatter={(value) => `التاريخ: ${value}`}
                     formatter={(value, name) => {
                       const labels: Record<string, string> = {
@@ -195,7 +195,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
                   />
                 }
               />
-              <Legend 
+              <Legend
                 formatter={(value) => {
                   const labels: Record<string, string> = {
                     grossProfit: 'الربح الإجمالي',

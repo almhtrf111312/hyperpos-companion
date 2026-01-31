@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { 
-  Download, 
-  Filter, 
-  ChevronDown, 
+import {
+  Download,
+  Filter,
+  ChevronDown,
   ChevronUp,
   FileSpreadsheet,
   Share2,
@@ -10,12 +10,12 @@ import {
   Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import {
   Table,
@@ -73,23 +73,23 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
   // Process detailed profit data
   const detailedData = useMemo(() => {
     const rows: DetailedProfitRow[] = [];
-    
-    const filteredPartners = selectedPartner === 'all' 
-      ? partners 
+
+    const filteredPartners = selectedPartner === 'all'
+      ? partners
       : partners.filter(p => p.id === selectedPartner);
 
     filteredPartners.forEach(partner => {
       const profitHistory = partner.profitHistory || [];
-      
+
       profitHistory.forEach(record => {
         const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
-        
+
         // Filter by date range
         if (recordDate < dateRange.from || recordDate > dateRange.to) return;
-        
+
         // Filter by category
         if (selectedCategory !== 'all' && record.category !== selectedCategory) return;
-        
+
         rows.push({
           date: recordDate,
           partnerName: partner.name,
@@ -136,9 +136,9 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
           byCategory: {},
         };
       }
-      
+
       byPartner[row.partnerId].totalProfit += row.amount;
-      
+
       if (!byPartner[row.partnerId].byCategory[row.category]) {
         byPartner[row.partnerId].byCategory[row.category] = { amount: 0, count: 0 };
       }
@@ -159,7 +159,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
     const pendingProfit = detailedData
       .filter(row => row.status === 'pending')
       .reduce((sum, row) => sum + row.amount, 0);
-    
+
     return { totalProfit, totalTransactions, confirmedProfit, pendingProfit };
   }, [detailedData]);
 
@@ -194,12 +194,12 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
       row.status === 'confirmed' ? 'مؤكد' : 'معلق',
       row.invoiceId,
     ]);
-    
+
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
-    
+
     const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -210,7 +210,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast.success('تم تصدير التقرير بنجاح');
   };
 
@@ -220,7 +220,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
     report += `💰 الإجمالي: $${formatNumber(summary.totalProfit)}\n`;
     report += `✅ مؤكد: $${formatNumber(summary.confirmedProfit)}\n`;
     report += `⏳ معلق: $${formatNumber(summary.pendingProfit)}\n\n`;
-    
+
     report += `📋 التفاصيل:\n`;
     aggregatedData.forEach(partner => {
       report += `\n👤 ${partner.partnerName}: $${formatNumber(partner.totalProfit)}\n`;
@@ -228,9 +228,9 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
         report += `   • ${cat}: $${formatNumber(data.amount)} (${data.count} عملية)\n`;
       });
     });
-    
+
     report += `\n---\nتم إنشاء التقرير بواسطة HyperPOS`;
-    
+
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(report)}`;
     window.open(whatsappUrl, '_blank');
     toast.success('تم فتح واتساب للمشاركة');
@@ -238,8 +238,8 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
 
   const SortIcon = ({ field }: { field: 'date' | 'amount' | 'category' }) => {
     if (sortField !== field) return null;
-    return sortDirection === 'asc' ? 
-      <ChevronUp className="w-4 h-4 inline mr-1" /> : 
+    return sortDirection === 'asc' ?
+      <ChevronUp className="w-4 h-4 inline mr-1" /> :
       <ChevronDown className="w-4 h-4 inline mr-1" />;
   };
 
@@ -251,7 +251,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
           <Filter className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold">تصفية التقرير</h3>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">الشريك</label>
@@ -269,7 +269,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
               </SelectContent>
             </Select>
           </div>
-          
+
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">التصنيف</label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -286,7 +286,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="flex items-end gap-2">
             <Button variant="outline" onClick={handleExportExcel} className="flex-1">
               <FileSpreadsheet className="w-4 h-4 ml-2" />
@@ -300,7 +300,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح</p>
           <p className="text-xl font-bold text-foreground">${formatNumber(summary.totalProfit)}</p>
@@ -327,7 +327,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
             ملخص الأرباح حسب الشريك والتصنيف
           </h3>
         </div>
-        
+
         {aggregatedData.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             لا توجد بيانات للفترة المحددة
@@ -355,21 +355,21 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                     <div className="text-left">
                       <p className="text-lg font-bold text-success">${formatNumber(partner.totalProfit)}</p>
                     </div>
-                    {expandedPartners.has(partner.partnerId) ? 
-                      <ChevronUp className="w-5 h-5 text-muted-foreground" /> : 
+                    {expandedPartners.has(partner.partnerId) ?
+                      <ChevronUp className="w-5 h-5 text-muted-foreground" /> :
                       <ChevronDown className="w-5 h-5 text-muted-foreground" />
                     }
                   </div>
                 </button>
-                
+
                 {expandedPartners.has(partner.partnerId) && (
                   <div className="bg-muted/30 px-4 pb-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
                       {Object.entries(partner.byCategory)
                         .sort(([, a], [, b]) => b.amount - a.amount)
                         .map(([category, data]) => (
-                          <div 
-                            key={category} 
+                          <div
+                            key={category}
                             className="bg-card rounded-lg p-3 border border-border"
                           >
                             <div className="flex items-center justify-between">
@@ -403,12 +403,12 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
             {detailedData.length} سجل
           </p>
         </div>
-        
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleSort('date')}
                 >
@@ -416,14 +416,14 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                   التاريخ
                 </TableHead>
                 <TableHead>الشريك</TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleSort('category')}
                 >
                   <SortIcon field="category" />
                   التصنيف
                 </TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleSort('amount')}
                 >
@@ -452,11 +452,10 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                     </TableCell>
                     <TableCell className="font-semibold">${formatNumber(row.amount)}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        row.status === 'confirmed' 
-                          ? 'bg-success/10 text-success' 
+                      <span className={`px-2 py-1 rounded-full text-xs ${row.status === 'confirmed'
+                          ? 'bg-success/10 text-success'
                           : 'bg-warning/10 text-warning'
-                      }`}>
+                        }`}>
                         {row.status === 'confirmed' ? 'مؤكد' : 'معلق'}
                       </span>
                     </TableCell>
@@ -466,7 +465,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
             </TableBody>
           </Table>
         </div>
-        
+
         {detailedData.length > 100 && (
           <div className="p-3 border-t border-border text-center text-sm text-muted-foreground">
             يتم عرض أول 100 سجل من {detailedData.length} سجل - صدّر التقرير للاطلاع على الكل

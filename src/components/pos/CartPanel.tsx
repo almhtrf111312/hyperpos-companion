@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  ShoppingCart, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  User, 
+  ShoppingCart,
+  Plus,
+  Minus,
+  Trash2,
+  User,
   Percent,
   Banknote,
   CreditCard,
@@ -47,11 +47,11 @@ import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
 import { recordActivity } from '@/lib/auto-backup';
 import { useLanguage } from '@/hooks/use-language';
-import { 
-  loadCustomersCloud, 
+import {
+  loadCustomersCloud,
   addCustomerCloud,
-  findOrCreateCustomerCloud, 
-  updateCustomerStatsCloud 
+  findOrCreateCustomerCloud,
+  updateCustomerStatsCloud
 } from '@/lib/cloud/customers-cloud';
 import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
 import { deductStockBatchCloud, checkStockAvailabilityCloud } from '@/lib/cloud/products-cloud';
@@ -132,13 +132,13 @@ export function CartPanel({
   const savingRef = useRef(false); // ✅ Mutex lock لمنع التكرارات
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const addCustomerRef = useRef(false);
-  
+
   // Loaded customers for search
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
-  
+
   // Fixed amount discount feature
   const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
-  
+
   // Smart customer search feature
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -149,13 +149,19 @@ export function CartPanel({
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  
+
   // Calculate discount based on type
-  const discountAmount = discountType === 'percent' 
-    ? (subtotal * discount) / 100 
+  const discountAmount = discountType === 'percent'
+    ? (subtotal * discount) / 100
     : Math.min(discount, subtotal); // Fixed amount should not exceed subtotal
-  
-  const total = Math.max(0, subtotal - discountAmount);
+
+  const taxableAmount = Math.max(0, subtotal - discountAmount);
+
+  // ✅ Tax Calculation (Placeholder for future settings)
+  const taxRate = 0;
+  const taxAmount = (taxableAmount * taxRate) / 100;
+
+  const total = taxableAmount + taxAmount;
   const totalInCurrency = total * selectedCurrency.rate;
 
   const handleCashSale = () => {
@@ -169,12 +175,12 @@ export function CartPanel({
       showToast.error(t('pos.enterCustomerName'));
       return;
     }
-    
+
     // ✅ التحقق إذا كان العميل موجوداً في قاعدة البيانات واستخدام رقم هاتفه
-    const existingCustomer = allCustomers.find(c => 
+    const existingCustomer = allCustomers.find(c =>
       c.name.toLowerCase() === customerName.toLowerCase().trim()
     );
-    
+
     if (existingCustomer) {
       setIsNewCustomer(false);
       setCustomerPhone(existingCustomer.phone || ''); // ✅ استخدام الهاتف المحفوظ
@@ -182,7 +188,7 @@ export function CartPanel({
       setIsNewCustomer(true);
       setCustomerPhone('');
     }
-    
+
     setShowDebtDialog(true);
   };
 
@@ -191,17 +197,17 @@ export function CartPanel({
     if (isSaving || savingRef.current) return;
     savingRef.current = true;
     setIsSaving(true);
-    
+
     // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
     const cartSnapshot = [...cart];
     const totalSnapshot = total;
     const customerNameSnapshot = customerName;
-    
+
     setShowCashDialog(false);
     onClearCart();
     playSaleComplete();
     startSync('جاري حفظ الفاتورة...', false);
-    
+
     try {
       // إذا كان الاتصال غير متاح، حفظ محلياً للمزامنة لاحقاً
       if (!isOnline) {
@@ -217,7 +223,7 @@ export function CartPanel({
         setIsSaving(false);
         return;
       }
-      
+
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
       const stockItemsWithConversion = cartSnapshot.map(item => ({
         productId: item.id,
@@ -226,7 +232,7 @@ export function CartPanel({
           ? item.quantity * item.conversionFactor
           : item.quantity
       }));
-      
+
       // التحقق من توفر الكميات
       // ✅ للمستودع الرئيسي (أو عدم وجود مستودع): استخدم products.quantity
       // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
@@ -238,7 +244,7 @@ export function CartPanel({
         // المستودع الرئيسي أو لا يوجد مستودع - استخدم products.quantity
         stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
       }
-      
+
       if (!stockCheck.success) {
         const insufficientNames = stockCheck.insufficientItems
           .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
@@ -249,23 +255,23 @@ export function CartPanel({
         });
         return;
       }
-      
+
       // Find or create customer
       const customer = customerNameSnapshot ? await findOrCreateCustomerCloud(customerNameSnapshot) : null;
-      
+
       // Calculate profit by category for accurate partner distribution
       const products = await loadProductsCloud();
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
       let totalCOGS = 0;
-      
+
       const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
-      
+
       cartSnapshot.forEach((item) => {
         const product = products.find(p => p.id === item.id);
         if (product) {
           let costPrice: number;
-          
+
           if (item.unit === 'bulk') {
             if (item.bulkCostPrice && item.bulkCostPrice > 0) {
               costPrice = item.bulkCostPrice;
@@ -275,7 +281,7 @@ export function CartPanel({
           } else {
             costPrice = item.costPrice || product.costPrice;
           }
-          
+
           const itemProfit = (item.price - costPrice) * item.quantity;
           const itemCOGS = costPrice * item.quantity;
           const category = product.category || 'عام';
@@ -285,15 +291,15 @@ export function CartPanel({
         }
         soldItems.push({ name: item.name, quantity: item.quantity, price: item.price });
       });
-      
+
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
       const discountedProfit = totalProfit * (1 - discountRatio);
       const discountMultiplier = 1 - discountRatio;
-      
+
       const itemsWithCost = cartSnapshot.map(item => {
         const product = products.find(p => p.id === item.id);
         let itemCostPrice: number;
-        
+
         if (item.unit === 'bulk') {
           if (item.bulkCostPrice && item.bulkCostPrice > 0) {
             itemCostPrice = item.bulkCostPrice;
@@ -303,9 +309,9 @@ export function CartPanel({
         } else {
           itemCostPrice = item.costPrice || product?.costPrice || 0;
         }
-        
+
         const itemProfit = (item.price - itemCostPrice) * item.quantity;
-        
+
         return {
           id: item.id,
           name: item.name,
@@ -316,7 +322,7 @@ export function CartPanel({
           profit: itemProfit * (1 - discountRatio),
         };
       });
-      
+
       // Create invoice in cloud
       const invoice = await addInvoiceCloud({
         type: 'sale',
@@ -324,6 +330,9 @@ export function CartPanel({
         items: itemsWithCost,
         subtotal,
         discount,
+        discountPercentage: discountType === 'percent' ? discount : 0,
+        taxRate,
+        taxAmount,
         total: totalSnapshot,
         totalInCurrency,
         currency: selectedCurrency.code,
@@ -332,23 +341,23 @@ export function CartPanel({
         status: 'paid',
         profit: discountedProfit,
       });
-      
+
       if (!invoice) {
         showToast.error('فشل في إنشاء الفاتورة');
         return;
       }
-      
+
       // ✅ باقي العمليات تتم في الخلفية (parallel)
       const backgroundTasks = [];
-      
+
       // تسجيل الربح
       addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
-      
+
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
         .filter(([_, profit]) => profit * discountMultiplier > 0)
         .map(([category, profit]) => ({ category, profit: profit * discountMultiplier }));
-      
+
       if (categoryProfits.length > 0) {
         // Run in the same background batch so it doesn't fail silently
         backgroundTasks.push(
@@ -362,7 +371,7 @@ export function CartPanel({
           })
         );
       }
-      
+
       // Deduct stock (parallel)
       const stockItemsToDeduct = cartSnapshot.map(item => ({
         productId: item.id,
@@ -370,22 +379,22 @@ export function CartPanel({
           ? item.quantity * item.conversionFactor
           : item.quantity
       }));
-      
+
       // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
       if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
         backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
       } else {
         backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
       }
-      
+
       // Update customer stats
       if (customer) {
         backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, false));
       }
-      
+
       // Run background tasks in parallel
       await Promise.all(backgroundTasks);
-      
+
       // Log activity
       if (user) {
         const itemsDescription = soldItems.map(item => `${item.name} × ${item.quantity}`).join('، ');
@@ -397,15 +406,15 @@ export function CartPanel({
           { invoiceId: invoice.id, total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
         );
       }
-      
+
       addSalesToShift(totalSnapshot);
       recordActivity();
-      
+
       completeSync('تمت المزامنة بنجاح');
       showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح ✓`);
     } catch (error) {
       console.error('Cash sale error:', error);
-      
+
       // في حالة الفشل، حفظ محلياً
       addToQueue('invoice_create', {
         invoice: {
@@ -415,7 +424,7 @@ export function CartPanel({
         },
         timestamp: Date.now(),
       });
-      
+
       failSync('تم حفظ الفاتورة محلياً، سيتم الرفع لاحقاً');
       showToast.error('حدث خطأ أثناء معالجة البيع');
     } finally {
@@ -429,18 +438,18 @@ export function CartPanel({
     if (isSaving || savingRef.current) return;
     savingRef.current = true;
     setIsSaving(true);
-    
+
     // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
     const cartSnapshot = [...cart];
     const totalSnapshot = total;
     const customerNameSnapshot = customerName;
     const customerPhoneSnapshot = customerPhone;
-    
+
     setShowDebtDialog(false);
     onClearCart();
     playDebtRecorded();
     startSync('جاري إنشاء فاتورة الدين...', false);
-    
+
     try {
       // إذا كان الاتصال غير متاح، حفظ محلياً للمزامنة لاحقاً
       if (!isOnline) {
@@ -458,7 +467,7 @@ export function CartPanel({
         setIsSaving(false);
         return;
       }
-      
+
       // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
       const stockItemsWithConversion = cartSnapshot.map(item => ({
         productId: item.id,
@@ -467,7 +476,7 @@ export function CartPanel({
           ? item.quantity * item.conversionFactor
           : item.quantity
       }));
-      
+
       // التحقق من المخزون
       // ✅ للمستودع الرئيسي: استخدم products.quantity
       // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
@@ -477,7 +486,7 @@ export function CartPanel({
       } else {
         stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
       }
-      
+
       if (!stockCheck.success) {
         const insufficientNames = stockCheck.insufficientItems
           .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
@@ -488,23 +497,23 @@ export function CartPanel({
         });
         return;
       }
-      
+
       // Find or create customer
       const customer = await findOrCreateCustomerCloud(customerNameSnapshot);
-      
+
       // Calculate profit by category
       const products = await loadProductsCloud();
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
       let totalCOGS = 0;
-      
+
       const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
-      
+
       cartSnapshot.forEach((item) => {
         const product = products.find(p => p.id === item.id);
         if (product) {
           let costPrice: number;
-          
+
           if (item.unit === 'bulk') {
             if (item.bulkCostPrice && item.bulkCostPrice > 0) {
               costPrice = item.bulkCostPrice;
@@ -514,7 +523,7 @@ export function CartPanel({
           } else {
             costPrice = item.costPrice || product.costPrice;
           }
-          
+
           const itemProfit = (item.price - costPrice) * item.quantity;
           const itemCOGS = costPrice * item.quantity;
           const category = product.category || 'عام';
@@ -522,22 +531,22 @@ export function CartPanel({
           totalProfit += itemProfit;
           totalCOGS += itemCOGS;
         }
-        
+
         soldItems.push({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
         });
       });
-      
+
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
       const discountedProfit = totalProfit * (1 - discountRatio);
       const discountMultiplier = 1 - discountRatio;
-      
+
       const itemsWithCost = cartSnapshot.map(item => {
         const product = products.find(p => p.id === item.id);
         let itemCostPrice: number;
-        
+
         if (item.unit === 'bulk') {
           if (item.bulkCostPrice && item.bulkCostPrice > 0) {
             itemCostPrice = item.bulkCostPrice;
@@ -547,9 +556,9 @@ export function CartPanel({
         } else {
           itemCostPrice = item.costPrice || product?.costPrice || 0;
         }
-        
+
         const itemProfit = (item.price - itemCostPrice) * item.quantity;
-        
+
         return {
           id: item.id,
           name: item.name,
@@ -560,7 +569,7 @@ export function CartPanel({
           profit: itemProfit * discountMultiplier,
         };
       });
-      
+
       // Create invoice using Cloud API
       const invoice = await addInvoiceCloud({
         type: 'sale',
@@ -568,6 +577,9 @@ export function CartPanel({
         items: itemsWithCost,
         subtotal,
         discount,
+        discountPercentage: discountType === 'percent' ? discount : 0,
+        taxRate,
+        taxAmount,
         total: totalSnapshot,
         totalInCurrency,
         currency: selectedCurrency.code,
@@ -576,21 +588,21 @@ export function CartPanel({
         status: 'pending',
         profit: discountedProfit,
       });
-      
+
       if (!invoice) {
         showToast.error('فشل في إنشاء الفاتورة');
         return;
       }
-      
+
       // ✅ باقي العمليات في الخلفية (parallel)
       const backgroundTasks = [];
-      
+
       // تسجيل الربح
       addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
-      
+
       // Create debt record
       backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', totalSnapshot));
-      
+
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
         .filter(([_, profit]) => profit * discountMultiplier > 0)
@@ -598,7 +610,7 @@ export function CartPanel({
           category,
           profit: profit * discountMultiplier
         }));
-      
+
       if (categoryProfits.length > 0) {
         backgroundTasks.push(
           distributeDetailedProfitCloud(
@@ -611,7 +623,7 @@ export function CartPanel({
           })
         );
       }
-      
+
       // Deduct stock (parallel)
       const stockItemsToDeduct = cartSnapshot.map(item => ({
         productId: item.id,
@@ -620,41 +632,41 @@ export function CartPanel({
           ? item.quantity * item.conversionFactor
           : item.quantity
       }));
-      
+
       // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
       if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
         backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
       } else {
         backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
       }
-      
+
       // Update customer stats
       if (customer) {
         backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, true));
       }
-      
+
       // Run all background tasks in parallel
       await Promise.all(backgroundTasks);
-      
+
       // Log activity
       if (user) {
         const itemsDescription = soldItems.map(item => `${item.name} × ${item.quantity}`).join('، ');
-        
+
         addActivityLog(
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
           `عملية بيع بالدين بقيمة $${totalSnapshot.toLocaleString()} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
-          { 
-            invoiceId: invoice.id, 
-            total: totalSnapshot, 
-            itemsCount: cartSnapshot.length, 
-            customerName: customerNameSnapshot, 
+          {
+            invoiceId: invoice.id,
+            total: totalSnapshot,
+            itemsCount: cartSnapshot.length,
+            customerName: customerNameSnapshot,
             paymentType: 'debt',
             items: soldItems
           }
         );
-        
+
         addActivityLog(
           'debt_created',
           user.id,
@@ -663,12 +675,12 @@ export function CartPanel({
           { invoiceId: invoice.id, amount: totalSnapshot, customerName: customerNameSnapshot }
         );
       }
-      
+
       completeSync('تمت المزامنة بنجاح');
       showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح ✓`);
     } catch (error) {
       console.error('Debt sale error:', error);
-      
+
       // في حالة الفشل، حفظ محلياً
       const bundle = {
         invoiceData: {
@@ -680,7 +692,7 @@ export function CartPanel({
         timestamp: Date.now(),
       };
       addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
-      
+
       failSync('تم حفظ الفاتورة محلياً، سيتم الرفع لاحقاً');
       showToast.error('حدث خطأ أثناء معالجة البيع بالدين');
     } finally {
@@ -696,7 +708,7 @@ export function CartPanel({
       try {
         // Use cloud API instead of local storage
         const customers = await loadCustomersCloud();
-        const matches = customers.filter(c => 
+        const matches = customers.filter(c =>
           c.name.toLowerCase().includes(value.toLowerCase()) ||
           (c.phone && c.phone.includes(value))
         ).slice(0, 5); // Max 5 results
@@ -706,7 +718,7 @@ export function CartPanel({
         console.error('Failed to load customers:', error);
         // Fallback to local storage
         const localCustomers = loadCustomers();
-        const matches = localCustomers.filter(c => 
+        const matches = localCustomers.filter(c =>
           c.name.toLowerCase().includes(value.toLowerCase()) ||
           (c.phone && c.phone.includes(value))
         ).slice(0, 5);
@@ -771,14 +783,14 @@ export function CartPanel({
 
   const handlePrint = () => {
     if (cart.length === 0) return;
-    
+
     // Load store settings
     let storeName = 'FlowPOS Pro';
     let storeAddress = '';
     let storePhone = '';
     let storeLogo = '';
     let footer = 'شكراً لتعاملكم معنا!';
-    
+
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
@@ -789,11 +801,11 @@ export function CartPanel({
         storeLogo = settings.storeSettings?.logo || '';
         footer = settings.printSettings?.footer || footer;
       }
-    } catch {}
+    } catch { }
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
-    
+
     const itemsHtml = cart.map(item => `
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
@@ -801,7 +813,7 @@ export function CartPanel({
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${(item.price * item.quantity * selectedCurrency.rate).toLocaleString()}</td>
       </tr>
     `).join('');
-    
+
     const printContent = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -853,7 +865,7 @@ export function CartPanel({
         </body>
       </html>
     `;
-    
+
     printHTML(printContent);
     showToast.success('جاري إرسال الفاتورة للطابعة...');
   };
@@ -885,13 +897,13 @@ export function CartPanel({
             </div>
             <div className="flex items-center gap-2">
               {/* مؤشر المزامنة في الخلفية */}
-              <BackgroundSyncIndicator 
-                state={syncState} 
+              <BackgroundSyncIndicator
+                state={syncState}
                 message={syncMessage}
                 className="hidden sm:flex"
               />
               {cart.length > 0 && (
-                <button 
+                <button
                   onClick={onClearCart}
                   className="text-xs md:text-sm text-destructive hover:text-destructive/80"
                 >
@@ -905,12 +917,12 @@ export function CartPanel({
               )}
             </div>
           </div>
-          
+
           {/* مؤشر المزامنة على الموبايل */}
           {(syncState !== 'idle' || isSaving) && (
             <div className="mt-2 sm:hidden">
-              <BackgroundSyncIndicator 
-                state={syncState} 
+              <BackgroundSyncIndicator
+                state={syncState}
                 message={syncMessage}
               />
             </div>
@@ -963,9 +975,9 @@ export function CartPanel({
                 </div>
               )}
             </div>
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="h-9 w-9 md:h-10 md:w-10 flex-shrink-0"
               onClick={() => setShowCustomerDialog(true)}
             >
@@ -984,7 +996,7 @@ export function CartPanel({
             </div>
           ) : (
             cart.map((item, index) => (
-              <div 
+              <div
                 key={`${item.id}-${item.unit}`}
                 className="bg-muted rounded-lg md:rounded-xl p-2.5 md:p-3 slide-in-right"
                 style={{ animationDelay: `${index * 50}ms` }}
@@ -995,11 +1007,10 @@ export function CartPanel({
                     {/* Unit Badge with Toggle - only show for bulk items */}
                     {item.bulkSalePrice && item.bulkSalePrice > 0 && (
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                          item.unit === 'bulk' 
-                            ? 'bg-primary/20 text-primary' 
-                            : 'bg-muted-foreground/20 text-muted-foreground'
-                        }`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.unit === 'bulk'
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                          }`}>
                           {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
                         </span>
                         {/* Toggle Unit Button */}
@@ -1162,18 +1173,18 @@ export function CartPanel({
 
           {/* Action Buttons */}
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1 h-9 md:h-10 text-xs md:text-sm" 
+            <Button
+              variant="outline"
+              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
               disabled={cart.length === 0}
               onClick={handlePrint}
             >
               <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
               {t('pos.print')}
             </Button>
-            <Button 
-              variant="outline" 
-              className="flex-1 h-9 md:h-10 text-xs md:text-sm" 
+            <Button
+              variant="outline"
+              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
               disabled={cart.length === 0}
               onClick={handleWhatsApp}
             >
@@ -1268,8 +1279,8 @@ export function CartPanel({
               <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
                 إلغاء
               </Button>
-              <Button 
-                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
+              <Button
+                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground"
                 onClick={() => {
                   // التحقق من رقم الهاتف إذا كان عميل جديد
                   if (isNewCustomer && !customerPhone.trim()) {

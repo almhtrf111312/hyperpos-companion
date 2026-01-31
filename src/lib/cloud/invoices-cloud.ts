@@ -1,8 +1,8 @@
 // Cloud Invoices Store - Supabase-backed invoices management
-import { 
-  fetchFromSupabase, 
-  insertToSupabase, 
-  updateInSupabase, 
+import {
+  fetchFromSupabase,
+  insertToSupabase,
+  updateInSupabase,
   deleteFromSupabase,
   getCurrentUserId,
   setCurrentUserId,
@@ -63,6 +63,9 @@ export interface Invoice {
   items: InvoiceItem[];
   subtotal: number;
   discount: number;
+  discountPercentage?: number;
+  taxRate?: number;
+  taxAmount?: number;
   total: number;
   totalInCurrency: number;
   currency: string;
@@ -76,6 +79,7 @@ export interface Invoice {
   profit?: number;
   debtPaid?: number;
   debtRemaining?: number;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   cashierId?: string;
@@ -115,16 +119,24 @@ const CACHE_TTL = 30000;
 
 // Generate invoice number
 const getNextInvoiceNumber = async (): Promise<string> => {
-  const year = new Date().getFullYear();
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  const datePrefix = `${year}${month}${day}`;
+
   const invoices = await loadInvoicesCloud();
-  
-  // Count invoices from this year
-  const yearInvoices = invoices.filter(inv => 
-    inv.createdAt.startsWith(year.toString())
+
+  // Filter invoices created today to sequence them
+  // Assuming ID format is YYYYMMDD-XXX
+  const todayInvoices = invoices.filter(inv =>
+    inv.id.startsWith(datePrefix)
   );
-  
-  const nextNumber = yearInvoices.length + 1;
-  return `INV-${year}-${String(nextNumber).padStart(3, '0')}`;
+
+  const nextNumber = todayInvoices.length + 1;
+  // Use 3 digits for sequence (e.g. 001)
+  return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
 };
 
 // Load invoices
@@ -148,12 +160,12 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
 
   // Check if user is cashier
   const isCashier = await isCashierUser();
-  
+
   let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
     column: 'created_at',
     ascending: false,
   });
-  
+
   // ✅ If cashier, filter to only show their own invoices
   if (isCashier) {
     cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
@@ -163,14 +175,14 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
   const invoicesWithItems = await Promise.all(
     cloudInvoices.map(async (cloud) => {
       const invoice = toInvoice(cloud);
-      
+
       // Fetch items
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: items } = await (supabase as any)
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', cloud.id);
-      
+
       invoice.items = (items || []).map((item: Record<string, unknown>) => ({
         id: item.id as string,
         name: item.product_name as string,
@@ -178,14 +190,14 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
         quantity: Number(item.quantity) || 1,
         total: Number(item.amount_original) || 0,
       }));
-      
+
       return invoice;
     })
   );
 
   invoicesCache = invoicesWithItems;
   cacheTimestamp = Date.now();
-  
+
   return invoicesCache;
 };
 
@@ -200,7 +212,7 @@ export const addInvoiceCloud = async (
 ): Promise<Invoice | null> => {
   const invoiceNumber = await getNextInvoiceNumber();
   const now = new Date();
-  
+
   // ✅ جلب معرف المستخدم من المتغير أو مباشرة من supabase
   let userId = getCurrentUserId();
   if (!userId) {
@@ -208,7 +220,7 @@ export const addInvoiceCloud = async (
     userId = user?.id || null;
     console.log('[addInvoiceCloud] Fallback to supabase.auth.getUser:', userId);
   }
-  
+
   // ✅ جلب اسم الكاشير/المستخدم الحالي
   let cashierName = '';
   if (userId) {
@@ -224,7 +236,7 @@ export const addInvoiceCloud = async (
       console.warn('[addInvoiceCloud] Could not fetch cashier name:', e);
     }
   }
-  
+
   const inserted = await insertToSupabase<CloudInvoice>('invoices', {
     invoice_number: invoiceNumber,
     invoice_type: invoice.type,
@@ -234,6 +246,9 @@ export const addInvoiceCloud = async (
     customer_phone: invoice.customerPhone || null,
     subtotal: invoice.subtotal,
     discount: invoice.discount,
+    discount_percentage: invoice.discountPercentage || 0,
+    tax_rate: invoice.taxRate || 0,
+    tax_amount: invoice.taxAmount || 0,
     total: invoice.total,
     profit: invoice.profit || 0,
     currency: invoice.currency,
@@ -242,11 +257,11 @@ export const addInvoiceCloud = async (
     status: invoice.status,
     debt_paid: invoice.debtPaid || 0,
     debt_remaining: invoice.debtRemaining || 0,
-    notes: invoice.serviceDescription || null,
+    notes: invoice.notes || invoice.serviceDescription || null,
     cashier_id: userId, // ✅ تسجيل معرف الكاشير
     cashier_name: cashierName || invoice.cashierName || null, // ✅ تسجيل اسم الكاشير
   });
-  
+
   if (inserted) {
     // ✅ Batch insert - إدراج جميع العناصر دفعة واحدة لتسريع العملية
     if (invoice.items.length > 0) {
@@ -260,14 +275,14 @@ export const addInvoiceCloud = async (
         amount_original: item.total,
         profit: item.profit || 0,
       }));
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from('invoice_items').insert(itemsToInsert);
     }
-    
+
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
-    
+
     return {
       ...invoice,
       id: invoiceNumber,
@@ -277,13 +292,13 @@ export const addInvoiceCloud = async (
       cashierName: cashierName || undefined,
     };
   }
-  
+
   return null;
 };
 
 // Update invoice
 export const updateInvoiceCloud = async (
-  id: string, 
+  id: string,
   updates: Partial<Invoice>
 ): Promise<Invoice | null> => {
   // Find invoice by invoice_number
@@ -309,13 +324,13 @@ export const updateInvoiceCloud = async (
   if (updates.debtRemaining !== undefined) cloudUpdates.debt_remaining = updates.debtRemaining;
 
   const success = await updateInSupabase('invoices', cloudInvoice.id, cloudUpdates);
-  
+
   if (success) {
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
     return { ...invoice, ...updates, updatedAt: new Date().toISOString() };
   }
-  
+
   return null;
 };
 
@@ -332,13 +347,43 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   if (!cloudInvoice) return false;
 
+  // ✅ Restore Stock logic before deletion
+  try {
+    // 1. Fetch items to restore
+    const { data: items } = await (supabase as any)
+      .from('invoice_items')
+      .select('product_id, quantity')
+      .eq('invoice_id', cloudInvoice.id);
+
+    if (items && items.length > 0) {
+      // Filter out items without product_id
+      const itemsToRestore = items
+        .filter((item: any) => item.product_id)
+        .map((item: any) => ({
+          productId: item.product_id,
+          quantity: Number(item.quantity) || 0
+        }));
+
+      if (itemsToRestore.length > 0) {
+        // Import dynamically to avoid circular dependency issues if any
+        const { restoreStockBatchCloud } = await import('./products-cloud');
+        await restoreStockBatchCloud(itemsToRestore);
+      }
+    }
+  } catch (err) {
+    console.error('[deleteInvoiceCloud] Error restoring stock:', err);
+    // Continue with deletion even if restoration fails? 
+    // Usually better to fail safe, but user wants deletion to work.
+    // Logging is enough for now.
+  }
+
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
-  
+
   if (success) {
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
   }
-  
+
   return success;
 };
 
@@ -352,16 +397,16 @@ export const getInvoiceByIdCloud = async (id: string): Promise<Invoice | null> =
 export const getInvoiceStatsCloud = async () => {
   const invoices = await loadInvoicesCloud();
   const today = new Date().toDateString();
-  const todayInvoices = invoices.filter(inv => 
+  const todayInvoices = invoices.filter(inv =>
     new Date(inv.createdAt).toDateString() === today
   );
-  
+
   return {
     total: invoices.length,
     todayCount: todayInvoices.length,
     todaySales: todayInvoices.reduce((sum, inv) => sum + inv.total, 0),
     totalSales: invoices.reduce((sum, inv) => sum + inv.total, 0),
-    pendingDebts: invoices.filter(inv => 
+    pendingDebts: invoices.filter(inv =>
       inv.paymentType === 'debt' && inv.status === 'pending'
     ).length,
     totalProfit: invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
@@ -370,30 +415,30 @@ export const getInvoiceStatsCloud = async () => {
 
 // Update invoice by invoice_number - للتحديث المباشر بدون تحميل كل الفواتير
 export const updateInvoiceByNumberCloud = async (
-  invoiceNumber: string, 
+  invoiceNumber: string,
   updates: Partial<Invoice>
 ): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
-  
+
   const cloudUpdates: Record<string, unknown> = {};
   if (updates.status !== undefined) cloudUpdates.status = updates.status;
   if (updates.paymentType !== undefined) cloudUpdates.payment_type = updates.paymentType;
   if (updates.debtPaid !== undefined) cloudUpdates.debt_paid = updates.debtPaid;
   if (updates.debtRemaining !== undefined) cloudUpdates.debt_remaining = updates.debtRemaining;
-  
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('invoices')
     .update(cloudUpdates)
     .eq('invoice_number', invoiceNumber)
     .eq('user_id', userId);
-  
+
   if (!error) {
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
     return true;
   }
-  
+
   return false;
 };

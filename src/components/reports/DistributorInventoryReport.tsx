@@ -146,7 +146,7 @@ export function DistributorInventoryReport() {
       // Add products that were received but might not be in current stock
       for (const [productId, received] of receivedMap.entries()) {
         if (processedProducts.has(productId)) continue;
-        
+
         const product = products.find(p => p.id === productId);
         if (!product) continue;
 
@@ -200,7 +200,7 @@ export function DistributorInventoryReport() {
     try {
       const { utils, writeFile } = await import('xlsx');
       const selectedWh = warehouses.find(w => w.id === selectedWarehouse);
-      
+
       const exportData = stockData.map(item => ({
         'المنتج': item.productName,
         'الوحدة': item.unit,
@@ -228,7 +228,7 @@ export function DistributorInventoryReport() {
 
       const fileName = `جرد_العهدة_${selectedWh?.name || 'موزع'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       writeFile(wb, fileName);
-      
+
       toast.success('تم تصدير التقرير بنجاح');
     } catch (error) {
       console.error('Export error:', error);
@@ -299,7 +299,7 @@ export function DistributorInventoryReport() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -425,9 +425,9 @@ export function DistributorInventoryReport() {
                       <TableCell className="text-center">
                         <span className={cn(
                           "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                          item.variance > 0 
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
-                            : item.variance < 0 
+                          item.variance > 0
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : item.variance < 0
                               ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                               : "bg-muted text-muted-foreground"
                         )}>

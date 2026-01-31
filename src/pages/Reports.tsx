@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  BarChart3,
+  TrendingUp,
+  DollarSign,
   ShoppingCart,
   Users,
   UsersRound,
@@ -38,16 +38,16 @@ import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitD
 import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
 import { DistributorInventoryReport } from '@/components/reports/DistributorInventoryReport';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
-import { 
-  exportInvoicesToExcel, 
-  exportProductsToExcel, 
-  exportExpensesToExcel, 
+import {
+  exportInvoicesToExcel,
+  exportProductsToExcel,
+  exportExpensesToExcel,
   exportPartnersToExcel,
   exportCustomersToExcel,
   exportSalesReportToExcel
 } from '@/lib/excel-export';
-import { 
-  exportInvoicesToPDF, 
+import {
+  exportInvoicesToPDF,
   exportProductsToPDF,
   exportExpensesToPDF,
   exportPartnersToPDF,
@@ -60,9 +60,9 @@ import { EVENTS } from '@/lib/events';
 export default function Reports() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
-  const [dateRange, setDateRange] = useState({ 
-    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
-    to: new Date().toISOString().split('T')[0] 
+  const [dateRange, setDateRange] = useState({
+    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0]
   });
   const [activeReport, setActiveReport] = useState('sales');
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +87,7 @@ export default function Reports() {
         loadCategoriesCloud(),
         loadExpensesCloud()
       ]);
-      
+
       setCloudInvoices(invoices);
       setCloudProducts(products);
       setCloudCustomers(customers);
@@ -107,7 +107,7 @@ export default function Reports() {
     loadCloudData();
 
     const handleUpdate = () => loadCloudData();
-    
+
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
@@ -115,7 +115,7 @@ export default function Reports() {
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
     window.addEventListener('focus', loadCloudData);
-    
+
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
@@ -161,7 +161,7 @@ export default function Reports() {
     const allInvoices = cloudInvoices;
     const products = cloudProducts;
     const customers = cloudCustomers;
-    
+
     // Filter invoices by date range using local timezone
     // ✅ تضمين فواتير البيع والصيانة معاً في حسابات الأرباح
     const filteredInvoices = allInvoices.filter(inv => {
@@ -170,13 +170,13 @@ export default function Reports() {
       const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
       return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
     });
-    
+
     // Calculate summary stats
     const totalSales = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
     const totalProfit = filteredInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
     const totalOrders = filteredInvoices.length;
     const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-    
+
     // Calculate daily sales using local timezone
     const dailySalesMap: Record<string, { sales: number; profit: number; orders: number }> = {};
     filteredInvoices.forEach(inv => {
@@ -188,14 +188,14 @@ export default function Reports() {
       dailySalesMap[date].profit += inv.profit || 0;
       dailySalesMap[date].orders += 1;
     });
-    
+
     // All daily sales for display (limited to 7 for chart)
     const allDailySales = Object.entries(dailySalesMap)
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    
+
     const dailySales = allDailySales.slice(-7); // Last 7 days for chart display
-    
+
     // Calculate top products
     const productSalesMap: Record<string, { name: string; sales: number; revenue: number }> = {};
     filteredInvoices.forEach(inv => {
@@ -208,15 +208,15 @@ export default function Reports() {
         productSalesMap[key].revenue += item.total;
       });
     });
-    
+
     const topProducts = Object.values(productSalesMap)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-    
+
     // All products for export
     const allProducts = Object.values(productSalesMap)
       .sort((a, b) => b.revenue - a.revenue);
-    
+
     // Calculate top customers
     const customerPurchasesMap: Record<string, { name: string; orders: number; total: number }> = {};
     filteredInvoices.forEach(inv => {
@@ -227,19 +227,19 @@ export default function Reports() {
       customerPurchasesMap[name].orders += 1;
       customerPurchasesMap[name].total += inv.total;
     });
-    
+
     const topCustomers = Object.values(customerPurchasesMap)
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
-    
+
     // All customers for export
     const allCustomers = Object.values(customerPurchasesMap)
       .sort((a, b) => b.total - a.total);
-    
+
     // Find top product name
     const topProduct = topProducts.length > 0 ? topProducts[0].name : 'لا يوجد';
     const topCustomer = topCustomers.length > 0 ? topCustomers[0].name : 'لا يوجد';
-    
+
     return {
       summary: { totalSales, totalProfit, totalOrders, avgOrderValue, topProduct, topCustomer },
       dailySales,
@@ -256,12 +256,12 @@ export default function Reports() {
   const partnerReportData = useMemo(() => {
     const partners = cloudPartners;
     const categories = cloudCategories;
-    
+
     // Filter partners based on selection
-    const filteredPartners = selectedPartnerId === 'all' 
-      ? partners 
+    const filteredPartners = selectedPartnerId === 'all'
+      ? partners
       : partners.filter(p => p.id === selectedPartnerId);
-    
+
     // Calculate partner profit data within date range
     const partnerProfitData = filteredPartners.map(partner => {
       // Filter profit history by date range
@@ -269,10 +269,10 @@ export default function Reports() {
         const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
         return recordDate >= dateRange.from && recordDate <= dateRange.to;
       });
-      
+
       // Total profit in period
       const totalProfitInPeriod = filteredProfitHistory.reduce((sum, r) => sum + r.amount, 0);
-      
+
       // Group by category
       const profitByCategory: Record<string, { categoryName: string; amount: number; count: number }> = {};
       filteredProfitHistory.forEach(record => {
@@ -283,7 +283,7 @@ export default function Reports() {
         profitByCategory[catName].amount += record.amount;
         profitByCategory[catName].count += 1;
       });
-      
+
       // Daily profit within period
       const dailyProfitMap: Record<string, number> = {};
       filteredProfitHistory.forEach(record => {
@@ -293,19 +293,19 @@ export default function Reports() {
         }
         dailyProfitMap[date] += record.amount;
       });
-      
+
       const dailyProfit = Object.entries(dailyProfitMap)
         .map(([date, amount]) => ({ date, amount }))
         .sort((a, b) => a.date.localeCompare(b.date));
-      
+
       // Filter withdrawals by date range
       const filteredWithdrawals = (partner.withdrawalHistory || []).filter(w => {
         const wDate = new Date(w.date).toISOString().split('T')[0];
         return wDate >= dateRange.from && wDate <= dateRange.to;
       });
-      
+
       const totalWithdrawnInPeriod = filteredWithdrawals.reduce((sum, w) => sum + w.amount, 0);
-      
+
       return {
         id: partner.id,
         name: partner.name,
@@ -322,13 +322,13 @@ export default function Reports() {
         totalProfitEarned: partner.totalProfitEarned,
       };
     });
-    
+
     // Summary stats for all filtered partners
     const totalPartnerProfitInPeriod = partnerProfitData.reduce((sum, p) => sum + p.totalProfitInPeriod, 0);
     const totalPartnerWithdrawnInPeriod = partnerProfitData.reduce((sum, p) => sum + p.totalWithdrawnInPeriod, 0);
     const totalCurrentBalance = partnerProfitData.reduce((sum, p) => sum + p.currentBalance, 0);
     const totalPendingProfit = partnerProfitData.reduce((sum, p) => sum + p.pendingProfit, 0);
-    
+
     // Aggregate category breakdown across all selected partners
     const aggregatedCategoryProfits: Record<string, { categoryName: string; amount: number; count: number }> = {};
     partnerProfitData.forEach(partner => {
@@ -340,7 +340,7 @@ export default function Reports() {
         aggregatedCategoryProfits[cat.categoryName].count += cat.count;
       });
     });
-    
+
     return {
       partners: partnerProfitData,
       allPartners: partners,
@@ -361,16 +361,16 @@ export default function Reports() {
   const expenseReportData = useMemo(() => {
     const allExpenses = cloudExpenses;
     const partners = cloudPartners;
-    
+
     // Filter expenses by date range
     const filteredExpenses = allExpenses.filter(exp => {
       const expDate = exp.date;
       return expDate >= dateRange.from && expDate <= dateRange.to;
     });
-    
+
     // Total expenses in period
     const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-    
+
     // Group by type
     const byType: Record<string, { type: string; amount: number; count: number }> = {};
     filteredExpenses.forEach(exp => {
@@ -381,7 +381,7 @@ export default function Reports() {
       byType[type].amount += exp.amount;
       byType[type].count += 1;
     });
-    
+
     // Partner expense breakdown
     const partnerExpenses: Record<string, { name: string; amount: number; percentage: number }> = {};
     filteredExpenses.forEach(exp => {
@@ -392,12 +392,12 @@ export default function Reports() {
         partnerExpenses[dist.partnerId].amount += dist.amount;
       });
     });
-    
+
     // Calculate percentages
     Object.values(partnerExpenses).forEach(pe => {
       pe.percentage = totalExpenses > 0 ? (pe.amount / totalExpenses) * 100 : 0;
     });
-    
+
     // Daily expenses
     const dailyExpenseMap: Record<string, number> = {};
     filteredExpenses.forEach(exp => {
@@ -406,11 +406,11 @@ export default function Reports() {
       }
       dailyExpenseMap[exp.date] += exp.amount;
     });
-    
+
     const dailyExpenses = Object.entries(dailyExpenseMap)
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    
+
     return {
       expenses: filteredExpenses,
       totalExpenses,
@@ -446,7 +446,7 @@ export default function Reports() {
     const products = cloudProducts;
     const customers = cloudCustomers;
     const partners = cloudPartners;
-    
+
     try {
       switch (activeReport) {
         case 'sales':
@@ -556,7 +556,7 @@ export default function Reports() {
     const products = cloudProducts;
     const customers = cloudCustomers;
     const partners = cloudPartners;
-    
+
     try {
       switch (activeReport) {
         case 'sales':
@@ -674,15 +674,15 @@ export default function Reports() {
 
   // Generate partner expense report for WhatsApp
   const handleShareExpenseReport = (partnerName: string) => {
-    const partnerExpenses = expenseReportData.expenses.filter(exp => 
+    const partnerExpenses = expenseReportData.expenses.filter(exp =>
       exp.distributions.some(d => d.partnerName === partnerName)
     );
-    
+
     const partnerTotal = partnerExpenses.reduce((sum, exp) => {
       const dist = exp.distributions.find(d => d.partnerName === partnerName);
       return sum + (dist?.amount || 0);
     }, 0);
-    
+
     const report = `📊 تقرير المصاريف - ${partnerName}
 📅 الفترة: ${dateRange.from} إلى ${dateRange.to}
 
@@ -690,9 +690,9 @@ export default function Reports() {
 
 📋 التفاصيل:
 ${partnerExpenses.map(exp => {
-  const dist = exp.distributions.find(d => d.partnerName === partnerName);
-  return `• ${exp.date} - ${exp.typeLabel}: $${formatNumber(dist?.amount || 0)}`;
-}).join('\n')}
+      const dist = exp.distributions.find(d => d.partnerName === partnerName);
+      return `• ${exp.date} - ${exp.typeLabel}: $${formatNumber(dist?.amount || 0)}`;
+    }).join('\n')}
 
 ---
 تم إنشاء التقرير بواسطة HyperPOS`;
@@ -712,10 +712,10 @@ ${partnerExpenses.map(exp => {
         customers: cloudCustomers,
       }
     };
-    
+
     const filename = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
     const success = await downloadJSON(filename, backupData);
-    
+
     if (success) {
       toast.success(isNativePlatform() ? 'تم حفظ النسخة الاحتياطية بنجاح' : 'تم إنشاء النسخة الاحتياطية بنجاح');
     } else {
@@ -728,180 +728,593 @@ ${partnerExpenses.map(exp => {
 
   return (
     <MainLayout>
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
-        <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
+          <div>
+            <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
+          </div>
+          <div className="flex gap-2">
+            {isLoading && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">جاري التحميل...</span>
+              </div>
+            )}
+            <Button variant="outline" onClick={handleExportPDF} disabled={isLoading}>
+              <FileText className="w-4 h-4 ml-2" />
+              PDF
+            </Button>
+            <Button variant="outline" onClick={handleExportExcel} disabled={isLoading}>
+              <Download className="w-4 h-4 ml-2" />
+              Excel
+            </Button>
+            <Button onClick={handleBackup} disabled={isLoading}>
+              <Download className="w-4 h-4 ml-2" />
+              {t('reports.backup')}
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          {isLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">جاري التحميل...</span>
-            </div>
-          )}
-          <Button variant="outline" onClick={handleExportPDF} disabled={isLoading}>
-            <FileText className="w-4 h-4 ml-2" />
-            PDF
-          </Button>
-          <Button variant="outline" onClick={handleExportExcel} disabled={isLoading}>
-            <Download className="w-4 h-4 ml-2" />
-            Excel
-          </Button>
-          <Button onClick={handleBackup} disabled={isLoading}>
-            <Download className="w-4 h-4 ml-2" />
-            {t('reports.backup')}
-          </Button>
-        </div>
-      </div>
 
-      {/* Date Range */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{t('reports.from')}:</span>
-          <Input
-            type="date"
-            value={dateRange.from}
-            onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-            className="w-40"
-          />
+        {/* Date Range */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">{t('reports.from')}:</span>
+            <Input
+              type="date"
+              value={dateRange.from}
+              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+              className="w-40"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t('reports.to')}:</span>
+            <Input
+              type="date"
+              value={dateRange.to}
+              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+              className="w-40"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t('reports.to')}:</span>
-          <Input
-            type="date"
-            value={dateRange.to}
-            onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-            className="w-40"
-          />
-        </div>
-      </div>
 
-      {/* Report Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {reports.map((report) => {
-          const Icon = report.icon;
-          return (
-            <button
-              key={report.id}
-              onClick={() => setActiveReport(report.id)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
-                activeReport === report.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+        {/* Report Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {reports.map((report) => {
+            const Icon = report.icon;
+            return (
+              <button
+                key={report.id}
+                onClick={() => setActiveReport(report.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+                  activeReport === report.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {report.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <DollarSign className="w-5 h-5 text-primary" />
+              {reportData.summary.totalSales > 0 && (
+                <span className="flex items-center text-xs text-success">
+                  <ArrowUpRight className="w-3 h-3" />
+                </span>
               )}
-            >
-              <Icon className="w-4 h-4" />
-              {report.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between mb-2">
-            <DollarSign className="w-5 h-5 text-primary" />
-            {reportData.summary.totalSales > 0 && (
-              <span className="flex items-center text-xs text-success">
-                <ArrowUpRight className="w-3 h-3" />
-              </span>
-            )}
-          </div>
-          <p className="text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">{t('reports.totalSales')}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-5 h-5 text-success" />
-            {reportData.summary.totalProfit > 0 && (
-              <span className="flex items-center text-xs text-success">
-                <ArrowUpRight className="w-3 h-3" />
-              </span>
-            )}
-          </div>
-          <p className="text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between mb-2">
-            <ShoppingCart className="w-5 h-5 text-info" />
-          </div>
-          <p className="text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
-          <p className="text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between mb-2">
-            <PieChart className="w-5 h-5 text-warning" />
-          </div>
-          <p className="text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
-        </div>
-      </div>
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="bg-card rounded-2xl border border-border p-8 text-center">
-          <Loader2 className="w-12 h-12 mx-auto mb-3 text-primary animate-spin" />
-          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
-        </div>
-      )}
-
-      {/* No Data Message */}
-      {!isLoading && !reportData.hasData && (
-        <div className="bg-card rounded-2xl border border-border p-8 text-center">
-          <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">{t('reports.noData')}</p>
-          <p className="text-sm text-muted-foreground">{t('reports.tryChangeDateRange')}</p>
-        </div>
-      )}
-
-      {/* Sales Chart */}
-      {reportData.hasData && activeReport === 'sales' && (
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('reports.dailySales')}</h3>
-          {reportData.dailySales.length > 0 ? (
-            <div className="space-y-3">
-              {reportData.dailySales.map((day, idx) => (
-                <div key={idx} className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground w-24">{day.date}</span>
-                  <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-primary rounded-lg transition-all duration-500"
-                      style={{ width: `${day.sales / maxSales * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold w-24 text-left">
-                    ${day.sales.toLocaleString()}
-                  </span>
-                </div>
-              ))}
             </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
-          )}
+            <p className="text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{t('reports.totalSales')}</p>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp className="w-5 h-5 text-success" />
+              {reportData.summary.totalProfit > 0 && (
+                <span className="flex items-center text-xs text-success">
+                  <ArrowUpRight className="w-3 h-3" />
+                </span>
+              )}
+            </div>
+            <p className="text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <ShoppingCart className="w-5 h-5 text-info" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
+            <p className="text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <PieChart className="w-5 h-5 text-warning" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
+            <p className="text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
+          </div>
         </div>
-      )}
 
-      {/* Profit Trend Chart - رسم بياني تطور الأرباح */}
-      {activeReport === 'profits' && (
-        <ProfitTrendChart 
-          days={60} 
-          startDate={dateRange.from} 
-          endDate={dateRange.to} 
-        />
-      )}
+        {/* Loading State */}
+        {isLoading && (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+            <Loader2 className="w-12 h-12 mx-auto mb-3 text-primary animate-spin" />
+            <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+          </div>
+        )}
 
-      {/* Top Products */}
-      {reportData.hasData && activeReport === 'products' && (
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('reports.bestProducts')}</h3>
-          {reportData.topProducts.length > 0 ? (
+        {/* No Data Message */}
+        {!isLoading && !reportData.hasData && (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+            <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+            <p className="text-muted-foreground">{t('reports.noData')}</p>
+            <p className="text-sm text-muted-foreground">{t('reports.tryChangeDateRange')}</p>
+          </div>
+        )}
+
+        {/* Sales Chart */}
+        {reportData.hasData && activeReport === 'sales' && (
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('reports.dailySales')}</h3>
+            {reportData.dailySales.length > 0 ? (
+              <div className="space-y-3">
+                {reportData.dailySales.map((day, idx) => (
+                  <div key={idx} className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground w-24">{day.date}</span>
+                    <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-primary rounded-lg transition-all duration-500"
+                        style={{ width: `${day.sales / maxSales * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold w-24 text-left">
+                      ${day.sales.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
+            )}
+          </div>
+        )}
+
+        {/* Profit Trend Chart - رسم بياني تطور الأرباح */}
+        {activeReport === 'profits' && (
+          <ProfitTrendChart
+            days={60}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+          />
+        )}
+
+        {/* Top Products */}
+        {reportData.hasData && activeReport === 'products' && (
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('reports.bestProducts')}</h3>
+            {reportData.topProducts.length > 0 ? (
+              <div className="space-y-3">
+                {reportData.topProducts.map((product, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span className="font-medium">{product.name}</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-foreground">${product.revenue.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
+            )}
+          </div>
+        )}
+
+        {/* Top Customers */}
+        {reportData.hasData && activeReport === 'customers' && (
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
+            {reportData.topCustomers.length > 0 ? (
+              <div className="space-y-3">
+                {reportData.topCustomers.map((customer, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span className="font-medium">{customer.name}</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-foreground">${customer.total.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">{customer.orders} {t('reports.order')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
+            )}
+          </div>
+        )}
+
+        {/* Partners Report */}
+        {activeReport === 'partners' && (
+          <div className="space-y-6">
+            {/* Partner Filter */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <span className="text-sm text-muted-foreground">{t('reports.selectPartnerLabel')}</span>
+              <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder={t('reports.allPartners')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('reports.allPartners')}</SelectItem>
+                  {partnerReportData.allPartners.map(partner => (
+                    <SelectItem key={partner.id} value={partner.id}>
+                      {partner.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Partner Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp className="w-5 h-5 text-success" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalProfitInPeriod.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">الأرباح في الفترة</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Wallet className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalCurrentBalance.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Banknote className="w-5 h-5 text-warning" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalWithdrawnInPeriod.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <UsersRound className="w-5 h-5 text-info" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{partnerReportData.summary.partnersCount}</p>
+                <p className="text-xs text-muted-foreground">عدد الشركاء</p>
+              </div>
+            </div>
+
+            {!partnerReportData.hasData && partnerReportData.allPartners.length === 0 ? (
+              <div className="bg-card rounded-2xl border border-border p-8 text-center">
+                <UsersRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">لا يوجد شركاء مسجلين</p>
+                <p className="text-sm text-muted-foreground">أضف شركاء من صفحة الشركاء</p>
+              </div>
+            ) : (
+              <>
+                {/* Profit by Category */}
+                {partnerReportData.aggregatedCategoryProfits.length > 0 && (
+                  <div className="bg-card rounded-2xl border border-border p-6">
+                    <h3 className="text-lg font-semibold mb-4">الأرباح حسب الصنف</h3>
+                    <div className="space-y-3">
+                      {partnerReportData.aggregatedCategoryProfits.map((cat, idx) => {
+                        const maxCatProfit = Math.max(...partnerReportData.aggregatedCategoryProfits.map(c => c.amount), 1);
+                        return (
+                          <div key={idx} className="flex items-center gap-4">
+                            <span className="text-sm font-medium w-32 truncate">{cat.categoryName}</span>
+                            <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-all duration-500"
+                                style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }}
+                              />
+                            </div>
+                            <div className="text-left w-28">
+                              <p className="text-sm font-semibold">${cat.amount.toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground">{cat.count} عملية</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Individual Partner Details */}
+                {partnerReportData.partners.map(partner => (
+                  <div key={partner.id} className="bg-card rounded-2xl border border-border p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
+                          {partner.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold">{partner.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {partner.accessAll ? `نسبة عامة: ${partner.sharePercentage}%` : 'شريك متخصص'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-lg font-bold text-success">${partner.totalProfitInPeriod.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">أرباح الفترة</p>
+                      </div>
+                    </div>
+
+                    {/* Partner Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      <div className="bg-muted rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
+                        <p className="text-lg font-bold text-foreground">${partner.currentBalance.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-muted rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground">رأس المال</p>
+                        <p className="text-lg font-bold text-foreground">${partner.currentCapital.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-muted rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground">أرباح معلقة</p>
+                        <p className="text-lg font-bold text-warning">${partner.pendingProfit.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-muted rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
+                        <p className="text-lg font-bold text-foreground">${partner.totalWithdrawnInPeriod.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Partner Category Breakdown */}
+                    {partner.profitByCategory.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold mb-2 text-muted-foreground">توزيع الأرباح حسب الصنف</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {partner.profitByCategory.slice(0, 5).map((cat, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
+                            >
+                              {cat.categoryName}: ${cat.amount.toLocaleString()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Partner Daily Profit Chart */}
+                    {partner.dailyProfit.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 text-muted-foreground">الأرباح اليومية</h4>
+                        <div className="space-y-2">
+                          {partner.dailyProfit.slice(-5).map((day, idx) => {
+                            const maxDayProfit = Math.max(...partner.dailyProfit.map(d => d.amount), 1);
+                            return (
+                              <div key={idx} className="flex items-center gap-3">
+                                <span className="text-xs text-muted-foreground w-20">{day.date}</span>
+                                <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
+                                  <div
+                                    className="h-full bg-success/70 rounded transition-all duration-500"
+                                    style={{ width: `${(day.amount / maxDayProfit) * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-semibold w-20 text-left">${day.amount.toLocaleString()}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Partner Detailed Report */}
+        {activeReport === 'partner-detailed' && (
+          <PartnerProfitDetailedReport dateRange={dateRange} />
+        )}
+
+        {/* Distributor Inventory Report - جرد العهدة */}
+        {activeReport === 'distributor-inventory' && (
+          <DistributorInventoryReport />
+        )}
+
+        {/* Expenses Report */}
+        {activeReport === 'expenses' && (
+          <div className="space-y-6">
+            {/* Expense Action Buttons */}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleExportExpensesExcel}>
+                <Download className="w-4 h-4 ml-2" />
+                تصدير Excel
+              </Button>
+            </div>
+
+            {/* Expense Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Receipt className="w-5 h-5 text-destructive" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">${formatNumber(expenseReportData.totalExpenses)}</p>
+                <p className="text-xs text-muted-foreground">إجمالي المصاريف</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Calendar className="w-5 h-5 text-info" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.expenses.length)}</p>
+                <p className="text-xs text-muted-foreground">عدد المصاريف</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <PieChart className="w-5 h-5 text-warning" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.byType.length)}</p>
+                <p className="text-xs text-muted-foreground">أنواع المصاريف</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <UsersRound className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.partnerExpenses.length)}</p>
+                <p className="text-xs text-muted-foreground">الشركاء المشاركون</p>
+              </div>
+            </div>
+
+            {!expenseReportData.hasData ? (
+              <div className="bg-card rounded-2xl border border-border p-8 text-center">
+                <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">لا توجد مصاريف في الفترة المحددة</p>
+                <p className="text-sm text-muted-foreground">جرب تغيير نطاق التاريخ</p>
+              </div>
+            ) : (
+              <>
+                {/* Expenses by Type */}
+                <div className="bg-card rounded-2xl border border-border p-6">
+                  <h3 className="text-lg font-semibold mb-4">المصاريف حسب النوع</h3>
+                  <div className="space-y-3">
+                    {expenseReportData.byType.map((type, idx) => {
+                      const maxAmount = Math.max(...expenseReportData.byType.map(t => t.amount), 1);
+                      return (
+                        <div key={idx} className="flex items-center gap-4">
+                          <span className="text-sm font-medium w-28 truncate">{type.type}</span>
+                          <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-all duration-500"
+                              style={{ width: `${(type.amount / maxAmount) * 100}%` }}
+                            />
+                          </div>
+                          <div className="text-left w-28">
+                            <p className="text-sm font-semibold">${formatNumber(type.amount)}</p>
+                            <p className="text-xs text-muted-foreground">{type.count} مصروف</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Partner Expense Distribution */}
+                <div className="bg-card rounded-2xl border border-border p-6">
+                  <h3 className="text-lg font-semibold mb-4">توزيع المصاريف على الشركاء</h3>
+                  <div className="space-y-4">
+                    {expenseReportData.partnerExpenses.map((partner, idx) => (
+                      <div key={idx} className="bg-muted rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
+                              {partner.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">{partner.name}</h4>
+                              <p className="text-sm text-muted-foreground">{formatNumber(Math.round(partner.percentage))}% من الإجمالي</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-left">
+                              <p className="text-lg font-bold text-destructive">${formatNumber(partner.amount)}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-success hover:text-success"
+                              onClick={() => handleShareExpenseReport(partner.name)}
+                              title="مشاركة عبر واتساب"
+                            >
+                              <MessageCircle className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="h-2 bg-background rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-destructive/70 rounded-full transition-all duration-500"
+                            style={{ width: `${partner.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Daily Expenses Chart */}
+                {expenseReportData.dailyExpenses.length > 0 && (
+                  <div className="bg-card rounded-2xl border border-border p-6">
+                    <h3 className="text-lg font-semibold mb-4">المصاريف اليومية</h3>
+                    <div className="space-y-3">
+                      {expenseReportData.dailyExpenses.slice(-7).map((day, idx) => {
+                        const maxDaily = Math.max(...expenseReportData.dailyExpenses.map(d => d.amount), 1);
+                        return (
+                          <div key={idx} className="flex items-center gap-4">
+                            <span className="text-sm text-muted-foreground w-24">{day.date}</span>
+                            <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                              <div
+                                className="h-full bg-destructive/60 rounded-lg transition-all duration-500"
+                                style={{ width: `${(day.amount / maxDaily) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-semibold w-24 text-left">
+                              ${formatNumber(day.amount)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expense List */}
+                <div className="bg-card rounded-2xl border border-border p-6">
+                  <h3 className="text-lg font-semibold mb-4">قائمة المصاريف</h3>
+                  <div className="space-y-3">
+                    {expenseReportData.expenses.slice(0, 10).map((expense, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                            <Receipt className="w-5 h-5 text-destructive" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{expense.typeLabel}</h4>
+                            <p className="text-xs text-muted-foreground">{expense.date}</p>
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold text-destructive">-${formatNumber(expense.amount)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {expense.distributions.length} شريك
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Default view - Top Products when on sales tab */}
+        {reportData.hasData && activeReport === 'sales' && reportData.topProducts.length > 0 && (
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h3 className="text-lg font-semibold mb-4">أفضل المنتجات مبيعاً</h3>
             <div className="space-y-3">
               {reportData.topProducts.map((product, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
@@ -912,428 +1325,15 @@ ${partnerExpenses.map(exp => {
                     <span className="font-medium">{product.name}</span>
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-foreground">${product.revenue.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
+                    <p className="font-bold text-foreground">${formatNumber(product.revenue)}</p>
+                    <p className="text-xs text-muted-foreground">{product.sales} قطعة</p>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
-          )}
-        </div>
-      )}
-
-      {/* Top Customers */}
-      {reportData.hasData && activeReport === 'customers' && (
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
-          {reportData.topCustomers.length > 0 ? (
-            <div className="space-y-3">
-              {reportData.topCustomers.map((customer, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <span className="font-medium">{customer.name}</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-foreground">${customer.total.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{customer.orders} {t('reports.order')}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
-          )}
-        </div>
-      )}
-
-      {/* Partners Report */}
-      {activeReport === 'partners' && (
-        <div className="space-y-6">
-          {/* Partner Filter */}
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <span className="text-sm text-muted-foreground">{t('reports.selectPartnerLabel')}</span>
-            <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={t('reports.allPartners')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('reports.allPartners')}</SelectItem>
-                {partnerReportData.allPartners.map(partner => (
-                  <SelectItem key={partner.id} value={partner.id}>
-                    {partner.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-
-          {/* Partner Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="w-5 h-5 text-success" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalProfitInPeriod.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">الأرباح في الفترة</p>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <Wallet className="w-5 h-5 text-primary" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalCurrentBalance.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <Banknote className="w-5 h-5 text-warning" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalWithdrawnInPeriod.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <UsersRound className="w-5 h-5 text-info" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{partnerReportData.summary.partnersCount}</p>
-              <p className="text-xs text-muted-foreground">عدد الشركاء</p>
-            </div>
-          </div>
-
-          {!partnerReportData.hasData && partnerReportData.allPartners.length === 0 ? (
-            <div className="bg-card rounded-2xl border border-border p-8 text-center">
-              <UsersRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">لا يوجد شركاء مسجلين</p>
-              <p className="text-sm text-muted-foreground">أضف شركاء من صفحة الشركاء</p>
-            </div>
-          ) : (
-            <>
-              {/* Profit by Category */}
-              {partnerReportData.aggregatedCategoryProfits.length > 0 && (
-                <div className="bg-card rounded-2xl border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">الأرباح حسب الصنف</h3>
-                  <div className="space-y-3">
-                    {partnerReportData.aggregatedCategoryProfits.map((cat, idx) => {
-                      const maxCatProfit = Math.max(...partnerReportData.aggregatedCategoryProfits.map(c => c.amount), 1);
-                      return (
-                        <div key={idx} className="flex items-center gap-4">
-                          <span className="text-sm font-medium w-32 truncate">{cat.categoryName}</span>
-                          <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-all duration-500"
-                              style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }}
-                            />
-                          </div>
-                          <div className="text-left w-28">
-                            <p className="text-sm font-semibold">${cat.amount.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">{cat.count} عملية</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Individual Partner Details */}
-              {partnerReportData.partners.map(partner => (
-                <div key={partner.id} className="bg-card rounded-2xl border border-border p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
-                        {partner.name.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold">{partner.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {partner.accessAll ? `نسبة عامة: ${partner.sharePercentage}%` : 'شريك متخصص'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-lg font-bold text-success">${partner.totalProfitInPeriod.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">أرباح الفترة</p>
-                    </div>
-                  </div>
-
-                  {/* Partner Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    <div className="bg-muted rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
-                      <p className="text-lg font-bold text-foreground">${partner.currentBalance.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-muted rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">رأس المال</p>
-                      <p className="text-lg font-bold text-foreground">${partner.currentCapital.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-muted rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">أرباح معلقة</p>
-                      <p className="text-lg font-bold text-warning">${partner.pendingProfit.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-muted rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
-                      <p className="text-lg font-bold text-foreground">${partner.totalWithdrawnInPeriod.toLocaleString()}</p>
-                    </div>
-                  </div>
-
-                  {/* Partner Category Breakdown */}
-                  {partner.profitByCategory.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-semibold mb-2 text-muted-foreground">توزيع الأرباح حسب الصنف</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {partner.profitByCategory.slice(0, 5).map((cat, idx) => (
-                          <span 
-                            key={idx} 
-                            className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                          >
-                            {cat.categoryName}: ${cat.amount.toLocaleString()}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Partner Daily Profit Chart */}
-                  {partner.dailyProfit.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2 text-muted-foreground">الأرباح اليومية</h4>
-                      <div className="space-y-2">
-                        {partner.dailyProfit.slice(-5).map((day, idx) => {
-                          const maxDayProfit = Math.max(...partner.dailyProfit.map(d => d.amount), 1);
-                          return (
-                            <div key={idx} className="flex items-center gap-3">
-                              <span className="text-xs text-muted-foreground w-20">{day.date}</span>
-                              <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
-                                <div 
-                                  className="h-full bg-success/70 rounded transition-all duration-500"
-                                  style={{ width: `${(day.amount / maxDayProfit) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-xs font-semibold w-20 text-left">${day.amount.toLocaleString()}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Partner Detailed Report */}
-      {activeReport === 'partner-detailed' && (
-        <PartnerProfitDetailedReport dateRange={dateRange} />
-      )}
-
-      {/* Distributor Inventory Report - جرد العهدة */}
-      {activeReport === 'distributor-inventory' && (
-        <DistributorInventoryReport />
-      )}
-
-      {/* Expenses Report */}
-      {activeReport === 'expenses' && (
-        <div className="space-y-6">
-          {/* Expense Action Buttons */}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportExpensesExcel}>
-              <Download className="w-4 h-4 ml-2" />
-              تصدير Excel
-            </Button>
-          </div>
-
-          {/* Expense Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <Receipt className="w-5 h-5 text-destructive" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">${formatNumber(expenseReportData.totalExpenses)}</p>
-              <p className="text-xs text-muted-foreground">إجمالي المصاريف</p>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <Calendar className="w-5 h-5 text-info" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.expenses.length)}</p>
-              <p className="text-xs text-muted-foreground">عدد المصاريف</p>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <PieChart className="w-5 h-5 text-warning" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.byType.length)}</p>
-              <p className="text-xs text-muted-foreground">أنواع المصاريف</p>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <UsersRound className="w-5 h-5 text-primary" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.partnerExpenses.length)}</p>
-              <p className="text-xs text-muted-foreground">الشركاء المشاركون</p>
-            </div>
-          </div>
-
-          {!expenseReportData.hasData ? (
-            <div className="bg-card rounded-2xl border border-border p-8 text-center">
-              <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">لا توجد مصاريف في الفترة المحددة</p>
-              <p className="text-sm text-muted-foreground">جرب تغيير نطاق التاريخ</p>
-            </div>
-          ) : (
-            <>
-              {/* Expenses by Type */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="text-lg font-semibold mb-4">المصاريف حسب النوع</h3>
-                <div className="space-y-3">
-                  {expenseReportData.byType.map((type, idx) => {
-                    const maxAmount = Math.max(...expenseReportData.byType.map(t => t.amount), 1);
-                    return (
-                      <div key={idx} className="flex items-center gap-4">
-                        <span className="text-sm font-medium w-28 truncate">{type.type}</span>
-                        <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-all duration-500"
-                            style={{ width: `${(type.amount / maxAmount) * 100}%` }}
-                          />
-                        </div>
-                        <div className="text-left w-28">
-                          <p className="text-sm font-semibold">${formatNumber(type.amount)}</p>
-                          <p className="text-xs text-muted-foreground">{type.count} مصروف</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Partner Expense Distribution */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="text-lg font-semibold mb-4">توزيع المصاريف على الشركاء</h3>
-                <div className="space-y-4">
-                  {expenseReportData.partnerExpenses.map((partner, idx) => (
-                    <div key={idx} className="bg-muted rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
-                            {partner.name.charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{partner.name}</h4>
-                            <p className="text-sm text-muted-foreground">{formatNumber(Math.round(partner.percentage))}% من الإجمالي</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-left">
-                            <p className="text-lg font-bold text-destructive">${formatNumber(partner.amount)}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-success hover:text-success"
-                            onClick={() => handleShareExpenseReport(partner.name)}
-                            title="مشاركة عبر واتساب"
-                          >
-                            <MessageCircle className="w-5 h-5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="h-2 bg-background rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-destructive/70 rounded-full transition-all duration-500"
-                          style={{ width: `${partner.percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Daily Expenses Chart */}
-              {expenseReportData.dailyExpenses.length > 0 && (
-                <div className="bg-card rounded-2xl border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">المصاريف اليومية</h3>
-                  <div className="space-y-3">
-                    {expenseReportData.dailyExpenses.slice(-7).map((day, idx) => {
-                      const maxDaily = Math.max(...expenseReportData.dailyExpenses.map(d => d.amount), 1);
-                      return (
-                        <div key={idx} className="flex items-center gap-4">
-                          <span className="text-sm text-muted-foreground w-24">{day.date}</span>
-                          <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                            <div 
-                              className="h-full bg-destructive/60 rounded-lg transition-all duration-500"
-                              style={{ width: `${(day.amount / maxDaily) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-semibold w-24 text-left">
-                            ${formatNumber(day.amount)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Expense List */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="text-lg font-semibold mb-4">قائمة المصاريف</h3>
-                <div className="space-y-3">
-                  {expenseReportData.expenses.slice(0, 10).map((expense, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                          <Receipt className="w-5 h-5 text-destructive" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{expense.typeLabel}</h4>
-                          <p className="text-xs text-muted-foreground">{expense.date}</p>
-                        </div>
-                      </div>
-                      <div className="text-left">
-                        <p className="font-bold text-destructive">-${formatNumber(expense.amount)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {expense.distributions.length} شريك
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Default view - Top Products when on sales tab */}
-      {reportData.hasData && activeReport === 'sales' && reportData.topProducts.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-lg font-semibold mb-4">أفضل المنتجات مبيعاً</h3>
-          <div className="space-y-3">
-            {reportData.topProducts.map((product, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <span className="font-medium">{product.name}</span>
-                </div>
-                <div className="text-left">
-                  <p className="font-bold text-foreground">${formatNumber(product.revenue)}</p>
-                  <p className="text-xs text-muted-foreground">{product.sales} قطعة</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </MainLayout>
   );
 }

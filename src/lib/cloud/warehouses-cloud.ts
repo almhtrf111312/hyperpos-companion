@@ -1,10 +1,10 @@
 // Cloud Warehouses Store - Supabase-backed warehouse management
-import { 
-  fetchFromSupabase, 
-  insertToSupabase, 
-  updateInSupabase, 
+import {
+  fetchFromSupabase,
+  insertToSupabase,
+  updateInSupabase,
   deleteFromSupabase,
-  getCurrentUserId 
+  getCurrentUserId
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 
@@ -68,14 +68,14 @@ export const loadWarehousesCloud = async (): Promise<Warehouse[]> => {
     return warehousesCache;
   }
 
-  const warehouses = await fetchFromSupabase<Warehouse>('warehouses', { 
-    column: 'created_at', 
-    ascending: true 
+  const warehouses = await fetchFromSupabase<Warehouse>('warehouses', {
+    column: 'created_at',
+    ascending: true
   });
 
   warehousesCache = warehouses;
   cacheTimestamp = Date.now();
-  
+
   return warehousesCache;
 };
 
@@ -88,9 +88,9 @@ export const invalidateWarehousesCache = () => {
 // Get main warehouse
 export const getMainWarehouseCloud = async (): Promise<Warehouse | null> => {
   const warehouses = await loadWarehousesCloud();
-  return warehouses.find(w => w.type === 'main' && w.is_default) || 
-         warehouses.find(w => w.type === 'main') || 
-         null;
+  return warehouses.find(w => w.type === 'main' && w.is_default) ||
+    warehouses.find(w => w.type === 'main') ||
+    null;
 };
 
 // Get warehouse for cashier
@@ -102,37 +102,37 @@ export const getWarehouseForCashierCloud = async (cashierId: string): Promise<Wa
 // Add warehouse
 export const addWarehouseCloud = async (data: Omit<Warehouse, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Warehouse | null> => {
   const inserted = await insertToSupabase<Warehouse>('warehouses', data);
-  
+
   if (inserted) {
     invalidateWarehousesCache();
     emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
     return inserted;
   }
-  
+
   return null;
 };
 
 // Update warehouse
 export const updateWarehouseCloud = async (id: string, data: Partial<Warehouse>): Promise<boolean> => {
   const success = await updateInSupabase('warehouses', id, data);
-  
+
   if (success) {
     invalidateWarehousesCache();
     emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
   }
-  
+
   return success;
 };
 
 // Delete warehouse
 export const deleteWarehouseCloud = async (id: string): Promise<boolean> => {
   const success = await deleteFromSupabase('warehouses', id);
-  
+
   if (success) {
     invalidateWarehousesCache();
     emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
   }
-  
+
   return success;
 };
 
@@ -144,7 +144,7 @@ export const loadWarehouseStockCloud = async (warehouseId: string): Promise<Ware
   if (!userId) return [];
 
   const { supabase } = await import('@/integrations/supabase/client');
-  
+
   const { data, error } = await supabase
     .from('warehouse_stock')
     .select('*')
@@ -160,13 +160,13 @@ export const loadWarehouseStockCloud = async (warehouseId: string): Promise<Ware
 
 // Update stock for a product in warehouse
 export const updateWarehouseStockCloud = async (
-  warehouseId: string, 
-  productId: string, 
+  warehouseId: string,
+  productId: string,
   quantity: number,
   quantityBulk: number = 0
 ): Promise<boolean> => {
   const { supabase } = await import('@/integrations/supabase/client');
-  
+
   // Upsert stock record
   const { error } = await supabase
     .from('warehouse_stock')
@@ -195,7 +195,7 @@ export const deductWarehouseStockCloud = async (
   quantity: number
 ): Promise<{ success: boolean; error?: string; available?: number }> => {
   const { supabase } = await import('@/integrations/supabase/client');
-  
+
   // Get current stock
   const { data: currentStock, error: fetchError } = await supabase
     .from('warehouse_stock')
@@ -210,12 +210,12 @@ export const deductWarehouseStockCloud = async (
   }
 
   const available = currentStock?.quantity || 0;
-  
+
   // ✅ التحقق من توفر الكمية الكافية - منع البيع بالسالب
   if (available < quantity) {
     console.warn(`[WarehouseStock] Insufficient stock: available=${available}, requested=${quantity}`);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: `الكمية المطلوبة (${quantity}) غير متوفرة - المتاح في المستودع: ${available}`,
       available
     };
@@ -246,9 +246,9 @@ export const deductWarehouseStockCloud = async (
 export const deductWarehouseStockBatchCloud = async (
   warehouseId: string,
   items: { productId: string; quantity: number; productName?: string }[]
-): Promise<{ 
-  success: boolean; 
-  deducted: number; 
+): Promise<{
+  success: boolean;
+  deducted: number;
   failed: number;
   insufficientItems?: Array<{ productName: string; available: number; requested: number }>;
 }> => {
@@ -272,9 +272,9 @@ export const deductWarehouseStockBatchCloud = async (
     }
   }
 
-  return { 
-    success: failed === 0, 
-    deducted, 
+  return {
+    success: failed === 0,
+    deducted,
     failed,
     insufficientItems: insufficientItems.length > 0 ? insufficientItems : undefined
   };
@@ -290,11 +290,11 @@ export const checkWarehouseStockAvailability = async (
 }> => {
   const stock = await loadWarehouseStockCloud(warehouseId);
   const insufficientItems: Array<{ productName: string; available: number; requested: number }> = [];
-  
+
   for (const item of items) {
     const stockItem = stock.find(s => s.product_id === item.productId);
     const available = stockItem?.quantity || 0;
-    
+
     if (available < item.quantity) {
       insufficientItems.push({
         productName: item.productName || item.productId,
@@ -303,7 +303,7 @@ export const checkWarehouseStockAvailability = async (
       });
     }
   }
-  
+
   return { success: insufficientItems.length === 0, insufficientItems };
 };
 
@@ -322,9 +322,9 @@ export const loadStockTransfersCloud = async (): Promise<StockTransfer[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  const transfers = await fetchFromSupabase<StockTransfer>('stock_transfers', { 
-    column: 'created_at', 
-    ascending: false 
+  const transfers = await fetchFromSupabase<StockTransfer>('stock_transfers', {
+    column: 'created_at',
+    ascending: false
   });
 
   return transfers;
@@ -450,7 +450,7 @@ export const completeStockTransferCloud = async (transferId: string): Promise<bo
 // Get transfer items
 export const getStockTransferItemsCloud = async (transferId: string): Promise<StockTransferItem[]> => {
   const { supabase } = await import('@/integrations/supabase/client');
-  
+
   const { data, error } = await supabase
     .from('stock_transfer_items')
     .select('*')
@@ -467,7 +467,7 @@ export const getStockTransferItemsCloud = async (transferId: string): Promise<St
 // Cancel transfer
 export const cancelStockTransferCloud = async (transferId: string): Promise<boolean> => {
   const { supabase } = await import('@/integrations/supabase/client');
-  
+
   const { error } = await supabase
     .from('stock_transfers')
     .update({ status: 'cancelled' })
@@ -479,4 +479,23 @@ export const cancelStockTransferCloud = async (transferId: string): Promise<bool
   }
 
   return true;
+};
+
+// Fetch all warehouse stocks (for backup)
+export const fetchAllWarehouseStocksCloud = async (): Promise<WarehouseStock[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+
+  const { supabase } = await import('@/integrations/supabase/client');
+
+  const { data, error } = await supabase
+    .from('warehouse_stock')
+    .select('*');
+
+  if (error) {
+    console.error('[WarehouseStock] Fetch all error:', error);
+    return [];
+  }
+
+  return (data || []) as WarehouseStock[];
 };

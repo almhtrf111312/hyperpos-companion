@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Search, 
+import {
+  Search,
   Plus,
   Phone,
   Calendar,
@@ -29,14 +29,16 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
-import { 
-  loadDebtsCloud, 
-  addDebtCloud, 
+import {
+  loadDebtsCloud,
+  addDebtCloud,
   recordPaymentWithInvoiceSyncCloud,
   getDebtsStatsCloud,
   deleteDebtCloud,
-  Debt 
+  getNextManualDebtId,
+  Debt
 } from '@/lib/cloud/debts-cloud';
+import { getInvoiceByIdCloud, InvoiceItem } from '@/lib/cloud/invoices-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
 import {
   AlertDialog,
@@ -60,7 +62,7 @@ export default function Debts() {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
-  
+
   // Dialogs
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
@@ -70,6 +72,8 @@ export default function Debts() {
   const [isDeleting, setIsDeleting] = useState(false);
   const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [debtItems, setDebtItems] = useState<InvoiceItem[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
 
   // Form for adding cash debt
   const [newDebtForm, setNewDebtForm] = useState({
@@ -102,21 +106,48 @@ export default function Debts() {
       setDebts(debtsData);
     };
     loadData();
-    
+
     // Listen for updates
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
-    
+
     return () => {
       window.removeEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
     };
   }, []);
 
+  // Fetch items for selected debt
+  useEffect(() => {
+    const fetchItems = async () => {
+      if (!selectedDebt || selectedDebt.isCashDebt || !selectedDebt.invoiceId) {
+        setDebtItems([]);
+        return;
+      }
+
+      setIsLoadingItems(true);
+      try {
+        const invoice = await getInvoiceByIdCloud(selectedDebt.invoiceId);
+        if (invoice && invoice.items) {
+          setDebtItems(invoice.items);
+        } else {
+          setDebtItems([]);
+        }
+      } catch (error) {
+        console.error('Error fetching debt items:', error);
+        setDebtItems([]);
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
+
+    fetchItems();
+  }, [selectedDebt]);
+
   // Auto-open payment dialog when coming from invoices page
   useEffect(() => {
     const invoiceId = searchParams.get('invoiceId');
     const autoOpen = searchParams.get('autoOpenPayment');
-    
+
     if (invoiceId && autoOpen === 'true' && debts.length > 0) {
       const targetDebt = debts.find(d => d.invoiceId === invoiceId);
       if (targetDebt && targetDebt.remainingDebt > 0) {
@@ -129,14 +160,14 @@ export default function Debts() {
 
   const filteredDebts = debts.filter(debt => {
     const matchesSearch = debt.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         debt.customerPhone.includes(searchQuery) ||
-                         debt.invoiceId.toLowerCase().includes(searchQuery.toLowerCase());
+      debt.customerPhone.includes(searchQuery) ||
+      debt.invoiceId.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'all' || debt.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
   const [stats, setStats] = useState({ total: 0, remaining: 0, paid: 0, overdue: 0, count: 0, activeCount: 0 });
-  
+
   useEffect(() => {
     getDebtsStatsCloud().then(setStats);
   }, [debts]);
@@ -164,12 +195,12 @@ export default function Debts() {
         storeName = settings.storeSettings?.name || storeName;
         storePhone = settings.storeSettings?.phone || '';
       }
-    } catch {}
+    } catch { }
 
-    const statusLabel = debt.status === 'fully_paid' ? '✅ مسددة بالكامل' 
+    const statusLabel = debt.status === 'fully_paid' ? '✅ مسددة بالكامل'
       : debt.status === 'partially_paid' ? '⏳ مسددة جزئياً'
-      : debt.status === 'overdue' ? '🔴 متأخرة' 
-      : '📋 مستحقة';
+        : debt.status === 'overdue' ? '🔴 متأخرة'
+          : '📋 مستحقة';
 
     const message = `╔══════════════════════╗
       *${storeName}*
@@ -214,9 +245,9 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
 
     // Calculate payment ratio for partial profit confirmation
     const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
-    
+
     await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount);
-    
+
     // ✅ إضافة المبلغ للصندوق تلقائياً (الترابط الجديد)
     processDebtPayment(
       paymentAmount,
@@ -224,10 +255,10 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
       user?.id,
       profile?.full_name || user?.email || 'مستخدم'
     );
-    
+
     // Confirm pending profits proportionally to payment
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
-    
+
     // Log activity
     if (user) {
       addActivityLog(
@@ -238,10 +269,10 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
         { debtId: selectedDebt.id, amount: paymentAmount, customerName: selectedDebt.customerName }
       );
     }
-    
+
     const debtsData = await loadDebtsCloud();
     setDebts(debtsData);
-    
+
     setShowPaymentDialog(false);
     setSelectedDebt(null);
     setPaymentAmount(0);
@@ -251,7 +282,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
   const handleAddCashDebt = async () => {
     // ✅ حماية من التكرارات
     if (isSavingRef.current) return;
-    
+
     if (!newDebtForm.customerName || !newDebtForm.customerPhone || newDebtForm.amount <= 0) {
       toast.error(t('debts.fillRequiredFields'));
       return;
@@ -265,8 +296,9 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
     isSavingRef.current = true;
 
     try {
+      const manualDebtId = await getNextManualDebtId();
       await addDebtCloud({
-        invoiceId: `CASH_${Date.now()}`,
+        invoiceId: manualDebtId,
         customerName: newDebtForm.customerName,
         customerPhone: newDebtForm.customerPhone,
         totalDebt: newDebtForm.amount,
@@ -402,7 +434,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
           const progress = (debt.totalPaid / debt.totalDebt) * 100;
 
           return (
-            <div 
+            <div
               key={debt.id}
               className="bg-card rounded-xl md:rounded-2xl border border-border p-4 md:p-6 card-hover fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
@@ -456,7 +488,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                     <span className="font-medium text-foreground">{progress.toFixed(0)}%</span>
                   </div>
                   <div className="h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-primary rounded-full transition-all duration-500"
                       style={{ width: `${progress}%` }}
                     />
@@ -494,10 +526,10 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                       </Button>
                     )}
                     {/* ✅ زر حذف الدين */}
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      className="h-8 md:h-9 text-xs md:text-sm" 
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 md:h-9 text-xs md:text-sm"
                       onClick={() => {
                         setSelectedDebt(debt);
                         setShowDeleteDialog(true);
@@ -621,7 +653,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                   <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('debts.paymentAmount')} ($)</label>
                 <Input
@@ -632,16 +664,16 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                   max={selectedDebt.remainingDebt}
                 />
                 <div className="flex gap-2 mt-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     className="flex-1"
                     onClick={() => setPaymentAmount(selectedDebt.remainingDebt)}
                   >
                     {t('debts.payFull')}
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     className="flex-1"
                     onClick={() => setPaymentAmount(Math.round(selectedDebt.remainingDebt / 2))}
@@ -650,7 +682,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                   </Button>
                 </div>
               </div>
-              
+
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setShowPaymentDialog(false)}>
                   {t('common.cancel')}
@@ -687,44 +719,81 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
                   <p className="text-muted-foreground">{selectedDebt.customerPhone}</p>
                 </div>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('debts.invoiceId')}</span>
-                  <span className="font-medium font-mono">{selectedDebt.invoiceId}</span>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">{t('debts.invoiceId')}</span>
+                    <span className="font-medium font-mono">{selectedDebt.invoiceId}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">{t('debts.createdAt')}</span>
+                    <span className="font-medium" dir="ltr">
+                      {new Date(selectedDebt.createdAt).toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })} {new Date(selectedDebt.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">{t('debts.dueDate')}</span>
+                    <span className="font-medium">{selectedDebt.dueDate}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
+                    <span className="font-bold">${selectedDebt.totalDebt.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">{t('debts.paid')}</span>
+                    <span className="font-bold text-success">${selectedDebt.totalPaid.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">{t('debts.remaining')}</span>
+                    <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('debts.createdAt')}</span>
-                  <span className="font-medium">{selectedDebt.createdAt}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('debts.dueDate')}</span>
-                  <span className="font-medium">{selectedDebt.dueDate}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
-                  <span className="font-bold">${selectedDebt.totalDebt.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">{t('debts.paid')}</span>
-                  <span className="font-bold text-success">${selectedDebt.totalPaid.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">{t('debts.remaining')}</span>
-                  <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
-                </div>
+
+                {/* Items Table */}
+                {!selectedDebt.isCashDebt && (
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-muted-foreground">{t('invoices.products')}:</span>
+                    {isLoadingItems ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        Loading items...
+                      </div>
+                    ) : debtItems.length > 0 ? (
+                      <div className="bg-muted rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                        {debtItems.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
+                            <span>{item.name} <span className="text-muted-foreground">×{item.quantity}</span></span>
+                            <span className="font-medium">${item.total.toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-2 text-center text-sm text-muted-foreground italic">
+                        No items found
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              
+
               {selectedDebt.notes && (
                 <div className="bg-muted rounded-lg p-3">
                   <p className="text-sm text-muted-foreground">{t('common.notes')}:</p>
                   <p className="text-sm">{selectedDebt.notes}</p>
                 </div>
               )}
-              
+
               {selectedDebt.remainingDebt > 0 && (
-                <Button 
-                  className="w-full bg-success hover:bg-success/90" 
+                <Button
+                  className="w-full bg-success hover:bg-success/90"
                   onClick={() => {
                     setShowViewDialog(false);
                     openPaymentDialog(selectedDebt);

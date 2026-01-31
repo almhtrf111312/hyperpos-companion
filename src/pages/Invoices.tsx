@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, 
-  Search, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Printer, 
+import {
+  FileText,
+  Search,
+  Eye,
+  Edit,
+  Trash2,
+  Printer,
   Send,
   Filter,
   Calendar,
@@ -51,12 +51,12 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
-import { 
-  loadInvoicesCloud, 
-  deleteInvoiceCloud, 
+import {
+  loadInvoicesCloud,
+  deleteInvoiceCloud,
   updateInvoiceCloud,
   getInvoiceStatsCloud,
-  Invoice, 
+  Invoice,
   InvoiceType
 } from '@/lib/cloud/invoices-cloud';
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
@@ -98,10 +98,10 @@ export default function Invoices() {
       setIsLoading(false);
     };
     loadData();
-    
+
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
-    
+
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     };
@@ -110,24 +110,24 @@ export default function Invoices() {
   // Memoized filtered invoices for performance
   const filteredInvoices = useMemo(() => {
     let result = invoices;
-    
+
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
-      result = result.filter(inv => 
+      result = result.filter(inv =>
         inv.customerName.toLowerCase().includes(query) ||
         inv.id.toLowerCase().includes(query) ||
         inv.serviceDescription?.toLowerCase().includes(query)
       );
     }
-    
+
     if (filterType !== 'all') {
       result = result.filter(inv => inv.type === filterType);
     }
-    
+
     if (filterPayment !== 'all') {
       result = result.filter(inv => inv.paymentType === filterPayment);
     }
-    
+
     return result;
   }, [invoices, debouncedSearch, filterType, filterPayment]);
 
@@ -182,9 +182,9 @@ export default function Invoices() {
       footer: 'شكراً لتعاملكم معنا!',
       currencySymbol: 'ر.س'
     };
-    
+
     let storeConfig = { ...storeDefaults };
-    
+
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
@@ -207,8 +207,8 @@ export default function Invoices() {
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
     const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
-    
-    const itemsHtml = invoice.type === 'sale' 
+
+    const itemsHtml = invoice.type === 'sale'
       ? invoice.items.map(item => `
           <tr>
             <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
@@ -217,7 +217,7 @@ export default function Invoices() {
           </tr>
         `).join('')
       : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || 'خدمة صيانة'}</td></tr>`;
-    
+
     const printContent = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -405,7 +405,7 @@ export default function Invoices() {
         </body>
       </html>
     `;
-    
+
     // استخدام iframe للطباعة بدلاً من window.open
     printHTML(printContent);
     toast.success('جاري إرسال الفاتورة للطابعة...');
@@ -414,7 +414,7 @@ export default function Invoices() {
     // Dynamic store settings with proper defaults
     let storeName = 'HyperPOS Store';
     let footer = 'شكراً لتعاملكم معنا!';
-    
+
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
@@ -428,11 +428,11 @@ export default function Invoices() {
     }
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
-    
+
     const itemsList = invoice.type === 'sale'
       ? invoice.items.map(item => `• ${item.name} × ${item.quantity} = ${invoice.currencySymbol}${item.total.toLocaleString()}`).join('\n')
       : `🔧 ${invoice.serviceDescription || 'خدمة صيانة'}`;
-    
+
     const message = `╔══════════════════╗
     *${storeName}*
 ╚══════════════════╝
@@ -453,12 +453,12 @@ ${invoice.discount > 0 ? `✂️ *الخصم:* ${invoice.currencySymbol}${invoic
 💳 *طريقة الدفع:* ${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}
 
 ${footer}`;
-    
+
     const phone = invoice.customerPhone?.replace(/[^\d]/g, '');
-    const url = phone 
+    const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
-    
+
     window.open(url, '_blank');
   };
 
@@ -544,8 +544,8 @@ ${footer}`;
             className="pr-10"
           />
         </div>
-        <Select 
-          value={filterType} 
+        <Select
+          value={filterType}
           onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}
         >
           <SelectTrigger className="w-full sm:w-40">
@@ -557,8 +557,8 @@ ${footer}`;
             <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
           </SelectContent>
         </Select>
-        <Select 
-          value={filterPayment} 
+        <Select
+          value={filterPayment}
           onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}
         >
           <SelectTrigger className="w-full sm:w-40">
@@ -649,7 +649,7 @@ ${footer}`;
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <div className="text-left">
                       <p className="font-bold text-lg">
@@ -666,7 +666,7 @@ ${footer}`;
                         </p>
                       )}
                     </div>
-                    
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]">
@@ -700,7 +700,7 @@ ${footer}`;
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => handleDelete(invoice)}
                           className="text-destructive"
                         >
@@ -735,7 +735,10 @@ ${footer}`;
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t('invoices.date')}:</span>
-                  <p className="font-semibold">{new Date(selectedInvoice.createdAt).toLocaleDateString('ar-SA')}</p>
+                  <p className="font-semibold" dir="ltr">
+                    {new Date(selectedInvoice.createdAt).toLocaleDateString('en-GB') + ' ' +
+                      new Date(selectedInvoice.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t('invoices.customer')}:</span>
@@ -758,28 +761,42 @@ ${footer}`;
                   </Badge>
                 </div>
               </div>
-              
+
               {selectedInvoice.type === 'maintenance' && selectedInvoice.serviceDescription && (
                 <div className="bg-muted rounded-lg p-3">
                   <span className="text-sm text-muted-foreground">{t('invoices.service')}:</span>
                   <p className="font-medium">{selectedInvoice.serviceDescription}</p>
                 </div>
               )}
-              
+
               {selectedInvoice.type === 'sale' && selectedInvoice.items.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">{t('invoices.products')}:</span>
-                  <div className="bg-muted rounded-lg p-3 space-y-2">
-                    {selectedInvoice.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between">
-                        <span>{item.name} × {item.quantity}</span>
-                        <span className="font-semibold">{selectedInvoice.currencySymbol}{item.total.toLocaleString()}</span>
-                      </div>
-                    ))}
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-3 py-2 text-right font-medium text-muted-foreground">المنتج</th>
+                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">الكمية</th>
+                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">السعر</th>
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">المجموع</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedInvoice.items.map((item, idx) => (
+                          <tr key={idx} className="border-t border-muted/50">
+                            <td className="px-3 py-2">{item.name}</td>
+                            <td className="px-3 py-2 text-center">{item.quantity}</td>
+                            <td className="px-3 py-2 text-center">{selectedInvoice.currencySymbol}{item.price.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-left font-medium">{selectedInvoice.currencySymbol}{item.total.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
-              
+
               <div className="border-t pt-4 space-y-2">
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
@@ -798,7 +815,7 @@ ${footer}`;
                   </div>
                 )}
               </div>
-              
+
               <div className="flex gap-2">
                 <Button className="flex-1" onClick={() => handlePrint(selectedInvoice)}>
                   <Printer className="w-4 h-4 ml-2" />

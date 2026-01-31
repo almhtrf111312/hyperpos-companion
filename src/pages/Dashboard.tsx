@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  ShoppingCart, 
-  Users, 
+import {
+  DollarSign,
+  TrendingUp,
+  ShoppingCart,
+  Users,
   CreditCard,
   Package,
   Wallet,
@@ -49,7 +49,7 @@ export default function Dashboard() {
     deficit: 0,
     deficitPercentage: 0,
   });
-  
+
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -68,29 +68,40 @@ export default function Dashboard() {
         loadExpensesCloud(),
         loadDebtsCloud()
       ]);
-      
-      // Calculate today's sales
+
+      // Calculate today's sales and profit from Cloud Invoices
       const todayStr = new Date().toDateString();
-      const todayInvoices = invoices.filter(inv => 
+      const todayInvoices = invoices.filter(inv =>
         new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
       );
+
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      
-      // ✅ استخدام profits-store لحساب الربح الصحيح (مع COGS)
-      const todayProfitData = getTodayProfit();
-      const todayProfit = todayProfitData.totalGrossProfit;
-      const todayCOGS = todayProfitData.totalCOGS;
-      const todayExpenses = todayProfitData.totalOperatingExpenses;
-      const netProfit = todayProfitData.netProfit;
-      
+
+      // ✅ Calculate Profit & COGS directly from Cloud Data (Source of Truth)
+      const todayGrossProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+
+      // Calculate COGS = Sales - Profit (Approximation if strictly not stored on invoice root, 
+      // but usually available or derivable. Ideally items have cost, but invoice.profit is stored)
+      const todayCOGS = todaySales - todayGrossProfit; // Derived
+
+      // Calculate Today's Expenses from Cloud
+      const todayExpensesRecords = expenses.filter(exp =>
+        new Date(exp.date).toDateString() === todayStr
+      );
+      const todayExpenses = todayExpensesRecords.reduce((sum, exp) => sum + exp.amount, 0);
+
+      // ✅ Net Profit = Gross Profit - Expenses
+      const todayProfit = todayGrossProfit; // For consistency with UI naming (Gross)
+      const netProfit = todayGrossProfit - todayExpenses;
+
       // ✅ حساب الديون من جدول الديون الفعلي (أكثر دقة)
       const activeDebts = debts.filter(d => d.status !== 'fully_paid');
       const totalDebtAmount = activeDebts.reduce((sum, d) => sum + d.remainingDebt, 0);
       const debtCustomers = new Set(activeDebts.map(d => d.customerName)).size;
-      
+
       // Calculate profit margin
       const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
-      
+
       // Get unique customers this month
       const thisMonth = new Date().getMonth();
       const thisYear = new Date().getFullYear();
@@ -104,23 +115,29 @@ export default function Dashboard() {
       const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
 
       // ✅ حساب رأس المال الإجمالي من مصادر متعددة
-      // 1. رأس المال من الشركاء (Cloud)
-      const partnersCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
-      
-      // 2. رأس المال المحلي (من capital-store)
-      const { loadCapitalState } = await import('@/lib/capital-store');
-      const capitalState = loadCapitalState();
-      
-      // استخدم القيمة الأعلى للتوافق مع كلا المصدرين
-      const totalCapital = Math.max(partnersCapital, capitalState.currentCapital);
-      
-      // ✅ رصيد الصندوق الفعلي (النقد المتوفر)
-      const cashboxState = loadCashboxState();
-      const cashboxBalance = cashboxState.currentBalance;
-      
-      // ✅ رأس المال المتاح = رأس المال الإجمالي - قيمة المخزون
-      const liquidCapital = totalCapital - inventoryValue;
-      
+      // 1. رأس المال من الشركاء (Cloud) - المصدر الأساسي
+      const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
+
+      // ✅ 2. حساب رصيد الصندوق التراكمي (Calculated Global Cash)
+      // المعادلة: (مبيعات نقدية + سداد ديون) + (رأس المال + ضخ أموال) - (مصاريف + مسحوبات)
+      const totalSalesCash = invoices
+        .filter(inv => inv.status !== 'cancelled' && inv.paymentType === 'cash')
+        .reduce((sum, inv) => sum + inv.total, 0);
+
+      const totalDebtPaid = invoices
+        .filter(inv => inv.status !== 'cancelled')
+        .reduce((sum, inv) => sum + (inv.debtPaid || 0), 0);
+
+      const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+      const totalWithdrawals = partners.reduce((sum, p) => sum + (p.totalWithdrawn || 0), 0);
+
+      // نستخدم رأس المال الحالي كمؤشر على الأموال التي دخلت النظام
+      const globalCashBalance = (totalSalesCash + totalDebtPaid + totalCapital) - (totalExpenses + totalWithdrawals);
+
+      // ✅ 3. رأس المال المتاح (Liquid Capital) = رصيد الصندوق
+      const liquidCapital = globalCashBalance;
+
       // ✅ حساب العجز والنسبة
       const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;
       const deficitPercentage = totalCapital > 0 ? (deficit / totalCapital) * 100 : 0;
@@ -138,8 +155,8 @@ export default function Dashboard() {
         uniqueCustomers,
         inventoryValue,
         totalCapital,
-        availableCapital: cashboxBalance,
-        cashboxBalance,
+        availableCapital: globalCashBalance,
+        cashboxBalance: globalCashBalance,
         liquidCapital,
         deficit,
         deficitPercentage,
@@ -155,7 +172,7 @@ export default function Dashboard() {
     loadStats();
 
     const handleUpdate = () => loadStats();
-    
+
     // ✅ الاستماع لجميع الأحداث المالية
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
@@ -164,7 +181,7 @@ export default function Dashboard() {
     window.addEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
     window.addEventListener('focus', loadStats);
-    
+
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
@@ -191,7 +208,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid - First Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         <StatCard
           title={t('dashboard.todaySales')}
           value={`$${stats.todaySales.toLocaleString()}`}
@@ -227,7 +244,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid - Capital Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
         {/* قيمة المخزون */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
@@ -240,7 +257,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
         {/* رأس المال الإجمالي */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
@@ -253,7 +270,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
         {/* رصيد الصندوق */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
@@ -266,7 +283,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
         {/* رأس المال المتاح */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
@@ -282,7 +299,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      
+
       {/* العجز - يظهر فقط إذا كان > 0 */}
       {stats.deficit > 0 && (
         <div className="bg-destructive/10 rounded-xl border border-destructive/30 p-4">
