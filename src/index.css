@@ -531,3 +531,13 @@
 #qr-code-full-region > div:last-child {
   display: none !important;
 }
+
+/* Native Scanner Transparency */
+body.barcode-scanner-active {
+  background: transparent !important;
+}
+
+body.barcode-scanner-active ion-content {
+  --background: transparent !important;
+  background: transparent !important;
+}

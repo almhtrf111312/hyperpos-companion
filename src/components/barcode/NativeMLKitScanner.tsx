@@ -127,6 +127,11 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
 
       // Start scanning with ML Kit - all formats supported
       console.log('[MLKit] Opening camera with all barcode formats...');
+
+      // ✅ Hide Background & Add Class for Transparency
+      await (BarcodeScanner as any).hideBackground();
+      document.body.classList.add('barcode-scanner-active');
+
       const result = await BarcodeScanner.scan({
         formats: ALL_BARCODE_FORMATS,
       });
@@ -209,7 +214,10 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       }
       // ...
     } finally {
-      // ...
+      // ✅ Cleanup Transparency
+      document.body.classList.remove('barcode-scanner-active');
+      void (BarcodeScanner as any).showBackground().catch(() => { });
+
       scanningRef.current = false;
       if (mountedRef.current) {
         setIsLoading(false);
@@ -231,7 +239,18 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     }
   };
 
-  // ... useEffect ...
+  // ✅ Handle Lifecycle & Cleanup
+  useEffect(() => {
+    if (isOpen) {
+      startScanning();
+    }
+
+    return () => {
+      document.body.classList.remove('barcode-scanner-active');
+      (BarcodeScanner as any).showBackground().catch(() => { });
+      BarcodeScanner.stopScan().catch(() => { });
+    };
+  }, [isOpen]);
 
   // Show loading/error dialog while native scanner is active
   return (
