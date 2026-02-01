@@ -584,3 +584,10 @@ body.barcode-scanner-active .scanner-ui-overlay * {
 body.barcode-scanner-active div[data-state="open"] {
   background-color: transparent !important;
 }
+
+/* Safety Rule: Restore background when scanner is NOT active */
+body:not(.barcode-scanner-active) {
+  background: var(--background) !important;
+  /* Ensure visibility is restored just in case */
+  visibility: visible !important;
+}

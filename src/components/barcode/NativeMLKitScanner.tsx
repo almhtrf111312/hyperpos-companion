@@ -34,9 +34,11 @@ const cleanupAppTransparency = () => {
     try {
       (el as HTMLElement).style.removeProperty('background');
       (el as HTMLElement).style.removeProperty('--background');
+      (el as HTMLElement).style.removeProperty('visibility');
       el.classList.remove('barcode-scanner-active');
     } catch (e) { }
   });
+  document.documentElement.classList.remove('barcode-scanner-active');
 };
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
@@ -182,9 +184,11 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       await BarcodeScanner.stopScan();
     } catch (e) { }
 
-    // Cleanup Classes
-    cleanupAppTransparency();
-    document.body.classList.remove('barcode-scanner-active');
+    // Delayed Cleanup for smooth transition
+    setTimeout(() => {
+      cleanupAppTransparency();
+      document.body.classList.remove('barcode-scanner-active');
+    }, 100);
 
     scanningRef.current = false;
   };
@@ -225,6 +229,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       stopScanning();
     };
   }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <>
