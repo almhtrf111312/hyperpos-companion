@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
 import { NotificationsProvider } from "./hooks/use-notifications";
 import { AuthProvider } from "./hooks/use-auth";
@@ -51,7 +52,7 @@ const AppContent = () => {
   const isSafeMode = searchParams.get('safe') === '1';
   const isDebugClick = searchParams.get('debugclick') === '1';
   const isReset = searchParams.get('reset') === '1';
-  
+
   // Request camera and storage permissions early on native platforms
   useAppPermissions();
 
@@ -91,6 +92,42 @@ const AppContent = () => {
     }
   }, [isSafeMode]);
 
+  // ✅ Handle app restored result (camera data after app kill)
+  useEffect(() => {
+    let listenerHandle: any = null;
+
+    const setupListener = async () => {
+      listenerHandle = await CapApp.addListener('appRestoredResult', (data) => {
+        console.log('[App Restored] Plugin data received:', data);
+
+        // Handle Camera plugin data
+        if (data.pluginId === 'Camera' && data.data) {
+          try {
+            // Save pending camera result for components to pick up
+            localStorage.setItem('pendingCameraResult', JSON.stringify(data.data));
+
+            // Emit custom event for immediate handling
+            window.dispatchEvent(new CustomEvent('camera-restored', {
+              detail: data.data
+            }));
+
+            console.log('[App Restored] Camera data saved successfully');
+          } catch (e) {
+            console.error('[App Restored] Failed to save camera data:', e);
+          }
+        }
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (listenerHandle) {
+        listenerHandle.remove();
+      }
+    };
+  }, []);
+
   // Safe Mode - minimal UI for testing
   if (isSafeMode) {
     return (
@@ -113,7 +150,7 @@ const AppContent = () => {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        
+
         {/* Protected routes - Cashier accessible */}
         <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
         <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
@@ -126,7 +163,7 @@ const AppContent = () => {
         <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
         <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
         <Route path="/appearance" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
-        
+
         {/* Protected routes - Admin/Boss only */}
         <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
@@ -136,10 +173,10 @@ const AppContent = () => {
         <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
-        
+
         {/* Boss only routes */}
         <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />
-        
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

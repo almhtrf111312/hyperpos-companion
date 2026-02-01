@@ -15,7 +15,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from '@/lib/device-fingerprint';
 
 // Google Icon Component
-import { NativeMLKitScanner } from '@/components/barcode/NativeMLKitScanner';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
@@ -47,10 +46,6 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showDeviceBlockedDialog, setShowDeviceBlockedDialog] = useState(false);
   const [isResettingDevice, setIsResettingDevice] = useState(false);
-
-  // Scanner Test State
-  const [showScanner, setShowScanner] = useState(false);
-  const [scannedCode, setScannedCode] = useState('');
 
   const { signIn, signInWithGoogle } = useAuth();
   const { t, direction } = useLanguage();
@@ -320,36 +315,6 @@ export default function Login() {
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4">
-          <div className="w-full space-y-2 border-t pt-4">
-            <Label className="text-xs text-muted-foreground">Scanner Test (Debug)</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                className="flex-1 gap-2"
-                onClick={() => setShowScanner(true)}
-              >
-                <Smartphone className="w-4 h-4" />
-                Test Scanner
-              </Button>
-              <Input
-                readOnly
-                placeholder="Scanned code..."
-                value={scannedCode}
-                className="flex-[2] bg-muted/50 font-mono text-sm"
-              />
-            </div>
-            <NativeMLKitScanner
-              isOpen={showScanner}
-              onClose={() => setShowScanner(false)}
-              onScan={(code) => {
-                setScannedCode(code);
-                toast.success(`Scanned: ${code}`);
-                // Don't close immediately here, let the scanner component handle its own lifecycle/delay
-              }}
-            />
-          </div>
-
           <p className="text-sm text-muted-foreground text-center">
             {t('auth.noAccount')}{' '}
             <Link to="/signup" className="text-primary hover:underline font-medium">

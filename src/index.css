@@ -590,15 +590,32 @@ html.barcode-scanner-active .ion-page {
 .scanner-ui-overlay {
   visibility: visible !important;
   display: flex !important;
-  pointer-events: none !important;
+  pointer-events: auto !important;
   z-index: 99999 !important;
 }
 
-/* Buttons inside scanner CAN be clicked */
-.scanner-ui-overlay button,
-.scanner-ui-overlay input {
+/* CRITICAL: Make ALL children of scanner overlay visible and interactive */
+.scanner-ui-overlay * {
+  visibility: visible !important;
+  display: initial !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure buttons are clickable */
+.scanner-ui-overlay button {
   pointer-events: auto !important;
   visibility: visible !important;
+  display: inline-flex !important;
+}
+
+/* Ensure flex/grid layouts work */
+.scanner-ui-overlay div[class*="flex"],
+.scanner-ui-overlay div[class*="grid"] {
+  display: flex !important;
+}
+
+.scanner-ui-overlay div[class*="grid"] {
+  display: grid !important;
 }
 
 /*

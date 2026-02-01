@@ -11,14 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { 
-  Crown, 
-  Users, 
-  Key, 
-  Shield, 
-  Trash2, 
-  Plus, 
-  Copy, 
+import {
+  Crown,
+  Users,
+  Key,
+  Shield,
+  Trash2,
+  Plus,
+  Copy,
   Ban,
   CheckCircle,
   XCircle,
@@ -97,12 +97,12 @@ export default function BossPanel() {
   const { isBoss, isLoading: roleLoading } = useUserRole();
   const { t, direction } = useLanguage();
   const isMobile = useIsMobile();
-  
+
   const [owners, setOwners] = useState<Owner[]>([]);
   const [codes, setCodes] = useState<ActivationCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // New Code Dialog
   const [showNewCodeDialog, setShowNewCodeDialog] = useState(false);
   const [newCode, setNewCode] = useState({
@@ -113,7 +113,17 @@ export default function BossPanel() {
     license_tier: 'basic',
     note: '',
   });
-  
+
+  // Edit Code Dialog
+  const [editCodeDialog, setEditCodeDialog] = useState<ActivationCode | null>(null);
+  const [editCodeForm, setEditCodeForm] = useState({
+    duration_days: 30,
+    max_uses: 1,
+    max_cashiers: 1,
+    license_tier: 'basic',
+    note: '',
+  });
+
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'code'; id: string; name: string } | null>(null);
 
@@ -195,7 +205,7 @@ export default function BossPanel() {
         .select('value')
         .eq('key', 'developer_phone')
         .maybeSingle();
-      
+
       if (!error && data?.value) {
         setDeveloperPhone(data.value);
       }
@@ -210,14 +220,14 @@ export default function BossPanel() {
     try {
       const { error } = await supabase
         .from('app_settings')
-        .upsert({ 
-          key: 'developer_phone', 
+        .upsert({
+          key: 'developer_phone',
           value: developerPhone,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' });
 
       if (error) throw error;
-      
+
       toast.success('تم حفظ رقم المطور بنجاح');
     } catch (err) {
       console.error('Error saving developer phone:', err);
@@ -291,6 +301,32 @@ export default function BossPanel() {
     }
   };
 
+  const handleEditCode = async () => {
+    if (!editCodeDialog) return;
+
+    try {
+      const { error } = await supabase
+        .from('activation_codes')
+        .update({
+          duration_days: editCodeForm.duration_days,
+          max_uses: editCodeForm.max_uses,
+          max_cashiers: editCodeForm.max_cashiers,
+          license_tier: editCodeForm.license_tier,
+          note: editCodeForm.note || null,
+        })
+        .eq('id', editCodeDialog.id);
+
+      if (error) throw error;
+
+      toast.success('تم تحديث الكود بنجاح');
+      setEditCodeDialog(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating code:', error);
+      toast.error('فشل في تحديث الكود');
+    }
+  };
+
   const handleToggleCode = async (codeId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
@@ -318,7 +354,7 @@ export default function BossPanel() {
           .from('app_licenses')
           .select('user_id, activation_code_id')
           .eq('activation_code_id', codeId);
-        
+
         if (bossLicenses && bossLicenses.length > 0) {
           // Check if any of these users are boss
           for (const license of bossLicenses) {
@@ -327,7 +363,7 @@ export default function BossPanel() {
               .select('role')
               .eq('user_id', license.user_id)
               .single();
-            
+
             if (roleData?.role === 'boss') {
               toast.error('لا يمكن حذف كود تفعيل مستخدم من قبل حساب Boss');
               setDeleteConfirm(null);
@@ -357,8 +393,8 @@ export default function BossPanel() {
     try {
       const { error } = await supabase
         .from('app_licenses')
-        .update({ 
-          is_revoked: true, 
+        .update({
+          is_revoked: true,
           revoked_at: new Date().toISOString(),
           revoked_reason: 'Revoked by admin'
         })
@@ -418,8 +454,8 @@ export default function BossPanel() {
 
       if (error) throw error;
 
-      toast.success(!currentValue 
-        ? 'تم تفعيل تعدد الأجهزة - يمكن الآن تسجيل الدخول من أي جهاز' 
+      toast.success(!currentValue
+        ? 'تم تفعيل تعدد الأجهزة - يمكن الآن تسجيل الدخول من أي جهاز'
         : 'تم إلغاء تعدد الأجهزة - سيتم قفل الجهاز عند تسجيل الدخول التالي'
       );
       fetchData();
@@ -452,11 +488,11 @@ export default function BossPanel() {
           toast.error('يرجى اختيار كود');
           return;
         }
-        
-        const phone = activationDialog.owner.email?.includes('@') 
-          ? '' 
+
+        const phone = activationDialog.owner.email?.includes('@')
+          ? ''
           : activationDialog.owner.email;
-        
+
         const message = encodeURIComponent(
           `مرحباً ${activationDialog.owner.full_name || 'عزيزي العميل'}!\n\n` +
           `كود تفعيل FlowPOS Pro الخاص بك:\n` +
@@ -465,7 +501,7 @@ export default function BossPanel() {
           `عدد الكاشيرات: ${selectedCode.max_cashiers}\n\n` +
           `رابط التطبيق: https://propos.lovable.app`
         );
-        
+
         window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
         toast.success('تم فتح واتساب');
         setActivationDialog(null);
@@ -499,9 +535,9 @@ export default function BossPanel() {
         }
 
         const response = await supabase.functions.invoke('remote-activate-user', {
-          body: { 
-            target_user_id: activationDialog.owner.user_id, 
-            activation_code_id: codeData.id 
+          body: {
+            target_user_id: activationDialog.owner.user_id,
+            activation_code_id: codeData.id
           },
           headers: {
             Authorization: `Bearer ${session.session.access_token}`,
@@ -521,12 +557,12 @@ export default function BossPanel() {
 
       const payload = activationType === 'existing'
         ? { target_user_id: activationDialog.owner.user_id, activation_code_id: activationSettings.selected_code_id }
-        : { 
-            target_user_id: activationDialog.owner.user_id,
-            duration_days: activationSettings.duration_days,
-            max_cashiers: activationSettings.max_cashiers,
-            license_tier: activationSettings.license_tier,
-          };
+        : {
+          target_user_id: activationDialog.owner.user_id,
+          duration_days: activationSettings.duration_days,
+          max_cashiers: activationSettings.max_cashiers,
+          license_tier: activationSettings.license_tier,
+        };
 
       const response = await supabase.functions.invoke('remote-activate-user', {
         body: payload,
@@ -552,7 +588,7 @@ export default function BossPanel() {
 
   const handleSaveName = async () => {
     if (!editNameDialog || !newName.trim()) return;
-    
+
     setIsSavingName(true);
     try {
       const { error } = await supabase
@@ -688,8 +724,8 @@ export default function BossPanel() {
                   سيظهر هذا الرقم في شاشة التفعيل للتواصل مع المطور
                 </p>
               </div>
-              <Button 
-                onClick={handleSaveDeveloperPhone} 
+              <Button
+                onClick={handleSaveDeveloperPhone}
                 disabled={isSavingDevSettings}
                 className="self-end"
               >
@@ -744,6 +780,23 @@ export default function BossPanel() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => {
+                            setEditCodeDialog(code);
+                            setEditCodeForm({
+                              duration_days: code.duration_days,
+                              max_uses: code.max_uses,
+                              max_cashiers: code.max_cashiers,
+                              license_tier: code.license_tier,
+                              note: code.note || '',
+                            });
+                          }}
+                        >
+                          <Pencil className="w-4 h-4 text-primary" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleToggleCode(code.id, code.is_active)}
                         >
                           {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
@@ -789,7 +842,7 @@ export default function BossPanel() {
               ) : (
                 filteredOwners.map((owner) => {
                   const isLicenseValid = owner.license_expires && new Date(owner.license_expires) > new Date() && !owner.license_revoked;
-                  const daysRemaining = owner.license_expires 
+                  const daysRemaining = owner.license_expires
                     ? Math.ceil((new Date(owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                     : 0;
                   const isBossUser = owner.role === 'boss';
@@ -824,7 +877,7 @@ export default function BossPanel() {
                             </Badge>
                           ) : (
                             <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
-                              {isLicenseValid 
+                              {isLicenseValid
                                 ? (owner.is_trial ? 'تجريبي' : 'فعال')
                                 : owner.license_revoked ? 'ملغى' : 'منتهي'
                               }
@@ -834,7 +887,7 @@ export default function BossPanel() {
                             <Badge variant="outline" className="text-[10px] md:text-xs">{owner.license_tier}</Badge>
                           )}
                         </div>
-                        
+
                         {/* Email */}
                         {owner.email && (
                           <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
@@ -1039,6 +1092,83 @@ export default function BossPanel() {
           </DialogContent>
         </Dialog>
 
+        {/* Edit Code Dialog */}
+        <Dialog open={!!editCodeDialog} onOpenChange={() => setEditCodeDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>تعديل كود التفعيل</DialogTitle>
+              <DialogDescription>
+                تعديل خصائص كود التفعيل {editCodeDialog?.code}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>مدة الترخيص (أيام)</Label>
+                  <Input
+                    type="number"
+                    value={editCodeForm.duration_days}
+                    onChange={(e) => setEditCodeForm(prev => ({ ...prev, duration_days: parseInt(e.target.value) || 30 }))}
+                    min={1}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>عدد الاستخدامات</Label>
+                  <Input
+                    type="number"
+                    value={editCodeForm.max_uses}
+                    onChange={(e) => setEditCodeForm(prev => ({ ...prev, max_uses: parseInt(e.target.value) || 1 }))}
+                    min={1}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>عدد الكاشيرات المسموح</Label>
+                  <Input
+                    type="number"
+                    value={editCodeForm.max_cashiers}
+                    onChange={(e) => setEditCodeForm(prev => ({ ...prev, max_cashiers: parseInt(e.target.value) || 1 }))}
+                    min={1}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>فئة الترخيص</Label>
+                  <Select
+                    value={editCodeForm.license_tier}
+                    onValueChange={(value) => setEditCodeForm(prev => ({ ...prev, license_tier: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">أساسي</SelectItem>
+                      <SelectItem value="pro">احترافي</SelectItem>
+                      <SelectItem value="enterprise">مؤسسات</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>ملاحظة (اختياري)</Label>
+                <Input
+                  value={editCodeForm.note}
+                  onChange={(e) => setEditCodeForm(prev => ({ ...prev, note: e.target.value }))}
+                  placeholder="ملاحظة للكود..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditCodeDialog(null)}>
+                إلغاء
+              </Button>
+              <Button onClick={handleEditCode}>
+                حفظ التعديلات
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Remote Activation Dialog */}
         <Dialog open={!!activationDialog} onOpenChange={() => setActivationDialog(null)}>
           <DialogContent className="max-w-md">
@@ -1051,7 +1181,7 @@ export default function BossPanel() {
                 تفعيل ترخيص لـ {activationDialog?.owner.full_name || activationDialog?.owner.email}
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4 py-4">
               {/* User Info */}
               <div className="bg-muted/50 p-3 rounded-lg space-y-1">
@@ -1090,7 +1220,7 @@ export default function BossPanel() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">مدة الترخيص (أيام)</Label>
-                      <Select 
+                      <Select
                         value={activationSettings.duration_days.toString()}
                         onValueChange={(v) => setActivationSettings(prev => ({ ...prev, duration_days: parseInt(v) }))}
                       >
@@ -1108,7 +1238,7 @@ export default function BossPanel() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">عدد الكاشيرات</Label>
-                      <Select 
+                      <Select
                         value={activationSettings.max_cashiers.toString()}
                         onValueChange={(v) => setActivationSettings(prev => ({ ...prev, max_cashiers: parseInt(v) }))}
                       >
@@ -1127,7 +1257,7 @@ export default function BossPanel() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">فئة الترخيص</Label>
-                    <Select 
+                    <Select
                       value={activationSettings.license_tier}
                       onValueChange={(v) => setActivationSettings(prev => ({ ...prev, license_tier: v }))}
                     >
@@ -1150,7 +1280,7 @@ export default function BossPanel() {
                   {availableCodes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">لا توجد أكواد متاحة. أنشئ كوداً جديداً أولاً.</p>
                   ) : (
-                    <Select 
+                    <Select
                       value={activationSettings.selected_code_id}
                       onValueChange={(v) => setActivationSettings(prev => ({ ...prev, selected_code_id: v }))}
                     >
@@ -1174,8 +1304,8 @@ export default function BossPanel() {
                   <Label>أدخل كود التفعيل</Label>
                   <Input
                     value={activationSettings.manual_code}
-                    onChange={(e) => setActivationSettings(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setActivationSettings(prev => ({
+                      ...prev,
                       manual_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
                     }))}
                     placeholder="HYPER-XXXX-XXXX-XXXX-XXXX"
@@ -1193,13 +1323,13 @@ export default function BossPanel() {
               <Button variant="outline" onClick={() => setActivationDialog(null)}>
                 إلغاء
               </Button>
-              <Button 
-                onClick={handleRemoteActivation} 
+              <Button
+                onClick={handleRemoteActivation}
                 disabled={isActivating || (
                   (activationType === 'existing' || activationType === 'whatsapp') && !activationSettings.selected_code_id
                 ) || (
-                  activationType === 'manual' && !activationSettings.manual_code.trim()
-                )}
+                    activationType === 'manual' && !activationSettings.manual_code.trim()
+                  )}
               >
                 {isActivating ? (
                   <RefreshCw className="w-4 h-4 me-2 animate-spin" />
@@ -1223,7 +1353,7 @@ export default function BossPanel() {
                 تأكيد الحذف
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {deleteConfirm?.type === 'owner' 
+                {deleteConfirm?.type === 'owner'
                   ? `هل أنت متأكد من حذف "${deleteConfirm.name}"؟ سيتم حذف جميع بياناته وكاشيراته نهائياً.`
                   : `هل أنت متأكد من حذف الكود "${deleteConfirm?.name}"؟`
                 }

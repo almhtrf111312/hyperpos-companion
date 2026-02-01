@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Filesystem } from '@capacitor/filesystem';
 
 interface UseCameraOptions {
   maxSize?: number;
@@ -27,11 +28,11 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
   const { maxSize = 640, quality = 70 } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // For web fallback
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const resolveRef = useRef<((value: string | null) => void) | null>(null);
-  
+
   const isNative = Capacitor.isNativePlatform();
 
   /**
@@ -44,7 +45,7 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        
+
         // Resize if larger than maxSize
         if (width > height) {
           if (width > maxSize) {
@@ -57,12 +58,12 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
             height = maxSize;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        
+
         const compressedBase64 = canvas.toDataURL('image/jpeg', quality / 100);
         resolve(compressedBase64);
       };
@@ -77,21 +78,26 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
   const takePhoto = useCallback(async (): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       if (isNative) {
-        // Use Capacitor Camera plugin on native platforms
+        // ✅ Use Uri to save memory (33% less than Base64)
         const photo = await Camera.getPhoto({
-          resultType: CameraResultType.Base64,
+          resultType: CameraResultType.Uri,
           source: CameraSource.Camera,
-          quality,
-          width: maxSize,
-          height: maxSize,
+          quality: 70,  // Optimal quality for product photos
+          width: 800,   // Better resolution than 640px
           correctOrientation: true,
         });
-        
-        if (photo.base64String) {
-          const base64 = `data:image/jpeg;base64,${photo.base64String}`;
+
+        if (photo.path) {
+          // Read file from Uri
+          const fileData = await Filesystem.readFile({
+            path: photo.path,
+          });
+
+          // Convert to Base64 for storage
+          const base64 = `data:image/jpeg;base64,${fileData.data}`;
           const compressed = await compressImage(base64);
           setIsLoading(false);
           return compressed;
@@ -107,11 +113,11 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
             fileInputRef.current.accept = 'image/*';
             fileInputRef.current.style.display = 'none';
             document.body.appendChild(fileInputRef.current);
-            
+
             fileInputRef.current.addEventListener('change', async (e) => {
               const target = e.target as HTMLInputElement;
               const file = target.files?.[0];
-              
+
               if (file) {
                 const reader = new FileReader();
                 reader.onloadend = async () => {
@@ -132,12 +138,12 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
                 resolveRef.current = null;
                 setIsLoading(false);
               }
-              
+
               // Reset input for re-selection
               target.value = '';
             });
           }
-          
+
           resolveRef.current = resolve;
           fileInputRef.current.setAttribute('capture', 'environment');
           fileInputRef.current.click();
@@ -158,21 +164,26 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
   const pickFromGallery = useCallback(async (): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       if (isNative) {
-        // Use Capacitor Camera plugin on native platforms
+        // ✅ Use Uri for gallery selection too
         const photo = await Camera.getPhoto({
-          resultType: CameraResultType.Base64,
+          resultType: CameraResultType.Uri,
           source: CameraSource.Photos,
-          quality,
-          width: maxSize,
-          height: maxSize,
+          quality: 70,
+          width: 800,
           correctOrientation: true,
         });
-        
-        if (photo.base64String) {
-          const base64 = `data:image/jpeg;base64,${photo.base64String}`;
+
+        if (photo.path) {
+          // Read file from Uri
+          const fileData = await Filesystem.readFile({
+            path: photo.path,
+          });
+
+          // Convert to Base64 for storage
+          const base64 = `data:image/jpeg;base64,${fileData.data}`;
           const compressed = await compressImage(base64);
           setIsLoading(false);
           return compressed;
@@ -188,11 +199,11 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
             fileInputRef.current.accept = 'image/*';
             fileInputRef.current.style.display = 'none';
             document.body.appendChild(fileInputRef.current);
-            
+
             fileInputRef.current.addEventListener('change', async (e) => {
               const target = e.target as HTMLInputElement;
               const file = target.files?.[0];
-              
+
               if (file) {
                 const reader = new FileReader();
                 reader.onloadend = async () => {
@@ -213,12 +224,12 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
                 resolveRef.current = null;
                 setIsLoading(false);
               }
-              
+
               // Reset input for re-selection
               target.value = '';
             });
           }
-          
+
           resolveRef.current = resolve;
           fileInputRef.current.removeAttribute('capture');
           fileInputRef.current.click();
