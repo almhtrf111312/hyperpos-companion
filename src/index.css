@@ -574,15 +574,18 @@ body.barcode-scanner-active {
   /* Actually visibility: hidden on parent hides children unless they have visibility: visible */
 }
 
-/* Exception: Scanner UI must be visible */
-body.barcode-scanner-active .scanner-ui-overlay,
-body.barcode-scanner-active .scanner-ui-overlay * {
-  visibility: visible !important;
+/* Exception:/* Scanner Transparency - Simplified */
+body.barcode-scanner-active,
+body.barcode-scanner-active * {
+  background: transparent !important;
+  --background: transparent !important;
 }
 
-/* Ensure Dialog Overlay is also transparent when scanning */
-body.barcode-scanner-active div[data-state="open"] {
-  background-color: transparent !important;
+/* Ensure scanner UI overlay is always visible */
+.scanner-ui-overlay,
+.scanner-ui-overlay * {
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 /* Safety Rule: Restore background when scanner is NOT active */
@@ -591,4 +594,31 @@ body:not(.barcode-scanner-active) {
   background: hsl(var(--background)) !important;
   /* Ensure visibility is restored just in case */
   visibility: visible !important;
+}
+
+/* 
+  Scanner Overlay Styles - Ensure perfect centering and blur 
+  These rules specifically target the layout structure of the NativeMLKitScanner component
+*/
+.scanner-ui-overlay {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Force blur areas (first and last child) to have specific z-index and background */
+.scanner-ui-overlay>div:first-child,
+.scanner-ui-overlay>div:last-child {
+  /* Ensure blur is always active regardless of other styles */
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  z-index: 10000;
+}
+
+/* Ensure the middle area (2nd child) is absolutely clear for the camera */
+.scanner-ui-overlay>div:nth-child(2) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 9999;
 }
