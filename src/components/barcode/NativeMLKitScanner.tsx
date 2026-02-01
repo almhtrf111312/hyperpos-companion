@@ -1,8 +1,8 @@
 // Native Scanner using @capacitor-community/barcode-scanner
-// SIMPLIFIED VERSION - Clean camera, always-visible controls + ZOOM
+// SIMPLIFIED VERSION - Clean camera, always-visible controls
 import { useEffect, useState, useRef } from 'react';
 import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
-import { X, Zap, ZapOff, Loader2, ZoomIn } from 'lucide-react';
+import { X, Zap, ZapOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
 
@@ -17,7 +17,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
 
   const scanningRef = useRef(false);
   const hasScannedRef = useRef(false);
@@ -137,18 +136,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     }
   };
 
-  const handleZoomChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    setZoomLevel(value);
-    try {
-      // Try to set zoom if plugin supports it
-      if ((BarcodeScanner as any).setZoom) {
-        await (BarcodeScanner as any).setZoom({ zoom: value });
-      }
-    } catch (err) {
-      console.warn('Zoom not supported:', err);
-    }
-  };
+
 
   useEffect(() => {
     mountedRef.current = true;
@@ -185,8 +173,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             size="icon"
             onClick={toggleTorch}
             className={`rounded-full shadow-2xl ${isTorchOn
-                ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
-                : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
+              ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
+              : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
               }`}
           >
             {isTorchOn ? <Zap className="w-5 h-5 fill-current" /> : <ZapOff className="w-5 h-5" />}
@@ -243,41 +231,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
           </div>
         )}
       </div>
-
-      {/* Bottom: Zoom Slider */}
-      {!isInitializing && !permissionError && (
-        <div className="p-6 pointer-events-auto">
-          <div className="bg-black/60 backdrop-blur-md p-4 rounded-2xl max-w-xs mx-auto border border-white/20">
-            <div className="flex items-center gap-3 mb-2">
-              <ZoomIn className="w-5 h-5 text-white" />
-              <span className="text-white text-sm font-medium">تكبير الكاميرا</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-white/80 font-mono">1x</span>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="0.5"
-                value={zoomLevel}
-                onChange={handleZoomChange}
-                className="flex-1 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer accent-primary
-                  [&::-webkit-slider-thumb]:appearance-none 
-                  [&::-webkit-slider-thumb]:w-5 
-                  [&::-webkit-slider-thumb]:h-5 
-                  [&::-webkit-slider-thumb]:rounded-full 
-                  [&::-webkit-slider-thumb]:bg-primary
-                  [&::-webkit-slider-thumb]:cursor-pointer
-                  [&::-webkit-slider-thumb]:shadow-lg"
-              />
-              <span className="text-xs text-white/80 font-mono">5x</span>
-            </div>
-            <div className="text-center mt-2">
-              <span className="text-sm text-primary font-bold">{zoomLevel.toFixed(1)}x</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

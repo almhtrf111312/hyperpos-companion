@@ -567,23 +567,32 @@ div[role="dialog"].barcode-scanner-active {
    Hide everything by default when scanner is active to preventing any UI blocking.
    Only show specific scanner UI overlays.
 */
-/* Scanner Active State - Make app transparent to show camera */
-body.barcode-scanner-active,
+/* Scanner Active State - FORCE HIDE ALL UI */
+body.barcode-scanner-active {
+  background: transparent !important;
+}
+
+/* Hide ALL children except scanner overlay */
+body.barcode-scanner-active>*:not(.scanner-ui-overlay) {
+  display: none !important;
+}
+
+/* For Ionic/Capacitor apps */
 body.barcode-scanner-active ion-app,
 body.barcode-scanner-active ion-router-outlet,
 body.barcode-scanner-active .ion-page {
   background: transparent !important;
-  --background: transparent !important;
 }
 
-/* Ensure scanner UI overlay is always visible and on top */
+/* Ensure scanner UI overlay is visible and on top */
 .scanner-ui-overlay {
   visibility: visible !important;
+  display: flex !important;
   pointer-events: none !important;
-  /* Container non-clickable */
+  z-index: 99999 !important;
 }
 
-/* But buttons inside CAN be clicked */
+/* Buttons inside scanner CAN be clicked */
 .scanner-ui-overlay button,
 .scanner-ui-overlay input {
   pointer-events: auto !important;
