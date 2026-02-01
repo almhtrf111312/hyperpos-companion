@@ -30,21 +30,21 @@ export function useAppPermissions() {
 
     const requestPermissions = async () => {
       try {
-        // Request camera permission via ML Kit Barcode Scanner
-        const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
-        const cameraResult = await BarcodeScanner.requestPermissions();
-        
-        const cameraStatus = cameraResult.camera === 'granted' ? 'granted' : 
-                            cameraResult.camera === 'denied' ? 'denied' : 'prompt';
+        // Request camera permission via Community Barcode Scanner
+        const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner');
+        const cameraResult = await BarcodeScanner.checkPermission({ force: true });
+
+        const cameraStatus = cameraResult.granted ? 'granted' :
+          cameraResult.denied ? 'denied' : 'prompt';
 
         // Request storage permission via Filesystem
         const { Filesystem } = await import('@capacitor/filesystem');
         let storageStatus: 'granted' | 'denied' | 'prompt' = 'unknown' as any;
-        
+
         try {
           const storageResult = await Filesystem.requestPermissions();
-          storageStatus = storageResult.publicStorage === 'granted' ? 'granted' : 
-                         storageResult.publicStorage === 'denied' ? 'denied' : 'prompt';
+          storageStatus = storageResult.publicStorage === 'granted' ? 'granted' :
+            storageResult.publicStorage === 'denied' ? 'denied' : 'prompt';
         } catch (storageError) {
           console.warn('[Permissions] Storage permission request failed:', storageError);
           storageStatus = 'prompt';
@@ -79,8 +79,8 @@ export function useOpenAppSettings() {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-      const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
-      await BarcodeScanner.openSettings();
+      const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner');
+      await BarcodeScanner.openAppSettings();
     } catch (error) {
       console.error('[Permissions] Failed to open settings:', error);
     }
