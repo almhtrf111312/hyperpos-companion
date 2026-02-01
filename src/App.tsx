@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
 import { NotificationsProvider } from "./hooks/use-notifications";
@@ -92,8 +93,11 @@ const AppContent = () => {
     }
   }, [isSafeMode]);
 
-  // ✅ Handle app restored result (camera data after app kill)
+  // ✅ Handle app restored result (camera data after app kill) - Native only
   useEffect(() => {
+    // Only setup listener on native platforms
+    if (!Capacitor.isNativePlatform()) return;
+
     let listenerHandle: any = null;
 
     const setupListener = async () => {
