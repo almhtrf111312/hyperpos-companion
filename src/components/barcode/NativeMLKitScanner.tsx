@@ -1,8 +1,8 @@
 // Native Scanner using @capacitor-community/barcode-scanner
-// SIMPLIFIED VERSION - Clean camera, always-visible controls
+// SIMPLIFIED VERSION - Clean camera, always-visible controls + ZOOM
 import { useEffect, useState, useRef } from 'react';
 import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
-import { X, Zap, ZapOff, Loader2 } from 'lucide-react';
+import { X, Zap, ZapOff, Loader2, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
 
@@ -17,6 +17,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const scanningRef = useRef(false);
   const hasScannedRef = useRef(false);
@@ -136,6 +137,19 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     }
   };
 
+  const handleZoomChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    setZoomLevel(value);
+    try {
+      // Try to set zoom if plugin supports it
+      if ((BarcodeScanner as any).setZoom) {
+        await (BarcodeScanner as any).setZoom({ zoom: value });
+      }
+    } catch (err) {
+      console.warn('Zoom not supported:', err);
+    }
+  };
+
   useEffect(() => {
     mountedRef.current = true;
     if (isOpen) {
@@ -150,78 +164,118 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   if (!isOpen) return null;
 
   return (
-    <div className="scanner-ui-overlay fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="scanner-ui-overlay fixed inset-0 z-[9999] flex flex-col">
 
-      {/* Always-Visible Close Button (Top-Right) */}
-      <Button
-        variant="destructive"
-        size="icon"
-        onClick={handleClose}
-        className="absolute top-6 right-6 z-[10001] rounded-full shadow-2xl pointer-events-auto"
-      >
-        <X className="w-6 h-6" />
-      </Button>
-
-      {/* Flash Toggle (Top-Left) */}
-      {!isInitializing && !permissionError && (
+      {/* Top Controls Bar */}
+      <div className="flex justify-between items-center p-4 pointer-events-auto">
+        {/* Close Button (Left) */}
         <Button
-          variant={isTorchOn ? "default" : "outline"}
+          variant="destructive"
           size="icon"
-          onClick={toggleTorch}
-          className={`absolute top-6 left-6 z-[10001] rounded-full shadow-2xl pointer-events-auto ${isTorchOn
-              ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
-              : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
-            }`}
+          onClick={handleClose}
+          className="rounded-full shadow-2xl"
         >
-          {isTorchOn ? <Zap className="w-5 h-5 fill-current" /> : <ZapOff className="w-5 h-5" />}
+          <X className="w-6 h-6" />
         </Button>
-      )}
 
-      {/* Scan Guide (Center) */}
-      {!isInitializing && !permissionError && (
-        <div className="relative w-64 h-64 pointer-events-none">
-          {/* Border Frame */}
-          <div className="absolute inset-0 border-4 border-primary/70 rounded-2xl">
-            {/* Corner Markers */}
-            <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
-            <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
-            <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
-          </div>
-
-          {/* Scanning Line */}
-          <div className="absolute top-1/2 left-0 w-full h-1 bg-red-500 animate-pulse shadow-[0_0_10px_red]"></div>
-
-          {/* Instruction Text */}
-          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 whitespace-nowrap">
-            <p className="text-white text-center font-medium drop-shadow-lg">
-              وجّه الكاميرا نحو الباركود
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {isInitializing && (
-        <div className="flex flex-col items-center gap-4 pointer-events-none">
-          <div className="bg-black/60 backdrop-blur-md p-6 rounded-full shadow-2xl">
-            <Loader2 className="w-12 h-12 text-white animate-spin" />
-          </div>
-          <p className="text-white font-medium drop-shadow-lg">جاري فتح الكاميرا...</p>
-        </div>
-      )}
-
-      {/* Permission Error State */}
-      {permissionError && (
-        <div className="bg-black/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-sm mx-4 pointer-events-auto">
-          <p className="text-red-400 text-center mb-4">{permissionError}</p>
+        {/* Flash Toggle (Right) */}
+        {!isInitializing && !permissionError && (
           <Button
-            variant="outline"
-            onClick={handleClose}
-            className="w-full"
+            variant={isTorchOn ? "default" : "outline"}
+            size="icon"
+            onClick={toggleTorch}
+            className={`rounded-full shadow-2xl ${isTorchOn
+                ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
+                : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
+              }`}
           >
-            إغلاق
+            {isTorchOn ? <Zap className="w-5 h-5 fill-current" /> : <ZapOff className="w-5 h-5" />}
           </Button>
+        )}
+      </div>
+
+      {/* Center: Scan Guide */}
+      <div className="flex-1 flex items-center justify-center pointer-events-none">
+        {!isInitializing && !permissionError && (
+          <div className="relative">
+            {/* Border Frame */}
+            <div className="w-64 h-64 border-4 border-primary/70 rounded-2xl relative">
+              {/* Corner Markers */}
+              <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
+              <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
+              <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
+
+              {/* Scanning Line */}
+              <div className="absolute top-1/2 left-0 w-full h-1 bg-red-500 animate-pulse shadow-[0_0_10px_red]"></div>
+            </div>
+
+            {/* Instruction Text */}
+            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 whitespace-nowrap">
+              <p className="text-white text-center font-medium drop-shadow-lg">
+                وجّه الكاميرا نحو الباركود
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isInitializing && (
+          <div className="flex flex-col items-center gap-4">
+            <div className="bg-black/60 backdrop-blur-md p-6 rounded-full shadow-2xl">
+              <Loader2 className="w-12 h-12 text-white animate-spin" />
+            </div>
+            <p className="text-white font-medium drop-shadow-lg">جاري فتح الكاميرا...</p>
+          </div>
+        )}
+
+        {/* Permission Error State */}
+        {permissionError && (
+          <div className="bg-black/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-sm mx-4 pointer-events-auto">
+            <p className="text-red-400 text-center mb-4">{permissionError}</p>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              className="w-full"
+            >
+              إغلاق
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom: Zoom Slider */}
+      {!isInitializing && !permissionError && (
+        <div className="p-6 pointer-events-auto">
+          <div className="bg-black/60 backdrop-blur-md p-4 rounded-2xl max-w-xs mx-auto border border-white/20">
+            <div className="flex items-center gap-3 mb-2">
+              <ZoomIn className="w-5 h-5 text-white" />
+              <span className="text-white text-sm font-medium">تكبير الكاميرا</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-white/80 font-mono">1x</span>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="0.5"
+                value={zoomLevel}
+                onChange={handleZoomChange}
+                className="flex-1 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer accent-primary
+                  [&::-webkit-slider-thumb]:appearance-none 
+                  [&::-webkit-slider-thumb]:w-5 
+                  [&::-webkit-slider-thumb]:h-5 
+                  [&::-webkit-slider-thumb]:rounded-full 
+                  [&::-webkit-slider-thumb]:bg-primary
+                  [&::-webkit-slider-thumb]:cursor-pointer
+                  [&::-webkit-slider-thumb]:shadow-lg"
+              />
+              <span className="text-xs text-white/80 font-mono">5x</span>
+            </div>
+            <div className="text-center mt-2">
+              <span className="text-sm text-primary font-bold">{zoomLevel.toFixed(1)}x</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

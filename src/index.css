@@ -562,42 +562,36 @@ div[role="dialog"].barcode-scanner-active {
   --ion-background-color: transparent !important;
 }
 
-/* 
+/*
    RADICAL VISIBILITY FIX:
    Hide everything by default when scanner is active to preventing any UI blocking.
    Only show specific scanner UI overlays.
 */
-body.barcode-scanner-active {
-  visibility: hidden !important;
-  opacity: 1 !important;
-  /* Ensure the body itself isn't fully invisible, just its children if inherited, but visibility hidden on body hides all kids usually */
-  /* Actually visibility: hidden on parent hides children unless they have visibility: visible */
-}
-
-/* Exception:/* Scanner Transparency - Simplified */
+/* Scanner Active State - Make app transparent to show camera */
 body.barcode-scanner-active,
-body.barcode-scanner-active * {
+body.barcode-scanner-active ion-app,
+body.barcode-scanner-active ion-router-outlet,
+body.barcode-scanner-active .ion-page {
   background: transparent !important;
   --background: transparent !important;
 }
 
-/* Ensure scanner UI overlay is always visible */
-.scanner-ui-overlay,
-.scanner-ui-overlay * {
+/* Ensure scanner UI overlay is always visible and on top */
+.scanner-ui-overlay {
   visibility: visible !important;
+  pointer-events: none !important;
+  /* Container non-clickable */
+}
+
+/* But buttons inside CAN be clicked */
+.scanner-ui-overlay button,
+.scanner-ui-overlay input {
   pointer-events: auto !important;
-}
-
-/* Safety Rule: Restore background when scanner is NOT active */
-body:not(.barcode-scanner-active) {
-  /* Use hsl() wrapper because --background contains channels only */
-  background: hsl(var(--background)) !important;
-  /* Ensure visibility is restored just in case */
   visibility: visible !important;
 }
 
-/* 
-  Scanner Overlay Styles - Ensure perfect centering and blur 
+/*
+  Scanner Overlay Styles - Ensure perfect centering and blur
   These rules specifically target the layout structure of the NativeMLKitScanner component
 */
 .scanner-ui-overlay {
