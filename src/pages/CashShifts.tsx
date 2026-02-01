@@ -4,8 +4,8 @@ import { useLanguage } from '@/hooks/use-language';
 import {
   loadShifts,
   getActiveShift,
-  openShift,
-  closeShift,
+  openShift as openShiftFn,
+  closeShift as closeShiftFn,
   calculateShiftStatus,
   Shift
 } from '@/lib/cashbox-store';
@@ -116,7 +116,7 @@ export default function CashShifts() {
       return;
     }
 
-    const newShift = openShift(amount, userId, userName);
+    const newShift = openShiftFn(amount, userId, userName);
     addActivityLog('shift_opened', userId, userName, `فتح وردية جديدة برصيد ${amount.toFixed(2)} `);
     toast.success('تم فتح الوردية بنجاح');
 
@@ -135,7 +135,7 @@ export default function CashShifts() {
       return;
     }
 
-    const result = closeShift(amount, createAdjustment ? 'تسوية تلقائية للفرق' : undefined);
+    const result = closeShiftFn(amount, createAdjustment ? 'تسوية تلقائية للفرق' : undefined);
 
     if (result) {
       const { shift: closedShift, discrepancy } = result;
