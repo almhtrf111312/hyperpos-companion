@@ -587,7 +587,8 @@ body.barcode-scanner-active div[data-state="open"] {
 
 /* Safety Rule: Restore background when scanner is NOT active */
 body:not(.barcode-scanner-active) {
-  background: var(--background) !important;
+  /* Use hsl() wrapper because --background contains channels only */
+  background: hsl(var(--background)) !important;
   /* Ensure visibility is restored just in case */
   visibility: visible !important;
 }
