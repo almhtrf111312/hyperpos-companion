@@ -54,9 +54,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // 2. Hide Background & Add Class
+      // 2. Hide Background & Add Class (target html tag directly)
       await BarcodeScanner.hideBackground();
-      document.body.classList.add('barcode-scanner-active');
+      document.documentElement.classList.add('barcode-scanner-active');
 
       // 3. Camera is ready, hide loading spinner
       setIsInitializing(false);
@@ -111,8 +111,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       console.warn('Stop scanning failed:', e);
     }
 
-    // Cleanup
-    document.body.classList.remove('barcode-scanner-active');
+    // Cleanup (target html tag directly)
+    document.documentElement.classList.remove('barcode-scanner-active');
     scanningRef.current = false;
   };
 

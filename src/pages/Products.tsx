@@ -14,6 +14,7 @@ import {
   ScanLine,
   Tag,
   Image as ImageIcon,
+  Camera,
   Loader2,
   Boxes
 } from 'lucide-react';
@@ -166,7 +167,7 @@ export default function Products() {
   }, []);
 
   // Use Capacitor Camera hook
-  const { pickFromGallery, isLoading: isCameraLoading } = useCamera({ maxSize: 640, quality: 70 });
+  const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({ maxSize: 640, quality: 70 });
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -226,6 +227,22 @@ export default function Products() {
   // Handle gallery selection using Capacitor Camera plugin
   const handleGallerySelect = async () => {
     const base64Image = await pickFromGallery();
+    if (base64Image) {
+      const toastId = toast.loading('جاري رفع الصورة...');
+      const imageUrl = await uploadProductImage(base64Image);
+      toast.dismiss(toastId);
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        toast.success('تم رفع الصورة بنجاح');
+      } else {
+        toast.error('فشل في رفع الصورة');
+      }
+    }
+  };
+
+  // Handle camera capture using Capacitor Camera plugin
+  const handleCameraCapture = async () => {
+    const base64Image = await takePhoto();
     if (base64Image) {
       const toastId = toast.loading('جاري رفع الصورة...');
       const imageUrl = await uploadProductImage(base64Image);
@@ -1085,20 +1102,36 @@ export default function Products() {
                       <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                     </div>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleGallerySelect}
-                    disabled={isCameraLoading}
-                  >
-                    {isCameraLoading ? (
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                    ) : (
-                      <ImageIcon className="w-4 h-4 ml-2" />
-                    )}
-                    إضافة صورة
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCameraCapture}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4 ml-2" />
+                      )}
+                      التقاط صورة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleGallerySelect}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 ml-2" />
+                      )}
+                      اختيار صورة
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1272,20 +1305,36 @@ export default function Products() {
                       <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                     </div>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleGallerySelect}
-                    disabled={isCameraLoading}
-                  >
-                    {isCameraLoading ? (
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                    ) : (
-                      <ImageIcon className="w-4 h-4 ml-2" />
-                    )}
-                    {t('products.chooseImage')}
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCameraCapture}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4 ml-2" />
+                      )}
+                      التقاط صورة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleGallerySelect}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 ml-2" />
+                      )}
+                      {t('products.chooseImage')}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

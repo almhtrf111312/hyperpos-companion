@@ -568,19 +568,21 @@ div[role="dialog"].barcode-scanner-active {
    Only show specific scanner UI overlays.
 */
 /* Scanner Active State - FORCE HIDE ALL UI */
-body.barcode-scanner-active {
+/* Target html tag directly (documentElement) for complete WebView transparency */
+html.barcode-scanner-active,
+html.barcode-scanner-active body {
   background: transparent !important;
 }
 
 /* Hide ALL children except scanner overlay */
-body.barcode-scanner-active>*:not(.scanner-ui-overlay) {
+html.barcode-scanner-active body>*:not(.scanner-ui-overlay) {
   display: none !important;
 }
 
 /* For Ionic/Capacitor apps */
-body.barcode-scanner-active ion-app,
-body.barcode-scanner-active ion-router-outlet,
-body.barcode-scanner-active .ion-page {
+html.barcode-scanner-active ion-app,
+html.barcode-scanner-active ion-router-outlet,
+html.barcode-scanner-active .ion-page {
   background: transparent !important;
 }
 
