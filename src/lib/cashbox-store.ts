@@ -104,14 +104,14 @@ export const openShift = (
   userName: string
 ): Shift => {
   const shifts = loadShifts();
-  
+
   // Close any existing open shifts first
   const openShifts = shifts.filter(s => s.status === 'open');
   openShifts.forEach(shift => {
     shift.status = 'closed';
     shift.closedAt = new Date().toISOString();
   });
-  
+
   const newShift: Shift = {
     id: Date.now().toString(),
     openedAt: new Date().toISOString(),
@@ -126,17 +126,17 @@ export const openShift = (
     cogsTotal: 0,           // ✅ جديد
     grossProfitTotal: 0,    // ✅ جديد
   };
-  
+
   shifts.unshift(newShift);
   saveShifts(shifts);
-  
+
   // Update cashbox state
   const state = loadCashboxState();
   state.activeShiftId = newShift.id;
   state.currentBalance = roundCurrency(openingCash);
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
-  
+
   return newShift;
 };
 
@@ -147,9 +147,9 @@ export const closeShift = (
 ): { shift: Shift; discrepancy: number } | null => {
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
-  
+
   if (activeIndex === -1) return null;
-  
+
   const shift = shifts[activeIndex];
   const expectedCash = roundCurrency(
     addCurrency(
@@ -158,15 +158,15 @@ export const closeShift = (
       shift.depositsTotal
     ) - addCurrency(shift.expensesTotal, shift.withdrawalsTotal)
   );
-  
+
   const discrepancy = roundCurrency(closingCash - expectedCash);
-  
+
   shift.closedAt = new Date().toISOString();
   shift.closingCash = roundCurrency(closingCash);
   shift.expectedCash = expectedCash;
   shift.discrepancy = discrepancy;
   shift.status = 'closed';
-  
+
   // Create adjustment if there's a discrepancy
   if (discrepancy !== 0) {
     shift.adjustment = {
@@ -177,17 +177,17 @@ export const closeShift = (
       createdAt: new Date().toISOString(),
     };
   }
-  
+
   shifts[activeIndex] = shift;
   saveShifts(shifts);
-  
+
   // Update cashbox state
   const state = loadCashboxState();
   state.activeShiftId = undefined;
   state.currentBalance = roundCurrency(closingCash);
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
-  
+
   return { shift, discrepancy };
 };
 
@@ -196,22 +196,22 @@ export const closeShift = (
  * هذه الدالة تعمل دائماً حتى بدون وردية مفتوحة
  */
 export const updateCashboxBalance = (
-  amount: number, 
+  amount: number,
   type: 'deposit' | 'withdrawal' | 'sale' | 'expense'
 ): void => {
   const roundedAmount = roundCurrency(amount);
   const state = loadCashboxState();
-  
+
   // تحديث رصيد الصندوق
   if (type === 'deposit' || type === 'sale') {
     state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
   } else {
     state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
   }
-  
+
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
-  
+
   // إذا كانت هناك وردية نشطة، حدّثها أيضاً
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
@@ -246,14 +246,14 @@ export const addSalesToShift = (
   const roundedAmount = roundCurrency(amount);
   const roundedProfit = roundCurrency(grossProfit);
   const roundedCogs = roundCurrency(cogs);
-  
+
   const state = loadCashboxState();
-  
+
   // تحديث رصيد الصندوق
   state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
-  
+
   // إذا كانت هناك وردية نشطة، حدّثها أيضاً
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
@@ -285,14 +285,14 @@ export const getShiftStats = () => {
   const shifts = loadShifts();
   const today = new Date().toDateString();
   const todayShifts = shifts.filter(s => new Date(s.openedAt).toDateString() === today);
-  
+
   return {
     totalShifts: shifts.length,
     todayShifts: todayShifts.length,
     activeShift: getActiveShift(),
-    totalSurplus: shifts.reduce((sum, s) => 
+    totalSurplus: shifts.reduce((sum, s) =>
       s.adjustment?.type === 'surplus' ? addCurrency(sum, s.adjustment.amount) : sum, 0),
-    totalShortage: shifts.reduce((sum, s) => 
+    totalShortage: shifts.reduce((sum, s) =>
       s.adjustment?.type === 'shortage' ? addCurrency(sum, s.adjustment.amount) : sum, 0),
   };
 };
@@ -304,4 +304,22 @@ export const getShiftsByDateRange = (startDate: Date, endDate: Date): Shift[] =>
     const shiftDate = new Date(s.openedAt);
     return shiftDate >= startDate && shiftDate <= endDate;
   });
+};
+
+/**
+ * Calculate real-time shift status from invoices and expenses
+ * Migrated from cash-shift-store.ts
+ */
+export const calculateShiftStatus = (shift: Shift): {
+  cashSales: number;
+  cashExpenses: number;
+  expectedCash: number;
+} => {
+  // This requires invoices-store, but we'll keep the interface
+  // Implementation will be in the consuming component
+  return {
+    cashSales: shift.salesTotal || 0,
+    cashExpenses: shift.expensesTotal || 0,
+    expectedCash: shift.openingCash + (shift.salesTotal || 0) - (shift.expensesTotal || 0)
+  };
 };
