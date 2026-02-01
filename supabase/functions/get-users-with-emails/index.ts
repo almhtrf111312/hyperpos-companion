@@ -93,15 +93,27 @@ Deno.serve(async (req) => {
       console.error('Error fetching roles:', rolesError)
     }
 
-    // Get all licenses
+    // Get all licenses with activation codes
     const { data: licenses, error: licensesError } = await adminClient
       .from('app_licenses')
-      .select('user_id, expires_at, is_revoked, license_tier, max_cashiers, device_id, allow_multi_device, is_trial')
+      .select('user_id, expires_at, is_revoked, license_tier, max_cashiers, device_id, allow_multi_device, is_trial, activation_code_id')
       .eq('is_revoked', false)
 
     if (licensesError) {
       console.error('Error fetching licenses:', licensesError)
     }
+
+    // Get all activation codes
+    const { data: activationCodes, error: codesError } = await adminClient
+      .from('activation_codes')
+      .select('id, code')
+
+    if (codesError) {
+      console.error('Error fetching activation codes:', codesError)
+    }
+
+    // Create activation codes map
+    const codeMap = new Map((activationCodes || []).map(c => [c.id, c.code]))
 
     // Create lookup maps
     const profileMap = new Map((profiles || []).map(p => [p.user_id, p]))
@@ -121,6 +133,7 @@ Deno.serve(async (req) => {
       const profile = profileMap.get(user.id)
       const role = roleMap.get(user.id)
       const license = licenseMap.get(user.id)
+      const activationCode = license?.activation_code_id ? codeMap.get(license.activation_code_id) : null
       
       return {
         user_id: user.id,
@@ -137,6 +150,7 @@ Deno.serve(async (req) => {
         device_id: license?.device_id || null,
         allow_multi_device: license?.allow_multi_device || false,
         is_trial: license?.is_trial || false,
+        activation_code: activationCode || null,
         cashier_count: cashierCounts.get(user.id) || 0,
         created_at: user.created_at,
       }
