@@ -76,6 +76,7 @@ interface Owner {
   device_id?: string | null;
   allow_multi_device?: boolean;
   is_trial?: boolean;
+  activation_code?: string | null;
 }
 
 interface ActivationCode {
@@ -143,6 +144,17 @@ export default function BossPanel() {
     manual_code: '',
   });
   const [isActivating, setIsActivating] = useState(false);
+
+  // Edit License Dialog
+  const [editLicenseDialog, setEditLicenseDialog] = useState<{ owner: Owner } | null>(null);
+  const [editLicenseSettings, setEditLicenseSettings] = useState({
+    duration_days: 180,
+    max_cashiers: 1,
+    license_tier: 'basic',
+    generated_code: '',
+  });
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [isSavingLicense, setIsSavingLicense] = useState(false);
 
   // Developer Settings
   const [developerPhone, setDeveloperPhone] = useState('');
@@ -610,6 +622,90 @@ export default function BossPanel() {
     }
   };
 
+  // Generate code for edit license dialog
+  const generateCodeForEditLicense = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'FP-';
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      if (i < 3) code += '-';
+    }
+    setEditLicenseSettings(prev => ({ ...prev, generated_code: code }));
+  };
+
+  // Save generated code and apply to user
+  const handleSaveEditLicense = async () => {
+    if (!editLicenseDialog || !editLicenseSettings.generated_code) {
+      toast.error('يرجى إنشاء كود أولاً');
+      return;
+    }
+
+    setIsSavingLicense(true);
+    try {
+      // First create the activation code
+      const { data: codeData, error: codeError } = await supabase
+        .from('activation_codes')
+        .insert({
+          code: editLicenseSettings.generated_code,
+          duration_days: editLicenseSettings.duration_days,
+          max_uses: 1,
+          max_cashiers: editLicenseSettings.max_cashiers,
+          license_tier: editLicenseSettings.license_tier,
+          note: `تم إنشاؤه لـ ${editLicenseDialog.owner.full_name || editLicenseDialog.owner.email}`,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (codeError) {
+        if (codeError.code === '23505') {
+          toast.error('هذا الكود موجود مسبقاً، جرب إنشاء كود جديد');
+        } else {
+          throw codeError;
+        }
+        return;
+      }
+
+      // Now apply the code to the user via the remote activation function
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('remote-activate-user', {
+        body: {
+          target_user_id: editLicenseDialog.owner.user_id,
+          activation_code_id: codeData.id
+        },
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to activate');
+      }
+
+      toast.success(`تم تفعيل/تمديد حساب "${editLicenseDialog.owner.full_name || editLicenseDialog.owner.email}" بنجاح`);
+      setEditLicenseDialog(null);
+      setEditLicenseSettings({
+        duration_days: 180,
+        max_cashiers: 1,
+        license_tier: 'basic',
+        generated_code: '',
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error saving license:', error);
+      toast.error('فشل في حفظ التفعيل');
+    } finally {
+      setIsSavingLicense(false);
+    }
+  };
+
   const filteredOwners = owners.filter(owner =>
     owner.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -888,11 +984,35 @@ export default function BossPanel() {
                           )}
                         </div>
 
-                        {/* Email */}
+                        {/* Email - Full display */}
                         {owner.email && (
                           <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
                             <Mail className="w-3 h-3 flex-shrink-0" />
-                            <span className="font-mono truncate">{owner.email}</span>
+                            <span className="font-mono break-all">{owner.email}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 flex-shrink-0"
+                              onClick={() => copyToClipboard(owner.email!)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Activation Code - Full display */}
+                        {owner.activation_code && !isBossUser && (
+                          <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
+                            <Key className="w-3 h-3 flex-shrink-0" />
+                            <span className="font-mono break-all">{owner.activation_code}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 flex-shrink-0"
+                              onClick={() => copyToClipboard(owner.activation_code!)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -902,25 +1022,29 @@ export default function BossPanel() {
                         {!isBossUser && (
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {owner.cashier_count}/{owner.max_cashiers || 1}
+                            {owner.cashier_count}/{owner.max_cashiers || 1} كاشير
                           </span>
                         )}
                         {!isBossUser && owner.license_expires && (
-                          <span className="flex items-center gap-1">
+                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded ${
+                            daysRemaining <= 7 ? 'bg-destructive/10 text-destructive font-medium' :
+                            daysRemaining <= 30 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                            'bg-muted'
+                          }`}>
                             <Calendar className="w-3 h-3" />
-                            {isLicenseValid ? `${daysRemaining}ي` : 'منتهي'}
+                            {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
                           </span>
                         )}
                         {isBossUser && (
-                          <span className="flex items-center gap-1 text-emerald-600">
+                          <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
                             <Calendar className="w-3 h-3" />
-                            لا ينتهي
+                            ترخيص لا ينتهي
                           </span>
                         )}
                         {owner.device_id ? (
-                          <span className="flex items-center gap-1 font-mono text-[10px] md:text-xs bg-background px-1.5 md:px-2 py-0.5 rounded truncate max-w-[100px] md:max-w-none">
+                          <span className="flex items-center gap-1 font-mono text-[10px] md:text-xs bg-background px-1.5 md:px-2 py-0.5 rounded">
                             <Smartphone className="w-3 h-3 flex-shrink-0" />
-                            {isMobile ? owner.device_id.substring(0, 8) + '...' : owner.device_id.substring(0, 16) + '...'}
+                            {owner.device_id.substring(0, 8)}...
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 text-muted-foreground/60 text-[10px] md:text-xs">
@@ -933,6 +1057,25 @@ export default function BossPanel() {
                       {/* Actions - mobile-friendly grid */}
                       {!isBossUser && (
                         <div className={`pt-2 border-t ${isMobile ? 'grid grid-cols-2 gap-2' : 'flex items-center gap-2 flex-wrap'}`}>
+                          {/* Edit License Button - Primary action */}
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setEditLicenseDialog({ owner });
+                              setEditLicenseSettings({
+                                duration_days: 180,
+                                max_cashiers: owner.max_cashiers || 1,
+                                license_tier: owner.license_tier || 'basic',
+                                generated_code: '',
+                              });
+                            }}
+                            className="bg-primary text-primary-foreground text-xs h-8"
+                          >
+                            <Pencil className="w-3 h-3 me-1" />
+                            {isMobile ? 'تعديل' : 'تعديل التفعيل'}
+                          </Button>
+
                           {/* Remote Activation Button */}
                           <Button
                             variant="outline"
@@ -1406,6 +1549,135 @@ export default function BossPanel() {
               <Button onClick={handleSaveName} disabled={isSavingName || !newName.trim()}>
                 {isSavingName && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
                 حفظ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit License Dialog */}
+        <Dialog open={!!editLicenseDialog} onOpenChange={() => setEditLicenseDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-primary" />
+                تعديل التفعيل
+              </DialogTitle>
+              <DialogDescription>
+                تعديل/تمديد ترخيص {editLicenseDialog?.owner.full_name || editLicenseDialog?.owner.email}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Current Status */}
+              <div className="bg-muted/50 p-3 rounded-lg space-y-2">
+                <p className="font-medium text-sm">الحالة الحالية:</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {editLicenseDialog?.owner.activation_code && (
+                    <Badge variant="outline" className="font-mono">
+                      الكود: {editLicenseDialog.owner.activation_code}
+                    </Badge>
+                  )}
+                  {editLicenseDialog?.owner.license_expires && (
+                    <Badge variant={new Date(editLicenseDialog.owner.license_expires) > new Date() ? 'default' : 'destructive'}>
+                      {new Date(editLicenseDialog.owner.license_expires) > new Date() 
+                        ? `متبقي ${Math.ceil((new Date(editLicenseDialog.owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} يوم`
+                        : 'منتهي'
+                      }
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* License Settings */}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>مدة الترخيص الجديد (أيام)</Label>
+                  <Input
+                    type="number"
+                    value={editLicenseSettings.duration_days}
+                    onChange={(e) => setEditLicenseSettings(prev => ({ ...prev, duration_days: parseInt(e.target.value) || 30 }))}
+                    min={1}
+                    placeholder="مثال: 180"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    يمكنك كتابة أي عدد أيام (مثلاً: 50، 100، 365)
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>عدد الكاشيرات</Label>
+                    <Input
+                      type="number"
+                      value={editLicenseSettings.max_cashiers}
+                      onChange={(e) => setEditLicenseSettings(prev => ({ ...prev, max_cashiers: parseInt(e.target.value) || 1 }))}
+                      min={1}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>فئة الترخيص</Label>
+                    <Select
+                      value={editLicenseSettings.license_tier}
+                      onValueChange={(v) => setEditLicenseSettings(prev => ({ ...prev, license_tier: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="basic">أساسي</SelectItem>
+                        <SelectItem value="pro">احترافي</SelectItem>
+                        <SelectItem value="enterprise">مؤسسات</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Generated Code Section */}
+                <div className="space-y-2 pt-3 border-t">
+                  <Label>كود التفعيل</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={editLicenseSettings.generated_code}
+                      onChange={(e) => setEditLicenseSettings(prev => ({ ...prev, generated_code: e.target.value.toUpperCase() }))}
+                      placeholder="اضغط 'إنشاء كود' أولاً"
+                      className="font-mono text-center"
+                      dir="ltr"
+                      readOnly
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={generateCodeForEditLicense}
+                    >
+                      إنشاء كود
+                    </Button>
+                  </div>
+                  {editLicenseSettings.generated_code && (
+                    <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                        تم إنشاء الكود - اضغط "حفظ" لتطبيقه على المستخدم
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditLicenseDialog(null)}>
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleSaveEditLicense}
+                disabled={isSavingLicense || !editLicenseSettings.generated_code}
+              >
+                {isSavingLicense ? (
+                  <RefreshCw className="w-4 h-4 me-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 me-2" />
+                )}
+                حفظ وتفعيل
               </Button>
             </DialogFooter>
           </DialogContent>
