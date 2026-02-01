@@ -560,20 +560,24 @@ div[role="dialog"].barcode-scanner-active {
   --background: transparent !important;
   background: transparent !important;
   --ion-background-color: transparent !important;
-  opacity: 1 !important;
 }
 
-/* Specific User Request for ion-content visibility */
-body.barcode-scanner-active ion-content {
-  --background: transparent !important;
-  /* visibility: hidden; <--- CAUTION: This hides the content but might hide the overlay if inside. 
-     Using opacity 0 on background or just transparency is safer usually, but user asked for visibility hidden on ion-content.
-     If the overlay is outside ion-content, this is fine. 
-     Given Ionic structure, overlays are often outside. I'll stick to transparency for safety unless strictly forced.
-     User said: "body.barcode-scanner-active ion-content { --background: transparent !important; visibility: hidden; }"
-     I will apply it but adding a comment.
-  */
+/* 
+   RADICAL VISIBILITY FIX:
+   Hide everything by default when scanner is active to preventing any UI blocking.
+   Only show specific scanner UI overlays.
+*/
+body.barcode-scanner-active {
   visibility: hidden !important;
+  opacity: 1 !important;
+  /* Ensure the body itself isn't fully invisible, just its children if inherited, but visibility hidden on body hides all kids usually */
+  /* Actually visibility: hidden on parent hides children unless they have visibility: visible */
+}
+
+/* Exception: Scanner UI must be visible */
+body.barcode-scanner-active .scanner-ui-overlay,
+body.barcode-scanner-active .scanner-ui-overlay * {
+  visibility: visible !important;
 }
 
 /* Ensure Dialog Overlay is also transparent when scanning */
