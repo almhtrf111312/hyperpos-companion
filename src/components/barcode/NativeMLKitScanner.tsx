@@ -306,43 +306,42 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           )}
         </div>
 
-        {/* Status Dialog (Centered) */}
+        {/* Status Dialog (Error Only) */}
         <div className="pointer-events-auto absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="pointer-events-auto">
-            <Dialog open={isOpen && (isLoading || error !== null)} onOpenChange={(open) => !open && onClose()}>
+            <Dialog open={isOpen && error !== null} onOpenChange={(open) => !open && onClose()}>
               <DialogContent className="max-w-sm">
-                <DialogTitle className="text-center">مسح الباركود</DialogTitle>
+                <DialogTitle className="text-center">تنبيه</DialogTitle>
                 <div className="flex flex-col items-center justify-center py-8 gap-4">
-                  {isLoading && !error && (
-                    <>
-                      <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                      <p className="text-muted-foreground text-center">جاري فتح الكاميرا...</p>
-                    </>
-                  )}
-
-                  {error && (
-                    <>
-                      <Camera className="w-12 h-12 text-muted-foreground" />
-                      <p className="text-destructive text-center">{error}</p>
-                      <div className="flex gap-2 w-full">
-                        <Button variant="outline" onClick={onClose} className="flex-1">
-                          إغلاق
-                        </Button>
-                        <Button onClick={() => {
-                          hasScannedRef.current = false;
-                          scanningRef.current = false;
-                          startScanning();
-                        }} className="flex-1">
-                          إعادة المحاولة
-                        </Button>
-                      </div>
-                    </>
-                  )}
+                  <Camera className="w-12 h-12 text-muted-foreground" />
+                  <p className="text-destructive text-center">{error}</p>
+                  <div className="flex gap-2 w-full">
+                    <Button variant="outline" onClick={onClose} className="flex-1">
+                      إغلاق
+                    </Button>
+                    <Button onClick={() => {
+                      hasScannedRef.current = false;
+                      scanningRef.current = false;
+                      startScanning();
+                    }} className="flex-1">
+                      إعادة المحاولة
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
         </div>
+
+        {/* Minimal Loading Loading Overlay */}
+        {isLoading && !error && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none">
+            <div className="bg-black/40 backdrop-blur-md p-4 rounded-full shadow-2xl animate-in fade-in zoom-in duration-300">
+              <Loader2 className="w-10 h-10 text-white animate-spin" />
+            </div>
+            <p className="mt-4 text-white font-medium text-sm drop-shadow-md animate-pulse">جاري فتح الكاميرا...</p>
+          </div>
+        )}
       </div>
     </>
   );
