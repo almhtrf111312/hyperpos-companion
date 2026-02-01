@@ -384,6 +384,7 @@ export const createStockTransferCloud = async (
 };
 
 // Complete stock transfer
+// ✅ يخصم من products.quantity (المخزون الرئيسي) ويضيف لمخزون المستودع الوجهة
 export const completeStockTransferCloud = async (transferId: string): Promise<boolean> => {
   const { supabase } = await import('@/integrations/supabase/client');
   const userId = getCurrentUserId();
@@ -404,16 +405,33 @@ export const completeStockTransferCloud = async (transferId: string): Promise<bo
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (transfer as any).stock_transfer_items as StockTransferItem[];
 
-  // Deduct from source warehouse and add to destination
+  // ✅ معالجة كل منتج: خصم من المخزون الرئيسي وإضافة لمستودع الوجهة
   for (const item of items) {
-    // Deduct from source
-    await deductWarehouseStockCloud(
-      transfer.from_warehouse_id,
-      item.product_id,
-      item.quantity_in_pieces
-    );
+    // 1. خصم من products.quantity (المخزون الرئيسي/العام)
+    const { data: product, error: productFetchError } = await supabase
+      .from('products')
+      .select('quantity')
+      .eq('id', item.product_id)
+      .single();
 
-    // Add to destination
+    if (productFetchError || !product) {
+      console.error('[StockTransfer] Product fetch error:', productFetchError);
+      continue;
+    }
+
+    const newProductQuantity = Math.max(0, (product.quantity || 0) - item.quantity_in_pieces);
+    
+    const { error: productUpdateError } = await supabase
+      .from('products')
+      .update({ quantity: newProductQuantity })
+      .eq('id', item.product_id);
+
+    if (productUpdateError) {
+      console.error('[StockTransfer] Product update error:', productUpdateError);
+      continue;
+    }
+
+    // 2. إضافة للمستودع الوجهة (warehouse_stock)
     const { data: destStock } = await supabase
       .from('warehouse_stock')
       .select('quantity')
@@ -443,6 +461,11 @@ export const completeStockTransferCloud = async (transferId: string): Promise<bo
     return false;
   }
 
+  // Invalidate products cache to reflect new quantities
+  const { invalidateProductsCache } = await import('./products-cloud');
+  invalidateProductsCache();
+  
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
   emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
   return true;
 };

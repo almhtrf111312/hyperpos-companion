@@ -16,7 +16,8 @@ import {
   Image as ImageIcon,
   Camera,
   Loader2,
-  Boxes
+  Boxes,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';
@@ -59,6 +66,12 @@ import {
   Product
 } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { 
+  fetchAllWarehouseStocksCloud, 
+  WarehouseStock,
+  loadWarehousesCloud,
+  Warehouse
+} from '@/lib/cloud/warehouses-cloud';
 import { uploadProductImage } from '@/lib/image-upload';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -79,6 +92,8 @@ export default function Products() {
     out_of_stock: { label: t('products.outOfStock'), color: 'badge-danger', icon: AlertTriangle },
   };
   const [products, setProducts] = useState<Product[]>([]);
+  const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStock[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -181,12 +196,16 @@ export default function Products() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [cloudProducts, cloudCategories] = await Promise.all([
+      const [cloudProducts, cloudCategories, allWarehouses, allWarehouseStocks] = await Promise.all([
         loadProductsCloud(),
-        getCategoryNamesCloud()
+        getCategoryNamesCloud(),
+        loadWarehousesCloud(),
+        fetchAllWarehouseStocksCloud()
       ]);
       setProducts(cloudProducts);
       setCategoryOptions(cloudCategories);
+      setWarehouses(allWarehouses);
+      setWarehouseStocks(allWarehouseStocks);
     } catch (error) {
       console.error('Error loading products:', error);
       toast.error('فشل في تحميل المنتجات');
@@ -194,6 +213,32 @@ export default function Products() {
       setIsLoading(false);
     }
   }, []);
+
+  // Helper function to get custody quantity for a product
+  const getCustodyQuantity = useCallback((productId: string): number => {
+    // Sum all warehouse stock for this product (excluding main warehouse)
+    const vehicleWarehouses = warehouses.filter(w => w.type === 'vehicle');
+    const vehicleWarehouseIds = new Set(vehicleWarehouses.map(w => w.id));
+    
+    return warehouseStocks
+      .filter(ws => ws.product_id === productId && vehicleWarehouseIds.has(ws.warehouse_id))
+      .reduce((sum, ws) => sum + (ws.quantity || 0), 0);
+  }, [warehouses, warehouseStocks]);
+
+  // Get custody breakdown by warehouse
+  const getCustodyBreakdown = useCallback((productId: string): { warehouseName: string; quantity: number }[] => {
+    const vehicleWarehouses = warehouses.filter(w => w.type === 'vehicle');
+    
+    return vehicleWarehouses
+      .map(w => {
+        const stock = warehouseStocks.find(ws => ws.product_id === productId && ws.warehouse_id === w.id);
+        return {
+          warehouseName: w.name,
+          quantity: stock?.quantity || 0
+        };
+      })
+      .filter(item => item.quantity > 0);
+  }, [warehouses, warehouseStocks]);
 
   // Memory leak prevention - proper cleanup for storage events
   useEffect(() => {
@@ -717,15 +762,31 @@ export default function Products() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <div className="text-sm">
-                    <DualUnitDisplay
-                      totalPieces={product.quantity}
-                      conversionFactor={product.conversionFactor || 1}
-                      bulkUnit={product.bulkUnit}
-                      smallUnit={product.smallUnit}
-                      showTotal={false}
-                      size="sm"
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm">
+                      <DualUnitDisplay
+                        totalPieces={product.quantity}
+                        conversionFactor={product.conversionFactor || 1}
+                        bulkUnit={product.bulkUnit}
+                        smallUnit={product.smallUnit}
+                        showTotal={false}
+                        size="sm"
+                      />
+                    </div>
+                    {/* عرض كمية العهدة */}
+                    {(() => {
+                      const custodyQty = getCustodyQuantity(product.id);
+                      if (custodyQty > 0) {
+                        return (
+                          <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-1 rounded-full">
+                            <Truck className="w-3 h-3 text-primary" />
+                            <span className="text-primary font-medium">{custodyQty}</span>
+                            <span className="text-muted-foreground">عهدة</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
@@ -756,6 +817,12 @@ export default function Products() {
                   <div className="flex items-center gap-1">
                     <Boxes className="w-4 h-4" />
                     {t('products.stock')}
+                  </div>
+                </th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Truck className="w-4 h-4" />
+                    العهدة
                   </div>
                 </th>
                 <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">{t('common.actions')}</th>
@@ -841,6 +908,47 @@ export default function Products() {
                           {status.label}
                         </span>
                       </div>
+                    </td>
+
+                    {/* العهدة (كمية المستودعات الفرعية) */}
+                    <td className="py-3 px-3">
+                      {(() => {
+                        const custodyQty = getCustodyQuantity(product.id);
+                        const breakdown = getCustodyBreakdown(product.id);
+                        
+                        if (custodyQty === 0) {
+                          return (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          );
+                        }
+                        
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1 cursor-help">
+                                  <Truck className="w-3.5 h-3.5 text-primary" />
+                                  <span className="font-medium text-sm text-primary">{custodyQty}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.smallUnit || 'قطعة'}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="text-xs space-y-1">
+                                  <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                  {breakdown.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>{item.warehouseName}:</span>
+                                      <span className="font-medium">{item.quantity}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </td>
 
                     {/* الإجراءات (فوق بعض) */}
