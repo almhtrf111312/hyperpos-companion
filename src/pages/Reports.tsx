@@ -37,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
 import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
 import { DistributorInventoryReport } from '@/components/reports/DistributorInventoryReport';
+import { DistributorCustodyValueReport } from '@/components/reports/DistributorCustodyValueReport';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import {
   exportInvoicesToExcel,
@@ -130,7 +131,7 @@ export default function Reports() {
   // Auto-open tab from URL params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory'].includes(tab)) {
+    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -146,6 +147,7 @@ export default function Reports() {
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
     { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
+    { id: 'custody-value', label: 'قيمة العهدة', icon: Wallet },
   ];
 
   // Calculate real data from stores
@@ -1135,6 +1137,11 @@ ${partnerExpenses.map(exp => {
         {/* Distributor Inventory Report - جرد العهدة */}
         {activeReport === 'distributor-inventory' && (
           <DistributorInventoryReport />
+        )}
+
+        {/* Distributor Custody Value Report - قيمة العهدة */}
+        {activeReport === 'custody-value' && (
+          <DistributorCustodyValueReport />
         )}
 
         {/* Expenses Report */}
