@@ -449,20 +449,34 @@ export default function Reports() {
     const customers = cloudCustomers;
     const partners = cloudPartners;
 
+    // ✅ التحقق من تحميل البيانات أولاً
+    if (isLoading) {
+      toast.error('يرجى الانتظار حتى يتم تحميل البيانات');
+      return;
+    }
+
     try {
       switch (activeReport) {
         case 'sales':
         case 'profits': {
           const filteredInvoices = allInvoices.filter(inv => {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
-            return invDate >= dateRange.from && invDate <= dateRange.to;
+            const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
+            return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
           });
+          
+          if (filteredInvoices.length === 0) {
+            toast.error('لا توجد بيانات للتصدير في هذه الفترة');
+            return;
+          }
+          
           await exportInvoicesToPDF(
             filteredInvoices.map(inv => ({
               id: inv.id,
               customerName: inv.customerName || 'عميل نقدي',
               total: inv.total,
-              profit: inv.profit,
+              discount: inv.discount || 0,
+              profit: inv.profit || 0,
               paymentType: inv.paymentType,
               type: inv.type,
               createdAt: inv.createdAt,
@@ -473,52 +487,72 @@ export default function Reports() {
           break;
         }
         case 'products': {
+          if (products.length === 0) {
+            toast.error('لا توجد منتجات للتصدير');
+            return;
+          }
+          
           await exportProductsToPDF(
             products.map(p => ({
               name: p.name,
               barcode: p.barcode || '',
               category: p.category || 'بدون تصنيف',
-              salePrice: p.salePrice,
-              quantity: p.quantity,
+              costPrice: p.costPrice || 0,
+              salePrice: p.salePrice || 0,
+              quantity: p.quantity || 0,
+              minStockLevel: p.minStockLevel || 0,
             })),
             storeInfo
           );
           break;
         }
         case 'customers': {
-          const customerData = customers.map(c => {
-            return {
-              name: c.name,
-              phone: c.phone,
-              totalPurchases: c.totalPurchases || 0,
-              ordersCount: c.invoiceCount || 0,
-              balance: c.totalDebt || 0,
-            };
-          });
+          if (customers.length === 0) {
+            toast.error('لا يوجد عملاء للتصدير');
+            return;
+          }
+          
+          const customerData = customers.map(c => ({
+            name: c.name,
+            phone: c.phone || '',
+            totalPurchases: c.totalPurchases || 0,
+            ordersCount: c.invoiceCount || 0,
+            balance: c.totalDebt || 0,
+          }));
           await exportCustomersToPDF(customerData, storeInfo);
           break;
         }
         case 'partners': {
+          if (partners.length === 0) {
+            toast.error('لا يوجد شركاء للتصدير');
+            return;
+          }
+          
           const partnerData = partners.map(p => ({
             name: p.name,
-            sharePercentage: p.sharePercentage,
-            currentCapital: p.currentCapital,
-            totalProfit: p.totalProfitEarned,
-            totalWithdrawn: p.totalWithdrawn,
-            currentBalance: p.currentBalance,
+            sharePercentage: p.sharePercentage || 0,
+            currentCapital: p.currentCapital || 0,
+            totalProfit: p.totalProfitEarned || 0,
+            totalWithdrawn: p.totalWithdrawn || 0,
+            currentBalance: p.currentBalance || 0,
           }));
           await exportPartnersToPDF(partnerData, storeInfo);
           break;
         }
         case 'expenses': {
+          if (expenseReportData.expenses.length === 0) {
+            toast.error('لا توجد مصاريف للتصدير في هذه الفترة');
+            return;
+          }
+          
           await exportExpensesToPDF(
             expenseReportData.expenses.map(e => ({
               id: e.id,
               type: e.type,
               typeLabel: e.typeLabel,
-              amount: e.amount,
+              amount: e.amount || 0,
               date: e.date,
-              notes: e.notes,
+              notes: e.notes || '',
             })),
             storeInfo,
             { start: dateRange.from, end: dateRange.to }
@@ -531,12 +565,19 @@ export default function Reports() {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
             return invDate >= dateRange.from && invDate <= dateRange.to;
           });
+          
+          if (defaultInvoices.length === 0) {
+            toast.error('لا توجد بيانات للتصدير في هذه الفترة');
+            return;
+          }
+          
           await exportInvoicesToPDF(
             defaultInvoices.map(inv => ({
               id: inv.id,
               customerName: inv.customerName || 'عميل نقدي',
               total: inv.total,
-              profit: inv.profit,
+              discount: inv.discount || 0,
+              profit: inv.profit || 0,
               paymentType: inv.paymentType,
               type: inv.type,
               createdAt: inv.createdAt,
@@ -551,7 +592,7 @@ export default function Reports() {
       console.error('PDF export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners]);
+  }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners, isLoading, t]);
 
   const handleExportExcel = useCallback(async () => {
     const allInvoices = cloudInvoices;
@@ -732,58 +773,66 @@ ${partnerExpenses.map(exp => {
     <MainLayout>
       <div className="p-3 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
-          <div>
-            <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
-          </div>
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3 pr-14 md:pr-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
+              <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
+            </div>
             {isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">{t('common.loading')}</span>
               </div>
             )}
-            <Button variant="outline" onClick={handleExportPDF} disabled={isLoading}>
-              <FileText className="w-4 h-4 ml-2" />
-              PDF
+          </div>
+          
+          {/* Export Buttons - Mobile Optimized */}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
+              <FileText className="w-4 h-4 ml-1" />
+              <span className="text-xs sm:text-sm">PDF</span>
             </Button>
-            <Button variant="outline" onClick={handleExportExcel} disabled={isLoading}>
-              <Download className="w-4 h-4 ml-2" />
-              Excel
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
+              <Download className="w-4 h-4 ml-1" />
+              <span className="text-xs sm:text-sm">Excel</span>
             </Button>
-            <Button onClick={handleBackup} disabled={isLoading}>
-              <Download className="w-4 h-4 ml-2" />
-              {t('reports.backup')}
+            <Button size="sm" onClick={handleBackup} disabled={isLoading} className="flex-1 sm:flex-none min-w-[100px]">
+              <Download className="w-4 h-4 ml-1" />
+              <span className="text-xs sm:text-sm">{t('reports.backup')}</span>
             </Button>
           </div>
         </div>
 
-        {/* Date Range */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{t('reports.from')}:</span>
-            <Input
-              type="date"
-              value={dateRange.from}
-              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t('reports.to')}:</span>
-            <Input
-              type="date"
-              value={dateRange.to}
-              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-              className="w-40"
-            />
+        {/* Date Range - Mobile Optimized */}
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3 sm:items-center">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs sm:text-sm text-muted-foreground">{t('reports.from')}:</span>
+              </div>
+              <Input
+                type="date"
+                value={dateRange.from}
+                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                className="w-full sm:w-36 h-9 text-sm"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <span className="text-xs sm:text-sm text-muted-foreground">{t('reports.to')}:</span>
+              <Input
+                type="date"
+                value={dateRange.to}
+                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                className="w-full sm:w-36 h-9 text-sm"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Report Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        {/* Report Tabs - Mobile Scrollable */}
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0 scrollbar-hide">
           {reports.map((report) => {
             const Icon = report.icon;
             return (
@@ -791,58 +840,58 @@ ${partnerExpenses.map(exp => {
                 key={report.id}
                 onClick={() => setActiveReport(report.id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+                  "flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all shrink-0",
                   activeReport === report.id
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                <Icon className="w-4 h-4" />
-                {report.label}
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline sm:inline">{report.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center justify-between mb-2">
-              <DollarSign className="w-5 h-5 text-primary" />
+        {/* Summary Cards - Mobile Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               {reportData.summary.totalSales > 0 && (
                 <span className="flex items-center text-xs text-success">
                   <ArrowUpRight className="w-3 h-3" />
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{t('reports.totalSales')}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalSales')}</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center justify-between mb-2">
-              <TrendingUp className="w-5 h-5 text-success" />
+          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
               {reportData.summary.totalProfit > 0 && (
                 <span className="flex items-center text-xs text-success">
                   <ArrowUpRight className="w-3 h-3" />
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center justify-between mb-2">
-              <ShoppingCart className="w-5 h-5 text-info" />
+          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-info" />
             </div>
-            <p className="text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
-            <p className="text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center justify-between mb-2">
-              <PieChart className="w-5 h-5 text-warning" />
+          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <PieChart className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
             </div>
-            <p className="text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
-            <p className="text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
           </div>
         </div>
 
