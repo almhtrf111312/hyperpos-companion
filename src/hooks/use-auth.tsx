@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { getDeviceId } from '@/lib/device-fingerprint';
 
 // Session persistence keys
 const STAY_LOGGED_IN_KEY = 'hyperpos_stay_logged_in';
 const SESSION_CACHE_KEY = 'hyperpos_session_cache';
+const AUTO_LOGIN_ATTEMPTED_KEY = 'hyperpos_auto_login_attempted';
 
 interface Profile {
   id: string;
@@ -20,6 +22,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isLoading: boolean;
+  isAutoLoginChecking: boolean;
   stayLoggedIn: boolean;
   signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null; data?: { user: User; session: Session } }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -81,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAutoLoginChecking, setIsAutoLoginChecking] = useState(false);
   const [stayLoggedIn, setStayLoggedInState] = useState(getStayLoggedInPreference);
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -161,11 +165,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    // Attempt device auto-login function
+    const attemptDeviceAutoLogin = async () => {
+      try {
+        // Check if we already attempted auto-login recently
+        const alreadyAttempted = sessionStorage.getItem(AUTO_LOGIN_ATTEMPTED_KEY);
+        if (alreadyAttempted) {
+          console.log('[AutoLogin] Already attempted, skipping');
+          return false;
+        }
+
+        console.log('[AutoLogin] Starting device auto-login...');
+        setIsAutoLoginChecking(true);
+        
+        const deviceId = await getDeviceId();
+        console.log('[AutoLogin] Device ID:', deviceId);
+
+        const { data, error } = await supabase.functions.invoke('device-auto-login', {
+          body: { device_id: deviceId }
+        });
+
+        if (error) {
+          console.error('[AutoLogin] Edge function error:', error);
+          return false;
+        }
+
+        console.log('[AutoLogin] Response:', data);
+
+        if (data?.success && data?.action_link) {
+          // Extract token from action link and verify with OTP
+          try {
+            const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+              email: data.email,
+              token: data.verification_token,
+              type: 'magiclink'
+            });
+
+            if (otpError) {
+              console.error('[AutoLogin] OTP verification error:', otpError);
+              return false;
+            }
+
+            if (otpData?.session) {
+              console.log('[AutoLogin] Session restored successfully!');
+              cacheSession(otpData.session);
+              return true;
+            }
+          } catch (otpErr) {
+            console.error('[AutoLogin] OTP exception:', otpErr);
+          }
+        }
+
+        return false;
+      } catch (err) {
+        console.error('[AutoLogin] Exception:', err);
+        return false;
+      } finally {
+        setIsAutoLoginChecking(false);
+        // Mark that we attempted auto-login this session
+        sessionStorage.setItem(AUTO_LOGIN_ATTEMPTED_KEY, 'true');
+      }
+    };
+
     // Check for existing session and verify user still exists
     supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
       if (!existingSession) {
-        setIsLoading(false);
-        cacheSession(null);
+        // No session - try device auto-login
+        const autoLoginSuccess = await attemptDeviceAutoLogin();
+        if (!autoLoginSuccess) {
+          setIsLoading(false);
+          cacheSession(null);
+        }
         return;
       }
       
@@ -175,8 +245,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // User doesn't exist anymore, clear session
         console.log('User from session does not exist, signing out...');
         await supabase.auth.signOut();
-        setIsLoading(false);
-        cacheSession(null);
+        
+        // Try device auto-login as fallback
+        const autoLoginSuccess = await attemptDeviceAutoLogin();
+        if (!autoLoginSuccess) {
+          setIsLoading(false);
+          cacheSession(null);
+        }
         return;
       }
       // The onAuthStateChange will handle setting the session
@@ -305,6 +380,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     
+    // Clear auto-login attempt flag so next app open can try again
+    try {
+      sessionStorage.removeItem(AUTO_LOGIN_ATTEMPTED_KEY);
+      // Clear session cache
+      cacheSession(null);
+    } catch {
+      // Ignore storage errors
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
@@ -317,6 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       isLoading,
+      isAutoLoginChecking,
       stayLoggedIn,
       signIn,
       signUp,
