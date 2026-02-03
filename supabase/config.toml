@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.start-trial]
 verify_jwt = false
+
+[functions.device-auto-login]
+verify_jwt = false
