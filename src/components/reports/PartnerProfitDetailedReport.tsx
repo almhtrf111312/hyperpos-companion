@@ -28,6 +28,7 @@ import {
 import { toast } from 'sonner';
 import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
 import { formatNumber } from '@/lib/utils';
+import { shareReport } from '@/lib/native-share';
 
 interface DateRange {
   from: string;
@@ -214,7 +215,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
     toast.success('تم تصدير التقرير بنجاح');
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = async () => {
     let report = `📊 تقرير أرباح الشركاء المفصل\n`;
     report += `📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n\n`;
     report += `💰 الإجمالي: $${formatNumber(summary.totalProfit)}\n`;
@@ -229,11 +230,12 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
       });
     });
 
-    report += `\n---\nتم إنشاء التقرير بواسطة HyperPOS`;
+    report += `\n---\nتم إنشاء التقرير بواسطة FlowPOS Pro`;
 
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(report)}`;
-    window.open(whatsappUrl, '_blank');
-    toast.success('تم فتح واتساب للمشاركة');
+    const success = await shareReport('تقرير أرباح الشركاء', report);
+    if (success) {
+      toast.success('تم فتح المشاركة');
+    }
   };
 
   const SortIcon = ({ field }: { field: 'date' | 'amount' | 'category' }) => {

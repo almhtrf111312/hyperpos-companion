@@ -54,6 +54,7 @@ import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { processDebtPayment } from '@/lib/unified-transactions';
+import { shareDebt, DebtShareData } from '@/lib/native-share';
 
 export default function Debts() {
   const { user, profile } = useAuth();
@@ -183,53 +184,37 @@ export default function Debts() {
     setShowViewDialog(true);
   };
 
-  // Share debt via WhatsApp
-  const handleShareDebt = (debt: Debt) => {
+  // Share debt via native share (works on Android)
+  const handleShareDebt = async (debt: Debt) => {
     // Load store settings
-    let storeName = 'HyperPOS Store';
+    let storeName = 'FlowPOS Pro';
     let storePhone = '';
+    let currencySymbol = '$';
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
         const settings = JSON.parse(settingsRaw);
         storeName = settings.storeSettings?.name || storeName;
         storePhone = settings.storeSettings?.phone || '';
+        currencySymbol = settings.currencySymbol || '$';
       }
     } catch { }
 
-    const statusLabel = debt.status === 'fully_paid' ? '✅ مسددة بالكامل'
-      : debt.status === 'partially_paid' ? '⏳ مسددة جزئياً'
-        : debt.status === 'overdue' ? '🔴 متأخرة'
-          : '📋 مستحقة';
+    // تحضير بيانات المشاركة
+    const shareData: DebtShareData = {
+      customerName: debt.customerName,
+      customerPhone: debt.customerPhone,
+      totalDebt: debt.totalDebt,
+      remainingDebt: debt.remainingDebt,
+      currencySymbol,
+      invoiceId: debt.invoiceId,
+      dueDate: debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('ar-SA') : undefined,
+    };
 
-    const message = `╔══════════════════════╗
-      *${storeName}*
-╚══════════════════════╝
-
-📋 *كشف حساب دين*
-
-━━━━━━━━━━━━━━━━━━━━━
-👤 *العميل:* ${debt.customerName}
-📱 *الهاتف:* ${debt.customerPhone || 'غير محدد'}
-${debt.invoiceId ? `📄 *رقم الفاتورة:* ${debt.invoiceId}` : ''}
-━━━━━━━━━━━━━━━━━━━━━
-
-💰 *إجمالي الدين:* $${debt.totalDebt.toLocaleString()}
-✅ *المدفوع:* $${debt.totalPaid.toLocaleString()}
-🔴 *المتبقي:* $${debt.remainingDebt.toLocaleString()}
-
-📊 *الحالة:* ${statusLabel}
-${debt.dueDate ? `📅 *تاريخ الاستحقاق:* ${new Date(debt.dueDate).toLocaleDateString('ar-SA')}` : ''}
-
-━━━━━━━━━━━━━━━━━━━━━
-${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
-
-شكراً لتعاملكم معنا! 🙏`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-    toast.success('تم فتح واتساب للمشاركة');
+    const success = await shareDebt(shareData);
+    if (success) {
+      toast.success('تم فتح المشاركة');
+    }
   };
 
   const handlePayment = async () => {
