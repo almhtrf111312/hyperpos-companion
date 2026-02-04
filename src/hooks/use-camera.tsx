@@ -1,11 +1,13 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem } from '@capacitor/filesystem';
 
 interface UseCameraOptions {
   maxSize?: number;
   quality?: number;
+  onPhotoRestored?: (base64: string) => void;
 }
 
 interface UseCameraResult {
@@ -243,6 +245,55 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
       return null;
     }
   }, [isNative, maxSize, quality, compressImage]);
+
+  /* 
+   * Handle Android Process Death / Activity Restoration
+   * When the camera activity finishes, the app might be restarted. 
+   * We need to listen for the 'appRestoredResult' to get the photo data back.
+   */
+  useEffect(() => {
+    if (!isNative) return;
+
+    let listener: any;
+
+    const setupListener = async () => {
+      listener = await App.addListener('appRestoredResult', async (restoreResult) => {
+        if (restoreResult.pluginId === 'Camera' && restoreResult.methodName === 'getPhoto' && restoreResult.success) {
+          console.log('App restored from Camera activity', restoreResult);
+
+          if (restoreResult.data && restoreResult.data.webPath) {
+            const photoPath = restoreResult.data.webPath; // Or path, depending on resultType. using webPath for now as it's common
+            // If we used CameraResultType.Uri, data might contain `path` or `webPath` appropriate for Filesystem
+
+            try {
+              // For Uri result type, we need to read the file
+              const fileData = await Filesystem.readFile({
+                path: restoreResult.data.path || restoreResult.data.webPath,
+              });
+
+              const base64 = `data:image/jpeg;base64,${fileData.data}`;
+              const compressed = await compressImage(base64);
+
+              if (options.onPhotoRestored) {
+                options.onPhotoRestored(compressed);
+              }
+            } catch (e) {
+              console.error('Failed to process restored photo', e);
+              setError('فشل في استعادة الصورة بعد إعادة تشغيل التطبيق');
+            }
+          }
+        }
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (listener) {
+        listener.remove();
+      }
+    };
+  }, [isNative, compressImage, options]);
 
   return {
     takePhoto,

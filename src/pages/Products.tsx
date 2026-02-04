@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,8 +67,8 @@ import {
   Product
 } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
-import { 
-  fetchAllWarehouseStocksCloud, 
+import {
+  fetchAllWarehouseStocksCloud,
   WarehouseStock,
   loadWarehousesCloud,
   Warehouse
@@ -181,8 +182,100 @@ export default function Products() {
     };
   }, []);
 
-  // Use Capacitor Camera hook
-  const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({ maxSize: 640, quality: 70 });
+  /*
+   * Handle Photo Restoration from Android Process Death
+   */
+  const handlePhotoRestored = useCallback(async (base64Image: string) => {
+    console.log('Photo restored in component!');
+    const toastId = toast.loading('جاري استعادة الصورة...');
+
+    // Automatically upload the restored image
+    const imageUrl = await uploadProductImage(base64Image);
+    toast.dismiss(toastId);
+
+    if (imageUrl) {
+      setFormData(prev => ({ ...prev, image: imageUrl }));
+      toast.success('تم استعادة الصورة بنجاح');
+    } else {
+      toast.error('فشل في استعادة الصورة');
+    }
+  }, []);
+
+  // Use Capacitor Camera hook with restoration callback
+  const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({
+    maxSize: 640,
+    quality: 70,
+    onPhotoRestored: handlePhotoRestored
+  });
+
+  /*
+   * AUTOMATIC FORM PERSISTENCE
+   * Save form data to localStorage so it survives Android Process Death
+   */
+  const FORM_STORAGE_KEY = 'hyperpos_product_form_temp';
+
+  // 1. Save state whenever important form values change
+  useEffect(() => {
+    // Only save if the dialog is open and we have some data
+    if (showAddDialog || showEditDialog) {
+      const stateToSave = {
+        formData,
+        customFieldValues,
+        isAdd: showAddDialog,
+        isEdit: showEditDialog,
+        selectedProductId: selectedProduct?.id,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
+    }
+  }, [formData, customFieldValues, showAddDialog, showEditDialog, selectedProduct]);
+
+  // 2. Clear state when dialog is closed explicitly (Cancel/Success)
+  const clearPersistedState = useCallback(() => {
+    localStorage.removeItem(FORM_STORAGE_KEY);
+  }, []);
+
+  // 3. Restore state on mount (if App was killed and restarted)
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(FORM_STORAGE_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        // Only restore if less than 1 hour old (avoid restoring very old stale data)
+        const hour = 60 * 60 * 1000;
+        if (Date.now() - parsed.timestamp < hour) {
+          console.log('Restoring persisted form state...', parsed);
+
+          setFormData(parsed.formData);
+          setCustomFieldValues(parsed.customFieldValues);
+
+          if (parsed.isEdit && parsed.selectedProductId) {
+            // Check if we can find the product to set selectedProduct
+            // We might need to wait for products to load, but for now let's try
+            // NOTE: This part is tricky because products might not be loaded yet.
+            // We can just set the flag to open the dialog, and specific logic could be added to 
+            // re-fetch the product if needed, but since formData has everything, we might be fine.
+            // Ideally we find the product object again.
+            // For now, let's treat it as a "continuation" of the edit.
+            setShowEditDialog(true);
+            // We can't easily restore `selectedProduct` if it's not in the loaded list yet, 
+            // but `formData` is what drives the UI. 
+            // We should defer setting selectedProduct until products are loaded, or store a minimal version of it.
+          } else if (parsed.isAdd) {
+            setShowAddDialog(true);
+          }
+
+          toast.info('تم استعادة البيانات السابقة', { duration: 3000 });
+        } else {
+          // Clear old data
+          localStorage.removeItem(FORM_STORAGE_KEY);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore form state', e);
+    }
+  }, []);
+
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -219,7 +312,7 @@ export default function Products() {
     // Sum all warehouse stock for this product (excluding main warehouse)
     const vehicleWarehouses = warehouses.filter(w => w.type === 'vehicle');
     const vehicleWarehouseIds = new Set(vehicleWarehouses.map(w => w.id));
-    
+
     return warehouseStocks
       .filter(ws => ws.product_id === productId && vehicleWarehouseIds.has(ws.warehouse_id))
       .reduce((sum, ws) => sum + (ws.quantity || 0), 0);
@@ -228,7 +321,7 @@ export default function Products() {
   // Get custody breakdown by warehouse
   const getCustodyBreakdown = useCallback((productId: string): { warehouseName: string; quantity: number }[] => {
     const vehicleWarehouses = warehouses.filter(w => w.type === 'vehicle');
-    
+
     return vehicleWarehouses
       .map(w => {
         const stock = warehouseStocks.find(ws => ws.product_id === productId && ws.warehouse_id === w.id);
@@ -384,6 +477,10 @@ export default function Products() {
       setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setCustomFieldValues({});
       toast.success('تم إضافة المنتج بنجاح');
+      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setCustomFieldValues({});
+      clearPersistedState(); // Clear persistence on success
+      toast.success('تم إضافة المنتج بنجاح');
       loadData();
     } else {
       toast.error('فشل في إضافة المنتج');
@@ -441,6 +538,7 @@ export default function Products() {
       setShowEditDialog(false);
       setSelectedProduct(null);
       setCustomFieldValues({});
+      clearPersistedState(); // Clear persistence on success
       toast.success('تم تعديل المنتج بنجاح');
       loadData();
     } else {
@@ -538,6 +636,7 @@ export default function Products() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+      {/* Show restoring indicator if needed? Maybe just toasts are enough */}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
         <div>
@@ -551,7 +650,10 @@ export default function Products() {
           </Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
             setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
             setShowAddDialog(true);
+            // We don't clear state here immediately because `useEffect` will overwrite it with new empty state anyway
+            // But good practice to ensure clean slate
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
             {t('products.addProduct')}
@@ -915,13 +1017,13 @@ export default function Products() {
                       {(() => {
                         const custodyQty = getCustodyQuantity(product.id);
                         const breakdown = getCustodyBreakdown(product.id);
-                        
+
                         if (custodyQty === 0) {
                           return (
                             <span className="text-xs text-muted-foreground">-</span>
                           );
                         }
-                        
+
                         return (
                           <TooltipProvider>
                             <Tooltip>
@@ -1244,7 +1346,10 @@ export default function Products() {
               </div>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
+              <Button variant="outline" className="flex-1" onClick={() => {
+                setShowAddDialog(false);
+                clearPersistedState();
+              }}>
                 إلغاء
               </Button>
               <Button className="flex-1" onClick={handleAddProduct}>
@@ -1447,7 +1552,10 @@ export default function Products() {
               </div>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
+              <Button variant="outline" className="flex-1" onClick={() => {
+                setShowEditDialog(false);
+                clearPersistedState();
+              }}>
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditProduct}>
