@@ -42,7 +42,8 @@ import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
 import { useAuth } from '@/hooks/use-auth';
-import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/native-print';
+import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
 import { recordActivity } from '@/lib/auto-backup';
@@ -870,11 +871,38 @@ export function CartPanel({
     showToast.success('جاري إرسال الفاتورة للطابعة...');
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     if (cart.length === 0) return;
-    showToast.info(t('pos.openingWhatsapp'));
-    const message = `فاتورة من HyperPOS\n\n${t('pos.total')}: ${selectedCurrency.symbol}${totalInCurrency.toLocaleString()}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+
+    // تحميل إعدادات المتجر
+    const store = getStoreSettings();
+    const currentDate = new Date().toLocaleDateString('ar-SA');
+
+    // تحضير بيانات الفاتورة للمشاركة
+    const shareData: InvoiceShareData = {
+      id: `POS-${Date.now()}`,
+      storeName: store.name,
+      storePhone: store.phone,
+      customerName: customerName || 'عميل نقدي',
+      date: currentDate,
+      items: cart.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.price * item.quantity,
+      })),
+      subtotal,
+      discount: discountAmount,
+      total: totalInCurrency,
+      currencySymbol: selectedCurrency.symbol,
+      paymentType: 'cash',
+      type: 'sale',
+    };
+
+    const success = await shareInvoice(shareData);
+    if (success) {
+      showToast.success('تم فتح المشاركة');
+    }
   };
 
   return (

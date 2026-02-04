@@ -60,7 +60,8 @@ import {
   InvoiceType
 } from '@/lib/cloud/invoices-cloud';
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
-import { printHTML } from '@/lib/print-utils';
+import { printHTML } from '@/lib/native-print';
+import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 
 export default function Invoices() {
   const { t } = useLanguage();
@@ -410,56 +411,51 @@ export default function Invoices() {
     printHTML(printContent);
     toast.success('جاري إرسال الفاتورة للطابعة...');
   };
-  const handleWhatsApp = (invoice: Invoice) => {
+  const handleWhatsApp = async (invoice: Invoice) => {
     // Dynamic store settings with proper defaults
-    let storeName = 'HyperPOS Store';
-    let footer = 'شكراً لتعاملكم معنا!';
+    let storeName = 'FlowPOS Pro';
+    let storePhone = '';
 
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
         const settings = JSON.parse(settingsRaw);
         storeName = settings.storeSettings?.name || storeName;
-        footer = settings.printSettings?.footer || footer;
+        storePhone = settings.storeSettings?.phone || '';
       }
     } catch (error) {
       console.error('Failed to load store settings for WhatsApp:', error);
-      toast.error('تعذر تحميل إعدادات المتجر');
     }
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
 
-    const itemsList = invoice.type === 'sale'
-      ? invoice.items.map(item => `• ${item.name} × ${item.quantity} = ${invoice.currencySymbol}${item.total.toLocaleString()}`).join('\n')
-      : `🔧 ${invoice.serviceDescription || 'خدمة صيانة'}`;
+    // تحضير بيانات المشاركة
+    const shareData: InvoiceShareData = {
+      id: invoice.id,
+      storeName,
+      storePhone,
+      customerName: invoice.customerName,
+      customerPhone: invoice.customerPhone,
+      date,
+      items: invoice.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.total,
+      })),
+      subtotal: invoice.subtotal,
+      discount: invoice.discount,
+      total: invoice.totalInCurrency,
+      currencySymbol: invoice.currencySymbol,
+      paymentType: invoice.paymentType,
+      serviceDescription: invoice.serviceDescription,
+      type: invoice.type,
+    };
 
-    const message = `╔══════════════════╗
-    *${storeName}*
-╚══════════════════╝
-
-📄 *فاتورة رقم:* ${invoice.id}
-📅 ${date}
-
-━━━━━━━━━━━━━━━━━━
-👤 *العميل:* ${invoice.customerName}
-${invoice.customerPhone ? `📱 *الهاتف:* ${invoice.customerPhone}` : ''}
-━━━━━━━━━━━━━━━━━━
-
-${invoice.type === 'sale' ? '🛒 *المشتريات:*' : '🔧 *الخدمة:*'}
-${itemsList}
-
-${invoice.discount > 0 ? `✂️ *الخصم:* ${invoice.currencySymbol}${invoice.discount.toLocaleString()}\n` : ''}
-💰 *الإجمالي:* ${invoice.currencySymbol}${invoice.totalInCurrency.toLocaleString()}
-💳 *طريقة الدفع:* ${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}
-
-${footer}`;
-
-    const phone = invoice.customerPhone?.replace(/[^\d]/g, '');
-    const url = phone
-      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-      : `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-    window.open(url, '_blank');
+    const success = await shareInvoice(shareData);
+    if (success) {
+      toast.success('تم فتح المشاركة');
+    }
   };
 
   return (

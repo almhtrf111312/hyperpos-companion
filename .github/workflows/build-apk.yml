@@ -69,15 +69,28 @@ jobs:
         PERMISSIONS+='    <uses-permission android:name="android.permission.VIBRATE" />\n'
         PERMISSIONS+='    <uses-feature android:name="android.hardware.camera" android:required="false" />\n'
         PERMISSIONS+='    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />\n'
+        PERMISSIONS+='    \n'
+        PERMISSIONS+='    <!-- Queries for Android 11+ Share Intent -->\n'
+        PERMISSIONS+='    <queries>\n'
+        PERMISSIONS+='        <package android:name="com.whatsapp" />\n'
+        PERMISSIONS+='        <package android:name="com.whatsapp.w4b" />\n'
+        PERMISSIONS+='        <intent>\n'
+        PERMISSIONS+='            <action android:name="android.intent.action.SEND" />\n'
+        PERMISSIONS+='            <data android:mimeType="text/plain" />\n'
+        PERMISSIONS+='        </intent>\n'
+        PERMISSIONS+='        <intent>\n'
+        PERMISSIONS+='            <action android:name="android.intent.action.VIEW" />\n'
+        PERMISSIONS+='            <category android:name="android.intent.category.BROWSABLE" />\n'
+        PERMISSIONS+='            <data android:scheme="https" />\n'
+        PERMISSIONS+='        </intent>\n'
+        PERMISSIONS+='    </queries>\n'
+        PERMISSIONS+='    \n'
         PERMISSIONS+='    <application'
         
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i "s|<application|$PERMISSIONS|" "$MANIFEST"
         
-        # ML Kit dependencies removed (using @capacitor-community/barcode-scanner)
-        # BUILD_GRADLE="android/app/build.gradle"
-        
-        echo "✅ Permissions and ML Kit injected successfully"
+        echo "✅ Permissions and Share queries injected successfully"
 
     # 3. Java بعد توليد المجلد (لإصلاح مشكلة الكاش)
     - name: Setup Java
