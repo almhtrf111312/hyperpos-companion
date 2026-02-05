@@ -1,12 +1,17 @@
 {
-    "versionCode": 200,
-    "versionName": "1.0.0",
-    "lastUpdated": "2026-02-06T01:50:29+03:00",
-    "buildHistory": [
-        {
-            "versionCode": 200,
-            "date": "2026-02-06T01:50:29+03:00",
-            "description": "Initial version code setup"
-        }
-    ]
+  "versionCode": 201,
+  "versionName": "1.0.0",
+  "lastUpdated": "2026-02-05T23:11:16.267Z",
+  "buildHistory": [
+    {
+      "versionCode": 200,
+      "date": "2026-02-06T01:50:29+03:00",
+      "description": "Initial version code setup"
+    },
+    {
+      "versionCode": 201,
+      "date": "2026-02-05T23:11:16.267Z",
+      "description": "Bumped from 200 to 201"
+    }
+  ]
 }

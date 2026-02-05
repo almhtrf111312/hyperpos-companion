@@ -12,8 +12,7 @@
     "version:bump": "node scripts/bump-version.js",
     "version:bump:minor": "node scripts/bump-version.js --increment 1",
     "version:bump:major": "node scripts/bump-version.js --increment 10",
-    "version:set": "node scripts/bump-version.js --set",
-    "prebuild": "npm run version:bump:minor"
+    "version:set": "node scripts/bump-version.js --set"
   },
   "dependencies": {
     "@capacitor-community/barcode-scanner": "^4.0.1",
