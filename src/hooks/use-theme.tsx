@@ -6,9 +6,12 @@ export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cy
 interface ThemeContextType {
   mode: ThemeMode;
   color: ThemeColor;
+  blurEnabled: boolean;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
+  setBlurEnabled: (enabled: boolean) => void;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
+  setFullTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -184,10 +187,26 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
 // Default theme for new users: Light mode with Blue color
 const DEFAULT_MODE: ThemeMode = 'light';
 const DEFAULT_COLOR: ThemeColor = 'blue';
+const DEFAULT_BLUR: boolean = false;
+
+function applyBlurTheme(enabled: boolean, mode: ThemeMode) {
+  const root = document.documentElement;
+  if (enabled) {
+    root.classList.add('blur-theme');
+    // Set glass background based on mode
+    root.style.setProperty('--glass-bg', 
+      mode === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.7)');
+    root.style.setProperty('--glass-border', 
+      mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)');
+  } else {
+    root.classList.remove('blur-theme');
+  }
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(DEFAULT_MODE);
   const [color, setColorState] = useState<ThemeColor>(DEFAULT_COLOR);
+  const [blurEnabled, setBlurEnabledState] = useState<boolean>(DEFAULT_BLUR);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load saved theme on mount
@@ -195,20 +214,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
       if (saved) {
-        const { mode: savedMode, color: savedColor } = JSON.parse(saved);
+        const { mode: savedMode, color: savedColor, blur: savedBlur } = JSON.parse(saved);
         const finalMode = savedMode || DEFAULT_MODE;
         const finalColor = savedColor || DEFAULT_COLOR;
+        const finalBlur = savedBlur ?? DEFAULT_BLUR;
         setModeState(finalMode);
         setColorState(finalColor);
+        setBlurEnabledState(finalBlur);
         applyTheme(finalMode, finalColor);
+        applyBlurTheme(finalBlur, finalMode);
       } else {
         // First time user - apply default theme and save it
         applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR }));
+        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE);
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR, blur: DEFAULT_BLUR }));
       }
     } catch {
       // Use defaults on error
       applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
+      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE);
     }
     setIsInitialized(true);
   }, []);
@@ -216,24 +240,41 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setMode = (newMode: ThemeMode) => {
     setModeState(newMode);
     applyTheme(newMode, color);
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color }));
+    applyBlurTheme(blurEnabled, newMode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color, blur: blurEnabled }));
   };
 
   const setColor = (newColor: ThemeColor) => {
     setColorState(newColor);
     applyTheme(mode, newColor);
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color: newColor }));
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color: newColor, blur: blurEnabled }));
+  };
+
+  const setBlurEnabled = (enabled: boolean) => {
+    setBlurEnabledState(enabled);
+    applyBlurTheme(enabled, mode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color, blur: enabled }));
   };
 
   const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
     setModeState(newMode);
     setColorState(newColor);
     applyTheme(newMode, newColor);
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor }));
+    applyBlurTheme(blurEnabled, newMode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor, blur: blurEnabled }));
+  };
+
+  const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean) => {
+    setModeState(newMode);
+    setColorState(newColor);
+    setBlurEnabledState(blur);
+    applyTheme(newMode, newColor);
+    applyBlurTheme(blur, newMode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor, blur }));
   };
 
   return (
-    <ThemeContext.Provider value={{ mode, color, setMode, setColor, setTheme }}>
+    <ThemeContext.Provider value={{ mode, color, blurEnabled, setMode, setColor, setBlurEnabled, setTheme, setFullTheme }}>
       {children}
     </ThemeContext.Provider>
   );

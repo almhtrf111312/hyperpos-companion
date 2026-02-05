@@ -17,7 +17,8 @@ import {
   Camera,
   Loader2,
   Boxes,
-  Truck
+  Truck,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,7 @@ import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config'
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
+import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -113,6 +115,7 @@ export default function Products() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showPurchaseInvoiceDialog, setShowPurchaseInvoiceDialog] = useState(false);
 
   // Form state with dynamic fields
   const [formData, setFormData] = useState({
@@ -648,6 +651,10 @@ export default function Products() {
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('products.pageSubtitle')}</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+            <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('purchaseInvoice.addPurchaseInvoice')}
+          </Button>
           <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
             <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
             {t('products.categories')}
@@ -1621,6 +1628,13 @@ export default function Products() {
         onClose={() => setShowCategoryManager(false)}
         onCategoriesChange={reloadCategories}
         usedCategories={usedCategories}
+      />
+
+      {/* Purchase Invoice Dialog */}
+      <PurchaseInvoiceDialog
+        open={showPurchaseInvoiceDialog}
+        onOpenChange={setShowPurchaseInvoiceDialog}
+        onSuccess={loadData}
       />
     </div>
   );

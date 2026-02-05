@@ -1,34 +1,41 @@
 import { useState } from 'react';
-import { Sun, Moon, Palette, Check, Save } from 'lucide-react';
+import { Sun, Moon, Palette, Check, Save, Sparkles } from 'lucide-react';
 import { useTheme, themeColors, ThemeColor, ThemeMode } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 export function ThemeSection() {
-  const { mode, color, setTheme } = useTheme();
+  const { mode, color, blurEnabled, setFullTheme } = useTheme();
   const { t } = useLanguage();
   
   // الحالة المؤقتة للتغييرات (لا تُحفظ حتى الضغط على زر الحفظ)
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
+  const [pendingBlur, setPendingBlur] = useState<boolean>(blurEnabled);
   const [hasChanges, setHasChanges] = useState(false);
 
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
 
   const handleModeChange = (newMode: ThemeMode) => {
     setPendingMode(newMode);
-    setHasChanges(newMode !== mode || pendingColor !== color);
+    setHasChanges(newMode !== mode || pendingColor !== color || pendingBlur !== blurEnabled);
   };
 
   const handleColorChange = (newColor: ThemeColor) => {
     setPendingColor(newColor);
-    setHasChanges(pendingMode !== mode || newColor !== color);
+    setHasChanges(pendingMode !== mode || newColor !== color || pendingBlur !== blurEnabled);
+  };
+
+  const handleBlurChange = (enabled: boolean) => {
+    setPendingBlur(enabled);
+    setHasChanges(pendingMode !== mode || pendingColor !== color || enabled !== blurEnabled);
   };
 
   const handleSave = () => {
-    setTheme(pendingMode, pendingColor);
+    setFullTheme(pendingMode, pendingColor, pendingBlur);
     setHasChanges(false);
     toast.success(t('settings.languageChanged'));
   };
@@ -36,6 +43,7 @@ export function ThemeSection() {
   const handleCancel = () => {
     setPendingMode(mode);
     setPendingColor(color);
+    setPendingBlur(blurEnabled);
     setHasChanges(false);
   };
 
@@ -150,6 +158,32 @@ export function ThemeSection() {
               )}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Blur Effect Toggle */}
+      <div className="pt-4 border-t border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center",
+              pendingBlur ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-medium text-foreground">
+                {t('settings.blurEffect')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.blurEffectDesc')}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={pendingBlur}
+            onCheckedChange={handleBlurChange}
+          />
         </div>
       </div>
 

@@ -610,6 +610,7 @@ export type Database = {
           min_stock_level: number | null
           name: string
           notes: string | null
+          purchase_history: Json | null
           quantity: number | null
           sale_price: number | null
           small_unit: string | null
@@ -638,6 +639,7 @@ export type Database = {
           min_stock_level?: number | null
           name: string
           notes?: string | null
+          purchase_history?: Json | null
           quantity?: number | null
           sale_price?: number | null
           small_unit?: string | null
@@ -666,6 +668,7 @@ export type Database = {
           min_stock_level?: number | null
           name?: string
           notes?: string | null
+          purchase_history?: Json | null
           quantity?: number | null
           sale_price?: number | null
           small_unit?: string | null
@@ -710,6 +713,120 @@ export type Database = {
           updated_at?: string
           user_id?: string
           user_type?: string | null
+        }
+        Relationships: []
+      }
+      purchase_invoice_items: {
+        Row: {
+          barcode: string | null
+          category: string | null
+          cost_price: number
+          created_at: string | null
+          id: string
+          invoice_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          sale_price: number | null
+          total_cost: number
+        }
+        Insert: {
+          barcode?: string | null
+          category?: string | null
+          cost_price?: number
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          sale_price?: number | null
+          total_cost?: number
+        }
+        Update: {
+          barcode?: string | null
+          category?: string | null
+          cost_price?: number
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          sale_price?: number | null
+          total_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_invoices: {
+        Row: {
+          actual_grand_total: number | null
+          actual_items_count: number | null
+          actual_total_quantity: number | null
+          created_at: string | null
+          expected_grand_total: number
+          expected_items_count: number
+          expected_total_quantity: number
+          id: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          status: string | null
+          supplier_company: string | null
+          supplier_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_grand_total?: number | null
+          actual_items_count?: number | null
+          actual_total_quantity?: number | null
+          created_at?: string | null
+          expected_grand_total?: number
+          expected_items_count?: number
+          expected_total_quantity?: number
+          id?: string
+          invoice_date?: string
+          invoice_number: string
+          notes?: string | null
+          status?: string | null
+          supplier_company?: string | null
+          supplier_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actual_grand_total?: number | null
+          actual_items_count?: number | null
+          actual_total_quantity?: number | null
+          created_at?: string | null
+          expected_grand_total?: number
+          expected_items_count?: number
+          expected_total_quantity?: number
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          status?: string | null
+          supplier_company?: string | null
+          supplier_name?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
