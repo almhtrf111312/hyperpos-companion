@@ -154,30 +154,30 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   return (
     <div className="scanner-ui-overlay fixed inset-0 z-[9999] flex flex-col">
 
-      {/* Top Controls Bar */}
-      <div className="flex justify-between items-center p-4 pointer-events-auto">
-        {/* Close Button (Left) */}
+      {/* Top Controls Bar - with safe area padding */}
+      <div className="flex justify-between items-center p-4 pt-safe pointer-events-auto">
+        {/* Close Button (Left) - Larger and more visible */}
         <Button
           variant="destructive"
-          size="icon"
+          size="lg"
           onClick={handleClose}
-          className="rounded-full shadow-2xl"
+          className="rounded-full shadow-2xl min-w-[60px] min-h-[60px] bg-red-500 hover:bg-red-600 text-white border-2 border-white"
         >
-          <X className="w-6 h-6" />
+          <X className="w-7 h-7" />
         </Button>
 
         {/* Flash Toggle (Right) */}
         {!isInitializing && !permissionError && (
           <Button
             variant={isTorchOn ? "default" : "outline"}
-            size="icon"
+            size="lg"
             onClick={toggleTorch}
-            className={`rounded-full shadow-2xl ${isTorchOn
+            className={`rounded-full shadow-2xl min-w-[60px] min-h-[60px] ${isTorchOn
               ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
               : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
               }`}
           >
-            {isTorchOn ? <Zap className="w-5 h-5 fill-current" /> : <ZapOff className="w-5 h-5" />}
+            {isTorchOn ? <Zap className="w-6 h-6 fill-current" /> : <ZapOff className="w-6 h-6" />}
           </Button>
         )}
       </div>
@@ -231,6 +231,21 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
           </div>
         )}
       </div>
+
+      {/* Bottom Close Button - Always visible for easy exit */}
+      {!permissionError && (
+        <div className="p-4 pb-safe flex justify-center pointer-events-auto">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleClose}
+            className="rounded-full shadow-2xl bg-white/10 backdrop-blur-md text-white border-white/50 hover:bg-white/20 min-w-[200px] min-h-[56px] text-lg font-semibold"
+          >
+            <X className="w-5 h-5 ml-2" />
+            إلغاء المسح
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

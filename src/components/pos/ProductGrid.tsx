@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Search, Barcode, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
+import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -43,28 +44,31 @@ export function ProductGrid({
   onBarcodeScan,
 }: ProductGridProps) {
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { t } = useLanguage();
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (product.barcode && product.barcode.includes(searchQuery));
+      (product.barcode && product.barcode.includes(searchQuery));
     const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const handleBarcodeScan = (barcode: string) => {
     console.log('[ProductGrid] ✅ Received barcode:', barcode);
-    
+
     // ✅ Close scanner first
     setScannerOpen(false);
-    
+
     // Use external handler if provided, otherwise fall back to search
     if (onBarcodeScan) {
       onBarcodeScan(barcode);
     } else {
       // Fallback: Search for product by barcode
       const product = products.find(p => p.barcode === barcode);
-      
+
       if (product) {
         onProductClick(product);
         toast.success(t('pos.addedToCart').replace('{name}', product.name));
@@ -75,6 +79,30 @@ export function ProductGrid({
         toast.info(`${t('pos.barcode')}: ${barcode}`, { description: t('pos.barcodeNotFound') });
       }
     }
+  };
+
+  // Long-press handlers for showing product details
+  const handleLongPressStart = (product: Product) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setSelectedProduct(product);
+      setDetailsDialogOpen(true);
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500); // 500ms long press
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleProductClick = (product: Product) => {
+    // Clear any pending long-press
+    handleLongPressEnd();
+    // Normal click action
+    onProductClick(product);
   };
 
   return (
@@ -92,9 +120,9 @@ export function ProductGrid({
               className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
             />
           </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0"
             onClick={() => setScannerOpen(true)}
           >
@@ -126,15 +154,21 @@ export function ProductGrid({
           {filteredProducts.map((product, index) => (
             <button
               key={product.id}
-              onClick={() => onProductClick(product)}
+              onClick={() => handleProductClick(product)}
+              onTouchStart={() => handleLongPressStart(product)}
+              onTouchEnd={handleLongPressEnd}
+              onTouchCancel={handleLongPressEnd}
+              onMouseDown={() => handleLongPressStart(product)}
+              onMouseUp={handleLongPressEnd}
+              onMouseLeave={handleLongPressEnd}
               className="pos-item text-right fade-in p-2.5 md:p-4"
               style={{ animationDelay: `${index * 30}ms` }}
             >
               <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3 overflow-hidden">
                 {product.image ? (
-                  <img 
-                    src={product.image} 
-                    alt={product.name} 
+                  <img
+                    src={product.image}
+                    alt={product.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -170,6 +204,16 @@ export function ProductGrid({
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={handleBarcodeScan}
+      />
+
+      {/* Product Details Dialog */}
+      <ProductDetailsDialog
+        product={selectedProduct}
+        isOpen={detailsDialogOpen}
+        onClose={() => {
+          setDetailsDialogOpen(false);
+          setSelectedProduct(null);
+        }}
       />
     </div>
   );
