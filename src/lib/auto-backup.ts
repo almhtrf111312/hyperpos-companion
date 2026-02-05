@@ -205,28 +205,20 @@ const tryParse = (key: string) => {
 export const saveBackupLocally = async (): Promise<boolean> => {
   try {
     const backupData = await generateBackupData();
-    const fileName = `hyperpos-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const fileName = `hyperpos_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
     // Check if running on native platform
     const isNative = typeof window !== 'undefined' &&
       !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 
     if (isNative) {
-      try {
-        // For Android 10+ scoped storage, Documents directory is best
-        await Filesystem.writeFile({
-          path: `backups/${fileName}`,
-          data: JSON.stringify(backupData, null, 2),
-          directory: Directory.Documents,
-          encoding: Encoding.UTF8,
-          recursive: true,
-        });
-        return true;
-      } catch (err) {
-        console.error('Filesystem write error:', err);
-        // Fallback or retry logic if needed
-        return false;
-      }
+      await Filesystem.writeFile({
+        path: `HyperPOS/backups/${fileName}`,
+        data: JSON.stringify(backupData, null, 2),
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      });
     } else {
       // For web, save to localStorage as fallback
       const backups = loadLocalBackups();
@@ -240,8 +232,9 @@ export const saveBackupLocally = async (): Promise<boolean> => {
         backups.pop();
       }
       localStorage.setItem('hyperpos_local_backups', JSON.stringify(backups));
-      return true;
     }
+
+    return true;
   } catch (error) {
     console.error('Failed to save backup locally:', error);
     return false;

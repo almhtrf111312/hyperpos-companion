@@ -599,7 +599,7 @@ export default function Products() {
 
     setFormData({
       name: product.name,
-      barcode: product.barcode,
+      barcode: product.barcode || '',
       category: product.category,
       costPrice: product.costPrice,
       salePrice: product.salePrice,
@@ -839,7 +839,7 @@ export default function Products() {
             return (
               <div
                 key={product.id}
-                className="bg-card rounded-xl border border-border p-4 fade-in"
+                className="bg-card rounded-xl border border-border p-4 fade-in overflow-hidden"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
                 <div className="flex items-start gap-3 mb-3">
@@ -850,9 +850,13 @@ export default function Products() {
                       <Package className="w-6 h-6 text-muted-foreground" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground">{product.category}</p>
+                  <div className="flex-1 min-w-0 pr-1">
+                    <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Barcode className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      <p className="text-xs text-muted-foreground truncate font-mono" dir="ltr">{product.barcode}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{product.category}</p>
                   </div>
                   <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", status.color)}>
                     {status.label}
@@ -870,7 +874,7 @@ export default function Products() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">الربح</p>
-                    <p className="font-semibold text-sm text-success">${profit}</p>
+                    <p className="font-semibold text-sm text-success">${profit.toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -997,7 +1001,7 @@ export default function Products() {
                     {/* الربح */}
                     <td className="py-3 px-3">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-success text-sm">${profit}</span>
+                        <span className="font-semibold text-success text-sm">${profit.toFixed(2)}</span>
                         <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
                       </div>
                     </td>

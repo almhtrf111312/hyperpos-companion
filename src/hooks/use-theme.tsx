@@ -148,13 +148,13 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   root.style.setProperty('--muted-foreground', colors.mutedForeground);
   root.style.setProperty('--border', colors.border);
   root.style.setProperty('--input', colors.input);
-  
+
   // Sidebar
   root.style.setProperty('--sidebar-background', colors.sidebar);
   root.style.setProperty('--sidebar-foreground', colors.sidebarForeground);
   root.style.setProperty('--sidebar-accent', colors.sidebarAccent);
   root.style.setProperty('--sidebar-border', colors.sidebarBorder);
-  
+
   // POS
   root.style.setProperty('--pos-grid', colors.posGrid);
   root.style.setProperty('--pos-item', colors.posItem);
@@ -189,17 +189,48 @@ const DEFAULT_MODE: ThemeMode = 'light';
 const DEFAULT_COLOR: ThemeColor = 'blue';
 const DEFAULT_BLUR: boolean = false;
 
-function applyBlurTheme(enabled: boolean, mode: ThemeMode) {
+function applyBlurTheme(enabled: boolean, mode: ThemeMode, color: ThemeColor) {
   const root = document.documentElement;
+  const colorTheme = themeColors[color];
+
   if (enabled) {
     root.classList.add('blur-theme');
-    // Set glass background based on mode
-    root.style.setProperty('--glass-bg', 
-      mode === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.7)');
-    root.style.setProperty('--glass-border', 
-      mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)');
+
+    // Glass background based on mode
+    const baseBg = mode === 'dark'
+      ? 'rgba(10, 10, 20, 0.65)'
+      : 'rgba(255, 255, 255, 0.75)';
+
+    root.style.setProperty('--glass-bg', baseBg);
+
+    // Glass border
+    root.style.setProperty('--glass-border',
+      mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.15)'
+        : 'rgba(0, 0, 0, 0.08)'
+    );
+
+    // Gradient that reacts to theme color
+    root.style.setProperty('--glass-gradient',
+      `linear-gradient(135deg, 
+        hsl(${colorTheme.primary} / 0.15), 
+        hsl(${colorTheme.accent} / 0.1)
+      )`
+    );
+
+    // Text shadow for better readability
+    root.style.setProperty('--glass-text-shadow',
+      mode === 'dark'
+        ? '0 1px 3px rgba(0,0,0,0.5)'
+        : '0 1px 2px rgba(255,255,255,0.8)'
+    );
+
   } else {
     root.classList.remove('blur-theme');
+    root.style.removeProperty('--glass-bg');
+    root.style.removeProperty('--glass-border');
+    root.style.removeProperty('--glass-gradient');
+    root.style.removeProperty('--glass-text-shadow');
   }
 }
 
@@ -222,17 +253,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setColorState(finalColor);
         setBlurEnabledState(finalBlur);
         applyTheme(finalMode, finalColor);
-        applyBlurTheme(finalBlur, finalMode);
+        applyBlurTheme(finalBlur, finalMode, finalColor);
       } else {
         // First time user - apply default theme and save it
         applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE);
+        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_COLOR);
         localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR, blur: DEFAULT_BLUR }));
       }
     } catch {
       // Use defaults on error
       applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE);
+      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_COLOR);
     }
     setIsInitialized(true);
   }, []);
@@ -240,19 +271,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setMode = (newMode: ThemeMode) => {
     setModeState(newMode);
     applyTheme(newMode, color);
-    applyBlurTheme(blurEnabled, newMode);
+    applyBlurTheme(blurEnabled, newMode, color);
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color, blur: blurEnabled }));
   };
 
   const setColor = (newColor: ThemeColor) => {
     setColorState(newColor);
     applyTheme(mode, newColor);
+    // Explicitly update blur theme when color changes so gradient updates
+    applyBlurTheme(blurEnabled, mode, newColor);
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color: newColor, blur: blurEnabled }));
   };
 
   const setBlurEnabled = (enabled: boolean) => {
     setBlurEnabledState(enabled);
-    applyBlurTheme(enabled, mode);
+    applyBlurTheme(enabled, mode, color);
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color, blur: enabled }));
   };
 
@@ -260,7 +293,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModeState(newMode);
     setColorState(newColor);
     applyTheme(newMode, newColor);
-    applyBlurTheme(blurEnabled, newMode);
+    applyBlurTheme(blurEnabled, newMode, newColor);
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor, blur: blurEnabled }));
   };
 
@@ -269,7 +302,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setColorState(newColor);
     setBlurEnabledState(blur);
     applyTheme(newMode, newColor);
-    applyBlurTheme(blur, newMode);
+    applyBlurTheme(blur, newMode, newColor);
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor, blur }));
   };
 

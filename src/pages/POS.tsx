@@ -410,7 +410,7 @@ export default function POS() {
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-background">
       {/* Sidebar - Always visible, collapsed by default on non-mobile */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -451,11 +451,11 @@ export default function POS() {
         )}
 
         {/* Content Area */}
-        <div className="flex-1 flex overflow-hidden p-2 gap-2">
+        <div className="flex-1 flex overflow-hidden">
           {/* Products/Maintenance Area */}
           <div className={cn(
-            "flex-1 flex flex-col h-full overflow-hidden rounded-xl glass-card border border-white/10",
-            !isMobile && ""
+            "flex-1 flex flex-col h-full overflow-hidden",
+            !isMobile && "border-l border-border"
           )}>
             {activeMode === 'products' || hideMaintenanceSection ? (
               <ProductGrid
@@ -479,7 +479,7 @@ export default function POS() {
 
           {/* Cart Panel - Desktop Only (not tablet) */}
           {!isMobile && !isTablet && (
-            <div className="w-80 flex-shrink-0 rounded-xl glass-card border border-white/10 overflow-hidden">
+            <div className="w-80 flex-shrink-0">
               <CartPanel
                 cart={cart}
                 currencies={currencies}

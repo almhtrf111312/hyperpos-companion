@@ -175,16 +175,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
           <span className="font-bold text-lg">خروج</span>
         </Button>
 
-        {/* User requested X Button (Absolute Top Right) */}
-        <Button
-          variant="destructive"
-          size="icon"
-          onClick={handleClose}
-          className="absolute top-4 right-4 z-[100000] h-12 w-12 rounded-full"
-        >
-          <X className="h-6 w-6" />
-        </Button>
-
         {/* Flash Toggle (Right) */}
         {!isInitializing && !permissionError && (
           <Button
