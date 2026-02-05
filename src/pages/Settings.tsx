@@ -41,6 +41,7 @@ import {
   Wrench
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
+import { APP_VERSION } from '@/lib/version';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 // ThemeSection تم نقله لصفحة مستقلة /appearance
@@ -1507,6 +1508,10 @@ export default function Settings() {
         }}
         userId={passwordChangeUserId || undefined}
       />
+
+      <div className="text-center text-sm text-muted-foreground mt-4 pb-4">
+        الإصدار: {APP_VERSION.full}
+      </div>
     </div>
   );
 }
