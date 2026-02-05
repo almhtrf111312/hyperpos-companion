@@ -743,7 +743,7 @@ export default function Settings() {
         return <ProfileManagement />;
       case 'productFields':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6">
             <ProductFieldsSection storeType={storeSettings.type} />
           </div>
         );
@@ -754,13 +754,13 @@ export default function Settings() {
         return <ActivityLogSection />;
       case 'diagnostics':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6">
             <SystemDiagnostics />
           </div>
         );
       case 'store':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-6">
             <div>
               <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.storeInfo')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -893,7 +893,7 @@ export default function Settings() {
 
       case 'currencies':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
               <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
@@ -958,7 +958,7 @@ export default function Settings() {
 
       case 'sync':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-6">
             <GoogleDriveSection
               getBackupData={() => {
                 const data: Record<string, any> = {};
@@ -1006,7 +1006,7 @@ export default function Settings() {
 
       case 'notifications':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-4">
             <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.notifications')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
@@ -1046,7 +1046,7 @@ export default function Settings() {
 
       case 'printing':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-6">
             <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.printing')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
@@ -1102,7 +1102,7 @@ export default function Settings() {
 
       case 'users':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.userManagement')}</h2>
               <Button onClick={handleAddUser}>
@@ -1178,7 +1178,7 @@ export default function Settings() {
 
       case 'backup':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-6">
             <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.backup')}</h2>
 
             {/* Backup Section */}
@@ -1389,7 +1389,7 @@ export default function Settings() {
       </div>
 
       {/* Content */}
-      <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+      <div className="glass-card rounded-2xl p-4 md:p-6">
         {renderTabContent()}
       </div>
 

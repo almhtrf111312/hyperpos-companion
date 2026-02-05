@@ -437,7 +437,7 @@ export default function POS() {
 
         {/* Mode Tabs - Mobile Only (hidden if maintenance section is hidden) */}
         {isMobile && !hideMaintenanceSection && (
-          <div className="px-3 py-2 border-b border-border bg-card">
+          <div className="px-3 py-2 border-b border-white/10 glass-card rounded-none">
             <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as 'products' | 'maintenance')}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="products" className="flex items-center gap-2">

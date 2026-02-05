@@ -464,12 +464,12 @@ export default function Reports() {
             const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
             return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
           });
-          
+
           if (filteredInvoices.length === 0) {
             toast.error('لا توجد بيانات للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportInvoicesToPDF(
             filteredInvoices.map(inv => ({
               id: inv.id,
@@ -491,7 +491,7 @@ export default function Reports() {
             toast.error('لا توجد منتجات للتصدير');
             return;
           }
-          
+
           await exportProductsToPDF(
             products.map(p => ({
               name: p.name,
@@ -511,7 +511,7 @@ export default function Reports() {
             toast.error('لا يوجد عملاء للتصدير');
             return;
           }
-          
+
           const customerData = customers.map(c => ({
             name: c.name,
             phone: c.phone || '',
@@ -527,7 +527,7 @@ export default function Reports() {
             toast.error('لا يوجد شركاء للتصدير');
             return;
           }
-          
+
           const partnerData = partners.map(p => ({
             name: p.name,
             sharePercentage: p.sharePercentage || 0,
@@ -544,7 +544,7 @@ export default function Reports() {
             toast.error('لا توجد مصاريف للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportExpensesToPDF(
             expenseReportData.expenses.map(e => ({
               id: e.id,
@@ -565,12 +565,12 @@ export default function Reports() {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
             return invDate >= dateRange.from && invDate <= dateRange.to;
           });
-          
+
           if (defaultInvoices.length === 0) {
             toast.error('لا توجد بيانات للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportInvoicesToPDF(
             defaultInvoices.map(inv => ({
               id: inv.id,
@@ -786,7 +786,7 @@ ${partnerExpenses.map(exp => {
               </div>
             )}
           </div>
-          
+
           {/* Export Buttons - Mobile Optimized */}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
@@ -855,7 +855,7 @@ ${partnerExpenses.map(exp => {
 
         {/* Summary Cards - Mobile Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+          <div className="glass-card rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-center justify-between mb-1 sm:mb-2">
               <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               {reportData.summary.totalSales > 0 && (
@@ -867,7 +867,7 @@ ${partnerExpenses.map(exp => {
             <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalSales')}</p>
           </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+          <div className="glass-card rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-center justify-between mb-1 sm:mb-2">
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
               {reportData.summary.totalProfit > 0 && (
@@ -879,14 +879,14 @@ ${partnerExpenses.map(exp => {
             <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
           </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+          <div className="glass-card rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-center justify-between mb-1 sm:mb-2">
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-info" />
             </div>
             <p className="text-lg sm:text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
           </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
+          <div className="glass-card rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-center justify-between mb-1 sm:mb-2">
               <PieChart className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
             </div>
@@ -897,7 +897,7 @@ ${partnerExpenses.map(exp => {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+          <div className="glass-card rounded-2xl p-8 text-center">
             <Loader2 className="w-12 h-12 mx-auto mb-3 text-primary animate-spin" />
             <p className="text-muted-foreground">جاري تحميل البيانات...</p>
           </div>
@@ -905,7 +905,7 @@ ${partnerExpenses.map(exp => {
 
         {/* No Data Message */}
         {!isLoading && !reportData.hasData && (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+          <div className="glass-card rounded-2xl p-8 text-center">
             <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
             <p className="text-muted-foreground">{t('reports.noData')}</p>
             <p className="text-sm text-muted-foreground">{t('reports.tryChangeDateRange')}</p>
@@ -914,7 +914,7 @@ ${partnerExpenses.map(exp => {
 
         {/* Sales Chart */}
         {reportData.hasData && activeReport === 'sales' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-semibold mb-4">{t('reports.dailySales')}</h3>
             {reportData.dailySales.length > 0 ? (
               <div className="space-y-3">
@@ -950,7 +950,7 @@ ${partnerExpenses.map(exp => {
 
         {/* Top Products */}
         {reportData.hasData && activeReport === 'products' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-semibold mb-4">{t('reports.bestProducts')}</h3>
             {reportData.topProducts.length > 0 ? (
               <div className="space-y-3">
@@ -977,7 +977,7 @@ ${partnerExpenses.map(exp => {
 
         {/* Top Customers */}
         {reportData.hasData && activeReport === 'customers' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
             {reportData.topCustomers.length > 0 ? (
               <div className="space-y-3">
@@ -1025,28 +1025,28 @@ ${partnerExpenses.map(exp => {
 
             {/* Partner Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <TrendingUp className="w-5 h-5 text-success" />
                 </div>
                 <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalProfitInPeriod.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">الأرباح في الفترة</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Wallet className="w-5 h-5 text-primary" />
                 </div>
                 <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalCurrentBalance.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Banknote className="w-5 h-5 text-warning" />
                 </div>
                 <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalWithdrawnInPeriod.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <UsersRound className="w-5 h-5 text-info" />
                 </div>
@@ -1056,7 +1056,7 @@ ${partnerExpenses.map(exp => {
             </div>
 
             {!partnerReportData.hasData && partnerReportData.allPartners.length === 0 ? (
-              <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <div className="glass-card rounded-2xl p-8 text-center">
                 <UsersRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">لا يوجد شركاء مسجلين</p>
                 <p className="text-sm text-muted-foreground">أضف شركاء من صفحة الشركاء</p>
@@ -1065,7 +1065,7 @@ ${partnerExpenses.map(exp => {
               <>
                 {/* Profit by Category */}
                 {partnerReportData.aggregatedCategoryProfits.length > 0 && (
-                  <div className="bg-card rounded-2xl border border-border p-6">
+                  <div className="glass-card rounded-2xl p-6">
                     <h3 className="text-lg font-semibold mb-4">الأرباح حسب الصنف</h3>
                     <div className="space-y-3">
                       {partnerReportData.aggregatedCategoryProfits.map((cat, idx) => {
@@ -1092,7 +1092,7 @@ ${partnerExpenses.map(exp => {
 
                 {/* Individual Partner Details */}
                 {partnerReportData.partners.map(partner => (
-                  <div key={partner.id} className="bg-card rounded-2xl border border-border p-6">
+                  <div key={partner.id} className="glass-card rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
@@ -1206,28 +1206,28 @@ ${partnerExpenses.map(exp => {
 
             {/* Expense Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Receipt className="w-5 h-5 text-destructive" />
                 </div>
                 <p className="text-2xl font-bold text-foreground">${formatNumber(expenseReportData.totalExpenses)}</p>
                 <p className="text-xs text-muted-foreground">إجمالي المصاريف</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Calendar className="w-5 h-5 text-info" />
                 </div>
                 <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.expenses.length)}</p>
                 <p className="text-xs text-muted-foreground">عدد المصاريف</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <PieChart className="w-5 h-5 text-warning" />
                 </div>
                 <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.byType.length)}</p>
                 <p className="text-xs text-muted-foreground">أنواع المصاريف</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="glass-card rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <UsersRound className="w-5 h-5 text-primary" />
                 </div>
@@ -1237,7 +1237,7 @@ ${partnerExpenses.map(exp => {
             </div>
 
             {!expenseReportData.hasData ? (
-              <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <div className="glass-card rounded-2xl p-8 text-center">
                 <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">لا توجد مصاريف في الفترة المحددة</p>
                 <p className="text-sm text-muted-foreground">جرب تغيير نطاق التاريخ</p>
@@ -1245,7 +1245,7 @@ ${partnerExpenses.map(exp => {
             ) : (
               <>
                 {/* Expenses by Type */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="glass-card rounded-2xl p-6">
                   <h3 className="text-lg font-semibold mb-4">المصاريف حسب النوع</h3>
                   <div className="space-y-3">
                     {expenseReportData.byType.map((type, idx) => {
@@ -1270,7 +1270,7 @@ ${partnerExpenses.map(exp => {
                 </div>
 
                 {/* Partner Expense Distribution */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="glass-card rounded-2xl p-6">
                   <h3 className="text-lg font-semibold mb-4">توزيع المصاريف على الشركاء</h3>
                   <div className="space-y-4">
                     {expenseReportData.partnerExpenses.map((partner, idx) => (
@@ -1313,7 +1313,7 @@ ${partnerExpenses.map(exp => {
 
                 {/* Daily Expenses Chart */}
                 {expenseReportData.dailyExpenses.length > 0 && (
-                  <div className="bg-card rounded-2xl border border-border p-6">
+                  <div className="glass-card rounded-2xl p-6">
                     <h3 className="text-lg font-semibold mb-4">المصاريف اليومية</h3>
                     <div className="space-y-3">
                       {expenseReportData.dailyExpenses.slice(-7).map((day, idx) => {
@@ -1338,7 +1338,7 @@ ${partnerExpenses.map(exp => {
                 )}
 
                 {/* Expense List */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="glass-card rounded-2xl p-6">
                   <h3 className="text-lg font-semibold mb-4">قائمة المصاريف</h3>
                   <div className="space-y-3">
                     {expenseReportData.expenses.slice(0, 10).map((expense, idx) => (
@@ -1369,7 +1369,7 @@ ${partnerExpenses.map(exp => {
 
         {/* Default view - Top Products when on sales tab */}
         {reportData.hasData && activeReport === 'sales' && reportData.topProducts.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-semibold mb-4">أفضل المنتجات مبيعاً</h3>
             <div className="space-y-3">
               {reportData.topProducts.map((product, idx) => (

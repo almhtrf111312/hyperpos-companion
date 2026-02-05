@@ -652,7 +652,7 @@ export default function Products() {
             <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
             {t('products.categories')}
           </Button>
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+          <Button onClick={() => {
             setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
             setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
             setShowAddDialog(true);
@@ -670,8 +670,8 @@ export default function Products() {
         <button
           onClick={() => setStatusFilter('all')}
           className={cn(
-            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
-            statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+            "glass-card p-3 md:p-4 text-right transition-all hover:scale-105",
+            statusFilter === 'all' ? "ring-2 ring-primary/50" : ""
           )}
         >
           <div className="flex items-center gap-2 md:gap-3">
@@ -687,8 +687,8 @@ export default function Products() {
         <button
           onClick={() => setStatusFilter('in_stock')}
           className={cn(
-            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
-            statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
+            "glass-card p-3 md:p-4 text-right transition-all hover:scale-105",
+            statusFilter === 'in_stock' ? "ring-2 ring-success/50" : ""
           )}
         >
           <div className="flex items-center gap-2 md:gap-3">
@@ -704,8 +704,8 @@ export default function Products() {
         <button
           onClick={() => setStatusFilter('low_stock')}
           className={cn(
-            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
-            statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
+            "glass-card p-3 md:p-4 text-right transition-all hover:scale-105",
+            statusFilter === 'low_stock' ? "ring-2 ring-warning/50" : ""
           )}
         >
           <div className="flex items-center gap-2 md:gap-3">
@@ -721,8 +721,8 @@ export default function Products() {
         <button
           onClick={() => setStatusFilter('out_of_stock')}
           className={cn(
-            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
-            statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+            "glass-card p-3 md:p-4 text-right transition-all hover:scale-105",
+            statusFilter === 'out_of_stock' ? "ring-2 ring-destructive/50" : ""
           )}
         >
           <div className="flex items-center gap-2 md:gap-3">
