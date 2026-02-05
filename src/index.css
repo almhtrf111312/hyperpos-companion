@@ -233,7 +233,22 @@
 
 /* Blur Theme / Glassmorphism Styles */
 .blur-theme {
-  --blur-intensity: 20px;
+  --blur-intensity: 16px;
+}
+
+/* Background with dynamic gradient */
+.blur-theme .bg-background {
+  background: var(--glass-gradient, linear-gradient(135deg, 
+    hsl(var(--primary) / 0.08), 
+    hsl(var(--accent) / 0.05)
+  )) !important;
+}
+
+/* Enhanced Text Clarity */
+.blur-theme,
+.blur-theme .text-foreground,
+.blur-theme [class*="text-foreground"] {
+  text-shadow: var(--glass-text-shadow, none);
 }
 
 .blur-theme .bg-card,
@@ -241,22 +256,19 @@
 .blur-theme .card,
 .blur-theme [data-slot="card"] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
-}
-
-.blur-theme .bg-background {
-  background: linear-gradient(135deg, 
-    hsl(var(--primary) / 0.08), 
-    hsl(var(--accent) / 0.08)) !important;
+  box-shadow: 
+    0 8px 32px -4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 .blur-theme .bg-popover,
 .blur-theme [class*="bg-popover"] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
 }
 
@@ -264,8 +276,8 @@
 .blur-theme [class*="sidebar-background"],
 .blur-theme [data-sidebar] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
 }
 
 .blur-theme .bg-muted,
@@ -287,8 +299,8 @@
 .blur-theme [data-radix-dialog-content],
 .blur-theme [data-radix-alert-dialog-content] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
 }
 
@@ -297,28 +309,34 @@
 .blur-theme [data-radix-menu-content],
 .blur-theme [data-radix-dropdown-menu-content] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
 }
 
 /* Select dropdowns */
 .blur-theme [data-radix-select-content] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
 }
 
 /* Toast notifications */
 .blur-theme [data-sonner-toast] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
 }
 
 /* Buttons with subtle glass effect in blur theme */
+.blur-theme button:not(.bg-primary):not(.bg-destructive):not(.bg-transparent) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
 .blur-theme .bg-primary {
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
