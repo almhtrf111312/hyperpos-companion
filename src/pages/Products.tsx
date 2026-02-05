@@ -1093,7 +1093,7 @@ export default function Products() {
 
       {/* Add Product Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
@@ -1102,7 +1102,7 @@ export default function Products() {
             <DialogDescription>أدخل بيانات المنتج الجديد</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 pb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                 <Input
@@ -1323,11 +1323,11 @@ export default function Products() {
                       <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
+                      className="w-full min-h-[48px]"
                       onClick={handleCameraCapture}
                       disabled={isCameraLoading}
                     >
@@ -1341,7 +1341,7 @@ export default function Products() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
+                      className="w-full min-h-[48px]"
                       onClick={handleGallerySelect}
                       disabled={isCameraLoading}
                     >
@@ -1356,14 +1356,14 @@ export default function Products() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => {
+            <div className="flex gap-2 sm:gap-3 pt-4 pb-safe">
+              <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
                 setShowAddDialog(false);
                 clearPersistedState();
               }}>
                 إلغاء
               </Button>
-              <Button className="flex-1" onClick={handleAddProduct}>
+              <Button className="flex-1 min-h-[48px]" onClick={handleAddProduct}>
                 <Save className="w-4 h-4 ml-2" />
                 حفظ المنتج
               </Button>
@@ -1374,7 +1374,7 @@ export default function Products() {
 
       {/* Edit Product Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
@@ -1383,7 +1383,7 @@ export default function Products() {
             <DialogDescription>{t('products.pageSubtitle')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 pb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                 <Input
@@ -1529,11 +1529,11 @@ export default function Products() {
                       <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
+                      className="w-full min-h-[48px]"
                       onClick={handleCameraCapture}
                       disabled={isCameraLoading}
                     >
@@ -1547,7 +1547,7 @@ export default function Products() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
+                      className="w-full min-h-[48px]"
                       onClick={handleGallerySelect}
                       disabled={isCameraLoading}
                     >
@@ -1562,14 +1562,14 @@ export default function Products() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => {
+            <div className="flex gap-2 sm:gap-3 pt-4 pb-safe">
+              <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
                 setShowEditDialog(false);
                 clearPersistedState();
               }}>
                 {t('common.cancel')}
               </Button>
-              <Button className="flex-1" onClick={handleEditProduct}>
+              <Button className="flex-1 min-h-[48px]" onClick={handleEditProduct}>
                 <Save className="w-4 h-4 ml-2" />
                 {t('common.save')}
               </Button>
