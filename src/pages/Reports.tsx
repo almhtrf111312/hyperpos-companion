@@ -464,12 +464,12 @@ export default function Reports() {
             const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
             return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
           });
-          
+
           if (filteredInvoices.length === 0) {
             toast.error('لا توجد بيانات للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportInvoicesToPDF(
             filteredInvoices.map(inv => ({
               id: inv.id,
@@ -491,7 +491,7 @@ export default function Reports() {
             toast.error('لا توجد منتجات للتصدير');
             return;
           }
-          
+
           await exportProductsToPDF(
             products.map(p => ({
               name: p.name,
@@ -511,7 +511,7 @@ export default function Reports() {
             toast.error('لا يوجد عملاء للتصدير');
             return;
           }
-          
+
           const customerData = customers.map(c => ({
             name: c.name,
             phone: c.phone || '',
@@ -527,7 +527,7 @@ export default function Reports() {
             toast.error('لا يوجد شركاء للتصدير');
             return;
           }
-          
+
           const partnerData = partners.map(p => ({
             name: p.name,
             sharePercentage: p.sharePercentage || 0,
@@ -544,7 +544,7 @@ export default function Reports() {
             toast.error('لا توجد مصاريف للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportExpensesToPDF(
             expenseReportData.expenses.map(e => ({
               id: e.id,
@@ -565,12 +565,12 @@ export default function Reports() {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
             return invDate >= dateRange.from && invDate <= dateRange.to;
           });
-          
+
           if (defaultInvoices.length === 0) {
             toast.error('لا توجد بيانات للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportInvoicesToPDF(
             defaultInvoices.map(inv => ({
               id: inv.id,
@@ -786,18 +786,18 @@ ${partnerExpenses.map(exp => {
               </div>
             )}
           </div>
-          
+
           {/* Export Buttons - Mobile Optimized */}
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="w-full sm:w-auto min-w-[80px]">
               <FileText className="w-4 h-4 ml-1" />
               <span className="text-xs sm:text-sm">PDF</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading} className="w-full sm:w-auto min-w-[80px]">
               <Download className="w-4 h-4 ml-1" />
               <span className="text-xs sm:text-sm">Excel</span>
             </Button>
-            <Button size="sm" onClick={handleBackup} disabled={isLoading} className="flex-1 sm:flex-none min-w-[100px]">
+            <Button size="sm" onClick={handleBackup} disabled={isLoading} className="col-span-2 sm:col-span-1 w-full sm:w-auto min-w-[100px]">
               <Download className="w-4 h-4 ml-1" />
               <span className="text-xs sm:text-sm">{t('reports.backup')}</span>
             </Button>
