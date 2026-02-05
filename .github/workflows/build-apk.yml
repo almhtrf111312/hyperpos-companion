@@ -30,7 +30,7 @@ jobs:
     
     - name: Install Capacitor packages
       run: |
-        npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets --save-dev --legacy-peer-deps
+        npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets@latest --save-dev --legacy-peer-deps
         
     # 2. توليد الأندرويد + إضافة أذونات + ML Kit dependencies
     - name: Initialize Capacitor & Permissions
@@ -102,7 +102,7 @@ jobs:
 
     - name: Generate Assets & Sync
       run: |
-        npx capacitor-assets generate --android --iconBackgroundColor "#1e40af"
+        npx capacitor-assets generate --android --iconBackgroundColor "#1e40af" --assetPath resources
         npx cap sync android
     
     - name: Update Version Code
