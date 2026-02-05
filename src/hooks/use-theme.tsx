@@ -7,32 +7,82 @@ interface ThemeContextType {
   mode: ThemeMode;
   color: ThemeColor;
   blurEnabled: boolean;
-  blurOpacity: number;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setBlurEnabled: (enabled: boolean) => void;
-  setBlurOpacity: (opacity: number) => void;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
-  setFullTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, opacity?: number) => void;
+  setFullTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = 'hyperpos_theme_v2';
+const THEME_STORAGE_KEY = 'hyperpos_theme_v1';
 
+// Theme color definitions with HSL values
 export const themeColors: Record<ThemeColor, { name: string; nameAr: string; primary: string; accent: string }> = {
-  emerald: { name: 'Emerald', nameAr: 'الزمردي', primary: '160 84% 39%', accent: '173 80% 40%' },
-  blue: { name: 'Blue', nameAr: 'الأزرق', primary: '217 91% 60%', accent: '199 89% 48%' },
-  purple: { name: 'Purple', nameAr: 'البنفسجي', primary: '271 81% 56%', accent: '280 67% 50%' },
-  rose: { name: 'Rose', nameAr: 'الوردي', primary: '346 77% 50%', accent: '330 65% 55%' },
-  orange: { name: 'Orange', nameAr: 'البرتقالي', primary: '25 95% 53%', accent: '38 92% 50%' },
-  cyan: { name: 'Cyan', nameAr: 'السماوي', primary: '186 100% 42%', accent: '192 91% 36%' },
-  indigo: { name: 'Indigo', nameAr: 'النيلي', primary: '239 84% 67%', accent: '224 76% 48%' },
-  amber: { name: 'Amber', nameAr: 'الكهرماني', primary: '38 92% 50%', accent: '45 93% 47%' },
-  teal: { name: 'Teal', nameAr: 'التركوازي', primary: '173 80% 40%', accent: '166 72% 28%' },
-  crimson: { name: 'Crimson', nameAr: 'القرمزي', primary: '348 83% 47%', accent: '356 80% 45%' },
+  emerald: {
+    name: 'Emerald',
+    nameAr: 'الزمردي',
+    primary: '160 84% 39%',
+    accent: '173 80% 40%',
+  },
+  blue: {
+    name: 'Blue',
+    nameAr: 'الأزرق',
+    primary: '217 91% 60%',
+    accent: '199 89% 48%',
+  },
+  purple: {
+    name: 'Purple',
+    nameAr: 'البنفسجي',
+    primary: '271 81% 56%',
+    accent: '280 67% 50%',
+  },
+  rose: {
+    name: 'Rose',
+    nameAr: 'الوردي',
+    primary: '346 77% 50%',
+    accent: '330 65% 55%',
+  },
+  orange: {
+    name: 'Orange',
+    nameAr: 'البرتقالي',
+    primary: '25 95% 53%',
+    accent: '38 92% 50%',
+  },
+  cyan: {
+    name: 'Cyan',
+    nameAr: 'السماوي',
+    primary: '186 100% 42%',
+    accent: '192 91% 36%',
+  },
+  indigo: {
+    name: 'Indigo',
+    nameAr: 'النيلي',
+    primary: '239 84% 67%',
+    accent: '224 76% 48%',
+  },
+  amber: {
+    name: 'Amber',
+    nameAr: 'الكهرماني',
+    primary: '38 92% 50%',
+    accent: '45 93% 47%',
+  },
+  teal: {
+    name: 'Teal',
+    nameAr: 'التركوازي',
+    primary: '173 80% 40%',
+    accent: '166 72% 28%',
+  },
+  crimson: {
+    name: 'Crimson',
+    nameAr: 'القرمزي',
+    primary: '348 83% 47%',
+    accent: '356 80% 45%',
+  },
 };
 
+// Light mode base colors
 const lightModeColors = {
   background: '0 0% 100%',
   foreground: '222 47% 11%',
@@ -56,6 +106,7 @@ const lightModeColors = {
   posCart: '0 0% 98%',
 };
 
+// Dark mode base colors
 const darkModeColors = {
   background: '222 47% 6%',
   foreground: '210 40% 98%',
@@ -84,10 +135,33 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   const colors = mode === 'light' ? lightModeColors : darkModeColors;
   const colorTheme = themeColors[color];
 
-  Object.entries(colors).forEach(([key, value]) => {
-    root.style.setProperty(`--${key.replace(/[A-Z]/g, m => "-" + m.toLowerCase())}`, value);
-  });
+  // Apply base colors
+  root.style.setProperty('--background', colors.background);
+  root.style.setProperty('--foreground', colors.foreground);
+  root.style.setProperty('--card', colors.card);
+  root.style.setProperty('--card-foreground', colors.cardForeground);
+  root.style.setProperty('--popover', colors.popover);
+  root.style.setProperty('--popover-foreground', colors.popoverForeground);
+  root.style.setProperty('--secondary', colors.secondary);
+  root.style.setProperty('--secondary-foreground', colors.secondaryForeground);
+  root.style.setProperty('--muted', colors.muted);
+  root.style.setProperty('--muted-foreground', colors.mutedForeground);
+  root.style.setProperty('--border', colors.border);
+  root.style.setProperty('--input', colors.input);
+  
+  // Sidebar
+  root.style.setProperty('--sidebar-background', colors.sidebar);
+  root.style.setProperty('--sidebar-foreground', colors.sidebarForeground);
+  root.style.setProperty('--sidebar-accent', colors.sidebarAccent);
+  root.style.setProperty('--sidebar-border', colors.sidebarBorder);
+  
+  // POS
+  root.style.setProperty('--pos-grid', colors.posGrid);
+  root.style.setProperty('--pos-item', colors.posItem);
+  root.style.setProperty('--pos-item-hover', colors.posItemHover);
+  root.style.setProperty('--pos-cart', colors.posCart);
 
+  // Apply color theme
   root.style.setProperty('--primary', colorTheme.primary);
   root.style.setProperty('--primary-foreground', '0 0% 100%');
   root.style.setProperty('--accent', colorTheme.accent);
@@ -97,9 +171,12 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   root.style.setProperty('--sidebar-primary-foreground', '0 0% 100%');
   root.style.setProperty('--sidebar-ring', colorTheme.primary);
   root.style.setProperty('--pos-total', colorTheme.primary);
+
+  // Update gradient
   root.style.setProperty('--gradient-primary', `linear-gradient(135deg, hsl(${colorTheme.primary}), hsl(${colorTheme.accent}))`);
   root.style.setProperty('--shadow-glow', `0 0 40px -10px hsl(${colorTheme.primary} / 0.3)`);
 
+  // Add or remove dark class for any other styles
   if (mode === 'dark') {
     root.classList.add('dark');
   } else {
@@ -107,147 +184,97 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   }
 }
 
-function applyBlurTheme(enabled: boolean, mode: ThemeMode, opacity: number = 50) {
-  const root = document.documentElement;
-  const opacityDecimal = opacity / 100;
-
-  if (enabled) {
-    root.classList.add('blur-theme');
-
-    const baseBg = mode === 'dark'
-      ? `rgba(10, 10, 20, ${opacityDecimal})`
-      : `rgba(255, 255, 255, ${opacityDecimal})`;
-
-    root.style.setProperty('--glass-bg', baseBg);
-    root.style.setProperty('--glass-border',
-      mode === 'dark'
-        ? `rgba(255, 255, 255, ${opacityDecimal * 0.3})`
-        : `rgba(0, 0, 0, ${opacityDecimal * 0.1})`
-    );
-    root.style.setProperty('--glass-opacity', opacityDecimal.toString());
-  } else {
-    root.classList.remove('blur-theme');
-    root.style.removeProperty('--glass-bg');
-    root.style.removeProperty('--glass-border');
-    root.style.removeProperty('--glass-opacity');
-  }
-}
-
+// Default theme for new users: Light mode with Blue color
 const DEFAULT_MODE: ThemeMode = 'light';
 const DEFAULT_COLOR: ThemeColor = 'blue';
 const DEFAULT_BLUR: boolean = false;
-const DEFAULT_OPACITY: number = 50;
+
+function applyBlurTheme(enabled: boolean, mode: ThemeMode) {
+  const root = document.documentElement;
+  if (enabled) {
+    root.classList.add('blur-theme');
+    // Set glass background based on mode
+    root.style.setProperty('--glass-bg', 
+      mode === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.7)');
+    root.style.setProperty('--glass-border', 
+      mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)');
+  } else {
+    root.classList.remove('blur-theme');
+  }
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(DEFAULT_MODE);
   const [color, setColorState] = useState<ThemeColor>(DEFAULT_COLOR);
   const [blurEnabled, setBlurEnabledState] = useState<boolean>(DEFAULT_BLUR);
-  const [blurOpacity, setBlurOpacityState] = useState<number>(DEFAULT_OPACITY);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Load saved theme on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        const finalMode = parsed.mode || DEFAULT_MODE;
-        const finalColor = parsed.color || DEFAULT_COLOR;
-        const finalBlur = parsed.blur ?? DEFAULT_BLUR;
-        const finalOpacity = parsed.opacity ?? DEFAULT_OPACITY;
-
+        const { mode: savedMode, color: savedColor, blur: savedBlur } = JSON.parse(saved);
+        const finalMode = savedMode || DEFAULT_MODE;
+        const finalColor = savedColor || DEFAULT_COLOR;
+        const finalBlur = savedBlur ?? DEFAULT_BLUR;
         setModeState(finalMode);
         setColorState(finalColor);
         setBlurEnabledState(finalBlur);
-        setBlurOpacityState(finalOpacity);
-
         applyTheme(finalMode, finalColor);
-        applyBlurTheme(finalBlur, finalMode, finalOpacity);
+        applyBlurTheme(finalBlur, finalMode);
       } else {
+        // First time user - apply default theme and save it
         applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_OPACITY);
-        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({
-          mode: DEFAULT_MODE,
-          color: DEFAULT_COLOR,
-          blur: DEFAULT_BLUR,
-          opacity: DEFAULT_OPACITY
-        }));
+        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE);
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR, blur: DEFAULT_BLUR }));
       }
     } catch {
+      // Use defaults on error
       applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_OPACITY);
+      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE);
     }
     setIsInitialized(true);
   }, []);
 
-  const saveTheme = (newMode: ThemeMode, newColor: ThemeColor, newBlur: boolean, newOpacity: number) => {
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({
-      mode: newMode,
-      color: newColor,
-      blur: newBlur,
-      opacity: newOpacity
-    }));
-  };
-
   const setMode = (newMode: ThemeMode) => {
     setModeState(newMode);
     applyTheme(newMode, color);
-    applyBlurTheme(blurEnabled, newMode, blurOpacity);
-    saveTheme(newMode, color, blurEnabled, blurOpacity);
+    applyBlurTheme(blurEnabled, newMode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color, blur: blurEnabled }));
   };
 
   const setColor = (newColor: ThemeColor) => {
     setColorState(newColor);
     applyTheme(mode, newColor);
-    applyBlurTheme(blurEnabled, mode, blurOpacity);
-    saveTheme(mode, newColor, blurEnabled, blurOpacity);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color: newColor, blur: blurEnabled }));
   };
 
   const setBlurEnabled = (enabled: boolean) => {
     setBlurEnabledState(enabled);
-    applyBlurTheme(enabled, mode, blurOpacity);
-    saveTheme(mode, color, enabled, blurOpacity);
-  };
-
-  const setBlurOpacity = (opacity: number) => {
-    setBlurOpacityState(opacity);
-    applyBlurTheme(blurEnabled, mode, opacity);
-    saveTheme(mode, color, blurEnabled, opacity);
+    applyBlurTheme(enabled, mode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode, color, blur: enabled }));
   };
 
   const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
     setModeState(newMode);
     setColorState(newColor);
     applyTheme(newMode, newColor);
-    applyBlurTheme(blurEnabled, newMode, blurOpacity);
-    saveTheme(newMode, newColor, blurEnabled, blurOpacity);
+    applyBlurTheme(blurEnabled, newMode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor, blur: blurEnabled }));
   };
 
-  const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean, opacity?: number) => {
-    const finalOpacity = opacity ?? blurOpacity;
+  const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean) => {
     setModeState(newMode);
     setColorState(newColor);
     setBlurEnabledState(blur);
-    if (opacity !== undefined) setBlurOpacityState(opacity);
     applyTheme(newMode, newColor);
-    applyBlurTheme(blur, newMode, finalOpacity);
-    saveTheme(newMode, newColor, blur, finalOpacity);
+    applyBlurTheme(blur, newMode);
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: newMode, color: newColor, blur }));
   };
 
-  if (!isInitialized) return null;
-
   return (
-    <ThemeContext.Provider value={{
-      mode,
-      color,
-      blurEnabled,
-      blurOpacity,
-      setMode,
-      setColor,
-      setBlurEnabled,
-      setBlurOpacity,
-      setTheme,
-      setFullTheme
-    }}>
+    <ThemeContext.Provider value={{ mode, color, blurEnabled, setMode, setColor, setBlurEnabled, setTheme, setFullTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -255,6 +282,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used within ThemeProvider');
+  if (!context) {
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
   return context;
 }

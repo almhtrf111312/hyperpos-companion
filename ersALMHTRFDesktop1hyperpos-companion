@@ -1,0 +1,10 @@
+[33m4e95762[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m إصلاح شامل: تصميم موبايل، نسخ احتياطي، واجهة مستخدم
+[33m27c97b1[m تحديث المكونات: ProductGrid, POS, Products, Reports, NativeMLKitScanner
+[33m212c60e[m تحديث المكونات: ProductGrid, POS, Products, Reports, NativeMLKitScanner
+[33mcf7f9e4[m تحديث المكونات: ProductGrid, POS, Products, Reports, NativeMLKitScanner
+[33md21d32f[m Add blur theme support
+[33md9547ef[m Changes
+[33m6e608da[m Updated plan file
+[33m9bb37a7[m Reverted to commit 9958ee69d9d6963a5ef268ac9ceefbde971d5778
+[33m3a7e471[m Revert " Fix Dark Glassmorphism theme - ALL screens (Products, Reports, Sales, POS)"
+[33mb32544b[m  Fix Dark Glassmorphism theme - ALL screens (Products, Reports, Sales, POS)

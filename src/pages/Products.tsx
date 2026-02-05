@@ -1,501 +1,1641 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  Search,
+  Plus,
+  Package,
+  Edit,
+  Trash2,
+  Barcode,
+  AlertTriangle,
+  CheckCircle,
+  X,
+  Save,
+  ScanLine,
+  Tag,
+  Image as ImageIcon,
+  Camera,
+  Loader2,
+  Boxes,
+  Truck,
+  FileText
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Plus,
-  Search,
-  Filter,
-  Grid3X3,
-  List,
-  MoreVertical,
-  Edit,
-  Trash2,
-  FileText,
-  Package
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 
-interface Product {
-  id: string;
-  name: string;
-  salePrice: number;
-  quantity: number;
-  category: string;
-  image?: string;
-  barcode?: string;
-}
-
-// مكون جديد: معالج الفواتير خطوة بخطوة
-function InvoiceWizard({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [step, setStep] = useState<'header' | 'products' | 'review'>('header');
-  const [invoiceData, setInvoiceData] = useState({
-    customerName: '',
-    date: new Date().toISOString().split('T')[0],
-    items: [] as any[]
-  });
-  const [currentProduct, setCurrentProduct] = useState({
-    name: '',
-    quantity: 1,
-    price: 0,
-    unit: 'piece'
-  });
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-
-  const isMobile = useIsMobile();
-  const { toast } = useToast();
-
-  const handleNextProduct = () => {
-    if (!currentProduct.name || currentProduct.quantity <= 0) {
-      toast({
-        title: "تنبيه",
-        description: "يرجى إدخال اسم المنتج والكمية",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (editingIndex !== null) {
-      // تعديل منتج موجود
-      const newItems = [...invoiceData.items];
-      newItems[editingIndex] = currentProduct;
-      setInvoiceData({ ...invoiceData, items: newItems });
-      setEditingIndex(null);
-    } else {
-      // إضافة منتج جديد
-      setInvoiceData({
-        ...invoiceData,
-        items: [...invoiceData.items, { ...currentProduct, id: Date.now() }]
-      });
-    }
-
-    // إعادة تعيين المنتج الحالي
-    setCurrentProduct({ name: '', quantity: 1, price: 0, unit: 'piece' });
-
-    toast({
-      title: "تم الحفظ",
-      description: editingIndex !== null ? "تم تعديل المنتج" : "تم إضافة المنتج"
-    });
-  };
-
-  const handlePreviousProduct = () => {
-    if (invoiceData.items.length === 0) {
-      setStep('header');
-      return;
-    }
-
-    const lastIndex = invoiceData.items.length - 1;
-    setCurrentProduct(invoiceData.items[lastIndex]);
-    setEditingIndex(lastIndex);
-
-    // إزالة المنتج من القائمة مؤقتاً للتعديل
-    const newItems = invoiceData.items.slice(0, -1);
-    setInvoiceData({ ...invoiceData, items: newItems });
-  };
-
-  const handleReview = () => {
-    if (invoiceData.items.length === 0) {
-      toast({
-        title: "تنبيه",
-        description: "يرجى إضافة منتج واحد على الأقل",
-        variant: "destructive"
-      });
-      return;
-    }
-    setStep('review');
-  };
-
-  const handleFinish = () => {
-    // حفظ الفاتورة
-    console.log('Invoice saved:', invoiceData);
-    toast({
-      title: "تم بنجاح",
-      description: `تم حفظ الفاتورة بـ ${invoiceData.items.length} منتجات`
-    });
-    onClose();
-    // إعادة التعيين
-    setStep('header');
-    setInvoiceData({ customerName: '', date: new Date().toISOString().split('T')[0], items: [] });
-    setCurrentProduct({ name: '', quantity: 1, price: 0, unit: 'piece' });
-  };
-
-  const totalAmount = invoiceData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className={`${isMobile ? 'w-[95vw] max-w-none p-4' : 'max-w-2xl'} max-h-[90vh] overflow-hidden flex flex-col`}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            {step === 'header' && 'بيانات الفاتورة'}
-            {step === 'products' && `إضافة منتج ${editingIndex !== null ? '(تعديل)' : `(${invoiceData.items.length + 1})`}`}
-            {step === 'review' && 'مراجعة الفاتورة'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <ScrollArea className="flex-1 pr-4">
-          {step === 'header' && (
-            <div className="space-y-4 py-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">اسم العميل</label>
-                <Input
-                  value={invoiceData.customerName}
-                  onChange={(e) => setInvoiceData({ ...invoiceData, customerName: e.target.value })}
-                  placeholder="أدخل اسم العميل"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">التاريخ</label>
-                <Input
-                  type="date"
-                  value={invoiceData.date}
-                  onChange={(e) => setInvoiceData({ ...invoiceData, date: e.target.value })}
-                />
-              </div>
-              <Button className="w-full" onClick={() => setStep('products')}>
-                التالي: إضافة المنتجات
-              </Button>
-            </div>
-          )}
-
-          {step === 'products' && (
-            <div className="space-y-4 py-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">اسم المنتج *</label>
-                <Input
-                  value={currentProduct.name}
-                  onChange={(e) => setCurrentProduct({ ...currentProduct, name: e.target.value })}
-                  placeholder="اسم المنتج"
-                  autoFocus
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">الكمية *</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={currentProduct.quantity}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, quantity: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">السعر</label>
-                  <Input
-                    type="number"
-                    value={currentProduct.price}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, price: parseFloat(e.target.value) || 0 })}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">الوحدة</label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={currentProduct.unit}
-                  onChange={(e) => setCurrentProduct({ ...currentProduct, unit: e.target.value })}
-                >
-                  <option value="piece">قطعة</option>
-                  <option value="kg">كيلوغرام</option>
-                  <option value="box">صندوق</option>
-                  <option value="meter">متر</option>
-                </select>
-              </div>
-
-              {/* عرض المنتجات المضافة */}
-              {invoiceData.items.length > 0 && (
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="text-sm font-medium mb-2">المنتجات المضافة ({invoiceData.items.length}):</p>
-                  <div className="space-y-1">
-                    {invoiceData.items.map((item, idx) => (
-                      <div key={item.id} className="text-sm flex justify-between">
-                        <span>{idx + 1}. {item.name} × {item.quantity}</span>
-                        <span>{(item.quantity * item.price).toFixed(2)} $</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-t mt-2 pt-2 font-bold flex justify-between">
-                    <span>الإجمالي:</span>
-                    <span>{totalAmount.toFixed(2)} $</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-4">
-                <Button variant="outline" onClick={handlePreviousProduct} className="flex-1">
-                  السابق
-                </Button>
-                <Button onClick={handleNextProduct} className="flex-1">
-                  {editingIndex !== null ? 'حفظ التعديل' : 'المنتج التالي'}
-                </Button>
-              </div>
-
-              <Button variant="secondary" className="w-full" onClick={handleReview}>
-                مراجعة الفاتورة وإنهائها
-              </Button>
-            </div>
-          )}
-
-          {step === 'review' && (
-            <div className="space-y-4 py-4">
-              <div className="bg-muted p-4 rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">العميل:</span>
-                  <span className="font-medium">{invoiceData.customerName || 'غير محدد'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">التاريخ:</span>
-                  <span>{invoiceData.date}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">عدد المنتجات:</span>
-                  <span>{invoiceData.items.length}</span>
-                </div>
-              </div>
-
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="p-2 text-right">المنتج</th>
-                      <th className="p-2">الكمية</th>
-                      <th className="p-2">السعر</th>
-                      <th className="p-2">الإجمالي</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceData.items.map((item) => (
-                      <tr key={item.id} className="border-t">
-                        <td className="p-2">{item.name}</td>
-                        <td className="p-2 text-center">{item.quantity} {item.unit}</td>
-                        <td className="p-2 text-center">{item.price.toFixed(2)}</td>
-                        <td className="p-2 text-center font-medium">{(item.quantity * item.price).toFixed(2)} $</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="text-xl font-bold text-center p-4 bg-primary/10 rounded-lg">
-                الإجمالي: {totalAmount.toFixed(2)} $
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button variant="outline" onClick={() => setStep('products')} className="flex-1">
-                  الرجوع للتعديل
-                </Button>
-                <Button onClick={handleFinish} className="flex-1">
-                  تأكيد وإنهاء
-                </Button>
-              </div>
-            </div>
-          )}
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { toast } from 'sonner';
+import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { CategoryManager } from '@/components/CategoryManager';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DatePicker } from '@/components/ui/date-picker';
+import { UnitSettingsTab } from '@/components/products/UnitSettingsTab';
+import { DualUnitDisplay } from '@/components/products/DualUnitDisplay';
+import {
+  loadProductsCloud,
+  addProductCloud,
+  updateProductCloud,
+  deleteProductCloud,
+  getStatus,
+  Product
+} from '@/lib/cloud/products-cloud';
+import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import {
+  fetchAllWarehouseStocksCloud,
+  WarehouseStock,
+  loadWarehousesCloud,
+  Warehouse
+} from '@/lib/cloud/warehouses-cloud';
+import { uploadProductImage } from '@/lib/image-upload';
+import { addActivityLog } from '@/lib/activity-log';
+import { useAuth } from '@/hooks/use-auth';
+import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
+import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config';
+import { EVENTS } from '@/lib/events';
+import { useLanguage } from '@/hooks/use-language';
+import { useCamera } from '@/hooks/use-camera';
+import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 
 export default function Products() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, profile } = useAuth();
+  const { t } = useLanguage();
+
+  const statusConfig = {
+    in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
+    low_stock: { label: t('products.low'), color: 'badge-warning', icon: AlertTriangle },
+    out_of_stock: { label: t('products.outOfStock'), color: 'badge-danger', icon: AlertTriangle },
+  };
   const [products, setProducts] = useState<Product[]>([]);
+  const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStock[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('الكل');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
-  const isMobile = useIsMobile();
-  const { toast } = useToast();
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
 
+  // Dialogs
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showPurchaseInvoiceDialog, setShowPurchaseInvoiceDialog] = useState(false);
+
+  // Form state with dynamic fields
+  const [formData, setFormData] = useState({
+    name: '',
+    barcode: '',
+    category: 'هواتف',
+    costPrice: 0,
+    salePrice: 0,
+    quantity: 0,
+    expiryDate: '',
+    image: '',
+    // Dynamic fields (Fix #16)
+    serialNumber: '',
+    warranty: '',
+    wholesalePrice: 0,
+    size: '',
+    color: '',
+    minStockLevel: 5,
+    // Unit settings
+    bulkUnit: 'كرتونة',
+    smallUnit: 'قطعة',
+    conversionFactor: 1,
+    bulkCostPrice: 0,
+    bulkSalePrice: 0,
+    trackByUnit: 'piece' as 'piece' | 'bulk',
+  });
+
+  // Unit settings collapsible state
+  const [showUnitSettings, setShowUnitSettings] = useState(false);
+
+  // Get effective field configuration - reload when page gains focus or storage changes
+  const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
+  const [customFields, setCustomFields] = useState<CustomField[]>(() => getEnabledCustomFields());
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({});
+
+  // Reload fields config when navigating to this page or when settings change
   useEffect(() => {
-    loadProducts();
+    const reloadFieldsConfig = () => {
+      setFieldsConfig(getEffectiveFieldsConfig());
+      setCustomFields(getEnabledCustomFields());
+    };
+
+    // Listen for custom events (same tab)
+    const handleFieldsUpdated = () => reloadFieldsConfig();
+    window.addEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
+    window.addEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
+
+    // Reload on focus (when user comes back from settings)
+    window.addEventListener('focus', reloadFieldsConfig);
+
+    // Reload on storage change (different tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes('hyperpos_product_fields') || e.key?.includes('hyperpos_custom_fields')) {
+        reloadFieldsConfig();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Initial load
+    reloadFieldsConfig();
+
+    return () => {
+      window.removeEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
+      window.removeEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
+      window.removeEventListener('focus', reloadFieldsConfig);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
-  const loadProducts = async () => {
-    try {
-      setIsLoading(true);
-      const data = await loadProductsCloud();
-      setProducts(data);
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "فشل في تحميل المنتجات",
-        variant: "destructive"
+  /*
+   * Handle Photo Restoration from Android Process Death
+   */
+  const handlePhotoRestored = useCallback(async (base64Image: string) => {
+    // DEBUG: Alert to confirm callback execution
+    // alert('DEBUG: handlePhotoRestored called'); 
+
+    const toastId = toast.loading('جاري استعادة الصورة...');
+
+    // Automatically upload the restored image
+    const imageUrl = await uploadProductImage(base64Image);
+    toast.dismiss(toastId);
+
+    if (imageUrl) {
+      // DEBUG: Alert to confirm image URL
+      // alert('DEBUG: Image URL: ' + imageUrl.substring(0, 50) + '...');
+
+      // Use functional update to avoid race conditions with initial restore
+      setFormData(prev => {
+        // alert(`DEBUG: Updating form. Old Image: ${prev.image ? 'Yes' : 'No'}, New Image: Yes`);
+        return { ...prev, image: imageUrl };
       });
+      toast.success('تم استعادة الصورة بنجاح');
+    } else {
+      // alert('DEBUG: Upload returned null');
+      toast.error('فشل في استعادة الصورة');
+    }
+  }, []);
+
+  // Use Capacitor Camera hook with restoration callback
+  const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({
+    maxSize: 640,
+    quality: 70,
+    onPhotoRestored: handlePhotoRestored
+  });
+
+  /*
+   * AUTOMATIC FORM PERSISTENCE
+   * Save form data to localStorage so it survives Android Process Death
+   */
+  const FORM_STORAGE_KEY = 'hyperpos_product_form_temp';
+
+  // 1. Save state whenever important form values change
+  useEffect(() => {
+    // Only save if the dialog is open and we have some data
+    // Important: Don't save if we just restored an empty image over a pending one? 
+    // Actually, saving is fine as long as restoration is correct.
+    if (showAddDialog || showEditDialog) {
+      const stateToSave = {
+        formData,
+        customFieldValues,
+        isAdd: showAddDialog,
+        isEdit: showEditDialog,
+        selectedProductId: selectedProduct?.id,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
+    }
+  }, [formData, customFieldValues, showAddDialog, showEditDialog, selectedProduct]);
+
+  // 2. Clear state when dialog is closed explicitly (Cancel/Success)
+  const clearPersistedState = useCallback(() => {
+    localStorage.removeItem(FORM_STORAGE_KEY);
+  }, []);
+
+  // 3. Restore state on mount (if App was killed and restarted)
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(FORM_STORAGE_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        const hour = 60 * 60 * 1000;
+
+        if (Date.now() - parsed.timestamp < hour) {
+          console.log('Restoring persisted form state...', parsed);
+
+          // Restore Basic Data immediately
+          setFormData(parsed.formData);
+          setCustomFieldValues(parsed.customFieldValues);
+
+          // Restore Dialog State
+          if (parsed.isEdit && parsed.selectedProductId) {
+            setShowEditDialog(true);
+          } else if (parsed.isAdd) {
+            setShowAddDialog(true);
+          }
+
+          toast.info('تم استعادة البيانات السابقة', { duration: 3000 });
+        } else {
+          localStorage.removeItem(FORM_STORAGE_KEY);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore form state', e);
+    }
+  }, []);
+
+
+
+  // Debounce search (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load data from cloud
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [cloudProducts, cloudCategories, allWarehouses, allWarehouseStocks] = await Promise.all([
+        loadProductsCloud(),
+        getCategoryNamesCloud(),
+        loadWarehousesCloud(),
+        fetchAllWarehouseStocksCloud()
+      ]);
+      setProducts(cloudProducts);
+      setCategoryOptions(cloudCategories);
+      setWarehouses(allWarehouses);
+      setWarehouseStocks(allWarehouseStocks);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      toast.error('فشل في تحميل المنتجات');
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // Helper function to get custody quantity for a product
+  const getCustodyQuantity = useCallback((productId: string): number => {
+    // Sum all warehouse stock for this product (excluding main warehouse)
+    const vehicleWarehouses = warehouses.filter(w => w.type === 'vehicle');
+    const vehicleWarehouseIds = new Set(vehicleWarehouses.map(w => w.id));
+
+    return warehouseStocks
+      .filter(ws => ws.product_id === productId && vehicleWarehouseIds.has(ws.warehouse_id))
+      .reduce((sum, ws) => sum + (ws.quantity || 0), 0);
+  }, [warehouses, warehouseStocks]);
+
+  // Get custody breakdown by warehouse
+  const getCustodyBreakdown = useCallback((productId: string): { warehouseName: string; quantity: number }[] => {
+    const vehicleWarehouses = warehouses.filter(w => w.type === 'vehicle');
+
+    return vehicleWarehouses
+      .map(w => {
+        const stock = warehouseStocks.find(ws => ws.product_id === productId && ws.warehouse_id === w.id);
+        return {
+          warehouseName: w.name,
+          quantity: stock?.quantity || 0
+        };
+      })
+      .filter(item => item.quantity > 0);
+  }, [warehouses, warehouseStocks]);
+
+  // Memory leak prevention - proper cleanup for storage events
+  useEffect(() => {
+    loadData();
+
+    const handleProductsUpdated = () => loadData();
+    const handleCategoriesUpdated = () => loadData();
+
+    window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
+    window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
+    window.addEventListener('focus', loadData);
+
+    return () => {
+      window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
+      window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
+      window.removeEventListener('focus', loadData);
+    };
+  }, [loadData]);
+
+  // Auto-open add dialog from URL params
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setShowAddDialog(true);
+      // إزالة الـ param بعد فتح الـ dialog
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, categoryOptions, setSearchParams]);
+
+  // Handle gallery selection using Capacitor Camera plugin
+  const handleGallerySelect = async () => {
+    const base64Image = await pickFromGallery();
+    if (base64Image) {
+      const toastId = toast.loading('جاري رفع الصورة...');
+      const imageUrl = await uploadProductImage(base64Image);
+      toast.dismiss(toastId);
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        toast.success('تم رفع الصورة بنجاح');
+      } else {
+        toast.error('فشل في رفع الصورة');
+      }
+    }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.barcode?.includes(searchQuery)
-  );
+  // Handle camera capture using Capacitor Camera plugin
+  const handleCameraCapture = async () => {
+    const base64Image = await takePhoto();
+    if (base64Image) {
+      const toastId = toast.loading('جاري رفع الصورة...');
+      const imageUrl = await uploadProductImage(base64Image);
+      toast.dismiss(toastId);
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        toast.success('تم رفع الصورة بنجاح');
+      } else {
+        toast.error('فشل في رفع الصورة');
+      }
+    }
+  };
+
+  // Reload categories from cloud
+  const reloadCategories = useCallback(async () => {
+    const cats = await getCategoryNamesCloud();
+    setCategoryOptions(cats);
+  }, []);
+
+  // Get categories used by products (cannot be deleted)
+  const usedCategories = [...new Set(products.map(p => p.category))];
+
+  const categories = ['الكل', ...categoryOptions];
+
+  // Memoized filtered results for performance
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        product.barcode.includes(debouncedSearch);
+      const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
+      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+      const matchesUnit = unitFilter === 'all' ||
+        (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
+        (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
+      return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
+    });
+  }, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter]);
+
+  const stats = {
+    total: products.length,
+    inStock: products.filter(p => p.status === 'in_stock').length,
+    lowStock: products.filter(p => p.status === 'low_stock').length,
+    outOfStock: products.filter(p => p.status === 'out_of_stock').length,
+    multiUnit: products.filter(p => p.conversionFactor && p.conversionFactor > 1).length,
+  };
+
+  const handleAddProduct = async () => {
+    if (!formData.name || !formData.barcode) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    // Validate required custom fields
+    for (const field of customFields) {
+      if (field.required && !customFieldValues[field.id]) {
+        toast.error(`حقل "${field.name}" مطلوب`);
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
+    const quantityInPieces = formData.trackByUnit === 'bulk'
+      ? formData.quantity * formData.conversionFactor
+      : formData.quantity;
+
+    // حساب سعر تكلفة الكرتونة تلقائياً
+    const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
+
+    const productData = {
+      ...formData,
+      quantity: quantityInPieces, // الكمية دائماً بالقطع
+      bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
+      expiryDate: formData.expiryDate || undefined,
+      customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
+    };
+
+    const newProduct = await addProductCloud(productData);
+
+    if (newProduct) {
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'product_added',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم إضافة منتج جديد: ${formData.name}`,
+          { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
+        );
+      }
+
+      setShowAddDialog(false);
+      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setCustomFieldValues({});
+      toast.success('تم إضافة المنتج بنجاح');
+      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setCustomFieldValues({});
+      clearPersistedState(); // Clear persistence on success
+      toast.success('تم إضافة المنتج بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في إضافة المنتج');
+    }
+
+    setIsSaving(false);
+  };
+
+  const handleEditProduct = async () => {
+    if (!selectedProduct || !formData.name) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    // Validate required custom fields
+    for (const field of customFields) {
+      if (field.required && !customFieldValues[field.id]) {
+        toast.error(`حقل "${field.name}" مطلوب`);
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
+    const quantityInPieces = formData.trackByUnit === 'bulk'
+      ? formData.quantity * formData.conversionFactor
+      : formData.quantity;
+
+    // حساب سعر تكلفة الكرتونة تلقائياً
+    const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
+
+    const productData = {
+      ...formData,
+      quantity: quantityInPieces, // الكمية دائماً بالقطع
+      bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
+      expiryDate: formData.expiryDate || undefined,
+      customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
+    };
+
+    const success = await updateProductCloud(selectedProduct.id, productData);
+
+    if (success) {
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'product_updated',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم تعديل منتج: ${formData.name}`,
+          { productId: selectedProduct.id, name: formData.name }
+        );
+      }
+
+      setShowEditDialog(false);
+      setSelectedProduct(null);
+      setCustomFieldValues({});
+      clearPersistedState(); // Clear persistence on success
+      toast.success('تم تعديل المنتج بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في تعديل المنتج');
+    }
+
+    setIsSaving(false);
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!selectedProduct) return;
+
+    setIsSaving(true);
+
+    const productName = selectedProduct.name;
+    const success = await deleteProductCloud(selectedProduct.id);
+
+    if (success) {
+      // Log activity
+      if (user) {
+        addActivityLog(
+          'product_deleted',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم حذف منتج: ${productName}`, // This log message might need translation
+          { productId: selectedProduct.id, name: productName }
+        );
+      }
+
+      setShowDeleteDialog(false);
+      setSelectedProduct(null);
+      toast.success('تم حذف المنتج بنجاح');
+      loadData();
+    } else {
+      toast.error('فشل في حذف المنتج');
+    }
+
+    setIsSaving(false);
+  };
+
+  const openEditDialog = (product: Product) => {
+    setSelectedProduct(product);
+
+    // الكمية في قاعدة البيانات دائماً بالقطع
+    // نحولها للوحدة المستخدمة للتتبع عند العرض
+    const trackByUnit = product.trackByUnit || 'piece';
+    const conversionFactor = product.conversionFactor || 1;
+    const quantityForDisplay = trackByUnit === 'bulk'
+      ? Math.floor(product.quantity / conversionFactor)
+      : product.quantity;
+
+    setFormData({
+      name: product.name,
+      barcode: product.barcode,
+      category: product.category,
+      costPrice: product.costPrice,
+      salePrice: product.salePrice,
+      quantity: quantityForDisplay,
+      expiryDate: product.expiryDate || '',
+      image: product.image || '',
+      serialNumber: product.serialNumber || '',
+      warranty: product.warranty || '',
+      wholesalePrice: product.wholesalePrice || 0,
+      size: product.size || '',
+      color: product.color || '',
+      minStockLevel: product.minStockLevel || 5,
+      // Unit settings
+      bulkUnit: product.bulkUnit || 'كرتونة',
+      smallUnit: product.smallUnit || 'قطعة',
+      conversionFactor: conversionFactor,
+      bulkCostPrice: product.bulkCostPrice || 0,
+      bulkSalePrice: product.bulkSalePrice || 0,
+      trackByUnit: trackByUnit,
+    });
+    // Check if product has unit settings to auto-expand
+    if (product.conversionFactor && product.conversionFactor > 1) {
+      setShowUnitSettings(true);
+    }
+    // Load custom field values from product
+    setCustomFieldValues(product.customFields || {});
+    setShowEditDialog(true);
+  };
+
+  const openDeleteDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDeleteDialog(true);
+  };
+
+  const openBarcodeScannerForForm = () => {
+    setScanTarget('form');
+    setScannerOpen(true);
+
+
+  };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+      {/* Show restoring indicator if needed? Maybe just toasts are enough */}
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold">المنتجات</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-14 md:pr-0">
+        <div>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('products.pageTitle')}</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('products.pageSubtitle')}</p>
+        </div>
         <div className="flex gap-2">
-          <Button
-            onClick={() => setInvoiceOpen(true)}
-            className="gap-2 flex-1 md:flex-none"
-          >
-            <FileText className="h-4 w-4" />
-            فاتورة جديدة
+          <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+            <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('purchaseInvoice.addPurchaseInvoice')}
           </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            {!isMobile && "منتج جديد"}
+          <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
+            <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('products.categories')}
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+            setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+            setShowAddDialog(true);
+            // We don't clear state here immediately because `useEffect` will overwrite it with new empty state anyway
+            // But good practice to ensure clean slate
+          }}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('products.addProduct')}
           </Button>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="البحث في المنتجات..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      {/* Stats - Clickable for filtering */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+          )}
+        >
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
+              <Package className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.total')}</p>
+            </div>
+          </div>
+        </button>
+        <button
+          onClick={() => setStatusFilter('in_stock')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
+          )}
+        >
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-success/10">
+              <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-success" />
+            </div>
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.inStock}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.available')}</p>
+            </div>
+          </div>
+        </button>
+        <button
+          onClick={() => setStatusFilter('low_stock')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
+          )}
+        >
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-warning/10">
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.low')}</p>
+            </div>
+          </div>
+        </button>
+        <button
+          onClick={() => setStatusFilter('out_of_stock')}
+          className={cn(
+            "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+            statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+          )}
+        >
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-1.5 md:p-2 rounded-lg bg-destructive/10">
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
+            </div>
+            <div>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-3">
         <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder={t('products.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-9 md:pr-10 bg-muted border-0"
+            />
+          </div>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            className="h-10 w-10 flex-shrink-0"
+            onClick={() => {
+              setScanTarget('search');
+              setScannerOpen(true);
+            }}
           >
-            {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
+            <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {categories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={cn(
+                "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                selectedCategory === category
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {category}
+            </button>
+          ))}
+
+          {/* Unit Filter */}
+          <div className="h-6 w-px bg-border mx-1 self-center" />
+          <button
+            onClick={() => setUnitFilter(unitFilter === 'multi_unit' ? 'all' : 'multi_unit')}
+            className={cn(
+              "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
+              unitFilter === 'multi_unit'
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            )}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            متعدد الوحدات ({stats.multiUnit})
+          </button>
         </div>
       </div>
 
-      {/* Products Grid - متجاوب */}
+      {/* Products Grid - Mobile */}
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-          {[...Array(isMobile ? 4 : 8)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <div className="h-24 md:h-32 bg-muted rounded-t-lg" />
-              <CardContent className="p-3">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+              </div>
+              <div className="flex justify-between pt-3 border-t border-border">
+                <Skeleton className="h-4 w-20" />
+                <div className="flex gap-1">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <Skeleton className="h-10 w-10 rounded" />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
-        <div className={`grid gap-3 md:gap-4 ${viewMode === 'grid'
-            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-            : 'grid-cols-1'
-          }`}>
-          {filteredProducts.map((product) => (
-            <Card
-              key={product.id}
-              className={`group overflow-hidden hover:shadow-lg transition-all ${viewMode === 'list' ? 'flex flex-row items-center' : ''
-                }`}
-            >
-              {/* صورة المنتج */}
-              <div className={`relative bg-muted overflow-hidden ${viewMode === 'list' ? 'w-24 h-24' : 'h-24 md:h-32'
-                }`}>
-                {product.image ? (
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <Package className="h-8 w-8 md:h-12 md:w-12" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
+          {filteredProducts.map((product, index) => {
+            const status = statusConfig[product.status];
+            const profit = product.salePrice - product.costPrice;
+
+            return (
+              <div
+                key={product.id}
+                className="bg-card rounded-xl border border-border p-4 fade-in"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {product.image ? (
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-6 h-6 text-muted-foreground" />
+                    )}
                   </div>
-                )}
-                {/* بادج الكمية */}
-                <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold ${product.quantity === 0 ? 'bg-red-500 text-white' :
-                    product.quantity <= 5 ? 'bg-orange-500 text-white' :
-                      'bg-green-500 text-white'
-                  }`}>
-                  {product.quantity}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
+                    <p className="text-xs text-muted-foreground">{product.category}</p>
+                  </div>
+                  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", status.color)}>
+                    {status.label}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">الشراء</p>
+                    <p className="font-semibold text-sm">${product.costPrice}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">البيع</p>
+                    <p className="font-semibold text-sm text-primary">${product.salePrice}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">الربح</p>
+                    <p className="font-semibold text-sm text-success">${profit}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm">
+                      <DualUnitDisplay
+                        totalPieces={product.quantity}
+                        conversionFactor={product.conversionFactor || 1}
+                        bulkUnit={product.bulkUnit}
+                        smallUnit={product.smallUnit}
+                        showTotal={false}
+                        size="sm"
+                      />
+                    </div>
+                    {/* عرض كمية العهدة */}
+                    {(() => {
+                      const custodyQty = getCustodyQuantity(product.id);
+                      if (custodyQty > 0) {
+                        return (
+                          <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-1 rounded-full">
+                            <Truck className="w-3 h-3 text-primary" />
+                            <span className="text-primary font-medium">{custodyQty}</span>
+                            <span className="text-muted-foreground">عهدة</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
+                      <Edit className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <CardContent className={`p-3 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-sm md:text-base truncate">{product.name}</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground">{product.category}</p>
+      {/* Products Table - Desktop */}
+      <div className="hidden lg:block bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.name')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.category')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('invoices.profit')}</th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Boxes className="w-4 h-4" />
+                    {t('products.stock')}
                   </div>
+                </th>
+                <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Truck className="w-4 h-4" />
+                    العهدة
+                  </div>
+                </th>
+                <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">{t('common.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProducts.map((product, index) => {
+                const status = statusConfig[product.status];
+                const profit = product.salePrice - product.costPrice;
+                const profitPercentage = product.costPrice > 0 ? ((profit / product.costPrice) * 100).toFixed(0) : '0';
 
-                  {!isMobile && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 ml-2" />
-                          تعديل
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="h-4 w-4 ml-2" />
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                return (
+                  <tr
+                    key={product.id}
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors fade-in"
+                    style={{ animationDelay: `${index * 30}ms` }}
+                  >
+                    {/* المنتج + الباركود */}
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-foreground text-sm truncate">{product.name}</span>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Barcode className="w-3 h-3 flex-shrink-0" />
+                            <span className="font-mono truncate">{product.barcode}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* التصنيف */}
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
+                        {product.category}
+                      </span>
+                    </td>
+
+                    {/* الأسعار (شراء + بيع) فوق بعض */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col text-sm">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
+                          <span className="text-muted-foreground">${product.costPrice}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
+                          <span className="font-semibold text-foreground">${product.salePrice}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* الربح */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-success text-sm">${profit}</span>
+                        <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
+                      </div>
+                    </td>
+
+                    {/* المخزون + الحالة */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1.5">
+                        <DualUnitDisplay
+                          totalPieces={product.quantity}
+                          conversionFactor={product.conversionFactor || 1}
+                          bulkUnit={product.bulkUnit}
+                          smallUnit={product.smallUnit}
+                          showTotal={product.conversionFactor && product.conversionFactor > 1}
+                          size="sm"
+                        />
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit",
+                          status.color
+                        )}>
+                          <status.icon className="w-2.5 h-2.5" />
+                          {status.label}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* العهدة (كمية المستودعات الفرعية) */}
+                    <td className="py-3 px-3">
+                      {(() => {
+                        const custodyQty = getCustodyQuantity(product.id);
+                        const breakdown = getCustodyBreakdown(product.id);
+
+                        if (custodyQty === 0) {
+                          return (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          );
+                        }
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1 cursor-help">
+                                  <Truck className="w-3.5 h-3.5 text-primary" />
+                                  <span className="font-medium text-sm text-primary">{custodyQty}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {product.smallUnit || 'قطعة'}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="text-xs space-y-1">
+                                  <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                  {breakdown.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between gap-3">
+                                      <span>{item.warehouseName}:</span>
+                                      <span className="font-medium">{item.quantity}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
+                    </td>
+
+                    {/* الإجراءات (فوق بعض) */}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          onClick={() => openEditDialog(product)}
+                          title="تعديل"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
+                          onClick={() => openDeleteDialog(product)}
+                          title="حذف"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Product Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              إضافة منتج جديد
+            </DialogTitle>
+            <DialogDescription>أدخل بيانات المنتج الجديد</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 pb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
+                <Input
+                  placeholder={t('products.exampleName')}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')}</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={t('products.exampleBarcode')}
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                  />
+                  <Button variant="outline" size="icon" onClick={() => {
+                    setScanTarget('form');
+                    setScannerOpen(true);
+                  }}>
+                    <Barcode className="w-4 h-4" />
+                  </Button>
                 </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
+                <select
+                  className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  {categoryOptions.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">الكمية</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.quantity || ''}
+                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.costPrice || ''}
+                  onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={formData.salePrice || ''}
+                  onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                />
+              </div>
 
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-lg md:text-xl font-bold text-primary">
-                    {product.salePrice.toFixed(2)} $
-                  </span>
-                  {isMobile && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
+              {/* Unit Settings Collapsible */}
+              <div className="sm:col-span-2">
+                <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between" type="button">
+                      <span className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4" />
+                        إعدادات الوحدات (كرتونة / قطعة)
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {showUnitSettings ? 'إخفاء' : 'عرض'}
+                      </span>
                     </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <UnitSettingsTab
+                      data={{
+                        bulkUnit: formData.bulkUnit,
+                        smallUnit: formData.smallUnit,
+                        conversionFactor: formData.conversionFactor,
+                        bulkCostPrice: formData.bulkCostPrice,
+                        bulkSalePrice: formData.bulkSalePrice,
+                        trackByUnit: formData.trackByUnit,
+                      }}
+                      onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                      quantityInPieces={formData.trackByUnit === 'bulk'
+                        ? formData.quantity * formData.conversionFactor
+                        : formData.quantity}
+                      pieceCostPrice={formData.costPrice}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+
+              {/* Dynamic Fields based on store type (Fix #16) */}
+              {fieldsConfig.expiryDate && (
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
+                  <DatePicker
+                    value={formData.expiryDate}
+                    onChange={(date) => setFormData({ ...formData, expiryDate: date })}
+                    placeholder={t('products.selectExpiryDate')}
+                  />
+                </div>
+              )}
+              {fieldsConfig.serialNumber && (
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
+                  <Input
+                    placeholder={t('products.exampleSerial')}
+                    value={formData.serialNumber}
+                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.warranty && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.warranty')}</label>
+                  <Input
+                    placeholder={t('products.exampleWarranty')}
+                    value={formData.warranty}
+                    onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.wholesalePrice && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={formData.wholesalePrice || ''}
+                    onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
+                  />
+                </div>
+              )}
+              {fieldsConfig.sizeColor && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
+                    <Input
+                      placeholder={t('products.exampleSize')}
+                      value={formData.size}
+                      onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
+                    <Input
+                      placeholder={t('products.exampleColor')}
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+              {fieldsConfig.minStockLevel && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
+                  <Input
+                    type="number"
+                    placeholder="5"
+                    value={formData.minStockLevel || ''}
+                    onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                  />
+                </div>
+              )}
+              {/* Custom Fields */}
+              {customFields.map((field) => (
+                <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
+                  <label className="text-sm font-medium mb-1.5 block">
+                    {field.name} {field.required && '*'}
+                  </label>
+                  {field.type === 'select' && field.options ? (
+                    <select
+                      className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
+                    >
+                      <option value="">{t('maintenance.select')}</option>
+                      {field.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      placeholder={field.placeholder || ''}
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({
+                        ...customFieldValues,
+                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
+                      })}
+                    />
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              ))}
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
+                <div className="flex flex-col gap-3">
+                  {formData.image ? (
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
+                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, image: '' })}
+                        className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCameraCapture}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4 ml-2" />
+                      )}
+                      التقاط صورة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleGallerySelect}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 ml-2" />
+                      )}
+                      اختيار صورة
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => {
+                setShowAddDialog(false);
+                clearPersistedState();
+              }}>
+                إلغاء
+              </Button>
+              <Button className="flex-1" onClick={handleAddProduct}>
+                <Save className="w-4 h-4 ml-2" />
+                حفظ المنتج
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* نتائج البحث */}
-      {!isLoading && filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">لا توجد منتجات</p>
-        </div>
-      )}
+      {/* Edit Product Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-primary" />
+              {t('products.editProduct')}
+            </DialogTitle>
+            <DialogDescription>{t('products.pageSubtitle')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 pb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')}</label>
+                <Input
+                  value={formData.barcode}
+                  onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
+                <select
+                  className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  {categoryOptions.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
+                <Input
+                  type="number"
+                  value={formData.quantity || ''}
+                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ($)</label>
+                <Input
+                  type="number"
+                  value={formData.costPrice || ''}
+                  onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ($)</label>
+                <Input
+                  type="number"
+                  value={formData.salePrice || ''}
+                  onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                />
+              </div>
 
-      {/* معالج الفواتير */}
-      <InvoiceWizard open={invoiceOpen} onClose={() => setInvoiceOpen(false)} />
+              {/* Unit Settings Collapsible */}
+              <div className="sm:col-span-2">
+                <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between" type="button">
+                      <span className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4" />
+                        إعدادات الوحدات (كرتونة / قطعة)
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {showUnitSettings ? t('common.hide') : t('common.show')}
+                      </span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <UnitSettingsTab
+                      data={{
+                        bulkUnit: formData.bulkUnit,
+                        smallUnit: formData.smallUnit,
+                        conversionFactor: formData.conversionFactor,
+                        bulkCostPrice: formData.bulkCostPrice,
+                        bulkSalePrice: formData.bulkSalePrice,
+                        trackByUnit: formData.trackByUnit,
+                      }}
+                      onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                      quantityInPieces={formData.trackByUnit === 'bulk'
+                        ? formData.quantity * formData.conversionFactor
+                        : formData.quantity}
+                      pieceCostPrice={formData.costPrice}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    placeholder={t('products.selectExpiryDate')}
+                    value={formData.expiryDate}
+                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  />
+                </div>
+              </div>
+              {/* Custom Fields in Edit Dialog */}
+              {customFields.map((field) => (
+                <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
+                  <label className="text-sm font-medium mb-1.5 block">
+                    {field.name} {field.required && '*'}
+                  </label>
+                  {field.type === 'select' && field.options ? (
+                    <select
+                      className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
+                    >
+                      <option value="">اختر...</option>
+                      {field.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      placeholder={field.placeholder || ''}
+                      value={customFieldValues[field.id] || ''}
+                      onChange={(e) => setCustomFieldValues({
+                        ...customFieldValues,
+                        [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
+                      })}
+                    />
+                  )}
+                </div>
+              ))}
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
+                <div className="flex flex-col gap-3">
+                  {formData.image ? (
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
+                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, image: '' })}
+                        className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                      <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCameraCapture}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4 ml-2" />
+                      )}
+                      التقاط صورة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleGallerySelect}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 ml-2" />
+                      )}
+                      {t('products.chooseImage')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => {
+                setShowEditDialog(false);
+                clearPersistedState();
+              }}>
+                {t('common.cancel')}
+              </Button>
+              <Button className="flex-1" onClick={handleEditProduct}>
+                <Save className="w-4 h-4 ml-2" />
+                {t('common.save')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('products.deleteConfirm')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('products.deleteConfirm')} "{selectedProduct?.name}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90">
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(barcode) => {
+          console.log('[Products] Scanned:', barcode);
+          setScannerOpen(false);
+
+          if (scanTarget === 'form') {
+            const cleanBarcode = barcode.trim();
+            console.log('[Products] Setting form barcode:', cleanBarcode);
+            setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
+            toast.success(t('pos.scanned'), { description: cleanBarcode });
+            return;
+          }
+
+          setSearchQuery(barcode);
+          const product = products.find((p) => p.barcode === barcode);
+          if (product) {
+            toast.success(`${t('common.found')}: ${product.name}`);
+          } else {
+            toast.info(`${t('pos.barcode')}: ${barcode}`, { description: t('pos.productNotFound') || 'Product not found' });
+          }
+        }}
+      />
+
+      {/* Category Manager */}
+      <CategoryManager
+        isOpen={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+        onCategoriesChange={reloadCategories}
+        usedCategories={usedCategories}
+      />
+
+      {/* Purchase Invoice Dialog */}
+      <PurchaseInvoiceDialog
+        open={showPurchaseInvoiceDialog}
+        onOpenChange={setShowPurchaseInvoiceDialog}
+        onSuccess={loadData}
+      />
     </div>
   );
 }
