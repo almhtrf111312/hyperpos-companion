@@ -76,11 +76,37 @@
     --pos-total: 160 84% 39%;
   }
 
-  /* Blur/Glassmorphism Theme Variables */
+  /* Blur/Glassmorphism Theme Variables - Strict Dark Mode */
   :root {
     --blur-intensity: 20px;
-    --glass-bg: rgba(0, 0, 0, 0.4);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(20, 20, 35, 0.6);
+    /* Deeper blue-black for better contrast */
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Glass Utility Class */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-intensity));
+    -webkit-backdrop-filter: blur(var(--blur-intensity));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    background-image: var(--glass-gradient);
+  }
+
+  /* Transparent Inputs for Glass Theme */
+  .glass-input {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    color: white !important;
+  }
+
+  .glass-input:focus {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-color: var(--primary) !important;
   }
 
   .dark {
@@ -238,10 +264,9 @@
 
 /* Background with dynamic gradient */
 .blur-theme .bg-background {
-  background: var(--glass-gradient, linear-gradient(135deg, 
-    hsl(var(--primary) / 0.08), 
-    hsl(var(--accent) / 0.05)
-  )) !important;
+  background: var(--glass-gradient, linear-gradient(135deg,
+        hsl(var(--primary) / 0.08),
+        hsl(var(--accent) / 0.05))) !important;
 }
 
 /* Enhanced Text Clarity */
@@ -259,7 +284,7 @@
   backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
-  box-shadow: 
+  box-shadow:
     0 8px 32px -4px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
 }
@@ -751,14 +776,32 @@ html.barcode-scanner-active .ion-page {
   /* Ensure blur is always active regardless of other styles */
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  z-index: 10000;
 }
 
-/* Ensure the middle area (2nd child) is absolutely clear for the camera */
-.scanner-ui-overlay>div:nth-child(2) {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  z-index: 9999;
+/* Mobile Design Fixes */
+@media (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem !important;
+  }
+
+  .product-card {
+    min-height: 120px !important;
+    font-size: 0.875rem !important;
+  }
+
+  .product-card img {
+    height: 80px !important;
+    object-fit: cover !important;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-radix-dialog-content] {
+    width: 95vw !important;
+    max-height: 80vh !important;
+    margin: 1rem !important;
+    overflow-y: auto !important;
+  }
 }

@@ -1,1395 +1,267 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
-  BarChart3,
+  Package,
   TrendingUp,
   DollarSign,
-  ShoppingCart,
-  Users,
-  UsersRound,
-  Calendar,
+  Layers,
   Download,
-  FileText,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
-  Banknote,
-  Receipt,
-  Share2,
-  MessageCircle,
-  ClipboardList,
-  Truck,
-  Loader2
+  FileText
 } from 'lucide-react';
-import { cn, formatNumber, formatCurrency } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-// ✅ استخدام Cloud APIs بدلاً من localStorage
-import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
-import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
-import { loadCustomersCloud, Customer } from '@/lib/cloud/customers-cloud';
-import { loadPartnersCloud, Partner, ProfitRecord } from '@/lib/cloud/partners-cloud';
-import { loadCategoriesCloud, Category } from '@/lib/cloud/categories-cloud';
-import { loadExpensesCloud, Expense } from '@/lib/cloud/expenses-cloud';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
-import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
-import { DistributorInventoryReport } from '@/components/reports/DistributorInventoryReport';
-import { DistributorCustodyValueReport } from '@/components/reports/DistributorCustodyValueReport';
-import { downloadJSON, isNativePlatform } from '@/lib/file-download';
-import {
-  exportInvoicesToExcel,
-  exportProductsToExcel,
-  exportExpensesToExcel,
-  exportPartnersToExcel,
-  exportCustomersToExcel,
-  exportSalesReportToExcel
-} from '@/lib/excel-export';
-import {
-  exportInvoicesToPDF,
-  exportProductsToPDF,
-  exportExpensesToPDF,
-  exportPartnersToPDF,
-  exportCustomersToPDF
-} from '@/lib/pdf-export';
-import { useLanguage } from '@/hooks/use-language';
-import { MainLayout } from '@/components/layout/MainLayout';
-import { EVENTS } from '@/lib/events';
+import { useToast } from '@/hooks/use-toast';
+import { loadProductsCloud } from '@/lib/cloud/products-cloud';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+
+interface ProductReport {
+  totalItems: number;
+  totalQuantity: number;
+  totalValue: number;
+  lowStockItems: number;
+  outOfStockItems: number;
+  categoriesCount: number;
+}
 
 export default function Reports() {
-  const { t } = useLanguage();
-  const [searchParams] = useSearchParams();
-  const [dateRange, setDateRange] = useState({
-    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0]
-  });
-  const [activeReport, setActiveReport] = useState('sales');
-  const [isLoading, setIsLoading] = useState(true);
+  const [productReport, setProductReport] = useState<ProductReport | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  // ✅ State للبيانات السحابية
-  const [cloudInvoices, setCloudInvoices] = useState<Invoice[]>([]);
-  const [cloudProducts, setCloudProducts] = useState<Product[]>([]);
-  const [cloudCustomers, setCloudCustomers] = useState<Customer[]>([]);
-  const [cloudPartners, setCloudPartners] = useState<Partner[]>([]);
-  const [cloudCategories, setCloudCategories] = useState<Category[]>([]);
-  const [cloudExpenses, setCloudExpenses] = useState<Expense[]>([]);
-
-  // ✅ تحميل البيانات من Cloud
-  const loadCloudData = useCallback(async () => {
+  // حساب تقرير المنتجات
+  const calculateProductReport = async () => {
     setIsLoading(true);
     try {
-      const [invoices, products, customers, partners, categories, expenses] = await Promise.all([
-        loadInvoicesCloud(),
-        loadProductsCloud(),
-        loadCustomersCloud(),
-        loadPartnersCloud(),
-        loadCategoriesCloud(),
-        loadExpensesCloud()
-      ]);
+      const products = await loadProductsCloud();
 
-      setCloudInvoices(invoices);
-      setCloudProducts(products);
-      setCloudCustomers(customers);
-      setCloudPartners(partners);
-      setCloudCategories(categories);
-      setCloudExpenses(expenses);
+      const totalItems = products.length;
+      const totalQuantity = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+      const totalValue = products.reduce((sum, p) => sum + ((p.quantity || 0) * (p.salePrice || 0)), 0);
+      const lowStockItems = products.filter(p => (p.quantity || 0) > 0 && (p.quantity || 0) <= 5).length;
+      const outOfStockItems = products.filter(p => (p.quantity || 0) === 0).length;
+
+      // حساب عدد الأصناف الفريدة
+      const categories = new Set(products.map(p => p.category).filter(Boolean));
+      const categoriesCount = categories.size;
+
+      setProductReport({
+        totalItems,
+        totalQuantity,
+        totalValue,
+        lowStockItems,
+        outOfStockItems,
+        categoriesCount
+      });
+
+      toast({
+        title: "تم إنشاء التقرير",
+        description: `تم حساب إحصائيات ${totalItems} منتج`
+      });
     } catch (error) {
-      console.error('Error loading cloud data for reports:', error);
-      toast.error(t('reports.loadError'));
+      console.error("Error calculating report:", error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تحميل بيانات المنتجات",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // ✅ تحميل البيانات عند التحميل والاستماع للتحديثات
-  useEffect(() => {
-    loadCloudData();
-
-    const handleUpdate = () => loadCloudData();
-
-    window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-    window.addEventListener('focus', loadCloudData);
-
-    return () => {
-      window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-      window.removeEventListener('focus', loadCloudData);
-    };
-  }, [loadCloudData]);
-
-  // Auto-open tab from URL params
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value'].includes(tab)) {
-      setActiveReport(tab);
-    }
-  }, [searchParams]);
-
-  const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
-
-  const reports = [
-    { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
-    { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
-    { id: 'products', label: t('reports.products'), icon: BarChart3 },
-    { id: 'customers', label: t('reports.customers'), icon: Users },
-    { id: 'partners', label: t('reports.partners'), icon: UsersRound },
-    { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
-    { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
-    { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
-    { id: 'custody-value', label: 'قيمة العهدة', icon: Wallet },
-  ];
-
-  // Calculate real data from stores
-  // Helper function to get local date string from a date
-  const getLocalDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   };
 
-  const reportData = useMemo(() => {
-    const allInvoices = cloudInvoices;
-    const products = cloudProducts;
-    const customers = cloudCustomers;
-
-    // Filter invoices by date range using local timezone
-    // ✅ تضمين فواتير البيع والصيانة معاً في حسابات الأرباح
-    const filteredInvoices = allInvoices.filter(inv => {
-      // Parse invoice date and convert to local date string
-      const invDate = getLocalDateString(new Date(inv.createdAt));
-      const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
-      return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
-    });
-
-    // Calculate summary stats
-    const totalSales = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const totalProfit = filteredInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
-    const totalOrders = filteredInvoices.length;
-    const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-
-    // Calculate daily sales using local timezone
-    const dailySalesMap: Record<string, { sales: number; profit: number; orders: number }> = {};
-    filteredInvoices.forEach(inv => {
-      const date = getLocalDateString(new Date(inv.createdAt));
-      if (!dailySalesMap[date]) {
-        dailySalesMap[date] = { sales: 0, profit: 0, orders: 0 };
-      }
-      dailySalesMap[date].sales += inv.total;
-      dailySalesMap[date].profit += inv.profit || 0;
-      dailySalesMap[date].orders += 1;
-    });
-
-    // All daily sales for display (limited to 7 for chart)
-    const allDailySales = Object.entries(dailySalesMap)
-      .map(([date, data]) => ({ date, ...data }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    const dailySales = allDailySales.slice(-7); // Last 7 days for chart display
-
-    // Calculate top products
-    const productSalesMap: Record<string, { name: string; sales: number; revenue: number }> = {};
-    filteredInvoices.forEach(inv => {
-      inv.items.forEach(item => {
-        const key = item.id || item.name;
-        if (!productSalesMap[key]) {
-          productSalesMap[key] = { name: item.name, sales: 0, revenue: 0 };
-        }
-        productSalesMap[key].sales += item.quantity;
-        productSalesMap[key].revenue += item.total;
+  // تصدير التقرير كـ PDF
+  const exportToPDF = async () => {
+    if (!productReport) {
+      toast({
+        title: "تنبيه",
+        description: "يرجى إنشاء التقرير أولاً"
       });
-    });
-
-    const topProducts = Object.values(productSalesMap)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-
-    // All products for export
-    const allProducts = Object.values(productSalesMap)
-      .sort((a, b) => b.revenue - a.revenue);
-
-    // Calculate top customers
-    const customerPurchasesMap: Record<string, { name: string; orders: number; total: number }> = {};
-    filteredInvoices.forEach(inv => {
-      const name = inv.customerName || 'عميل نقدي';
-      if (!customerPurchasesMap[name]) {
-        customerPurchasesMap[name] = { name, orders: 0, total: 0 };
-      }
-      customerPurchasesMap[name].orders += 1;
-      customerPurchasesMap[name].total += inv.total;
-    });
-
-    const topCustomers = Object.values(customerPurchasesMap)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-
-    // All customers for export
-    const allCustomers = Object.values(customerPurchasesMap)
-      .sort((a, b) => b.total - a.total);
-
-    // Find top product name
-    const topProduct = topProducts.length > 0 ? topProducts[0].name : t('common.noData');
-    const topCustomer = topCustomers.length > 0 ? topCustomers[0].name : t('common.noData');
-
-    return {
-      summary: { totalSales, totalProfit, totalOrders, avgOrderValue, topProduct, topCustomer },
-      dailySales,
-      allDailySales,
-      topProducts,
-      allProducts,
-      topCustomers,
-      allCustomers,
-      hasData: filteredInvoices.length > 0,
-    };
-  }, [dateRange, cloudInvoices, cloudProducts, cloudCustomers]);
-
-  // Partner report data
-  const partnerReportData = useMemo(() => {
-    const partners = cloudPartners;
-    const categories = cloudCategories;
-
-    // Filter partners based on selection
-    const filteredPartners = selectedPartnerId === 'all'
-      ? partners
-      : partners.filter(p => p.id === selectedPartnerId);
-
-    // Calculate partner profit data within date range
-    const partnerProfitData = filteredPartners.map(partner => {
-      // Filter profit history by date range
-      const filteredProfitHistory = (partner.profitHistory || []).filter(record => {
-        const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
-        return recordDate >= dateRange.from && recordDate <= dateRange.to;
-      });
-
-      // Total profit in period
-      const totalProfitInPeriod = filteredProfitHistory.reduce((sum, r) => sum + r.amount, 0);
-
-      // Group by category
-      const profitByCategory: Record<string, { categoryName: string; amount: number; count: number }> = {};
-      filteredProfitHistory.forEach(record => {
-        const catName = record.category || 'بدون صنف';
-        if (!profitByCategory[catName]) {
-          profitByCategory[catName] = { categoryName: catName, amount: 0, count: 0 };
-        }
-        profitByCategory[catName].amount += record.amount;
-        profitByCategory[catName].count += 1;
-      });
-
-      // Daily profit within period
-      const dailyProfitMap: Record<string, number> = {};
-      filteredProfitHistory.forEach(record => {
-        const date = new Date(record.createdAt).toISOString().split('T')[0];
-        if (!dailyProfitMap[date]) {
-          dailyProfitMap[date] = 0;
-        }
-        dailyProfitMap[date] += record.amount;
-      });
-
-      const dailyProfit = Object.entries(dailyProfitMap)
-        .map(([date, amount]) => ({ date, amount }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-      // Filter withdrawals by date range
-      const filteredWithdrawals = (partner.withdrawalHistory || []).filter(w => {
-        const wDate = new Date(w.date).toISOString().split('T')[0];
-        return wDate >= dateRange.from && wDate <= dateRange.to;
-      });
-
-      const totalWithdrawnInPeriod = filteredWithdrawals.reduce((sum, w) => sum + w.amount, 0);
-
-      return {
-        id: partner.id,
-        name: partner.name,
-        sharePercentage: partner.sharePercentage,
-        accessAll: partner.accessAll,
-        currentBalance: partner.currentBalance,
-        currentCapital: partner.currentCapital,
-        totalProfitInPeriod,
-        totalWithdrawnInPeriod,
-        profitByCategory: Object.values(profitByCategory).sort((a, b) => b.amount - a.amount),
-        dailyProfit,
-        pendingProfit: partner.pendingProfit,
-        confirmedProfit: partner.confirmedProfit,
-        totalProfitEarned: partner.totalProfitEarned,
-      };
-    });
-
-    // Summary stats for all filtered partners
-    const totalPartnerProfitInPeriod = partnerProfitData.reduce((sum, p) => sum + p.totalProfitInPeriod, 0);
-    const totalPartnerWithdrawnInPeriod = partnerProfitData.reduce((sum, p) => sum + p.totalWithdrawnInPeriod, 0);
-    const totalCurrentBalance = partnerProfitData.reduce((sum, p) => sum + p.currentBalance, 0);
-    const totalPendingProfit = partnerProfitData.reduce((sum, p) => sum + p.pendingProfit, 0);
-
-    // Aggregate category breakdown across all selected partners
-    const aggregatedCategoryProfits: Record<string, { categoryName: string; amount: number; count: number }> = {};
-    partnerProfitData.forEach(partner => {
-      partner.profitByCategory.forEach(cat => {
-        if (!aggregatedCategoryProfits[cat.categoryName]) {
-          aggregatedCategoryProfits[cat.categoryName] = { categoryName: cat.categoryName, amount: 0, count: 0 };
-        }
-        aggregatedCategoryProfits[cat.categoryName].amount += cat.amount;
-        aggregatedCategoryProfits[cat.categoryName].count += cat.count;
-      });
-    });
-
-    return {
-      partners: partnerProfitData,
-      allPartners: partners,
-      categories,
-      summary: {
-        totalProfitInPeriod: totalPartnerProfitInPeriod,
-        totalWithdrawnInPeriod: totalPartnerWithdrawnInPeriod,
-        totalCurrentBalance,
-        totalPendingProfit,
-        partnersCount: filteredPartners.length,
-      },
-      aggregatedCategoryProfits: Object.values(aggregatedCategoryProfits).sort((a, b) => b.amount - a.amount),
-      hasData: partnerProfitData.some(p => p.totalProfitInPeriod > 0 || p.currentBalance > 0),
-    };
-  }, [dateRange, selectedPartnerId, cloudPartners, cloudCategories]);
-
-  // Expense report data
-  const expenseReportData = useMemo(() => {
-    const allExpenses = cloudExpenses;
-    const partners = cloudPartners;
-
-    // Filter expenses by date range
-    const filteredExpenses = allExpenses.filter(exp => {
-      const expDate = exp.date;
-      return expDate >= dateRange.from && expDate <= dateRange.to;
-    });
-
-    // Total expenses in period
-    const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-    // Group by type
-    const byType: Record<string, { type: string; amount: number; count: number }> = {};
-    filteredExpenses.forEach(exp => {
-      const type = exp.typeLabel;
-      if (!byType[type]) {
-        byType[type] = { type, amount: 0, count: 0 };
-      }
-      byType[type].amount += exp.amount;
-      byType[type].count += 1;
-    });
-
-    // Partner expense breakdown
-    const partnerExpenses: Record<string, { name: string; amount: number; percentage: number }> = {};
-    filteredExpenses.forEach(exp => {
-      exp.distributions.forEach(dist => {
-        if (!partnerExpenses[dist.partnerId]) {
-          partnerExpenses[dist.partnerId] = { name: dist.partnerName, amount: 0, percentage: 0 };
-        }
-        partnerExpenses[dist.partnerId].amount += dist.amount;
-      });
-    });
-
-    // Calculate percentages
-    Object.values(partnerExpenses).forEach(pe => {
-      pe.percentage = totalExpenses > 0 ? (pe.amount / totalExpenses) * 100 : 0;
-    });
-
-    // Daily expenses
-    const dailyExpenseMap: Record<string, number> = {};
-    filteredExpenses.forEach(exp => {
-      if (!dailyExpenseMap[exp.date]) {
-        dailyExpenseMap[exp.date] = 0;
-      }
-      dailyExpenseMap[exp.date] += exp.amount;
-    });
-
-    const dailyExpenses = Object.entries(dailyExpenseMap)
-      .map(([date, amount]) => ({ date, amount }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    return {
-      expenses: filteredExpenses,
-      totalExpenses,
-      byType: Object.values(byType).sort((a, b) => b.amount - a.amount),
-      partnerExpenses: Object.values(partnerExpenses).sort((a, b) => b.amount - a.amount),
-      dailyExpenses,
-      hasData: filteredExpenses.length > 0,
-      allPartners: partners,
-    };
-  }, [dateRange, cloudExpenses, cloudPartners]);
-
-  // Get store info for exports
-  const getStoreInfo = () => {
-    try {
-      const stored = localStorage.getItem('hyperpos_settings');
-      if (stored) {
-        const settings = JSON.parse(stored);
-        return {
-          name: settings.storeSettings?.name || 'HyperPOS',
-          phone: settings.storeSettings?.phone,
-          address: settings.storeSettings?.address,
-        };
-      }
-    } catch {
-      // ignore
-    }
-    return { name: 'HyperPOS' };
-  };
-
-  const handleExportPDF = useCallback(async () => {
-    const storeInfo = getStoreInfo();
-    const allInvoices = cloudInvoices;
-    const products = cloudProducts;
-    const customers = cloudCustomers;
-    const partners = cloudPartners;
-
-    // ✅ التحقق من تحميل البيانات أولاً
-    if (isLoading) {
-      toast.error('يرجى الانتظار حتى يتم تحميل البيانات');
       return;
     }
 
     try {
-      switch (activeReport) {
-        case 'sales':
-        case 'profits': {
-          const filteredInvoices = allInvoices.filter(inv => {
-            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
-            const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
-            return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
-          });
+      const products = await loadProductsCloud();
+      const doc = new jsPDF();
 
-          if (filteredInvoices.length === 0) {
-            toast.error('لا توجد بيانات للتصدير في هذه الفترة');
-            return;
-          }
+      // عنوان التقرير
+      doc.setFontSize(20);
+      doc.text("تقرير المنتجات", 105, 20, { align: "center" });
 
-          await exportInvoicesToPDF(
-            filteredInvoices.map(inv => ({
-              id: inv.id,
-              customerName: inv.customerName || 'عميل نقدي',
-              total: inv.total,
-              discount: inv.discount || 0,
-              profit: inv.profit || 0,
-              paymentType: inv.paymentType,
-              type: inv.type,
-              createdAt: inv.createdAt,
-            })),
-            storeInfo,
-            { start: dateRange.from, end: dateRange.to }
-          );
-          break;
-        }
-        case 'products': {
-          if (products.length === 0) {
-            toast.error('لا توجد منتجات للتصدير');
-            return;
-          }
+      // التاريخ
+      doc.setFontSize(12);
+      doc.text(`تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}`, 105, 30, { align: "center" });
 
-          await exportProductsToPDF(
-            products.map(p => ({
-              name: p.name,
-              barcode: p.barcode || '',
-              category: p.category || 'بدون تصنيف',
-              costPrice: p.costPrice || 0,
-              salePrice: p.salePrice || 0,
-              quantity: p.quantity || 0,
-              minStockLevel: p.minStockLevel || 0,
-            })),
-            storeInfo
-          );
-          break;
-        }
-        case 'customers': {
-          if (customers.length === 0) {
-            toast.error('لا يوجد عملاء للتصدير');
-            return;
-          }
+      // الإحصائيات الرئيسية
+      doc.setFontSize(14);
+      doc.text("الإحصائيات العامة:", 190, 50, { align: "right" });
 
-          const customerData = customers.map(c => ({
-            name: c.name,
-            phone: c.phone || '',
-            totalPurchases: c.totalPurchases || 0,
-            ordersCount: c.invoiceCount || 0,
-            balance: c.totalDebt || 0,
-          }));
-          await exportCustomersToPDF(customerData, storeInfo);
-          break;
-        }
-        case 'partners': {
-          if (partners.length === 0) {
-            toast.error('لا يوجد شركاء للتصدير');
-            return;
-          }
+      const stats = [
+        ["إجمالي الأصناف:", productReport.totalItems.toString()],
+        ["إجمالي الكميات:", productReport.totalQuantity.toString()],
+        ["القيمة الإجمالية:", `${productReport.totalValue.toFixed(2)} $`],
+        ["عدد الفئات:", productReport.categoriesCount.toString()],
+        ["منتجات منخفضة:", productReport.lowStockItems.toString()],
+        ["منتجات نفذت:", productReport.outOfStockItems.toString()]
+      ];
 
-          const partnerData = partners.map(p => ({
-            name: p.name,
-            sharePercentage: p.sharePercentage || 0,
-            currentCapital: p.currentCapital || 0,
-            totalProfit: p.totalProfitEarned || 0,
-            totalWithdrawn: p.totalWithdrawn || 0,
-            currentBalance: p.currentBalance || 0,
-          }));
-          await exportPartnersToPDF(partnerData, storeInfo);
-          break;
-        }
-        case 'expenses': {
-          if (expenseReportData.expenses.length === 0) {
-            toast.error('لا توجد مصاريف للتصدير في هذه الفترة');
-            return;
-          }
+      let y = 60;
+      stats.forEach(([label, value]) => {
+        doc.text(`${label} ${value}`, 190, y, { align: "right" });
+        y += 10;
+      });
 
-          await exportExpensesToPDF(
-            expenseReportData.expenses.map(e => ({
-              id: e.id,
-              type: e.type,
-              typeLabel: e.typeLabel,
-              amount: e.amount || 0,
-              date: e.date,
-              notes: e.notes || '',
-            })),
-            storeInfo,
-            { start: dateRange.from, end: dateRange.to }
-          );
-          break;
-        }
-        default: {
-          // Default to invoices
-          const defaultInvoices = allInvoices.filter(inv => {
-            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
-            return invDate >= dateRange.from && invDate <= dateRange.to;
-          });
+      // جدول المنتجات
+      const tableData = products.map(p => [
+        p.name,
+        p.category || "غير مصنف",
+        (p.quantity || 0).toString(),
+        `${(p.salePrice || 0).toFixed(2)} $`,
+        `${((p.quantity || 0) * (p.salePrice || 0)).toFixed(2)} $`
+      ]);
 
-          if (defaultInvoices.length === 0) {
-            toast.error('لا توجد بيانات للتصدير في هذه الفترة');
-            return;
-          }
+      (doc as any).autoTable({
+        head: [["المنتج", "الفئة", "الكمية", "السعر", "الإجمالي"]],
+        body: tableData,
+        startY: y + 10,
+        styles: { font: "helvetica", halign: "right" },
+        headStyles: { fillColor: [22, 163, 74] }
+      });
 
-          await exportInvoicesToPDF(
-            defaultInvoices.map(inv => ({
-              id: inv.id,
-              customerName: inv.customerName || 'عميل نقدي',
-              total: inv.total,
-              discount: inv.discount || 0,
-              profit: inv.profit || 0,
-              paymentType: inv.paymentType,
-              type: inv.type,
-              createdAt: inv.createdAt,
-            })),
-            storeInfo,
-            { start: dateRange.from, end: dateRange.to }
-          );
-        }
-      }
-      toast.success(t('reports.exportSuccessPDF'));
+      doc.save(`products-report-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: "تم التصدير",
+        description: "تم حفظ التقرير بنجاح"
+      });
     } catch (error) {
-      console.error('PDF export error:', error);
-      toast.error(t('reports.exportError'));
+      console.error("Error exporting PDF:", error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تصدير PDF",
+        variant: "destructive"
+      });
     }
-  }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners, isLoading, t]);
-
-  const handleExportExcel = useCallback(async () => {
-    const allInvoices = cloudInvoices;
-    const products = cloudProducts;
-    const customers = cloudCustomers;
-    const partners = cloudPartners;
-
-    try {
-      switch (activeReport) {
-        case 'sales':
-        case 'profits': {
-          // Export comprehensive sales report with ALL data (not just top 5/7)
-          exportSalesReportToExcel(
-            {
-              dailySales: reportData.allDailySales, // All days, not just 7
-              topProducts: reportData.allProducts,  // All products, not just 5
-              topCustomers: reportData.allCustomers, // All customers, not just 5
-              summary: reportData.summary,
-            },
-            { start: dateRange.from, end: dateRange.to }
-          );
-          break;
-        }
-        case 'products': {
-          exportProductsToExcel(
-            products.map(p => ({
-              name: p.name,
-              barcode: p.barcode || '',
-              category: p.category || 'بدون تصنيف',
-              costPrice: p.costPrice,
-              salePrice: p.salePrice,
-              quantity: p.quantity,
-            }))
-          );
-          break;
-        }
-        case 'customers': {
-          const customerData = customers.map(c => {
-            return {
-              name: c.name,
-              phone: c.phone,
-              totalPurchases: c.totalPurchases || 0,
-              ordersCount: c.invoiceCount || 0,
-              balance: c.totalDebt || 0,
-            };
-          });
-          exportCustomersToExcel(customerData);
-          break;
-        }
-        case 'partners': {
-          const partnerData = partners.map(p => ({
-            name: p.name,
-            sharePercentage: p.sharePercentage,
-            initialCapital: p.initialCapital,
-            currentCapital: p.currentCapital,
-            totalProfit: p.totalProfitEarned,
-            totalWithdrawn: p.totalWithdrawn,
-            currentBalance: p.currentBalance,
-          }));
-          exportPartnersToExcel(partnerData);
-          break;
-        }
-        case 'expenses': {
-          exportExpensesToExcel(
-            expenseReportData.expenses.map(e => ({
-              id: e.id,
-              type: e.type,
-              amount: e.amount,
-              date: e.date,
-              notes: e.notes,
-            })),
-            { start: dateRange.from, end: dateRange.to }
-          );
-          break;
-        }
-        default: {
-          // Default to invoices
-          const filteredInvoices = allInvoices.filter(inv => {
-            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
-            return invDate >= dateRange.from && invDate <= dateRange.to;
-          });
-          exportInvoicesToExcel(
-            filteredInvoices.map(inv => ({
-              id: inv.id,
-              customerName: inv.customerName || 'عميل نقدي',
-              total: inv.total,
-              profit: inv.profit,
-              paymentType: inv.paymentType,
-              type: inv.type,
-              createdAt: inv.createdAt,
-            })),
-            { start: dateRange.from, end: dateRange.to }
-          );
-        }
-      }
-      toast.success(t('reports.exportSuccessExcel'));
-    } catch (error) {
-      console.error('Excel export error:', error);
-      toast.error(t('reports.exportError'));
-    }
-  }, [dateRange, activeReport, reportData, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners]);
-
-  // Export expenses report as Excel
-  const handleExportExpensesExcel = useCallback(async () => {
-    try {
-      exportExpensesToExcel(
-        expenseReportData.expenses.map(e => ({
-          id: e.id,
-          type: e.type,
-          amount: e.amount,
-          date: e.date,
-          notes: e.notes,
-        })),
-        { start: dateRange.from, end: dateRange.to }
-      );
-      toast.success(t('reports.exportSuccessExcel'));
-    } catch (error) {
-      console.error('Expenses export error:', error);
-      toast.error(t('reports.exportError'));
-    }
-  }, [dateRange, expenseReportData]);
-
-  // Generate partner expense report for WhatsApp
-  const handleShareExpenseReport = (partnerName: string) => {
-    const partnerExpenses = expenseReportData.expenses.filter(exp =>
-      exp.distributions.some(d => d.partnerName === partnerName)
-    );
-
-    const partnerTotal = partnerExpenses.reduce((sum, exp) => {
-      const dist = exp.distributions.find(d => d.partnerName === partnerName);
-      return sum + (dist?.amount || 0);
-    }, 0);
-
-    const report = `📊 تقرير المصاريف - ${partnerName}
-📅 الفترة: ${dateRange.from} إلى ${dateRange.to}
-
-💰 إجمالي المصاريف المشتركة: $${formatNumber(partnerTotal)}
-
-📋 التفاصيل:
-${partnerExpenses.map(exp => {
-      const dist = exp.distributions.find(d => d.partnerName === partnerName);
-      return `• ${exp.date} - ${exp.typeLabel}: $${formatNumber(dist?.amount || 0)}`;
-    }).join('\n')}
-
----
-تم إنشاء التقرير بواسطة HyperPOS`;
-
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(report)}`;
-    window.open(whatsappUrl, '_blank');
-    toast.success(t('reports.shareWhatsapp'));
   };
 
-  const handleBackup = useCallback(async () => {
-    const backupData = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      data: {
-        invoices: cloudInvoices,
-        products: cloudProducts,
-        customers: cloudCustomers,
-      }
-    };
-
-    const filename = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
-    const success = await downloadJSON(filename, backupData);
-
-    if (success) {
-      toast.success(t('reports.backupSuccess'));
-    } else {
-      toast.error(t('reports.backupError'));
-    }
-  }, [cloudInvoices, cloudProducts, cloudCustomers]);
-
-  // Find max sales for chart scaling
-  const maxSales = Math.max(...reportData.dailySales.map(d => d.sales), 1);
-
   return (
-    <MainLayout>
-      <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 pr-14 md:pr-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
-              <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
-            </div>
-            {isLoading && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">{t('common.loading')}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Export Buttons - Mobile Optimized */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="w-full sm:w-auto min-w-[80px]">
-              <FileText className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">PDF</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading} className="w-full sm:w-auto min-w-[80px]">
-              <Download className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">Excel</span>
-            </Button>
-            <Button size="sm" onClick={handleBackup} disabled={isLoading} className="col-span-2 sm:col-span-1 w-full sm:w-auto min-w-[100px]">
-              <Download className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">{t('reports.backup')}</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Date Range - Mobile Optimized */}
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3 sm:items-center">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs sm:text-sm text-muted-foreground">{t('reports.from')}:</span>
-              </div>
-              <Input
-                type="date"
-                value={dateRange.from}
-                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                className="w-full sm:w-36 h-9 text-sm"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <span className="text-xs sm:text-sm text-muted-foreground">{t('reports.to')}:</span>
-              <Input
-                type="date"
-                value={dateRange.to}
-                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                className="w-full sm:w-36 h-9 text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Report Tabs - Mobile Scrollable */}
-        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0 scrollbar-hide">
-          {reports.map((report) => {
-            const Icon = report.icon;
-            return (
-              <button
-                key={report.id}
-                onClick={() => setActiveReport(report.id)}
-                className={cn(
-                  "flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all shrink-0",
-                  activeReport === report.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline sm:inline">{report.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Summary Cards - Mobile Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              {reportData.summary.totalSales > 0 && (
-                <span className="flex items-center text-xs text-success">
-                  <ArrowUpRight className="w-3 h-3" />
-                </span>
-              )}
-            </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalSales')}</p>
-          </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
-              {reportData.summary.totalProfit > 0 && (
-                <span className="flex items-center text-xs text-success">
-                  <ArrowUpRight className="w-3 h-3" />
-                </span>
-              )}
-            </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
-          </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-info" />
-            </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
-          </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <PieChart className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
-            </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center">
-            <Loader2 className="w-12 h-12 mx-auto mb-3 text-primary animate-spin" />
-            <p className="text-muted-foreground">جاري تحميل البيانات...</p>
-          </div>
-        )}
-
-        {/* No Data Message */}
-        {!isLoading && !reportData.hasData && (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center">
-            <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground">{t('reports.noData')}</p>
-            <p className="text-sm text-muted-foreground">{t('reports.tryChangeDateRange')}</p>
-          </div>
-        )}
-
-        {/* Sales Chart */}
-        {reportData.hasData && activeReport === 'sales' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('reports.dailySales')}</h3>
-            {reportData.dailySales.length > 0 ? (
-              <div className="space-y-3">
-                {reportData.dailySales.map((day, idx) => (
-                  <div key={idx} className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground w-24">{day.date}</span>
-                    <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-primary rounded-lg transition-all duration-500"
-                        style={{ width: `${day.sales / maxSales * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-semibold w-24 text-left">
-                      ${day.sales.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
-            )}
-          </div>
-        )}
-
-        {/* Profit Trend Chart - رسم بياني تطور الأرباح */}
-        {activeReport === 'profits' && (
-          <ProfitTrendChart
-            days={60}
-            startDate={dateRange.from}
-            endDate={dateRange.to}
-          />
-        )}
-
-        {/* Top Products */}
-        {reportData.hasData && activeReport === 'products' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('reports.bestProducts')}</h3>
-            {reportData.topProducts.length > 0 ? (
-              <div className="space-y-3">
-                {reportData.topProducts.map((product, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <span className="font-medium">{product.name}</span>
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-foreground">${product.revenue.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
-            )}
-          </div>
-        )}
-
-        {/* Top Customers */}
-        {reportData.hasData && activeReport === 'customers' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
-            {reportData.topCustomers.length > 0 ? (
-              <div className="space-y-3">
-                {reportData.topCustomers.map((customer, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <span className="font-medium">{customer.name}</span>
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-foreground">${customer.total.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{customer.orders} {t('reports.order')}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
-            )}
-          </div>
-        )}
-
-        {/* Partners Report */}
-        {activeReport === 'partners' && (
-          <div className="space-y-6">
-            {/* Partner Filter */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              <span className="text-sm text-muted-foreground">{t('reports.selectPartnerLabel')}</span>
-              <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder={t('reports.allPartners')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('reports.allPartners')}</SelectItem>
-                  {partnerReportData.allPartners.map(partner => (
-                    <SelectItem key={partner.id} value={partner.id}>
-                      {partner.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Partner Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <TrendingUp className="w-5 h-5 text-success" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalProfitInPeriod.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">الأرباح في الفترة</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Wallet className="w-5 h-5 text-primary" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalCurrentBalance.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Banknote className="w-5 h-5 text-warning" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalWithdrawnInPeriod.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <UsersRound className="w-5 h-5 text-info" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{partnerReportData.summary.partnersCount}</p>
-                <p className="text-xs text-muted-foreground">عدد الشركاء</p>
-              </div>
-            </div>
-
-            {!partnerReportData.hasData && partnerReportData.allPartners.length === 0 ? (
-              <div className="bg-card rounded-2xl border border-border p-8 text-center">
-                <UsersRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">لا يوجد شركاء مسجلين</p>
-                <p className="text-sm text-muted-foreground">أضف شركاء من صفحة الشركاء</p>
-              </div>
-            ) : (
-              <>
-                {/* Profit by Category */}
-                {partnerReportData.aggregatedCategoryProfits.length > 0 && (
-                  <div className="bg-card rounded-2xl border border-border p-6">
-                    <h3 className="text-lg font-semibold mb-4">الأرباح حسب الصنف</h3>
-                    <div className="space-y-3">
-                      {partnerReportData.aggregatedCategoryProfits.map((cat, idx) => {
-                        const maxCatProfit = Math.max(...partnerReportData.aggregatedCategoryProfits.map(c => c.amount), 1);
-                        return (
-                          <div key={idx} className="flex items-center gap-4">
-                            <span className="text-sm font-medium w-32 truncate">{cat.categoryName}</span>
-                            <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-all duration-500"
-                                style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }}
-                              />
-                            </div>
-                            <div className="text-left w-28">
-                              <p className="text-sm font-semibold">${cat.amount.toLocaleString()}</p>
-                              <p className="text-xs text-muted-foreground">{cat.count} عملية</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Individual Partner Details */}
-                {partnerReportData.partners.map(partner => (
-                  <div key={partner.id} className="bg-card rounded-2xl border border-border p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
-                          {partner.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold">{partner.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {partner.accessAll ? `نسبة عامة: ${partner.sharePercentage}%` : 'شريك متخصص'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-lg font-bold text-success">${partner.totalProfitInPeriod.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">أرباح الفترة</p>
-                      </div>
-                    </div>
-
-                    {/* Partner Stats Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                      <div className="bg-muted rounded-lg p-3">
-                        <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
-                        <p className="text-lg font-bold text-foreground">${partner.currentBalance.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-muted rounded-lg p-3">
-                        <p className="text-xs text-muted-foreground">رأس المال</p>
-                        <p className="text-lg font-bold text-foreground">${partner.currentCapital.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-muted rounded-lg p-3">
-                        <p className="text-xs text-muted-foreground">أرباح معلقة</p>
-                        <p className="text-lg font-bold text-warning">${partner.pendingProfit.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-muted rounded-lg p-3">
-                        <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
-                        <p className="text-lg font-bold text-foreground">${partner.totalWithdrawnInPeriod.toLocaleString()}</p>
-                      </div>
-                    </div>
-
-                    {/* Partner Category Breakdown */}
-                    {partner.profitByCategory.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="text-sm font-semibold mb-2 text-muted-foreground">توزيع الأرباح حسب الصنف</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {partner.profitByCategory.slice(0, 5).map((cat, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                            >
-                              {cat.categoryName}: ${cat.amount.toLocaleString()}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Partner Daily Profit Chart */}
-                    {partner.dailyProfit.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2 text-muted-foreground">الأرباح اليومية</h4>
-                        <div className="space-y-2">
-                          {partner.dailyProfit.slice(-5).map((day, idx) => {
-                            const maxDayProfit = Math.max(...partner.dailyProfit.map(d => d.amount), 1);
-                            return (
-                              <div key={idx} className="flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground w-20">{day.date}</span>
-                                <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
-                                  <div
-                                    className="h-full bg-success/70 rounded transition-all duration-500"
-                                    style={{ width: `${(day.amount / maxDayProfit) * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs font-semibold w-20 text-left">${day.amount.toLocaleString()}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Partner Detailed Report */}
-        {activeReport === 'partner-detailed' && (
-          <PartnerProfitDetailedReport dateRange={dateRange} />
-        )}
-
-        {/* Distributor Inventory Report - جرد العهدة */}
-        {activeReport === 'distributor-inventory' && (
-          <DistributorInventoryReport />
-        )}
-
-        {/* Distributor Custody Value Report - قيمة العهدة */}
-        {activeReport === 'custody-value' && (
-          <DistributorCustodyValueReport />
-        )}
-
-        {/* Expenses Report */}
-        {activeReport === 'expenses' && (
-          <div className="space-y-6">
-            {/* Expense Action Buttons */}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportExpensesExcel}>
-                <Download className="w-4 h-4 ml-2" />
-                تصدير Excel
-              </Button>
-            </div>
-
-            {/* Expense Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Receipt className="w-5 h-5 text-destructive" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">${formatNumber(expenseReportData.totalExpenses)}</p>
-                <p className="text-xs text-muted-foreground">إجمالي المصاريف</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Calendar className="w-5 h-5 text-info" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.expenses.length)}</p>
-                <p className="text-xs text-muted-foreground">عدد المصاريف</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <PieChart className="w-5 h-5 text-warning" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.byType.length)}</p>
-                <p className="text-xs text-muted-foreground">أنواع المصاريف</p>
-              </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <UsersRound className="w-5 h-5 text-primary" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{formatNumber(expenseReportData.partnerExpenses.length)}</p>
-                <p className="text-xs text-muted-foreground">الشركاء المشاركون</p>
-              </div>
-            </div>
-
-            {!expenseReportData.hasData ? (
-              <div className="bg-card rounded-2xl border border-border p-8 text-center">
-                <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">لا توجد مصاريف في الفترة المحددة</p>
-                <p className="text-sm text-muted-foreground">جرب تغيير نطاق التاريخ</p>
-              </div>
-            ) : (
-              <>
-                {/* Expenses by Type */}
-                <div className="bg-card rounded-2xl border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">المصاريف حسب النوع</h3>
-                  <div className="space-y-3">
-                    {expenseReportData.byType.map((type, idx) => {
-                      const maxAmount = Math.max(...expenseReportData.byType.map(t => t.amount), 1);
-                      return (
-                        <div key={idx} className="flex items-center gap-4">
-                          <span className="text-sm font-medium w-28 truncate">{type.type}</span>
-                          <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-all duration-500"
-                              style={{ width: `${(type.amount / maxAmount) * 100}%` }}
-                            />
-                          </div>
-                          <div className="text-left w-28">
-                            <p className="text-sm font-semibold">${formatNumber(type.amount)}</p>
-                            <p className="text-xs text-muted-foreground">{type.count} مصروف</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Partner Expense Distribution */}
-                <div className="bg-card rounded-2xl border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">توزيع المصاريف على الشركاء</h3>
-                  <div className="space-y-4">
-                    {expenseReportData.partnerExpenses.map((partner, idx) => (
-                      <div key={idx} className="bg-muted rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center">
-                              {partner.name.charAt(0)}
-                            </div>
-                            <div>
-                              <h4 className="font-semibold">{partner.name}</h4>
-                              <p className="text-sm text-muted-foreground">{formatNumber(Math.round(partner.percentage))}% من الإجمالي</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-left">
-                              <p className="text-lg font-bold text-destructive">${formatNumber(partner.amount)}</p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-success hover:text-success"
-                              onClick={() => handleShareExpenseReport(partner.name)}
-                              title="مشاركة عبر واتساب"
-                            >
-                              <MessageCircle className="w-5 h-5" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="h-2 bg-background rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-destructive/70 rounded-full transition-all duration-500"
-                            style={{ width: `${partner.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Daily Expenses Chart */}
-                {expenseReportData.dailyExpenses.length > 0 && (
-                  <div className="bg-card rounded-2xl border border-border p-6">
-                    <h3 className="text-lg font-semibold mb-4">المصاريف اليومية</h3>
-                    <div className="space-y-3">
-                      {expenseReportData.dailyExpenses.slice(-7).map((day, idx) => {
-                        const maxDaily = Math.max(...expenseReportData.dailyExpenses.map(d => d.amount), 1);
-                        return (
-                          <div key={idx} className="flex items-center gap-4">
-                            <span className="text-sm text-muted-foreground w-24">{day.date}</span>
-                            <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                              <div
-                                className="h-full bg-destructive/60 rounded-lg transition-all duration-500"
-                                style={{ width: `${(day.amount / maxDaily) * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-semibold w-24 text-left">
-                              ${formatNumber(day.amount)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Expense List */}
-                <div className="bg-card rounded-2xl border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">قائمة المصاريف</h3>
-                  <div className="space-y-3">
-                    {expenseReportData.expenses.slice(0, 10).map((expense, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                            <Receipt className="w-5 h-5 text-destructive" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{expense.typeLabel}</h4>
-                            <p className="text-xs text-muted-foreground">{expense.date}</p>
-                          </div>
-                        </div>
-                        <div className="text-left">
-                          <p className="font-bold text-destructive">-${formatNumber(expense.amount)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {expense.distributions.length} شريك
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Default view - Top Products when on sales tab */}
-        {reportData.hasData && activeReport === 'sales' && reportData.topProducts.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">أفضل المنتجات مبيعاً</h3>
-            <div className="space-y-3">
-              {reportData.topProducts.map((product, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <span className="font-medium">{product.name}</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-foreground">${formatNumber(product.revenue)}</p>
-                    <p className="text-xs text-muted-foreground">{product.sales} قطعة</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">التقارير</h1>
       </div>
-    </MainLayout>
+
+      {/* قسم تقارير المنتجات */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            تقرير المنتجات
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={calculateProductReport}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              {isLoading ? "جاري الحساب..." : "إنشاء تقرير المنتجات"}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={exportToPDF}
+              disabled={!productReport}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              تصدير PDF
+            </Button>
+          </div>
+
+          {productReport && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+              {/* إجمالي الأصناف */}
+              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">إجمالي الأصناف</p>
+                      <p className="text-2xl font-bold">{productReport.totalItems}</p>
+                    </div>
+                    <Layers className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* إجمالي الكميات */}
+              <Card className="bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">إجمالي الكميات</p>
+                      <p className="text-2xl font-bold">{productReport.totalQuantity}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* القيمة الإجمالية */}
+              <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/10 border-amber-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">القيمة الإجمالية</p>
+                      <p className="text-2xl font-bold">{productReport.totalValue.toFixed(2)} $</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-amber-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* عدد الفئات */}
+              <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">عدد الفئات</p>
+                      <p className="text-2xl font-bold">{productReport.categoriesCount}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* منتجات منخفضة */}
+              <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">منتجات منخفضة</p>
+                      <p className="text-2xl font-bold text-orange-600">{productReport.lowStockItems}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* منتجات نفذت */}
+              <Card className="bg-gradient-to-br from-red-500/10 to-red-600/10 border-red-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">منتجات نفذت</p>
+                      <p className="text-2xl font-bold text-red-600">{productReport.outOfStockItems}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

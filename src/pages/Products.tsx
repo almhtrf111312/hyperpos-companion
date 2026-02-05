@@ -82,7 +82,7 @@ import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config'
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
-import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
+import { InvoiceWizard } from '@/components/products/InvoiceWizard';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -115,7 +115,7 @@ export default function Products() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [showPurchaseInvoiceDialog, setShowPurchaseInvoiceDialog] = useState(false);
+  const [showInvoiceWizard, setShowInvoiceWizard] = useState(false);
 
   // Form state with dynamic fields
   const [formData, setFormData] = useState({
@@ -1639,6 +1639,15 @@ export default function Products() {
         open={showPurchaseInvoiceDialog}
         onOpenChange={setShowPurchaseInvoiceDialog}
         onSuccess={loadData}
+      />
+      {/* Invoice Wizard */}
+      <InvoiceWizard
+        open={showInvoiceWizard}
+        onOpenChange={setShowInvoiceWizard}
+        onSuccess={() => {
+          loadData();
+          setShowInvoiceWizard(false);
+        }}
       />
     </div>
   );

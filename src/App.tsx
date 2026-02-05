@@ -144,8 +144,15 @@ const AppContent = () => {
 
   // Setup wizard removed - directly show app content
 
+  // Global background gradient for Glass Theme
+  // We apply this wrapper to ensure the fixed background exists behind everything
   return (
-    <>
+    <div className="min-h-screen bg-background transition-all duration-300"
+      style={{
+        backgroundImage: 'linear-gradient(to bottom right, #0f172a, #1e1b4b, #312e81)',
+        backgroundAttachment: 'fixed',
+        backgroundSize: 'cover'
+      }}>
       {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
       <Toaster />
@@ -183,7 +190,7 @@ const AppContent = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </>
+    </div>
   );
 };
 

@@ -13,7 +13,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { isRTL } = useLanguage();
-  
+
   // Sidebar is collapsed by default on tablet
   const sidebarCollapsed = isTablet;
 
@@ -27,21 +27,24 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, [sidebarOpen, isMobile]));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} defaultCollapsed={isTablet} />
-      
+
       {/* Mobile menu trigger - positioned to not overlap with notification bar */}
       {isMobile && !sidebarOpen && (
         <MobileMenuTrigger onClick={toggleSidebar} />
       )}
 
       {/* Main content - margin based on RTL/LTR */}
-      <main className={`min-h-screen transition-all duration-300 pt-4 ${
-        isRTL 
-          ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64') 
-          : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
-      }`}>
-        {children}
+      <main className={`min-h-screen transition-all duration-300 pt-4 ${isRTL
+        ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64')
+        : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
+        }`}>
+        <div className="p-4 md:p-6 pb-20 md:pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="glass-card rounded-2xl p-4 md:p-6 min-h-[calc(100vh-6rem)]">
+            {children}
+          </div>
+        </div>
       </main>
     </div>
   );

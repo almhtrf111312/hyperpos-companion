@@ -225,12 +225,33 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, color: ThemeColor) {
         : '0 1px 2px rgba(255,255,255,0.8)'
     );
 
+    // Override standard variables for Strict Glass Mode
+    if (mode === 'dark') {
+      root.style.setProperty('--card', 'var(--glass-bg)');
+      root.style.setProperty('--popover', 'var(--glass-bg)');
+      root.style.setProperty('--muted', 'rgba(0, 0, 0, 0.3)');
+      // Keep background dark but allow gradient overlay
+      root.style.setProperty('--background', 'transparent');
+    }
+
   } else {
     root.classList.remove('blur-theme');
     root.style.removeProperty('--glass-bg');
     root.style.removeProperty('--glass-border');
     root.style.removeProperty('--glass-gradient');
     root.style.removeProperty('--glass-text-shadow');
+
+    // Reset Overrides - Re-apply original theme values
+    // simplified: just calling applyTheme again would be cleaner, but we are inside the toggle function.
+    // Ideally we should re-run applyTheme(mode, color) here but we don't have easy access to it without circular dep or passing it down.
+    // Actually, applyTheme is defined in this file. We can just call it? 
+    // No, applyTheme sets all props. modify `setBlurEnabled` to call `applyTheme` after toggling?
+    // Let's just manually reset the critical ones we overrode.
+    const colors = mode === 'light' ? lightModeColors : darkModeColors;
+    root.style.setProperty('--card', colors.card);
+    root.style.setProperty('--popover', colors.popover);
+    root.style.setProperty('--muted', colors.muted);
+    root.style.setProperty('--background', colors.background);
   }
 }
 

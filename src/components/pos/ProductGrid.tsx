@@ -124,12 +124,12 @@ export function ProductGrid({
 
       {/* Products Grid */}
       <div className="flex-1 p-3 md:p-4 overflow-y-auto pb-28">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
+        <div className="products-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
           {filteredProducts.map((product, index) => (
             <button
               key={product.id}
               onClick={() => onProductClick(product)}
-              className="pos-item text-right fade-in p-2.5 md:p-4"
+              className="product-card pos-item text-right fade-in p-2.5 md:p-4"
               style={{ animationDelay: `${index * 30}ms` }}
               onContextMenu={(e) => {
                 e.preventDefault();
