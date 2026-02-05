@@ -54,31 +54,28 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // 2. Prepare (Important for restarting)
-      await BarcodeScanner.prepare();
-
-      // 3. Hide Background & Add Class (target html tag directly)
+      // 2. Hide Background & Add Class (target html tag directly)
       await BarcodeScanner.hideBackground();
       document.documentElement.classList.add('barcode-scanner-active');
 
-      // 4. Camera is ready, hide loading spinner
+      // 3. Camera is ready, hide loading spinner
       setIsInitializing(false);
 
-      // 5. Start simple single scan (no complex loops)
+      // 4. Start simple single scan (no complex loops)
       const result = await BarcodeScanner.startScan();
 
-      // 6. Process result
+      // 5. Process result
       if (result.hasContent && !hasScannedRef.current) {
         hasScannedRef.current = true;
 
         console.log('[Scanner] Scanned:', result.content);
 
+        // Cleanup
+        await stopScanning();
+
         // Feedback
         playBeep();
         if (navigator.vibrate) navigator.vibrate(200);
-
-        // Cleanup immediately but keep overlay for a moment
-        await stopScanning();
 
         // Send value
         onScan(result.content);
@@ -86,21 +83,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         // Auto-close after brief delay
         setTimeout(() => {
           if (mountedRef.current) onClose();
-        }, 300);
+        }, 500);
       } else {
-        // User cancelled by system back button
+        // User cancelled
         await stopScanning();
         onClose();
       }
 
     } catch (err: any) {
       console.error('[Scanner] Scan error:', err);
-      // Ensure we clean up if startScan throws
       await stopScanning();
-      // Only show error if we are still mounted and it wasn't a clean exit
-      if (mountedRef.current) {
-        setPermissionError('حدث خطأ أثناء تشغيل الماسح');
-      }
+      setPermissionError('حدث خطأ أثناء تشغيل الماسح');
     } finally {
       scanningRef.current = false;
     }
@@ -108,20 +101,19 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
   const stopScanning = async () => {
     try {
-      // Force disable torch first
-      await BarcodeScanner.disableTorch();
-      setIsTorchOn(false);
-
-      // Stop scan AND show background to restore UI
+      if (isTorchOn) {
+        await BarcodeScanner.disableTorch();
+        setIsTorchOn(false);
+      }
       await BarcodeScanner.showBackground();
       await BarcodeScanner.stopScan();
     } catch (e) {
-      console.warn('Stop scanning failed (might already be stopped):', e);
-    } finally {
-      // Cleanup (target html tag directly)
-      document.documentElement.classList.remove('barcode-scanner-active');
-      scanningRef.current = false;
+      console.warn('Stop scanning failed:', e);
     }
+
+    // Cleanup (target html tag directly)
+    document.documentElement.classList.remove('barcode-scanner-active');
+    scanningRef.current = false;
   };
 
   const handleClose = async () => {
@@ -163,30 +155,29 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     <div className="scanner-ui-overlay fixed inset-0 z-[9999] flex flex-col">
 
       {/* Top Controls Bar */}
-      <div className="flex justify-between items-center p-4 pointer-events-auto" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
+      <div className="flex justify-between items-center p-4 pointer-events-auto">
         {/* Close Button (Left) */}
         <Button
           variant="destructive"
-          size="lg"
+          size="icon"
           onClick={handleClose}
-          className="rounded-full shadow-2xl flex items-center gap-2 px-4"
+          className="rounded-full shadow-2xl"
         >
           <X className="w-6 h-6" />
-          <span className="font-bold text-lg">خروج</span>
         </Button>
 
         {/* Flash Toggle (Right) */}
         {!isInitializing && !permissionError && (
           <Button
             variant={isTorchOn ? "default" : "outline"}
-            size="lg"
+            size="icon"
             onClick={toggleTorch}
             className={`rounded-full shadow-2xl ${isTorchOn
               ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
               : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
               }`}
           >
-            {isTorchOn ? <Zap className="w-6 h-6 fill-current" /> : <ZapOff className="w-6 h-6" />}
+            {isTorchOn ? <Zap className="w-5 h-5 fill-current" /> : <ZapOff className="w-5 h-5" />}
           </Button>
         )}
       </div>

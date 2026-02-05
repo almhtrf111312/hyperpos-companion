@@ -7,7 +7,6 @@ import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
-import { ProductDetailsDialog } from './ProductDetailsDialog';
 
 interface Product {
   id: string;
@@ -44,29 +43,28 @@ export function ProductGrid({
   onBarcodeScan,
 }: ProductGridProps) {
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [longPressedProduct, setLongPressedProduct] = useState<Product | null>(null);
   const { t } = useLanguage();
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.barcode && product.barcode.includes(searchQuery));
+                          (product.barcode && product.barcode.includes(searchQuery));
     const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const handleBarcodeScan = (barcode: string) => {
     console.log('[ProductGrid] ✅ Received barcode:', barcode);
-
+    
     // ✅ Close scanner first
     setScannerOpen(false);
-
+    
     // Use external handler if provided, otherwise fall back to search
     if (onBarcodeScan) {
       onBarcodeScan(barcode);
     } else {
       // Fallback: Search for product by barcode
       const product = products.find(p => p.barcode === barcode);
-
+      
       if (product) {
         onProductClick(product);
         toast.success(t('pos.addedToCart').replace('{name}', product.name));
@@ -94,9 +92,9 @@ export function ProductGrid({
               className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
             />
           </div>
-          <Button
-            variant="outline"
-            size="icon"
+          <Button 
+            variant="outline" 
+            size="icon" 
             className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0"
             onClick={() => setScannerOpen(true)}
           >
@@ -131,16 +129,12 @@ export function ProductGrid({
               onClick={() => onProductClick(product)}
               className="pos-item text-right fade-in p-2.5 md:p-4"
               style={{ animationDelay: `${index * 30}ms` }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setLongPressedProduct(product);
-              }}
             >
               <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3 overflow-hidden">
                 {product.image ? (
-                  <img
-                    src={product.image}
-                    alt={product.name}
+                  <img 
+                    src={product.image} 
+                    alt={product.name} 
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -176,14 +170,6 @@ export function ProductGrid({
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={handleBarcodeScan}
-      />
-
-      {/* Product Details Dialog (Long Press) */}
-      <ProductDetailsDialog
-        product={longPressedProduct}
-        isOpen={!!longPressedProduct}
-        onClose={() => setLongPressedProduct(null)}
-        onAddToCart={onProductClick}
       />
     </div>
   );

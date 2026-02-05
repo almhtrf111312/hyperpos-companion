@@ -339,8 +339,11 @@ export default function POS() {
           costPrice: cloudProduct.costPrice,
           bulkCostPrice: cloudProduct.bulkCostPrice || 0,
         };
-        // Add directly to cart as requested by user
-        addToCart(posProduct, 'piece');
+        // Add directly or show dialog? Logic was show dialog.
+        // User wants "Add to Cart / Fill Input". 
+        // Let's stick to existing logic but ensure it runs.
+        setScannedProduct(posProduct);
+        setShowScannedDialog(true);
       } else {
         setSearchQuery(barcode);
         showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));
