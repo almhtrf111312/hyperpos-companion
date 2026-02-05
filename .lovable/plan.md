@@ -1,186 +1,277 @@
 
+# خطة تنفيذ المميزات المطلوبة
 
-# خطة إصلاح تسجيل الدخول التلقائي وعرض المنتجات
-
-## فهم المطلوب
-
-### 1. تسجيل الدخول التلقائي بعد إعادة تثبيت التطبيق
-حالياً عند حذف التطبيق وإعادة تثبيته، يُمسح localStorage ويُطلب تسجيل دخول جديد.
-
-**الحل المقترح:** استخدام Device Binding الموجود + التحقق التلقائي عند فتح التطبيق
-
-### 2. صلاحيات عرض المنتجات للكاشير vs الموزع
-التأكد من أن الكاشير يرى كل المنتجات، بينما الموزع/نقطة البيع ترى فقط منتجات العهدة.
+تتضمن هذه الخطة ثلاثة محاور رئيسية:
+1. **إضافة ثيم البلور (Glassmorphism Theme)**
+2. **إصلاح أيقونة التطبيق على أندرويد**
+3. **نظام فواتير الشراء والمخزون المتقدم**
 
 ---
 
-## الخطة التنفيذية
+## المحور الأول: ثيم البلور (Blur/Glass Theme)
 
-### المرحلة 1: تسجيل الدخول التلقائي (Auto-Login)
+### الوصف
+إضافة خيار جديد في صفحة المظهر يسمح للمستخدم بتفعيل/إلغاء تفعيل تأثير البلور (Glassmorphism) على جميع عناصر التطبيق كما هو موضح في الصورة المرفقة.
 
-#### 1.1 تحديث Edge Function لدعم Device Auto-Login
+### التغييرات المطلوبة
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     تدفق تسجيل الدخول التلقائي                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌──────────────┐                                              │
-│   │ فتح التطبيق  │                                              │
-│   └──────┬───────┘                                              │
-│          ▼                                                      │
-│   ┌──────────────────┐                                          │
-│   │ هل توجد Session؟ │                                          │
-│   └──────┬───────────┘                                          │
-│          │                                                      │
-│     نعم  ▼          لا ▼                                        │
-│   ┌──────────────┐  ┌─────────────────────────┐                 │
-│   │ فتح POS      │  │ جلب Device ID           │                 │
-│   │ مباشرة       │  │ من device-fingerprint   │                 │
-│   └──────────────┘  └───────────┬─────────────┘                 │
-│                                 ▼                               │
-│                     ┌─────────────────────────┐                 │
-│                     │ استدعاء Edge Function   │                 │
-│                     │ get-user-by-device      │                 │
-│                     └───────────┬─────────────┘                 │
-│                                 ▼                               │
-│                     ┌─────────────────────────┐                 │
-│                     │ هل الجهاز مسجل؟         │                 │
-│                     └───────────┬─────────────┘                 │
-│                                 │                               │
-│                       نعم ▼          لا ▼                       │
-│                  ┌──────────────┐  ┌──────────────┐             │
-│                  │ تسجيل دخول  │  │ عرض صفحة     │             │
-│                  │ تلقائي      │  │ تسجيل الدخول │             │
-│                  └──────────────┘  └──────────────┘             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+#### 1. تحديث `src/hooks/use-theme.tsx`
+- إضافة خاصية `blurEnabled: boolean` إلى حالة الثيم
+- تحديث واجهة `ThemeContextType` لتشمل `blurEnabled` و `setBlurEnabled`
+- تحديث `THEME_STORAGE_KEY` لحفظ إعداد البلور
+- إضافة دالة `applyBlurTheme()` لتطبيق/إزالة تأثير البلور
+
+#### 2. تحديث `src/index.css`
+- إضافة CSS variables جديدة للبلور:
+  ```css
+  --blur-intensity: 20px;
+  --glass-bg: rgba(0, 0, 0, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  ```
+- إضافة class `.blur-theme` مع التعريفات:
+  ```css
+  .blur-theme .card,
+  .blur-theme [data-slot="card"] {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-intensity));
+    border: 1px solid var(--glass-border);
+  }
+  ```
+
+#### 3. تحديث `src/components/settings/ThemeSection.tsx`
+- إضافة زر Toggle جديد لـ "تفعيل البلور"
+- استخدام أيقونة `Sparkles` أو `Blend` لتمثيل الميزة
+- ربط الزر بـ `blurEnabled` من `useTheme()`
+
+#### 4. تحديث `src/lib/i18n.ts`
+- إضافة ترجمات:
+  - `'settings.blurEffect': 'تأثير البلور'`
+  - `'settings.blurEffectDesc': 'تفعيل تأثير الزجاج الشفاف'`
+
+---
+
+## المحور الثاني: إصلاح أيقونة التطبيق على أندرويد
+
+### المشكلة
+الأيقونة تظهر في الويب فقط ولا تظهر في APK لأن Capacitor يحتاج لتوليد الأيقونات بمقاسات محددة.
+
+### التغييرات المطلوبة
+
+#### 1. تحديث `.github/workflows/build-apk.yml`
+إضافة خطوة لتوليد الأيقونات باستخدام `@capacitor/assets`:
+
+```yaml
+- name: Generate Android Icons
+  run: |
+    npm install @capacitor/assets --save-dev
+    npx capacitor-assets generate --android
 ```
 
-#### 1.2 إنشاء Edge Function: `get-user-by-device`
-- تستقبل `device_id` فقط
-- تبحث في `app_licenses` عن الجهاز المسجل
-- إذا وُجد: ترجع `user_id` و `email` 
-- إذا لم يُوجد: ترجع `null`
+#### 2. التأكد من وجود ملف المصدر
+- التحقق من وجود `resources/icon.png` (1024x1024)
+- أو إنشاء مجلد `assets/` مع الملفات المطلوبة
 
-#### 1.3 إنشاء Edge Function: `auto-login-device`
-- تستقبل `device_id`
-- تتحقق من وجود ترخيص صالح للجهاز
-- إذا صالح: تُنشئ Session جديدة للمستخدم
-- ترجع الـ Session tokens للتطبيق
-
-#### 1.4 تحديث `use-auth.tsx`
-- إضافة وظيفة `attemptAutoLogin()`
-- عند فتح التطبيق وعدم وجود Session:
-  1. جلب Device ID
-  2. استدعاء `get-user-by-device`
-  3. إذا نجح: تسجيل دخول تلقائي
-  4. إذا فشل: توجيه لصفحة تسجيل الدخول
-
-#### 1.5 تحديث `ProtectedRoute.tsx`
-- إضافة حالة "جاري التحقق من الجهاز" قبل التوجيه لصفحة تسجيل الدخول
-
----
-
-### المرحلة 2: تحسين أمان Device Binding
-
-#### 2.1 حفظ آخر Device ID مسجل (في Supabase)
-- عند تسجيل الدخول الناجح، يتم تحديث `device_id` في `app_licenses`
-- هذا موجود حالياً ✓
-
-#### 2.2 تحسين Device Fingerprint للموبايل
-- استخدام `@capacitor/device` للحصول على UUID ثابت
-- هذا موجود حالياً ✓
-
----
-
-### المرحلة 3: التحقق من صلاحيات عرض المنتجات
-
-#### 3.1 مراجعة منطق `POS.tsx`
-الكود الحالي صحيح نظرياً:
-```typescript
-// الكاشير: يرى جميع المنتجات
-if (userType === 'cashier' || !userType) {
-  setProducts(allPosProducts);
-}
-
-// الموزع/نقطة البيع: يرى فقط منتجات العهدة
-if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
-  // جلب مخزون المستودع المخصص فقط
-}
+#### 3. تحديث `package.json`
+إضافة سكريبت جديد:
+```json
+"build:android": "vite build && npx cap copy && npx capacitor-assets generate --android && npx cap sync android"
 ```
 
-#### 3.2 إضافة تسجيل Debug لتتبع المشاكل
-- طباعة `user_type` من الـ profile
-- طباعة `activeWarehouse` للموزع
-- طباعة عدد المنتجات المحملة
+---
+
+## المحور الثالث: نظام فواتير الشراء والمخزون
+
+### الوصف
+نظام شامل لتسجيل فواتير شراء البضاعة مع التحقق من المطابقة والربط بالمنتجات.
+
+### المرحلة الأولى: إنشاء قاعدة البيانات
+
+#### جدول `purchase_invoices`
+```sql
+CREATE TABLE purchase_invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  invoice_number TEXT NOT NULL,
+  supplier_name TEXT NOT NULL,
+  supplier_company TEXT,
+  invoice_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  expected_items_count INTEGER NOT NULL,
+  expected_total_quantity INTEGER NOT NULL,
+  expected_grand_total NUMERIC NOT NULL,
+  actual_items_count INTEGER DEFAULT 0,
+  actual_total_quantity INTEGER DEFAULT 0,
+  actual_grand_total NUMERIC DEFAULT 0,
+  status TEXT DEFAULT 'draft', -- draft, reconciled, finalized
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### جدول `purchase_invoice_items`
+```sql
+CREATE TABLE purchase_invoice_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID NOT NULL REFERENCES purchase_invoices(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id),
+  quantity INTEGER NOT NULL,
+  cost_price NUMERIC NOT NULL,
+  total_cost NUMERIC NOT NULL,
+  product_name TEXT NOT NULL,
+  barcode TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### تحديث جدول `products`
+```sql
+ALTER TABLE products 
+ADD COLUMN purchase_history JSONB DEFAULT '[]';
+```
+
+#### سياسات RLS
+```sql
+ALTER TABLE purchase_invoices ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own purchase invoices" ON purchase_invoices
+  FOR ALL USING (user_id = get_owner_id(auth.uid()))
+  WITH CHECK (user_id = get_owner_id(auth.uid()));
+```
+
+### المرحلة الثانية: إنشاء الملفات البرمجية
+
+#### 1. `src/lib/cloud/purchase-invoices-cloud.ts`
+ملف جديد يحتوي على:
+- `loadPurchaseInvoicesCloud()` - جلب جميع فواتير الشراء
+- `addPurchaseInvoiceCloud()` - إنشاء فاتورة جديدة (Header)
+- `updatePurchaseInvoiceCloud()` - تحديث الفاتورة
+- `deletePurchaseInvoiceCloud()` - حذف الفاتورة
+- `addPurchaseInvoiceItemCloud()` - إضافة منتج للفاتورة
+- `finalizePurchaseInvoiceCloud()` - إتمام الفاتورة وتحديث المخزون
+
+#### 2. `src/components/products/PurchaseInvoiceDialog.tsx`
+مكون رئيسي يحتوي على:
+- **Step 1**: نموذج بيانات الفاتورة (Header)
+  - رقم الفاتورة المرجعي
+  - اسم الموزع (dropdown من الشركاء أو إدخال جديد)
+  - اسم الشركة
+  - تاريخ الفاتورة
+  - العدد المتوقع للأصناف
+  - إجمالي الكميات المتوقعة
+  - إجمالي التكلفة المتوقعة
+- **Step 2**: حلقة إضافة المنتجات
+  - نموذج إضافة منتج (مشابه للنموذج الحالي)
+  - عداد: "تمت إضافة X من Y"
+  - زر "إضافة منتج آخر"
+  - زر "إنهاء وإغلاق"
+- **Step 3**: شاشة المطابقة والتحقق
+  - مقارنة القيم المتوقعة بالفعلية
+  - تمييز الفروقات باللون الأحمر
+  - زر "حفظ نهائي" أو "مراجعة"
+
+#### 3. `src/components/products/PurchaseInvoiceItemForm.tsx`
+نموذج إضافة منتج مع الحقول:
+- اسم المنتج
+- الباركود (مع ماسح)
+- الفئة
+- سعر الشراء
+- الكمية
+- الصورة (اختياري)
+
+#### 4. `src/components/products/PurchaseReconciliation.tsx`
+شاشة المطابقة:
+- جدول مقارنة: المتوقع vs الفعلي
+- تنبيهات الفروقات
+- قائمة المنتجات المضافة
+
+### المرحلة الثالثة: التكامل مع صفحة المنتجات
+
+#### تحديث `src/pages/Products.tsx`
+- إضافة زر "إضافة فاتورة شراء" بجانب "إضافة منتج"
+- فتح `PurchaseInvoiceDialog` عند الضغط
+
+#### تحديث عرض تفاصيل المنتج
+- إضافة قسم "مصدر الشراء" يعرض:
+  - رقم الفاتورة
+  - اسم المورد
+  - التاريخ
+  - سعر الشراء وقت التوريد
+
+### المرحلة الرابعة: تحديث المخزون عند الإتمام
+
+عند الضغط على "حفظ نهائي":
+1. تحديث `products.quantity` لكل منتج
+2. إضافة سجل في `products.purchase_history`
+3. تحديث حالة الفاتورة إلى `finalized`
 
 ---
 
-## الملفات المطلوب إنشاؤها/تعديلها
+## ملخص الملفات
 
 | الملف | العملية | الوصف |
 |-------|---------|-------|
-| `supabase/functions/get-user-by-device/index.ts` | إنشاء | البحث عن المستخدم بواسطة Device ID |
-| `supabase/functions/device-auto-login/index.ts` | إنشاء | تسجيل الدخول التلقائي بالجهاز |
-| `src/hooks/use-auth.tsx` | تعديل | إضافة Auto-Login logic |
-| `src/components/auth/ProtectedRoute.tsx` | تعديل | دعم حالة "التحقق من الجهاز" |
-| `src/pages/Login.tsx` | تعديل | تخطي صفحة الدخول إذا تم Auto-Login |
+| `src/hooks/use-theme.tsx` | تعديل | إضافة دعم البلور |
+| `src/index.css` | تعديل | أنماط Glassmorphism |
+| `src/components/settings/ThemeSection.tsx` | تعديل | زر تفعيل البلور |
+| `src/lib/i18n.ts` | تعديل | ترجمات جديدة |
+| `.github/workflows/build-apk.yml` | تعديل | توليد الأيقونات |
+| `package.json` | تعديل | سكريبت البناء |
+| `src/lib/cloud/purchase-invoices-cloud.ts` | إنشاء | API فواتير الشراء |
+| `src/components/products/PurchaseInvoiceDialog.tsx` | إنشاء | نافذة فاتورة الشراء |
+| `src/components/products/PurchaseInvoiceItemForm.tsx` | إنشاء | نموذج المنتج |
+| `src/components/products/PurchaseReconciliation.tsx` | إنشاء | شاشة المطابقة |
+| `src/pages/Products.tsx` | تعديل | زر فاتورة الشراء |
+| قاعدة البيانات | Migration | جداول وسياسات جديدة |
 
 ---
 
-## التفاصيل التقنية
+## التفاصيل التقنية لثيم البلور
 
-### Edge Function: `get-user-by-device`
-
-```typescript
-// Input: { device_id: string }
-// Output: { found: boolean, user_id?: string, email?: string }
-
-// 1. البحث في app_licenses عن device_id
-// 2. التحقق من أن الترخيص غير ملغي (is_revoked = false)
-// 3. التحقق من أن الترخيص لم تنتهِ صلاحيته
-// 4. إرجاع بيانات المستخدم إذا وُجد
+### متغيرات CSS الجديدة
+```css
+:root {
+  --blur-intensity: 20px;
+  --glass-bg-light: rgba(255, 255, 255, 0.7);
+  --glass-bg-dark: rgba(0, 0, 0, 0.4);
+  --glass-border-light: rgba(0, 0, 0, 0.1);
+  --glass-border-dark: rgba(255, 255, 255, 0.1);
+}
 ```
 
-### Edge Function: `device-auto-login`
-
+### تطبيق البلور عبر JavaScript
 ```typescript
-// Input: { device_id: string }
-// Output: { success: boolean, session?: {...}, error?: string }
-
-// 1. استدعاء get-user-by-device للتحقق
-// 2. إذا وُجد المستخدم، إنشاء Magic Link Token
-// 3. تسجيل الدخول نيابة عن المستخدم باستخدام Service Role
-// 4. إرجاع الـ Session للتطبيق
+function applyBlurTheme(enabled: boolean, mode: ThemeMode) {
+  const root = document.documentElement;
+  if (enabled) {
+    root.classList.add('blur-theme');
+    root.style.setProperty('--glass-bg', 
+      mode === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.7)');
+  } else {
+    root.classList.remove('blur-theme');
+  }
+}
 ```
 
-### تحديث `use-auth.tsx`
+### أنماط Glassmorphism
+```css
+.blur-theme .bg-card,
+.blur-theme [class*="bg-card"] {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(var(--blur-intensity)) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  border: 1px solid var(--glass-border) !important;
+}
 
-```typescript
-// إضافة في useEffect الرئيسي:
-const attemptDeviceAutoLogin = async () => {
-  // 1. التحقق من عدم وجود session حالية
-  // 2. جلب Device ID
-  // 3. استدعاء device-auto-login
-  // 4. إذا نجح: حفظ Session
-  // 5. إذا فشل: تعيين isAutoLoginAttempted = true
-};
+.blur-theme .bg-background {
+  background: linear-gradient(135deg, 
+    hsl(var(--primary) / 0.1), 
+    hsl(var(--accent) / 0.1)) !important;
+}
 ```
 
 ---
 
-## ملاحظات أمنية
+## أولوية التنفيذ
 
-1. **Device ID ليس كافياً للأمان الكامل**
-   - سيُطلب كلمة المرور مرة واحدة على الأقل لربط الجهاز
-   - بعدها يتم تسجيل الدخول تلقائياً
-
-2. **تسجيل الخروج يُلغي الربط**
-   - عند الضغط على "تسجيل خروج"، يتم مسح ربط الجهاز
-   - يُطلب تسجيل دخول يدوي في المرة القادمة
-
-3. **الحماية من سرقة Device ID**
-   - الـ Service Role محمي في Edge Function
-   - لا يمكن للتطبيق الوصول للـ Session بدون Device ID صحيح
-
+1. **أولاً**: ثيم البلور (الأسهل والأسرع)
+2. **ثانياً**: إصلاح أيقونة أندرويد
+3. **ثالثاً**: نظام فواتير الشراء (الأكبر والأعقد)
