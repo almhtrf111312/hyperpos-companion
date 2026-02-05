@@ -6,39 +6,80 @@
 
 @layer base {
   :root {
-    /* HyperPOS Strict Dark Theme Palette */
-    --background: 240 40% 10%;
-    /* Fallback */
-    --foreground: 210 40% 98%;
+    /* HyperPOS Dark Theme - Professional POS System */
 
-    --card: 240 30% 15%;
+    /* Global Background Gradient Colors (used in body) */
+    --bg-gradient-start: #0f0f23;
+    --bg-gradient-mid: #1a1a2e;
+    --bg-gradient-end: #16213e;
+
+    --background: 222 47% 6%;
+    /* Fallback for components assuming hsl */
+    --foreground: 210 40% 98%;
+    /* #e2e8f0 is approx 210 20% 96% */
+
+    --card: 222 47% 8%;
+    /* Fallback */
     --card-foreground: 210 40% 98%;
 
-    --popover: 240 30% 12%;
+    --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 250 80% 65%;
-    /* Matches button gradient start roughly */
-    --primary-foreground: 210 40% 98%;
+    /* Primary - Gradient will be used, but keeping base color for compat */
+    --primary: 245 50% 60%;
+    /* Approx middle of gradient */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 19% 27%;
+    /* Secondary */
+    --secondary: 215 28% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 19% 20%;
-    --muted-foreground: 215 20% 75%;
-    /* Lightened for readability on dark */
+    --muted: 215 28% 14%;
+    --muted-foreground: 215 20% 55%;
 
-    --accent: 217 19% 30%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
+    /* Danger - #ef4444 */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 19% 27%;
-    --input: 217 19% 27%;
-    --ring: 250 80% 65%;
+    /* Warning - Amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
 
-    --radius: 1rem;
+    /* Success - #10b981 */
+    --success: 161 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    /* Info - Blue */
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 245 50% 60%;
+
+    --radius: 1.5rem;
+    /* rounded-3xl approx */
+
+    /* Custom Colors */
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-dark: linear-gradient(180deg, #0f0f23 0%, #16213e 100%);
+    --shadow-glow: 0 0 40px -10px rgba(102, 126, 234, 0.3);
+    --shadow-card: 0 25px 45px rgba(0, 0, 0, 0.3);
+
+    /* POS specific colors */
+    --pos-grid: 222 47% 9%;
+    --pos-item: 222 47% 11%;
+    --pos-item-hover: 222 47% 14%;
+    --pos-cart: 222 47% 8%;
+    --pos-total: 160 84% 39%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
   }
 }
 
@@ -47,104 +88,152 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
-    /* 1. Strict Global Background */
+  html {
+    direction: rtl;
     background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    background-attachment: fixed;
+    /* Ensure gradient covers full height */
     min-height: 100vh;
-    font-family: 'Cairo', sans-serif;
   }
 
-  /* Strict Scrollbar for dark theme */
+  body {
+    @apply text-[#e2e8f0] font-cairo antialiased;
+    background: transparent;
+    /* Allow html gradient to show */
+    min-height: 100vh;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.2);
   }
 }
 
 @layer components {
 
-  /* 2. Strict Glass Card */
+  /* Glass Card - The core component of the new design */
   .glass-card {
-    background: rgba(255, 255, 255, 0.08) !important;
-    backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 24px !important;
-    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3) !important;
-    transition: all 0.3s ease !important;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    /* rounded-3xl */
+    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
   }
 
-  /* Ensure text inside glass card is readable */
-  .glass-card h1,
-  .glass-card h2,
-  .glass-card h3,
-  .glass-card p,
-  .glass-card span,
-  .glass-card div {
-    color: #f8fafc;
-    /* Slate-50 */
+  /* Button with Primary Gradient */
+  .btn-primary-gradient {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
   }
 
-  .glass-card .text-muted-foreground {
-    color: #cbd5e1 !important;
-    /* Slate-300 - lighter for contrast */
+  .btn-primary-gradient:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -10px rgba(118, 75, 162, 0.5);
   }
 
-  /* 3. Strict Buttons */
-  .btn-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    @apply rounded-2xl text-white font-semibold py-3 px-6 hover:scale-105 transition-all duration-300 shadow-lg border-0;
-  }
-
-  .btn-gradient-success {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    @apply rounded-2xl text-white font-semibold py-3 px-6 hover:scale-105 transition-all duration-300 shadow-lg border-0;
-  }
-
-  .btn-gradient-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-    @apply rounded-2xl text-white font-semibold py-3 px-6 hover:scale-105 transition-all duration-300 shadow-lg border-0;
-  }
-
-  /* 4. Strict Inputs / Search Bars */
+  /* Glass input */
   .glass-input {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(15px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 16px !important;
-    color: #f8fafc !important;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    backdrop-filter: blur(10px);
   }
 
-  .glass-input::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
+  .glass-input:focus {
+    border-color: rgba(102, 126, 234, 0.5);
+    background: rgba(0, 0, 0, 0.3);
   }
 
-  /* Apply to standard Shadcn Input if it has this class, or globally override Input */
-  input.glass-input,
-  textarea.glass-input,
-  select.glass-input {
-    @apply focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-300;
+  /* Glass morphism effect (generic) */
+  .glass {
+    @apply glass-card;
   }
 
-  /* Modals / Dialogs Override */
-  .glass-dialog {
-    background: rgba(30, 30, 40, 0.85) !important;
-    /* Slightly darker for modal */
-    backdrop-filter: blur(25px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 24px !important;
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
   }
+
+  /* Enhanced card style (Override) */
+  .enhanced-card {
+    @apply glass-card transition-all duration-300 ease-out;
+    @apply hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  /* POS Grid Item */
+  .pos-item {
+    @apply glass-card p-4 cursor-pointer transition-all duration-200 border-none bg-white/5 hover:bg-white/10;
+  }
+
+  /* Scanner Overlay Styles */
+  .scanner-ui-overlay {
+    visibility: visible !important;
+    display: flex !important;
+    pointer-events: auto !important;
+    z-index: 99999 !important;
+    flex-direction: column !important;
+  }
+
+  .scanner-ui-overlay>div:first-child,
+  .scanner-ui-overlay>div:last-child {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    z-index: 10000;
+  }
+
+  .scanner-ui-overlay>div:nth-child(2) {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    z-index: 9999;
+  }
+}
+
+/* Utils */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Hide html5-qrcode UI elements */
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop,
+#html5-qrcode-button-file-selection,
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-anchor-scan-type-change,
+#qr-code-full-region__header_message,
+#qr-code-full-region__scan_region>img,
+#qr-code-full-region>div:last-child {
+  display: none !important;
+}
+
+/* Native Scanner Transparency */
+html.barcode-scanner-active,
+html.barcode-scanner-active body {
+  background: transparent !important;
+}
+
+html.barcode-scanner-active body>*:not(.scanner-ui-overlay) {
+  display: none !important;
 }
