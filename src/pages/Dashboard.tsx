@@ -207,46 +207,39 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid - Main Modules */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Cashier / POS */}
+      {/* Stats Grid - First Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         <StatCard
-          title={t('nav.pos')}
+          title={t('dashboard.todaySales')}
           value={`$${stats.todaySales.toLocaleString()}`}
           subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
-          icon={<ShoppingCart className="w-8 h-8" />}
+          icon={<DollarSign className="w-6 h-6" />}
           variant="primary"
-          linkTo="/"
+          linkTo="/pos"
         />
-
-        {/* Stock / Products */}
         <StatCard
-          title={t('nav.products')}
-          value={`$${stats.inventoryValue.toLocaleString()}`}
-          subtitle={t('dashboard.inventoryValue')}
-          icon={<Package className="w-8 h-8" />}
-          variant="default"
-          linkTo="/products"
-        />
-
-        {/* Sales / Invoices */}
-        <StatCard
-          title={t('nav.invoices')}
-          value={stats.todayCount.toString()}
-          subtitle={`${t('dashboard.todaySales')}`}
-          icon={<TrendingUp className="w-8 h-8" />}
-          variant="success"
-          linkTo="/invoices"
-        />
-
-        {/* Reports */}
-        <StatCard
-          title={t('nav.reports')}
+          title={t('dashboard.netProfit')}
           value={`$${stats.netProfit.toLocaleString()}`}
-          subtitle={t('dashboard.netProfit')}
-          icon={<Banknote className="w-8 h-8" />}
-          variant="warning"
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: $${stats.todayExpenses.toLocaleString()}`}
+          icon={<TrendingUp className="w-6 h-6" />}
+          variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"
+        />
+        <StatCard
+          title={t('dashboard.dueDebts')}
+          value={`$${stats.totalDebtAmount.toLocaleString()}`}
+          subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
+          icon={<CreditCard className="w-6 h-6" />}
+          variant="warning"
+          linkTo="/debts"
+        />
+        <StatCard
+          title={t('dashboard.customersThisMonth')}
+          value={stats.uniqueCustomers.toString()}
+          subtitle={t('dashboard.uniqueCustomers')}
+          icon={<Users className="w-6 h-6" />}
+          variant="default"
+          linkTo="/customers"
         />
       </div>
 

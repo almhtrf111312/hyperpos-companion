@@ -1,7 +1,5 @@
 import { ReactNode, useState, useCallback } from 'react';
 import { Sidebar, MobileMenuTrigger } from './Sidebar';
-import { BottomNav } from './BottomNav';
-
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 import { useLanguage } from '@/hooks/use-language';
@@ -15,7 +13,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { isRTL } = useLanguage();
-
+  
   // Sidebar is collapsed by default on tablet
   const sidebarCollapsed = isTablet;
 
@@ -29,19 +27,20 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, [sidebarOpen, isMobile]));
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} defaultCollapsed={isTablet} />
-
+      
       {/* Mobile menu trigger - positioned to not overlap with notification bar */}
       {isMobile && !sidebarOpen && (
         <MobileMenuTrigger onClick={toggleSidebar} />
       )}
 
       {/* Main content - margin based on RTL/LTR */}
-      <main className={`min-h-screen transition-all duration-300 pt-4 ${isRTL
-        ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64')
-        : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
-        }`}>
+      <main className={`min-h-screen transition-all duration-300 pt-4 ${
+        isRTL 
+          ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64') 
+          : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
+      }`}>
         {children}
       </main>
     </div>

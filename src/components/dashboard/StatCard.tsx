@@ -17,11 +17,11 @@ interface StatCardProps {
 }
 
 const variantStyles = {
-  default: 'glass-card border-none text-white',
-  primary: 'glass-card border-none text-white bg-primary/20',
-  success: 'glass-card border-none text-white bg-success/20',
-  warning: 'glass-card border-none text-white bg-warning/20',
-  danger: 'glass-card border-none text-white bg-destructive/20',
+  default: 'bg-card border-border',
+  primary: 'bg-primary/10 border-primary/20',
+  success: 'bg-success/10 border-success/20',
+  warning: 'bg-warning/10 border-warning/20',
+  danger: 'bg-destructive/10 border-destructive/20',
 };
 
 const iconBgStyles = {
@@ -64,11 +64,11 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   };
 
   return (
-    <div
+    <div 
       className={cn(
-        "rounded-2xl p-3 md:p-4 card-hover transition-all duration-300",
+        "rounded-xl border p-3 md:p-4 card-hover",
         variantStyles[variant],
-        linkTo && "cursor-pointer hover:bg-white/10"
+        linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50"
       )}
       onClick={handleClick}
       role={linkTo ? "button" : undefined}

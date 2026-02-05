@@ -7,49 +7,39 @@
 @layer base {
   :root {
     /* HyperPOS Dark Theme - Professional POS System */
-
-    /* Global Background Gradient Colors (used in body) */
-    --bg-gradient-start: #0f0f23;
-    --bg-gradient-mid: #1a1a2e;
-    --bg-gradient-end: #16213e;
-
     --background: 222 47% 6%;
-    /* Fallback for components assuming hsl */
     --foreground: 210 40% 98%;
-    /* #e2e8f0 is approx 210 20% 96% */
 
     --card: 222 47% 8%;
-    /* Fallback */
     --card-foreground: 210 40% 98%;
 
     --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
 
-    /* Primary - Gradient will be used, but keeping base color for compat */
-    --primary: 245 50% 60%;
-    /* Approx middle of gradient */
+    /* Primary - Emerald Green for money/business */
+    --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary */
+    /* Secondary - Slate Blue */
     --secondary: 215 28% 17%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 215 28% 14%;
     --muted-foreground: 215 20% 55%;
 
+    /* Accent - Teal */
     --accent: 173 80% 40%;
     --accent-foreground: 0 0% 100%;
 
-    /* Danger - #ef4444 */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
 
     /* Warning - Amber */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
 
-    /* Success - #10b981 */
-    --success: 161 84% 39%;
+    /* Success - Green */
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
     /* Info - Blue */
@@ -58,16 +48,25 @@
 
     --border: 215 28% 17%;
     --input: 215 28% 17%;
-    --ring: 245 50% 60%;
+    --ring: 160 84% 39%;
 
-    --radius: 1.5rem;
-    /* rounded-3xl approx */
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 222 47% 7%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 28% 14%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 28% 14%;
+    --sidebar-ring: 160 84% 39%;
 
     /* Custom Colors */
-    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-dark: linear-gradient(180deg, #0f0f23 0%, #16213e 100%);
-    --shadow-glow: 0 0 40px -10px rgba(102, 126, 234, 0.3);
-    --shadow-card: 0 25px 45px rgba(0, 0, 0, 0.3);
+    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(173 80% 40%));
+    --gradient-dark: linear-gradient(180deg, hsl(222 47% 8%), hsl(222 47% 6%));
+    --shadow-glow: 0 0 40px -10px hsl(160 84% 39% / 0.3);
+    --shadow-card: 0 4px 20px -5px hsl(0 0% 0% / 0.3);
 
     /* POS specific colors */
     --pos-grid: 222 47% 9%;
@@ -78,8 +77,150 @@
   }
 
   .dark {
+    /* Same as root since we're using dark theme by default */
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 98%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 25% 40%;
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 160 84% 39%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 160 84% 39%;
+    --pos-grid: 210 40% 96%;
+    --pos-item: 0 0% 100%;
+    --pos-item-hover: 210 40% 94%;
+    --pos-cart: 0 0% 98%;
+    --pos-total: 160 84% 39%;
+    --shadow-card-light: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Theme: Ocean Blue */
+  .theme-ocean {
+    --primary: 207 90% 54%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 207 90% 54%;
+    --sidebar-primary: 207 90% 54%;
+    --pos-total: 207 90% 54%;
+  }
+
+  /* Theme: Sunset Orange */
+  .theme-sunset {
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 15 75% 50%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 24 95% 53%;
+    --sidebar-primary: 24 95% 53%;
+    --pos-total: 24 95% 53%;
+  }
+
+  /* Theme: Royal Purple */
+  .theme-purple {
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 280 65% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 262 83% 58%;
+    --sidebar-primary: 262 83% 58%;
+    --pos-total: 262 83% 58%;
+  }
+
+  /* Theme: Rose Pink */
+  .theme-rose {
+    --primary: 346 77% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 330 80% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 346 77% 50%;
+    --sidebar-primary: 346 77% 50%;
+    --pos-total: 346 77% 50%;
+  }
+
+  /* Theme: Forest Green */
+  .theme-forest {
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 158 64% 52%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 142 71% 45%;
+    --sidebar-primary: 142 71% 45%;
+    --pos-total: 142 71% 45%;
+  }
+
+  /* Theme: Amber Gold */
+  .theme-amber {
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 0%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 0%;
+    --ring: 45 93% 47%;
+    --sidebar-primary: 45 93% 47%;
+    --pos-total: 45 93% 47%;
+  }
+
+  /* Theme: Slate Gray */
+  .theme-slate {
+    --primary: 215 25% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 215 20% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 215 25% 50%;
+    --sidebar-primary: 215 25% 50%;
+    --pos-total: 215 25% 50%;
+  }
+
+  /* Theme: Cyan Teal */
+  .theme-cyan {
+    --primary: 187 85% 43%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 174 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 187 85% 43%;
+    --sidebar-primary: 187 85% 43%;
+    --pos-total: 187 85% 43%;
+  }
+
+  /* Theme: Indigo Night */
+  .theme-indigo {
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 245 75% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 239 84% 67%;
+    --sidebar-primary: 239 84% 67%;
+    --pos-total: 239 84% 67%;
   }
 }
 
@@ -90,18 +231,19 @@
 
   html {
     direction: rtl;
-    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-    background-attachment: fixed;
-    /* Ensure gradient covers full height */
-    min-height: 100vh;
+    pointer-events: auto !important;
+    touch-action: manipulation;
   }
 
   body {
-    @apply text-[#e2e8f0] font-cairo antialiased;
-    background: transparent;
-    /* Allow html gradient to show */
-    min-height: 100vh;
+    @apply bg-background text-foreground font-cairo antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  #root {
+    pointer-events: auto !important;
   }
 
   /* Custom scrollbar */
@@ -115,58 +257,21 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    @apply bg-border;
     border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    @apply bg-muted-foreground/40;
+    border-radius: 999px;
   }
 }
 
 @layer components {
 
-  /* Glass Card - The core component of the new design */
-  .glass-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    /* rounded-3xl */
-    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Button with Primary Gradient */
-  .btn-primary-gradient {
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    transition: all 0.3s ease;
-  }
-
-  .btn-primary-gradient:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 10px 20px -10px rgba(118, 75, 162, 0.5);
-  }
-
-  /* Glass input */
-  .glass-input {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    backdrop-filter: blur(10px);
-  }
-
-  .glass-input:focus {
-    border-color: rgba(102, 126, 234, 0.5);
-    background: rgba(0, 0, 0, 0.3);
-  }
-
-  /* Glass morphism effect (generic) */
+  /* Glass morphism effect */
   .glass {
-    @apply glass-card;
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
   }
 
   /* Gradient text */
@@ -175,45 +280,260 @@
     background-image: var(--gradient-primary);
   }
 
-  /* Enhanced card style (Override) */
-  .enhanced-card {
-    @apply glass-card transition-all duration-300 ease-out;
-    @apply hover:shadow-xl hover:-translate-y-0.5;
+  /* Glow effect */
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-1;
+    box-shadow: var(--shadow-card);
   }
 
   /* POS Grid Item */
   .pos-item {
-    @apply glass-card p-4 cursor-pointer transition-all duration-200 border-none bg-white/5 hover:bg-white/10;
+    @apply bg-[hsl(var(--pos-item))] rounded-xl p-4 cursor-pointer transition-all duration-200;
   }
 
-  /* Scanner Overlay Styles */
-  .scanner-ui-overlay {
-    visibility: visible !important;
-    display: flex !important;
-    pointer-events: auto !important;
-    z-index: 99999 !important;
-    flex-direction: column !important;
+  .pos-item:hover {
+    @apply bg-[hsl(var(--pos-item-hover))] scale-[1.02];
   }
 
-  .scanner-ui-overlay>div:first-child,
-  .scanner-ui-overlay>div:last-child {
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    background-color: rgba(0, 0, 0, 0.6) !important;
-    z-index: 10000;
+  .pos-item:active {
+    @apply scale-[0.98];
   }
 
-  .scanner-ui-overlay>div:nth-child(2) {
-    background: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    z-index: 9999;
+  /* Status badges */
+  .badge-success {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .badge-warning {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .badge-danger {
+    @apply bg-destructive/20 text-destructive border border-destructive/30;
+  }
+
+  .badge-info {
+    @apply bg-info/20 text-info border border-info/30;
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--gradient-primary);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .gradient-border:hover::before {
+    opacity: 1;
+  }
+
+  /* Number input without arrows */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Pulse animation for notifications */
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.8;
+    }
+
+    50% {
+      transform: scale(1);
+      opacity: 0.4;
+    }
+
+    100% {
+      transform: scale(0.8);
+      opacity: 0.8;
+    }
+  }
+
+  .pulse-ring {
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+
+  /* Slide in animation */
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  /* Fade in animation */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Counter animation */
+  @keyframes count-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .count-up {
+    animation: count-up 0.5s ease-out;
+  }
+
+  /* Barcode scanner animation */
+  @keyframes scan {
+    0% {
+      top: 0;
+    }
+
+    50% {
+      top: calc(100% - 2px);
+    }
+
+    100% {
+      top: 0;
+    }
+  }
+
+  .animate-scan {
+    animation: scan 2s ease-in-out infinite;
+  }
+
+  /* Enhanced card style */
+  .enhanced-card {
+    @apply rounded-2xl border border-border/30;
+    @apply shadow-lg transition-all duration-300 ease-out;
+    @apply hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  /* Enhanced button style */
+  .enhanced-button {
+    @apply rounded-xl font-medium;
+    @apply transition-all duration-200;
+    @apply active:scale-95;
+  }
+
+  /* Sidebar overlay for mobile */
+  .sidebar-overlay {
+    @apply backdrop-blur-sm bg-black/40;
+  }
+
+  /* Fade in up animation */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out;
+  }
+
+  /* Subtle pulse for notifications */
+  @keyframes subtle-pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  .animate-subtle-pulse {
+    animation: subtle-pulse 2s ease-in-out infinite;
+  }
+
+  /* Shimmer loading effect */
+  .animate-shimmer-effect {
+    background: linear-gradient(90deg, transparent, hsl(var(--muted)), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
   }
 }
 
-/* Utils */
-.text-balance {
-  text-wrap: balance;
+/* Font family */
+.font-cairo {
+  font-family: 'Cairo', sans-serif;
+}
+
+/* HTML5 QR Code scanner styles */
+#barcode-scanner-container {
+  width: 100% !important;
+  border: none !important;
+}
+
+#barcode-scanner-container video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover;
+}
+
+#barcode-scanner-container img {
+  display: none !important;
+}
+
+#barcode-scanner-container #qr-shaded-region {
+  border: none !important;
 }
 
 /* Hide html5-qrcode UI elements */
@@ -228,12 +548,99 @@
   display: none !important;
 }
 
-/* Native Scanner Transparency */
+/* Native Scanner Transparency - Force Transparent Backgrounds */
+html.barcode-scanner-active,
+body.barcode-scanner-active,
+#root.barcode-scanner-active,
+ion-app.barcode-scanner-active,
+ion-router-outlet.barcode-scanner-active,
+.ion-page.barcode-scanner-active,
+div[data-radix-portal].barcode-scanner-active,
+div[role="dialog"].barcode-scanner-active {
+  --background: transparent !important;
+  background: transparent !important;
+  --ion-background-color: transparent !important;
+}
+
+/*
+   RADICAL VISIBILITY FIX:
+   Hide everything by default when scanner is active to preventing any UI blocking.
+   Only show specific scanner UI overlays.
+*/
+/* Scanner Active State - FORCE HIDE ALL UI */
+/* Target html tag directly (documentElement) for complete WebView transparency */
 html.barcode-scanner-active,
 html.barcode-scanner-active body {
   background: transparent !important;
 }
 
+/* Hide ALL children except scanner overlay */
 html.barcode-scanner-active body>*:not(.scanner-ui-overlay) {
   display: none !important;
+}
+
+/* For Ionic/Capacitor apps */
+html.barcode-scanner-active ion-app,
+html.barcode-scanner-active ion-router-outlet,
+html.barcode-scanner-active .ion-page {
+  background: transparent !important;
+}
+
+/* Ensure scanner UI overlay is visible and on top */
+.scanner-ui-overlay {
+  visibility: visible !important;
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 99999 !important;
+}
+
+/* CRITICAL: Make ALL children of scanner overlay visible and interactive */
+.scanner-ui-overlay * {
+  visibility: visible !important;
+  display: initial !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure buttons are clickable */
+.scanner-ui-overlay button {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  display: inline-flex !important;
+}
+
+/* Ensure flex/grid layouts work */
+.scanner-ui-overlay div[class*="flex"],
+.scanner-ui-overlay div[class*="grid"] {
+  display: flex !important;
+}
+
+.scanner-ui-overlay div[class*="grid"] {
+  display: grid !important;
+}
+
+/*
+  Scanner Overlay Styles - Ensure perfect centering and blur
+  These rules specifically target the layout structure of the NativeMLKitScanner component
+*/
+.scanner-ui-overlay {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Force blur areas (first and last child) to have specific z-index and background */
+.scanner-ui-overlay>div:first-child,
+.scanner-ui-overlay>div:last-child {
+  /* Ensure blur is always active regardless of other styles */
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  z-index: 10000;
+}
+
+/* Ensure the middle area (2nd child) is absolutely clear for the camera */
+.scanner-ui-overlay>div:nth-child(2) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 9999;
 }

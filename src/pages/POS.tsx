@@ -413,7 +413,7 @@ export default function POS() {
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-background">
       {/* Sidebar - Always visible, collapsed by default on non-mobile */}
       <Sidebar
         isOpen={sidebarOpen}
