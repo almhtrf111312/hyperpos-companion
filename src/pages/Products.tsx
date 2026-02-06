@@ -1259,7 +1259,7 @@ export default function Products() {
                     className="text-right"
                     placeholder="0"
                     value={formData.quantity || ''}
-                    onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                    onChange={(e) => handleNumericChange('quantity', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1270,7 +1270,7 @@ export default function Products() {
                     className="text-right"
                     placeholder="0"
                     value={formData.costPrice || ''}
-                    onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                    onChange={(e) => handleNumericChange('costPrice', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1281,7 +1281,7 @@ export default function Products() {
                     className="text-right"
                     placeholder="0"
                     value={formData.salePrice || ''}
-                    onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                    onChange={(e) => handleNumericChange('salePrice', e.target.value)}
                   />
                 </div>
 
@@ -1607,7 +1607,7 @@ export default function Products() {
                     dir="ltr"
                     className="text-right"
                     value={formData.quantity || ''}
-                    onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                    onChange={(e) => handleNumericChange('quantity', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1617,7 +1617,7 @@ export default function Products() {
                     dir="ltr"
                     className="text-right"
                     value={formData.costPrice || ''}
-                    onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                    onChange={(e) => handleNumericChange('costPrice', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1627,7 +1627,7 @@ export default function Products() {
                     dir="ltr"
                     className="text-right"
                     value={formData.salePrice || ''}
-                    onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                    onChange={(e) => handleNumericChange('salePrice', e.target.value)}
                   />
                 </div>
 
