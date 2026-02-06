@@ -21,6 +21,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const scanningRef = useRef(false);
   const hasScannedRef = useRef(false);
   const mountedRef = useRef(true);
+  const initAttemptRef = useRef(0);
 
   const checkPermission = async (): Promise<boolean> => {
     try {
@@ -44,9 +45,23 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     scanningRef.current = true;
     setIsInitializing(true);
     setPermissionError(null);
+    initAttemptRef.current += 1;
+    const currentAttempt = initAttemptRef.current;
 
     try {
-      // 1. Check Permission
+      // 1. Ensure previous session is fully stopped
+      try {
+        await BarcodeScanner.showBackground();
+        await BarcodeScanner.stopScan();
+      } catch (_) { /* ignore cleanup errors */ }
+      document.documentElement.classList.remove('barcode-scanner-active');
+
+      // Small delay to let camera fully release
+      await new Promise(r => setTimeout(r, 300));
+
+      if (!mountedRef.current || currentAttempt !== initAttemptRef.current) return;
+
+      // 2. Check Permission
       const hasPerm = await checkPermission();
       if (!hasPerm) {
         setIsInitializing(false);
@@ -54,46 +69,36 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // 2. Hide Background & Add Class (target html tag directly)
+      // 3. Hide Background & Add Class
       await BarcodeScanner.hideBackground();
       document.documentElement.classList.add('barcode-scanner-active');
 
-      // 3. Camera is ready, hide loading spinner
-      setIsInitializing(false);
+      // 4. Camera is ready, hide loading spinner
+      if (mountedRef.current) setIsInitializing(false);
 
-      // 4. Start simple single scan (no complex loops)
+      // 5. Start simple single scan
       const result = await BarcodeScanner.startScan();
 
-      // 5. Process result
+      // 6. Process result
       if (result.hasContent && !hasScannedRef.current) {
         hasScannedRef.current = true;
-
         console.log('[Scanner] Scanned:', result.content);
-
-        // Cleanup
         await stopScanning();
-
-        // Feedback
         playBeep();
         if (navigator.vibrate) navigator.vibrate(200);
-
-        // Send value
         onScan(result.content);
-
-        // Auto-close after brief delay
         setTimeout(() => {
           if (mountedRef.current) onClose();
         }, 500);
       } else {
-        // User cancelled
         await stopScanning();
-        onClose();
+        if (mountedRef.current) onClose();
       }
 
     } catch (err: any) {
       console.error('[Scanner] Scan error:', err);
       await stopScanning();
-      setPermissionError('حدث خطأ أثناء تشغيل الماسح');
+      if (mountedRef.current) setPermissionError('حدث خطأ أثناء تشغيل الماسح');
     } finally {
       scanningRef.current = false;
     }
@@ -118,6 +123,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
   const handleClose = async () => {
     hasScannedRef.current = false;
+    initAttemptRef.current += 1; // cancel any pending init
     await stopScanning();
     onClose();
   };
@@ -140,11 +146,13 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
   useEffect(() => {
     mountedRef.current = true;
+    hasScannedRef.current = false;
     if (isOpen) {
       startScanning();
     }
     return () => {
       mountedRef.current = false;
+      initAttemptRef.current += 1;
       stopScanning();
     };
   }, [isOpen]);

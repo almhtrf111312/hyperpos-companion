@@ -20,7 +20,8 @@ import {
   MessageCircle,
   ClipboardList,
   Truck,
-  Loader2
+  Loader2,
+  Package
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -131,7 +132,7 @@ export default function Reports() {
   // Auto-open tab from URL params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value'].includes(tab)) {
+    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -142,6 +143,7 @@ export default function Reports() {
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
     { id: 'products', label: t('reports.products'), icon: BarChart3 },
+    { id: 'inventory', label: t('reports.inventoryReport'), icon: Package },
     { id: 'customers', label: t('reports.customers'), icon: Users },
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
@@ -975,7 +977,68 @@ ${partnerExpenses.map(exp => {
           </div>
         )}
 
-        {/* Top Customers */}
+        {/* Inventory Products Report */}
+        {activeReport === 'inventory' && (
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+            <h3 className="text-lg font-semibold mb-4">تقرير المخزون</h3>
+            {cloudProducts.length > 0 ? (
+              <div className="space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-foreground">{cloudProducts.length}</p>
+                    <p className="text-xs text-muted-foreground">عدد الأصناف</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-foreground">{cloudProducts.reduce((s, p) => s + (p.quantity || 0), 0)}</p>
+                    <p className="text-xs text-muted-foreground">إجمالي الكميات</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-primary">${cloudProducts.reduce((s, p) => s + ((p.costPrice || 0) * (p.quantity || 0)), 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">قيمة المخزون (شراء)</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-success">${cloudProducts.reduce((s, p) => s + ((p.salePrice || 0) * (p.quantity || 0)), 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">قيمة المخزون (بيع)</p>
+                  </div>
+                </div>
+                {/* Table */}
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-2 text-right">#</th>
+                        <th className="p-2 text-right">الاسم</th>
+                        <th className="p-2 text-center">الباركود</th>
+                        <th className="p-2 text-center">الكمية</th>
+                        <th className="p-2 text-center">سعر الشراء</th>
+                        <th className="p-2 text-center">سعر البيع</th>
+                        <th className="p-2 text-center">الإجمالي</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cloudProducts.map((p, i) => (
+                        <tr key={p.id} className="border-t">
+                          <td className="p-2 text-muted-foreground">{i + 1}</td>
+                          <td className="p-2 font-medium">{p.name}</td>
+                          <td className="p-2 text-center font-mono text-xs">{p.barcode || '-'}</td>
+                          <td className="p-2 text-center">{p.quantity}</td>
+                          <td className="p-2 text-center">${(p.costPrice || 0).toFixed(2)}</td>
+                          <td className="p-2 text-center">${(p.salePrice || 0).toFixed(2)}</td>
+                          <td className="p-2 text-center font-medium">${((p.salePrice || 0) * (p.quantity || 0)).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">لا توجد منتجات</p>
+            )}
+          </div>
+        )}
+
+
         {reportData.hasData && activeReport === 'customers' && (
           <div className="bg-card rounded-2xl border border-border p-6">
             <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
