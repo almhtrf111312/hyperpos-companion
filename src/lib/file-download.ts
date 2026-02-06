@@ -28,11 +28,11 @@ const requestStoragePermissions = async (): Promise<boolean> => {
   try {
     // Check current permission status
     const { publicStorage } = await Filesystem.checkPermissions();
-    
+
     if (publicStorage === 'granted') {
       return true;
     }
-    
+
     // Request permissions
     const result = await Filesystem.requestPermissions();
     return result.publicStorage === 'granted';
@@ -72,28 +72,7 @@ const saveFileNative = async (
   mimeType: string
 ): Promise<boolean> => {
   try {
-    // Request storage permissions first
-    const hasPermission = await requestStoragePermissions();
-    console.log('[FileDownload] Storage permission:', hasPermission);
-
-    // Try to save directly to Downloads (External Storage)
-    // This works on Android 10+ with scoped storage
-    try {
-      const result = await Filesystem.writeFile({
-        path: `Download/${filename}`,
-        data: content,
-        directory: Directory.ExternalStorage,
-        encoding: Encoding.UTF8,
-        recursive: true,
-      });
-      
-      console.log('[FileDownload] Saved to Downloads:', result.uri);
-      return true;
-    } catch (externalError) {
-      console.log('[FileDownload] ExternalStorage failed, trying Documents:', externalError);
-    }
-
-    // Fallback 1: Try Documents directory with HyperPOS folder
+    // 1. Try Documents directory first (Preferred: Accessible without special permissions on Android 11+)
     try {
       const result = await Filesystem.writeFile({
         path: `HyperPOS/${filename}`,
@@ -102,14 +81,31 @@ const saveFileNative = async (
         encoding: Encoding.UTF8,
         recursive: true,
       });
-      
-      console.log('[FileDownload] Saved to Documents:', result.uri);
+
+      console.log('[FileDownload] Saved to Documents/HyperPOS:', result.uri);
       return true;
     } catch (documentsError) {
-      console.log('[FileDownload] Documents failed, trying Cache + Share:', documentsError);
+      console.warn('[FileDownload] Documents save failed, trying Downloads:', documentsError);
     }
 
-    // Fallback 2: Save to Cache and open Share dialog
+    // 2. Try Downloads directory (External Storage)
+    try {
+      const result = await Filesystem.writeFile({
+        path: `Download/${filename}`,
+        data: content,
+        directory: Directory.ExternalStorage,
+        encoding: Encoding.UTF8,
+        recursive: true,
+      });
+
+      console.log('[FileDownload] Saved to Downloads:', result.uri);
+      return true;
+    } catch (externalError) {
+      console.warn('[FileDownload] ExternalStorage save failed:', externalError);
+    }
+
+    // 3. Fallback: Save to Cache and Open Share Dialog
+    // This is the most reliable fallback if direct access is restricted
     const cacheResult = await Filesystem.writeFile({
       path: filename,
       data: content,
@@ -117,9 +113,8 @@ const saveFileNative = async (
       encoding: Encoding.UTF8,
     });
 
-    console.log('[FileDownload] Saved to Cache:', cacheResult.uri);
+    console.log('[FileDownload] Saved to Cache for sharing:', cacheResult.uri);
 
-    // Open Share dialog for user to save manually
     await Share.share({
       title: filename,
       text: 'نسخة احتياطية من HyperPOS',

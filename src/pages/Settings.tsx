@@ -1202,7 +1202,7 @@ export default function Settings() {
                 <div className="flex-1 min-w-[140px]">
                   <input
                     type="file"
-                    accept=".json"
+                    accept=".json,application/json,text/plain"
                     onChange={handleImportBackup}
                     className="hidden"
                     id="import-backup"
