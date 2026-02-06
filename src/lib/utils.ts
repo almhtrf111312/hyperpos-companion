@@ -40,25 +40,35 @@ export function percentageOf(amount: number, percentage: number): number {
 
 // Format number with Western numerals (123) - always uses en-US locale
 export function formatNumber(num: number, decimals: number = 0): string {
-  return roundCurrency(num).toLocaleString('en-US', { 
-    minimumFractionDigits: decimals, 
-    maximumFractionDigits: decimals 
+  return roundCurrency(num).toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   });
 }
 
 // Format currency with Western numerals - always rounds to 2 decimals
 export function formatCurrency(amount: number, symbol: string = '$', decimals: number = 2): string {
   const rounded = roundCurrency(amount);
-  return `${symbol}${rounded.toLocaleString('en-US', { 
-    minimumFractionDigits: decimals, 
-    maximumFractionDigits: decimals 
+  return `${symbol}${rounded.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   })}`;
 }
 
-// Format date and time
-export function formatDateTime(dateString: string, locale: string = 'ar-SA'): string {
+// Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)
+export function toWesternNumerals(str: string): string {
+  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  let result = str;
+  arabicNumerals.forEach((arabic, index) => {
+    result = result.replace(new RegExp(arabic, 'g'), index.toString());
+  });
+  return result;
+}
+
+// Format date and time - ALWAYS with Western numerals
+export function formatDateTime(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleString(locale, {
+  return date.toLocaleString('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
