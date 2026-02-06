@@ -32,23 +32,23 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm mx-4 max-h-[75vh] overflow-y-auto rounded-2xl p-4">
-        {/* Close Button - Large and Clear */}
+      <DialogContent className="max-w-xs mx-4 max-h-[60vh] overflow-y-auto rounded-2xl p-3 [&>button]:hidden">
+        {/* Close Button - Single Large Button */}
         <button
           onClick={onClose}
-          className="absolute left-3 top-3 w-9 h-9 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors z-10"
+          className="absolute left-2 top-2 w-8 h-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors z-10"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
-        <DialogHeader className="pt-2">
-          <DialogTitle className="text-lg font-bold text-center pr-6">{product.name}</DialogTitle>
+        <DialogHeader className="pt-1">
+          <DialogTitle className="text-base font-bold text-center px-6 leading-tight">{product.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
-          {/* Product Image */}
+        <div className="space-y-2">
+          {/* Product Image - Smaller */}
           {product.image ? (
-            <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
+            <div className="w-full h-28 rounded-lg overflow-hidden bg-muted">
               <img
                 src={product.image}
                 alt={product.name}
@@ -56,8 +56,8 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
               />
             </div>
           ) : (
-            <div className="w-full aspect-video rounded-lg bg-muted flex items-center justify-center">
-              <Package className="w-16 h-16 text-muted-foreground/50" />
+            <div className="w-full h-20 rounded-lg bg-muted flex items-center justify-center">
+              <Package className="w-10 h-10 text-muted-foreground/50" />
             </div>
           )}
 
