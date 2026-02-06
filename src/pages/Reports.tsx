@@ -508,6 +508,26 @@ export default function Reports() {
           );
           break;
         }
+        case 'inventory': {
+          if (products.length === 0) {
+            toast.error('لا توجد منتجات في المخزون للتصدير');
+            return;
+          }
+
+          await exportProductsToPDF(
+            products.map(p => ({
+              name: p.name,
+              barcode: p.barcode || '',
+              category: p.category || 'بدون تصنيف',
+              costPrice: p.costPrice || 0,
+              salePrice: p.salePrice || 0,
+              quantity: p.quantity || 0,
+              minStockLevel: p.minStockLevel || 0,
+            })),
+            storeInfo
+          );
+          break;
+        }
         case 'customers': {
           if (customers.length === 0) {
             toast.error('لا يوجد عملاء للتصدير');

@@ -1487,12 +1487,80 @@ export default function Products() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')}</label>
-                  <Input
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  />
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={formData.barcode}
+                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    />
+                    <Button variant="outline" size="icon" onClick={() => {
+                      setScanTarget('barcode1');
+                      setScannerOpen(true);
+                    }}>
+                      <Barcode className="w-4 h-4" />
+                    </Button>
+                    {!showBarcode2 && (
+                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title="إضافة باركود ثاني">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                {/* Barcode 2 */}
+                {showBarcode2 && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={t('products.exampleBarcode')}
+                        value={formData.barcode2}
+                        onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        setScanTarget('barcode2');
+                        setScannerOpen(true);
+                      }}>
+                        <Barcode className="w-4 h-4" />
+                      </Button>
+                      {!showBarcode3 && (
+                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title="إضافة باركود ثالث">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        setFormData({ ...formData, barcode2: '' });
+                        setShowBarcode2(false);
+                      }} className="text-destructive">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {/* Barcode 3 */}
+                {showBarcode3 && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={t('products.exampleBarcode')}
+                        value={formData.barcode3}
+                        onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        setScanTarget('barcode3');
+                        setScannerOpen(true);
+                      }}>
+                        <Barcode className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        setFormData({ ...formData, barcode3: '' });
+                        setShowBarcode3(false);
+                      }} className="text-destructive">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
                   <select
@@ -1564,17 +1632,80 @@ export default function Products() {
                   </Collapsible>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
-                  <div className="relative">
-                    <Input
-                      type="date"
-                      placeholder={t('products.selectExpiryDate')}
+                {/* Dynamic Fields */}
+                {fieldsConfig.expiryDate && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
+                    <DatePicker
                       value={formData.expiryDate}
-                      onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                      onChange={(date) => setFormData({ ...formData, expiryDate: date })}
+                      placeholder={t('products.selectExpiryDate')}
                     />
                   </div>
-                </div>
+                )}
+                {fieldsConfig.serialNumber && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
+                    <Input
+                      placeholder={t('products.exampleSerial')}
+                      value={formData.serialNumber}
+                      onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.warranty && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.warranty')}</label>
+                    <Input
+                      placeholder={t('products.exampleWarranty')}
+                      value={formData.warranty}
+                      onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.wholesalePrice && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={formData.wholesalePrice || ''}
+                      onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.sizeColor && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
+                      <Input
+                        placeholder={t('products.exampleSize')}
+                        value={formData.size}
+                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
+                      <Input
+                        placeholder={t('products.exampleColor')}
+                        value={formData.color}
+                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
+                {fieldsConfig.minStockLevel && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
+                    <Input
+                      type="number"
+                      placeholder="5"
+                      value={formData.minStockLevel || ''}
+                      onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                    />
+                  </div>
+                )}
+
                 {/* Custom Fields in Edit Dialog */}
                 {customFields.map((field) => (
                   <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>

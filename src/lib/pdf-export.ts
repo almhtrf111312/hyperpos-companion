@@ -21,6 +21,7 @@ export interface PDFExportOptions {
   totals?: Record<string, number | string>;
   summary?: { label: string; value: string | number }[];
   fileName?: string;
+  columnStyles?: Record<number | string, any>;
 }
 
 // Check if text contains Arabic characters
@@ -34,7 +35,7 @@ const containsArabic = (text: string): boolean => {
 
 const processArabicText = (text: string): string => {
   if (!containsArabic(text)) return text;
-  
+
   try {
     // Use arabic-reshaper.convertArabic() to properly connect Arabic letters
     // This converts isolated letters to their proper connected forms
@@ -99,14 +100,14 @@ const savePDFNative = async (doc: jsPDF, fileName: string): Promise<void> => {
   try {
     // Convert PDF to base64
     const pdfBase64 = doc.output('datauristring').split(',')[1];
-    
+
     // Save file to cache directory
     const result = await Filesystem.writeFile({
       path: fileName,
       data: pdfBase64,
       directory: Directory.Cache,
     });
-    
+
     // Share the file
     await Share.share({
       title: fileName,
@@ -148,15 +149,16 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     totals,
     summary,
     fileName = 'export.pdf',
+    columnStyles,
   } = options;
-  
+
   // Create PDF document
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
-  
+
   // ✅ Try to load Arabic font (Noto Sans Arabic)
   const currentLang = getCurrentLanguage();
   if (currentLang === 'ar') {
@@ -172,10 +174,10 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.setFont('helvetica');
     arabicFontLoaded = false;
   }
-  
+
   let yPosition = 15;
   const pageWidth = doc.internal.pageSize.width;
-  
+
   // Add store logo if available
   const logo = storeLogo || getStoreLogo();
   if (logo) {
@@ -186,7 +188,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       // Logo failed to load, skip
     }
   }
-  
+
   // Add store name (header)
   if (storeName) {
     doc.setFontSize(20);
@@ -195,7 +197,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.text(storeNameText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 8;
   }
-  
+
   // Add store contact info
   if (storePhone || storeAddress) {
     doc.setFontSize(10);
@@ -210,43 +212,43 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       yPosition += 5;
     }
   }
-  
+
   yPosition += 3;
-  
+
   // Add horizontal line
   doc.setDrawColor(200, 200, 200);
   doc.line(15, yPosition, pageWidth - 15, yPosition);
   yPosition += 8;
-  
+
   // Add report type and date header
   doc.setFontSize(12);
   doc.setTextColor(100, 100, 100);
-  
+
   // Report type on right
   if (reportType) {
     const reportTypeText = processRTL(reportType);
     doc.text(reportTypeText, pageWidth - 15, yPosition, { align: 'right' });
   }
-  
+
   // Date on left - process the full text together for proper Arabic display
   const issueDateLabel = processRTL('تاريخ الإصدار:');
   const currentDateTime = formatLocalDateTime();
   // For Arabic, display date label then datetime
-  const dateText = currentLang === 'ar' 
+  const dateText = currentLang === 'ar'
     ? `${currentDateTime} ${issueDateLabel}`
     : `${issueDateLabel} ${currentDateTime}`;
-  doc.text(dateText, currentLang === 'ar' ? pageWidth - 15 : 15, yPosition, { 
-    align: currentLang === 'ar' ? 'right' : 'left' 
+  doc.text(dateText, currentLang === 'ar' ? pageWidth - 15 : 15, yPosition, {
+    align: currentLang === 'ar' ? 'right' : 'left'
   });
   yPosition += 10;
-  
+
   // Add title
   doc.setFontSize(18);
   doc.setTextColor(44, 62, 80);
   const titleText = processRTL(title);
   doc.text(titleText, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;
-  
+
   // Add subtitle
   if (subtitle) {
     doc.setFontSize(11);
@@ -255,10 +257,10 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     doc.text(subtitleText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 10;
   }
-  
+
   // Prepare table data
   const headers = columns.map(col => processRTL(col.header));
-  const rows = data.map(item => 
+  const rows = data.map(item =>
     columns.map(col => {
       const value = item[col.key];
       if (typeof value === 'number') {
@@ -267,7 +269,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       return processRTL(String(value ?? ''));
     })
   );
-  
+
   // Add totals row if provided
   if (totals) {
     const totalsRow = columns.map(col => {
@@ -285,7 +287,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     });
     rows.push(totalsRow);
   }
-  
+
   // Add table using autoTable
   const fontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
   autoTable(doc, {
@@ -316,26 +318,27 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
         data.cell.styles.fillColor = [230, 230, 230];
       }
     },
+    columnStyles: columnStyles,
   });
-  
+
   // Get final Y position after table
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || yPosition + 50;
-  
+
   // Add summary section if provided
   if (summary && summary.length > 0) {
     let summaryY = finalY + 15;
-    
+
     // Summary header
     doc.setFontSize(14);
     doc.setTextColor(44, 62, 80);
     doc.text(processRTL('خلاصة حسابية'), pageWidth / 2, summaryY, { align: 'center' });
     summaryY += 8;
-    
+
     // Summary line
     doc.setDrawColor(41, 128, 185);
     doc.line(pageWidth / 2 - 40, summaryY, pageWidth / 2 + 40, summaryY);
     summaryY += 8;
-    
+
     // Summary items
     const summaryFontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
     doc.setFontSize(11);
@@ -345,32 +348,32 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       doc.text(processRTL(item.label + ':'), pageWidth / 2 + 30, summaryY, { align: 'right' });
       doc.setTextColor(44, 62, 80);
       doc.setFont(summaryFontName, arabicFontLoaded ? 'normal' : 'bold');
-      const valueText = typeof item.value === 'number' 
-        ? item.value.toLocaleString('en-US') 
+      const valueText = typeof item.value === 'number'
+        ? item.value.toLocaleString('en-US')
         : String(item.value);
       doc.text(valueText, pageWidth / 2 - 30, summaryY, { align: 'left' });
       doc.setFont(summaryFontName, 'normal');
       summaryY += 6;
     });
   }
-  
+
   // Add footer with date and page number
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    
+
     const footerDateText = formatLocalDate();
     doc.text(footerDateText, 15, doc.internal.pageSize.height - 10);
-    
+
     const pageText = `${i} / ${pageCount}`;
     doc.text(pageText, pageWidth - 15, doc.internal.pageSize.height - 10, { align: 'right' });
-    
+
     // App name in center
     doc.text('HyperPOS', pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
   }
-  
+
   // Save the PDF based on platform
   if (Capacitor.isNativePlatform()) {
     await savePDFNative(doc, fileName);
@@ -403,7 +406,7 @@ export const exportInvoicesToPDF = async (
     { header: 'صافي الربح', key: 'profit' },
     { header: 'نوع الدفع', key: 'paymentType' },
   ];
-  
+
   const data = invoices.map(inv => ({
     id: inv.id.substring(0, 8).toUpperCase(),
     date: formatInvoiceDate(inv.createdAt),
@@ -413,28 +416,28 @@ export const exportInvoicesToPDF = async (
     profit: inv.profit || 0,
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
   }));
-  
+
   const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
   const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
   const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
-  
+
   const totals: Record<string, number | string> = {
     total: totalSales,
     discount: totalDiscount,
     profit: totalProfit,
   };
-  
+
   const summary = [
     { label: 'إجمالي المبيعات', value: totalSales },
     { label: 'إجمالي الخصومات', value: totalDiscount },
     { label: 'صافي الأرباح', value: totalProfit },
     { label: 'عدد الفواتير', value: invoices.length },
   ];
-  
-  const subtitle = dateRange 
+
+  const subtitle = dateRange
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${formatLocalDate()}`;
-  
+
   await exportToPDF({
     title: 'تقرير الفواتير',
     reportType: 'تقرير المبيعات',
@@ -473,7 +476,7 @@ export const exportProductsToPDF = async (
     { header: 'الحد الأدنى', key: 'minStockLevel' },
     { header: 'القسم', key: 'category' },
   ];
-  
+
   const data = products.map(p => ({
     name: p.name,
     barcode: p.barcode || '-',
@@ -484,16 +487,16 @@ export const exportProductsToPDF = async (
     minStockLevel: p.minStockLevel || 0,
     category: p.category || 'بدون تصنيف',
   }));
-  
+
   const totalStock = products.reduce((sum, p) => sum + p.quantity, 0);
   const totalValue = products.reduce((sum, p) => sum + (p.salePrice * p.quantity), 0);
   const totalCostValue = products.reduce((sum, p) => sum + ((p.costPrice || 0) * p.quantity), 0);
   const totalPotentialProfit = totalValue - totalCostValue;
-  
+
   const totals: Record<string, number | string> = {
     quantity: totalStock,
   };
-  
+
   const summary = [
     { label: 'عدد المنتجات', value: products.length },
     { label: 'إجمالي المخزون', value: totalStock },
@@ -501,7 +504,7 @@ export const exportProductsToPDF = async (
     { label: 'قيمة المخزون (بالبيع)', value: totalValue },
     { label: 'الربح المتوقع', value: totalPotentialProfit },
   ];
-  
+
   await exportToPDF({
     title: 'قائمة المنتجات',
     reportType: 'تقرير المخزون',
@@ -514,6 +517,12 @@ export const exportProductsToPDF = async (
     totals,
     summary,
     fileName: `منتجات_${new Date().toISOString().split('T')[0]}.pdf`,
+    // Optimization for product list: Name gets more space
+    columnStyles: {
+      0: { cellWidth: 40 }, // Name
+      1: { cellWidth: 25 }, // Barcode
+      7: { cellWidth: 20 }, // Category
+    }
   });
 };
 
@@ -537,7 +546,7 @@ export const exportInvoiceReceiptToPDF = async (
     unit: 'mm',
     format: [80, 200], // Receipt size
   });
-  
+
   // ✅ Try to load Arabic font for receipt
   const currentLang = getCurrentLanguage();
   if (currentLang === 'ar') {
@@ -548,11 +557,11 @@ export const exportInvoiceReceiptToPDF = async (
       arabicFontLoaded = false;
     }
   }
-  
+
   let yPosition = 10;
   const pageWidth = 80;
   const margin = 5;
-  
+
   // Store name
   if (storeInfo?.name) {
     doc.setFontSize(12);
@@ -561,7 +570,7 @@ export const exportInvoiceReceiptToPDF = async (
     doc.text(storeNameText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 6;
   }
-  
+
   // Store contact
   if (storeInfo?.phone) {
     doc.setFontSize(8);
@@ -569,29 +578,29 @@ export const exportInvoiceReceiptToPDF = async (
     doc.text(storeInfo.phone, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 4;
   }
-  
+
   // Divider
   doc.setDrawColor(150);
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 5;
-  
+
   // Invoice number and date
   doc.setFontSize(8);
   doc.text(`#${invoice.id}`, pageWidth - margin, yPosition, { align: 'right' });
   doc.text(new Date(invoice.createdAt).toLocaleDateString('ar-SA'), margin, yPosition);
   yPosition += 6;
-  
+
   // Customer
   if (invoice.customerName) {
     const customerText = processRTL(`العميل: ${invoice.customerName}`);
     doc.text(customerText, pageWidth - margin, yPosition, { align: 'right' });
     yPosition += 5;
   }
-  
+
   // Divider
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 5;
-  
+
   // Items
   invoice.items.forEach(item => {
     const itemName = processRTL(item.name);
@@ -601,40 +610,40 @@ export const exportInvoiceReceiptToPDF = async (
     doc.text(item.total.toFixed(2), pageWidth - margin, yPosition, { align: 'right' });
     yPosition += 5;
   });
-  
+
   // Divider
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 5;
-  
+
   // Subtotal
   doc.text(processRTL('المجموع:'), pageWidth - margin - 25, yPosition, { align: 'right' });
   doc.text(invoice.subtotal.toFixed(2), pageWidth - margin, yPosition, { align: 'right' });
   yPosition += 4;
-  
+
   // Discount if any
   if (invoice.discount > 0) {
     doc.text(processRTL('الخصم:'), pageWidth - margin - 25, yPosition, { align: 'right' });
     doc.text(`-${invoice.discount.toFixed(2)}`, pageWidth - margin, yPosition, { align: 'right' });
     yPosition += 4;
   }
-  
+
   // Total
   doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'bold');
   doc.text(processRTL('الإجمالي:'), pageWidth - margin - 25, yPosition, { align: 'right' });
   doc.text(invoice.total.toFixed(2), pageWidth - margin, yPosition, { align: 'right' });
   yPosition += 6;
-  
+
   // Payment type
   doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'normal');
   const paymentText = processRTL(invoice.paymentType === 'cash' ? 'نقدي' : 'آجل');
   doc.text(paymentText, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;
-  
+
   // Thank you message
   doc.setFontSize(10);
   const thanksText = processRTL('شكراً لزيارتكم');
   doc.text(thanksText, pageWidth / 2, yPosition, { align: 'center' });
-  
+
   // Save based on platform
   const fileName = `فاتورة_${invoice.id}.pdf`;
   if (Capacitor.isNativePlatform()) {
@@ -664,22 +673,22 @@ export const exportExpensesToPDF = async (
     { header: 'التاريخ', key: 'date' },
     { header: 'ملاحظات', key: 'notes' },
   ];
-  
+
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  
+
   const totals: Record<string, number | string> = {
     amount: totalExpenses,
   };
-  
+
   const summary = [
     { label: 'إجمالي المصاريف', value: totalExpenses },
     { label: 'عدد المصاريف', value: expenses.length },
   ];
-  
-  const subtitle = dateRange 
+
+  const subtitle = dateRange
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${formatLocalDate()}`;
-  
+
   await exportToPDF({
     title: 'تقرير المصاريف',
     reportType: 'تقرير المصروفات',
@@ -715,26 +724,26 @@ export const exportPartnersToPDF = async (
     { header: 'المسحوب', key: 'totalWithdrawn' },
     { header: 'الرصيد', key: 'currentBalance' },
   ];
-  
+
   const totalCapital = partners.reduce((sum, p) => sum + p.currentCapital, 0);
   const totalProfit = partners.reduce((sum, p) => sum + p.totalProfit, 0);
   const totalWithdrawn = partners.reduce((sum, p) => sum + p.totalWithdrawn, 0);
   const totalBalance = partners.reduce((sum, p) => sum + p.currentBalance, 0);
-  
+
   const totals: Record<string, number | string> = {
     currentCapital: totalCapital,
     totalProfit: totalProfit,
     totalWithdrawn: totalWithdrawn,
     currentBalance: totalBalance,
   };
-  
+
   const summary = [
     { label: 'إجمالي رأس المال', value: totalCapital },
     { label: 'إجمالي الأرباح', value: totalProfit },
     { label: 'إجمالي المسحوبات', value: totalWithdrawn },
     { label: 'إجمالي الأرصدة', value: totalBalance },
   ];
-  
+
   await exportToPDF({
     title: 'تقرير الشركاء',
     reportType: 'تقرير الشراكة',
@@ -768,24 +777,24 @@ export const exportCustomersToPDF = async (
     { header: 'الطلبات', key: 'ordersCount' },
     { header: 'الرصيد', key: 'balance' },
   ];
-  
+
   const totalPurchases = customers.reduce((sum, c) => sum + c.totalPurchases, 0);
   const totalOrders = customers.reduce((sum, c) => sum + c.ordersCount, 0);
   const totalBalance = customers.reduce((sum, c) => sum + c.balance, 0);
-  
+
   const totals: Record<string, number | string> = {
     totalPurchases: totalPurchases,
     ordersCount: totalOrders,
     balance: totalBalance,
   };
-  
+
   const summary = [
     { label: 'عدد العملاء', value: customers.length },
     { label: 'إجمالي المشتريات', value: totalPurchases },
     { label: 'إجمالي الطلبات', value: totalOrders },
     { label: 'إجمالي الأرصدة', value: totalBalance },
   ];
-  
+
   await exportToPDF({
     title: 'قائمة العملاء',
     reportType: 'تقرير العملاء',
