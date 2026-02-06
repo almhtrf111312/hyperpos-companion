@@ -831,7 +831,7 @@ export default function Products() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
+        <div className="grid grid-cols-1 lg:hidden gap-3 px-1">
           {filteredProducts.map((product, index) => {
             const status = statusConfig[product.status];
             const profit = product.salePrice - product.costPrice;
@@ -851,8 +851,8 @@ export default function Products() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-sm line-clamp-1">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground">{product.category}</p>
+                    <h3 className="font-medium text-foreground text-sm line-clamp-1" title={product.name}>{product.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate" title={product.barcode}>{product.barcode || product.category}</p>
                   </div>
                   <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium", status.color)}>
                     {status.label}
@@ -862,15 +862,15 @@ export default function Products() {
                 <div className="grid grid-cols-3 gap-2 text-center mb-3">
                   <div>
                     <p className="text-xs text-muted-foreground">الشراء</p>
-                    <p className="font-semibold text-sm">${product.costPrice}</p>
+                    <p className="font-semibold text-sm">${product.costPrice.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">البيع</p>
-                    <p className="font-semibold text-sm text-primary">${product.salePrice}</p>
+                    <p className="font-semibold text-sm text-primary">${product.salePrice.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">الربح</p>
-                    <p className="font-semibold text-sm text-success">${profit}</p>
+                    <p className="font-semibold text-sm text-success">${profit.toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -985,11 +985,11 @@ export default function Products() {
                       <div className="flex flex-col text-sm">
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
-                          <span className="text-muted-foreground">${product.costPrice}</span>
+                          <span className="text-muted-foreground">${product.costPrice.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
-                          <span className="font-semibold text-foreground">${product.salePrice}</span>
+                          <span className="font-semibold text-foreground">${product.salePrice.toFixed(2)}</span>
                         </div>
                       </div>
                     </td>
@@ -997,7 +997,7 @@ export default function Products() {
                     {/* الربح */}
                     <td className="py-3 px-3">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-success text-sm">${profit}</span>
+                        <span className="font-semibold text-success text-sm">${profit.toFixed(2)}</span>
                         <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
                       </div>
                     </td>
