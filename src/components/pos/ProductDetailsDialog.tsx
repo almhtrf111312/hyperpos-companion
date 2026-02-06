@@ -79,7 +79,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
                 <div className="flex items-center gap-2 mb-1">
                   <Box className="w-4 h-4 text-blue-500" />
                   <span className="text-xs text-muted-foreground">
-                    {t('products.bulkPrice')} ({product.bulkUnit || 'كرتونة'})
+                    سعر الجملة ({product.bulkUnit || 'كرتونة'})
                   </span>
                 </div>
                 <p className="font-bold text-sm text-blue-600">${product.bulkSalePrice}</p>
@@ -133,7 +133,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
           {/* Profit Margin (if cost price available) */}
           {product.costPrice && product.costPrice > 0 && (
             <div className="glass-card p-4 rounded-lg bg-primary/5">
-              <h4 className="font-semibold mb-2 text-sm">{t('products.profitMargin')}</h4>
+              <h4 className="font-semibold mb-2 text-sm">هامش الربح</h4>
               <div className="text-sm">
                 <span className="text-muted-foreground">هامش الربح: </span>
                 <span className="font-bold text-primary">

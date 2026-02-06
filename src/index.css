@@ -310,12 +310,27 @@
   border: 1px solid var(--glass-border) !important;
 }
 
-/* Toast notifications */
+/* Toast notifications - ensure text is always readable */
 .blur-theme [data-sonner-toast] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 10px)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 10px)) !important;
   border: 1px solid var(--glass-border) !important;
+}
+
+.blur-theme [data-sonner-toast] [data-title],
+.blur-theme [data-sonner-toast] [data-description] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.blur-theme [data-sonner-toast][data-type="success"] {
+  background: hsla(var(--success) / 0.85) !important;
+  color: hsl(var(--success-foreground)) !important;
+}
+
+.blur-theme [data-sonner-toast][data-type="error"] {
+  background: hsla(var(--destructive) / 0.85) !important;
+  color: hsl(var(--destructive-foreground)) !important;
 }
 
 /* Buttons with subtle glass effect in blur theme */

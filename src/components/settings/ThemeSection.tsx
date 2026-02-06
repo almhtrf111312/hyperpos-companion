@@ -1,41 +1,58 @@
 import { useState } from 'react';
-import { Sun, Moon, Palette, Check, Save, Sparkles } from 'lucide-react';
+import { Sun, Moon, Palette, Check, Save, Blend } from 'lucide-react';
 import { useTheme, themeColors, ThemeColor, ThemeMode } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 
 export function ThemeSection() {
-  const { mode, color, blurEnabled, setFullTheme } = useTheme();
+  const { mode, color, blurEnabled, transparencyLevel, setFullTheme } = useTheme();
   const { t } = useLanguage();
   
-  // الحالة المؤقتة للتغييرات (لا تُحفظ حتى الضغط على زر الحفظ)
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
   const [pendingBlur, setPendingBlur] = useState<boolean>(blurEnabled);
+  const [pendingTransparency, setPendingTransparency] = useState<number>(transparencyLevel);
   const [hasChanges, setHasChanges] = useState(false);
 
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
 
+  const checkChanges = (m: ThemeMode, c: ThemeColor, b: boolean, tr: number) => {
+    setHasChanges(m !== mode || c !== color || b !== blurEnabled || tr !== transparencyLevel);
+  };
+
   const handleModeChange = (newMode: ThemeMode) => {
     setPendingMode(newMode);
-    setHasChanges(newMode !== mode || pendingColor !== color || pendingBlur !== blurEnabled);
+    checkChanges(newMode, pendingColor, pendingBlur, pendingTransparency);
   };
 
   const handleColorChange = (newColor: ThemeColor) => {
     setPendingColor(newColor);
-    setHasChanges(pendingMode !== mode || newColor !== color || pendingBlur !== blurEnabled);
+    checkChanges(pendingMode, newColor, pendingBlur, pendingTransparency);
   };
 
   const handleBlurChange = (enabled: boolean) => {
     setPendingBlur(enabled);
-    setHasChanges(pendingMode !== mode || pendingColor !== color || enabled !== blurEnabled);
+    if (!enabled) {
+      setPendingTransparency(0);
+      checkChanges(pendingMode, pendingColor, false, 0);
+    } else {
+      if (pendingTransparency === 0) setPendingTransparency(30);
+      checkChanges(pendingMode, pendingColor, true, pendingTransparency || 30);
+    }
+  };
+
+  const handleTransparencyChange = (value: number[]) => {
+    const val = value[0];
+    setPendingTransparency(val);
+    checkChanges(pendingMode, pendingColor, pendingBlur, val);
   };
 
   const handleSave = () => {
-    setFullTheme(pendingMode, pendingColor, pendingBlur);
+    setFullTheme(pendingMode, pendingColor, pendingBlur, pendingTransparency);
     setHasChanges(false);
     toast.success(t('settings.languageChanged'));
   };
@@ -44,12 +61,12 @@ export function ThemeSection() {
     setPendingMode(mode);
     setPendingColor(color);
     setPendingBlur(blurEnabled);
+    setPendingTransparency(transparencyLevel);
     setHasChanges(false);
   };
 
   return (
     <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-      {/* Save/Cancel Buttons - Above theme options */}
       {hasChanges && (
         <div className="flex gap-3 pb-4 border-b border-border">
           <Button onClick={handleSave} className="flex-1">
@@ -68,7 +85,6 @@ export function ThemeSection() {
         </h2>
         
         <div className="grid grid-cols-2 gap-4 mb-6">
-          {/* Light Mode */}
           <button
             onClick={() => handleModeChange('light')}
             className={cn(
@@ -84,9 +100,7 @@ export function ThemeSection() {
             )}>
               <Sun className="w-8 h-8" />
             </div>
-            <span className="font-medium text-foreground">
-              {t('settings.lightMode')}
-            </span>
+            <span className="font-medium text-foreground">{t('settings.lightMode')}</span>
             {pendingMode === 'light' && (
               <div className="absolute top-2 left-2">
                 <Check className="w-5 h-5 text-primary" />
@@ -94,7 +108,6 @@ export function ThemeSection() {
             )}
           </button>
 
-          {/* Dark Mode */}
           <button
             onClick={() => handleModeChange('dark')}
             className={cn(
@@ -110,9 +123,7 @@ export function ThemeSection() {
             )}>
               <Moon className="w-8 h-8" />
             </div>
-            <span className="font-medium text-foreground">
-              {t('settings.darkMode')}
-            </span>
+            <span className="font-medium text-foreground">{t('settings.darkMode')}</span>
             {pendingMode === 'dark' && (
               <div className="absolute top-2 left-2">
                 <Check className="w-5 h-5 text-primary" />
@@ -128,7 +139,6 @@ export function ThemeSection() {
           <Palette className="w-4 h-4" />
           {t('settings.colorTheme')}
         </h3>
-        
         <div className="grid grid-cols-5 gap-3">
           {colorOptions.map(([key, value]) => (
             <button
@@ -161,22 +171,22 @@ export function ThemeSection() {
         </div>
       </div>
 
-      {/* Blur Effect Toggle */}
-      <div className="pt-4 border-t border-border">
+      {/* Transparency Feature */}
+      <div className="pt-4 border-t border-border space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center",
               pendingBlur ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             )}>
-              <Sparkles className="w-5 h-5" />
+              <Blend className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-medium text-foreground">
-                {t('settings.blurEffect')}
+                {t('settings.transparency')}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {t('settings.blurEffectDesc')}
+                {t('settings.transparencyDesc')}
               </p>
             </div>
           </div>
@@ -185,8 +195,29 @@ export function ThemeSection() {
             onCheckedChange={handleBlurChange}
           />
         </div>
-      </div>
 
+        {pendingBlur && (
+          <div className="space-y-3 pr-13">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{t('settings.transparencyLevel')}</span>
+              <span className="font-medium text-foreground">{pendingTransparency}%</span>
+            </div>
+            <Slider
+              value={[pendingTransparency]}
+              onValueChange={handleTransparencyChange}
+              min={10}
+              max={90}
+              step={10}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>10%</span>
+              <span>50%</span>
+              <span>90%</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
