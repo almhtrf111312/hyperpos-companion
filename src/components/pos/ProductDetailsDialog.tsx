@@ -32,14 +32,16 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xs mx-4 max-h-[60vh] overflow-y-auto rounded-2xl p-3 [&>button]:hidden">
-        {/* Close Button - Single Large Button */}
-        <button
-          onClick={onClose}
-          className="absolute left-2 top-2 w-8 h-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors z-10"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      <DialogContent className="max-w-xs mx-4 max-h-[60vh] overflow-y-auto rounded-2xl p-3 [&>button[aria-label='Close']]:hidden">
+        {/* Close Button - Top Right */}
+        <div className="absolute left-2 top-2 z-10">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         <DialogHeader className="pt-1">
           <DialogTitle className="text-base font-bold text-center px-6 leading-tight">{product.name}</DialogTitle>
@@ -150,6 +152,16 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
               </div>
             </div>
           )}
+        </div>
+
+        {/* Footer with Explicit Close Button */}
+        <div className="mt-4 flex justify-center sticky bottom-0 bg-background/95 backdrop-blur py-2 border-t -mx-3 px-3">
+          <button
+            onClick={onClose}
+            className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2 rounded-lg transition-colors"
+          >
+            {t('common.close') || 'إغلاق'}
+          </button>
         </div>
       </DialogContent>
     </Dialog>
