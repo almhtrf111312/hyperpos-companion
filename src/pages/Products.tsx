@@ -108,7 +108,7 @@ export default function Products() {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanTarget, setScanTarget] = useState<'search' | 'form'>('search');
+  const [scanTarget, setScanTarget] = useState<'search' | 'form' | 'barcode1' | 'barcode2' | 'barcode3'>('search');
 
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -1155,7 +1155,7 @@ export default function Products() {
                       onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                     />
                     <Button variant="outline" size="icon" onClick={() => {
-                      setScanTarget('form');
+                      setScanTarget('barcode1');
                       setScannerOpen(true);
                     }}>
                       <Barcode className="w-4 h-4" />
@@ -1178,7 +1178,7 @@ export default function Products() {
                         onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
                       />
                       <Button variant="outline" size="icon" onClick={() => {
-                        setScanTarget('form');
+                        setScanTarget('barcode2');
                         setScannerOpen(true);
                       }}>
                         <Barcode className="w-4 h-4" />
@@ -1208,7 +1208,7 @@ export default function Products() {
                         onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
                       />
                       <Button variant="outline" size="icon" onClick={() => {
-                        setScanTarget('form');
+                        setScanTarget('barcode3');
                         setScannerOpen(true);
                       }}>
                         <Barcode className="w-4 h-4" />
@@ -1699,10 +1699,26 @@ export default function Products() {
             console.log('[Products] Scanned:', barcode);
             setScannerOpen(false);
 
-            if (scanTarget === 'form') {
+            if (scanTarget === 'form' || scanTarget === 'barcode1') {
               const cleanBarcode = barcode.trim();
-              console.log('[Products] Setting form barcode:', cleanBarcode);
+              console.log('[Products] Setting primary barcode:', cleanBarcode);
               setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
+              toast.success(t('pos.scanned'), { description: cleanBarcode });
+              return;
+            }
+
+            if (scanTarget === 'barcode2') {
+              const cleanBarcode = barcode.trim();
+              console.log('[Products] Setting barcode 2:', cleanBarcode);
+              setFormData(prev => ({ ...prev, barcode2: cleanBarcode }));
+              toast.success(t('pos.scanned'), { description: cleanBarcode });
+              return;
+            }
+
+            if (scanTarget === 'barcode3') {
+              const cleanBarcode = barcode.trim();
+              console.log('[Products] Setting barcode 3:', cleanBarcode);
+              setFormData(prev => ({ ...prev, barcode3: cleanBarcode }));
               toast.success(t('pos.scanned'), { description: cleanBarcode });
               return;
             }
