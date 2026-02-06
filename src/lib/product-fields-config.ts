@@ -17,65 +17,29 @@ export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restau
 
 // Default fields based on store type
 export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFieldsConfig => {
+  // All fields disabled by default as requested for clean interface
+  // User can enable them manually in settings
+  const allDisabled: ProductFieldsConfig = {
+    expiryDate: false,
+    serialNumber: false,
+    warranty: false,
+    wholesalePrice: false,
+    sizeColor: false,
+    minStockLevel: false,
+  };
+
   switch (storeType) {
     case 'phones':
     case 'repair':
-      return {
-        expiryDate: false,
-        serialNumber: true,
-        warranty: true,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
-      };
     case 'grocery':
     case 'pharmacy':
-      return {
-        expiryDate: true,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
-      };
     case 'clothing':
-      return {
-        expiryDate: false,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: true,
-        minStockLevel: true,
-      };
     case 'restaurant':
-      return {
-        expiryDate: true,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: false,
-        sizeColor: false,
-        minStockLevel: true,
-      };
     case 'bookstore':
-      return {
-        expiryDate: false,
-        serialNumber: true, // ISBN
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
-      };
     case 'general':
     case 'custom':
     default:
-      return {
-        expiryDate: true,
-        serialNumber: true,
-        warranty: true,
-        wholesalePrice: true,
-        sizeColor: true,
-        minStockLevel: true,
-      };
+      return allDisabled;
   }
 };
 
@@ -99,10 +63,10 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
   try {
     // Save to localStorage for instant access
     localStorage.setItem(PRODUCT_FIELDS_STORAGE_KEY, JSON.stringify(config));
-    
+
     // Emit event to notify components in the same tab
     emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, config);
-    
+
     // Sync to cloud
     const userId = getCurrentUserId();
     if (userId) {
@@ -110,20 +74,20 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('stores')
-        .update({ 
-          sync_settings: { 
-            productFieldsConfig: config 
-          } 
+        .update({
+          sync_settings: {
+            productFieldsConfig: config
+          }
         })
         .eq('user_id', userId);
-      
+
       if (error) {
         console.error('Failed to sync product fields to cloud:', error);
       } else {
         console.log('[ProductFields] Synced to cloud successfully');
       }
     }
-    
+
     return true;
   } catch (error) {
     console.error('Failed to save product fields config:', error);
@@ -136,21 +100,21 @@ export const syncProductFieldsFromCloud = async (): Promise<ProductFieldsConfig 
   try {
     const userId = getCurrentUserId();
     if (!userId) return null;
-    
+
     const { data, error } = await supabase
       .from('stores')
       .select('sync_settings')
       .eq('user_id', userId)
       .maybeSingle();
-    
+
     if (error) {
       console.error('Failed to fetch product fields from cloud:', error);
       return null;
     }
-    
+
     const syncSettings = data?.sync_settings as { productFieldsConfig?: ProductFieldsConfig } | null;
     const cloudConfig = syncSettings?.productFieldsConfig;
-    
+
     if (cloudConfig) {
       // Sync to localStorage
       localStorage.setItem(PRODUCT_FIELDS_STORAGE_KEY, JSON.stringify(cloudConfig));
@@ -158,7 +122,7 @@ export const syncProductFieldsFromCloud = async (): Promise<ProductFieldsConfig 
       console.log('[ProductFields] Synced from cloud to localStorage');
       return cloudConfig;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Failed to sync product fields from cloud:', error);
@@ -173,7 +137,7 @@ export const getEffectiveFieldsConfig = (): ProductFieldsConfig => {
   if (userConfig) {
     return userConfig;
   }
-  
+
   // Otherwise use store type defaults
   try {
     const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
@@ -185,7 +149,7 @@ export const getEffectiveFieldsConfig = (): ProductFieldsConfig => {
   } catch (error) {
     console.error('Failed to load store settings for fields config:', error);
   }
-  
+
   return getDefaultFieldsByStoreType('general');
 };
 

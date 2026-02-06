@@ -1239,6 +1239,8 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">الكمية</label>
                   <Input
                     type="number"
+                    dir="ltr"
+                    className="text-right"
                     placeholder="0"
                     value={formData.quantity || ''}
                     onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
@@ -1248,6 +1250,8 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
                   <Input
                     type="number"
+                    dir="ltr"
+                    className="text-right"
                     placeholder="0"
                     value={formData.costPrice || ''}
                     onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
@@ -1257,6 +1261,8 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
                   <Input
                     type="number"
+                    dir="ltr"
+                    className="text-right"
                     placeholder="0"
                     value={formData.salePrice || ''}
                     onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
@@ -1333,6 +1339,8 @@ export default function Products() {
                     <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
                     <Input
                       type="number"
+                      dir="ltr"
+                      className="text-right"
                       placeholder="0"
                       value={formData.wholesalePrice || ''}
                       onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
@@ -1364,6 +1372,8 @@ export default function Products() {
                     <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
                     <Input
                       type="number"
+                      dir="ltr"
+                      className="text-right"
                       placeholder="5"
                       value={formData.minStockLevel || ''}
                       onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
@@ -1578,6 +1588,8 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
                   <Input
                     type="number"
+                    dir="ltr"
+                    className="text-right"
                     value={formData.quantity || ''}
                     onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
                   />
@@ -1586,6 +1598,8 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ($)</label>
                   <Input
                     type="number"
+                    dir="ltr"
+                    className="text-right"
                     value={formData.costPrice || ''}
                     onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
                   />
@@ -1594,6 +1608,8 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ($)</label>
                   <Input
                     type="number"
+                    dir="ltr"
+                    className="text-right"
                     value={formData.salePrice || ''}
                     onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
                   />
@@ -1669,6 +1685,8 @@ export default function Products() {
                     <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
                     <Input
                       type="number"
+                      dir="ltr"
+                      className="text-right"
                       placeholder="0"
                       value={formData.wholesalePrice || ''}
                       onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
@@ -1700,6 +1718,8 @@ export default function Products() {
                     <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
                     <Input
                       type="number"
+                      dir="ltr"
+                      className="text-right"
                       placeholder="5"
                       value={formData.minStockLevel || ''}
                       onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
