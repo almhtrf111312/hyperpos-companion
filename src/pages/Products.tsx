@@ -236,8 +236,6 @@ export default function Products() {
   // 1. Save state whenever important form values change
   useEffect(() => {
     // Only save if the dialog is open and we have some data
-    // Important: Don't save if we just restored an empty image over a pending one? 
-    // Actually, saving is fine as long as restoration is correct.
     if (showAddDialog || showEditDialog) {
       const stateToSave = {
         formData,
@@ -248,6 +246,9 @@ export default function Products() {
         timestamp: Date.now()
       };
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
+    } else {
+      // Clear state if dialogs are closed to prevent auto-open on reload
+      localStorage.removeItem(FORM_STORAGE_KEY);
     }
   }, [formData, customFieldValues, showAddDialog, showEditDialog, selectedProduct]);
 
