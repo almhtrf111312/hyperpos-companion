@@ -20,7 +20,7 @@ import {
   Truck,
   FileText
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, toWesternNumerals } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -156,6 +156,21 @@ export default function Products() {
   const [fieldsConfig, setFieldsConfig] = useState<ProductFieldsConfig>(getEffectiveFieldsConfig);
   const [customFields, setCustomFields] = useState<CustomField[]>(() => getEnabledCustomFields());
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({});
+
+  // Helper function to convert Arabic numerals to English when typing in numeric fields
+  const handleNumericChange = useCallback((field: keyof typeof formData, value: string) => {
+    // Convert Arabic numerals to English
+    const converted = toWesternNumerals(value);
+    // Parse as number for numeric fields
+    const numValue = parseFloat(converted) || 0;
+    setFormData(prev => ({ ...prev, [field]: numValue }));
+  }, []);
+
+  // Helper function for text fields that may contain Arabic numerals (like barcode)
+  const handleTextWithNumerals = useCallback((field: keyof typeof formData, value: string) => {
+    const converted = toWesternNumerals(value);
+    setFormData(prev => ({ ...prev, [field]: converted }));
+  }, []);
 
   // Reload fields config when navigating to this page or when settings change
   useEffect(() => {
@@ -488,12 +503,9 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
-      setCustomFieldValues({});
-      toast.success('تم إضافة المنتج بنجاح');
-      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setCustomFieldValues({});
       clearPersistedState(); // Clear persistence on success
       toast.success('تم إضافة المنتج بنجاح');
