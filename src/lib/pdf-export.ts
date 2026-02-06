@@ -22,6 +22,7 @@ export interface PDFExportOptions {
   summary?: { label: string; value: string | number }[];
   fileName?: string;
   columnStyles?: Record<number | string, any>;
+  orientation?: 'portrait' | 'landscape';
 }
 
 // Check if text contains Arabic characters
@@ -150,11 +151,12 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     summary,
     fileName = 'export.pdf',
     columnStyles,
+    orientation = 'portrait',
   } = options;
 
   // Create PDF document
   const doc = new jsPDF({
-    orientation: 'portrait',
+    orientation,
     unit: 'mm',
     format: 'a4',
   });
@@ -516,12 +518,13 @@ export const exportProductsToPDF = async (
     data,
     totals,
     summary,
+    orientation: 'landscape',
     fileName: `منتجات_${new Date().toISOString().split('T')[0]}.pdf`,
     // Optimization for product list: Name gets more space
     columnStyles: {
-      0: { cellWidth: 70 }, // Name - Increased width to prevent truncation
-      1: { cellWidth: 25 }, // Barcode
-      7: { cellWidth: 20 }, // Category
+      0: { cellWidth: 100 }, // Name - Increased width to prevent truncation
+      1: { cellWidth: 35 }, // Barcode
+      7: { cellWidth: 30 }, // Category
     }
   });
 };
