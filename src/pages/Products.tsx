@@ -648,11 +648,32 @@ export default function Products() {
         {/* Show restoring indicator if needed? Maybe just toasts are enough */}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
+          <div className="hidden sm:block">
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('products.pageTitle')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{t('products.pageSubtitle')}</p>
           </div>
-          <div className="flex gap-2">
+          {/* Mobile: Grid layout for buttons */}
+          <div className="sm:hidden flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                <FileText className="w-4 h-4 ml-1" />
+                {t('purchaseInvoice.addPurchaseInvoice')}
+              </Button>
+              <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
+                setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setShowAddDialog(true);
+              }}>
+                <Plus className="w-4 h-4 ml-1" />
+                {t('products.addProduct')}
+              </Button>
+            </div>
+            <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
+              <Tag className="w-4 h-4 ml-1" />
+              {t('products.categories')}
+            </Button>
+          </div>
+          {/* Desktop: Original layout */}
+          <div className="hidden sm:flex gap-2">
             <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
               <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {t('purchaseInvoice.addPurchaseInvoice')}
@@ -663,10 +684,7 @@ export default function Products() {
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-              setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
-              // We don't clear state here immediately because `useEffect` will overwrite it with new empty state anyway
-              // But good practice to ensure clean slate
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {t('products.addProduct')}
