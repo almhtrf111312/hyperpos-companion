@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Barcode, DollarSign, Box, Layers } from 'lucide-react';
+import { Package, Barcode, DollarSign, Box, Layers, X } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 
@@ -32,18 +32,26 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{product.name}</DialogTitle>
+      <DialogContent className="max-w-sm mx-4 max-h-[75vh] overflow-y-auto rounded-2xl p-4">
+        {/* Close Button - Large and Clear */}
+        <button
+          onClick={onClose}
+          className="absolute left-3 top-3 w-9 h-9 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors z-10"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <DialogHeader className="pt-2">
+          <DialogTitle className="text-lg font-bold text-center pr-6">{product.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Product Image */}
           {product.image ? (
             <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
-              <img 
-                src={product.image} 
-                alt={product.name} 
+              <img
+                src={product.image}
+                alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>

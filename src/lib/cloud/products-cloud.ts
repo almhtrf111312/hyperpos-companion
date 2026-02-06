@@ -1,10 +1,10 @@
 // Cloud Products Store - Supabase-backed products management
-import { 
-  fetchFromSupabase, 
-  insertToSupabase, 
-  updateInSupabase, 
+import {
+  fetchFromSupabase,
+  insertToSupabase,
+  updateInSupabase,
   deleteFromSupabase,
-  getCurrentUserId 
+  getCurrentUserId
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,8 @@ export interface CloudProduct {
   user_id: string;
   name: string;
   barcode: string | null;
+  barcode2: string | null;  // باركود ثاني
+  barcode3: string | null;  // باركود ثالث
   category: string | null;
   description: string | null;
   image_url: string | null;
@@ -37,6 +39,8 @@ export interface Product {
   id: string;
   name: string;
   barcode: string;
+  barcode2?: string;  // باركود ثاني
+  barcode3?: string;  // باركود ثالث
   category: string;
   costPrice: number;
   salePrice: number;
@@ -66,6 +70,8 @@ function toProduct(cloud: CloudProduct): Product {
     id: cloud.id,
     name: cloud.name,
     barcode: cloud.barcode || '',
+    barcode2: cloud.barcode2 || undefined,
+    barcode3: cloud.barcode3 || undefined,
     category: cloud.category || '',
     costPrice: Number(cloud.cost_price) || 0,
     salePrice: Number(cloud.sale_price) || 0,
@@ -90,6 +96,8 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
   return {
     name: product.name,
     barcode: product.barcode || null,
+    barcode2: product.barcode2 || null,
+    barcode3: product.barcode3 || null,
     category: product.category || null,
     cost_price: product.costPrice || 0,
     sale_price: product.salePrice || 0,
@@ -157,7 +165,7 @@ const loadFromLocalCache = (): Product[] | null => {
 // Load products from cloud with caching and localStorage fallback
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
-  
+
   // إذا لا يوجد مستخدم، جرب التحميل من localStorage
   if (!userId) {
     const localProducts = loadFromLocalCache();
@@ -174,34 +182,34 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
   }
 
   try {
-    const cloudProducts = await fetchFromSupabase<CloudProduct>('products', { 
-      column: 'created_at', 
-      ascending: false 
+    const cloudProducts = await fetchFromSupabase<CloudProduct>('products', {
+      column: 'created_at',
+      ascending: false
     });
 
     productsCache = cloudProducts.map(toProduct);
     cacheTimestamp = Date.now();
-    
+
     // حفظ في localStorage كـ backup
     saveToLocalCache(productsCache);
-    
+
     return productsCache;
   } catch (error) {
     console.error('[ProductsCloud] Failed to fetch from cloud:', error);
-    
+
     // Fallback: محاولة التحميل من الذاكرة المحلية
     const localProducts = loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
       console.log('[ProductsCloud] Serving from localStorage (cloud failed)');
       return localProducts;
     }
-    
+
     // إذا كان هناك cache قديم في الذاكرة، استخدمه
     if (productsCache && productsCache.length > 0) {
       console.log('[ProductsCloud] Serving from stale memory cache');
       return productsCache;
     }
-    
+
     throw error;
   }
 };
@@ -222,23 +230,25 @@ export const invalidateProductsCache = () => {
 export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): Promise<Product | null> => {
   const cloudData = toCloudProduct(product);
   const inserted = await insertToSupabase<CloudProduct>('products', cloudData);
-  
+
   if (inserted) {
     const newProduct = toProduct(inserted);
     invalidateProductsCache();
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
     return newProduct;
   }
-  
+
   return null;
 };
 
 // Update product in cloud
 export const updateProductCloud = async (id: string, data: Partial<Omit<Product, 'id' | 'status'>>): Promise<boolean> => {
   const updates: Record<string, unknown> = {};
-  
+
   if (data.name !== undefined) updates.name = data.name;
   if (data.barcode !== undefined) updates.barcode = data.barcode || null;
+  if (data.barcode2 !== undefined) updates.barcode2 = data.barcode2 || null;
+  if (data.barcode3 !== undefined) updates.barcode3 = data.barcode3 || null;
   if (data.category !== undefined) updates.category = data.category || null;
   if (data.costPrice !== undefined) updates.cost_price = data.costPrice;
   if (data.salePrice !== undefined) updates.sale_price = data.salePrice;
@@ -256,12 +266,12 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.trackByUnit !== undefined) updates.track_by_unit = data.trackByUnit;
 
   const success = await updateInSupabase('products', id, updates);
-  
+
   if (success) {
     invalidateProductsCache();
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
   }
-  
+
   return success;
 };
 
@@ -269,32 +279,32 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
-  
+
   try {
     // ✅ المرحلة 1: حذف السجلات المرتبطة أولاً (بسبب المفاتيح الأجنبية)
-    
+
     // حذف من stock_transfer_items
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from('stock_transfer_items')
       .delete()
       .eq('product_id', id);
-    
+
     // حذف من warehouse_stock
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from('warehouse_stock')
       .delete()
       .eq('product_id', id);
-    
+
     // ✅ المرحلة 2: حذف المنتج نفسه
     const success = await deleteFromSupabase('products', id);
-    
+
     if (success) {
       invalidateProductsCache();
       emitEvent(EVENTS.PRODUCTS_UPDATED, null);
     }
-    
+
     return success;
   } catch (error) {
     console.error('[deleteProductCloud] Error:', error);
@@ -308,10 +318,14 @@ export const getProductByIdCloud = async (id: string): Promise<Product | null> =
   return products.find(p => p.id === id) || null;
 };
 
-// Get product by barcode
+// Get product by barcode (searches all barcodes)
 export const getProductByBarcodeCloud = async (barcode: string): Promise<Product | null> => {
   const products = await loadProductsCloud();
-  return products.find(p => p.barcode === barcode) || null;
+  return products.find(p =>
+    p.barcode === barcode ||
+    p.barcode2 === barcode ||
+    p.barcode3 === barcode
+  ) || null;
 };
 
 // Get low stock products
@@ -327,9 +341,9 @@ export const getLowStockProductsCloud = async (): Promise<Product[]> => {
 export const deductStockCloud = async (productId: string, quantity: number): Promise<boolean> => {
   const products = await loadProductsCloud();
   const product = products.find(p => p.id === productId);
-  
+
   if (!product) return false;
-  
+
   const newQuantity = Math.max(0, product.quantity - quantity);
   return updateProductCloud(productId, { quantity: newQuantity });
 };
@@ -354,9 +368,9 @@ export const deductStockBatchCloud = async (
 export const restoreStockCloud = async (productId: string, quantity: number): Promise<boolean> => {
   const products = await loadProductsCloud();
   const product = products.find(p => p.id === productId);
-  
+
   if (!product) return false;
-  
+
   const newQuantity = product.quantity + quantity;
   return updateProductCloud(productId, { quantity: newQuantity });
 };
@@ -383,7 +397,7 @@ export const checkStockAvailabilityCloud = async (
 ): Promise<{ success: boolean; insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> }> => {
   const products = await loadProductsCloud();
   const insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> = [];
-  
+
   items.forEach(({ productId, quantity }) => {
     const product = products.find(p => p.id === productId);
     if (product && product.quantity < quantity) {
@@ -395,7 +409,7 @@ export const checkStockAvailabilityCloud = async (
       });
     }
   });
-  
+
   return {
     success: insufficientItems.length === 0,
     insufficientItems,

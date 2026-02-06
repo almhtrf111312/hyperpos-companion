@@ -121,6 +121,8 @@ export default function Products() {
   const [formData, setFormData] = useState({
     name: '',
     barcode: '',
+    barcode2: '',  // باركود ثاني
+    barcode3: '',  // باركود ثالث
     category: 'هواتف',
     costPrice: 0,
     salePrice: 0,
@@ -142,6 +144,10 @@ export default function Products() {
     bulkSalePrice: 0,
     trackByUnit: 'piece' as 'piece' | 'bulk',
   });
+
+  // State for showing additional barcode fields
+  const [showBarcode2, setShowBarcode2] = useState(false);
+  const [showBarcode3, setShowBarcode3] = useState(false);
 
   // Unit settings collapsible state
   const [showUnitSettings, setShowUnitSettings] = useState(false);
@@ -481,7 +487,9 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setShowBarcode2(false);
+      setShowBarcode3(false);
       setCustomFieldValues({});
       toast.success('تم إضافة المنتج بنجاح');
       setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
@@ -1139,7 +1147,7 @@ export default function Products() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')}</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
                   <div className="flex gap-2">
                     <Input
                       placeholder={t('products.exampleBarcode')}
@@ -1152,8 +1160,68 @@ export default function Products() {
                     }}>
                       <Barcode className="w-4 h-4" />
                     </Button>
+                    {!showBarcode2 && (
+                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title="إضافة باركود ثاني">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
+                {/* Barcode 2 */}
+                {showBarcode2 && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={t('products.exampleBarcode')}
+                        value={formData.barcode2}
+                        onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        setScanTarget('form');
+                        setScannerOpen(true);
+                      }}>
+                        <Barcode className="w-4 h-4" />
+                      </Button>
+                      {!showBarcode3 && (
+                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title="إضافة باركود ثالث">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        setFormData({ ...formData, barcode2: '' });
+                        setShowBarcode2(false);
+                      }} className="text-destructive">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {/* Barcode 3 */}
+                {showBarcode3 && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={t('products.exampleBarcode')}
+                        value={formData.barcode3}
+                        onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                      />
+                      <Button variant="outline" size="icon" onClick={() => {
+                        setScanTarget('form');
+                        setScannerOpen(true);
+                      }}>
+                        <Barcode className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => {
+                        setFormData({ ...formData, barcode3: '' });
+                        setShowBarcode3(false);
+                      }} className="text-destructive">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
                   <select
