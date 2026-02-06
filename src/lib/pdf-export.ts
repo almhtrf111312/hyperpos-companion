@@ -519,7 +519,7 @@ export const exportProductsToPDF = async (
     fileName: `منتجات_${new Date().toISOString().split('T')[0]}.pdf`,
     // Optimization for product list: Name gets more space
     columnStyles: {
-      0: { cellWidth: 40 }, // Name
+      0: { cellWidth: 70 }, // Name - Increased width to prevent truncation
       1: { cellWidth: 25 }, // Barcode
       7: { cellWidth: 20 }, // Category
     }

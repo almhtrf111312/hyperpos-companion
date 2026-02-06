@@ -1,5 +1,5 @@
-// Professional Excel Export using xlsx library with Capacitor support - FlowPOS Pro
-import * as XLSX from 'xlsx';
+// Professional Excel Export using xlsx-js-style library for colors
+import XLSX from 'xlsx-js-style';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -176,6 +176,33 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
 
   // Create worksheet
   const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Apply alternating column colors (Light Blue / Light Green)
+  if (ws['!ref']) {
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let c = range.s.c; c <= range.e.c; ++c) {
+      // Determined color for this column
+      const fillColor = c % 2 === 0 ? 'E6F3FF' : 'F0FFF0'; // Blue for A, C, E..., Green for B, D, F...
+
+      for (let r = range.s.r; r <= range.e.r; ++r) {
+        const cellAddress = XLSX.utils.encode_cell({ r, c });
+        if (ws[cellAddress]) {
+          // Apply style to existing cell
+          if (!ws[cellAddress].s) ws[cellAddress].s = {};
+          ws[cellAddress].s.fill = {
+            fgColor: { rgb: fillColor }
+          };
+          // Add border for cleaner look
+          ws[cellAddress].s.border = {
+            top: { style: 'thin', color: { rgb: "CCCCCC" } },
+            bottom: { style: 'thin', color: { rgb: "CCCCCC" } },
+            left: { style: 'thin', color: { rgb: "CCCCCC" } },
+            right: { style: 'thin', color: { rgb: "CCCCCC" } }
+          };
+        }
+      }
+    }
+  }
 
   // Set column widths
   ws['!cols'] = columns.map(col => ({ wch: col.width || 15 }));
