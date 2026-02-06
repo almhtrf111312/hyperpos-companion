@@ -52,7 +52,7 @@ import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
 import DataResetSection from '@/components/settings/DataResetSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -396,7 +396,7 @@ export default function Settings() {
     setIsSyncing(true);
     setTimeout(() => {
       setIsSyncing(false);
-      setSyncSettings(prev => ({ ...prev, lastSync: new Date().toLocaleString('ar-SA') }));
+      setSyncSettings(prev => ({ ...prev, lastSync: formatDateTime(new Date().toISOString()) }));
       toast({
         title: t('settings.syncComplete'),
         description: t('settings.dataSynced'),
@@ -525,7 +525,7 @@ export default function Settings() {
 
       const newBackup: BackupData = {
         id: Date.now().toString(),
-        date: new Date().toLocaleString('ar-SA'),
+        date: formatDateTime(new Date().toISOString()),
         size: (JSON.stringify(backupData).length / 1024 / 1024).toFixed(2) + ' MB',
         type: 'manual',
       };

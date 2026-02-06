@@ -22,7 +22,7 @@ import { deductStockBatch, checkStockAvailability, restoreStockBatch } from './p
 import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
-import { roundCurrency, addCurrency } from './utils';
+import { roundCurrency, addCurrency, formatNumber } from './utils';
 import { addGrossProfit, addOperatingExpense, removeGrossProfit } from './profits-store';
 import { withLock, LOCK_RESOURCES } from './transaction-lock';
 import { addToQueue } from './sync-queue';
@@ -69,7 +69,7 @@ export const processCashSale = async (
   // Step 1: التحقق من توفر المخزون
   const stockItems = items.map(item => ({ productId: item.productId, quantity: item.quantity }));
   const stockCheck = checkStockAvailability(stockItems);
-  
+
   if (!stockCheck.success) {
     return {
       success: false,
@@ -81,13 +81,13 @@ export const processCashSale = async (
   // استخدام القفل لضمان عدم تداخل العمليات
   const lockResult = await withLock(LOCK_RESOURCES.SALE_PROCESSING, async () => {
     // Step 2: حساب تكلفة البضاعة المباعة والربح الإجمالي
-    const totalCOGS = items.reduce((sum, item) => 
+    const totalCOGS = items.reduce((sum, item) =>
       addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
     const grossProfit = roundCurrency(total - totalCOGS);
 
     // Step 3: خصم الكميات من المخزون (Local أولاً)
     deductStockBatch(stockItems);
-    
+
     // Step 4: إضافة المبلغ للصندوق مع بيانات الربح
     addSalesToShift(roundCurrency(total), grossProfit, totalCOGS);
 
@@ -106,7 +106,7 @@ export const processCashSale = async (
         'sale',
         userId,
         userName,
-        `عملية بيع نقدي: $${total.toLocaleString()} | ربح: $${grossProfit.toLocaleString()}`,
+        `عملية بيع نقدي: $${formatNumber(total)} | ربح: $${formatNumber(grossProfit)}`,
         { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'cash' }
       );
     }
@@ -133,11 +133,11 @@ export const processCashSale = async (
     return { success: false, error: lockResult.error || 'عملية أخرى جارية، حاول مرة أخرى' };
   }
 
-  return { 
-    success: true, 
-    grossProfit: lockResult.result?.grossProfit, 
-    cogs: lockResult.result?.cogs, 
-    invoiceId: lockResult.result?.saleId 
+  return {
+    success: true,
+    grossProfit: lockResult.result?.grossProfit,
+    cogs: lockResult.result?.cogs,
+    invoiceId: lockResult.result?.saleId
   };
 };
 
@@ -161,7 +161,7 @@ export const processDebtSale = async (
   // Step 1: التحقق من توفر المخزون
   const stockItems = items.map(item => ({ productId: item.productId, quantity: item.quantity }));
   const stockCheck = checkStockAvailability(stockItems);
-  
+
   if (!stockCheck.success) {
     return {
       success: false,
@@ -172,7 +172,7 @@ export const processDebtSale = async (
 
   try {
     // Step 2: حساب تكلفة البضاعة المباعة والربح الإجمالي
-    const totalCOGS = items.reduce((sum, item) => 
+    const totalCOGS = items.reduce((sum, item) =>
       addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
     const grossProfit = roundCurrency(total - totalCOGS);
 
@@ -194,7 +194,7 @@ export const processDebtSale = async (
         'sale',
         userId,
         userName,
-        `عملية بيع بالدين: $${total.toLocaleString()} | ربح: $${grossProfit.toLocaleString()}`,
+        `عملية بيع بالدين: $${formatNumber(total)} | ربح: $${formatNumber(grossProfit)}`,
         { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'debt' }
       );
     }
@@ -230,7 +230,7 @@ export const processDebtPayment = (
         'debt_payment',
         userId,
         userName,
-        `تسديد دين بقيمة $${amount.toLocaleString()}`,
+        `تسديد دين بقيمة $${formatNumber(amount)}`,
         { amount, customerId, type: 'debt_payment' }
       );
     }
@@ -262,7 +262,7 @@ export const processRefund = async (
 ): Promise<TransactionResult> => {
   try {
     // Step 1: حساب COGS للمرتجع
-    const totalCOGS = items.reduce((sum, item) => 
+    const totalCOGS = items.reduce((sum, item) =>
       addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
     const grossProfit = roundCurrency(total - totalCOGS);
 
@@ -290,7 +290,7 @@ export const processRefund = async (
         'refund',
         userId,
         userName,
-        `مرتجع: -$${total.toLocaleString()} | تراجع ربح: -$${grossProfit.toLocaleString()}`,
+        `مرتجع: -$${formatNumber(total)} | تراجع ربح: -$${formatNumber(grossProfit)}`,
         { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'refund' }
       );
     }
@@ -332,7 +332,7 @@ export const processExpense = (
         'expense',
         userId,
         userName,
-        `مصروف تشغيلي (${expenseType}): $${amount.toLocaleString()}`,
+        `مصروف تشغيلي (${expenseType}): $${formatNumber(amount)}`,
         { amount, expenseType, type: 'expense' }
       );
     }
@@ -360,7 +360,7 @@ export const calculateNetProfit = (totalProfit: number, totalExpenses: number): 
  */
 export const canProcessSale = (items: Array<{ productId: string; quantity: number }>): TransactionResult => {
   const stockCheck = checkStockAvailability(items);
-  
+
   if (!stockCheck.success) {
     return {
       success: false,
@@ -368,7 +368,7 @@ export const canProcessSale = (items: Array<{ productId: string; quantity: numbe
       insufficientItems: stockCheck.insufficientItems
     };
   }
-  
+
   return { success: true };
 };
 

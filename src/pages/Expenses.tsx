@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Search, 
+import {
+  Search,
   Plus,
   Receipt,
   Calendar,
@@ -17,7 +17,7 @@ import {
   Bell,
   Settings2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,14 +47,14 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { 
-  loadExpensesCloud, 
-  addExpenseCloud, 
+import {
+  loadExpensesCloud,
+  addExpenseCloud,
   deleteExpenseCloud,
   getExpenseStatsCloud,
   expenseTypes,
   Expense,
-  ExpenseType 
+  ExpenseType
 } from '@/lib/cloud/expenses-cloud';
 import {
   loadRecurringExpenses,
@@ -87,7 +87,7 @@ export default function Expenses() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedRecurring, setSelectedRecurring] = useState<RecurringExpense | null>(null);
   const [stats, setStats] = useState({ totalExpenses: 0, totalThisMonth: 0, expenseCount: 0, monthlyCount: 0, byType: {} as Record<string, number> });
-  
+
   // Form state
   const [formData, setFormData] = useState({
     type: 'rent' as ExpenseType,
@@ -119,7 +119,7 @@ export default function Expenses() {
       setStats(statsData);
     };
     loadData();
-    
+
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, () => {
@@ -237,7 +237,7 @@ export default function Expenses() {
 
   const handleDeleteExpense = async () => {
     if (!selectedExpense) return;
-    
+
     await deleteExpenseCloud(selectedExpense.id);
     const expensesData = await loadExpensesCloud();
     setExpenses(expensesData);
@@ -248,7 +248,7 @@ export default function Expenses() {
 
   const handlePayRecurring = async () => {
     if (!selectedRecurring) return;
-    
+
     payRecurringExpense(selectedRecurring.id);
     const expensesData = await loadExpensesCloud();
     setExpenses(expensesData);
@@ -321,7 +321,7 @@ export default function Expenses() {
               <div key={expense.id} className="flex items-center justify-between bg-card rounded-lg p-3">
                 <div>
                   <p className="font-medium">{expense.name}</p>
-                  <p className="text-sm text-muted-foreground">${expense.amount.toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">{formatCurrency(expense.amount)}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => handleSkipRecurring(expense)}>
@@ -347,7 +347,7 @@ export default function Expenses() {
               <TrendingDown className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalThisMonth.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.totalThisMonth)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('expenses.thisMonth')}</p>
             </div>
           </div>
@@ -369,12 +369,12 @@ export default function Expenses() {
               <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-info" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalExpenses.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.totalExpenses)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('expenses.totalExpenses')}</p>
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="bg-card rounded-xl border border-border p-3 md:p-4 cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => setShowRecurringListDialog(true)}
         >
@@ -398,7 +398,7 @@ export default function Expenses() {
             {Object.entries(stats.byType).map(([type, amount]) => (
               <div key={type} className="px-3 py-2 bg-muted rounded-lg">
                 <span className="text-sm text-muted-foreground">{type}: </span>
-                <span className="font-semibold">${amount.toLocaleString()}</span>
+                <span className="font-semibold">{formatCurrency(amount)}</span>
               </div>
             ))}
           </div>
@@ -427,7 +427,7 @@ export default function Expenses() {
           </div>
         ) : (
           filteredExpenses.map((expense, index) => (
-            <div 
+            <div
               key={expense.id}
               className="bg-card rounded-xl border border-border p-4 card-hover fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
@@ -450,16 +450,16 @@ export default function Expenses() {
                   </div>
                 </div>
                 <div className="text-left">
-                  <p className="text-lg font-bold text-destructive">-${expense.amount.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-destructive">-{formatCurrency(expense.amount)}</p>
                 </div>
               </div>
-              
+
               {expense.notes && (
                 <p className="mt-2 text-sm text-muted-foreground bg-muted rounded-lg p-2">
                   {expense.notes}
                 </p>
               )}
-              
+
               {expense.distributions.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
@@ -475,11 +475,11 @@ export default function Expenses() {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-end mt-3">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-destructive hover:text-destructive"
                   onClick={() => openDeleteDialog(expense)}
                 >
@@ -694,15 +694,15 @@ export default function Expenses() {
                   <div>
                     <p className="font-medium">{expense.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      ${expense.amount} - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
+                      {formatCurrency(expense.amount)} - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t('expenses.nextDue')}: {expense.nextDueDate}
                     </p>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-destructive"
                     onClick={() => handleDeleteRecurring(expense.id)}
                   >
@@ -721,7 +721,7 @@ export default function Expenses() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('expenses.confirmPayExpense')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('expenses.payExpenseConfirm').replace('{name}', selectedRecurring?.name || '').replace('{amount}', selectedRecurring?.amount.toLocaleString() || '')}
+              {t('expenses.payExpenseConfirm').replace('{name}', selectedRecurring?.name || '').replace('{amount}', formatNumber(selectedRecurring?.amount || 0))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
@@ -740,7 +740,7 @@ export default function Expenses() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('expenses.confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', selectedExpense?.amount.toLocaleString() || '')}
+              {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', formatNumber(selectedExpense?.amount || 0))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

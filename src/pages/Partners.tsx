@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { 
-  Search, 
+import {
+  Search,
   Plus,
   Phone,
   Mail,
@@ -24,7 +24,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 // ✅ استخدام الدوال السحابية بدلاً من المحلية
-import { 
+import {
   loadPartnersCloud,
   addPartnerCloud,
   updatePartnerCloud,
@@ -35,7 +35,7 @@ import {
 } from '@/lib/cloud/partners-cloud';
 import { ExpenseRecord } from '@/lib/partners-store';
 import { EVENTS } from '@/lib/events';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -75,20 +75,20 @@ export default function Partners() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategoryManager, setShowCategoryManager] = useState(false);
-  
+
   // Load categories from shared store
-  const [categories, setCategories] = useState(() => 
+  const [categories, setCategories] = useState(() =>
     getCategoryNames().map((name, idx) => ({ id: `cat_${idx}`, label: name }))
   );
-  
+
   // Get used categories from products
   const usedCategories = [...new Set(loadProducts().map(p => p.category))];
-  
+
   // Reload categories from store
   const reloadCategories = () => {
     setCategories(getCategoryNames().map((name, idx) => ({ id: `cat_${idx}`, label: name })));
   };
-  
+
   // ✅ تحميل الشركاء من Cloud
   const loadPartnersData = async () => {
     setIsLoading(true);
@@ -101,19 +101,19 @@ export default function Partners() {
       setIsLoading(false);
     }
   };
-  
+
   // تحميل البيانات عند فتح الصفحة والاستماع للتحديثات
   useEffect(() => {
     loadPartnersData();
-    
+
     const handleUpdate = () => loadPartnersData();
     window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
-    
+
     return () => {
       window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
     };
   }, []);
-  
+
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -122,7 +122,7 @@ export default function Partners() {
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [showAddCapitalDialog, setShowAddCapitalDialog] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -215,7 +215,7 @@ export default function Partners() {
       toast.error(t('partners.invalidSharePercentage'));
       return;
     }
-    
+
     // ✅ استخدام الدالة السحابية
     const newPartner = await addPartnerCloud({
       name: formData.name,
@@ -236,7 +236,7 @@ export default function Partners() {
       confirmedProfit: 0,
       pendingProfit: 0,
     });
-    
+
     if (newPartner) {
       await refreshPartners();
       setShowAddDialog(false);
@@ -254,7 +254,7 @@ export default function Partners() {
     }
 
     const mainShare = calculateMainShare();
-    
+
     // ✅ استخدام الدالة السحابية
     const success = await updatePartnerCloud(selectedPartner.id, {
       name: formData.name,
@@ -265,7 +265,7 @@ export default function Partners() {
       accessAll: formData.accessAll,
       sharesExpenses: formData.sharesExpenses,
     });
-    
+
     if (success) {
       await refreshPartners();
       setShowEditDialog(false);
@@ -278,10 +278,10 @@ export default function Partners() {
 
   const handleDeletePartner = async () => {
     if (!selectedPartner) return;
-    
+
     // ✅ استخدام الدالة السحابية
     const success = await deletePartnerCloud(selectedPartner.id);
-    
+
     if (success) {
       await refreshPartners();
       setShowDeleteDialog(false);
@@ -324,19 +324,19 @@ export default function Partners() {
       const profitToWithdraw = Math.min(withdrawAmount, profitAvailable);
       if (profitToWithdraw > 0) {
         success = await withdrawProfitCloud(selectedPartner.id, profitToWithdraw, withdrawNotes);
-        resultMessage = `${t('partners.withdrawnFromProfit')} $${profitToWithdraw.toLocaleString()}`;
+        resultMessage = `${t('partners.withdrawnFromProfit')} ${formatCurrency(profitToWithdraw)}`;
       }
-      
+
       // إذا كان السحب التلقائي ويحتاج المزيد من رأس المال
       if (withdrawType === 'auto' && withdrawAmount > profitAvailable) {
         const fromCapital = withdrawAmount - profitAvailable;
         // TODO: إضافة دالة withdrawCapitalCloud
-        resultMessage += ` + $${fromCapital.toLocaleString()} ${t('partners.fromCapital')}`;
+        resultMessage += ` + ${formatCurrency(fromCapital)} ${t('partners.fromCapital')}`;
       }
     } else if (withdrawType === 'capital') {
       // TODO: إضافة دالة withdrawCapitalCloud
       success = true;
-      resultMessage = `${t('partners.withdrawnFromCapital')} $${withdrawAmount.toLocaleString()}`;
+      resultMessage = `${t('partners.withdrawnFromCapital')} ${formatCurrency(withdrawAmount)}`;
     }
 
     if (success) {
@@ -365,14 +365,14 @@ export default function Partners() {
       capitalAmount,
       capitalNotes
     );
-    
+
     if (success) {
       await refreshPartners();
       setShowAddCapitalDialog(false);
       setSelectedPartner(null);
       setCapitalAmount(0);
       setCapitalNotes('');
-      toast.success(`${t('partners.capitalAdded')} $${capitalAmount.toLocaleString()} (تمت الإضافة للصندوق)`);
+      toast.success(`${t('partners.capitalAdded')} ${formatCurrency(capitalAmount)} (تمت الإضافة للصندوق)`);
     } else {
       toast.error(t('partners.capitalAddError'));
     }
@@ -394,17 +394,17 @@ export default function Partners() {
       accessAll: partner.accessAll,
       sharesExpenses: partner.sharesExpenses || false,
       expenseSharePercentage: (partner as any).expenseSharePercentage || 0,
-      categoryShares: partner.categoryShares.length > 0 
+      categoryShares: partner.categoryShares.length > 0
         ? partner.categoryShares.map(cs => ({
-            ...cs,
-            categoryName: cs.categoryName || categories.find(c => c.id === cs.categoryId)?.label || '',
-          }))
+          ...cs,
+          categoryName: cs.categoryName || categories.find(c => c.id === cs.categoryId)?.label || '',
+        }))
         : categories.map(c => ({
-            categoryId: c.id,
-            categoryName: c.label,
-            percentage: partner.sharePercentage,
-            enabled: true,
-          })),
+          categoryId: c.id,
+          categoryName: c.label,
+          percentage: partner.sharePercentage,
+          enabled: true,
+        })),
     });
     setShowEditDialog(true);
   };
@@ -430,8 +430,8 @@ export default function Partners() {
   const updateCategoryShare = (categoryId: string, field: 'percentage' | 'enabled', value: number | boolean) => {
     setFormData({
       ...formData,
-      categoryShares: formData.categoryShares.map(c => 
-        c.categoryId === categoryId 
+      categoryShares: formData.categoryShares.map(c =>
+        c.categoryId === categoryId
           ? { ...c, [field]: value }
           : c
       ),
@@ -523,7 +523,7 @@ export default function Partners() {
               <Wallet className="w-4 h-4 md:w-5 md:h-5 text-warning" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${formatNumber(stats.totalBalance)}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.totalBalance)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('partners.balances')}</p>
             </div>
           </div>
@@ -534,7 +534,7 @@ export default function Partners() {
               <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-success" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${formatNumber(stats.totalProfit)}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.totalProfit)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('partners.profits')}</p>
             </div>
           </div>
@@ -556,7 +556,7 @@ export default function Partners() {
       {/* Partners Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {filteredPartners.map((partner, index) => (
-          <div 
+          <div
             key={partner.id}
             className="bg-card rounded-xl md:rounded-2xl border border-border p-4 md:p-6 card-hover fade-in"
             style={{ animationDelay: `${index * 50}ms` }}
@@ -620,11 +620,11 @@ export default function Partners() {
             <div className="grid grid-cols-2 gap-2 py-3 md:py-4 border-t border-border">
               <div className="text-center">
                 <p className="text-[10px] md:text-xs text-muted-foreground">{t('partners.profits')}</p>
-                <p className="text-sm md:text-base font-bold text-success">${formatNumber(partner.currentBalance || 0)}</p>
+                <p className="text-sm md:text-base font-bold text-success">{formatCurrency(partner.currentBalance || 0)}</p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] md:text-xs text-muted-foreground">{t('partners.capital')}</p>
-                <p className="text-sm md:text-base font-bold text-info">${formatNumber(partner.currentCapital || 0)}</p>
+                <p className="text-sm md:text-base font-bold text-info">{formatCurrency(partner.currentCapital || 0)}</p>
               </div>
             </div>
 
@@ -698,7 +698,7 @@ export default function Partners() {
                   <p className="font-medium text-foreground">{t('partners.accessFullStore')}</p>
                   <p className="text-sm text-muted-foreground">{t('partners.uniformPercentage')}</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={formData.accessAll}
                   onCheckedChange={handleAccessAllChange}
                 />
@@ -710,7 +710,7 @@ export default function Partners() {
                   <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
                   <p className="text-sm text-muted-foreground">{t('partners.expenseSharingDesc')}</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={formData.sharesExpenses}
                   onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
                 />
@@ -751,7 +751,7 @@ export default function Partners() {
                     const share = formData.categoryShares.find(c => c.categoryId === cat.id);
                     return (
                       <div key={cat.id} className="flex items-center gap-3">
-                        <Switch 
+                        <Switch
                           checked={share?.enabled || false}
                           onCheckedChange={(checked) => updateCategoryShare(cat.id, 'enabled', checked)}
                         />
@@ -826,7 +826,7 @@ export default function Partners() {
                   <p className="font-medium text-foreground">{t('partners.accessFullStore')}</p>
                   <p className="text-sm text-muted-foreground">{t('partners.uniformPercentage')}</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={formData.accessAll}
                   onCheckedChange={handleAccessAllChange}
                 />
@@ -838,7 +838,7 @@ export default function Partners() {
                   <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
                   <p className="text-sm text-muted-foreground">{t('partners.expenseSharingDesc')}</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={formData.sharesExpenses}
                   onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
                 />
@@ -879,7 +879,7 @@ export default function Partners() {
                     const share = formData.categoryShares.find(c => c.categoryId === cat.id);
                     return (
                       <div key={cat.id} className="flex items-center gap-3">
-                        <Switch 
+                        <Switch
                           checked={share?.enabled || false}
                           onCheckedChange={(checked) => updateCategoryShare(cat.id, 'enabled', checked)}
                         />
@@ -973,8 +973,8 @@ export default function Partners() {
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  className="flex-1 bg-success hover:bg-success/90 text-success-foreground" 
+                <Button
+                  className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
                   onClick={() => {
                     setShowViewDialog(false);
                     openAddCapitalDialog(selectedPartner);
@@ -984,8 +984,8 @@ export default function Partners() {
                   {t('partners.addBalance')}
                 </Button>
                 {((selectedPartner.currentBalance || 0) > 0 || (selectedPartner.currentCapital || 0) > 0) && (
-                  <Button 
-                    className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" 
+                  <Button
+                    className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground"
                     onClick={() => {
                       setShowViewDialog(false);
                       openWithdrawDialog(selectedPartner);
@@ -1072,8 +1072,8 @@ export default function Partners() {
               {/* Quick Withdraw Buttons */}
               <div className="flex gap-2">
                 {withdrawType === 'profit' && (selectedPartner.currentBalance || 0) > 0 && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     className="flex-1"
                     onClick={() => setWithdrawAmount(selectedPartner.currentBalance || 0)}
@@ -1082,8 +1082,8 @@ export default function Partners() {
                   </Button>
                 )}
                 {withdrawType === 'capital' && (selectedPartner.currentCapital || 0) > 0 && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     className="flex-1"
                     onClick={() => setWithdrawAmount(selectedPartner.currentCapital || 0)}
@@ -1092,8 +1092,8 @@ export default function Partners() {
                   </Button>
                 )}
                 {withdrawType === 'auto' && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     className="flex-1"
                     onClick={() => setWithdrawAmount((selectedPartner.currentBalance || 0) + (selectedPartner.currentCapital || 0))}

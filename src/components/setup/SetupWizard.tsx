@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { 
-  Store, 
-  Users, 
-  DollarSign, 
+import {
+  Store,
+  Users,
+  DollarSign,
   CheckCircle,
   ArrowLeft,
   ArrowRight,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { toast } from 'sonner';
 import { savePartners, Partner } from '@/lib/partners-store';
 
@@ -34,7 +34,7 @@ const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [step, setStep] = useState(1);
   const totalSteps = 4;
-  
+
   // Step 1: Store Info
   const [storeInfo, setStoreInfo] = useState({
     name: '',
@@ -42,17 +42,17 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     phone: '',
     address: '',
   });
-  
+
   // Step 2: Initial Capital
   const [capital, setCapital] = useState({
     total: 0,
   });
-  
+
   // Step 3: Partners
   const [partners, setPartners] = useState<PartnerInput[]>([
     { id: '1', name: '', phone: '', capital: 0, sharePercentage: 100, expenseSharePercentage: 100 }
   ]);
-  
+
   // Step 4: Currencies
   const [currencies, setCurrencies] = useState({
     TRY: 32,
@@ -62,11 +62,11 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const addPartner = () => {
     const totalShare = partners.reduce((sum, p) => sum + p.sharePercentage, 0);
     const remainingShare = Math.max(0, 100 - totalShare);
-    setPartners([...partners, { 
-      id: Date.now().toString(), 
-      name: '', 
-      phone: '', 
-      capital: 0, 
+    setPartners([...partners, {
+      id: Date.now().toString(),
+      name: '',
+      phone: '',
+      capital: 0,
       sharePercentage: remainingShare,
       expenseSharePercentage: remainingShare
     }]);
@@ -79,7 +79,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   };
 
   const updatePartner = (id: string, field: keyof PartnerInput, value: string | number) => {
-    setPartners(partners.map(p => 
+    setPartners(partners.map(p =>
       p.id === id ? { ...p, [field]: value } : p
     ));
   };
@@ -91,7 +91,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       setStep(1);
       return;
     }
-    
+
     const validPartners = partners.filter(p => p.name);
     if (validPartners.length === 0) {
       toast.error('يرجى إضافة شريك واحد على الأقل');
@@ -147,12 +147,12 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       expenseHistory: [],
       joinedDate: now,
     }));
-    
+
     savePartners(partnersToSave);
 
     // Mark setup as complete
     localStorage.setItem('hyperpos_setup_complete', 'true');
-    
+
     toast.success('تم إعداد المحل بنجاح!');
     onComplete();
   };
@@ -169,7 +169,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <h2 className="text-2xl font-bold">معلومات المحل</h2>
               <p className="text-muted-foreground mt-2">أدخل المعلومات الأساسية لمحلك</p>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">اسم المحل *</label>
@@ -181,7 +181,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">نوع النشاط</label>
-                <select 
+                <select
                   className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   value={storeInfo.type}
                   onChange={(e) => setStoreInfo({ ...storeInfo, type: e.target.value })}
@@ -215,7 +215,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
           </div>
         );
-        
+
       case 2:
         return (
           <div className="space-y-6">
@@ -226,7 +226,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <h2 className="text-2xl font-bold">رأس المال</h2>
               <p className="text-muted-foreground mt-2">حدد رأس المال الأولي للمحل</p>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">رأس المال الإجمالي ($)</label>
@@ -244,11 +244,11 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
           </div>
         );
-        
+
       case 3:
         const totalShare = partners.reduce((sum, p) => sum + p.sharePercentage, 0);
         const totalCapital = partners.reduce((sum, p) => sum + p.capital, 0);
-        
+
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
@@ -258,16 +258,16 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <h2 className="text-2xl font-bold">الشركاء</h2>
               <p className="text-muted-foreground mt-2">أضف الشركاء وحدد نسبهم</p>
             </div>
-            
+
             <div className="space-y-4">
               {partners.map((partner, index) => (
                 <div key={partner.id} className="bg-muted/50 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">الشريك {index + 1}</span>
                     {partners.length > 1 && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-destructive"
                         onClick={() => removePartner(partner.id)}
                       >
@@ -301,16 +301,16 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   </div>
                 </div>
               ))}
-              
-              <Button 
-                variant="outline" 
-                className="w-full" 
+
+              <Button
+                variant="outline"
+                className="w-full"
                 onClick={addPartner}
               >
                 <Plus className="w-4 h-4 ml-2" />
                 إضافة شريك
               </Button>
-              
+
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">مجموع النسب:</span>
@@ -320,13 +320,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
                 <div className="flex justify-between text-sm mt-2">
                   <span className="text-muted-foreground">مجموع رأس المال:</span>
-                  <span className="font-bold">${totalCapital.toLocaleString()}</span>
+                  <span className="font-bold">${formatNumber(totalCapital)}</span>
                 </div>
               </div>
             </div>
           </div>
         );
-        
+
       case 4:
         return (
           <div className="space-y-6">
@@ -337,7 +337,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <h2 className="text-2xl font-bold">العملات</h2>
               <p className="text-muted-foreground mt-2">حدد أسعار الصرف</p>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">الليرة التركية (1 دولار = ؟ TRY)</label>
@@ -358,7 +358,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
           </div>
         );
-        
+
       default:
         return null;
     }
@@ -379,16 +379,16 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             />
           ))}
         </div>
-        
+
         {/* Card */}
         <div className="bg-card rounded-2xl border border-border p-6 md:p-8">
           {renderStep()}
-          
+
           {/* Navigation */}
           <div className="flex gap-3 mt-8">
             {step > 1 && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => setStep(step - 1)}
               >
@@ -396,9 +396,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 السابق
               </Button>
             )}
-            
+
             {step < totalSteps ? (
-              <Button 
+              <Button
                 className="flex-1"
                 onClick={() => setStep(step + 1)}
               >
@@ -406,7 +406,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 <ArrowLeft className="w-4 h-4 mr-2" />
               </Button>
             ) : (
-              <Button 
+              <Button
                 className="flex-1 bg-success hover:bg-success/90"
                 onClick={handleComplete}
               >
@@ -416,10 +416,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             )}
           </div>
         </div>
-        
+
         {/* Skip */}
         <div className="text-center mt-4">
-          <button 
+          <button
             className="text-sm text-muted-foreground hover:text-foreground"
             onClick={() => {
               localStorage.setItem('hyperpos_setup_complete', 'true');

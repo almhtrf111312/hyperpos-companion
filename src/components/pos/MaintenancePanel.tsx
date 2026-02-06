@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
-import { 
-  Wrench, 
-  User, 
+import {
+  Wrench,
+  User,
   Phone,
   DollarSign,
   Calculator,
@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -83,11 +83,11 @@ export function MaintenancePanel({
   const [description, setDescription] = useState('');
   const [servicePrice, setServicePrice] = useState<number>(0);
   const [partsCost, setPartsCost] = useState<number>(0);
-  
+
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
-  
+
   // ✅ Mutex lock to prevent duplicate saves
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
@@ -148,14 +148,14 @@ export function MaintenancePanel({
 
   const handleDebtSale = async () => {
     if (!validateForm()) return;
-    
+
     // التحقق إذا كان العميل موجوداً في قاعدة البيانات
     const existingCustomers = await loadCustomersCloud();
-    const customerExists = existingCustomers.some(c => 
+    const customerExists = existingCustomers.some(c =>
       c.name.toLowerCase() === customerName.toLowerCase().trim()
     );
     setIsNewCustomer(!customerExists);
-    
+
     setShowDebtDialog(true);
   };
 
@@ -165,10 +165,10 @@ export function MaintenancePanel({
       console.log('[MaintenancePanel] Already saving, ignoring click');
       return;
     }
-    
+
     savingRef.current = true;
     setIsSaving(true);
-    
+
     try {
       const fullDescription = [
         getServiceLabel(),
@@ -196,12 +196,12 @@ export function MaintenancePanel({
         partsCost,
         profit,
       });
-      
+
       if (!invoice) {
         toast.error('فشل في حفظ الفاتورة');
         return;
       }
-      
+
       // ✅ تسجيل تكلفة القطع كمصروف تلقائي (إذا كانت أكبر من 0) - Cloud API
       if (partsCost > 0) {
         await addExpenseCloud({
@@ -212,7 +212,7 @@ export function MaintenancePanel({
           date: new Date().toISOString().split('T')[0],
         });
       }
-      
+
       // ✅ Distribute profit to partners (category: صيانة) - Cloud API
       if (profit > 0) {
         await distributeDetailedProfitCloud(
@@ -222,24 +222,24 @@ export function MaintenancePanel({
           paymentType === 'debt'
         );
       }
-      
+
       // ✅ Create debt record if payment is debt - Cloud API
       if (paymentType === 'debt') {
         await addDebtFromInvoiceCloud(invoice.id, customerName, customerPhone, servicePrice);
       }
-      
+
       // Log activity with detailed information
       if (user) {
         addActivityLog(
           'maintenance',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${servicePrice.toLocaleString()} للعميل ${customerName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
-          { 
-            invoiceId: invoice.id, 
-            total: servicePrice, 
-            customerName, 
-            paymentType, 
+          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${formatNumber(servicePrice)} للعميل ${customerName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
+          {
+            invoiceId: invoice.id,
+            total: servicePrice,
+            customerName,
+            paymentType,
             serviceType: getServiceLabel(),
             productType: getProductLabel(),
             partsCost,
@@ -247,30 +247,30 @@ export function MaintenancePanel({
             description: fullDescription
           }
         );
-        
+
         if (paymentType === 'debt') {
           addActivityLog(
             'debt_created',
             user.id,
             profile?.full_name || user.email || 'مستخدم',
-            `تم إنشاء دين صيانة للعميل ${customerName} بقيمة $${servicePrice.toLocaleString()}`,
+            `تم إنشاء دين صيانة للعميل ${customerName} بقيمة $${formatNumber(servicePrice)}`,
             { invoiceId: invoice.id, amount: servicePrice, customerName }
           );
         }
       }
-      
+
       // Play appropriate sound
       if (paymentType === 'cash') {
         playSaleComplete();
       } else {
         playDebtRecorded();
       }
-      
-      toast.success(paymentType === 'cash' 
+
+      toast.success(paymentType === 'cash'
         ? t('maintenance.cashRecorded')
         : t('maintenance.debtRecorded')
       );
-      
+
       setShowCashDialog(false);
       setShowDebtDialog(false);
       resetForm();
@@ -285,15 +285,15 @@ export function MaintenancePanel({
 
   const handlePrint = () => {
     if (!validateForm()) return;
-    
+
     const storeSettings = getStoreSettings();
     const printSettings = getPrintSettings();
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
-    
+
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
-    
+
     const printContent = `
       <html dir="rtl">
         <head>
@@ -323,7 +323,7 @@ export function MaintenancePanel({
           ${customerPhone ? `<div class="info"><span class="info-label">${t('maintenance.phoneNumber')}:</span> ${customerPhone}</div>` : ''}
           ${fullDescription ? `<div class="info"><span class="info-label">${t('maintenance.serviceType')}:</span> ${fullDescription}</div>` : ''}
           <div class="total">
-            <strong>${t('maintenance.total')}:</strong> ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
+            <strong>${t('maintenance.total')}:</strong> ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)}
           </div>
           <div class="footer">
             <p>${printSettings.footer}</p>
@@ -331,18 +331,18 @@ export function MaintenancePanel({
         </body>
       </html>
     `;
-    
+
     printHTML(printContent);
   };
 
   const handleWhatsApp = () => {
     if (!validateForm()) return;
-    
+
     let storeName = 'HyperPOS Store';
     let storeAddress = '';
     let storePhone = '';
     let footer = 'شكراً لتعاملكم معنا!';
-    
+
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
@@ -352,11 +352,11 @@ export function MaintenancePanel({
         storePhone = settings.storeSettings?.phone || '';
         footer = settings.printSettings?.footer || footer;
       }
-    } catch {}
+    } catch { }
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
-    
+
     const message = `╔══════════════════╗
     *${storeName}*
 ${storeAddress ? `📍 ${storeAddress}` : ''}
@@ -372,15 +372,15 @@ ${customerPhone ? `📱 *${t('maintenance.phoneNumber')}:* ${customerPhone}` : '
 ${fullDescription ? `📝 *${t('maintenance.serviceType')}:* ${fullDescription}` : ''}
 ━━━━━━━━━━━━━━━━━━
 
-💰 *${t('maintenance.total')}:* ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}
+💰 *${t('maintenance.total')}:* ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)}
 
 ${footer}`;
-    
+
     const phone = customerPhone?.replace(/[^\d]/g, '');
-    const url = phone 
+    const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
-    
+
     window.open(url, '_blank');
   };
 
@@ -432,7 +432,7 @@ ${footer}`;
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('maintenance.phoneNumber')}</label>
                   <div className="relative">
@@ -450,7 +450,7 @@ ${footer}`;
               {/* Service Details */}
               <div className="space-y-3 pt-3 border-t border-border">
                 <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.serviceDetails')}</h3>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('maintenance.serviceType')}</label>
@@ -467,7 +467,7 @@ ${footer}`;
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('maintenance.deviceType')}</label>
                     <Select value={productType} onValueChange={setProductType}>
@@ -487,7 +487,7 @@ ${footer}`;
                     </Select>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('maintenance.description')}</label>
                   <Textarea
@@ -504,7 +504,7 @@ ${footer}`;
             <div className="space-y-4">
               <div className="space-y-3 pt-3 border-t border-border md:border-t-0 md:pt-0">
                 <h3 className="font-medium text-sm text-muted-foreground">تفاصيل السعر</h3>
-                
+
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">سعر الخدمة (دولار)</label>
                   <div className="relative">
@@ -518,7 +518,7 @@ ${footer}`;
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">تكلفة القطع (دولار)</label>
                   <div className="relative">
@@ -544,7 +544,7 @@ ${footer}`;
                       "text-lg font-bold",
                       profit >= 0 ? "text-green-500" : "text-red-500"
                     )}>
-                      ${profit.toLocaleString()}
+                      ${formatNumber(profit)}
                     </span>
                   </div>
                 </div>
@@ -553,8 +553,8 @@ ${footer}`;
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">المجموع بالعملة</span>
-                    <Select 
-                      value={selectedCurrency.code} 
+                    <Select
+                      value={selectedCurrency.code}
                       onValueChange={(code) => {
                         const currency = currencies.find(c => c.code === code);
                         if (currency) onCurrencyChange(currency);
@@ -573,7 +573,7 @@ ${footer}`;
                     </Select>
                   </div>
                   <div className="text-xl font-bold">
-                    {selectedCurrency.symbol}{servicePriceInCurrency.toLocaleString()}
+                    {selectedCurrency.symbol}{formatNumber(servicePriceInCurrency)}
                   </div>
                 </div>
               </div>
@@ -584,7 +584,7 @@ ${footer}`;
         {/* Actions */}
         <div className="p-3 md:p-4 border-t border-border space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <Button 
+            <Button
               onClick={handleCashSale}
               className="bg-green-600 hover:bg-green-700 text-white"
               disabled={isSaving}
@@ -592,7 +592,7 @@ ${footer}`;
               {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Banknote className="w-4 h-4 ml-2" />}
               نقداً
             </Button>
-            <Button 
+            <Button
               onClick={handleDebtSale}
               variant="outline"
               className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
@@ -624,7 +624,7 @@ ${footer}`;
               تأكيد الدفع النقدي
             </DialogTitle>
             <DialogDescription>
-              {`سيتم تسجيل مبلغ ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()} كدفع نقدي`}
+              {`سيتم تسجيل مبلغ ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)} كدفع نقدي`}
             </DialogDescription>
           </DialogHeader>
           <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
@@ -639,7 +639,7 @@ ${footer}`;
             <div className="flex justify-between border-t pt-2 mt-2">
               <span className="text-muted-foreground">{t('maintenance.netProfit')}</span>
               <span className={cn("font-bold", profit >= 0 ? "text-green-500" : "text-red-500")}>
-                ${profit.toLocaleString()}
+                ${formatNumber(profit)}
               </span>
             </div>
           </div>
@@ -647,8 +647,8 @@ ${footer}`;
             <Button variant="outline" onClick={() => setShowCashDialog(false)} className="flex-1" disabled={isSaving}>
               {t('common.cancel')}
             </Button>
-            <Button 
-              onClick={() => confirmSale('cash')} 
+            <Button
+              onClick={() => confirmSale('cash')}
               className="flex-1 bg-green-600 hover:bg-green-700"
               disabled={isSaving}
             >
@@ -668,9 +668,9 @@ ${footer}`;
               تأكيد تسجيل الدين
             </DialogTitle>
             <DialogDescription>
-              {isNewCustomer 
-                ? `سيتم إنشاء عميل جديد باسم ${customerName} وتسجيل دين بمبلغ ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()}`
-                : `سيتم إضافة دين بمبلغ ${selectedCurrency.symbol}${servicePriceInCurrency.toLocaleString()} للعميل ${customerName}`
+              {isNewCustomer
+                ? `سيتم إنشاء عميل جديد باسم ${customerName} وتسجيل دين بمبلغ ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)}`
+                : `سيتم إضافة دين بمبلغ ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)} للعميل ${customerName}`
               }
             </DialogDescription>
           </DialogHeader>
@@ -687,15 +687,15 @@ ${footer}`;
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('maintenance.debtAmount')}</span>
-              <span className="font-bold text-orange-500">${servicePrice.toLocaleString()}</span>
+              <span className="font-bold text-orange-500">${formatNumber(servicePrice)}</span>
             </div>
           </div>
           <div className="flex gap-2 mt-4">
             <Button variant="outline" onClick={() => setShowDebtDialog(false)} className="flex-1" disabled={isSaving}>
               {t('common.cancel')}
             </Button>
-            <Button 
-              onClick={() => confirmSale('debt')} 
+            <Button
+              onClick={() => confirmSale('debt')}
               className="flex-1 bg-orange-500 hover:bg-orange-600"
               disabled={isSaving}
             >

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock, CheckCircle, Phone, FileX, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
@@ -56,7 +56,7 @@ export function DebtAlerts() {
       const mapped = activeDebts.map(debt => {
         const createdDate = new Date(debt.createdAt);
         const daysSinceCreated = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         // Determine status based on days since debt created
         let status: 'overdue' | 'due_today' | 'due_soon';
         if (daysSinceCreated > 30 || debt.status === 'overdue') {
@@ -75,7 +75,7 @@ export function DebtAlerts() {
           status,
         } as DebtAlert;
       }).slice(0, 5); // Show top 5 debts
-      
+
       setDebts(mapped);
     } catch (error) {
       console.error('Error loading debts:', error);
@@ -86,7 +86,7 @@ export function DebtAlerts() {
 
   useEffect(() => {
     loadData();
-    
+
     window.addEventListener(EVENTS.DEBTS_UPDATED, loadData);
     window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
     return () => {
@@ -115,7 +115,7 @@ export function DebtAlerts() {
           </span>
         )}
       </div>
-      
+
       {debts.length === 0 ? (
         <div className="py-8 text-center">
           <FileX className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
@@ -126,9 +126,9 @@ export function DebtAlerts() {
           {debts.map((debt, index) => {
             const config = statusConfig[debt.status];
             const StatusIcon = config.icon;
-            
+
             return (
-              <div 
+              <div
                 key={debt.id}
                 className={cn(
                   "p-4 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer fade-in",
@@ -154,7 +154,7 @@ export function DebtAlerts() {
                     </div>
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-lg text-foreground">${debt.amount.toLocaleString()}</p>
+                    <p className="font-bold text-lg text-foreground">${formatNumber(debt.amount)}</p>
                     <p className={cn("text-xs font-medium", config.textColor)}>{t(config.labelKey)}</p>
                   </div>
                 </div>
@@ -163,8 +163,8 @@ export function DebtAlerts() {
           })}
         </div>
       )}
-      
-      <button 
+
+      <button
         onClick={handleViewAllDebts}
         className="w-full mt-4 py-3 text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
       >

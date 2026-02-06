@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { formatNumber, formatCurrency } from '@/lib/utils';
 import {
   DollarSign,
   TrendingUp,
@@ -211,7 +212,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         <StatCard
           title={t('dashboard.todaySales')}
-          value={`$${stats.todaySales.toLocaleString()}`}
+          value={formatCurrency(stats.todaySales)}
           subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
           icon={<DollarSign className="w-6 h-6" />}
           variant="primary"
@@ -219,15 +220,15 @@ export default function Dashboard() {
         />
         <StatCard
           title={t('dashboard.netProfit')}
-          value={`$${stats.netProfit.toLocaleString()}`}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: $${stats.todayExpenses.toLocaleString()}`}
+          value={formatCurrency(stats.netProfit)}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
           icon={<TrendingUp className="w-6 h-6" />}
           variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"
         />
         <StatCard
           title={t('dashboard.dueDebts')}
-          value={`$${stats.totalDebtAmount.toLocaleString()}`}
+          value={formatCurrency(stats.totalDebtAmount)}
           subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
           icon={<CreditCard className="w-6 h-6" />}
           variant="warning"
@@ -253,7 +254,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.inventoryValue')}</p>
-              <p className="text-xl font-bold text-foreground">${stats.inventoryValue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.inventoryValue)}</p>
             </div>
           </div>
         </div>
@@ -266,7 +267,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.totalCapital')}</p>
-              <p className="text-xl font-bold text-foreground">${stats.totalCapital.toLocaleString()}</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.totalCapital)}</p>
             </div>
           </div>
         </div>
@@ -279,7 +280,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance')}</p>
-              <p className="text-xl font-bold text-success">${stats.cashboxBalance.toLocaleString()}</p>
+              <p className="text-xl font-bold text-success">{formatCurrency(stats.cashboxBalance)}</p>
             </div>
           </div>
         </div>
@@ -293,7 +294,7 @@ export default function Dashboard() {
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital')}</p>
               <p className={`text-xl font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-                ${stats.liquidCapital.toLocaleString()}
+                {formatCurrency(stats.liquidCapital)}
               </p>
             </div>
           </div>
@@ -311,7 +312,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-destructive/80">{t('dashboard.deficit')}</p>
                 <p className="text-2xl font-bold text-destructive">
-                  ${stats.deficit.toLocaleString()}
+                  {formatCurrency(stats.deficit)}
                 </p>
               </div>
             </div>

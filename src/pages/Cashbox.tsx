@@ -1,7 +1,7 @@
 // Cash Box (الصندوق) Page - Shift Management & Reconciliation
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  Wallet, Clock, Play, Square, AlertTriangle, CheckCircle, 
+import {
+  Wallet, Clock, Play, Square, AlertTriangle, CheckCircle,
   TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight,
   History, Calculator, RefreshCw
 } from 'lucide-react';
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { addActivityLog } from '@/lib/activity-log';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, formatDateTime, formatDate, formatTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import {
   loadCashboxState,
@@ -33,12 +33,12 @@ export default function Cashbox() {
   const [cashboxState, setCashboxState] = useState(loadCashboxState());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
-  
+
   // Dialog states
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
-  
+
   // Form states
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
@@ -53,13 +53,13 @@ export default function Cashbox() {
 
   useEffect(() => {
     loadData();
-    
+
     // Listen for updates
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.SHIFTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
-    
+
     return () => {
       window.removeEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.SHIFTS_UPDATED, handleUpdate);
@@ -70,8 +70,8 @@ export default function Cashbox() {
   // Calculate expected closing cash
   const expectedClosing = useMemo(() => {
     if (!activeShift) return 0;
-    return activeShift.openingCash + activeShift.salesTotal + activeShift.depositsTotal 
-           - activeShift.expensesTotal - activeShift.withdrawalsTotal;
+    return activeShift.openingCash + activeShift.salesTotal + activeShift.depositsTotal
+      - activeShift.expensesTotal - activeShift.withdrawalsTotal;
   }, [activeShift]);
 
   // Stats
@@ -89,7 +89,7 @@ export default function Cashbox() {
     const userId = user?.id || '';
 
     openShift(amount, userId, userName);
-    
+
     addActivityLog(
       'shift_opened',
       userId,
@@ -112,7 +112,7 @@ export default function Cashbox() {
     }
 
     const result = closeShift(amount, closingNotes);
-    
+
     if (!result) {
       toast.error('لا توجد وردية مفتوحة');
       return;
@@ -126,10 +126,10 @@ export default function Cashbox() {
       userId,
       userName,
       `تم إغلاق الوردية - الفارق: ${formatCurrency(result.discrepancy, '$')}`,
-      { 
-        closingCash: amount, 
+      {
+        closingCash: amount,
         expectedCash: result.shift.expectedCash,
-        discrepancy: result.discrepancy 
+        discrepancy: result.discrepancy
       }
     );
 
@@ -157,7 +157,7 @@ export default function Cashbox() {
           </h1>
           <p className="text-muted-foreground mt-1">إدارة الورديات والمصالحة اليومية</p>
         </div>
-        
+
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowHistoryDialog(true)}>
             <History className="w-4 h-4 ml-2" />
@@ -260,7 +260,7 @@ export default function Cashbox() {
                   {formatCurrency(activeShift.openingCash, '$')}
                 </p>
               </div>
-              
+
               <div className="bg-muted rounded-xl p-4">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <ArrowUpRight className="w-3 h-3 text-green-500" />
@@ -270,7 +270,7 @@ export default function Cashbox() {
                   +{formatCurrency(activeShift.salesTotal, '$')}
                 </p>
               </div>
-              
+
               <div className="bg-muted rounded-xl p-4">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <ArrowUpRight className="w-3 h-3 text-green-500" />
@@ -280,7 +280,7 @@ export default function Cashbox() {
                   +{formatCurrency(activeShift.depositsTotal, '$')}
                 </p>
               </div>
-              
+
               <div className="bg-muted rounded-xl p-4">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <ArrowDownRight className="w-3 h-3 text-red-500" />
@@ -290,7 +290,7 @@ export default function Cashbox() {
                   -{formatCurrency(activeShift.expensesTotal, '$')}
                 </p>
               </div>
-              
+
               <div className="bg-muted rounded-xl p-4">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <ArrowDownRight className="w-3 h-3 text-red-500" />
@@ -300,7 +300,7 @@ export default function Cashbox() {
                   -{formatCurrency(activeShift.withdrawalsTotal, '$')}
                 </p>
               </div>
-              
+
               <div className="bg-primary/10 rounded-xl p-4 border-2 border-primary/30">
                 <p className="text-xs text-primary flex items-center gap-1">
                   <Calculator className="w-3 h-3" />
@@ -311,11 +311,11 @@ export default function Cashbox() {
                 </p>
               </div>
             </div>
-            
+
             <div className="mt-4 text-sm text-muted-foreground">
               <span>بدأت في: </span>
               <span className="font-medium">
-                {new Date(activeShift.openedAt).toLocaleString('ar-SA')}
+                {formatDateTime(activeShift.openedAt)}
               </span>
               <span className="mx-2">•</span>
               <span>المسؤول: </span>
@@ -351,19 +351,19 @@ export default function Cashbox() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {new Date(shift.openedAt).toLocaleDateString('ar-SA')}
+                      {formatDate(shift.openedAt)}
                       {' • '}
-                      {new Date(shift.openedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                      {formatTime(shift.openedAt)}
                       {' - '}
-                      {shift.closedAt && new Date(shift.closedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                      {shift.closedAt && formatTime(shift.closedAt)}
                     </p>
                   </div>
-                  
+
                   <div className="text-left">
                     <p className="text-sm text-muted-foreground">المبيعات</p>
                     <p className="font-bold text-green-600">{formatCurrency(shift.salesTotal, '$')}</p>
                   </div>
-                  
+
                   <div className="text-left mr-4">
                     <p className="text-sm text-muted-foreground">الفارق</p>
                     <p className={cn(
@@ -389,7 +389,7 @@ export default function Cashbox() {
               فتح وردية جديدة
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>الرصيد الافتتاحي</Label>
@@ -406,7 +406,7 @@ export default function Cashbox() {
               </p>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowOpenDialog(false)}>
               إلغاء
@@ -427,7 +427,7 @@ export default function Cashbox() {
               إغلاق الوردية
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Expected vs Actual */}
             <div className="bg-muted rounded-xl p-4">
@@ -439,7 +439,7 @@ export default function Cashbox() {
                 = الافتتاح + المبيعات + الإيداعات - المصاريف - السحوبات
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label>الرصيد الفعلي</Label>
               <Input
@@ -451,12 +451,12 @@ export default function Cashbox() {
                 step="0.01"
               />
             </div>
-            
+
             {closingAmount && (
               <div className={cn(
                 "rounded-xl p-4 border-2",
-                parseFloat(closingAmount) === expectedClosing 
-                  ? "bg-green-500/10 border-green-500/30" 
+                parseFloat(closingAmount) === expectedClosing
+                  ? "bg-green-500/10 border-green-500/30"
                   : parseFloat(closingAmount) > expectedClosing
                     ? "bg-blue-500/10 border-blue-500/30"
                     : "bg-red-500/10 border-red-500/30"
@@ -468,8 +468,8 @@ export default function Cashbox() {
                     <AlertTriangle className="w-5 h-5 text-orange-500" />
                   )}
                   <span className="font-medium">
-                    {parseFloat(closingAmount) === expectedClosing 
-                      ? 'الصندوق متطابق ✓' 
+                    {parseFloat(closingAmount) === expectedClosing
+                      ? 'الصندوق متطابق ✓'
                       : parseFloat(closingAmount) > expectedClosing
                         ? `فائض: ${formatCurrency(parseFloat(closingAmount) - expectedClosing, '$')}`
                         : `عجز: ${formatCurrency(expectedClosing - parseFloat(closingAmount), '$')}`
@@ -478,7 +478,7 @@ export default function Cashbox() {
                 </div>
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label>ملاحظات (اختياري)</Label>
               <Textarea
@@ -489,7 +489,7 @@ export default function Cashbox() {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
               إلغاء
@@ -510,7 +510,7 @@ export default function Cashbox() {
               سجل الورديات
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-3 py-4">
             {shifts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -533,7 +533,7 @@ export default function Cashbox() {
                     </div>
                     <span className="text-sm text-muted-foreground">{shift.userName}</span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                     <div>
                       <span className="text-muted-foreground">الافتتاح:</span>
@@ -561,10 +561,10 @@ export default function Cashbox() {
                       </>
                     )}
                   </div>
-                  
+
                   <div className="mt-2 text-xs text-muted-foreground">
-                    {new Date(shift.openedAt).toLocaleString('ar-SA')}
-                    {shift.closedAt && ` - ${new Date(shift.closedAt).toLocaleString('ar-SA')}`}
+                    {formatDateTime(shift.openedAt)}
+                    {shift.closedAt && ` - ${formatDateTime(shift.closedAt)}`}
                   </div>
                 </div>
               ))

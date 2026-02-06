@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, Package, FileX, Loader2 } from 'lucide-react';
 import { loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
 import { useLanguage } from '@/hooks/use-language';
+import { formatNumber } from '@/lib/utils';
 import { EVENTS } from '@/lib/events';
 
 interface TopProduct {
@@ -15,7 +16,7 @@ export function TopProducts() {
   const { t } = useLanguage();
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Calculate top products from cloud invoices
   const loadData = useCallback(async () => {
     try {
@@ -25,7 +26,7 @@ export function TopProducts() {
       // Aggregate sales from all invoices
       invoices.forEach(invoice => {
         if (invoice.status === 'cancelled') return;
-        
+
         invoice.items?.forEach(item => {
           const itemName = item.name;
           if (!productSales[itemName]) {
@@ -41,7 +42,7 @@ export function TopProducts() {
         .map(([id, data]) => ({ id, ...data }))
         .sort((a, b) => b.sales - a.sales)
         .slice(0, 5); // Top 5 products
-      
+
       setTopProducts(sorted);
     } catch (error) {
       console.error('Error loading top products:', error);
@@ -52,7 +53,7 @@ export function TopProducts() {
 
   useEffect(() => {
     loadData();
-    
+
     window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
     return () => window.removeEventListener(EVENTS.INVOICES_UPDATED, loadData);
   }, [loadData]);
@@ -65,7 +66,7 @@ export function TopProducts() {
         <h3 className="text-lg font-semibold text-foreground">{t('topProducts.title')}</h3>
         <span className="text-sm text-muted-foreground">{t('topProducts.fromInvoices')}</span>
       </div>
-      
+
       {topProducts.length === 0 ? (
         <div className="py-8 text-center">
           <FileX className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
@@ -75,8 +76,8 @@ export function TopProducts() {
       ) : (
         <div className="space-y-4">
           {topProducts.map((product, index) => (
-            <div 
-              key={product.id} 
+            <div
+              key={product.id}
               className="flex items-center gap-4 fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
@@ -89,13 +90,13 @@ export function TopProducts() {
                   <div className="flex items-center gap-1 text-sm">
                     <TrendingUp className="w-4 h-4 text-success" />
                     <span className="text-success font-medium">
-                      ${product.revenue.toLocaleString()}
+                      ${formatNumber(product.revenue)}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-primary rounded-full transition-all duration-500"
                       style={{ width: `${(product.sales / maxSales) * 100}%` }}
                     />

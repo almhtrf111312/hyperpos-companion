@@ -76,3 +76,22 @@ export function formatDateTime(dateString: string): string {
     minute: '2-digit'
   });
 }
+
+// Format date only - ALWAYS with Western numerals (MM/DD/YYYY or DD/MM/YYYY based on preference, using default en-US for consistency)
+export function formatDate(dateString: string | Date): string {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+}
+
+// Format time only - ALWAYS with Western numerals
+export function formatTime(dateString: string | Date): string {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}

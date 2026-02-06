@@ -1,4 +1,5 @@
 // Enhanced Share Utility - Uses Web Share API with rich text formatting
+import { formatNumber } from './utils';
 
 export interface ShareInvoiceData {
   id: string;
@@ -43,9 +44,9 @@ export const generateInvoiceShareText = (data: ShareInvoiceData): string => {
   } = data;
 
   const itemsList = type === 'sale'
-    ? items.map(item => 
-        `• ${item.name} × ${item.quantity} = ${currencySymbol}${item.total.toLocaleString()}`
-      ).join('\n')
+    ? items.map(item =>
+      `• ${item.name} × ${item.quantity} = ${currencySymbol}${formatNumber(item.total)}`
+    ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
   const paymentLabel = paymentType === 'cash' ? '💵 نقدي' : '📋 آجل';
@@ -66,7 +67,7 @@ ${type === 'sale' ? '🛒 *المشتريات:*' : '🔧 *الخدمة:*'}
 ${itemsList}
 
 ━━━━━━━━━━━━━━━━━━━━━
-${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${currencySymbol}${subtotal.toLocaleString()}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${currencySymbol}${discount.toLocaleString()}\n` : ''}💰 *الإجمالي:* ${currencySymbol}${total.toLocaleString()}
+${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${currencySymbol}${formatNumber(discount)}\n` : ''}💰 *الإجمالي:* ${currencySymbol}${formatNumber(total)}
 💳 *طريقة الدفع:* ${paymentLabel}
 
 ━━━━━━━━━━━━━━━━━━━━━
@@ -80,7 +81,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
 // Share using Web Share API with fallback to WhatsApp
 export const shareInvoice = async (data: ShareInvoiceData): Promise<boolean> => {
   const text = generateInvoiceShareText(data);
-  
+
   // Check if Web Share API is available
   if (navigator.share) {
     try {
@@ -96,11 +97,11 @@ export const shareInvoice = async (data: ShareInvoiceData): Promise<boolean> => 
       }
     }
   }
-  
+
   // Fallback to WhatsApp - always open without phone number to let user choose contact
   const encodedMessage = encodeURIComponent(text);
   const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-  
+
   window.open(whatsappUrl, '_blank');
   return true;
 };
@@ -120,7 +121,7 @@ export const shareReport = async (title: string, text: string): Promise<boolean>
       }
     }
   }
-  
+
   // Fallback: copy to clipboard
   try {
     await navigator.clipboard.writeText(text);
@@ -144,8 +145,8 @@ export const generateExpenseReportText = (
   total: number,
   currencySymbol: string = '$'
 ): string => {
-  const expensesList = expenses.map(e => 
-    `• ${e.type}: ${currencySymbol}${e.amount.toLocaleString()} (${e.date})`
+  const expensesList = expenses.map(e =>
+    `• ${e.type}: ${currencySymbol}${formatNumber(e.amount)} (${e.date})`
   ).join('\n');
 
   return `📊 *تقرير المصاريف*
@@ -160,5 +161,5 @@ export const generateExpenseReportText = (
 ${expensesList}
 
 ━━━━━━━━━━━━━━━━━━
-💰 *إجمالي المصاريف:* ${currencySymbol}${total.toLocaleString()}`;
+💰 *إجمالي المصاريف:* ${currencySymbol}${formatNumber(total)}`;
 };

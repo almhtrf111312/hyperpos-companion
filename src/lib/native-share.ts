@@ -7,6 +7,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { Share as CapacitorShare } from '@capacitor/share';
+import { formatNumber } from './utils';
 
 interface ShareOptions {
   title?: string;
@@ -79,13 +80,13 @@ export function shareViaWhatsApp(text: string, phoneNumber?: string): boolean {
     // على الأندرويد، استخدم intent URL للفتح المباشر
     if (Capacitor.isNativePlatform()) {
       // استخدم whatsapp:// protocol للأندرويد
-      const intentUrl = phoneNumber 
+      const intentUrl = phoneNumber
         ? `whatsapp://send?phone=${phoneNumber.replace(/\+/g, '')}&text=${encodedText}`
         : `whatsapp://send?text=${encodedText}`;
-      
+
       // جرب intent أولاً
       window.location.href = intentUrl;
-      
+
       // إذا لم يعمل، استخدم https
       setTimeout(() => {
         window.open(whatsappUrl, '_system');
@@ -145,9 +146,9 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
   } = data;
 
   const itemsList = type === 'sale'
-    ? items.map(item => 
-        `• ${item.name} × ${item.quantity} = ${currencySymbol}${item.total.toLocaleString()}`
-      ).join('\n')
+    ? items.map(item =>
+      `• ${item.name} × ${item.quantity} = ${currencySymbol}${formatNumber(item.total)}`
+    ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
   const paymentLabel = paymentType === 'cash' ? '💵 نقدي' : '📋 آجل';
@@ -168,7 +169,7 @@ ${type === 'sale' ? '🛒 *المشتريات:*' : '🔧 *الخدمة:*'}
 ${itemsList}
 
 ━━━━━━━━━━━━━━━━━━━━━
-${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${currencySymbol}${subtotal.toLocaleString()}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${currencySymbol}${discount.toLocaleString()}\n` : ''}💰 *الإجمالي:* ${currencySymbol}${total.toLocaleString()}
+${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${currencySymbol}${formatNumber(discount)}\n` : ''}💰 *الإجمالي:* ${currencySymbol}${formatNumber(total)}
 💳 *طريقة الدفع:* ${paymentLabel}
 
 ━━━━━━━━━━━━━━━━━━━━━
@@ -182,7 +183,7 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
  */
 export async function shareInvoice(data: InvoiceShareData): Promise<boolean> {
   const text = generateInvoiceShareText(data);
-  
+
   return nativeShare({
     title: `فاتورة رقم ${data.id}`,
     text: text,
@@ -231,8 +232,8 @@ export function generateDebtShareText(data: DebtShareData): string {
 ${customerPhone ? `📱 *الهاتف:* ${customerPhone}` : ''}
 ${invoiceId ? `📄 *رقم الفاتورة:* ${invoiceId}` : ''}
 
-💰 *إجمالي الدين:* ${currencySymbol}${totalDebt.toLocaleString()}
-💵 *المتبقي:* ${currencySymbol}${remainingDebt.toLocaleString()}
+💰 *إجمالي الدين:* ${currencySymbol}${formatNumber(totalDebt)}
+💵 *المتبقي:* ${currencySymbol}${formatNumber(remainingDebt)}
 ${dueDate ? `📅 *تاريخ الاستحقاق:* ${dueDate}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━
@@ -241,12 +242,12 @@ ${dueDate ? `📅 *تاريخ الاستحقاق:* ${dueDate}` : ''}
 
 export async function shareDebt(data: DebtShareData): Promise<boolean> {
   const text = generateDebtShareText(data);
-  
+
   // إذا كان هناك رقم هاتف، اقترح إرساله مباشرة
   if (data.customerPhone) {
     return shareViaWhatsApp(text, data.customerPhone);
   }
-  
+
   return nativeShare({
     title: `تذكير بالدين - ${data.customerName}`,
     text: text,

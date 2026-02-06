@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Search, 
-  Plus, 
+import {
+  Search,
+  Plus,
   User,
   Phone,
   Mail,
@@ -15,7 +15,7 @@ import {
   Save,
   Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -36,13 +36,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { 
-  loadCustomersWithCashierNamesCloud, 
-  addCustomerCloud, 
-  updateCustomerCloud, 
+import {
+  loadCustomersWithCashierNamesCloud,
+  addCustomerCloud,
+  updateCustomerCloud,
   deleteCustomerCloud,
   getCustomersStatsCloud,
-  Customer 
+  Customer
 } from '@/lib/cloud/customers-cloud';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
@@ -56,14 +56,14 @@ export default function Customers() {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -91,12 +91,12 @@ export default function Customers() {
 
   useEffect(() => {
     loadData();
-    
+
     // Listen for updates
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
     window.addEventListener('focus', loadData);
-    
+
     return () => {
       window.removeEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
       window.removeEventListener('focus', loadData);
@@ -114,7 +114,7 @@ export default function Customers() {
   }, [searchParams, setSearchParams]);
 
   const [stats, setStats] = useState({ total: 0, withDebt: 0, totalDebt: 0, totalPurchases: 0 });
-  
+
   useEffect(() => {
     const loadStats = async () => {
       const s = await getCustomersStatsCloud();
@@ -135,16 +135,16 @@ export default function Customers() {
       toast.error('يرجى ملء الحقول المطلوبة');
       return;
     }
-    
+
     // ✅ التحقق من عدم تكرار الاسم
-    const duplicate = customers.find(c => 
+    const duplicate = customers.find(c =>
       c.name.toLowerCase().trim() === formData.name.toLowerCase().trim()
     );
     if (duplicate) {
       toast.error('هذا الاسم موجود مسبقاً، يرجى اختيار اسم مختلف');
       return;
     }
-    
+
     savingRef.current = true;
     setIsSaving(true);
     try {
@@ -154,7 +154,7 @@ export default function Customers() {
         email: formData.email || undefined,
         address: formData.address || undefined,
       });
-      
+
       if (newCustomer) {
         setShowAddDialog(false);
         setFormData({ name: '', phone: '', email: '', address: '' });
@@ -174,7 +174,7 @@ export default function Customers() {
       toast.error('يرجى ملء الحقول المطلوبة');
       return;
     }
-    
+
     setIsSaving(true);
     const success = await updateCustomerCloud(selectedCustomer.id, {
       name: formData.name,
@@ -183,7 +183,7 @@ export default function Customers() {
       address: formData.address || undefined,
     });
     setIsSaving(false);
-    
+
     if (success) {
       setShowEditDialog(false);
       setSelectedCustomer(null);
@@ -196,11 +196,11 @@ export default function Customers() {
 
   const handleDeleteCustomer = async () => {
     if (!selectedCustomer) return;
-    
+
     setIsSaving(true);
     const success = await deleteCustomerCloud(selectedCustomer.id);
     setIsSaving(false);
-    
+
     if (success) {
       setShowDeleteDialog(false);
       setSelectedCustomer(null);
@@ -279,7 +279,7 @@ export default function Customers() {
               <CreditCard className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalDebt.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.totalDebt)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('customers.debts')}</p>
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function Customers() {
               <CreditCard className="w-4 h-4 md:w-5 md:h-5 text-success" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.totalPurchases.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.totalPurchases)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('customers.purchases')}</p>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function Customers() {
       {/* Customers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {filteredCustomers.map((customer, index) => (
-          <div 
+          <div
             key={customer.id}
             className="bg-card rounded-xl md:rounded-2xl border border-border p-4 md:p-6 card-hover fade-in"
             style={{ animationDelay: `${index * 50}ms` }}
@@ -369,7 +369,7 @@ export default function Customers() {
             <div className="grid grid-cols-2 gap-3 md:gap-4 py-3 md:py-4 border-t border-border">
               <div>
                 <p className="text-xs md:text-sm text-muted-foreground">{t('customers.purchases')}</p>
-                <p className="text-base md:text-lg font-bold text-foreground">${customer.totalPurchases.toLocaleString()}</p>
+                <p className="text-base md:text-lg font-bold text-foreground">{formatCurrency(customer.totalPurchases)}</p>
               </div>
               <div>
                 <p className="text-xs md:text-sm text-muted-foreground">{t('customers.debts')}</p>
@@ -377,7 +377,7 @@ export default function Customers() {
                   "text-base md:text-lg font-bold",
                   customer.totalDebt > 0 ? "text-destructive" : "text-success"
                 )}>
-                  ${customer.totalDebt.toLocaleString()}
+                  {formatCurrency(customer.totalDebt)}
                 </p>
               </div>
             </div>
@@ -392,9 +392,9 @@ export default function Customers() {
                 <Edit className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
                 {t('common.edit')}
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="h-8 md:h-9 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 onClick={() => openDeleteDialog(customer)}
               >
@@ -534,7 +534,7 @@ export default function Customers() {
                   <p className="text-muted-foreground">{selectedCustomer.invoiceCount} فاتورة</p>
                 </div>
               </div>
-              
+
               <div className="space-y-2 bg-muted rounded-lg p-4">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-muted-foreground" />
@@ -557,12 +557,12 @@ export default function Customers() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-muted rounded-lg p-4 text-center">
                   <p className="text-sm text-muted-foreground">إجمالي المشتريات</p>
-                  <p className="text-2xl font-bold text-primary">${selectedCustomer.totalPurchases.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(selectedCustomer.totalPurchases)}</p>
                 </div>
                 <div className="bg-muted rounded-lg p-4 text-center">
                   <p className="text-sm text-muted-foreground">الديون المستحقة</p>
                   <p className={cn("text-2xl font-bold", selectedCustomer.totalDebt > 0 ? "text-destructive" : "text-success")}>
-                    ${selectedCustomer.totalDebt.toLocaleString()}
+                    {formatCurrency(selectedCustomer.totalDebt)}
                   </p>
                 </div>
               </div>

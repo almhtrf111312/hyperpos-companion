@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -403,7 +403,7 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع نقدي بقيمة $${totalSnapshot.toLocaleString()} - المنتجات: ${itemsDescription}`,
+          `عملية بيع نقدي بقيمة $${formatNumber(totalSnapshot)} - المنتجات: ${itemsDescription}`,
           { invoiceId: invoice.id, total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
         );
       }
@@ -657,7 +657,7 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع بالدين بقيمة $${totalSnapshot.toLocaleString()} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          `عملية بيع بالدين بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
           {
             invoiceId: invoice.id,
             total: totalSnapshot,
@@ -672,7 +672,7 @@ export function CartPanel({
           'debt_created',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${totalSnapshot.toLocaleString()}`,
+          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
           { invoiceId: invoice.id, amount: totalSnapshot, customerName: customerNameSnapshot }
         );
       }
@@ -811,7 +811,7 @@ export function CartPanel({
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${(item.price * item.quantity * selectedCurrency.rate).toLocaleString()}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(item.price * item.quantity * selectedCurrency.rate)}</td>
       </tr>
     `).join('');
 
@@ -858,9 +858,9 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discount}%: -${selectedCurrency.symbol}${discountAmount.toLocaleString()}</div>` : ''}
+          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discount}%: -${selectedCurrency.symbol}${formatNumber(discountAmount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${selectedCurrency.symbol}${totalInCurrency.toLocaleString()}
+            الإجمالي: ${selectedCurrency.symbol}${formatNumber(totalInCurrency)}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -1084,7 +1084,7 @@ export function CartPanel({
                     </button>
                   </div>
                   <p className="font-bold text-primary text-sm md:text-base">
-                    ${(item.price * item.quantity).toLocaleString()}
+                    ${formatNumber(item.price * item.quantity)}
                   </p>
                 </div>
               </div>
@@ -1163,18 +1163,18 @@ export function CartPanel({
           <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('pos.subtotal')}</span>
-              <span>${subtotal.toLocaleString()}</span>
+              <span>${formatNumber(subtotal)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-success">
                 <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
-                <span>-${discountAmount.toLocaleString()}</span>
+                <span>-${formatNumber(discountAmount)}</span>
               </div>
             )}
             <div className="flex justify-between text-base md:text-lg font-bold pt-2 border-t border-border">
               <span>{t('pos.total')}</span>
               <span className="text-primary">
-                {selectedCurrency.symbol}{totalInCurrency.toLocaleString()}
+                {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
               </span>
             </div>
           </div>
@@ -1247,7 +1247,7 @@ export function CartPanel({
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
                 <span>الإجمالي:</span>
-                <span className="text-primary">{selectedCurrency.symbol}{totalInCurrency.toLocaleString()}</span>
+                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
               </div>
             </div>
             <div className="flex gap-3">
@@ -1300,7 +1300,7 @@ export function CartPanel({
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>مبلغ الدين:</span>
-                <span>{selectedCurrency.symbol}{totalInCurrency.toLocaleString()}</span>
+                <span>{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
               </div>
             </div>
             <div className="flex gap-3">

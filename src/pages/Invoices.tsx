@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import {
@@ -214,7 +214,7 @@ export default function Invoices() {
           <tr>
             <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${invoice.currencySymbol}${item.total.toLocaleString()}</td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
           </tr>
         `).join('')
       : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || 'خدمة صيانة'}</td></tr>`;
@@ -398,9 +398,9 @@ export default function Invoices() {
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${invoice.currencySymbol}${invoice.discount.toLocaleString()}</div>` : ''}
+          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${invoice.currencySymbol}${invoice.totalInCurrency.toLocaleString()}
+            الإجمالي: ${formatCurrency(invoice.totalInCurrency)}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -496,7 +496,7 @@ export default function Invoices() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{t('invoices.todaySales')}</p>
-                <p className="text-xl font-bold">${stats.todaySales.toLocaleString()}</p>
+                <p className="text-xl font-bold">{formatCurrency(stats.todaySales)}</p>
               </div>
             </div>
           </CardContent>
@@ -522,7 +522,7 @@ export default function Invoices() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{t('invoices.totalProfit')}</p>
-                <p className="text-xl font-bold">${stats.totalProfit.toLocaleString()}</p>
+                <p className="text-xl font-bold">{formatCurrency(stats.totalProfit)}</p>
               </div>
             </div>
           </CardContent>
@@ -633,7 +633,7 @@ export default function Invoices() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
                         <span>{invoice.id}</span>
                         <span>•</span>
-                        <span>{new Date(invoice.createdAt).toLocaleDateString('ar-SA')}</span>
+                        <span>{formatDateTime(new Date(invoice.createdAt))}</span>
                         {invoice.cashierName && (
                           <>
                             <span>•</span>
@@ -649,16 +649,16 @@ export default function Invoices() {
                   <div className="flex items-center gap-3">
                     <div className="text-left">
                       <p className="font-bold text-lg">
-                        {invoice.currencySymbol}{invoice.totalInCurrency.toLocaleString()}
+                        {formatCurrency(invoice.totalInCurrency)}
                       </p>
                       {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          المدفوع: {invoice.currencySymbol}{invoice.debtPaid.toLocaleString()} / المتبقي: {invoice.currencySymbol}{(invoice.debtRemaining || 0).toLocaleString()}
+                          المدفوع: {formatCurrency(invoice.debtPaid)} / المتبقي: {formatCurrency(invoice.debtRemaining || 0)}
                         </p>
                       )}
                       {invoice.profit !== undefined && invoice.profit > 0 && (
                         <p className="text-xs text-success">
-                          ربح: ${invoice.profit.toLocaleString()}
+                          ربح: {formatCurrency(invoice.profit)}
                         </p>
                       )}
                     </div>
@@ -732,8 +732,7 @@ export default function Invoices() {
                 <div>
                   <span className="text-muted-foreground">{t('invoices.date')}:</span>
                   <p className="font-semibold" dir="ltr">
-                    {new Date(selectedInvoice.createdAt).toLocaleDateString('en-GB') + ' ' +
-                      new Date(selectedInvoice.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {formatDateTime(new Date(selectedInvoice.createdAt))}
                   </p>
                 </div>
                 <div>
@@ -783,8 +782,8 @@ export default function Invoices() {
                           <tr key={idx} className="border-t border-muted/50">
                             <td className="px-3 py-2">{item.name}</td>
                             <td className="px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="px-3 py-2 text-center">{selectedInvoice.currencySymbol}{item.price.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-left font-medium">{selectedInvoice.currencySymbol}{item.total.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
+                            <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -797,17 +796,17 @@ export default function Invoices() {
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>{t('invoices.discount')}:</span>
-                    <span>{selectedInvoice.currencySymbol}{selectedInvoice.discount.toLocaleString()}</span>
+                    <span>{formatCurrency(selectedInvoice.discount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t('invoices.total')}:</span>
-                  <span className="text-primary">{selectedInvoice.currencySymbol}{selectedInvoice.totalInCurrency.toLocaleString()}</span>
+                  <span className="text-primary">{formatCurrency(selectedInvoice.totalInCurrency)}</span>
                 </div>
                 {selectedInvoice.profit !== undefined && (
                   <div className="flex justify-between text-sm text-success">
                     <span>{t('invoices.profit')}:</span>
-                    <span>${selectedInvoice.profit.toLocaleString()}</span>
+                    <span>{formatCurrency(selectedInvoice.profit)}</span>
                   </div>
                 )}
               </div>

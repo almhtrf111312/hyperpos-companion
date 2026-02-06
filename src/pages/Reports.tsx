@@ -466,12 +466,12 @@ export default function Reports() {
             const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
             return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
           });
-          
+
           if (filteredInvoices.length === 0) {
             toast.error('لا توجد بيانات للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportInvoicesToPDF(
             filteredInvoices.map(inv => ({
               id: inv.id,
@@ -493,7 +493,7 @@ export default function Reports() {
             toast.error('لا توجد منتجات للتصدير');
             return;
           }
-          
+
           await exportProductsToPDF(
             products.map(p => ({
               name: p.name,
@@ -513,7 +513,7 @@ export default function Reports() {
             toast.error('لا يوجد عملاء للتصدير');
             return;
           }
-          
+
           const customerData = customers.map(c => ({
             name: c.name,
             phone: c.phone || '',
@@ -529,7 +529,7 @@ export default function Reports() {
             toast.error('لا يوجد شركاء للتصدير');
             return;
           }
-          
+
           const partnerData = partners.map(p => ({
             name: p.name,
             sharePercentage: p.sharePercentage || 0,
@@ -546,7 +546,7 @@ export default function Reports() {
             toast.error('لا توجد مصاريف للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportExpensesToPDF(
             expenseReportData.expenses.map(e => ({
               id: e.id,
@@ -567,12 +567,12 @@ export default function Reports() {
             const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
             return invDate >= dateRange.from && invDate <= dateRange.to;
           });
-          
+
           if (defaultInvoices.length === 0) {
             toast.error('لا توجد بيانات للتصدير في هذه الفترة');
             return;
           }
-          
+
           await exportInvoicesToPDF(
             defaultInvoices.map(inv => ({
               id: inv.id,
@@ -788,7 +788,7 @@ ${partnerExpenses.map(exp => {
               </div>
             )}
           </div>
-          
+
           {/* Export Buttons - Mobile Optimized */}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
@@ -866,7 +866,7 @@ ${partnerExpenses.map(exp => {
                 </span>
               )}
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalSales.toLocaleString()}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">{formatCurrency(reportData.summary.totalSales)}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalSales')}</p>
           </div>
           <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
@@ -878,7 +878,7 @@ ${partnerExpenses.map(exp => {
                 </span>
               )}
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.totalProfit.toLocaleString()}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">{formatCurrency(reportData.summary.totalProfit)}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
           </div>
           <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
@@ -930,7 +930,7 @@ ${partnerExpenses.map(exp => {
                       />
                     </div>
                     <span className="text-sm font-semibold w-24 text-left">
-                      ${day.sales.toLocaleString()}
+                      {formatCurrency(day.sales)}
                     </span>
                   </div>
                 ))}
@@ -965,7 +965,7 @@ ${partnerExpenses.map(exp => {
                       <span className="font-medium">{product.name}</span>
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-foreground">${product.revenue.toLocaleString()}</p>
+                      <p className="font-bold text-foreground">{formatCurrency(product.revenue)}</p>
                       <p className="text-xs text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
                     </div>
                   </div>
@@ -994,11 +994,11 @@ ${partnerExpenses.map(exp => {
                     <p className="text-xs text-muted-foreground">إجمالي الكميات</p>
                   </div>
                   <div className="bg-muted rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-primary">${cloudProducts.reduce((s, p) => s + ((p.costPrice || 0) * (p.quantity || 0)), 0).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-primary">{formatCurrency(cloudProducts.reduce((s, p) => s + ((p.costPrice || 0) * (p.quantity || 0)), 0))}</p>
                     <p className="text-xs text-muted-foreground">قيمة المخزون (شراء)</p>
                   </div>
                   <div className="bg-muted rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-success">${cloudProducts.reduce((s, p) => s + ((p.salePrice || 0) * (p.quantity || 0)), 0).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-success">{formatCurrency(cloudProducts.reduce((s, p) => s + ((p.salePrice || 0) * (p.quantity || 0)), 0))}</p>
                     <p className="text-xs text-muted-foreground">قيمة المخزون (بيع)</p>
                   </div>
                 </div>
@@ -1053,7 +1053,7 @@ ${partnerExpenses.map(exp => {
                       <span className="font-medium">{customer.name}</span>
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-foreground">${customer.total.toLocaleString()}</p>
+                      <p className="font-bold text-foreground">{formatCurrency(customer.total)}</p>
                       <p className="text-xs text-muted-foreground">{customer.orders} {t('reports.order')}</p>
                     </div>
                   </div>
@@ -1092,21 +1092,21 @@ ${partnerExpenses.map(exp => {
                 <div className="flex items-center justify-between mb-2">
                   <TrendingUp className="w-5 h-5 text-success" />
                 </div>
-                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalProfitInPeriod.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(partnerReportData.summary.totalProfitInPeriod)}</p>
                 <p className="text-xs text-muted-foreground">الأرباح في الفترة</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Wallet className="w-5 h-5 text-primary" />
                 </div>
-                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalCurrentBalance.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(partnerReportData.summary.totalCurrentBalance)}</p>
                 <p className="text-xs text-muted-foreground">الرصيد الحالي</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <Banknote className="w-5 h-5 text-warning" />
                 </div>
-                <p className="text-2xl font-bold text-foreground">${partnerReportData.summary.totalWithdrawnInPeriod.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(partnerReportData.summary.totalWithdrawnInPeriod)}</p>
                 <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
               </div>
               <div className="bg-card rounded-xl border border-border p-4">
@@ -1143,7 +1143,7 @@ ${partnerExpenses.map(exp => {
                               />
                             </div>
                             <div className="text-left w-28">
-                              <p className="text-sm font-semibold">${cat.amount.toLocaleString()}</p>
+                              <p className="text-sm font-semibold">{formatCurrency(cat.amount)}</p>
                               <p className="text-xs text-muted-foreground">{cat.count} عملية</p>
                             </div>
                           </div>
@@ -1169,7 +1169,7 @@ ${partnerExpenses.map(exp => {
                         </div>
                       </div>
                       <div className="text-left">
-                        <p className="text-lg font-bold text-success">${partner.totalProfitInPeriod.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-success">{formatCurrency(partner.totalProfitInPeriod)}</p>
                         <p className="text-xs text-muted-foreground">أرباح الفترة</p>
                       </div>
                     </div>
@@ -1178,19 +1178,19 @@ ${partnerExpenses.map(exp => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
-                        <p className="text-lg font-bold text-foreground">${partner.currentBalance.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(partner.currentBalance)}</p>
                       </div>
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">رأس المال</p>
-                        <p className="text-lg font-bold text-foreground">${partner.currentCapital.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(partner.currentCapital)}</p>
                       </div>
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">أرباح معلقة</p>
-                        <p className="text-lg font-bold text-warning">${partner.pendingProfit.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-warning">{formatCurrency(partner.pendingProfit)}</p>
                       </div>
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
-                        <p className="text-lg font-bold text-foreground">${partner.totalWithdrawnInPeriod.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(partner.totalWithdrawnInPeriod)}</p>
                       </div>
                     </div>
 
@@ -1204,7 +1204,7 @@ ${partnerExpenses.map(exp => {
                               key={idx}
                               className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
                             >
-                              {cat.categoryName}: ${cat.amount.toLocaleString()}
+                              {cat.categoryName}: {formatCurrency(cat.amount)}
                             </span>
                           ))}
                         </div>
@@ -1227,7 +1227,7 @@ ${partnerExpenses.map(exp => {
                                     style={{ width: `${(day.amount / maxDayProfit) * 100}%` }}
                                   />
                                 </div>
-                                <span className="text-xs font-semibold w-20 text-left">${day.amount.toLocaleString()}</span>
+                                <span className="text-xs font-semibold w-20 text-left">{formatCurrency(day.amount)}</span>
                               </div>
                             );
                           })}

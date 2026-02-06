@@ -7,6 +7,7 @@ import {
   uploadBackup,
   setLastSyncTimestamp
 } from './google-drive';
+import { formatDateTime } from './utils';
 
 const BACKUP_CONFIG_KEY = 'hyperpos_backup_config_v1';
 const LAST_ACTIVITY_KEY = 'hyperpos_last_activity_v1';
@@ -142,9 +143,7 @@ export const generateBackupData = async (): Promise<object> => {
   const backupData: Record<string, unknown> = {
     version: '2.1', // Bump version/
     timestamp: new Date().toISOString(),
-    localTimestamp: new Date().toLocaleString('ar-SA', {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    }),
+    localTimestamp: formatDateTime(new Date().toISOString()),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     source: 'hyperpos_backup_cloud',
     storeInfo: storeSettings,

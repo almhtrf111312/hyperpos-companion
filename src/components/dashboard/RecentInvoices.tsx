@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy, FileX, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -54,7 +54,7 @@ export function RecentInvoices() {
 
   useEffect(() => {
     loadData();
-    
+
     // Listen for updates
     window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
     return () => window.removeEventListener(EVENTS.INVOICES_UPDATED, loadData);
@@ -123,7 +123,7 @@ export function RecentInvoices() {
           </div>
           ${invoice.discount > 0 ? `<div style="text-align: center; color: #666;">خصم: ${invoice.currencySymbol}${invoice.discount}</div>` : ''}
           <div class="total">
-            المجموع: ${invoice.currencySymbol}${invoice.totalInCurrency.toLocaleString()}
+            المجموع: ${invoice.currencySymbol}${formatNumber(invoice.totalInCurrency)}
           </div>
           <div class="footer">
             <p>${printSettings.footer}</p>
@@ -131,7 +131,7 @@ export function RecentInvoices() {
         </body>
       </html>
     `;
-    
+
     printHTML(printContent);
     toast.success('جاري إرسال الفاتورة للطابعة...');
   };
@@ -177,7 +177,7 @@ export function RecentInvoices() {
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">آخر الفواتير</h3>
-            <button 
+            <button
               onClick={handleViewAll}
               className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
             >
@@ -185,14 +185,14 @@ export function RecentInvoices() {
             </button>
           </div>
         </div>
-        
+
         {invoices.length === 0 ? (
           <div className="p-12 text-center">
             <FileX className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
             <p className="text-muted-foreground">لا توجد فواتير بعد</p>
             <p className="text-sm text-muted-foreground/70 mt-1">ابدأ بإنشاء فاتورة جديدة من نقطة البيع</p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="mt-4"
               onClick={() => navigate('/pos')}
             >
@@ -214,7 +214,7 @@ export function RecentInvoices() {
               </thead>
               <tbody>
                 {invoices.map((invoice, index) => (
-                  <tr 
+                  <tr
                     key={invoice.id}
                     className={cn(
                       "border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer fade-in",
@@ -230,7 +230,7 @@ export function RecentInvoices() {
                     </td>
                     <td className="py-4 px-6">
                       <span className="font-semibold text-foreground">
-                        {invoice.currencySymbol}{invoice.totalInCurrency.toLocaleString()}
+                        {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
                       </span>
                     </td>
                     <td className="py-4 px-6">
@@ -246,14 +246,14 @@ export function RecentInvoices() {
                     </td>
                     <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
-                        <button 
+                        <button
                           className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           onClick={() => handleViewInvoice(invoice)}
                           title="عرض الفاتورة"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           onClick={() => handlePrintInvoice(invoice)}
                           title="طباعة"
@@ -280,7 +280,7 @@ export function RecentInvoices() {
                               تعديل
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleDeleteInvoice(invoice)}
                               className="text-destructive focus:text-destructive"
                             >
@@ -367,7 +367,7 @@ export function RecentInvoices() {
                 )}
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>المجموع:</span>
-                  <span className="text-primary">{selectedInvoice.currencySymbol}{selectedInvoice.totalInCurrency.toLocaleString()}</span>
+                  <span className="text-primary">{selectedInvoice.currencySymbol}{formatNumber(selectedInvoice.totalInCurrency)}</span>
                 </div>
               </div>
 
@@ -383,15 +383,15 @@ export function RecentInvoices() {
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1"
                   onClick={() => handlePrintInvoice(selectedInvoice)}
                 >
                   <Printer className="w-4 h-4 ml-2" />
                   طباعة
                 </Button>
-                <Button 
+                <Button
                   className="flex-1"
                   onClick={() => {
                     setShowViewDialog(false);
@@ -402,8 +402,8 @@ export function RecentInvoices() {
                   تعديل
                 </Button>
               </div>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 className="w-full mt-2"
                 onClick={() => setShowViewDialog(false)}
               >

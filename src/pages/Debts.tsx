@@ -16,7 +16,7 @@ import {
   Share2,
   Trash2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -250,7 +250,7 @@ export default function Debts() {
         'debt_paid',
         user.id,
         profile?.full_name || user.email || 'مستخدم',
-        `${t('debts.paymentRecorded')} $${paymentAmount.toLocaleString()} - ${selectedDebt.customerName}`,
+        `${t('debts.paymentRecorded')} ${formatCurrency(paymentAmount)} - ${selectedDebt.customerName}`,
         { debtId: selectedDebt.id, amount: paymentAmount, customerName: selectedDebt.customerName }
       );
     }
@@ -298,7 +298,7 @@ export default function Debts() {
           'debt_created',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `${t('debts.cashDebtCreated')} ${newDebtForm.customerName} - $${newDebtForm.amount.toLocaleString()}`,
+          `${t('debts.cashDebtCreated')} ${newDebtForm.customerName} - ${formatCurrency(newDebtForm.amount)}`,
           { amount: newDebtForm.amount, customerName: newDebtForm.customerName, isCashDebt: true }
         );
       }
@@ -341,7 +341,7 @@ export default function Debts() {
               <CreditCard className="w-4 h-4 md:w-5 md:h-5 text-primary" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.total.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.total)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('debts.total')}</p>
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function Debts() {
               <Clock className="w-4 h-4 md:w-5 md:h-5 text-warning" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.remaining.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.remaining)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('debts.remaining')}</p>
             </div>
           </div>
@@ -363,7 +363,7 @@ export default function Debts() {
               <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-success" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.paid.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.paid)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('debts.paid')}</p>
             </div>
           </div>
@@ -374,7 +374,7 @@ export default function Debts() {
               <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
             </div>
             <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">${stats.overdue.toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.overdue)}</p>
               <p className="text-xs md:text-sm text-muted-foreground">{t('debts.overdue')}</p>
             </div>
           </div>
@@ -479,8 +479,8 @@ export default function Debts() {
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px] md:text-xs text-muted-foreground mt-1">
-                    <span>{t('debts.paidAmount')}: ${debt.totalPaid}</span>
-                    <span>{t('debts.totalAmount')}: ${debt.totalDebt}</span>
+                    <span>{t('debts.paidAmount')}: {formatCurrency(debt.totalPaid)}</span>
+                    <span>{t('debts.totalAmount')}: {formatCurrency(debt.totalDebt)}</span>
                   </div>
                 </div>
 
@@ -492,7 +492,7 @@ export default function Debts() {
                       "text-lg md:text-2xl font-bold",
                       debt.remainingDebt > 0 ? "text-destructive" : "text-success"
                     )}>
-                      ${debt.remainingDebt.toLocaleString()}
+                      {formatCurrency(debt.remainingDebt)}
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
@@ -627,15 +627,15 @@ export default function Debts() {
               <div className="bg-muted rounded-xl p-4">
                 <div className="flex justify-between mb-2">
                   <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
-                  <span className="font-bold">${selectedDebt.totalDebt.toLocaleString()}</span>
+                  <span className="font-bold">{formatCurrency(selectedDebt.totalDebt)}</span>
                 </div>
                 <div className="flex justify-between mb-2">
                   <span className="text-muted-foreground">{t('debts.paidSoFar')}</span>
-                  <span className="font-bold text-success">${selectedDebt.totalPaid.toLocaleString()}</span>
+                  <span className="font-bold text-success">{formatCurrency(selectedDebt.totalPaid)}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t">
                   <span className="text-muted-foreground">{t('debts.remaining')}</span>
-                  <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
+                  <span className="font-bold text-destructive">{formatCurrency(selectedDebt.remainingDebt)}</span>
                 </div>
               </div>
 
@@ -714,15 +714,7 @@ export default function Debts() {
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">{t('debts.createdAt')}</span>
                     <span className="font-medium" dir="ltr">
-                      {new Date(selectedDebt.createdAt).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })} {new Date(selectedDebt.createdAt).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      })}
+                      {formatDateTime(new Date(selectedDebt.createdAt))}
                     </span>
                   </div>
                   <div className="flex justify-between py-2 border-b">
@@ -731,15 +723,15 @@ export default function Debts() {
                   </div>
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
-                    <span className="font-bold">${selectedDebt.totalDebt.toLocaleString()}</span>
+                    <span className="font-bold">{formatCurrency(selectedDebt.totalDebt)}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">{t('debts.paid')}</span>
-                    <span className="font-bold text-success">${selectedDebt.totalPaid.toLocaleString()}</span>
+                    <span className="font-bold text-success">{formatCurrency(selectedDebt.totalPaid)}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b">
                     <span className="text-muted-foreground">{t('debts.remaining')}</span>
-                    <span className="font-bold text-destructive">${selectedDebt.remainingDebt.toLocaleString()}</span>
+                    <span className="font-bold text-destructive">{formatCurrency(selectedDebt.remainingDebt)}</span>
                   </div>
                 </div>
 
@@ -756,7 +748,7 @@ export default function Debts() {
                         {debtItems.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
                             <span>{item.name} <span className="text-muted-foreground">×{item.quantity}</span></span>
-                            <span className="font-medium">${item.total.toLocaleString()}</span>
+                            <span className="font-medium">{formatCurrency(item.total)}</span>
                           </div>
                         ))}
                       </div>
@@ -804,7 +796,7 @@ export default function Debts() {
             <AlertDialogDescription>
               {selectedDebt && (
                 <>
-                  هل أنت متأكد من حذف دين <strong>{selectedDebt.customerName}</strong> بقيمة <strong>${selectedDebt.totalDebt.toLocaleString()}</strong>؟
+                  هل أنت متأكد من حذف دين <strong>{selectedDebt.customerName}</strong> بقيمة <strong>{formatCurrency(selectedDebt.totalDebt)}</strong>؟
                   <br />
                   <span className="text-destructive">هذا الإجراء لا يمكن التراجع عنه.</span>
                 </>

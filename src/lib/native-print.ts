@@ -8,6 +8,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { formatNumber } from './utils';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
 
@@ -88,16 +89,16 @@ interface PrintableInvoice {
 export function generateReceiptHTML(invoice: PrintableInvoice): string {
   const store = getStoreSettings();
   const printSettings = getPrintSettings();
-  
+
   const itemsHTML = invoice.items.map(item => `
     <tr>
       <td style="text-align: right; padding: 4px 0; font-size: 12px;">${item.name}</td>
       <td style="text-align: center; padding: 4px 0; font-size: 12px;">${item.quantity}</td>
-      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${invoice.currencySymbol}${item.total.toLocaleString()}</td>
+      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${invoice.currencySymbol}${formatNumber(item.total)}</td>
     </tr>
   `).join('');
 
-  const logoHTML = printSettings.showLogo && store.logo 
+  const logoHTML = printSettings.showLogo && store.logo
     ? `<img src="${store.logo}" alt="Logo" style="max-width: 80px; max-height: 80px; margin-bottom: 8px;" />`
     : '';
 
@@ -241,27 +242,27 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
       ${invoice.items.length > 1 ? `
         <div class="total-row">
           <span>المجموع الفرعي:</span>
-          <span>${invoice.currencySymbol}${invoice.subtotal.toLocaleString()}</span>
+          <span>${invoice.currencySymbol}${formatNumber(invoice.subtotal)}</span>
         </div>
       ` : ''}
       
       ${invoice.discountAmount && invoice.discountAmount > 0 ? `
         <div class="total-row">
           <span>الخصم${invoice.discount ? ` (${invoice.discount}%)` : ''}:</span>
-          <span>-${invoice.currencySymbol}${invoice.discountAmount.toLocaleString()}</span>
+          <span>-${invoice.currencySymbol}${formatNumber(invoice.discountAmount!)}</span>
         </div>
       ` : ''}
 
       ${invoice.tax && invoice.tax > 0 ? `
         <div class="total-row">
           <span>الضريبة:</span>
-          <span>${invoice.currencySymbol}${invoice.tax.toLocaleString()}</span>
+          <span>${invoice.currencySymbol}${formatNumber(invoice.tax!)}</span>
         </div>
       ` : ''}
 
       <div class="total-row grand-total">
         <span>الإجمالي:</span>
-        <span>${invoice.currencySymbol}${invoice.total.toLocaleString()}</span>
+        <span>${invoice.currencySymbol}${formatNumber(invoice.total)}</span>
       </div>
 
       <div style="text-align: center; margin-top: 8px;">
@@ -303,7 +304,7 @@ export async function printHTML(htmlContent: string): Promise<boolean> {
 async function printOnNative(htmlContent: string): Promise<boolean> {
   try {
     const fileName = `receipt_${Date.now()}.html`;
-    
+
     // حفظ الملف مؤقتاً
     const result = await Filesystem.writeFile({
       path: fileName,
@@ -335,7 +336,7 @@ async function printOnNative(htmlContent: string): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('[NativePrint] Native print failed:', error);
-    
+
     // Fallback: حاول فتح الطباعة مباشرة
     try {
       const printWindow = window.open('', '_blank');
@@ -349,7 +350,7 @@ async function printOnNative(htmlContent: string): Promise<boolean> {
     } catch {
       // تجاهل
     }
-    
+
     return false;
   }
 }
