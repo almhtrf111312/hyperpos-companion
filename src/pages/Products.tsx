@@ -20,7 +20,7 @@ import {
   Truck,
   FileText
 } from 'lucide-react';
-import { cn, toWesternNumerals } from '@/lib/utils';
+import { cn, toWesternNumerals, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -914,15 +914,15 @@ export default function Products() {
                   <div className="grid grid-cols-3 gap-2 text-center mb-3">
                     <div>
                       <p className="text-xs text-muted-foreground">الشراء</p>
-                      <p className="font-semibold text-sm">${product.costPrice.toFixed(2)}</p>
+                      <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">البيع</p>
-                      <p className="font-semibold text-sm text-primary">${product.salePrice.toFixed(2)}</p>
+                      <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">الربح</p>
-                      <p className="font-semibold text-sm text-success">${profit.toFixed(2)}</p>
+                      <p className="font-semibold text-sm text-success">${formatNumber(profit, 2)}</p>
                     </div>
                   </div>
 
@@ -1037,11 +1037,11 @@ export default function Products() {
                         <div className="flex flex-col text-sm">
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
-                            <span className="text-muted-foreground">${product.costPrice.toFixed(2)}</span>
+                            <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
-                            <span className="font-semibold text-foreground">${product.salePrice.toFixed(2)}</span>
+                            <span className="font-semibold text-foreground">${formatNumber(product.salePrice, 2)}</span>
                           </div>
                         </div>
                       </td>
@@ -1049,7 +1049,7 @@ export default function Products() {
                       {/* الربح */}
                       <td className="py-3 px-3">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-success text-sm">${profit.toFixed(2)}</span>
+                          <span className="font-semibold text-success text-sm">${formatNumber(profit, 2)}</span>
                           <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
                         </div>
                       </td>

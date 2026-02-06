@@ -25,7 +25,7 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
     if (userConfig) return userConfig;
     return getDefaultFieldsByStoreType(storeType as StoreType);
   });
-  
+
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
@@ -45,12 +45,20 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
     syncFromCloud();
   }, [storeType]);
 
-  const handleToggle = (field: keyof ProductFieldsConfig) => {
-    setConfig(prev => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
-    setHasChanges(true);
+  const handleToggle = async (field: keyof ProductFieldsConfig) => {
+    const newConfig = {
+      ...config,
+      [field]: !config[field],
+    };
+    setConfig(newConfig);
+
+    // Auto-save immediately (no need for 'Save' button)
+    const success = await saveProductFieldsConfig(newConfig);
+    if (success) {
+      console.log('[ProductFieldsSection] Auto-saved config:', newConfig);
+      toast.success(`تم ${newConfig[field] ? 'تفعيل' : 'تعطيل'} ${FIELD_LABELS[field].name}`);
+    }
+    setHasChanges(false);
   };
 
   const handleSave = async () => {
@@ -108,7 +116,7 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
             يتم تحديد الحقول الافتراضية تلقائياً بناءً على نوع نشاطك ({getStoreTypeName(storeType)})
           </span>
         </div>
-        
+
         <div className="grid gap-4">
           {fields.map((field) => (
             <div
