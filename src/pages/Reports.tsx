@@ -604,20 +604,6 @@ export default function Reports() {
 
     try {
       switch (activeReport) {
-        case 'sales':
-        case 'profits': {
-          // Export comprehensive sales report with ALL data (not just top 5/7)
-          exportSalesReportToExcel(
-            {
-              dailySales: reportData.allDailySales, // All days, not just 7
-              topProducts: reportData.allProducts,  // All products, not just 5
-              topCustomers: reportData.allCustomers, // All customers, not just 5
-              summary: reportData.summary,
-            },
-            { start: dateRange.from, end: dateRange.to }
-          );
-          break;
-        }
         case 'products': {
           exportProductsToExcel(
             products.map(p => ({
@@ -768,6 +754,30 @@ ${partnerExpenses.map(exp => {
     }
   }, [cloudInvoices, cloudProducts, cloudCustomers]);
 
+  // Export comprehensive report
+  const handleExportComprehensive = useCallback(async () => {
+    try {
+      if (isLoading) {
+        toast.error('يرجى الانتظار حتى يتم تحميل البيانات');
+        return;
+      }
+
+      await exportSalesReportToExcel(
+        {
+          dailySales: reportData.allDailySales,
+          topProducts: reportData.allProducts,
+          topCustomers: reportData.allCustomers,
+          summary: reportData.summary,
+        },
+        { start: dateRange.from, end: dateRange.to }
+      );
+      toast.success(t('reports.exportSuccessExcel'));
+    } catch (error) {
+      console.error('Comprehensive export error:', error);
+      toast.error(t('reports.exportError'));
+    }
+  }, [dateRange, reportData, isLoading, t]);
+
   // Find max sales for chart scaling
   const maxSales = Math.max(...reportData.dailySales.map(d => d.sales), 1);
 
@@ -802,6 +812,10 @@ ${partnerExpenses.map(exp => {
             <Button size="sm" onClick={handleBackup} disabled={isLoading} className="flex-1 sm:flex-none min-w-[100px]">
               <Download className="w-4 h-4 ml-1" />
               <span className="text-xs sm:text-sm">{t('reports.backup')}</span>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExportComprehensive} disabled={isLoading} className="flex-1 sm:flex-none min-w-[100px]">
+              <FileText className="w-4 h-4 ml-1" />
+              <span className="text-xs sm:text-sm">تقرير شامل</span>
             </Button>
           </div>
         </div>
@@ -849,7 +863,7 @@ ${partnerExpenses.map(exp => {
                 )}
               >
                 <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline sm:inline">{report.label}</span>
+                <span>{report.label}</span>
               </button>
             );
           })}
