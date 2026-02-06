@@ -368,7 +368,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -609,6 +609,8 @@ export default function Products() {
     setFormData({
       name: product.name,
       barcode: product.barcode,
+      barcode2: product.barcode2 || '',
+      barcode3: product.barcode3 || '',
       category: product.category,
       costPrice: product.costPrice,
       salePrice: product.salePrice,
@@ -620,7 +622,7 @@ export default function Products() {
       wholesalePrice: product.wholesalePrice || 0,
       size: product.size || '',
       color: product.color || '',
-      minStockLevel: product.minStockLevel || 5,
+      minStockLevel: product.minStockLevel || 1,
       // Unit settings
       bulkUnit: product.bulkUnit || 'كرتونة',
       smallUnit: product.smallUnit || 'قطعة',
@@ -669,7 +671,8 @@ export default function Products() {
                 {t('purchaseInvoice.addPurchaseInvoice')}
               </Button>
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
-                setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setFieldsConfig(getEffectiveFieldsConfig());
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -692,7 +695,8 @@ export default function Products() {
               {t('products.categories')}
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-              setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'carton', smallUnit: 'piece', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setFieldsConfig(getEffectiveFieldsConfig());
+              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
