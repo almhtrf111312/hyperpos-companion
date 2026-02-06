@@ -135,7 +135,7 @@ export default function Products() {
     wholesalePrice: 0,
     size: '',
     color: '',
-    minStockLevel: 5,
+    minStockLevel: 1,
     // Unit settings
     bulkUnit: 'كرتونة',
     smallUnit: 'قطعة',
@@ -368,7 +368,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -493,7 +493,7 @@ export default function Products() {
       setShowBarcode3(false);
       setCustomFieldValues({});
       toast.success('تم إضافة المنتج بنجاح');
-      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 5, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setCustomFieldValues({});
       clearPersistedState(); // Clear persistence on success
       toast.success('تم إضافة المنتج بنجاح');

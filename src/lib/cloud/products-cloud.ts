@@ -66,6 +66,8 @@ export interface Product {
 
 // Transform cloud product to legacy format
 function toProduct(cloud: CloudProduct): Product {
+  const customFields = cloud.custom_fields as Record<string, string | number> | undefined;
+
   return {
     id: cloud.id,
     name: cloud.name,
@@ -80,7 +82,18 @@ function toProduct(cloud: CloudProduct): Product {
     status: getStatus(cloud.quantity, cloud.min_stock_level),
     expiryDate: cloud.expiry_date || undefined,
     image: cloud.image_url || undefined,
-    customFields: cloud.custom_fields as Record<string, string | number> | undefined,
+    // Extract static fields from custom_fields
+    serialNumber: customFields?.serialNumber as string | undefined,
+    warranty: customFields?.warranty as string | undefined,
+    wholesalePrice: customFields?.wholesalePrice ? Number(customFields.wholesalePrice) : undefined,
+    size: customFields?.size as string | undefined,
+    color: customFields?.color as string | undefined,
+    // Remove static fields from displayed customFields to avoid duplication/clutter
+    customFields: customFields ? Object.fromEntries(
+      Object.entries(customFields).filter(([key]) =>
+        !['serialNumber', 'warranty', 'wholesalePrice', 'size', 'color'].includes(key)
+      )
+    ) : undefined,
     // Unit settings
     bulkUnit: (cloud as any).bulk_unit || 'كرتونة',
     smallUnit: (cloud as any).small_unit || 'قطعة',
@@ -93,6 +106,16 @@ function toProduct(cloud: CloudProduct): Product {
 
 // Transform legacy product to cloud format
 function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string, unknown> {
+  // Merge static fields into custom_fields
+  const mergedCustomFields = {
+    ...(product.customFields || {}),
+    ...(product.serialNumber ? { serialNumber: product.serialNumber } : {}),
+    ...(product.warranty ? { warranty: product.warranty } : {}),
+    ...(product.wholesalePrice ? { wholesalePrice: product.wholesalePrice } : {}),
+    ...(product.size ? { size: product.size } : {}),
+    ...(product.color ? { color: product.color } : {}),
+  };
+
   return {
     name: product.name,
     barcode: product.barcode || null,
@@ -102,10 +125,10 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
     cost_price: product.costPrice || 0,
     sale_price: product.salePrice || 0,
     quantity: product.quantity || 0,
-    min_stock_level: product.minStockLevel || 5,
+    min_stock_level: product.minStockLevel || 1, // Default to 1 if not set
     expiry_date: product.expiryDate || null,
     image_url: product.image || null,
-    custom_fields: product.customFields || null,
+    custom_fields: Object.keys(mergedCustomFields).length > 0 ? mergedCustomFields : null,
     archived: false,
     // Unit settings
     bulk_unit: product.bulkUnit || 'كرتونة',
