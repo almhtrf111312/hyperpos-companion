@@ -36,6 +36,7 @@ interface POSProduct {
   bulkSalePrice?: number;
   costPrice?: number;
   bulkCostPrice?: number;
+  wholesalePrice?: number;
 }
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -165,6 +166,7 @@ export default function POS() {
         bulkSalePrice: p.bulkSalePrice || 0,
         costPrice: p.costPrice,
         bulkCostPrice: p.bulkCostPrice || 0,
+        wholesalePrice: p.wholesalePrice,
       }));
 
       // ✅ تحديد نوع المستخدم من الـ profile - الافتراضي هو كاشير (يرى كل شيء)
@@ -278,6 +280,7 @@ export default function POS() {
         bulkSalePrice: product.bulkSalePrice,
         costPrice: product.costPrice,
         bulkCostPrice: product.bulkCostPrice,
+        wholesalePrice: product.wholesalePrice,
       }];
     });
 
@@ -338,6 +341,7 @@ export default function POS() {
           bulkSalePrice: cloudProduct.bulkSalePrice || 0,
           costPrice: cloudProduct.costPrice,
           bulkCostPrice: cloudProduct.bulkCostPrice || 0,
+          wholesalePrice: cloudProduct.wholesalePrice,
         };
         // Add directly or show dialog? Logic was show dialog.
         // User wants "Add to Cart / Fill Input". 

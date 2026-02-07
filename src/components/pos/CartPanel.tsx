@@ -76,6 +76,7 @@ interface CartItem {
   bulkSalePrice?: number;
   costPrice?: number;
   bulkCostPrice?: number;
+  wholesalePrice?: number;
 }
 
 interface Currency {
@@ -140,6 +141,10 @@ export function CartPanel({
   // Fixed amount discount feature
   const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
 
+  // Wholesale mode
+  const [wholesaleMode, setWholesaleMode] = useState(false);
+  const [receivedAmount, setReceivedAmount] = useState<number>(0);
+
   // Smart customer search feature
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -149,7 +154,15 @@ export function CartPanel({
     loadCustomersCloud().then(setAllCustomers);
   }, []);
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const getItemPrice = (item: CartItem) => {
+    if (wholesaleMode) {
+      // Use wholesale price from custom_fields, fallback to cost price
+      return item.wholesalePrice || item.costPrice || item.price;
+    }
+    return item.price;
+  };
+
+  const subtotal = cart.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0);
 
   // Calculate discount based on type
   const discountAmount = discountType === 'percent'
@@ -164,6 +177,15 @@ export function CartPanel({
 
   const total = taxableAmount + taxAmount;
   const totalInCurrency = total * selectedCurrency.rate;
+
+  // Wholesale profit calculation: Received - COGS
+  const wholesaleCOGS = cart.reduce((sum, item) => {
+    const costPrice = item.costPrice || 0;
+    return sum + costPrice * item.quantity;
+  }, 0);
+  const wholesaleProfit = wholesaleMode && receivedAmount > 0
+    ? receivedAmount - wholesaleCOGS
+    : undefined;
 
   const handleCashSale = () => {
     if (cart.length === 0) return;
@@ -283,18 +305,26 @@ export function CartPanel({
             costPrice = item.costPrice || product.costPrice;
           }
 
-          const itemProfit = (item.price - costPrice) * item.quantity;
+          const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
+          const itemProfit = (itemPrice - costPrice) * item.quantity;
           const itemCOGS = costPrice * item.quantity;
           const category = product.category || 'عام';
           profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
           totalProfit += itemProfit;
           totalCOGS += itemCOGS;
         }
-        soldItems.push({ name: item.name, quantity: item.quantity, price: item.price });
+        soldItems.push({ name: item.name, quantity: item.quantity, price: wholesaleMode ? getItemPrice(item) : item.price });
       });
 
+      // In wholesale mode with received amount, override profit calculation
+      const finalProfit = wholesaleMode && receivedAmount > 0
+        ? receivedAmount - totalCOGS
+        : totalProfit;
+
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = totalProfit * (1 - discountRatio);
+      const discountedProfit = wholesaleMode && receivedAmount > 0
+        ? finalProfit  // Already final in wholesale mode
+        : finalProfit * (1 - discountRatio);
       const discountMultiplier = 1 - discountRatio;
 
       const itemsWithCost = cartSnapshot.map(item => {
@@ -311,16 +341,19 @@ export function CartPanel({
           itemCostPrice = item.costPrice || product?.costPrice || 0;
         }
 
-        const itemProfit = (item.price - itemCostPrice) * item.quantity;
+        const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
+        const itemProfit = (itemPrice - itemCostPrice) * item.quantity;
 
         return {
           id: item.id,
           name: item.name,
-          price: item.price,
+          price: itemPrice,
           quantity: item.quantity,
-          total: item.price * item.quantity,
+          total: itemPrice * item.quantity,
           costPrice: itemCostPrice,
-          profit: itemProfit * (1 - discountRatio),
+          profit: wholesaleMode && receivedAmount > 0
+            ? itemProfit  // In wholesale mode profit is calculated from received amount
+            : itemProfit * (1 - discountRatio),
         };
       });
 
@@ -930,6 +963,22 @@ export function CartPanel({
                 message={syncMessage}
                 className="hidden sm:flex"
               />
+              {/* Wholesale Toggle */}
+              <button
+                onClick={() => {
+                  setWholesaleMode(!wholesaleMode);
+                  if (!wholesaleMode) setReceivedAmount(0);
+                }}
+                className={cn(
+                  "text-xs font-bold px-2.5 py-1 rounded-lg transition-all",
+                  wholesaleMode
+                    ? "bg-orange-500 text-white shadow-md"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <Package className="w-3.5 h-3.5 inline-block ml-1" />
+                جملة
+              </button>
               {cart.length > 0 && (
                 <button
                   onClick={onClearCart}
@@ -1083,8 +1132,8 @@ export function CartPanel({
                       <Plus className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
                   </div>
-                  <p className="font-bold text-primary text-sm md:text-base">
-                    ${formatNumber(item.price * item.quantity)}
+                  <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
+                    ${formatNumber(getItemPrice(item) * item.quantity)}
                   </p>
                 </div>
               </div>
@@ -1159,10 +1208,28 @@ export function CartPanel({
             </div>
           </div>
 
+          {/* Wholesale: Received Amount Input */}
+          {wholesaleMode && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white flex-shrink-0">
+                <Banknote className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="المبلغ المقبوض"
+                value={receivedAmount || ''}
+                onChange={(e) => setReceivedAmount(Number(e.target.value))}
+                className="bg-muted border-0 h-9 text-sm ring-2 ring-orange-500/50"
+                min="0"
+                dir="ltr"
+              />
+            </div>
+          )}
+
           {/* Summary */}
           <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('pos.subtotal')}</span>
+              <span className="text-muted-foreground">{wholesaleMode ? 'إجمالي الجملة' : t('pos.subtotal')}</span>
               <span>${formatNumber(subtotal)}</span>
             </div>
             {discount > 0 && (
@@ -1171,9 +1238,21 @@ export function CartPanel({
                 <span>-${formatNumber(discountAmount)}</span>
               </div>
             )}
+            {wholesaleMode && receivedAmount > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">المبلغ المقبوض</span>
+                  <span className="font-semibold">${formatNumber(receivedAmount)}</span>
+                </div>
+                <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
+                  <span>الربح</span>
+                  <span>${formatNumber(wholesaleProfit || 0)}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between text-base md:text-lg font-bold pt-2 border-t border-border">
               <span>{t('pos.total')}</span>
-              <span className="text-primary">
+              <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
                 {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
               </span>
             </div>

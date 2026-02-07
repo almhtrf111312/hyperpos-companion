@@ -88,14 +88,25 @@ export interface Invoice {
 
 // Transform cloud to legacy
 function toInvoice(cloud: CloudInvoice): Invoice {
+  const subtotal = Number(cloud.subtotal) || 0;
+  const rawDiscount = Number(cloud.discount) || 0;
+  const discountPercentage = Number(cloud.discount_percentage) || 0;
+
+  // Calculate actual discount amount:
+  // If discountPercentage > 0, it means the raw discount is a percentage, so compute the actual amount
+  const actualDiscount = discountPercentage > 0
+    ? (subtotal * discountPercentage) / 100
+    : rawDiscount;
+
   return {
     id: cloud.invoice_number || cloud.id,
     type: (cloud.invoice_type as InvoiceType) || 'sale',
     customerName: cloud.customer_name || 'عميل',
     customerPhone: cloud.customer_phone || undefined,
     items: [], // Items loaded separately
-    subtotal: Number(cloud.subtotal) || 0,
-    discount: Number(cloud.discount) || 0,
+    subtotal,
+    discount: actualDiscount,
+    discountPercentage,
     total: Number(cloud.total) || 0,
     totalInCurrency: Number(cloud.total) || 0,
     currency: cloud.currency || 'USD',
