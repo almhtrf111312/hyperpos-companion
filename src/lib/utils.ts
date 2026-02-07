@@ -66,8 +66,8 @@ export function toWesternNumerals(str: string): string {
 }
 
 // Format date and time - ALWAYS with Western numerals
-export function formatDateTime(dateString: string): string {
-  const date = new Date(dateString);
+export function formatDateTime(dateString: string | Date): string {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   return date.toLocaleString('en-US', {
     year: 'numeric',
     month: '2-digit',
