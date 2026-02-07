@@ -25,7 +25,7 @@ const generateBrowserFingerprint = (): string => {
     navigator.hardwareConcurrency || 'unknown',
     canvasHash,
     // Add some randomness for first-time generation
-    Math.random().toString(36).substring(2, 15),
+    (() => { const a = new Uint8Array(8); crypto.getRandomValues(a); return Array.from(a).map(b => b.toString(36)).join(''); })(),
   ];
 
   // Create a hash from the components
@@ -78,7 +78,8 @@ export const getDeviceId = async (): Promise<string> => {
   } catch (error) {
     console.error('Error getting device ID:', error);
     // Fallback to a simple random ID
-    const fallbackId = `FB-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`.toUpperCase();
+    const randBytes = new Uint8Array(8); crypto.getRandomValues(randBytes);
+    const fallbackId = `FB-${Date.now()}-${Array.from(randBytes).map(b => b.toString(36)).join('')}`.toUpperCase();
     try {
       localStorage.setItem(DEVICE_ID_KEY, fallbackId);
     } catch {

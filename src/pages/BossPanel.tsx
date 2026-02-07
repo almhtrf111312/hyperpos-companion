@@ -258,10 +258,12 @@ export default function BossPanel() {
 
   const generateRandomCode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
     let code = 'FP-';
     for (let i = 0; i < 4; i++) {
       for (let j = 0; j < 4; j++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        code += chars.charAt(array[i * 4 + j] % chars.length);
       }
       if (i < 3) code += '-';
     }
@@ -625,10 +627,12 @@ export default function BossPanel() {
   // Generate code for edit license dialog
   const generateCodeForEditLicense = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
     let code = 'FP-';
     for (let i = 0; i < 4; i++) {
       for (let j = 0; j < 4; j++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        code += chars.charAt(array[i * 4 + j] % chars.length);
       }
       if (i < 3) code += '-';
     }

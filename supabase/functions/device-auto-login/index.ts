@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 Deno.serve(async (req) => {
@@ -14,14 +14,14 @@ Deno.serve(async (req) => {
   try {
     const { device_id } = await req.json();
 
-    if (!device_id) {
+    if (!device_id || typeof device_id !== 'string' || device_id.length < 5 || device_id.length > 200) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Device ID is required' }),
+        JSON.stringify({ success: false, error: 'Invalid device ID' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[DeviceAutoLogin] Looking for device:', device_id);
+    console.log('[DeviceAutoLogin] Device lookup attempt');
 
     // Create admin client with service role
     const supabaseAdmin = createClient(
@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
     }
 
     if (!license) {
-      console.log('[DeviceAutoLogin] No license found for device');
+      // Don't reveal whether device exists or not
       return new Response(
-        JSON.stringify({ success: false, found: false, error: 'Device not registered' }),
+        JSON.stringify({ success: false, found: false }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -65,14 +65,13 @@ Deno.serve(async (req) => {
     const now = new Date();
     const expiresAt = new Date(license.expires_at);
     if (expiresAt < now) {
-      console.log('[DeviceAutoLogin] License expired');
       return new Response(
         JSON.stringify({ success: false, found: true, error: 'License expired' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 3: Get user email for login
+    // Step 3: Get user email for login (server-side only, not returned to client)
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(
       license.user_id
     );
@@ -88,7 +87,6 @@ Deno.serve(async (req) => {
     const userEmail = userData.user.email;
 
     if (!userEmail) {
-      console.error('[DeviceAutoLogin] User has no email');
       return new Response(
         JSON.stringify({ success: false, found: true, error: 'User has no email' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -96,7 +94,6 @@ Deno.serve(async (req) => {
     }
 
     // Step 4: Generate a magic link token for auto-login
-    // We'll use generateLink to create a one-time login link
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
@@ -108,26 +105,23 @@ Deno.serve(async (req) => {
     if (linkError || !linkData) {
       console.error('[DeviceAutoLogin] Generate link error:', linkError);
       return new Response(
-        JSON.stringify({ success: false, found: true, error: 'Failed to generate login link' }),
+        JSON.stringify({ success: false, found: true, error: 'Failed to generate login' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract the token from the link
+    // Extract only the minimal token needed - DO NOT return email or action_link
     const tokenHash = linkData.properties?.hashed_token;
     const verificationToken = linkData.properties?.email_otp;
 
-    console.log('[DeviceAutoLogin] Successfully generated login for user:', license.user_id);
+    console.log('[DeviceAutoLogin] Successfully generated login for device');
 
     return new Response(
       JSON.stringify({
         success: true,
         found: true,
-        user_id: license.user_id,
-        email: userEmail,
         token_hash: tokenHash,
         verification_token: verificationToken,
-        action_link: linkData.properties?.action_link,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

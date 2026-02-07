@@ -23,9 +23,10 @@ const getDeviceKey = (): string => {
     // localStorage might not be available
   }
   
-  // Third: Generate a new unique key
-  const newKey = 'HP' + Date.now().toString(36) + 
-                 Math.random().toString(36).substring(2, 10) + 'SK';
+  // Third: Generate a new unique key using crypto API
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  const newKey = 'HP' + Array.from(array).map(b => b.toString(36)).join('') + 'SK';
   
   // Persist to localStorage for future sessions
   try {
@@ -40,7 +41,9 @@ const getDeviceKey = (): string => {
 
 // Generate a timestamp-based salt
 const generateSalt = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  return Date.now().toString(36) + Array.from(array).map(b => b.toString(36)).join('');
 };
 
 // Simple hash function for integrity check

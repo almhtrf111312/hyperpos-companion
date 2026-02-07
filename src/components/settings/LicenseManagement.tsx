@@ -118,11 +118,13 @@ export function LicenseManagement() {
 
   const generateCode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
     const parts = [];
     for (let i = 0; i < 4; i++) {
       let part = '';
       for (let j = 0; j < 4; j++) {
-        part += chars.charAt(Math.floor(Math.random() * chars.length));
+        part += chars.charAt(array[i * 4 + j] % chars.length);
       }
       parts.push(part);
     }

@@ -55,7 +55,7 @@ const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
 };
 
 // Save Excel file on native platforms using Filesystem and Share APIs
-const saveExcelNative = async (wb: XLSX.WorkBook, fileName: string): Promise<void> => {
+const saveExcelNative = async (wb: any, fileName: string): Promise<void> => {
   try {
     // Convert workbook to base64
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
@@ -500,7 +500,7 @@ export const exportCustomersToExcel = async (
 };
 
 // Save multi-sheet Excel file on native platforms
-const saveMultiSheetExcelNative = async (wb: XLSX.WorkBook, fileName: string): Promise<void> => {
+const saveMultiSheetExcelNative = async (wb: any, fileName: string): Promise<void> => {
   try {
     // Convert workbook to base64
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
