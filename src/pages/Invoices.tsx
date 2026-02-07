@@ -793,10 +793,10 @@ export default function Invoices() {
               )}
 
               <div className="border-t pt-4 space-y-2">
-                {selectedInvoice.discount > 0 && (
+              {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span>{t('invoices.discount')}:</span>
-                    <span>{formatCurrency(selectedInvoice.discount)}</span>
+                    <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
+                    <span className="text-destructive">-{formatCurrency(selectedInvoice.discount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold">
