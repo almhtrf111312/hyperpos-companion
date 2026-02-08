@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn, formatNumber, formatCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, roundCurrency } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -155,20 +155,23 @@ export function CartPanel({
   }, []);
 
   const getItemPrice = (item: CartItem) => {
+    let price = item.price;
+
     if (wholesaleMode) {
       // Use wholesale price if set, otherwise calculate as cost_price + 20% margin
       if (item.wholesalePrice && item.wholesalePrice > 0) {
-        return item.wholesalePrice;
+        price = item.wholesalePrice;
+      } else if (item.costPrice && item.costPrice > 0) {
+        price = roundCurrency(item.costPrice * 1.20);
       }
-      if (item.costPrice && item.costPrice > 0) {
-        return item.costPrice * 1.20;
-      }
-      return item.price;
     }
-    return item.price;
+
+    return roundCurrency(price);
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0);
+  const subtotal = roundCurrency(
+    cart.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0)
+  );
 
   // Calculate discount based on type
   const discountAmount = discountType === 'percent'
@@ -310,11 +313,11 @@ export function CartPanel({
           }
 
           const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
-          const itemProfit = (itemPrice - costPrice) * item.quantity;
+          const itemProfit = roundCurrency((itemPrice - costPrice) * item.quantity);
           const itemCOGS = costPrice * item.quantity;
           const category = product.category || 'عام';
           profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
-          totalProfit += itemProfit;
+          totalProfit += roundCurrency(itemProfit);
           totalCOGS += itemCOGS;
         }
         soldItems.push({ name: item.name, quantity: item.quantity, price: wholesaleMode ? getItemPrice(item) : item.price });
@@ -353,7 +356,7 @@ export function CartPanel({
           name: item.name,
           price: itemPrice,
           quantity: item.quantity,
-          total: itemPrice * item.quantity,
+          total: roundCurrency(itemPrice * item.quantity),
           costPrice: itemCostPrice,
           profit: wholesaleMode && receivedAmount > 0
             ? itemProfit  // In wholesale mode profit is calculated from received amount
@@ -563,11 +566,11 @@ export function CartPanel({
             costPrice = item.costPrice || product.costPrice;
           }
 
-          const itemProfit = (item.price - costPrice) * item.quantity;
+          const itemProfit = roundCurrency((item.price - costPrice) * item.quantity);
           const itemCOGS = costPrice * item.quantity;
           const category = product.category || 'عام';
           profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
-          totalProfit += itemProfit;
+          totalProfit += roundCurrency(itemProfit);
           totalCOGS += itemCOGS;
         }
 
@@ -603,7 +606,7 @@ export function CartPanel({
           name: item.name,
           price: item.price,
           quantity: item.quantity,
-          total: item.price * item.quantity,
+          total: roundCurrency(item.price * item.quantity),
           costPrice: itemCostPrice,
           profit: itemProfit * discountMultiplier,
         };
