@@ -71,15 +71,15 @@ const loadExchangeRates = () => {
 const loadCurrencyNames = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { TRY: t('currency.tryName'), SYP: t('currency.sypName') };
+    if (!raw) return { TRY: 'Turkish Lira', SYP: 'Syrian Pound' };
     const parsed = JSON.parse(raw);
     const names = parsed?.currencyNames;
     return {
-      TRY: names?.TRY || t('currency.tryName'),
-      SYP: names?.SYP || t('currency.sypName'),
+      TRY: names?.TRY || 'Turkish Lira',
+      SYP: names?.SYP || 'Syrian Pound',
     };
   } catch {
-    return { TRY: t('currency.tryName'), SYP: t('currency.sypName') };
+    return { TRY: 'Turkish Lira', SYP: 'Syrian Pound' };
   }
 };
 
