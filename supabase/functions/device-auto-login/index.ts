@@ -16,7 +16,16 @@ Deno.serve(async (req) => {
 
     if (!device_id || typeof device_id !== 'string' || device_id.length < 5 || device_id.length > 200) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid device ID' }),
+        JSON.stringify({ success: false, error: 'Invalid request' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate device_id format: must start with DEV-, CAP-, or FB- followed by UUID-like pattern
+    const validDeviceIdPattern = /^(DEV|CAP|FB)-[A-Z0-9-]{8,}$/i;
+    if (!validDeviceIdPattern.test(device_id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -34,6 +43,47 @@ Deno.serve(async (req) => {
         },
       }
     );
+
+    // --- Rate Limiting: max 5 attempts per IP per 10 minutes ---
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('cf-connecting-ip') || 
+                     'unknown';
+    
+    // Use app_settings table for simple rate limiting
+    const rateLimitKey = `rate_limit:device_login:${clientIP}`;
+    const { data: rateData } = await supabaseAdmin
+      .from('app_settings')
+      .select('value, updated_at')
+      .eq('key', rateLimitKey)
+      .maybeSingle();
+
+    const now = new Date();
+    const windowMs = 10 * 60 * 1000; // 10 minutes
+    const maxAttempts = 5;
+
+    if (rateData) {
+      const lastUpdated = new Date(rateData.updated_at || '');
+      const attempts = parseInt(rateData.value || '0', 10);
+      
+      if (now.getTime() - lastUpdated.getTime() < windowMs && attempts >= maxAttempts) {
+        console.warn('[DeviceAutoLogin] Rate limit exceeded for IP');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Too many attempts. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update or reset counter
+      const newCount = (now.getTime() - lastUpdated.getTime() < windowMs) ? attempts + 1 : 1;
+      await supabaseAdmin
+        .from('app_settings')
+        .update({ value: String(newCount), updated_at: now.toISOString() })
+        .eq('key', rateLimitKey);
+    } else {
+      await supabaseAdmin
+        .from('app_settings')
+        .insert({ key: rateLimitKey, value: '1' });
+    }
 
     // Step 1: Find user by device_id in app_licenses
     const { data: license, error: licenseError } = await supabaseAdmin

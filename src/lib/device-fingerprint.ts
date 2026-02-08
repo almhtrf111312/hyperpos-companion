@@ -3,45 +3,21 @@
 
 const DEVICE_ID_KEY = 'hyperpos_device_id';
 
-// Generate a unique fingerprint based on browser/device characteristics
-const generateBrowserFingerprint = (): string => {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  let canvasHash = '';
-  
-  if (ctx) {
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('FlowPOS Device ID', 2, 2);
-    canvasHash = canvas.toDataURL().slice(-50);
+// Generate a cryptographically secure device ID using UUID v4
+const generateSecureDeviceId = (): string => {
+  // Use crypto.randomUUID() for 128-bit cryptographic randomness (impossible to enumerate)
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `DEV-${crypto.randomUUID()}`.toUpperCase();
   }
-
-  const components = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width + 'x' + screen.height,
-    screen.colorDepth,
-    new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || 'unknown',
-    canvasHash,
-    // Add some randomness for first-time generation
-    (() => { const a = new Uint8Array(8); crypto.getRandomValues(a); return Array.from(a).map(b => b.toString(36)).join(''); })(),
-  ];
-
-  // Create a hash from the components
-  const str = components.join('|');
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-
-  // Convert to a readable format
-  const timestamp = Date.now().toString(36);
-  const hashStr = Math.abs(hash).toString(36);
-  
-  return `DEV-${timestamp}-${hashStr}`.toUpperCase();
+  // Fallback: generate UUID from crypto.getRandomValues
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  // Set version 4 bits
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  const uuid = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  return `DEV-${uuid}`.toUpperCase();
 };
 
 // Get or generate device ID
@@ -71,7 +47,7 @@ export const getDeviceId = async (): Promise<string> => {
     }
 
     // Generate browser fingerprint
-    deviceId = generateBrowserFingerprint();
+    deviceId = generateSecureDeviceId();
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
     
     return deviceId;
