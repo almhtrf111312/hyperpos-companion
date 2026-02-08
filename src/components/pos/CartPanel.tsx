@@ -187,13 +187,13 @@ export function CartPanel({
   const total = taxableAmount + taxAmount;
   const totalInCurrency = total * selectedCurrency.rate;
 
-  // Wholesale profit calculation: Received - COGS
+  // Wholesale profit calculation: Subtotal - COGS (NOT receivedAmount!)
   const wholesaleCOGS = cart.reduce((sum, item) => {
     const costPrice = item.costPrice || 0;
     return sum + costPrice * item.quantity;
   }, 0);
-  const wholesaleProfit = wholesaleMode && receivedAmount > 0
-    ? receivedAmount - wholesaleCOGS
+  const wholesaleProfit = wholesaleMode
+    ? roundCurrency(subtotal - wholesaleCOGS)  // ✅ Use subtotal
     : undefined;
 
   const handleCashSale = () => {

@@ -318,8 +318,9 @@ export default function POS() {
     // 1. Try local products first (FAST)
     const localProduct = products.find(p => p.barcode === barcode);
     if (localProduct) {
-      addToCart(localProduct, 'piece');
-      showToast.success(t('pos.addedToCart').replace('{name}', localProduct.name));
+      // ✅ Show product in grid instead of auto-adding
+      setSearchQuery(barcode);
+      showToast.success(t('pos.productFound').replace('{name}', localProduct.name) || `Found: ${localProduct.name}`);
       return;
     }
 
