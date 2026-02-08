@@ -178,7 +178,7 @@ export default function Warehouses() {
         ...prev,
         assigned_cashier_id: cashierId,
         // Auto-fill name and phone from distributor's profile
-        name: `مخزن ${selectedCashier.full_name || 'الموزع'}`,
+        name: `${t('warehouses.storePrefix')} ${selectedCashier.full_name || t('warehouses.distributor')}`,
         phone: selectedCashier.phone || prev.phone,
       }));
     } else {
@@ -191,12 +191,12 @@ export default function Warehouses() {
 
   const handleAdd = async () => {
     if (!formData.name.trim()) {
-      toast.error('يرجى إدخال اسم المستودع');
+      toast.error(t('warehouses.enterWarehouseName'));
       return;
     }
 
     if (!formData.assigned_cashier_id) {
-      toast.error('يرجى اختيار الموزع');
+      toast.error(t('warehouses.selectDistributorRequired'));
       return;
     }
 
@@ -214,12 +214,12 @@ export default function Warehouses() {
     });
 
     if (result) {
-      toast.success('تم إضافة المستودع بنجاح');
+      toast.success(t('warehouses.addSuccess'));
       setIsAddDialogOpen(false);
       resetForm();
       refreshWarehouses();
     } else {
-      toast.error('فشل في إضافة المستودع');
+      toast.error(t('warehouses.addFailed'));
     }
   };
 
@@ -235,13 +235,13 @@ export default function Warehouses() {
     });
 
     if (success) {
-      toast.success('تم تحديث المستودع بنجاح');
+      toast.success(t('warehouses.updateSuccess'));
       setIsEditDialogOpen(false);
       setSelectedWarehouse(null);
       resetForm();
       refreshWarehouses();
     } else {
-      toast.error('فشل في تحديث المستودع');
+      toast.error(t('warehouses.updateFailed'));
     }
   };
 
@@ -251,7 +251,7 @@ export default function Warehouses() {
     
     // Only prevent deletion if it's the ONLY main warehouse
     if (warehouse.type === 'main' && mainWarehousesCount === 1) {
-      toast.error('لا يمكن حذف المستودع الرئيسي الوحيد');
+      toast.error(t('warehouses.cannotDeleteMain'));
       return;
     }
 
@@ -259,9 +259,9 @@ export default function Warehouses() {
     const stock = await loadWarehouseStockCloud(warehouse.id);
     const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
     
-    let confirmMessage = `هل أنت متأكد من حذف المستودع "${warehouse.name}"?`;
+    let confirmMessage = t('warehouses.deleteConfirm').replace('{name}', warehouse.name);
     if (totalStock > 0) {
-      confirmMessage = `تحذير: يوجد ${totalStock} منتج في هذا المستودع.\n${confirmMessage}`;
+      confirmMessage = t('warehouses.deleteConfirmWithStock').replace('{count}', String(totalStock)) + '\n' + confirmMessage;
     }
 
     if (confirm(confirmMessage)) {
@@ -297,14 +297,14 @@ export default function Warehouses() {
         // Finally delete the warehouse
         const success = await deleteWarehouseCloud(warehouse.id);
         if (success) {
-          toast.success('تم حذف المستودع بنجاح');
+          toast.success(t('warehouses.deleteSuccess'));
           refreshWarehouses();
         } else {
-          toast.error('فشل في حذف المستودع');
+          toast.error(t('warehouses.deleteFailed'));
         }
       } catch (error) {
         console.error('[Warehouses] Delete error:', error);
-        toast.error('فشل في حذف المستودع');
+        toast.error(t('warehouses.deleteFailed'));
       }
     }
   };
@@ -322,9 +322,9 @@ export default function Warehouses() {
   };
 
   const getCashierName = (cashierId: string | null) => {
-    if (!cashierId) return 'غير محدد';
+    if (!cashierId) return t('warehouses.notAssigned');
     const cashier = cashiers.find(c => c.id === cashierId);
-    return cashier?.full_name || 'موزع';
+    return cashier?.full_name || t('warehouses.distributor');
   };
 
   const mainWarehouses = warehouses.filter(w => w.type === 'main');
@@ -336,35 +336,35 @@ export default function Warehouses() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold">إدارة المستودعات</h1>
-            <p className="text-muted-foreground">إدارة المستودعات الرئيسية ومخازن الموزعين</p>
+            <h1 className="text-2xl font-bold">{t('warehouses.title')}</h1>
+            <p className="text-muted-foreground">{t('warehouses.subtitle')}</p>
           </div>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                إضافة مستودع
+                {t('warehouses.addWarehouse')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>إضافة مستودع موزع</DialogTitle>
+                <DialogTitle>{t('warehouses.addDistributorWarehouse')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 {/* Distributor Select - Primary Field */}
                 <div>
-                  <Label>اختر الموزع</Label>
+                  <Label>{t('warehouses.selectDistributor')}</Label>
                   {cashiers.length === 0 ? (
                     <div className="p-4 border rounded-lg bg-muted/50 text-center mt-2">
                       <User className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">لا يوجد موزعين</p>
+                      <p className="text-sm text-muted-foreground">{t('warehouses.noDistributors')}</p>
                       <Button 
                         variant="link" 
                         size="sm"
                         onClick={() => window.location.href = '/settings?tab=users'}
                       >
-                        إضافة موزع من الإعدادات
+                        {t('warehouses.addDistributorFromSettings')}
                       </Button>
                     </div>
                   ) : (
@@ -373,14 +373,14 @@ export default function Warehouses() {
                       onValueChange={handleCashierSelect}
                     >
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="انقر لاختيار الموزع" />
+                        <SelectValue placeholder={t('warehouses.clickToSelectDistributor')} />
                       </SelectTrigger>
                       <SelectContent className="bg-popover z-50">
                         {cashiers.map(cashier => (
                           <SelectItem key={cashier.id} value={cashier.id}>
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-muted-foreground" />
-                              <span>{cashier.full_name || 'موزع'}</span>
+                              <span>{cashier.full_name || t('warehouses.distributor')}</span>
                               {cashier.phone && (
                                 <span className="text-xs text-muted-foreground">({cashier.phone})</span>
                               )}
@@ -395,39 +395,39 @@ export default function Warehouses() {
                 {/* Auto-filled Name (editable) */}
                 {formData.assigned_cashier_id && (
                   <div>
-                    <Label>اسم المستودع</Label>
+                    <Label>{t('warehouses.warehouseName')}</Label>
                     <Input
                       value={formData.name}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="سيتم ملؤه تلقائياً"
+                      placeholder={t('warehouses.autoFilled')}
                       className="mt-1"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      تم ملء الاسم تلقائياً، يمكنك تعديله
+                      {t('warehouses.autoFilledNote')}
                     </p>
                   </div>
                 )}
 
                 {/* Optional Address */}
                 <div>
-                  <Label>العنوان <span className="text-muted-foreground text-xs">(اختياري)</span></Label>
+                  <Label>{t('warehouses.address')} <span className="text-muted-foreground text-xs">({t('warehouses.optional')})</span></Label>
                   <Input
                     value={formData.address}
                     onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="العنوان"
+                    placeholder={t('warehouses.address')}
                     className="mt-1"
                   />
                 </div>
 
                 <div className="flex gap-2 justify-end pt-2">
                   <Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetForm(); }}>
-                    إلغاء
+                    {t('common.cancel')}
                   </Button>
                   <Button 
                     onClick={handleAdd}
                     disabled={!formData.assigned_cashier_id || !formData.name.trim()}
                   >
-                    إضافة المستودع
+                    {t('warehouses.addWarehouseBtn')}
                   </Button>
                 </div>
               </div>
@@ -439,7 +439,7 @@ export default function Warehouses() {
         <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Warehouse className="w-5 h-5" />
-            المستودعات الرئيسية
+            {t('warehouses.mainWarehouses')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {mainWarehouses.map(warehouse => (
@@ -465,11 +465,11 @@ export default function Warehouses() {
                 <CardContent>
                   <div className="space-y-2 text-sm">
                     {warehouse.is_default && (
-                      <Badge variant="secondary">المستودع الافتراضي</Badge>
+                      <Badge variant="secondary">{t('warehouses.defaultWarehouse')}</Badge>
                     )}
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Package className="w-4 h-4" />
-                      <span>{warehouseStockCounts[warehouse.id] || 0} قطعة في المخزون</span>
+                      <span>{warehouseStockCounts[warehouse.id] || 0} {t('warehouses.piecesInStock')}</span>
                     </div>
                     {warehouse.address && (
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -494,14 +494,14 @@ export default function Warehouses() {
         <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Truck className="w-5 h-5" />
-            مخازن الموزعين (السيارات)
+            {t('warehouses.vehicleWarehouses')}
           </h2>
           {vehicleWarehouses.length === 0 ? (
             <Card className="p-8 text-center">
               <Truck className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">لا توجد مخازن موزعين</p>
+              <p className="text-muted-foreground">{t('warehouses.noVehicleWarehouses')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                أضف مخزن لكل موزع لتتبع العهدة والمبيعات
+                {t('warehouses.addWarehouseForDistributor')}
               </p>
             </Card>
           ) : (
@@ -532,7 +532,7 @@ export default function Warehouses() {
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Package className="w-4 h-4" />
-                        <span>{warehouseStockCounts[warehouse.id] || 0} قطعة في العهدة</span>
+                        <span>{warehouseStockCounts[warehouse.id] || 0} {t('warehouses.piecesInCustody')}</span>
                       </div>
                       {warehouse.phone && (
                         <div className="flex items-center gap-2 text-muted-foreground">
@@ -552,11 +552,11 @@ export default function Warehouses() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>تعديل المستودع</DialogTitle>
+              <DialogTitle>{t('warehouses.editWarehouse')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>اسم المستودع</Label>
+                <Label>{t('warehouses.warehouseName')}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -564,7 +564,7 @@ export default function Warehouses() {
               </div>
               
               <div>
-                <Label>نوع المستودع</Label>
+                <Label>{t('warehouses.warehouseType')}</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(value: 'main' | 'vehicle') => setFormData(prev => ({ ...prev, type: value }))}
@@ -573,24 +573,24 @@ export default function Warehouses() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="main">مستودع رئيسي</SelectItem>
-                    <SelectItem value="vehicle">مخزن موزع (سيارة)</SelectItem>
+                    <SelectItem value="main">{t('warehouses.mainWarehouse')}</SelectItem>
+                    <SelectItem value="vehicle">{t('warehouses.vehicleWarehouse')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {formData.type === 'vehicle' && (
                 <div>
-                  <Label>الموزع المسؤول</Label>
+                  <Label>{t('warehouses.assignedDistributor')}</Label>
                   {cashiers.length === 0 ? (
                     <div className="p-3 border rounded-md bg-muted/50 text-center">
-                      <p className="text-sm text-muted-foreground">لا يوجد موزعين</p>
+                      <p className="text-sm text-muted-foreground">{t('warehouses.noDistributors')}</p>
                       <Button 
                         variant="link" 
                         size="sm"
                         onClick={() => window.location.href = '/settings?tab=users'}
                       >
-                        إضافة موزع جديد من الإعدادات
+                        {t('warehouses.addDistributorFromSettingsEdit')}
                       </Button>
                     </div>
                   ) : (
@@ -600,13 +600,13 @@ export default function Warehouses() {
                         onValueChange={handleCashierSelect}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="اختر الموزع" />
+                          <SelectValue placeholder={t('warehouses.selectDistributorEdit')} />
                         </SelectTrigger>
                         <SelectContent>
                           {cashiers.map(cashier => (
                             <SelectItem key={cashier.id} value={cashier.id}>
                               <div className="flex flex-col items-start">
-                                <span>{cashier.full_name || 'موزع'}</span>
+                                <span>{cashier.full_name || t('warehouses.distributor')}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {cashier.email}{cashier.phone && ` • ${cashier.phone}`}
                                 </span>
@@ -621,7 +621,7 @@ export default function Warehouses() {
               )}
 
               <div>
-                <Label>العنوان (اختياري)</Label>
+                <Label>{t('warehouses.address')} ({t('warehouses.optional')})</Label>
                 <Input
                   value={formData.address}
                   onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
@@ -629,7 +629,7 @@ export default function Warehouses() {
               </div>
 
               <div>
-                <Label>رقم الهاتف (اختياري)</Label>
+                <Label>{t('warehouses.phoneOptional')}</Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
@@ -638,10 +638,10 @@ export default function Warehouses() {
 
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                  إلغاء
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleEdit}>
-                  حفظ التغييرات
+                  {t('warehouses.saveChanges')}
                 </Button>
               </div>
             </div>

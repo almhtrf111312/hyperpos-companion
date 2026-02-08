@@ -24,6 +24,7 @@ import {
   Search,
   ScanLine
 } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { 
   StockTransfer as StockTransferType,
@@ -50,6 +51,7 @@ interface TransferItem {
 }
 
 export default function StockTransfer() {
+  const { t } = useLanguage();
   const { warehouses, mainWarehouse, refreshWarehouses } = useWarehouse();
   
   const [transfers, setTransfers] = useState<StockTransferType[]>([]);
@@ -101,7 +103,7 @@ export default function StockTransfer() {
 
   const addItemToTransfer = () => {
     if (!selectedProductId || selectedQuantity <= 0) {
-      toast.error('يرجى اختيار المنتج والكمية');
+      toast.error(t('stockTransfer.selectProductQuantity'));
       return;
     }
 
@@ -110,7 +112,7 @@ export default function StockTransfer() {
 
     // Check if already added
     if (transferItems.some(item => item.productId === selectedProductId)) {
-      toast.error('هذا المنتج مضاف مسبقاً');
+      toast.error(t('stockTransfer.productAlreadyAdded'));
       return;
     }
 
@@ -195,7 +197,7 @@ export default function StockTransfer() {
       if (transferItems.some(item => item.productId === product.id)) {
         // If already exists, increment quantity
         updateItemQuantity(product.id, 1);
-        toast.success(`تم زيادة كمية: ${product.name}`);
+        toast.success(t('stockTransfer.quantityIncreased').replace('{name}', product.name));
       } else {
         // Add new item with quantity 1
         const conversionFactor = product.conversionFactor || 1;
@@ -207,10 +209,10 @@ export default function StockTransfer() {
           conversionFactor,
           quantityInPieces: 1
         }]);
-        toast.success(`تم إضافة: ${product.name}`);
+        toast.success(t('stockTransfer.productAdded').replace('{name}', product.name));
       }
     } else {
-      toast.error('لم يتم العثور على منتج بهذا الباركود');
+      toast.error(t('stockTransfer.barcodeNotFound'));
     }
     setIsScannerOpen(false);
   };
@@ -246,17 +248,17 @@ export default function StockTransfer() {
 
   const handleCreateTransfer = async () => {
     if (!mainWarehouse) {
-      toast.error('لا يوجد مستودع رئيسي');
+      toast.error(t('stockTransfer.noMainWarehouse'));
       return;
     }
 
     if (!toWarehouseId) {
-      toast.error('يرجى اختيار المستودع الوجهة');
+      toast.error(t('stockTransfer.selectDestination'));
       return;
     }
 
     if (transferItems.length === 0) {
-      toast.error('يرجى إضافة منتجات للتحويل');
+      toast.error(t('stockTransfer.addProductsFirst'));
       return;
     }
 
@@ -273,22 +275,22 @@ export default function StockTransfer() {
     );
 
     if (result) {
-      toast.success('تم إنشاء أمر التحويل بنجاح');
+      toast.success(t('stockTransfer.createSuccess'));
       setIsCreateDialogOpen(false);
       resetForm();
       // Reload transfers
       const newTransfers = await loadStockTransfersCloud();
       setTransfers(newTransfers);
     } else {
-      toast.error('فشل في إنشاء أمر التحويل');
+      toast.error(t('stockTransfer.createFailed'));
     }
   };
 
   const handleCompleteTransfer = async (transfer: StockTransferType) => {
-    if (confirm('هل أنت متأكد من تأكيد التحويل؟ سيتم خصم الكميات من المستودع الرئيسي وإضافتها لمخزن الموزع.')) {
+    if (confirm(t('stockTransfer.confirmComplete'))) {
       const success = await completeStockTransferCloud(transfer.id);
       if (success) {
-        toast.success('تم تأكيد التحويل بنجاح');
+        toast.success(t('stockTransfer.completeSuccess'));
         
         // طباعة وصل استلام العهدة تلقائياً بعد التأكيد
         await printTransferReceipt(transfer);
@@ -297,20 +299,20 @@ export default function StockTransfer() {
         setTransfers(newTransfers);
         refreshWarehouses();
       } else {
-        toast.error('فشل في تأكيد التحويل');
+        toast.error(t('stockTransfer.completeFailed'));
       }
     }
   };
 
   const handleCancelTransfer = async (transfer: StockTransferType) => {
-    if (confirm('هل أنت متأكد من إلغاء التحويل؟')) {
+    if (confirm(t('stockTransfer.confirmCancel'))) {
       const success = await cancelStockTransferCloud(transfer.id);
       if (success) {
-        toast.success('تم إلغاء التحويل');
+        toast.success(t('stockTransfer.cancelSuccess'));
         const newTransfers = await loadStockTransfersCloud();
         setTransfers(newTransfers);
       } else {
-        toast.error('فشل في إلغاء التحويل');
+        toast.error(t('stockTransfer.cancelFailed'));
       }
     }
   };
@@ -326,19 +328,20 @@ export default function StockTransfer() {
     const items = await getStockTransferItemsCloud(transfer.id);
     const toWarehouse = warehouses.find(w => w.id === transfer.to_warehouse_id);
     const fromWarehouse = warehouses.find(w => w.id === transfer.from_warehouse_id);
+    const isRTL = document.documentElement.dir === 'rtl';
 
     const html = `
       <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
       <head>
         <meta charset="UTF-8">
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+          body { font-family: Arial, sans-serif; padding: 20px; direction: ${isRTL ? 'rtl' : 'ltr'}; }
           h1 { text-align: center; margin-bottom: 20px; }
           .info { margin-bottom: 15px; }
           .info div { margin-bottom: 5px; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: ${isRTL ? 'right' : 'left'}; }
           th { background: #f5f5f5; }
           .footer { margin-top: 30px; text-align: center; }
           .signature { margin-top: 50px; display: flex; justify-content: space-between; }
@@ -346,24 +349,24 @@ export default function StockTransfer() {
         </style>
       </head>
       <body>
-        <h1>وصل استلام عهدة</h1>
+        <h1>${t('stockTransfer.receiptTitle')}</h1>
         
         <div class="info">
-          <div><strong>رقم التحويل:</strong> ${transfer.transfer_number}</div>
-          <div><strong>التاريخ:</strong> ${format(new Date(transfer.created_at), 'yyyy/MM/dd HH:mm', { locale: ar })}</div>
-          <div><strong>من:</strong> ${fromWarehouse?.name || 'المستودع الرئيسي'}</div>
-          <div><strong>إلى:</strong> ${toWarehouse?.name || ''}</div>
-          ${transfer.notes ? `<div><strong>ملاحظات:</strong> ${transfer.notes}</div>` : ''}
+          <div><strong>${t('stockTransfer.transferNumber')}:</strong> ${transfer.transfer_number}</div>
+          <div><strong>${t('stockTransfer.date')}:</strong> ${format(new Date(transfer.created_at), 'yyyy/MM/dd HH:mm', { locale: ar })}</div>
+          <div><strong>${t('stockTransfer.from')}:</strong> ${fromWarehouse?.name || t('stockTransfer.mainWarehouse')}</div>
+          <div><strong>${t('stockTransfer.to')}:</strong> ${toWarehouse?.name || ''}</div>
+          ${transfer.notes ? `<div><strong>${t('common.notes')}:</strong> ${transfer.notes}</div>` : ''}
         </div>
 
         <table>
           <thead>
             <tr>
               <th>#</th>
-              <th>المنتج</th>
-              <th>الكمية</th>
-              <th>الوحدة</th>
-              <th>إجمالي القطع</th>
+              <th>${t('stockTransfer.product')}</th>
+              <th>${t('stockTransfer.quantity')}</th>
+              <th>${t('stockTransfer.unit')}</th>
+              <th>${t('stockTransfer.totalPieces')}</th>
             </tr>
           </thead>
           <tbody>
@@ -372,9 +375,9 @@ export default function StockTransfer() {
               return `
                 <tr>
                   <td>${i + 1}</td>
-                  <td>${product?.name || 'منتج'}</td>
+                  <td>${product?.name || t('stockTransfer.productGeneric')}</td>
                   <td>${item.quantity}</td>
-                  <td>${item.unit === 'bulk' ? 'كرتونة' : 'قطعة'}</td>
+                  <td>${item.unit === 'bulk' ? t('stockTransfer.carton') : t('stockTransfer.piece')}</td>
                   <td>${item.quantity_in_pieces}</td>
                 </tr>
               `;
@@ -384,17 +387,17 @@ export default function StockTransfer() {
 
         <div class="signature">
           <div>
-            <p>توقيع المستلم</p>
+            <p>${t('stockTransfer.signReceiver')}</p>
             <p>________________</p>
           </div>
           <div>
-            <p>توقيع المسلّم</p>
+            <p>${t('stockTransfer.signSender')}</p>
             <p>________________</p>
           </div>
         </div>
 
         <div class="footer">
-          <p>FlowPOS Pro - نظام نقاط البيع</p>
+          <p>FlowPOS Pro</p>
         </div>
       </body>
       </html>
@@ -417,11 +420,11 @@ export default function StockTransfer() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600">قيد الانتظار</Badge>;
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600">{t('stockTransfer.pending')}</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-600">مكتمل</Badge>;
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600">{t('stockTransfer.completed')}</Badge>;
       case 'cancelled':
-        return <Badge variant="outline" className="bg-red-500/10 text-red-600">ملغي</Badge>;
+        return <Badge variant="outline" className="bg-red-500/10 text-red-600">{t('stockTransfer.cancelled')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -429,7 +432,7 @@ export default function StockTransfer() {
 
   const getWarehouseName = (warehouseId: string) => {
     const warehouse = warehouses.find(w => w.id === warehouseId);
-    return warehouse?.name || 'غير معروف';
+    return warehouse?.name || t('stockTransfer.unknown');
   };
 
   return (
@@ -438,8 +441,8 @@ export default function StockTransfer() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold">تحويل العهدة</h1>
-            <p className="text-muted-foreground">إدارة تحويل المخزون من المستودع الرئيسي للموزعين</p>
+            <h1 className="text-2xl font-bold">{t('stockTransfer.title')}</h1>
+            <p className="text-muted-foreground">{t('stockTransfer.subtitle')}</p>
           </div>
           
           <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
@@ -452,14 +455,14 @@ export default function StockTransfer() {
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                إنشاء أمر صرف
+                {t('stockTransfer.createTransfer')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <ArrowLeftRight className="w-5 h-5" />
-                  إنشاء أمر صرف جديد
+                  {t('stockTransfer.createNewTransfer')}
                 </DialogTitle>
               </DialogHeader>
               
@@ -467,14 +470,14 @@ export default function StockTransfer() {
                 {/* From/To */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>من المستودع</Label>
-                    <Input value={mainWarehouse?.name || 'المستودع الرئيسي'} disabled />
+                    <Label>{t('stockTransfer.fromWarehouse')}</Label>
+                    <Input value={mainWarehouse?.name || t('stockTransfer.mainWarehouse')} disabled />
                   </div>
                   <div>
-                    <Label>إلى مخزن الموزع</Label>
+                    <Label>{t('stockTransfer.toDistributor')}</Label>
                     <Select value={toWarehouseId} onValueChange={setToWarehouseId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر المستودع" />
+                        <SelectValue placeholder={t('stockTransfer.selectWarehouse')} />
                       </SelectTrigger>
                       <SelectContent className="bg-background border shadow-lg z-50">
                         {vehicleWarehouses.length > 0 ? (
@@ -483,7 +486,7 @@ export default function StockTransfer() {
                           ))
                         ) : (
                           <div className="p-4 text-center text-muted-foreground text-sm">
-                            لا توجد مستودعات موزعين. قم بإضافة مستودع من صفحة المستودعات أولاً.
+                            {t('stockTransfer.noDistributorWarehouses')}
                           </div>
                         )}
                       </SelectContent>
@@ -494,7 +497,7 @@ export default function StockTransfer() {
                 {/* Add Product */}
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">إضافة منتج</CardTitle>
+                    <CardTitle className="text-sm">{t('stockTransfer.addProduct')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {/* Row 1: Search and Barcode */}
@@ -504,7 +507,7 @@ export default function StockTransfer() {
                         <Input
                           ref={searchInputRef}
                           type="text"
-                          placeholder="ابحث عن المنتج بالاسم أو الباركود..."
+                          placeholder={t('stockTransfer.searchProduct')}
                           value={productSearchQuery}
                           onChange={(e) => handleProductSearch(e.target.value)}
                           onKeyDown={handleSearchKeyDown}
@@ -549,7 +552,7 @@ export default function StockTransfer() {
                         variant="outline"
                         size="icon"
                         onClick={() => setIsScannerOpen(true)}
-                        title="مسح باركود"
+                        title={t('stockTransfer.scanBarcode')}
                         type="button"
                         className="h-11 w-11 flex-shrink-0"
                       >
@@ -564,7 +567,7 @@ export default function StockTransfer() {
                         min={1}
                         value={selectedQuantity}
                         onChange={(e) => setSelectedQuantity(parseInt(e.target.value) || 1)}
-                        placeholder="الكمية"
+                        placeholder={t('stockTransfer.quantity')}
                       />
                       
                       <Select value={selectedUnit} onValueChange={(v: 'piece' | 'bulk') => setSelectedUnit(v)}>
@@ -572,14 +575,14 @@ export default function StockTransfer() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="piece">قطعة</SelectItem>
-                          <SelectItem value="bulk">كرتونة</SelectItem>
+                          <SelectItem value="piece">{t('stockTransfer.piece')}</SelectItem>
+                          <SelectItem value="bulk">{t('stockTransfer.carton')}</SelectItem>
                         </SelectContent>
                       </Select>
                       
                       <Button onClick={addItemToTransfer} disabled={!selectedProductId} className="gap-2">
                         <Plus className="w-4 h-4" />
-                        إضافة
+                        {t('stockTransfer.add')}
                       </Button>
                     </div>
                   </CardContent>
@@ -598,10 +601,10 @@ export default function StockTransfer() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>المنتج</TableHead>
-                          <TableHead>الكمية</TableHead>
-                          <TableHead>الوحدة</TableHead>
-                          <TableHead>إجمالي القطع</TableHead>
+                          <TableHead>{t('stockTransfer.product')}</TableHead>
+                          <TableHead>{t('stockTransfer.quantity')}</TableHead>
+                          <TableHead>{t('stockTransfer.unit')}</TableHead>
+                          <TableHead>{t('stockTransfer.totalPieces')}</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -640,8 +643,8 @@ export default function StockTransfer() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="piece">قطعة</SelectItem>
-                                  <SelectItem value="bulk">كرتونة</SelectItem>
+                                  <SelectItem value="piece">{t('stockTransfer.piece')}</SelectItem>
+                                  <SelectItem value="bulk">{t('stockTransfer.carton')}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
@@ -664,21 +667,21 @@ export default function StockTransfer() {
 
                 {/* Notes */}
                 <div>
-                  <Label>ملاحظات (اختياري)</Label>
+                  <Label>{t('stockTransfer.notesOptional')}</Label>
                   <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="أي ملاحظات إضافية..."
+                    placeholder={t('stockTransfer.notesPlaceholder')}
                   />
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetForm(); }}>
-                    إلغاء
+                    {t('stockTransfer.cancel')}
                   </Button>
                   <Button onClick={handleCreateTransfer} disabled={transferItems.length === 0}>
-                    إنشاء أمر الصرف
+                    {t('stockTransfer.createTransferBtn')}
                   </Button>
                 </div>
               </div>
@@ -691,28 +694,28 @@ export default function StockTransfer() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              سجل التحويلات
+              {t('stockTransfer.transferLog')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+              <div className="text-center py-8 text-muted-foreground">{t('stockTransfer.loading')}</div>
             ) : transfers.length === 0 ? (
               <div className="text-center py-8">
                 <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">لا توجد تحويلات</p>
+                <p className="text-muted-foreground">{t('stockTransfer.noTransfers')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>رقم التحويل</TableHead>
-                      <TableHead>من</TableHead>
-                      <TableHead>إلى</TableHead>
-                      <TableHead>الحالة</TableHead>
-                      <TableHead>التاريخ</TableHead>
-                      <TableHead>الإجراءات</TableHead>
+                      <TableHead>{t('stockTransfer.transferNumber')}</TableHead>
+                      <TableHead>{t('stockTransfer.from')}</TableHead>
+                      <TableHead>{t('stockTransfer.to')}</TableHead>
+                      <TableHead>{t('stockTransfer.status')}</TableHead>
+                      <TableHead>{t('stockTransfer.date')}</TableHead>
+                      <TableHead>{t('stockTransfer.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -731,7 +734,7 @@ export default function StockTransfer() {
                               variant="ghost" 
                               size="icon"
                               onClick={() => viewTransferDetails(transfer)}
-                              title="عرض التفاصيل"
+                              title={t('stockTransfer.viewDetails')}
                             >
                               <FileText className="w-4 h-4" />
                             </Button>
@@ -742,7 +745,7 @@ export default function StockTransfer() {
                                   variant="ghost" 
                                   size="icon"
                                   onClick={() => handleCompleteTransfer(transfer)}
-                                  title="تأكيد التحويل"
+                                  title={t('stockTransfer.confirmTransfer')}
                                   className="text-green-600"
                                 >
                                   <Check className="w-4 h-4" />
@@ -764,7 +767,7 @@ export default function StockTransfer() {
                                 variant="ghost" 
                                 size="icon"
                                 onClick={() => printTransferReceipt(transfer)}
-                                title="طباعة وصل الاستلام"
+                                title={t('stockTransfer.printReceipt')}
                               >
                                 <Printer className="w-4 h-4" />
                               </Button>
@@ -794,15 +797,15 @@ export default function StockTransfer() {
                     <p className="font-mono">{selectedTransfer.transfer_number}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">الحالة:</span>
+                    <span className="text-muted-foreground">{t('stockTransfer.status')}:</span>
                     <p>{getStatusBadge(selectedTransfer.status)}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">من:</span>
+                    <span className="text-muted-foreground">{t('stockTransfer.from')}:</span>
                     <p>{getWarehouseName(selectedTransfer.from_warehouse_id)}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">إلى:</span>
+                    <span className="text-muted-foreground">{t('stockTransfer.to')}:</span>
                     <p>{getWarehouseName(selectedTransfer.to_warehouse_id)}</p>
                   </div>
                 </div>
@@ -823,7 +826,7 @@ export default function StockTransfer() {
                           <TableRow key={item.id}>
                             <TableCell>{product?.name || 'منتج'}</TableCell>
                             <TableCell>{item.quantity_in_pieces}</TableCell>
-                            <TableCell>قطعة</TableCell>
+                            <TableCell>{t('stockTransfer.piece')}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -833,7 +836,7 @@ export default function StockTransfer() {
 
                 {selectedTransfer.notes && (
                   <div>
-                    <span className="text-muted-foreground text-sm">ملاحظات:</span>
+                    <span className="text-muted-foreground text-sm">{t('common.notes')}:</span>
                     <p className="text-sm">{selectedTransfer.notes}</p>
                   </div>
                 )}
