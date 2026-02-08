@@ -323,15 +323,13 @@ export function CartPanel({
         soldItems.push({ name: item.name, quantity: item.quantity, price: wholesaleMode ? getItemPrice(item) : item.price });
       });
 
-      // In wholesale mode with received amount, override profit calculation
-      const finalProfit = wholesaleMode && receivedAmount > 0
-        ? receivedAmount - totalCOGS
+      // In wholesale mode, use subtotal for profit (NOT receivedAmount!)
+      const finalProfit = wholesaleMode
+        ? roundCurrency(subtotal - totalCOGS)
         : totalProfit;
 
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = wholesaleMode && receivedAmount > 0
-        ? finalProfit  // Already final in wholesale mode
-        : finalProfit * (1 - discountRatio);
+      const discountedProfit = finalProfit * (1 - discountRatio);
       const discountMultiplier = 1 - discountRatio;
 
       const itemsWithCost = cartSnapshot.map(item => {
