@@ -1,14 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { 
-  Language, 
-  getCurrentLanguage, 
-  setLanguage as setLangStorage, 
+import {
+  Language,
+  getCurrentLanguage,
+  setLanguage as setLangStorage,
   t as translate,
   TranslationKey,
   initializeLanguage,
   languages,
   LanguageInfo
 } from '@/lib/i18n';
+import { getSystemLanguage, mapSystemLanguage, setupSystemLanguageListener } from '@/lib/system-language';
 
 interface LanguageContextType {
   language: Language;
@@ -27,6 +28,33 @@ const RTL_LANGUAGES: Language[] = ['ar'];
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getCurrentLanguage);
 
+  // ✅ Auto-detect system language on mount
+  useEffect(() => {
+    const initLanguage = async () => {
+      const savedLang = getCurrentLanguage();
+
+      if (savedLang === 'auto') {
+        const systemLang = await getSystemLanguage();
+        const mappedLang = mapSystemLanguage(systemLang);
+        setLanguageState(mappedLang);
+        document.documentElement.dir = mappedLang === 'ar' ? 'rtl' : 'ltr';
+      } else {
+        document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+      }
+    };
+
+    initLanguage();
+
+    // ✅ Listen for system language changes (when user returns from Settings)
+    setupSystemLanguageListener(async (newLang) => {
+      const savedLang = getCurrentLanguage();
+      if (savedLang === 'auto') {
+        setLanguageState(newLang as Language);
+        document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
+      }
+    });
+  }, []);
+
   useEffect(() => {
     initializeLanguage();
   }, []);
@@ -34,11 +62,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Apply RTL/LTR styles to document
   useEffect(() => {
     const isRTL = RTL_LANGUAGES.includes(language);
-    
+
     // Set document direction
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
-    
+
     // Add/remove RTL class for CSS targeting
     if (isRTL) {
       document.documentElement.classList.add('rtl');
@@ -47,7 +75,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       document.documentElement.classList.add('ltr');
       document.documentElement.classList.remove('rtl');
     }
-    
+
     // Update meta for proper rendering
     const metaViewport = document.querySelector('meta[name="viewport"]');
     if (metaViewport) {
