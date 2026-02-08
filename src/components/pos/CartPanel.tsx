@@ -156,8 +156,14 @@ export function CartPanel({
 
   const getItemPrice = (item: CartItem) => {
     if (wholesaleMode) {
-      // Use wholesale price from custom_fields, fallback to cost price
-      return item.wholesalePrice || item.costPrice || item.price;
+      // Use wholesale price if set, otherwise calculate as cost_price + 20% margin
+      if (item.wholesalePrice && item.wholesalePrice > 0) {
+        return item.wholesalePrice;
+      }
+      if (item.costPrice && item.costPrice > 0) {
+        return item.costPrice * 1.20;
+      }
+      return item.price;
     }
     return item.price;
   };
