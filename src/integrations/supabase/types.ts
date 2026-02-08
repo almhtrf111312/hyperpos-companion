@@ -594,6 +594,8 @@ export type Database = {
         Row: {
           archived: boolean | null
           barcode: string | null
+          barcode2: string | null
+          barcode3: string | null
           bulk_cost_price: number | null
           bulk_sale_price: number | null
           bulk_unit: string | null
@@ -623,6 +625,8 @@ export type Database = {
         Insert: {
           archived?: boolean | null
           barcode?: string | null
+          barcode2?: string | null
+          barcode3?: string | null
           bulk_cost_price?: number | null
           bulk_sale_price?: number | null
           bulk_unit?: string | null
@@ -652,6 +656,8 @@ export type Database = {
         Update: {
           archived?: boolean | null
           barcode?: string | null
+          barcode2?: string | null
+          barcode3?: string | null
           bulk_cost_price?: number | null
           bulk_sale_price?: number | null
           bulk_unit?: string | null

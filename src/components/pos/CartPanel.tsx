@@ -221,14 +221,12 @@ export function CartPanel({
     savingRef.current = true;
     setIsSaving(true);
 
-    // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
+    // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
     const totalSnapshot = total;
     const customerNameSnapshot = customerName;
 
     setShowCashDialog(false);
-    onClearCart();
-    playSaleComplete();
     startSync('جاري حفظ الفاتورة...', false);
 
     try {
@@ -444,6 +442,9 @@ export function CartPanel({
       addSalesToShift(totalSnapshot);
       recordActivity();
 
+      // ✅ Clear cart only after successful save
+      onClearCart();
+      playSaleComplete();
       completeSync('تمت المزامنة بنجاح');
       showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح ✓`);
     } catch (error) {
@@ -473,15 +474,13 @@ export function CartPanel({
     savingRef.current = true;
     setIsSaving(true);
 
-    // ✅ Optimistic UI: أغلق الـ Dialog فوراً وأظهر رسالة النجاح
+    // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
     const totalSnapshot = total;
     const customerNameSnapshot = customerName;
     const customerPhoneSnapshot = customerPhone;
 
     setShowDebtDialog(false);
-    onClearCart();
-    playDebtRecorded();
     startSync('جاري إنشاء فاتورة الدين...', false);
 
     try {
@@ -710,6 +709,9 @@ export function CartPanel({
         );
       }
 
+      // ✅ Clear cart only after successful save
+      onClearCart();
+      playDebtRecorded();
       completeSync('تمت المزامنة بنجاح');
       showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح ✓`);
     } catch (error) {

@@ -142,7 +142,6 @@ export const translations = {
     'stockTransfer.signSender': 'توقيع المسلّم',
     'stockTransfer.scanBarcode': 'مسح باركود',
 
-    'nav.reports': 'التقارير',
     'nav.settings': 'الإعدادات',
 
     // Dashboard
