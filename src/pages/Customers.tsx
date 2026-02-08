@@ -132,7 +132,7 @@ export default function Customers() {
     if (isSaving || savingRef.current) return;
 
     if (!formData.name || !formData.phone) {
-      toast.error('يرجى ملء الحقول المطلوبة');
+      toast.error(t('customers.fillRequired'));
       return;
     }
 
@@ -141,7 +141,7 @@ export default function Customers() {
       c.name.toLowerCase().trim() === formData.name.toLowerCase().trim()
     );
     if (duplicate) {
-      toast.error('هذا الاسم موجود مسبقاً، يرجى اختيار اسم مختلف');
+      toast.error(t('customers.nameExists'));
       return;
     }
 
@@ -158,10 +158,10 @@ export default function Customers() {
       if (newCustomer) {
         setShowAddDialog(false);
         setFormData({ name: '', phone: '', email: '', address: '' });
-        toast.success('تم إضافة العميل بنجاح');
+        toast.success(t('customers.addSuccess'));
         loadData();
       } else {
-        toast.error('هذا الاسم موجود مسبقاً أو فشل في إضافة العميل');
+        toast.error(t('customers.addFailed'));
       }
     } finally {
       savingRef.current = false;
@@ -171,7 +171,7 @@ export default function Customers() {
 
   const handleEditCustomer = async () => {
     if (!selectedCustomer || !formData.name) {
-      toast.error('يرجى ملء الحقول المطلوبة');
+      toast.error(t('customers.fillRequired'));
       return;
     }
 
@@ -187,10 +187,10 @@ export default function Customers() {
     if (success) {
       setShowEditDialog(false);
       setSelectedCustomer(null);
-      toast.success('تم تعديل بيانات العميل بنجاح');
+      toast.success(t('customers.editSuccess'));
       loadData();
     } else {
-      toast.error('فشل في تعديل بيانات العميل');
+      toast.error(t('customers.editFailed'));
     }
   };
 
@@ -204,10 +204,10 @@ export default function Customers() {
     if (success) {
       setShowDeleteDialog(false);
       setSelectedCustomer(null);
-      toast.success('تم حذف العميل بنجاح');
+      toast.success(t('customers.deleteSuccess'));
       loadData();
     } else {
-      toast.error('فشل في حذف العميل');
+      toast.error(t('customers.deleteFailed'));
     }
   };
 

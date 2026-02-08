@@ -71,15 +71,15 @@ const loadExchangeRates = () => {
 const loadCurrencyNames = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { TRY: 'الليرة التركية', SYP: 'الليرة السورية' };
+    if (!raw) return { TRY: t('currency.tryName'), SYP: t('currency.sypName') };
     const parsed = JSON.parse(raw);
     const names = parsed?.currencyNames;
     return {
-      TRY: names?.TRY || 'الليرة التركية',
-      SYP: names?.SYP || 'الليرة السورية',
+      TRY: names?.TRY || t('currency.tryName'),
+      SYP: names?.SYP || t('currency.sypName'),
     };
   } catch {
-    return { TRY: 'الليرة التركية', SYP: 'الليرة السورية' };
+    return { TRY: t('currency.tryName'), SYP: t('currency.sypName') };
   }
 };
 
@@ -119,7 +119,7 @@ export default function POS() {
 
   // Load products and categories from cloud
   const [products, setProducts] = useState<POSProduct[]>([]);
-  const [categories, setCategories] = useState<string[]>(['الكل']);
+  const [categories, setCategories] = useState<string[]>([t('common.all')]);
 
   // Scanned product dialog
   const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
@@ -160,8 +160,8 @@ export default function POS() {
         quantity: p.quantity, // Default quantity from products table
         image: p.image,
         barcode: p.barcode,
-        bulkUnit: p.bulkUnit || 'كرتونة',
-        smallUnit: p.smallUnit || 'قطعة',
+        bulkUnit: p.bulkUnit || t('products.unitCarton'),
+        smallUnit: p.smallUnit || t('products.unitPiece'),
         conversionFactor: p.conversionFactor || 1,
         bulkSalePrice: p.bulkSalePrice || 0,
         costPrice: p.costPrice,
@@ -240,7 +240,7 @@ export default function POS() {
     const rates = loadExchangeRates();
     const names = loadCurrencyNames();
     return [
-      { code: 'USD', symbol: '$', name: 'دولار أمريكي', rate: 1 },
+      { code: 'USD', symbol: '$', name: t('currency.usd'), rate: 1 },
       { code: 'TRY', symbol: '₺', name: names.TRY, rate: rates.TRY },
       { code: 'SYP', symbol: 'ل.س', name: names.SYP, rate: rates.SYP },
     ];
@@ -286,7 +286,7 @@ export default function POS() {
 
     // Play sound effect
     playAddToCart();
-    const unitLabel = unit === 'bulk' ? (product.bulkUnit || 'كرتونة') : (product.smallUnit || 'قطعة');
+    const unitLabel = unit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
     showToast.success(t('pos.addedToCart').replace('{name}', `${product.name} (${unitLabel})`));
   };
 
@@ -297,7 +297,7 @@ export default function POS() {
 
     // Don't toggle if no bulk pricing
     if (!product.bulkSalePrice || product.bulkSalePrice <= 0) {
-      showToast.warning('لا يوجد سعر جملة لهذا المنتج');
+      showToast.warning(t('pos.noWholesalePrice'));
       return;
     }
 

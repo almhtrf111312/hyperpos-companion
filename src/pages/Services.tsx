@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { 
-  Search, 
+import {
+  Search,
   Plus,
   Phone,
   Calendar,
@@ -127,16 +127,16 @@ export default function Services() {
   const statusConfig = getStatusConfig(t);
   const filterOptions = getFilterOptions(t);
   const deviceTypes = getDeviceTypes(t);
-  
+
   const [requests, setRequests] = useState<RepairRequest[]>(() => loadServices());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
-  
+
   // Save to localStorage whenever requests change
   useEffect(() => {
     saveServices(requests);
   }, [requests]);
-  
+
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -178,9 +178,9 @@ export default function Services() {
 
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.customerPhone.includes(searchQuery) ||
-                         request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.deviceModel.toLowerCase().includes(searchQuery.toLowerCase());
+      request.customerPhone.includes(searchQuery) ||
+      request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      request.deviceModel.toLowerCase().includes(searchQuery.toLowerCase());
     const filterStatus = filterStatusMap[selectedFilter] || null;
     const matchesFilter = !filterStatus || request.status === filterStatus;
     return matchesSearch && matchesFilter;
@@ -215,7 +215,7 @@ export default function Services() {
     }
 
     const deviceLabel = deviceTypes.find(d => d.key === formData.deviceType)?.label || formData.deviceType;
-    
+
     const newRequest: RepairRequest = {
       id: `REP_${Date.now()}`,
       customerName: formData.customerName,
@@ -248,21 +248,21 @@ export default function Services() {
 
     const deviceLabel = deviceTypes.find(d => d.key === formData.deviceType)?.label || formData.deviceType;
 
-    setRequests(requests.map(r => 
-      r.id === selectedRequest.id 
-        ? { 
-            ...r, 
-            customerName: formData.customerName,
-            customerPhone: formData.customerPhone,
-            deviceType: deviceLabel,
-            deviceModel: formData.deviceModel,
-            issue: formData.issue,
-            diagnosis: formData.diagnosis || undefined,
-            estimatedCost: formData.estimatedCost || undefined,
-            estimatedDate: formData.estimatedDate || undefined,
-            notes: formData.notes || undefined,
-            technician: formData.technician || undefined,
-          }
+    setRequests(requests.map(r =>
+      r.id === selectedRequest.id
+        ? {
+          ...r,
+          customerName: formData.customerName,
+          customerPhone: formData.customerPhone,
+          deviceType: deviceLabel,
+          deviceModel: formData.deviceModel,
+          issue: formData.issue,
+          diagnosis: formData.diagnosis || undefined,
+          estimatedCost: formData.estimatedCost || undefined,
+          estimatedDate: formData.estimatedDate || undefined,
+          notes: formData.notes || undefined,
+          technician: formData.technician || undefined,
+        }
         : r
     ));
     setShowEditDialog(false);
@@ -273,7 +273,7 @@ export default function Services() {
 
   const handleDeleteRequest = () => {
     if (!selectedRequest) return;
-    
+
     setRequests(requests.filter(r => r.id !== selectedRequest.id));
     setShowDeleteDialog(false);
     setSelectedRequest(null);
@@ -294,12 +294,12 @@ export default function Services() {
     }
 
     const updates: Partial<RepairRequest> = { status: newStatus };
-    
+
     if (newStatus === 'completed') {
       updates.completedAt = new Date().toISOString().split('T')[0];
     }
 
-    setRequests(requests.map(r => 
+    setRequests(requests.map(r =>
       r.id === request.id ? { ...r, ...updates } : r
     ));
     toast.success(t('services.statusUpdated').replace('{status}', statusConfig[newStatus].label));
@@ -307,7 +307,7 @@ export default function Services() {
 
   const handleDeliveryConfirm = () => {
     if (!selectedRequest) return;
-    
+
     const profit = deliveryData.amountReceived - deliveryData.partsCost;
 
     const updates: Partial<RepairRequest> = {
@@ -320,13 +320,13 @@ export default function Services() {
       finalCost: deliveryData.amountReceived,
     };
 
-    setRequests(requests.map(r => 
+    setRequests(requests.map(r =>
       r.id === selectedRequest.id ? { ...r, ...updates } : r
     ));
 
     setShowDeliveryDialog(false);
     setSelectedRequest(null);
-    
+
     if (deliveryData.paymentType === 'debt') {
       toast.success(t('services.deliveredDebt').replace('${profit}', String(profit)));
     } else {
@@ -463,7 +463,7 @@ export default function Services() {
           const StatusIcon = status.icon;
 
           return (
-            <div 
+            <div
               key={request.id}
               className="bg-card rounded-xl md:rounded-2xl border border-border p-4 md:p-6 card-hover fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
@@ -555,9 +555,9 @@ export default function Services() {
               {request.status !== 'delivered' && request.status !== 'cancelled' && (
                 <div className="flex gap-1 mb-3 md:mb-4 overflow-x-auto pb-1">
                   {request.status === 'pending' && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="text-xs h-7"
                       onClick={() => handleUpdateStatus(request, 'in_progress')}
                     >
@@ -566,17 +566,17 @@ export default function Services() {
                   )}
                   {request.status === 'in_progress' && (
                     <>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="text-xs h-7"
                         onClick={() => handleUpdateStatus(request, 'waiting_parts')}
                       >
                         {t('services.waitingForParts')}
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="text-xs h-7 bg-success/10 text-success border-success/30"
                         onClick={() => handleUpdateStatus(request, 'completed')}
                       >
@@ -585,9 +585,9 @@ export default function Services() {
                     </>
                   )}
                   {request.status === 'waiting_parts' && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="text-xs h-7"
                       onClick={() => handleUpdateStatus(request, 'in_progress')}
                     >
@@ -595,9 +595,9 @@ export default function Services() {
                     </Button>
                   )}
                   {request.status === 'completed' && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="text-xs h-7 bg-success/10 text-success border-success/30"
                       onClick={() => handleUpdateStatus(request, 'delivered')}
                     >
@@ -657,7 +657,7 @@ export default function Services() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
-                <select 
+                <select
                   className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
                   value={formData.deviceType}
                   onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
@@ -707,7 +707,7 @@ export default function Services() {
                 <DatePicker
                   value={formData.estimatedDate}
                   onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
-                  placeholder="اختر تاريخ التسليم"
+                  placeholder={t('services.selectDeliveryDate')}
                 />
               </div>
             </div>
@@ -769,7 +769,7 @@ export default function Services() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
-                <select 
+                <select
                   className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
                   value={formData.deviceType}
                   onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
@@ -815,7 +815,7 @@ export default function Services() {
                 <DatePicker
                   value={formData.estimatedDate}
                   onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
-                  placeholder="اختر تاريخ التسليم"
+                  placeholder={t('services.selectDeliveryDate')}
                 />
               </div>
             </div>
@@ -915,7 +915,7 @@ export default function Services() {
                 </div>
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground mb-1">
-                    {selectedRequest.completedAt ? 'تاريخ الإنجاز' : 'التسليم المتوقع'}
+                    {selectedRequest.completedAt ? t('services.completionDate') : t('services.expectedDelivery')}
                   </p>
                   <p className="font-medium">
                     {selectedRequest.completedAt || selectedRequest.estimatedDate || '-'}
@@ -958,8 +958,8 @@ export default function Services() {
                   تعديل
                 </Button>
                 {selectedRequest.status !== 'cancelled' && selectedRequest.status !== 'delivered' && (
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     className="flex-1"
                     onClick={() => {
                       handleUpdateStatus(selectedRequest, 'cancelled');
@@ -1052,8 +1052,8 @@ export default function Services() {
                     <span className="text-sm font-medium text-foreground">الربح الصافي:</span>
                     <span className={cn(
                       "text-2xl font-bold",
-                      (deliveryData.amountReceived - deliveryData.partsCost) >= 0 
-                        ? "text-success" 
+                      (deliveryData.amountReceived - deliveryData.partsCost) >= 0
+                        ? "text-success"
                         : "text-destructive"
                     )}>
                       ${deliveryData.amountReceived - deliveryData.partsCost}
@@ -1101,8 +1101,8 @@ export default function Services() {
                 <Button variant="outline" className="flex-1" onClick={() => setShowDeliveryDialog(false)}>
                   إلغاء
                 </Button>
-                <Button 
-                  className="flex-1 bg-success hover:bg-success/90" 
+                <Button
+                  className="flex-1 bg-success hover:bg-success/90"
                   onClick={handleDeliveryConfirm}
                   disabled={deliveryData.amountReceived <= 0}
                 >

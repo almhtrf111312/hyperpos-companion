@@ -34,10 +34,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     todaySales: 0,
     todayCount: 0,
-    todayProfit: 0,        // الربح الإجمالي (المبيعات - COGS)
-    todayCOGS: 0,          // ✅ تكلفة البضاعة المباعة
+    todayProfit: 0,        // Gross profit (Sales - COGS)
+    todayCOGS: 0,          // ✅ Cost of Goods Sold
     todayExpenses: 0,
-    netProfit: 0,          // صافي الربح = الربح الإجمالي - المصاريف
+    netProfit: 0,          // Net profit = Gross profit - Expenses
     profitMargin: 0,
     totalDebtAmount: 0,
     debtCustomers: 0,
@@ -95,7 +95,7 @@ export default function Dashboard() {
       const todayProfit = todayGrossProfit; // For consistency with UI naming (Gross)
       const netProfit = todayGrossProfit - todayExpenses;
 
-      // ✅ حساب الديون من جدول الديون الفعلي (أكثر دقة)
+      // ✅ Calculate debts from actual debts table (more accurate)
       const activeDebts = debts.filter(d => d.status !== 'fully_paid');
       const totalDebtAmount = activeDebts.reduce((sum, d) => sum + d.remainingDebt, 0);
       const debtCustomers = new Set(activeDebts.map(d => d.customerName)).size;
@@ -115,12 +115,12 @@ export default function Dashboard() {
       // Calculate inventory value
       const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
 
-      // ✅ حساب رأس المال الإجمالي من مصادر متعددة
-      // 1. رأس المال من الشركاء (Cloud) - المصدر الأساسي
+      // ✅ Calculate total capital from multiple sources
+      // 1. Capital from partners (Cloud) - Primary source
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
 
-      // ✅ 2. حساب رصيد الصندوق التراكمي (Calculated Global Cash)
-      // المعادلة: (مبيعات نقدية + سداد ديون) + (رأس المال + ضخ أموال) - (مصاريف + مسحوبات)
+      // ✅ 2. Calculate cumulative cashbox balance (Calculated Global Cash)
+      // Formula: (Cash sales + Debt payments) + (Capital + Money injection) - (Expenses + Withdrawals)
       const totalSalesCash = invoices
         .filter(inv => inv.status !== 'cancelled' && inv.paymentType === 'cash')
         .reduce((sum, inv) => sum + inv.total, 0);
@@ -133,13 +133,13 @@ export default function Dashboard() {
 
       const totalWithdrawals = partners.reduce((sum, p) => sum + (p.totalWithdrawn || 0), 0);
 
-      // نستخدم رأس المال الحالي كمؤشر على الأموال التي دخلت النظام
+      // Use current capital as an indicator of money entering the system
       const globalCashBalance = (totalSalesCash + totalDebtPaid + totalCapital) - (totalExpenses + totalWithdrawals);
 
-      // ✅ 3. رأس المال المتاح (Liquid Capital) = رصيد الصندوق
+      // ✅ 3. Available capital (Liquid Capital) = Cashbox balance
       const liquidCapital = globalCashBalance;
 
-      // ✅ حساب العجز والنسبة
+      // ✅ Calculate deficit and percentage
       const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;
       const deficitPercentage = totalCapital > 0 ? (deficit / totalCapital) * 100 : 0;
 
@@ -174,7 +174,7 @@ export default function Dashboard() {
 
     const handleUpdate = () => loadStats();
 
-    // ✅ الاستماع لجميع الأحداث المالية
+    // ✅ Listen to all financial events
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
@@ -246,7 +246,7 @@ export default function Dashboard() {
 
       {/* Stats Grid - Capital Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        {/* قيمة المخزون */}
+        {/* Inventory value */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-info/10">
@@ -259,7 +259,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* رأس المال الإجمالي */}
+        {/* Total capital */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -272,7 +272,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* رصيد الصندوق */}
+        {/* Cashbox balance */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-success/10">
@@ -285,7 +285,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* رأس المال المتاح */}
+        {/* Available capital */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
@@ -301,7 +301,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* العجز - يظهر فقط إذا كان > 0 */}
+      {/* Deficit - only shows if > 0 */}
       {stats.deficit > 0 && (
         <div className="bg-destructive/10 rounded-xl border border-destructive/30 p-4">
           <div className="flex items-center justify-between">

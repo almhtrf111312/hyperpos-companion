@@ -548,7 +548,7 @@ export default function Expenses() {
               <DatePicker
                 value={formData.date}
                 onChange={(date) => setFormData({ ...formData, date: date })}
-                placeholder="اختر التاريخ"
+                placeholder={t('common.selectDate')}
               />
             </div>
 

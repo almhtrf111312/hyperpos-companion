@@ -149,7 +149,7 @@ export default function Reports() {
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
     { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
-    { id: 'custody-value', label: 'قيمة العهدة', icon: Wallet },
+    { id: 'custody-value', label: t('reports.custodyValue'), icon: Wallet },
   ];
 
   // Calculate real data from stores
@@ -224,7 +224,7 @@ export default function Reports() {
     // Calculate top customers
     const customerPurchasesMap: Record<string, { name: string; orders: number; total: number }> = {};
     filteredInvoices.forEach(inv => {
-      const name = inv.customerName || 'عميل نقدي';
+      const name = inv.customerName || t('reports.cashCustomer');
       if (!customerPurchasesMap[name]) {
         customerPurchasesMap[name] = { name, orders: 0, total: 0 };
       }
@@ -280,7 +280,7 @@ export default function Reports() {
       // Group by category
       const profitByCategory: Record<string, { categoryName: string; amount: number; count: number }> = {};
       filteredProfitHistory.forEach(record => {
-        const catName = record.category || 'بدون صنف';
+        const catName = record.category || t('reports.noCategory');
         if (!profitByCategory[catName]) {
           profitByCategory[catName] = { categoryName: catName, amount: 0, count: 0 };
         }
@@ -453,7 +453,7 @@ export default function Reports() {
 
     // ✅ التحقق من تحميل البيانات أولاً
     if (isLoading) {
-      toast.error('يرجى الانتظار حتى يتم تحميل البيانات');
+      toast.error(t('reports.waitForData'));
       return;
     }
 
@@ -468,7 +468,7 @@ export default function Reports() {
           });
 
           if (filteredInvoices.length === 0) {
-            toast.error('لا توجد بيانات للتصدير في هذه الفترة');
+            toast.error(t('reports.noDataToExport'));
             return;
           }
 
@@ -490,7 +490,7 @@ export default function Reports() {
         }
         case 'products': {
           if (products.length === 0) {
-            toast.error('لا توجد منتجات للتصدير');
+            toast.error(t('reports.noProductsToExport'));
             return;
           }
 
@@ -510,7 +510,7 @@ export default function Reports() {
         }
         case 'inventory': {
           if (products.length === 0) {
-            toast.error('لا توجد منتجات في المخزون للتصدير');
+            toast.error(t('reports.noStockToExport'));
             return;
           }
 
@@ -530,7 +530,7 @@ export default function Reports() {
         }
         case 'customers': {
           if (customers.length === 0) {
-            toast.error('لا يوجد عملاء للتصدير');
+            toast.error(t('reports.noCustomersToExport'));
             return;
           }
 
@@ -546,7 +546,7 @@ export default function Reports() {
         }
         case 'partners': {
           if (partners.length === 0) {
-            toast.error('لا يوجد شركاء للتصدير');
+            toast.error(t('reports.noPartnersToExport'));
             return;
           }
 
@@ -563,7 +563,7 @@ export default function Reports() {
         }
         case 'expenses': {
           if (expenseReportData.expenses.length === 0) {
-            toast.error('لا توجد مصاريف للتصدير في هذه الفترة');
+            toast.error(t('reports.noExpensesToExport'));
             return;
           }
 
@@ -589,7 +589,7 @@ export default function Reports() {
           });
 
           if (defaultInvoices.length === 0) {
-            toast.error('لا توجد بيانات للتصدير في هذه الفترة');
+            toast.error(t('reports.noDataToExport'));
             return;
           }
 
@@ -778,7 +778,7 @@ ${partnerExpenses.map(exp => {
   const handleExportComprehensive = useCallback(async () => {
     try {
       if (isLoading) {
-        toast.error('يرجى الانتظار حتى يتم تحميل البيانات');
+        toast.error(t('reports.waitForData'));
         return;
       }
 
@@ -1198,7 +1198,7 @@ ${partnerExpenses.map(exp => {
                         <div>
                           <h3 className="text-lg font-semibold">{partner.name}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {partner.accessAll ? `نسبة عامة: ${partner.sharePercentage}%` : 'شريك متخصص'}
+                            {partner.accessAll ? `${t('reports.generalShare')}: ${partner.sharePercentage}%` : t('reports.specializedPartner')}
                           </p>
                         </div>
                       </div>
@@ -1391,7 +1391,7 @@ ${partnerExpenses.map(exp => {
                               size="icon"
                               className="text-success hover:text-success"
                               onClick={() => handleShareExpenseReport(partner.name)}
-                              title="مشاركة عبر واتساب"
+                              title={t('reports.shareViaWhatsApp')}
                             >
                               <MessageCircle className="w-5 h-5" />
                             </Button>

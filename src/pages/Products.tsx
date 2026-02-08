@@ -101,7 +101,7 @@ export default function Products() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('الكل');
+  const [selectedCategory, setSelectedCategory] = useState(t('products.all'));
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
   const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
@@ -123,7 +123,7 @@ export default function Products() {
     barcode: '',
     barcode2: '',  // باركود ثاني
     barcode3: '',  // باركود ثالث
-    category: 'هواتف',
+    category: t('products.defaultCategory'),
     costPrice: 0,
     salePrice: 0,
     quantity: 0,
@@ -137,8 +137,8 @@ export default function Products() {
     color: '',
     minStockLevel: 1,
     // Unit settings
-    bulkUnit: 'كرتونة',
-    smallUnit: 'قطعة',
+    bulkUnit: t('products.unitCarton'),
+    smallUnit: t('products.unitPiece'),
     conversionFactor: 1,
     bulkCostPrice: 0,
     bulkSalePrice: 0,
@@ -228,10 +228,10 @@ export default function Products() {
         // alert(`DEBUG: Updating form. Old Image: ${prev.image ? 'Yes' : 'No'}, New Image: Yes`);
         return { ...prev, image: imageUrl };
       });
-      toast.success('تم استعادة الصورة بنجاح');
+      toast.success(t('products.imageRestored'));
     } else {
       // alert('DEBUG: Upload returned null');
-      toast.error('فشل في استعادة الصورة');
+      toast.error(t('products.imageRestoreFailed'));
     }
   }, []);
 
@@ -294,7 +294,7 @@ export default function Products() {
             setShowAddDialog(true);
           }
 
-          toast.info('تم استعادة البيانات السابقة', { duration: 3000 });
+          toast.info(t('products.dataRestored'), { duration: 3000 });
         } else {
           localStorage.removeItem(FORM_STORAGE_KEY);
         }
@@ -330,7 +330,7 @@ export default function Products() {
       setWarehouseStocks(allWarehouseStocks);
     } catch (error) {
       console.error('Error loading products:', error);
-      toast.error('فشل في تحميل المنتجات');
+      toast.error(t('products.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -383,7 +383,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -400,9 +400,9 @@ export default function Products() {
       toast.dismiss(toastId);
       if (imageUrl) {
         setFormData(prev => ({ ...prev, image: imageUrl }));
-        toast.success('تم رفع الصورة بنجاح');
+        toast.success(t('products.imageUploaded'));
       } else {
-        toast.error('فشل في رفع الصورة');
+        toast.error(t('products.imageUploadFailed'));
       }
     }
   };
@@ -416,9 +416,9 @@ export default function Products() {
       toast.dismiss(toastId);
       if (imageUrl) {
         setFormData(prev => ({ ...prev, image: imageUrl }));
-        toast.success('تم رفع الصورة بنجاح');
+        toast.success(t('products.imageUploaded'));
       } else {
-        toast.error('فشل في رفع الصورة');
+        toast.error(t('products.imageUploadFailed'));
       }
     }
   };
@@ -432,14 +432,14 @@ export default function Products() {
   // Get categories used by products (cannot be deleted)
   const usedCategories = [...new Set(products.map(p => p.category))];
 
-  const categories = ['الكل', ...categoryOptions];
+  const categories = [t('products.all'), ...categoryOptions];
 
   // Memoized filtered results for performance
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         product.barcode.includes(debouncedSearch);
-      const matchesCategory = selectedCategory === 'الكل' || product.category === selectedCategory;
+      const matchesCategory = selectedCategory === t('products.all') || product.category === selectedCategory;
       const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
       const matchesUnit = unitFilter === 'all' ||
         (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
@@ -458,7 +458,7 @@ export default function Products() {
 
   const handleAddProduct = async () => {
     if (!formData.name || !formData.barcode) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error(t('products.fillRequired'));
       return;
     }
 
@@ -496,22 +496,22 @@ export default function Products() {
         addActivityLog(
           'product_added',
           user.id,
-          profile?.full_name || user.email || 'مستخدم',
+          profile?.full_name || user.email || t('products.defaultUser'),
           `تم إضافة منتج جديد: ${formData.name}`,
           { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
         );
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
       setCustomFieldValues({});
       clearPersistedState(); // Clear persistence on success
-      toast.success('تم إضافة المنتج بنجاح');
+      toast.success(t('products.addSuccess'));
       loadData();
     } else {
-      toast.error('فشل في إضافة المنتج');
+      toast.error(t('products.addFailed'));
     }
 
     setIsSaving(false);
@@ -519,7 +519,7 @@ export default function Products() {
 
   const handleEditProduct = async () => {
     if (!selectedProduct || !formData.name) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      toast.error(t('products.fillRequired'));
       return;
     }
 
@@ -557,7 +557,7 @@ export default function Products() {
         addActivityLog(
           'product_updated',
           user.id,
-          profile?.full_name || user.email || 'مستخدم',
+          profile?.full_name || user.email || t('products.defaultUser'),
           `تم تعديل منتج: ${formData.name}`,
           { productId: selectedProduct.id, name: formData.name }
         );
@@ -567,10 +567,10 @@ export default function Products() {
       setSelectedProduct(null);
       setCustomFieldValues({});
       clearPersistedState(); // Clear persistence on success
-      toast.success('تم تعديل المنتج بنجاح');
+      toast.success(t('products.editSuccess'));
       loadData();
     } else {
-      toast.error('فشل في تعديل المنتج');
+      toast.error(t('products.editFailed'));
     }
 
     setIsSaving(false);
@@ -590,7 +590,7 @@ export default function Products() {
         addActivityLog(
           'product_deleted',
           user.id,
-          profile?.full_name || user.email || 'مستخدم',
+          profile?.full_name || user.email || t('products.defaultUser'),
           `تم حذف منتج: ${productName}`, // This log message might need translation
           { productId: selectedProduct.id, name: productName }
         );
@@ -598,10 +598,10 @@ export default function Products() {
 
       setShowDeleteDialog(false);
       setSelectedProduct(null);
-      toast.success('تم حذف المنتج بنجاح');
+      toast.success(t('products.deleteSuccess'));
       loadData();
     } else {
-      toast.error('فشل في حذف المنتج');
+      toast.error(t('products.deleteFailed'));
     }
 
     setIsSaving(false);
@@ -636,8 +636,8 @@ export default function Products() {
       color: product.color || '',
       minStockLevel: product.minStockLevel || 1,
       // Unit settings
-      bulkUnit: product.bulkUnit || 'كرتونة',
-      smallUnit: product.smallUnit || 'قطعة',
+      bulkUnit: product.bulkUnit || t('products.unitCarton'),
+      smallUnit: product.smallUnit || t('products.unitPiece'),
       conversionFactor: conversionFactor,
       bulkCostPrice: product.bulkCostPrice || 0,
       bulkSalePrice: product.bulkSalePrice || 0,
@@ -684,7 +684,7 @@ export default function Products() {
               </Button>
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -708,7 +708,7 @@ export default function Products() {
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || 'هواتف', costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: 'كرتونة', smallUnit: 'قطعة', conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1095,7 +1095,7 @@ export default function Products() {
                                     <Truck className="w-3.5 h-3.5 text-primary" />
                                     <span className="font-medium text-sm text-primary">{custodyQty}</span>
                                     <span className="text-xs text-muted-foreground">
-                                      {product.smallUnit || 'قطعة'}
+                                      {product.smallUnit || t('products.unitPiece')}
                                     </span>
                                   </div>
                                 </TooltipTrigger>
@@ -1122,14 +1122,14 @@ export default function Products() {
                           <button
                             className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                             onClick={() => openEditDialog(product)}
-                            title="تعديل"
+                            title={t('products.editTitle')}
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
                             onClick={() => openDeleteDialog(product)}
-                            title="حذف"
+                            title={t('products.deleteTitle')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1178,7 +1178,7 @@ export default function Products() {
                       <Barcode className="w-4 h-4" />
                     </Button>
                     {!showBarcode2 && (
-                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title="إضافة باركود ثاني">
+                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
                         <Plus className="w-4 h-4" />
                       </Button>
                     )}
@@ -1201,7 +1201,7 @@ export default function Products() {
                         <Barcode className="w-4 h-4" />
                       </Button>
                       {!showBarcode3 && (
-                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title="إضافة باركود ثالث">
+                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
                           <Plus className="w-4 h-4" />
                         </Button>
                       )}
@@ -1295,7 +1295,7 @@ export default function Products() {
                           إعدادات الوحدات (كرتونة / قطعة)
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {showUnitSettings ? 'إخفاء' : 'عرض'}
+                          {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
                         </span>
                       </Button>
                     </CollapsibleTrigger>
@@ -1527,7 +1527,7 @@ export default function Products() {
                       <Barcode className="w-4 h-4" />
                     </Button>
                     {!showBarcode2 && (
-                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title="إضافة باركود ثاني">
+                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
                         <Plus className="w-4 h-4" />
                       </Button>
                     )}
@@ -1550,7 +1550,7 @@ export default function Products() {
                         <Barcode className="w-4 h-4" />
                       </Button>
                       {!showBarcode3 && (
-                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title="إضافة باركود ثالث">
+                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
                           <Plus className="w-4 h-4" />
                         </Button>
                       )}

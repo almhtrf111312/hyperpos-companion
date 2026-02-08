@@ -213,7 +213,7 @@ export default function Debts() {
 
     const success = await shareDebt(shareData);
     if (success) {
-      toast.success('تم فتح المشاركة');
+      toast.success(t('debts.shareOpened'));
     }
   };
 
@@ -238,7 +238,7 @@ export default function Debts() {
       paymentAmount,
       undefined,
       user?.id,
-      profile?.full_name || user?.email || 'مستخدم'
+      profile?.full_name || user?.email || t('common.user')
     );
 
     // Confirm pending profits proportionally to payment
@@ -249,7 +249,7 @@ export default function Debts() {
       addActivityLog(
         'debt_paid',
         user.id,
-        profile?.full_name || user.email || 'مستخدم',
+        profile?.full_name || user.email || t('common.user'),
         `${t('debts.paymentRecorded')} ${formatCurrency(paymentAmount)} - ${selectedDebt.customerName}`,
         { debtId: selectedDebt.id, amount: paymentAmount, customerName: selectedDebt.customerName }
       );
@@ -297,7 +297,7 @@ export default function Debts() {
         addActivityLog(
           'debt_created',
           user.id,
-          profile?.full_name || user.email || 'مستخدم',
+          profile?.full_name || user.email || t('common.user'),
           `${t('debts.cashDebtCreated')} ${newDebtForm.customerName} - ${formatCurrency(newDebtForm.amount)}`,
           { amount: newDebtForm.amount, customerName: newDebtForm.customerName, isCashDebt: true }
         );
@@ -814,15 +814,15 @@ export default function Debts() {
                 try {
                   const success = await deleteDebtCloud(selectedDebt.id);
                   if (success) {
-                    toast.success('تم حذف الدين بنجاح');
+                    toast.success(t('debts.deleteSuccess'));
                     const debtsData = await loadDebtsCloud();
                     setDebts(debtsData);
                   } else {
-                    toast.error('فشل في حذف الدين');
+                    toast.error(t('debts.deleteFailed'));
                   }
                 } catch (error) {
                   console.error('Delete debt error:', error);
-                  toast.error('حدث خطأ أثناء الحذف');
+                  toast.error(t('common.deleteError'));
                 } finally {
                   setIsDeleting(false);
                   setShowDeleteDialog(false);

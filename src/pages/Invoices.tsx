@@ -151,7 +151,7 @@ export default function Invoices() {
       ]);
       setInvoices(invoicesData);
       setStats(statsData);
-      toast.success('تم حذف الفاتورة بنجاح');
+      toast.success(t('invoices.deleteSuccess'));
       setShowDeleteDialog(false);
       setInvoiceToDelete(null);
     }
@@ -165,7 +165,7 @@ export default function Invoices() {
     // Reload data
     const invoicesData = await loadInvoicesCloud();
     setInvoices(invoicesData);
-    toast.success('تم تحديث حالة الفاتورة والدين');
+    toast.success(t('invoices.statusUpdated'));
   };
 
   // Navigate to debts page to pay installment
@@ -201,7 +201,7 @@ export default function Invoices() {
       }
     } catch (error) {
       console.error('Failed to load store settings for print:', error);
-      toast.error('تعذر تحميل إعدادات المتجر للطباعة');
+      toast.error(t('invoices.printSettingsError'));
     }
 
     const { storeName, storeAddress, storePhone, storeLogo, footer } = storeConfig;
@@ -217,7 +217,7 @@ export default function Invoices() {
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
           </tr>
         `).join('')
-      : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || 'خدمة صيانة'}</td></tr>`;
+      : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || t('invoices.maintenanceService')}</td></tr>`;
 
     const printContent = `
       <!DOCTYPE html>
@@ -454,7 +454,7 @@ export default function Invoices() {
 
     const success = await shareInvoice(shareData);
     if (success) {
-      toast.success('تم فتح المشاركة');
+      toast.success(t('invoices.shareOpened'));
     }
   };
 
@@ -793,7 +793,7 @@ export default function Invoices() {
               )}
 
               <div className="border-t pt-4 space-y-2">
-              {selectedInvoice.discount > 0 && (
+                {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
                     <span className="text-destructive">-{formatCurrency(selectedInvoice.discount)}</span>

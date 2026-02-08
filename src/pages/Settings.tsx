@@ -910,7 +910,7 @@ export default function Settings() {
                   value={currencyNames.TRY}
                   onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
                   className="bg-background border-border"
-                  placeholder="الليرة التركية"
+                  placeholder={t('settings.currencyTryPlaceholder')}
                 />
               </div>
               <div className="space-y-2">
@@ -936,7 +936,7 @@ export default function Settings() {
                   value={currencyNames.SYP}
                   onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
                   className="bg-background border-border"
-                  placeholder="الليرة السورية"
+                  placeholder={t('settings.currencySypPlaceholder')}
                 />
               </div>
               <div className="space-y-2">
@@ -1135,9 +1135,9 @@ export default function Settings() {
                             <p className="text-xs text-muted-foreground">{user.email}</p>
                           )}
                           <p className="text-sm text-muted-foreground">
-                            {user.role === 'admin' ? 'مالك' :
-                              user.userType === 'distributor' ? 'موزع' :
-                                user.userType === 'pos' ? 'نقطة بيع' :
+                            {user.role === 'admin' ? t('settings.userTypeOwner') :
+                              user.userType === 'distributor' ? t('settings.userTypeDistributor') :
+                                user.userType === 'pos' ? t('settings.userTypePOS') :
                                   t('settings.cashier')}
                           </p>
                         </div>
@@ -1316,7 +1316,7 @@ export default function Settings() {
               </div>
               <Button onClick={() => navigate('/boss')} variant="outline" className="gap-2">
                 <ExternalLink className="w-4 h-4" />
-                {isRTL ? 'فتح' : 'Open'}
+                {t('common.open')}
               </Button>
             </div>
             <LicenseManagement />
@@ -1464,7 +1464,7 @@ export default function Settings() {
               </select>
               <p className="text-xs text-muted-foreground">
                 {userForm.userType === 'cashier'
-                  ? 'يعمل في المحل ويرى جميع المنتجات المتاحة'
+                  ? t('settings.userTypeCashierDesc')
                   : userForm.userType === 'pos'
                     ? 'نقطة بيع ثابتة - يرى فقط المنتجات في عهدته'
                     : 'موزع متجول - يرى فقط المنتجات في سيارته/عهدته'}
