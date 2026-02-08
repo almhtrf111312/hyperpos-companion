@@ -279,7 +279,6 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.minStockLevel !== undefined) updates.min_stock_level = data.minStockLevel;
   if (data.expiryDate !== undefined) updates.expiry_date = data.expiryDate || null;
   if (data.image !== undefined) updates.image_url = data.image || null;
-  if (data.customFields !== undefined) updates.custom_fields = data.customFields || null;
   // Unit settings
   if (data.bulkUnit !== undefined) updates.bulk_unit = data.bulkUnit;
   if (data.smallUnit !== undefined) updates.small_unit = data.smallUnit;
@@ -287,6 +286,24 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.bulkCostPrice !== undefined) updates.bulk_cost_price = data.bulkCostPrice;
   if (data.bulkSalePrice !== undefined) updates.bulk_sale_price = data.bulkSalePrice;
   if (data.trackByUnit !== undefined) updates.track_by_unit = data.trackByUnit;
+
+  // ✅ Merge static fields (wholesalePrice, serialNumber, etc.) into custom_fields
+  // These fields are stored inside custom_fields JSONB column, not as separate columns
+  const mergedCustomFields: Record<string, unknown> = {
+    ...(data.customFields || {}),
+    ...(data.serialNumber !== undefined ? { serialNumber: data.serialNumber } : {}),
+    ...(data.warranty !== undefined ? { warranty: data.warranty } : {}),
+    ...(data.wholesalePrice !== undefined ? { wholesalePrice: data.wholesalePrice } : {}),
+    ...(data.size !== undefined ? { size: data.size } : {}),
+    ...(data.color !== undefined ? { color: data.color } : {}),
+  };
+
+  // Only update custom_fields if there's something to merge
+  if (Object.keys(mergedCustomFields).length > 0) {
+    updates.custom_fields = mergedCustomFields;
+  } else if (data.customFields !== undefined) {
+    updates.custom_fields = data.customFields || null;
+  }
 
   const success = await updateInSupabase('products', id, updates);
 
