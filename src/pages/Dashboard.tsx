@@ -195,16 +195,16 @@ export default function Dashboard() {
   }, [loadStats]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-4 space-y-3 md:space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between pr-14 md:pr-0">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
-          <p className="text-muted-foreground mt-1">{today}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
+          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{today}</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
-          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span className="text-sm font-medium text-success">{t('dashboard.synced')}</span>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 border border-success/20">
+          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+          <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
         </div>
       </div>
 
@@ -245,55 +245,55 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid - Capital Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {/* Inventory value */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-info/10">
-              <Package className="w-5 h-5 text-info" />
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-info/10">
+              <Package className="w-4 h-4 text-info" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.inventoryValue')}</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.inventoryValue)}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.inventoryValue')}</p>
+              <p className="text-sm sm:text-base font-bold text-foreground">{formatCurrency(stats.inventoryValue)}</p>
             </div>
           </div>
         </div>
 
         {/* Total capital */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Wallet className="w-5 h-5 text-primary" />
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-primary/10">
+              <Wallet className="w-4 h-4 text-primary" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.totalCapital')}</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.totalCapital)}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.totalCapital')}</p>
+              <p className="text-sm sm:text-base font-bold text-foreground">{formatCurrency(stats.totalCapital)}</p>
             </div>
           </div>
         </div>
 
         {/* Cashbox balance */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <Banknote className="w-5 h-5 text-success" />
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-success/10">
+              <Banknote className="w-4 h-4 text-success" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance')}</p>
-              <p className="text-xl font-bold text-success">{formatCurrency(stats.cashboxBalance)}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.cashboxBalance')}</p>
+              <p className="text-sm sm:text-base font-bold text-success">{formatCurrency(stats.cashboxBalance)}</p>
             </div>
           </div>
         </div>
 
         {/* Available capital */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
-              <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="flex items-center gap-2">
+            <div className={`p-1.5 rounded-md ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
+              <DollarSign className={`w-4 h-4 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital')}</p>
-              <p className={`text-xl font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.liquidCapital')}</p>
+              <p className={`text-sm sm:text-base font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                 {formatCurrency(stats.liquidCapital)}
               </p>
             </div>
@@ -328,14 +328,14 @@ export default function Dashboard() {
       <QuickActions />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Recent Invoices - Takes 2 columns */}
         <div className="lg:col-span-2">
           <RecentInvoices />
         </div>
 
         {/* Right Column */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           <LowStockAlerts />
           <DebtAlerts />
         </div>
