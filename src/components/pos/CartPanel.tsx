@@ -873,13 +873,18 @@ export function CartPanel({
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
 
-    const itemsHtml = cart.map(item => `
+    // ✅ استخدام getItemPrice للسعر الصحيح (جملة أو مفرد)
+    const itemsHtml = cart.map(item => {
+      const itemPrice = getItemPrice(item);
+      const itemTotal = roundCurrency(itemPrice * item.quantity * selectedCurrency.rate);
+      return `
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(item.price * item.quantity * selectedCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(itemTotal)}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const printContent = `
       <!DOCTYPE html>
@@ -924,9 +929,9 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discount}%: -${selectedCurrency.symbol}${formatNumber(discountAmount)}</div>` : ''}
+          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discountType === 'percent' ? discount + '%' : ''}: -${selectedCurrency.symbol}${formatNumber(discountAmount * selectedCurrency.rate)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${selectedCurrency.symbol}${formatNumber(totalInCurrency)}
+            الإجمالي: ${selectedCurrency.symbol}${formatNumber(displayTotalInCurrency)}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -944,22 +949,25 @@ export function CartPanel({
     const store = getStoreSettings();
     const currentDate = new Date().toLocaleDateString('ar-SA');
 
-    // تحضير بيانات الفاتورة للمشاركة
+    // تحضير بيانات الفاتورة للمشاركة - ✅ استخدام getItemPrice و displayTotalInCurrency
     const shareData: InvoiceShareData = {
       id: `POS-${Date.now()}`,
       storeName: store.name,
       storePhone: store.phone,
       customerName: customerName || 'عميل نقدي',
       date: currentDate,
-      items: cart.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.price * item.quantity,
-      })),
-      subtotal,
+      items: cart.map(item => {
+        const itemPrice = getItemPrice(item);  // ✅ استخدام السعر الصحيح (جملة أو مفرد)
+        return {
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: itemPrice,
+          total: roundCurrency(itemPrice * item.quantity),
+        };
+      }),
+      subtotal: subtotal,  // ✅ المجموع الفرعي المحسوب صحيحاً
       discount: discountAmount,
-      total: totalInCurrency,
+      total: displayTotalInCurrency,  // ✅ الإجمالي الصحيح (يأخذ بالاعتبار وضع الجملة والمبلغ المقبوض)
       currencySymbol: selectedCurrency.symbol,
       paymentType: 'cash',
       type: 'sale',
