@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // ====== Fix #11: Precise Financial Calculations ======
-// Round currency values to exactly 2 decimal places to avoid floating-point errors
+// Round currency values to exactly 3 decimal places
 export function roundCurrency(amount: number): number {
-  return Math.round(amount * 100) / 100;
+  return Math.round(amount * 1000) / 1000;  // ✅ 3 decimals
 }
 
 // Safe addition for currency values
@@ -39,7 +39,7 @@ export function percentageOf(amount: number, percentage: number): number {
 }
 
 // Format number with Western numerals (123) - always uses en-US locale
-export function formatNumber(num: number, decimals: number = 0): string {
+export function formatNumber(num: number, decimals: number = 3): string {
   return roundCurrency(num).toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals

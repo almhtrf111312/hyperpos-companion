@@ -20,6 +20,7 @@ import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
+import { App } from '@capacitor/app';
 // POS Product type for display
 interface POSProduct {
   id: string;
@@ -114,6 +115,62 @@ export default function POS() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // ✅ حفظ واستعادة السلة عند الخروج/العودة للتطبيق
+  const CART_STORAGE_KEY = 'hyperpos_temp_cart';
+
+  // حفظ السلة
+  const saveCart = useCallback(() => {
+    if (cart.length > 0) {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+      console.log('[POS] Cart saved:', cart.length, 'items');
+    }
+  }, [cart]);
+
+  // استعادة السلة
+  const restoreCart = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      if (saved) {
+        const items = JSON.parse(saved);
+        if (Array.isArray(items) && items.length > 0) {
+          setCart(items);
+          showToast.success(`تم استعادة ${items.length} منتج`);
+          console.log('[POS] Cart restored:', items.length, 'items');
+        }
+        localStorage.removeItem(CART_STORAGE_KEY);
+      }
+    } catch (e) {
+      console.error('[POS] Failed to restore cart:', e);
+    }
+  }, []);
+
+  // مستمع حالة التطبيق (APK)
+  useEffect(() => {
+    let appListener: { remove: () => void } | null = null;
+
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive && cart.length > 0) {
+        // حفظ عند الخروج
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+        console.log('[POS] App going background, saved cart:', cart.length);
+      } else if (isActive) {
+        // استعادة عند العودة
+        restoreCart();
+      }
+    }).then(listener => {
+      appListener = listener;
+    }).catch(() => {
+      // Not native - use beforeunload
+      window.addEventListener('beforeunload', saveCart);
+    });
+
+    return () => {
+      if (appListener) appListener.remove();
+      window.removeEventListener('beforeunload', saveCart);
+    };
+  }, [cart, saveCart, restoreCart]);
+
   const [discount, setDiscount] = useState(0);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
