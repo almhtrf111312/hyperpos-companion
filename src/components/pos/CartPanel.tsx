@@ -347,7 +347,7 @@ export function CartPanel({
         }
 
         const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
-        const itemProfit = (itemPrice - itemCostPrice) * item.quantity;
+        const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);  // ✅ Rounded!
 
         return {
           id: item.id,
@@ -356,9 +356,7 @@ export function CartPanel({
           quantity: item.quantity,
           total: roundCurrency(itemPrice * item.quantity),
           costPrice: itemCostPrice,
-          profit: wholesaleMode && receivedAmount > 0
-            ? itemProfit  // In wholesale mode profit is calculated from received amount
-            : itemProfit * (1 - discountRatio),
+          profit: roundCurrency(itemProfit * (1 - discountRatio)),  // ✅ Always apply discount
         };
       });
 
@@ -597,16 +595,17 @@ export function CartPanel({
           itemCostPrice = item.costPrice || product?.costPrice || 0;
         }
 
-        const itemProfit = (item.price - itemCostPrice) * item.quantity;
+        const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;  // ✅ Support wholesale
+        const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);  // ✅ Rounded!
 
         return {
           id: item.id,
           name: item.name,
-          price: item.price,
+          price: itemPrice,
           quantity: item.quantity,
-          total: roundCurrency(item.price * item.quantity),
+          total: roundCurrency(itemPrice * item.quantity),
           costPrice: itemCostPrice,
-          profit: itemProfit * discountMultiplier,
+          profit: roundCurrency(itemProfit * discountMultiplier),  // ✅ Rounded!
         };
       });
 
