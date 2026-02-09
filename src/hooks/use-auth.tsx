@@ -124,6 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Use mutable ref to track loading state for safety timeout (avoids stale closure)
+    let isLoadingRef = true;
+
     // Immediately restore from cache for faster UI
     const cachedData = getCachedSession();
     if (cachedData && getStayLoggedInPreference()) {
@@ -133,15 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener BEFORE checking for existing session
     // Safety timeout: if auth takes too long, stop loading but keep cached user
     const safetyTimeout = setTimeout(() => {
-      if (isLoading) {
+      if (isLoadingRef) {
         console.warn('[AuthProvider] Safety timeout reached, forcing loading completion');
         // If we have a cached user, keep them - don't sign out
+        isLoadingRef = false;
         setIsLoading(false);
       }
-    }, 8000); // Increased to 8s for slow Android WebView restarts
+    }, 5000); // 5 seconds is sufficient for most cases
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        // Mark as no longer loading since we got an auth state change
+        isLoadingRef = false;
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
@@ -242,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // No session - try device auto-login
         const autoLoginSuccess = await attemptDeviceAutoLogin();
         if (!autoLoginSuccess) {
+          isLoadingRef = false;
           setIsLoading(false);
           cacheSession(null);
         }
@@ -258,12 +266,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Try device auto-login as fallback
         const autoLoginSuccess = await attemptDeviceAutoLogin();
         if (!autoLoginSuccess) {
+          isLoadingRef = false;
           setIsLoading(false);
           cacheSession(null);
         }
         return;
       }
-      // The onAuthStateChange will handle setting the session
+
+      // Session is valid - onAuthStateChange should fire, but add backup timeout
+      // This handles cases where onAuthStateChange doesn't fire on app reopen
+      setTimeout(() => {
+        if (isLoadingRef) {
+          console.log('[AuthProvider] Session valid, backup timeout forcing loading completion');
+          isLoadingRef = false;
+          setIsLoading(false);
+        }
+      }, 1500);
     });
 
     // Periodic session refresh for Android background
@@ -283,6 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
       clearInterval(refreshInterval);
+      clearTimeout(safetyTimeout);
     };
   }, [fetchProfile]);
 
