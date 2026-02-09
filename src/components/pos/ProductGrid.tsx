@@ -88,7 +88,7 @@ export function ProductGrid({
       setDetailsDialogOpen(true);
       // Haptic feedback if available
       if (navigator.vibrate) navigator.vibrate(50);
-    }, 500); // 500ms long press
+    }, 800); // 800ms long press (more specific/deliberate)
   };
 
   const handleLongPressEnd = () => {
@@ -158,6 +158,7 @@ export function ProductGrid({
               onTouchStart={() => handleLongPressStart(product)}
               onTouchEnd={handleLongPressEnd}
               onTouchCancel={handleLongPressEnd}
+              onTouchMove={handleLongPressEnd} // ✅ Cancel on scroll/move
               onMouseDown={() => handleLongPressStart(product)}
               onMouseUp={handleLongPressEnd}
               onMouseLeave={handleLongPressEnd}
