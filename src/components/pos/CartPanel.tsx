@@ -254,13 +254,15 @@ export function CartPanel({
   const total = taxableAmount + taxAmount;
   const totalInCurrency = total * selectedCurrency.rate;
 
-  // Wholesale profit calculation: Subtotal - COGS (NOT receivedAmount!)
-  const wholesaleCOGS = cart.reduce((sum, item) => {
+  // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
+  const wholesaleCOGS = roundCurrency(cart.reduce((sum, item) => {
     const costPrice = item.costPrice || 0;
     return sum + costPrice * item.quantity;
-  }, 0);
+  }, 0));
+
+  // ✅ الربح = المبلغ المستلم - رأس المال
   const wholesaleProfit = wholesaleMode
-    ? roundCurrency(subtotal - wholesaleCOGS)  // ✅ Use subtotal
+    ? roundCurrency((receivedAmount > 0 ? receivedAmount : subtotal) - wholesaleCOGS)
     : undefined;
 
   const handleCashSale = () => {
@@ -390,9 +392,10 @@ export function CartPanel({
         soldItems.push({ name: item.name, quantity: item.quantity, price: wholesaleMode ? getItemPrice(item) : item.price });
       });
 
-      // In wholesale mode, use subtotal for profit (NOT receivedAmount!)
+      // ✅ الربح = المبلغ المستلم - رأس المال (في الجملة)
+      const actualSaleAmount = wholesaleMode && receivedAmount > 0 ? receivedAmount : subtotal;
       const finalProfit = wholesaleMode
-        ? roundCurrency(subtotal - totalCOGS)
+        ? roundCurrency(actualSaleAmount - totalCOGS)  // ✅ receivedAmount - COGS
         : totalProfit;
 
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
@@ -1333,8 +1336,18 @@ export function CartPanel({
                 </div>
               </>
             )}
-            <div className="flex justify-between text-base md:text-lg font-bold pt-2 border-t border-border">
-              <span>{t('pos.total')}</span>
+            <div className="flex justify-between items-center text-base md:text-lg font-bold pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                <span>{t('pos.total')}</span>
+                {/* زر الآلة الحاسبة */}
+                <button
+                  onClick={() => setShowCalculator(true)}
+                  className="w-7 h-7 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-sm"
+                  title="آلة حاسبة"
+                >
+                  ⊞
+                </button>
+              </div>
               <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
                 {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
               </span>
