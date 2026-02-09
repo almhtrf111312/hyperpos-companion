@@ -206,6 +206,7 @@ export default function Expenses() {
       setShowAddDialog(false);
       resetForm();
       toast.success(t('expenses.expenseAdded'));
+      import('@/lib/auto-backup').then(({ performActionBackup }) => performActionBackup(`Add Expense - ${formData.type}`));
     } finally {
       savingRef.current = false;
       setIsSaving(false);

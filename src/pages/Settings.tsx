@@ -1348,8 +1348,8 @@ export default function Settings() {
         </Button>
       </div>
 
-      {/* Tabs Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      {/* Tabs Grid - Compact Design */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
         {settingsTabs
           .filter(tab => {
             // Boss sees everything
@@ -1364,22 +1364,22 @@ export default function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200",
+                "flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all duration-200 h-full justify-center", // Reduced padding and gap
                 activeTab === tab.id
-                  ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
-                  : "border-border bg-card hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
+                  ? "border-primary bg-primary/10 shadow-sm scale-[1.02]"
+                  : "border-border bg-card hover:bg-muted hover:border-primary/50"
               )}
             >
               <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                "w-8 h-8 rounded-lg flex items-center justify-center transition-colors", // Smaller icon container
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
               )}>
-                <tab.icon className="w-6 h-6" />
+                <tab.icon className="w-4 h-4" /> {/* Smaller icon */}
               </div>
               <span className={cn(
-                "font-medium text-sm text-center leading-tight",
+                "font-medium text-xs text-center leading-tight line-clamp-2", // Smaller text
                 activeTab === tab.id ? "text-primary" : "text-foreground"
               )}>
                 {tab.label}

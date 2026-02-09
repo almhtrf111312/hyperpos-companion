@@ -244,110 +244,111 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
       applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
     }
-  }
     setIsInitialized(true);
+  }, []);
 
   // ✅ Listen for Auth changes to load theme from cloud
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user?.user_metadata?.theme) {
-      const theme = session.user.user_metadata.theme;
-      const finalMode = theme.mode || DEFAULT_MODE;
-      const finalColor = theme.color || DEFAULT_COLOR;
-      const finalBlur = theme.blur ?? DEFAULT_BLUR;
-      const finalTransparency = theme.transparency ?? DEFAULT_TRANSPARENCY;
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user?.user_metadata?.theme) {
+        const theme = session.user.user_metadata.theme;
+        const finalMode = theme.mode || DEFAULT_MODE;
+        const finalColor = theme.color || DEFAULT_COLOR;
+        const finalBlur = theme.blur ?? DEFAULT_BLUR;
+        const finalTransparency = theme.transparency ?? DEFAULT_TRANSPARENCY;
 
-      setModeState(finalMode);
-      setColorState(finalColor);
-      setBlurEnabledState(finalBlur);
-      setTransparencyLevelState(finalTransparency);
+        setModeState(finalMode);
+        setColorState(finalColor);
+        setBlurEnabledState(finalBlur);
+        setTransparencyLevelState(finalTransparency);
 
-      applyTheme(finalMode, finalColor);
-      applyBlurTheme(finalBlur, finalMode, finalTransparency);
+        applyTheme(finalMode, finalColor);
+        applyBlurTheme(finalBlur, finalMode, finalTransparency);
 
-      // Update local storage to match cloud
-      localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({
-        mode: finalMode,
-        color: finalColor,
-        blur: finalBlur,
-        transparency: finalTransparency
-      }));
-    }
-  });
-
-  return () => {
-    subscription.unsubscribe();
-  };
-}, []);
-
-const saveTheme = async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
-  // 1. Save locally
-  localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: m, color: c, blur: b, transparency: t }));
-
-  // 2. Save to cloud (user_metadata)
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    await supabase.auth.updateUser({
-      data: {
-        theme: {
-          mode: m,
-          color: c,
-          blur: b,
-          transparency: t
-        }
+        // Update local storage to match cloud
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({
+          mode: finalMode,
+          color: finalColor,
+          blur: finalBlur,
+          transparency: finalTransparency
+        }));
       }
     });
-  }
-};
 
-const setMode = (newMode: ThemeMode) => {
-  setModeState(newMode);
-  applyTheme(newMode, color);
-  applyBlurTheme(blurEnabled, newMode, transparencyLevel);
-  saveTheme(newMode, color, blurEnabled, transparencyLevel);
-};
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
-const setColor = (newColor: ThemeColor) => {
-  setColorState(newColor);
-  applyTheme(mode, newColor);
-  saveTheme(mode, newColor, blurEnabled, transparencyLevel);
-};
+  const saveTheme = async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
+    // 1. Save locally
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: m, color: c, blur: b, transparency: t }));
 
-const setBlurEnabled = (enabled: boolean) => {
-  setBlurEnabledState(enabled);
-  applyBlurTheme(enabled, mode, transparencyLevel);
-  saveTheme(mode, color, enabled, transparencyLevel);
-};
+    // 2. Save to cloud (user_metadata)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase.auth.updateUser({
+        data: {
+          theme: {
+            mode: m,
+            color: c,
+            blur: b,
+            transparency: t
+          }
+        }
+      });
+    }
+  };
 
-const setTransparencyLevel = (level: number) => {
-  setTransparencyLevelState(level);
-  applyBlurTheme(blurEnabled, mode, level);
-  saveTheme(mode, color, blurEnabled, level);
-};
+  const setMode = (newMode: ThemeMode) => {
+    setModeState(newMode);
+    applyTheme(newMode, color);
+    applyBlurTheme(blurEnabled, newMode, transparencyLevel);
+    saveTheme(newMode, color, blurEnabled, transparencyLevel);
+  };
 
-const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
-  setModeState(newMode);
-  setColorState(newColor);
-  applyTheme(newMode, newColor);
-  applyBlurTheme(blurEnabled, newMode, transparencyLevel);
-  saveTheme(newMode, newColor, blurEnabled, transparencyLevel);
-};
+  const setColor = (newColor: ThemeColor) => {
+    setColorState(newColor);
+    applyTheme(mode, newColor);
+    saveTheme(mode, newColor, blurEnabled, transparencyLevel);
+  };
 
-const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean, transparency?: number) => {
-  const t = transparency ?? transparencyLevel;
-  setModeState(newMode);
-  setColorState(newColor);
-  setBlurEnabledState(blur);
-  setTransparencyLevelState(t);
-  applyTheme(newMode, newColor);
-  applyBlurTheme(blur, newMode, t);
-  saveTheme(newMode, newColor, blur, t);
-};
+  const setBlurEnabled = (enabled: boolean) => {
+    setBlurEnabledState(enabled);
+    applyBlurTheme(enabled, mode, transparencyLevel);
+    saveTheme(mode, color, enabled, transparencyLevel);
+  };
 
-return (
-  <ThemeContext.Provider value={{ mode, color, blurEnabled, transparencyLevel, setMode, setColor, setBlurEnabled, setTransparencyLevel, setTheme, setFullTheme }}>
-    {children}
-  </ThemeContext.Provider>
-);
+  const setTransparencyLevel = (level: number) => {
+    setTransparencyLevelState(level);
+    applyBlurTheme(blurEnabled, mode, level);
+    saveTheme(mode, color, blurEnabled, level);
+  };
+
+  const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
+    setModeState(newMode);
+    setColorState(newColor);
+    applyTheme(newMode, newColor);
+    applyBlurTheme(blurEnabled, newMode, transparencyLevel);
+    saveTheme(newMode, newColor, blurEnabled, transparencyLevel);
+  };
+
+  const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean, transparency?: number) => {
+    const t = transparency ?? transparencyLevel;
+    setModeState(newMode);
+    setColorState(newColor);
+    setBlurEnabledState(blur);
+    setTransparencyLevelState(t);
+    applyTheme(newMode, newColor);
+    applyBlurTheme(blur, newMode, t);
+    saveTheme(newMode, newColor, blur, t);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ mode, color, blurEnabled, transparencyLevel, setMode, setColor, setBlurEnabled, setTransparencyLevel, setTheme, setFullTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {
