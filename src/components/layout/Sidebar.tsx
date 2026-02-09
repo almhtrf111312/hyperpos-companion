@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  CreditCard, 
-  Wrench, 
-  UserCheck, 
-  BarChart3, 
-  Settings, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Users,
+  CreditCard,
+  Wrench,
+  UserCheck,
+  BarChart3,
+  Settings,
   ChevronRight,
   LogOut,
   Zap,
@@ -76,21 +76,15 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
   // Close sidebar on mobile, collapse on tablet when navigating
   useEffect(() => {
-    // تأخير بسيط لضمان انسيابية الحركة على جميع الصفحات
-    const timer = setTimeout(() => {
-      // على iPad: طي القائمة (العودة للأيقونات فقط)
-      if (isTablet && !collapsed) {
-        setCollapsed(true);
-      }
-      // على الموبايل: إغلاق القائمة بالكامل
-      if (isMobile && isOpen) {
-        onToggle();
-      }
-    }, 100); // 100ms delay للانسيابية
-    
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+    // على iPad: طي القائمة (العودة للأيقونات فقط)
+    if (isTablet && !collapsed) {
+      setCollapsed(true);
+    }
+    // على الموبايل: إغلاق القائمة بالكامل
+    if (isMobile && isOpen) {
+      onToggle();
+    }
+  }, [location.pathname, isTablet, isMobile]);
 
   // Close sidebar on orientation change to prevent stuck overlay
   useEffect(() => {
@@ -103,7 +97,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
     // Support both old and new orientation APIs
     window.addEventListener('orientationchange', handleOrientationChange);
-    
+
     // Also listen to resize as fallback for orientation detection
     let lastWidth = window.innerWidth;
     const handleResize = () => {
@@ -148,18 +142,18 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     <>
       {/* Mobile overlay */}
       {isMobile && isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 transition-opacity"
           onClick={onToggle}
         />
       )}
 
-      <aside 
+      <aside
         className={cn(
           "fixed top-0 h-screen bg-sidebar z-50 transition-all duration-300 flex flex-col",
           // RTL: sidebar on right, LTR: sidebar on left
           isRTL ? "right-0 border-l border-sidebar-border" : "left-0 border-r border-sidebar-border",
-          isMobile 
+          isMobile
             ? cn("w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
             : cn(effectiveCollapsed ? "w-20" : "w-64")
         )}
@@ -170,25 +164,25 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
             <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center glow">
               <Zap className="w-6 h-6 text-primary-foreground" />
             </div>
-          {(!effectiveCollapsed || isMobile) && (
+            {(!effectiveCollapsed || isMobile) && (
               <div>
                 <h1 className="font-bold text-lg text-foreground">FlowPOS Pro</h1>
                 <p className="text-xs text-muted-foreground">{t('sidebar.systemDesc')}</p>
               </div>
             )}
           </div>
-          
+
           {/* أزرار التحكم - المزامنة + الحالة + الجرس + زر الطي/الإغلاق */}
           <div className="flex items-center gap-1">
             {/* حالة طابور المزامنة */}
             <SyncQueueIndicator />
-            
+
             {/* حالة الاتصال */}
             <NetworkStatusIndicator compact={effectiveCollapsed} />
-            
+
             {/* جرس الإشعارات */}
             <NotificationBell compact={true} />
-            
+
             {isMobile ? (
               <button
                 onClick={onToggle}
@@ -208,7 +202,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                 <ChevronRight className={cn(
                   "w-4 h-4 transition-transform duration-300",
                   // Flip arrow direction based on RTL and collapsed state
-                  effectiveCollapsed 
+                  effectiveCollapsed
                     ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
                     : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
                 )} />
@@ -228,8 +222,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     to={item.path}
                     className={cn(
                       "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-lg glow" 
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-lg glow"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                       effectiveCollapsed && !isMobile && "justify-center px-0"
                     )}
@@ -280,7 +274,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
               </div>
             )}
             {(!effectiveCollapsed || isMobile) && (
-              <button 
+              <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg hover:bg-sidebar-border transition-colors text-muted-foreground hover:text-destructive"
                 title={t('auth.logout')}
@@ -299,13 +293,12 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
   // Get RTL state from document direction
   const isRTL = document.documentElement.dir === 'rtl';
-  
+
   return (
     <button
       onClick={onClick}
-      className={`fixed top-4 z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden ${
-        isRTL ? 'right-4' : 'left-4'
-      }`}
+      className={`fixed top-4 z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden ${isRTL ? 'right-4' : 'left-4'
+        }`}
     >
       <Menu className="w-6 h-6" />
     </button>

@@ -1376,8 +1376,8 @@ export function CartPanel({
                 <span className="font-semibold">{customerName || 'بدون اسم'}</span>
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>الإجمالي:</span>
-                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
+                <span>المبلغ المطلوب:</span>
+                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}</span>
               </div>
             </div>
             <div className="flex gap-3">
@@ -1430,7 +1430,7 @@ export function CartPanel({
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>مبلغ الدين:</span>
-                <span>{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
+                <span>{selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}</span>
               </div>
             </div>
             <div className="flex gap-3">
