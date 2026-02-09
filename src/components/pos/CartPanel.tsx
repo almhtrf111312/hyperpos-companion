@@ -200,6 +200,12 @@ export function CartPanel({
     ? roundCurrency((receivedAmount > 0 ? receivedAmount : subtotal) - wholesaleCOGS)
     : undefined;
 
+  // ✅ الإجمالي المعروض = المبلغ المقبوض في الجملة (when entered)
+  const displayTotal = wholesaleMode && receivedAmount > 0
+    ? receivedAmount
+    : total;
+  const displayTotalInCurrency = displayTotal * selectedCurrency.rate;
+
   const handleCashSale = () => {
     if (cart.length === 0) return;
     setShowCashDialog(true);
@@ -365,6 +371,10 @@ export function CartPanel({
         };
       });
 
+      // In wholesale mode, if receivedAmount is entered, that IS the total
+      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
+      const effectiveTotalInCurrency = effectiveTotal * selectedCurrency.rate;
+
       // Create invoice in cloud
       const invoice = await addInvoiceCloud({
         type: 'sale',
@@ -375,8 +385,8 @@ export function CartPanel({
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate,
         taxAmount,
-        total: totalSnapshot,
-        totalInCurrency,
+        total: effectiveTotal,  // ✅ Use effective total
+        totalInCurrency: effectiveTotalInCurrency, // ✅ Use effective total currency
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
         paymentType: 'cash',
@@ -393,7 +403,7 @@ export function CartPanel({
       const backgroundTasks = [];
 
       // تسجيل الربح
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, effectiveTotal);
 
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
@@ -431,7 +441,7 @@ export function CartPanel({
 
       // Update customer stats
       if (customer) {
-        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, false));
+        backgroundTasks.push(updateCustomerStatsCloud(customer.id, effectiveTotal, false));
       }
 
       // Run background tasks in parallel
@@ -444,12 +454,12 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع نقدي بقيمة $${formatNumber(totalSnapshot)} - المنتجات: ${itemsDescription}`,
-          { invoiceId: invoice.id, total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
+          `عملية بيع نقدي بقيمة $${formatNumber(effectiveTotal)} - المنتجات: ${itemsDescription}`,
+          { invoiceId: invoice.id, total: effectiveTotal, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
         );
       }
 
-      addSalesToShift(totalSnapshot);
+      addSalesToShift(effectiveTotal);
       recordActivity();
 
       // ✅ Clear cart only after successful save
@@ -460,11 +470,14 @@ export function CartPanel({
     } catch (error) {
       console.error('Cash sale error:', error);
 
+      // Recalculate effective total for local save
+      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
+
       // في حالة الفشل، حفظ محلياً
       addToQueue('invoice_create', {
         invoice: {
           customer_name: customerNameSnapshot || 'عميل نقدي',
-          total: totalSnapshot,
+          total: effectiveTotal,
           items: cartSnapshot,
         },
         timestamp: Date.now(),
@@ -614,6 +627,10 @@ export function CartPanel({
         };
       });
 
+      // In wholesale mode, if receivedAmount is entered, that IS the total
+      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
+      const effectiveTotalInCurrency = effectiveTotal * selectedCurrency.rate;
+
       // Create invoice using Cloud API
       const invoice = await addInvoiceCloud({
         type: 'sale',
@@ -624,8 +641,8 @@ export function CartPanel({
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate,
         taxAmount,
-        total: totalSnapshot,
-        totalInCurrency,
+        total: effectiveTotal,  // ✅ Use effective total
+        totalInCurrency: effectiveTotalInCurrency, // ✅ Use effective total currency
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
         paymentType: 'debt',
@@ -642,10 +659,10 @@ export function CartPanel({
       const backgroundTasks = [];
 
       // تسجيل الربح
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, effectiveTotal);
 
       // Create debt record
-      backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', totalSnapshot));
+      backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', effectiveTotal));
 
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
@@ -686,7 +703,7 @@ export function CartPanel({
 
       // Update customer stats
       if (customer) {
-        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, true));
+        backgroundTasks.push(updateCustomerStatsCloud(customer.id, effectiveTotal, true));
       }
 
       // Run all background tasks in parallel
@@ -700,10 +717,10 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع بالدين بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          `عملية بيع بالدين بقيمة $${formatNumber(effectiveTotal)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
           {
             invoiceId: invoice.id,
-            total: totalSnapshot,
+            total: effectiveTotal,
             itemsCount: cartSnapshot.length,
             customerName: customerNameSnapshot,
             paymentType: 'debt',
@@ -715,8 +732,8 @@ export function CartPanel({
           'debt_created',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
-          { invoiceId: invoice.id, amount: totalSnapshot, customerName: customerNameSnapshot }
+          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(effectiveTotal)}`,
+          { invoiceId: invoice.id, amount: effectiveTotal, customerName: customerNameSnapshot }
         );
       }
 
@@ -728,12 +745,15 @@ export function CartPanel({
     } catch (error) {
       console.error('Debt sale error:', error);
 
+      // Recalculate effective total for local save
+      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
+
       // في حالة الفشل، حفظ محلياً
       const bundle = {
         invoiceData: {
           customer_name: customerNameSnapshot || 'عميل',
           customer_phone: customerPhoneSnapshot || '',
-          total: totalSnapshot,
+          total: effectiveTotal,
           items: cartSnapshot,
         },
         timestamp: Date.now(),
@@ -1284,7 +1304,7 @@ export function CartPanel({
                 </button>
               </div>
               <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
-                {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
+                {selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}
               </span>
             </div>
           </div>
