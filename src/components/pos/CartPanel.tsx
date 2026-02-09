@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   ShoppingCart,
   Plus,
@@ -62,6 +62,8 @@ import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addToQueue } from '@/lib/sync-queue';
 import { useNetworkStatus } from '@/hooks/use-network-status';
+import { Calculator } from '@/components/ui/Calculator';
+import { App } from '@capacitor/app';
 
 interface CartItem {
   id: string;
@@ -148,6 +150,71 @@ export function CartPanel({
   // Smart customer search feature
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);  // ✅ آلة حاسبة
+
+  // ✅ حفظ واستعادة السلة تلقائياً
+  const CART_STORAGE_KEY = 'hyperpos_temp_cart';
+
+  const saveCartToStorage = useCallback(() => {
+    if (cart.length > 0) {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({
+        cart,
+        customerName,
+        wholesaleMode,
+        discount,
+        discountType,
+        savedAt: new Date().toISOString()
+      }));
+    }
+  }, [cart, customerName, wholesaleMode, discount, discountType]);
+
+  const restoreCartFromStorage = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        // Only restore if saved within last 24 hours
+        const savedAt = new Date(data.savedAt);
+        const now = new Date();
+        if ((now.getTime() - savedAt.getTime()) < 24 * 60 * 60 * 1000) {
+          // Restore settings only (cart items are managed by parent)
+          if (data.customerName) onCustomerNameChange(data.customerName);
+          if (data.wholesaleMode) setWholesaleMode(data.wholesaleMode);
+          if (data.discount) onDiscountChange(data.discount);
+          if (data.discountType) setDiscountType(data.discountType);
+          if (data.cart && data.cart.length > 0) {
+            showToast.info(`لديك ${data.cart.length} منتج محفوظ - قم بإضافتها يدوياً`);
+          }
+        }
+        localStorage.removeItem(CART_STORAGE_KEY);
+      }
+    } catch (e) {
+      console.error('Failed to restore cart:', e);
+    }
+  }, [onCustomerNameChange, onDiscountChange]);
+
+  // حفظ السلة عند الخروج للخلفية
+  useEffect(() => {
+    const handleAppState = ({ isActive }: { isActive: boolean }) => {
+      if (!isActive && cart.length > 0) {
+        saveCartToStorage();
+      }
+    };
+
+    App.addListener('appStateChange', handleAppState).catch(() => {
+      // Not on native platform, use beforeunload
+      window.addEventListener('beforeunload', saveCartToStorage);
+    });
+
+    // استعادة عند التحميل
+    restoreCartFromStorage();
+
+    return () => {
+      App.removeAllListeners().catch(() => { });
+      window.removeEventListener('beforeunload', saveCartToStorage);
+    };
+  }, [saveCartToStorage, restoreCartFromStorage]);
+
 
   // Load customers on mount
   useEffect(() => {
@@ -1231,6 +1298,14 @@ export function CartPanel({
                 min="0"
                 dir="ltr"
               />
+              {/* زر الآلة الحاسبة */}
+              <button
+                onClick={() => setShowCalculator(true)}
+                className="w-9 h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center flex-shrink-0 transition-colors"
+                title="آلة حاسبة"
+              >
+                <span className="text-lg font-bold">⊞</span>
+              </button>
             </div>
           )}
 
@@ -1464,6 +1539,13 @@ export function CartPanel({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* آلة حاسبة */}
+      <Calculator
+        isOpen={showCalculator}
+        onClose={() => setShowCalculator(false)}
+        onResult={(value) => setReceivedAmount(value)}
+      />
     </>
   );
 }
