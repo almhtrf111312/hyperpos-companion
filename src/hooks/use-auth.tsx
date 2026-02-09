@@ -135,26 +135,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Helper to clear all auth state and redirect to login
-    const clearAuthAndFinish = () => {
-      console.log('[AuthProvider] 🧹 Aggressively clearing ALL auth state...');
+    // ===== TWO CLEARING STRATEGIES =====
+
+    // Strategy 1: Just show login page (no reload needed - used when there's no session at all)
+    const showLoginPage = () => {
+      console.log('[AuthProvider] No valid session, showing login page');
       setUser(null);
       setSession(null);
       setProfile(null);
       cacheSession(null);
+      finishLoading();
+    };
 
-      // ✅ Aggressively clear ALL Supabase auth tokens from localStorage
+    // Strategy 2: Nuclear cleanup + reload (used when there's a STALE session that's corrupting state)
+    const clearAuthAndReload = async () => {
+      console.log('[AuthProvider] 🧹 Nuclear cleanup: clearing ALL auth state + reload...');
+
+      // Step 1: Try local-only signOut (don't contact server)
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        console.warn('[AuthProvider] Local signOut failed, continuing cleanup');
+      }
+
+      // Step 2: Clear ALL Supabase auth tokens from localStorage
       try {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && (
-            key.startsWith('sb-') ||                    // Supabase auth tokens
-            key === STAY_LOGGED_IN_KEY ||                // Stay logged in flag
-            key === SESSION_CACHE_KEY ||                 // Our session cache
-            key === 'supabase.auth.token' ||             // Legacy Supabase token
-            key.includes('auth-token') ||                // Any auth token variant
-            key.includes('supabase')                     // Any supabase-related key
+            key.startsWith('sb-') ||
+            key === STAY_LOGGED_IN_KEY ||
+            key === SESSION_CACHE_KEY ||
+            key === 'supabase.auth.token' ||
+            key.includes('auth-token') ||
+            key.includes('supabase')
           )) {
             keysToRemove.push(key);
           }
@@ -163,14 +178,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthProvider] 🗑️ Removing localStorage key:', key);
           localStorage.removeItem(key);
         });
-
-        // Also clear sessionStorage auth keys
-        sessionStorage.removeItem(AUTO_LOGIN_ATTEMPTED_KEY);
+        sessionStorage.clear();
       } catch (err) {
         console.error('[AuthProvider] Error clearing storage:', err);
       }
 
-      finishLoading();
+      // Step 3: Force reload to destroy stale Supabase client in memory
+      console.log('[AuthProvider] 🔄 Forcing page reload for clean state...');
+      window.location.reload();
     };
 
     // Immediately restore from cache for faster UI (temporary until verified)
@@ -180,12 +195,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // ===== SAFETY TIMEOUT =====
-    // Absolute maximum time before forcing loading to complete
     const safetyTimeout = setTimeout(() => {
       if (isLoadingRef) {
         console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (4s) - forcing loading completion');
-        // Don't keep a potentially invalid cached user - clear everything
-        clearAuthAndFinish();
+        // Safety timeout: just show login, don't reload (avoids infinite loop)
+        showLoginPage();
       }
     }, 4000);
 
@@ -310,7 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Try auto-login, then finish
           const autoLoginSuccess = await attemptDeviceAutoLogin();
           if (!autoLoginSuccess) {
-            clearAuthAndFinish();
+            showLoginPage();
           }
           return;
         }
@@ -332,7 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Try auto-login as fallback
             const autoLoginSuccess = await attemptDeviceAutoLogin();
             if (!autoLoginSuccess) {
-              clearAuthAndFinish();
+              clearAuthAndReload();
             }
             return;
           }
@@ -361,7 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (userError || !currentUser) {
               console.warn('[AuthProvider] ❌ User verification failed:', userError?.message);
               try { await supabase.auth.signOut(); } catch { /* ignore */ }
-              clearAuthAndFinish();
+              clearAuthAndReload();
               return;
             }
 
@@ -387,12 +401,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[AuthProvider] Unexpected refresh error:', refreshErr);
           // If refresh throws unexpectedly, clear auth
           try { await supabase.auth.signOut(); } catch { /* ignore */ }
-          clearAuthAndFinish();
+          clearAuthAndReload();
         }
 
       } catch (err) {
         console.error('[AuthProvider] Auth initialization error:', err);
-        clearAuthAndFinish();
+        clearAuthAndReload();
       }
     };
 
