@@ -9,6 +9,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
+import { saveToOfflineCache, loadFromOfflineCache } from '../offline-cache';
 
 export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
 export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'cash_adjustment' | 'other';
@@ -108,67 +109,78 @@ const CACHE_TTL = 30000;
 // Load expenses - cashiers see only their expenses, owners see all
 export const loadExpensesCloud = async (): Promise<Expense[]> => {
   const userId = getCurrentUserId();
-  if (!userId) return [];
+  if (!userId) {
+    const cached = loadFromOfflineCache<Expense[]>('expenses');
+    if (cached) return cached;
+    return [];
+  }
 
   if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return expensesCache;
   }
 
-  // Check if user is cashier for filtering
-  const isCashier = await isCashierUser();
-  
-  let cloudExpenses: (CloudExpense & { cashier_name?: string })[];
-  
-  if (isCashier) {
-    // Cashiers see only their own expenses
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from('expenses')
-      .select('*')
-      .eq('cashier_id', userId)
-      .order('created_at', { ascending: false });
+  try {
+    const isCashier = await isCashierUser();
     
-    if (error) {
-      console.error('Error fetching cashier expenses:', error);
-      cloudExpenses = [];
-    } else {
-      cloudExpenses = data || [];
-    }
-  } else {
-    // Owners see all expenses (via RLS)
-    cloudExpenses = await fetchFromSupabase<CloudExpense>('expenses', {
-      column: 'created_at',
-      ascending: false,
-    });
-  }
-
-  // Fetch cashier names for expenses with cashier_id
-  const cashierIds = [...new Set(cloudExpenses.filter(e => e.cashier_id).map(e => e.cashier_id!))];
-  if (cashierIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profiles } = await (supabase as any)
-      .from('profiles')
-      .select('user_id, full_name')
-      .in('user_id', cashierIds);
+    let cloudExpenses: (CloudExpense & { cashier_name?: string })[];
     
-    if (profiles) {
-      const nameMap: Record<string, string> = {};
-      profiles.forEach((p: { user_id: string; full_name: string }) => {
-        nameMap[p.user_id] = p.full_name;
-        cashierNamesCache[p.user_id] = p.full_name;
-      });
+    if (isCashier) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('expenses')
+        .select('*')
+        .eq('cashier_id', userId)
+        .order('created_at', { ascending: false });
       
-      cloudExpenses = cloudExpenses.map(e => ({
-        ...e,
-        cashier_name: e.cashier_id ? nameMap[e.cashier_id] : undefined,
-      }));
+      if (error) {
+        console.error('Error fetching cashier expenses:', error);
+        cloudExpenses = [];
+      } else {
+        cloudExpenses = data || [];
+      }
+    } else {
+      cloudExpenses = await fetchFromSupabase<CloudExpense>('expenses', {
+        column: 'created_at',
+        ascending: false,
+      });
     }
-  }
 
-  expensesCache = cloudExpenses.map(toExpense);
-  cacheTimestamp = Date.now();
-  
-  return expensesCache;
+    // Fetch cashier names
+    const cashierIds = [...new Set(cloudExpenses.filter(e => e.cashier_id).map(e => e.cashier_id!))];
+    if (cashierIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profiles } = await (supabase as any)
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', cashierIds);
+      
+      if (profiles) {
+        const nameMap: Record<string, string> = {};
+        profiles.forEach((p: { user_id: string; full_name: string }) => {
+          nameMap[p.user_id] = p.full_name;
+          cashierNamesCache[p.user_id] = p.full_name;
+        });
+        
+        cloudExpenses = cloudExpenses.map(e => ({
+          ...e,
+          cashier_name: e.cashier_id ? nameMap[e.cashier_id] : undefined,
+        }));
+      }
+    }
+
+    expensesCache = cloudExpenses.map(toExpense);
+    cacheTimestamp = Date.now();
+    
+    saveToOfflineCache('expenses', expensesCache);
+    
+    return expensesCache;
+  } catch (error) {
+    console.error('[ExpensesCloud] Failed to fetch:', error);
+    const cached = loadFromOfflineCache<Expense[]>('expenses');
+    if (cached) return cached;
+    if (expensesCache) return expensesCache;
+    return [];
+  }
 };
 
 export const invalidateExpensesCache = () => {
@@ -250,6 +262,14 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
   const expense = expenses.find(e => e.id === id);
   
   if (!expense) return false;
+
+  // حفظ نسخة في سلة المحذوفات
+  try {
+    const { addToTrash } = await import('../trash-store');
+    addToTrash('expense', `${expense.typeLabel} - ${expense.amount}`, expense as unknown as Record<string, unknown>);
+  } catch (e) {
+    console.warn('[deleteExpenseCloud] Failed to save to trash:', e);
+  }
   
   // Refund partners
   if (expense.distributions.length > 0) {

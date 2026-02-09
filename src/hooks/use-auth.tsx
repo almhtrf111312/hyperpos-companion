@@ -66,10 +66,10 @@ const getCachedSession = () => {
     const cached = localStorage.getItem(SESSION_CACHE_KEY);
     if (cached) {
       const data = JSON.parse(cached);
-      // Check if cache is less than 1 hour old and not expired
+      // Check if cache is less than 7 days old (much longer for Android reopens)
       const cacheAge = Date.now() - data.cached_at;
       const isExpired = data.expires_at && Date.now() / 1000 > data.expires_at;
-      if (cacheAge < 3600000 && !isExpired) {
+      if (cacheAge < 604800000 && !isExpired) { // 7 days
         return data;
       }
     }
@@ -131,13 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Set up auth state listener BEFORE checking for existing session
-    // Safety timeout: if auth takes too long, stop loading to prevent infinite loop
+    // Safety timeout: if auth takes too long, stop loading but keep cached user
     const safetyTimeout = setTimeout(() => {
       if (isLoading) {
         console.warn('[AuthProvider] Safety timeout reached, forcing loading completion');
+        // If we have a cached user, keep them - don't sign out
         setIsLoading(false);
       }
-    }, 4000);
+    }, 8000); // Increased to 8s for slow Android WebView restarts
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {

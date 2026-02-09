@@ -11,6 +11,7 @@ import {
 import { emitEvent, EVENTS } from '../events';
 import { updateInvoiceCloud } from './invoices-cloud';
 import { supabase } from '@/integrations/supabase/client';
+import { saveToOfflineCache, loadFromOfflineCache } from '../offline-cache';
 
 export type DebtStatus = 'due' | 'partially_paid' | 'overdue' | 'fully_paid';
 
@@ -117,52 +118,63 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
       setCurrentUserId(user.id);
     }
   }
-  if (!userId) return [];
+  if (!userId) {
+    const cached = loadFromOfflineCache<Debt[]>('debts');
+    if (cached) return cached;
+    return [];
+  }
 
   if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return debtsCache;
   }
 
-  // Check if current user is a cashier
-  const isCashier = await isCashierUser();
+  try {
+    const isCashier = await isCashierUser();
 
-  let cloudDebts = await fetchFromSupabase<CloudDebt & { cashier_id?: string }>('debts', {
-    column: 'created_at',
-    ascending: false,
-  });
+    let cloudDebts = await fetchFromSupabase<CloudDebt & { cashier_id?: string }>('debts', {
+      column: 'created_at',
+      ascending: false,
+    });
 
-  // ✅ If cashier, filter to only show their own debts
-  if (isCashier) {
-    cloudDebts = cloudDebts.filter(d => d.cashier_id === userId);
-  }
-
-  // Fetch cashier names for debts with cashier_id
-  const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
-  if (cashierIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profiles } = await (supabase as any)
-      .from('profiles')
-      .select('user_id, full_name')
-      .in('user_id', cashierIds);
-
-    if (profiles) {
-      const nameMap: Record<string, string> = {};
-      profiles.forEach((p: { user_id: string; full_name: string }) => {
-        nameMap[p.user_id] = p.full_name;
-        cashierNamesCache[p.user_id] = p.full_name;
-      });
-
-      cloudDebts = cloudDebts.map(d => ({
-        ...d,
-        cashier_name: (d as { cashier_id?: string }).cashier_id ? nameMap[(d as { cashier_id: string }).cashier_id] : undefined,
-      }));
+    if (isCashier) {
+      cloudDebts = cloudDebts.filter(d => d.cashier_id === userId);
     }
+
+    const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
+    if (cashierIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profiles } = await (supabase as any)
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', cashierIds);
+
+      if (profiles) {
+        const nameMap: Record<string, string> = {};
+        profiles.forEach((p: { user_id: string; full_name: string }) => {
+          nameMap[p.user_id] = p.full_name;
+          cashierNamesCache[p.user_id] = p.full_name;
+        });
+
+        cloudDebts = cloudDebts.map(d => ({
+          ...d,
+          cashier_name: (d as { cashier_id?: string }).cashier_id ? nameMap[(d as { cashier_id: string }).cashier_id] : undefined,
+        }));
+      }
+    }
+
+    debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
+    cacheTimestamp = Date.now();
+
+    saveToOfflineCache('debts', debtsCache);
+
+    return debtsCache;
+  } catch (error) {
+    console.error('[DebtsCloud] Failed to fetch:', error);
+    const cached = loadFromOfflineCache<Debt[]>('debts');
+    if (cached) return cached;
+    if (debtsCache) return debtsCache;
+    return [];
   }
-
-  debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
-  cacheTimestamp = Date.now();
-
-  return debtsCache;
 };
 
 export const invalidateDebtsCache = () => {
@@ -347,6 +359,17 @@ export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boo
 
 // Delete debt by ID
 export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
+  // حفظ نسخة في سلة المحذوفات
+  try {
+    const debt = debtsCache?.find(d => d.id === debtId);
+    if (debt) {
+      const { addToTrash } = await import('../trash-store');
+      addToTrash('debt', `دين ${debt.customerName} - ${debt.totalDebt}`, debt as unknown as Record<string, unknown>);
+    }
+  } catch (e) {
+    console.warn('[deleteDebtCloud] Failed to save to trash:', e);
+  }
+
   const success = await deleteFromSupabase('debts', debtId);
 
   if (success) {
