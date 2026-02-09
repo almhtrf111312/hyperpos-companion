@@ -10,6 +10,7 @@ import {
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
+import { saveToOfflineCache, loadFromOfflineCache } from '../offline-cache';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -153,8 +154,6 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 // Load invoices
 // ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
-  // قد يحدث أن CloudSyncProvider لم يضبط currentUserId بعد (خصوصاً بعد إعادة فتح التطبيق)
-  // لذا نستخدم fallback من جلسة المصادقة لضمان عدم اختفاء الفواتير.
   let userId = getCurrentUserId();
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -163,53 +162,71 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
       setCurrentUserId(user.id);
     }
   }
-  if (!userId) return [];
+  if (!userId) {
+    // Fallback to offline cache
+    const cached = loadFromOfflineCache<Invoice[]>('invoices');
+    if (cached) {
+      console.log('[InvoicesCloud] Serving from offline cache (no user)');
+      return cached;
+    }
+    return [];
+  }
 
   if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return invoicesCache;
   }
 
-  // Check if user is cashier
-  const isCashier = await isCashierUser();
+  try {
+    const isCashier = await isCashierUser();
 
-  let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
-    column: 'created_at',
-    ascending: false,
-  });
+    let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
+      column: 'created_at',
+      ascending: false,
+    });
 
-  // ✅ If cashier, filter to only show their own invoices
-  if (isCashier) {
-    cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
+    if (isCashier) {
+      cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
+    }
+
+    const invoicesWithItems = await Promise.all(
+      cloudInvoices.map(async (cloud) => {
+        const invoice = toInvoice(cloud);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: items } = await (supabase as any)
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_id', cloud.id);
+
+        invoice.items = (items || []).map((item: Record<string, unknown>) => ({
+          id: item.id as string,
+          name: item.product_name as string,
+          price: Number(item.unit_price) || 0,
+          quantity: Number(item.quantity) || 1,
+          total: Number(item.amount_original) || 0,
+        }));
+
+        return invoice;
+      })
+    );
+
+    invoicesCache = invoicesWithItems;
+    cacheTimestamp = Date.now();
+
+    // Save to offline cache
+    saveToOfflineCache('invoices', invoicesCache);
+
+    return invoicesCache;
+  } catch (error) {
+    console.error('[InvoicesCloud] Failed to fetch:', error);
+    // Fallback to offline cache
+    const cached = loadFromOfflineCache<Invoice[]>('invoices');
+    if (cached) {
+      console.log('[InvoicesCloud] Serving from offline cache (fetch failed)');
+      return cached;
+    }
+    if (invoicesCache) return invoicesCache;
+    return [];
   }
-
-  // Load invoice items for each invoice
-  const invoicesWithItems = await Promise.all(
-    cloudInvoices.map(async (cloud) => {
-      const invoice = toInvoice(cloud);
-
-      // Fetch items
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: items } = await (supabase as any)
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', cloud.id);
-
-      invoice.items = (items || []).map((item: Record<string, unknown>) => ({
-        id: item.id as string,
-        name: item.product_name as string,
-        price: Number(item.unit_price) || 0,
-        quantity: Number(item.quantity) || 1,
-        total: Number(item.amount_original) || 0,
-      }));
-
-      return invoice;
-    })
-  );
-
-  invoicesCache = invoicesWithItems;
-  cacheTimestamp = Date.now();
-
-  return invoicesCache;
 };
 
 export const invalidateInvoicesCache = () => {
@@ -347,6 +364,17 @@ export const updateInvoiceCloud = async (
 
 // Delete invoice
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
+  // حفظ نسخة في سلة المحذوفات قبل الحذف
+  try {
+    const invoice = invoicesCache?.find(inv => inv.id === id);
+    if (invoice) {
+      const { addToTrash } = await import('../trash-store');
+      addToTrash('invoice', `فاتورة ${id} - ${invoice.customerName}`, invoice as unknown as Record<string, unknown>);
+    }
+  } catch (e) {
+    console.warn('[deleteInvoiceCloud] Failed to save to trash:', e);
+  }
+
   // Find by invoice_number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cloudInvoice } = await (supabase as any)
@@ -360,14 +388,12 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   // ✅ Restore Stock logic before deletion
   try {
-    // 1. Fetch items to restore
     const { data: items } = await (supabase as any)
       .from('invoice_items')
       .select('product_id, quantity')
       .eq('invoice_id', cloudInvoice.id);
 
     if (items && items.length > 0) {
-      // Filter out items without product_id
       const itemsToRestore = items
         .filter((item: any) => item.product_id)
         .map((item: any) => ({
@@ -376,16 +402,12 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
         }));
 
       if (itemsToRestore.length > 0) {
-        // Import dynamically to avoid circular dependency issues if any
         const { restoreStockBatchCloud } = await import('./products-cloud');
         await restoreStockBatchCloud(itemsToRestore);
       }
     }
   } catch (err) {
     console.error('[deleteInvoiceCloud] Error restoring stock:', err);
-    // Continue with deletion even if restoration fails? 
-    // Usually better to fail safe, but user wants deletion to work.
-    // Logging is enough for now.
   }
 
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);

@@ -51,6 +51,7 @@ import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
 import DataResetSection from '@/components/settings/DataResetSection';
+import { TrashBin } from '@/components/settings/TrashBin';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -175,6 +176,7 @@ export default function Settings() {
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
     { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
+    { id: 'trash', label: 'سلة المحذوفات', icon: Trash2 },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
   ];
 
@@ -1322,6 +1324,9 @@ export default function Settings() {
             <LicenseManagement />
           </div>
         );
+
+      case 'trash':
+        return <TrashBin />;
 
       case 'reset':
         return <DataResetSection />;

@@ -321,21 +321,18 @@ export const deleteProductCloud = async (id: string): Promise<boolean> => {
   if (!userId) return false;
 
   try {
+    // حفظ نسخة في سلة المحذوفات قبل الحذف
+    const product = productsCache?.find(p => p.id === id);
+    if (product) {
+      const { addToTrash } = await import('../trash-store');
+      addToTrash('product', product.name, product as unknown as Record<string, unknown>);
+    }
+
     // ✅ المرحلة 1: حذف السجلات المرتبطة أولاً (بسبب المفاتيح الأجنبية)
-
-    // حذف من stock_transfer_items
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from('stock_transfer_items')
-      .delete()
-      .eq('product_id', id);
-
-    // حذف من warehouse_stock
+    await (supabase as any).from('stock_transfer_items').delete().eq('product_id', id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from('warehouse_stock')
-      .delete()
-      .eq('product_id', id);
+    await (supabase as any).from('warehouse_stock').delete().eq('product_id', id);
 
     // ✅ المرحلة 2: حذف المنتج نفسه
     const success = await deleteFromSupabase('products', id);
