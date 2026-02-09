@@ -30,12 +30,22 @@ export function useDeviceBinding() {
       return;
     }
 
+    // Safety timeout - if device check takes too long, allow access
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[DeviceBinding] Device check timeout - allowing access');
+      setState(prev => ({
+        ...prev,
+        isChecking: false,
+        isDeviceBlocked: false,
+      }));
+    }, 8000); // 8 seconds max
+
     try {
       setState(prev => ({ ...prev, isChecking: true }));
-      
+
       // Get current device ID
       const currentDeviceId = await getDeviceId();
-      
+
       // Check if user is Boss - Boss has unlimited device access
       const { data: roleData } = await supabase
         .from('user_roles')
@@ -45,6 +55,7 @@ export function useDeviceBinding() {
 
       // If user is Boss, skip device binding entirely
       if (roleData?.role === 'boss') {
+        clearTimeout(safetyTimeout);
         setState({
           isChecking: false,
           isDeviceBlocked: false,
@@ -53,7 +64,7 @@ export function useDeviceBinding() {
         });
         return;
       }
-      
+
       // Get user's license with device info
       const { data: license, error } = await supabase
         .from('app_licenses')
@@ -66,6 +77,7 @@ export function useDeviceBinding() {
 
       if (error) {
         console.error('Error checking device binding:', error);
+        clearTimeout(safetyTimeout);
         // On error, allow access to prevent lockout
         setState({
           isChecking: false,
@@ -78,6 +90,7 @@ export function useDeviceBinding() {
 
       // If no license found, allow access (license guard will handle this)
       if (!license) {
+        clearTimeout(safetyTimeout);
         setState({
           isChecking: false,
           isDeviceBlocked: false,
@@ -91,6 +104,7 @@ export function useDeviceBinding() {
 
       // If multi-device is allowed, skip device binding check
       if (license.allow_multi_device === true) {
+        clearTimeout(safetyTimeout);
         setState({
           isChecking: false,
           isDeviceBlocked: false,
@@ -112,6 +126,7 @@ export function useDeviceBinding() {
           console.error('Error registering device:', updateError);
         }
 
+        clearTimeout(safetyTimeout);
         setState({
           isChecking: false,
           isDeviceBlocked: false,
@@ -124,6 +139,7 @@ export function useDeviceBinding() {
       // Check if device matches
       const isBlocked = registeredDeviceId !== currentDeviceId;
 
+      clearTimeout(safetyTimeout);
       setState({
         isChecking: false,
         isDeviceBlocked: isBlocked,
@@ -131,6 +147,7 @@ export function useDeviceBinding() {
         registeredDeviceId,
       });
     } catch (error) {
+      clearTimeout(safetyTimeout);
       console.error('Device binding check error:', error);
       // On error, allow access
       setState({
