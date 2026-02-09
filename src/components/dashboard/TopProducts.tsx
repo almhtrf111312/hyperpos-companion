@@ -33,7 +33,11 @@ export function TopProducts() {
             productSales[itemName] = { name: itemName, sales: 0, revenue: 0 };
           }
           productSales[itemName].sales += item.quantity || 0;
-          productSales[itemName].revenue += item.total || 0;
+          // ✅ Use price * quantity as primary (more reliable), fallback to item.total
+          const itemRevenue = (item.price && item.quantity)
+            ? item.price * item.quantity
+            : (item.total || 0);
+          productSales[itemName].revenue += itemRevenue;
         });
       });
 

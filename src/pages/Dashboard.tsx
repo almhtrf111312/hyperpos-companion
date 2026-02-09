@@ -34,10 +34,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     todaySales: 0,
     todayCount: 0,
-    todayProfit: 0,        // Gross profit (Sales - COGS)
-    todayCOGS: 0,          // ✅ Cost of Goods Sold
+    todayProfit: 0,
+    todayCOGS: 0,
     todayExpenses: 0,
-    netProfit: 0,          // Net profit = Gross profit - Expenses
+    netProfit: 0,
     profitMargin: 0,
     totalDebtAmount: 0,
     debtCustomers: 0,
@@ -49,6 +49,10 @@ export default function Dashboard() {
     liquidCapital: 0,
     deficit: 0,
     deficitPercentage: 0,
+    weekSales: 0,
+    weekCount: 0,
+    monthSales: 0,
+    monthCount: 0,
   });
 
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -77,6 +81,22 @@ export default function Dashboard() {
       );
 
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
+
+      // ✅ Calculate weekly and monthly sales
+      const now = new Date();
+      const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const weekInvoices = invoices.filter(inv => {
+        const d = new Date(inv.createdAt);
+        return d >= weekAgo && inv.status !== 'cancelled';
+      });
+      const monthInvoices2 = invoices.filter(inv => {
+        const d = new Date(inv.createdAt);
+        return d >= monthStart && inv.status !== 'cancelled';
+      });
+      const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
+      const monthSales = monthInvoices2.reduce((sum, inv) => sum + inv.total, 0);
 
       // ✅ Calculate Profit & COGS directly from Cloud Data (Source of Truth)
       const todayGrossProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
@@ -161,6 +181,10 @@ export default function Dashboard() {
         liquidCapital,
         deficit,
         deficitPercentage,
+        weekSales,
+        weekCount: weekInvoices.length,
+        monthSales,
+        monthCount: monthInvoices2.length,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -208,21 +232,20 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid - First Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
           subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
-          icon={<DollarSign className="w-6 h-6" />}
+          icon={<DollarSign className="w-5 h-5" />}
           variant="primary"
           linkTo="/pos"
         />
         <StatCard
           title={t('dashboard.netProfit')}
           value={formatCurrency(stats.netProfit)}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
-          icon={<TrendingUp className="w-6 h-6" />}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
+          icon={<TrendingUp className="w-5 h-5" />}
           variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"
         />
@@ -230,7 +253,7 @@ export default function Dashboard() {
           title={t('dashboard.dueDebts')}
           value={formatCurrency(stats.totalDebtAmount)}
           subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
-          icon={<CreditCard className="w-6 h-6" />}
+          icon={<CreditCard className="w-5 h-5" />}
           variant="warning"
           linkTo="/debts"
         />
@@ -238,10 +261,35 @@ export default function Dashboard() {
           title={t('dashboard.customersThisMonth')}
           value={stats.uniqueCustomers.toString()}
           subtitle={t('dashboard.uniqueCustomers')}
-          icon={<Users className="w-6 h-6" />}
+          icon={<Users className="w-5 h-5" />}
           variant="default"
           linkTo="/customers"
         />
+      </div>
+
+      {/* Sales Period Cards */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="text-center">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('dashboard.todaySales')}</p>
+            <p className="text-sm sm:text-base font-bold text-primary mt-0.5">{formatCurrency(stats.todaySales)}</p>
+            <p className="text-[10px] text-muted-foreground/70">{stats.todayCount} {t('dashboard.invoice')}</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="text-center">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('dashboard.weekSales')}</p>
+            <p className="text-sm sm:text-base font-bold text-info mt-0.5">{formatCurrency(stats.weekSales)}</p>
+            <p className="text-[10px] text-muted-foreground/70">{stats.weekCount} {t('dashboard.invoice')}</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-2.5">
+          <div className="text-center">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('dashboard.monthSales')}</p>
+            <p className="text-sm sm:text-base font-bold text-success mt-0.5">{formatCurrency(stats.monthSales)}</p>
+            <p className="text-[10px] text-muted-foreground/70">{stats.monthCount} {t('dashboard.invoice')}</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid - Capital Row */}

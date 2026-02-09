@@ -137,11 +137,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Helper to clear all auth state and redirect to login
     const clearAuthAndFinish = () => {
-      console.log('[AuthProvider] Clearing auth state, redirecting to login');
+      console.log('[AuthProvider] 🧹 Aggressively clearing ALL auth state...');
       setUser(null);
       setSession(null);
       setProfile(null);
       cacheSession(null);
+
+      // ✅ Aggressively clear ALL Supabase auth tokens from localStorage
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (
+            key.startsWith('sb-') ||                    // Supabase auth tokens
+            key === STAY_LOGGED_IN_KEY ||                // Stay logged in flag
+            key === SESSION_CACHE_KEY ||                 // Our session cache
+            key === 'supabase.auth.token' ||             // Legacy Supabase token
+            key.includes('auth-token') ||                // Any auth token variant
+            key.includes('supabase')                     // Any supabase-related key
+          )) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => {
+          console.log('[AuthProvider] 🗑️ Removing localStorage key:', key);
+          localStorage.removeItem(key);
+        });
+
+        // Also clear sessionStorage auth keys
+        sessionStorage.removeItem(AUTO_LOGIN_ATTEMPTED_KEY);
+      } catch (err) {
+        console.error('[AuthProvider] Error clearing storage:', err);
+      }
+
       finishLoading();
     };
 
