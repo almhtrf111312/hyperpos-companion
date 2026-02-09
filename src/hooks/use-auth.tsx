@@ -124,67 +124,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Use mutable ref to track loading state for safety timeout (avoids stale closure)
     let isLoadingRef = true;
+    let mounted = true;
 
-    // Immediately restore from cache for faster UI
+    // Helper to safely stop loading
+    const finishLoading = () => {
+      if (isLoadingRef && mounted) {
+        isLoadingRef = false;
+        setIsLoading(false);
+      }
+    };
+
+    // Helper to clear all auth state and redirect to login
+    const clearAuthAndFinish = () => {
+      console.log('[AuthProvider] Clearing auth state, redirecting to login');
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      cacheSession(null);
+      finishLoading();
+    };
+
+    // Immediately restore from cache for faster UI (temporary until verified)
     const cachedData = getCachedSession();
     if (cachedData && getStayLoggedInPreference()) {
       setUser(cachedData.user);
     }
 
-    // Set up auth state listener BEFORE checking for existing session
-    // Safety timeout: if auth takes too long, stop loading but keep cached user
+    // ===== SAFETY TIMEOUT =====
+    // Absolute maximum time before forcing loading to complete
     const safetyTimeout = setTimeout(() => {
       if (isLoadingRef) {
-        console.warn('[AuthProvider] Safety timeout reached, forcing loading completion');
-        // If we have a cached user, keep them - don't sign out
-        isLoadingRef = false;
-        setIsLoading(false);
+        console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (4s) - forcing loading completion');
+        // Don't keep a potentially invalid cached user - clear everything
+        clearAuthAndFinish();
       }
-    }, 5000); // 5 seconds is sufficient for most cases
+    }, 4000);
 
+    // ===== AUTH STATE LISTENER =====
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        // Mark as no longer loading since we got an auth state change
-        isLoadingRef = false;
+        if (!mounted) return;
+
+        console.log('[AuthProvider] Auth state change:', event, !!currentSession);
 
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
-        // Cache session if stay logged in is enabled
         if (getStayLoggedInPreference()) {
           cacheSession(currentSession);
         }
 
         if (currentSession?.user) {
-          // Use setTimeout to avoid potential deadlocks
+          // Fetch profile in background - don't block loading
           setTimeout(async () => {
-            const profileData = await fetchProfile(currentSession.user.id);
-            setProfile(profileData);
-            setIsLoading(false);
+            if (!mounted) return;
+            try {
+              const profileData = await fetchProfile(currentSession.user.id);
+              if (mounted) setProfile(profileData);
+            } catch (err) {
+              console.error('[AuthProvider] Profile fetch failed:', err);
+            }
+            finishLoading();
           }, 0);
         } else {
           setProfile(null);
-          setIsLoading(false);
+          finishLoading();
         }
 
-        // Handle token refresh events
         if (event === 'TOKEN_REFRESHED' && currentSession) {
           cacheSession(currentSession);
         }
-
-        // Handle sign out
         if (event === 'SIGNED_OUT') {
           cacheSession(null);
+          setProfile(null);
         }
       }
     );
 
-    // Attempt device auto-login function
+    // ===== DEVICE AUTO-LOGIN =====
     const attemptDeviceAutoLogin = async () => {
       try {
-        // Check if we already attempted auto-login recently
         const alreadyAttempted = sessionStorage.getItem(AUTO_LOGIN_ATTEMPTED_KEY);
         if (alreadyAttempted) {
           console.log('[AutoLogin] Already attempted, skipping');
@@ -195,41 +215,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAutoLoginChecking(true);
 
         const deviceId = await getDeviceId();
-        console.log('[AutoLogin] Device ID:', deviceId);
 
-        const { data, error } = await supabase.functions.invoke('device-auto-login', {
-          body: { device_id: deviceId }
-        });
+        // Timeout for auto-login edge function
+        const controller = new AbortController();
+        const autoLoginTimeout = setTimeout(() => controller.abort(), 5000);
 
-        if (error) {
-          console.error('[AutoLogin] Edge function error:', error);
-          return false;
-        }
+        try {
+          const { data, error } = await supabase.functions.invoke('device-auto-login', {
+            body: { device_id: deviceId }
+          });
 
-        console.log('[AutoLogin] Response:', data);
+          clearTimeout(autoLoginTimeout);
 
-        if (data?.success && data?.action_link) {
-          // Extract token from action link and verify with OTP
-          try {
-            const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
-              email: data.email,
-              token: data.verification_token,
-              type: 'magiclink'
-            });
-
-            if (otpError) {
-              console.error('[AutoLogin] OTP verification error:', otpError);
-              return false;
-            }
-
-            if (otpData?.session) {
-              console.log('[AutoLogin] Session restored successfully!');
-              cacheSession(otpData.session);
-              return true;
-            }
-          } catch (otpErr) {
-            console.error('[AutoLogin] OTP exception:', otpErr);
+          if (error) {
+            console.error('[AutoLogin] Edge function error:', error);
+            return false;
           }
+
+          if (data?.success && data?.action_link) {
+            try {
+              const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+                email: data.email,
+                token: data.verification_token,
+                type: 'magiclink'
+              });
+
+              if (otpError) {
+                console.error('[AutoLogin] OTP verification error:', otpError);
+                return false;
+              }
+
+              if (otpData?.session) {
+                console.log('[AutoLogin] Session restored successfully!');
+                cacheSession(otpData.session);
+                return true;
+              }
+            } catch (otpErr) {
+              console.error('[AutoLogin] OTP exception:', otpErr);
+            }
+          }
+        } catch (fetchErr) {
+          clearTimeout(autoLoginTimeout);
+          console.error('[AutoLogin] Fetch error:', fetchErr);
         }
 
         return false;
@@ -237,68 +264,131 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AutoLogin] Exception:', err);
         return false;
       } finally {
-        setIsAutoLoginChecking(false);
-        // Mark that we attempted auto-login this session
+        if (mounted) setIsAutoLoginChecking(false);
         sessionStorage.setItem(AUTO_LOGIN_ATTEMPTED_KEY, 'true');
       }
     };
 
-    // Check for existing session and verify user still exists
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
-      if (!existingSession) {
-        // No session - try device auto-login
-        const autoLoginSuccess = await attemptDeviceAutoLogin();
-        if (!autoLoginSuccess) {
-          isLoadingRef = false;
-          setIsLoading(false);
-          cacheSession(null);
+    // ===== MAIN SESSION CHECK =====
+    const initializeAuth = async () => {
+      try {
+        console.log('[AuthProvider] Starting auth initialization...');
+
+        // Step 1: Get the locally stored session
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+
+        if (!existingSession) {
+          console.log('[AuthProvider] No existing session found');
+          // Try auto-login, then finish
+          const autoLoginSuccess = await attemptDeviceAutoLogin();
+          if (!autoLoginSuccess) {
+            clearAuthAndFinish();
+          }
+          return;
         }
-        return;
+
+        console.log('[AuthProvider] Found existing session, verifying...');
+
+        // Step 2: Try to refresh the session (this validates the token with the server)
+        // This is the KEY fix - refreshSession will fail if the token is truly expired
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+          if (refreshError || !refreshData.session) {
+            // ❌ Token is invalid/expired and cannot be refreshed
+            console.warn('[AuthProvider] ❌ Session refresh failed:', refreshError?.message);
+
+            // Force sign out to clear invalid tokens
+            try { await supabase.auth.signOut(); } catch { /* ignore */ }
+
+            // Try auto-login as fallback
+            const autoLoginSuccess = await attemptDeviceAutoLogin();
+            if (!autoLoginSuccess) {
+              clearAuthAndFinish();
+            }
+            return;
+          }
+
+          // ✅ Session refreshed successfully
+          console.log('[AuthProvider] ✅ Session refreshed successfully');
+
+          if (mounted) {
+            setSession(refreshData.session);
+            setUser(refreshData.session.user);
+            cacheSession(refreshData.session);
+          }
+
+          // Step 3: Verify the user still exists (with timeout)
+          try {
+            const userCheckPromise = supabase.auth.getUser();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('getUser timeout')), 3000)
+            );
+
+            const { data: { user: currentUser }, error: userError } = await Promise.race([
+              userCheckPromise,
+              timeoutPromise
+            ]) as any;
+
+            if (userError || !currentUser) {
+              console.warn('[AuthProvider] ❌ User verification failed:', userError?.message);
+              try { await supabase.auth.signOut(); } catch { /* ignore */ }
+              clearAuthAndFinish();
+              return;
+            }
+
+            console.log('[AuthProvider] ✅ User verified:', currentUser.email);
+          } catch (err) {
+            // Timeout or error on getUser - session was already refreshed, proceed anyway
+            console.warn('[AuthProvider] getUser check timed out, proceeding with refreshed session');
+          }
+
+          // Step 4: Fetch profile (non-blocking)
+          if (mounted && refreshData.session?.user) {
+            try {
+              const profileData = await fetchProfile(refreshData.session.user.id);
+              if (mounted) setProfile(profileData);
+            } catch (err) {
+              console.error('[AuthProvider] Profile fetch failed, continuing:', err);
+            }
+          }
+
+          finishLoading();
+
+        } catch (refreshErr) {
+          console.error('[AuthProvider] Unexpected refresh error:', refreshErr);
+          // If refresh throws unexpectedly, clear auth
+          try { await supabase.auth.signOut(); } catch { /* ignore */ }
+          clearAuthAndFinish();
+        }
+
+      } catch (err) {
+        console.error('[AuthProvider] Auth initialization error:', err);
+        clearAuthAndFinish();
       }
+    };
 
-      // Verify the user still exists in the database
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      if (userError || !currentUser) {
-        // User doesn't exist anymore, clear session
-        console.log('User from session does not exist, signing out...');
-        await supabase.auth.signOut();
+    initializeAuth();
 
-        // Try device auto-login as fallback
-        const autoLoginSuccess = await attemptDeviceAutoLogin();
-        if (!autoLoginSuccess) {
-          isLoadingRef = false;
-          setIsLoading(false);
-          cacheSession(null);
-        }
-        return;
-      }
-
-      // Session is valid - onAuthStateChange should fire, but add backup timeout
-      // This handles cases where onAuthStateChange doesn't fire on app reopen
-      setTimeout(() => {
-        if (isLoadingRef) {
-          console.log('[AuthProvider] Session valid, backup timeout forcing loading completion');
-          isLoadingRef = false;
-          setIsLoading(false);
-        }
-      }, 1500);
-    });
-
-    // Periodic session refresh for Android background
+    // Periodic session refresh for background/mobile
     const refreshInterval = setInterval(async () => {
       if (getStayLoggedInPreference()) {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (currentSession) {
-          // Try to refresh if expiring soon (within 10 minutes)
-          const expiresAt = currentSession.expires_at;
-          if (expiresAt && (expiresAt - Date.now() / 1000) < 600) {
-            await supabase.auth.refreshSession();
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            const expiresAt = currentSession.expires_at;
+            if (expiresAt && (expiresAt - Date.now() / 1000) < 600) {
+              await supabase.auth.refreshSession();
+            }
           }
+        } catch (err) {
+          console.error('[AuthProvider] Periodic refresh error:', err);
         }
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       clearInterval(refreshInterval);
       clearTimeout(safetyTimeout);
