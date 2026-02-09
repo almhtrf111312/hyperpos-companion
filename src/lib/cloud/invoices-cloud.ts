@@ -197,13 +197,32 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
           .select('*')
           .eq('invoice_id', cloud.id);
 
-        invoice.items = (items || []).map((item: Record<string, unknown>) => ({
+        const rawItems = (items || []).map((item: Record<string, unknown>) => ({
           id: item.id as string,
           name: item.product_name as string,
           price: Number(item.unit_price) || 0,
           quantity: Number(item.quantity) || 1,
           total: Number(item.amount_original) || 0,
+          costPrice: Number(item.cost_price) || 0,
         }));
+
+        // ✅ Fix for old invoices: detect if item totals don't match invoice total
+        // Old data may have cost_price stored in unit_price and cost-based amounts in amount_original
+        if (rawItems.length > 0 && invoice.total > 0) {
+          const itemsTotal = rawItems.reduce((sum: number, item: InvoiceItem) => sum + item.total, 0);
+
+          // If items total doesn't match invoice total (with tolerance), recalculate
+          if (Math.abs(itemsTotal - invoice.total) > 0.01 && itemsTotal > 0) {
+            // The invoice.total is always correct - redistribute proportionally
+            const ratio = invoice.total / itemsTotal;
+            rawItems.forEach((item: InvoiceItem) => {
+              item.total = Math.round(item.price * item.quantity * ratio * 100) / 100;
+              item.price = Math.round(item.price * ratio * 100) / 100;
+            });
+          }
+        }
+
+        invoice.items = rawItems;
 
         return invoice;
       })
