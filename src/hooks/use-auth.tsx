@@ -131,6 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Set up auth state listener BEFORE checking for existing session
+    // Safety timeout: if auth takes too long, stop loading to prevent infinite loop
+    const safetyTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[AuthProvider] Safety timeout reached, forcing loading completion');
+        setIsLoading(false);
+      }
+    }, 4000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
@@ -177,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('[AutoLogin] Starting device auto-login...');
         setIsAutoLoginChecking(true);
-        
+
         const deviceId = await getDeviceId();
         console.log('[AutoLogin] Device ID:', deviceId);
 
@@ -238,14 +246,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
-      
+
       // Verify the user still exists in the database
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) {
         // User doesn't exist anymore, clear session
         console.log('User from session does not exist, signing out...');
         await supabase.auth.signOut();
-        
+
         // Try device auto-login as fallback
         const autoLoginSuccess = await attemptDeviceAutoLogin();
         if (!autoLoginSuccess) {
@@ -283,7 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
       });
-      
+
       // Set stay logged in preference
       if (!error && data.session) {
         setStayLoggedIn(rememberMe);
@@ -291,7 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cacheSession(data.session);
         }
       }
-      
+
       // Log successful login
       if (!error && data.user) {
         // Dynamically import to avoid circular dependencies
@@ -305,14 +313,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         });
       }
-      
+
       if (error) {
         return { error: new Error(error.message) };
       }
-      
-      return { 
-        error: null, 
-        data: data.user && data.session ? { user: data.user, session: data.session } : undefined 
+
+      return {
+        error: null,
+        data: data.user && data.session ? { user: data.user, session: data.session } : undefined
       };
     } catch (err) {
       return { error: err as Error };
@@ -355,11 +363,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       });
-      
+
       if (error) {
         return { error: new Error(error.message) };
       }
-      
+
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -379,7 +387,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       });
     }
-    
+
     // Clear auto-login attempt flag so next app open can try again
     try {
       sessionStorage.removeItem(AUTO_LOGIN_ATTEMPTED_KEY);
@@ -388,7 +396,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore storage errors
     }
-    
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

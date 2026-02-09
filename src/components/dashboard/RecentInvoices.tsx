@@ -204,12 +204,12 @@ export function RecentInvoices() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">العميل</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">المبلغ</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الحالة</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الوقت</th>
-                  <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">إجراءات</th>
+                  <th className="text-right py-2 px-3 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
+                  <th className="text-right py-2 px-3 text-sm font-medium text-muted-foreground">العميل</th>
+                  <th className="text-right py-2 px-3 text-sm font-medium text-muted-foreground">المبلغ</th>
+                  <th className="text-right py-2 px-3 text-sm font-medium text-muted-foreground">الحالة</th>
+                  <th className="text-right py-2 px-3 text-sm font-medium text-muted-foreground">الوقت</th>
+                  <th className="text-center py-2 px-3 text-sm font-medium text-muted-foreground">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,29 +222,29 @@ export function RecentInvoices() {
                     style={{ animationDelay: `${index * 50}ms` }}
                     onClick={() => handleViewInvoice(invoice)}
                   >
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3">
                       <span className="font-mono text-sm text-foreground">{invoice.id}</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3">
                       <span className="font-medium text-foreground">{invoice.customerName}</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3">
                       <span className="font-semibold text-foreground">
                         {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3">
                       <span className={cn(
-                        "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                         statusStyles[invoice.status]
                       )}>
                         {statusLabels[invoice.status]}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3">
                       <span className="text-muted-foreground">{formatTime(invoice.createdAt)}</span>
                     </td>
-                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
                         <button
                           className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"

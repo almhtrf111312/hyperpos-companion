@@ -221,17 +221,17 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                   <NavLink
                     to={item.path}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                      "flex items-center gap-2 px-2 py-2 rounded-lg transition-all duration-200 group relative",
                       isActive
-                        ? "bg-primary text-primary-foreground shadow-lg glow"
+                        ? "bg-primary text-primary-foreground shadow-sm glow"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                       effectiveCollapsed && !isMobile && "justify-center px-0"
                     )}
                   >
-                    <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "animate-pulse")} />
+                    <item.icon className={cn("w-4 h-4 flex-shrink-0", isActive && "animate-pulse")} />
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="font-medium">{t(item.translationKey)}</span>
+                        <span className="font-medium text-sm">{t(item.translationKey)}</span>
                         {item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                             {item.badge}
