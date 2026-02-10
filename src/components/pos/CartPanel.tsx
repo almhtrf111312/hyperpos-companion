@@ -1195,192 +1195,192 @@ export function CartPanel({
                   )}
                 </div>
               </div>
-              </div>
-        ))
-          )}
-      </div>
 
-      {/* Cart Footer */}
-      <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4">
-        {/* Currency Selector */}
-        <div className="flex gap-1.5 md:gap-2">
-          {currencies.map((currency) => (
-            <button
-              key={currency.code}
-              onClick={() => onCurrencyChange(currency)}
-              className={cn(
-                "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
-                selectedCurrency.code === currency.code
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {currency.code === 'USD' ? '$ USD' : currency.name}
-            </button>
-          ))}
+            ))
+          )}
         </div>
 
-        {/* Discount - Two Rows */}
-        <div className="space-y-2">
-          {/* Percentage Discount Row */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
-              <Percent className="w-4 h-4" />
-            </div>
-            <Input
-              type="number"
-              placeholder="خصم %"
-              value={discountType === 'percent' ? (discount || '') : ''}
-              onChange={(e) => {
-                setDiscountType('percent');
-                onDiscountChange(Number(e.target.value));
-              }}
-              onFocus={() => setDiscountType('percent')}
-              className={cn(
-                "bg-muted border-0 h-9 text-sm",
-                discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
-              )}
-              min="0"
-              max="100"
-            />
+        {/* Cart Footer */}
+        <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4">
+          {/* Currency Selector */}
+          <div className="flex gap-1.5 md:gap-2">
+            {currencies.map((currency) => (
+              <button
+                key={currency.code}
+                onClick={() => onCurrencyChange(currency)}
+                className={cn(
+                  "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
+                  selectedCurrency.code === currency.code
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {currency.code === 'USD' ? '$ USD' : currency.name}
+              </button>
+            ))}
           </div>
-          {/* Fixed Amount Discount Row */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <Input
-              type="number"
-              placeholder="خصم $"
-              value={discountType === 'fixed' ? (discount || '') : ''}
-              onChange={(e) => {
-                setDiscountType('fixed');
-                onDiscountChange(Number(e.target.value));
-              }}
-              onFocus={() => setDiscountType('fixed')}
-              className={cn(
-                "bg-muted border-0 h-9 text-sm",
-                discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
-              )}
-              min="0"
-            />
-          </div>
-        </div>
 
-        {/* Wholesale: Received Amount Input */}
-        {wholesaleMode && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white flex-shrink-0">
-              <Banknote className="w-4 h-4" />
-            </div>
-            <Input
-              type="number"
-              placeholder="المبلغ المقبوض"
-              value={receivedAmount || ''}
-              onChange={(e) => setReceivedAmount(Number(e.target.value))}
-              className="bg-muted border-0 h-9 text-sm ring-2 ring-orange-500/50"
-              min="0"
-              dir="ltr"
-            />
-            {/* زر الآلة الحاسبة */}
-            <button
-              onClick={() => setShowCalculator(true)}
-              className="w-9 h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center flex-shrink-0 transition-colors"
-              title="آلة حاسبة"
-            >
-              <span className="text-lg font-bold">⊞</span>
-            </button>
-          </div>
-        )}
-
-        {/* Summary */}
-        <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">{wholesaleMode ? 'إجمالي الجملة' : t('pos.subtotal')}</span>
-            <span>${formatNumber(subtotal)}</span>
-          </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-success">
-              <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
-              <span>-${formatNumber(discountAmount)}</span>
-            </div>
-          )}
-          {wholesaleMode && receivedAmount > 0 && (
-            <>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">المبلغ المقبوض</span>
-                <span className="font-semibold">${formatNumber(receivedAmount)}</span>
-              </div>
-              <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
-                <span>الربح</span>
-                <span>${formatNumber(wholesaleProfit || 0)}</span>
-              </div>
-            </>
-          )}
-          <div className="flex justify-between items-center text-base md:text-lg font-bold pt-2 border-t border-border">
+          {/* Discount - Two Rows */}
+          <div className="space-y-2">
+            {/* Percentage Discount Row */}
             <div className="flex items-center gap-2">
-              <span>{t('pos.total')}</span>
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
+                <Percent className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="خصم %"
+                value={discountType === 'percent' ? (discount || '') : ''}
+                onChange={(e) => {
+                  setDiscountType('percent');
+                  onDiscountChange(Number(e.target.value));
+                }}
+                onFocus={() => setDiscountType('percent')}
+                className={cn(
+                  "bg-muted border-0 h-9 text-sm",
+                  discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
+                )}
+                min="0"
+                max="100"
+              />
+            </div>
+            {/* Fixed Amount Discount Row */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
+                <DollarSign className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="خصم $"
+                value={discountType === 'fixed' ? (discount || '') : ''}
+                onChange={(e) => {
+                  setDiscountType('fixed');
+                  onDiscountChange(Number(e.target.value));
+                }}
+                onFocus={() => setDiscountType('fixed')}
+                className={cn(
+                  "bg-muted border-0 h-9 text-sm",
+                  discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
+                )}
+                min="0"
+              />
+            </div>
+          </div>
+
+          {/* Wholesale: Received Amount Input */}
+          {wholesaleMode && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white flex-shrink-0">
+                <Banknote className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="المبلغ المقبوض"
+                value={receivedAmount || ''}
+                onChange={(e) => setReceivedAmount(Number(e.target.value))}
+                className="bg-muted border-0 h-9 text-sm ring-2 ring-orange-500/50"
+                min="0"
+                dir="ltr"
+              />
               {/* زر الآلة الحاسبة */}
               <button
                 onClick={() => setShowCalculator(true)}
-                className="w-7 h-7 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-sm"
+                className="w-9 h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center flex-shrink-0 transition-colors"
                 title="آلة حاسبة"
               >
-                ⊞
+                <span className="text-lg font-bold">⊞</span>
               </button>
             </div>
-            <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
-              {selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}
-            </span>
+          )}
+
+          {/* Summary */}
+          <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{wholesaleMode ? 'إجمالي الجملة' : t('pos.subtotal')}</span>
+              <span>${formatNumber(subtotal)}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-success">
+                <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
+                <span>-${formatNumber(discountAmount)}</span>
+              </div>
+            )}
+            {wholesaleMode && receivedAmount > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">المبلغ المقبوض</span>
+                  <span className="font-semibold">${formatNumber(receivedAmount)}</span>
+                </div>
+                <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
+                  <span>الربح</span>
+                  <span>${formatNumber(wholesaleProfit || 0)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between items-center text-base md:text-lg font-bold pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                <span>{t('pos.total')}</span>
+                {/* زر الآلة الحاسبة */}
+                <button
+                  onClick={() => setShowCalculator(true)}
+                  className="w-7 h-7 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-sm"
+                  title="آلة حاسبة"
+                >
+                  ⊞
+                </button>
+              </div>
+              <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
+                {selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <Button
+              className="h-12 md:h-16 bg-success hover:bg-success/90 text-sm md:text-lg font-bold shadow-lg shadow-success/25 transition-all active:scale-95"
+              disabled={cart.length === 0}
+              onClick={handleCashSale}
+            >
+              <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+              {t('pos.cash')}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 md:h-16 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-lg font-bold transition-all active:scale-95"
+              disabled={cart.length === 0}
+              onClick={handleDebtSale}
+            >
+              <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+              {t('pos.debt')}
+            </Button>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
+              disabled={cart.length === 0}
+              onClick={handlePrint}
+            >
+              <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
+              {t('pos.print')}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
+              disabled={cart.length === 0}
+              onClick={handleWhatsApp}
+            >
+              <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
+              {t('pos.whatsapp')}
+            </Button>
           </div>
         </div>
+      </div >
 
-        <div className="grid grid-cols-2 gap-2 md:gap-3">
-          <Button
-            className="h-12 md:h-16 bg-success hover:bg-success/90 text-sm md:text-lg font-bold shadow-lg shadow-success/25 transition-all active:scale-95"
-            disabled={cart.length === 0}
-            onClick={handleCashSale}
-          >
-            <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-            {t('pos.cash')}
-          </Button>
-          <Button
-            variant="outline"
-            className="h-12 md:h-16 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-lg font-bold transition-all active:scale-95"
-            disabled={cart.length === 0}
-            onClick={handleDebtSale}
-          >
-            <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
-            {t('pos.debt')}
-          </Button>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1 h-9 md:h-10 text-xs md:text-sm"
-            disabled={cart.length === 0}
-            onClick={handlePrint}
-          >
-            <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-            {t('pos.print')}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 h-9 md:h-10 text-xs md:text-sm"
-            disabled={cart.length === 0}
-            onClick={handleWhatsApp}
-          >
-            <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
-            {t('pos.whatsapp')}
-          </Button>
-        </div>
-      </div>
-    </div >
-
-      {/* Cash Sale Dialog */ }
-      < Dialog open = { showCashDialog } onOpenChange = { setShowCashDialog } >
+      {/* Cash Sale Dialog */}
+      < Dialog open={showCashDialog} onOpenChange={setShowCashDialog} >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1419,127 +1419,127 @@ export function CartPanel({
         </DialogContent>
       </Dialog >
 
-    {/* Debt Sale Dialog */ }
-    < Dialog open = { showDebtDialog } onOpenChange = { setShowDebtDialog } >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-warning" />
-            تأكيد البيع بالدين
-          </DialogTitle>
-          <DialogDescription>
-            سيتم إضافة المبلغ كدين على العميل
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="bg-muted rounded-lg p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>العميل:</span>
-              <span className="font-semibold">{customerName}</span>
+      {/* Debt Sale Dialog */}
+      < Dialog open={showDebtDialog} onOpenChange={setShowDebtDialog} >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-warning" />
+              تأكيد البيع بالدين
+            </DialogTitle>
+            <DialogDescription>
+              سيتم إضافة المبلغ كدين على العميل
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-muted rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>العميل:</span>
+                <span className="font-semibold">{customerName}</span>
+              </div>
+              {isNewCustomer && (
+                <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <label className="text-sm font-medium mb-1.5 block text-warning">
+                    رقم الهاتف * (مطلوب لعميل جديد)
+                  </label>
+                  <Input
+                    placeholder="+963 xxx xxx xxx"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="bg-background border-warning"
+                  />
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span>عدد المنتجات:</span>
+                <span className="font-semibold">{cart.length}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
+                <span>مبلغ الدين:</span>
+                <span>{selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}</span>
+              </div>
             </div>
-            {isNewCustomer && (
-              <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                <label className="text-sm font-medium mb-1.5 block text-warning">
-                  رقم الهاتف * (مطلوب لعميل جديد)
-                </label>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
+                إلغاء
+              </Button>
+              <Button
+                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground"
+                onClick={() => {
+                  // التحقق من رقم الهاتف إذا كان عميل جديد
+                  if (isNewCustomer && !customerPhone.trim()) {
+                    showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
+                    return;
+                  }
+                  confirmDebtSale();
+                }}
+              >
+                <Check className="w-4 h-4 ml-2" />
+                تأكيد الدين
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog >
+
+      {/* Add Customer Dialog */}
+      < Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog} >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              إضافة عميل جديد
+            </DialogTitle>
+            <DialogDescription>
+              أدخل بيانات العميل الجديد
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
                 <Input
-                  placeholder="+963 xxx xxx xxx"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="bg-background border-warning"
+                  placeholder="اسم العميل"
+                  value={newCustomer.name}
+                  onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span>عدد المنتجات:</span>
-              <span className="font-semibold">{cart.length}</span>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+                <Input
+                  placeholder="+963 xxx xxx xxx"
+                  value={newCustomer.phone}
+                  onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+                <Input
+                  placeholder="email@example.com"
+                  value={newCustomer.email}
+                  onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
             </div>
-            <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
-              <span>مبلغ الدين:</span>
-              <span>{selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}</span>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowCustomerDialog(false)}>
+                إلغاء
+              </Button>
+              <Button className="flex-1" onClick={handleAddCustomer} disabled={isAddingCustomer}>
+                <UserPlus className="w-4 h-4 ml-2" />
+                {isAddingCustomer ? 'جاري الحفظ...' : 'إضافة العميل'}
+              </Button>
             </div>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
-              إلغاء
-            </Button>
-            <Button
-              className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground"
-              onClick={() => {
-                // التحقق من رقم الهاتف إذا كان عميل جديد
-                if (isNewCustomer && !customerPhone.trim()) {
-                  showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
-                  return;
-                }
-                confirmDebtSale();
-              }}
-            >
-              <Check className="w-4 h-4 ml-2" />
-              تأكيد الدين
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
+        </DialogContent>
       </Dialog >
 
-    {/* Add Customer Dialog */ }
-    < Dialog open = { showCustomerDialog } onOpenChange = { setShowCustomerDialog } >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" />
-            إضافة عميل جديد
-          </DialogTitle>
-          <DialogDescription>
-            أدخل بيانات العميل الجديد
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
-              <Input
-                placeholder="اسم العميل"
-                value={newCustomer.name}
-                onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
-              <Input
-                placeholder="+963 xxx xxx xxx"
-                value={newCustomer.phone}
-                onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
-              <Input
-                placeholder="email@example.com"
-                value={newCustomer.email}
-                onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))}
-              />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setShowCustomerDialog(false)}>
-              إلغاء
-            </Button>
-            <Button className="flex-1" onClick={handleAddCustomer} disabled={isAddingCustomer}>
-              <UserPlus className="w-4 h-4 ml-2" />
-              {isAddingCustomer ? 'جاري الحفظ...' : 'إضافة العميل'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-      </Dialog >
-
-    {/* آلة حاسبة */ }
-    < Calculator
-  isOpen = { showCalculator }
-  onClose = {() => setShowCalculator(false)
-}
-onResult = {(value) => setReceivedAmount(value)}
+      {/* آلة حاسبة */}
+      < Calculator
+        isOpen={showCalculator}
+        onClose={() => setShowCalculator(false)
+        }
+        onResult={(value) => setReceivedAmount(value)}
       />
     </>
   );
