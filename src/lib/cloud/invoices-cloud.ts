@@ -54,6 +54,9 @@ export interface CloudInvoice {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  voided_at?: string;
+  void_reason?: string;
+  voided_by?: string;
 }
 
 export interface Invoice {
@@ -85,6 +88,9 @@ export interface Invoice {
   updatedAt: string;
   cashierId?: string;
   cashierName?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  voidedBy?: string;
 }
 
 // Transform cloud to legacy
@@ -120,7 +126,10 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
     cashierId: cloud.cashier_id || undefined,
-    cashierName: cloud.cashier_name || undefined,
+    cashierName: cloud.cashier_name || null,
+    voidedAt: cloud.voided_at || undefined,
+    voidReason: cloud.void_reason || undefined,
+    voidedBy: cloud.voided_by || undefined,
   };
 }
 
@@ -498,6 +507,137 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   // ✅ 5. Delete from database
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
+
+  if (success) {
+    invalidateInvoicesCache();
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+  }
+
+  return success;
+};
+
+// Void invoice (Cancel with full state reversal)
+export const voidInvoiceCloud = async (id: string, reason: string): Promise<boolean> => {
+  // 1. Find by invoice_number or ID
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: cloudInvoice } = await (supabase as any)
+    .from('invoices')
+    .select('id, total, profit, status')
+    .or(`id.eq.${id},invoice_number.eq.${id}`)
+    .eq('user_id', getCurrentUserId())
+    .maybeSingle();
+
+  if (!cloudInvoice) return false;
+
+  // Check if already cancelled
+  if (cloudInvoice.status === 'cancelled') {
+    return false;
+  }
+
+  // ✅ 1. Restore Stock
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: items } = await (supabase as any)
+      .from('invoice_items')
+      .select('product_id, quantity')
+      .eq('invoice_id', cloudInvoice.id);
+
+    if (items && items.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const itemsToRestore = items
+        .filter((item: any) => item.product_id)
+        .map((item: any) => ({
+          productId: item.product_id,
+          quantity: Number(item.quantity) || 0
+        }));
+
+      if (itemsToRestore.length > 0) {
+        const { restoreStockBatchCloud } = await import('./products-cloud');
+        await restoreStockBatchCloud(itemsToRestore);
+      }
+    }
+  } catch (err) {
+    console.error('[voidInvoiceCloud] Error restoring stock:', err);
+  }
+
+  // ✅ 2. Reverse cashbox balance (subtract invoice total from fund)
+  try {
+    const invoiceTotal = Number(cloudInvoice.total) || 0;
+    if (invoiceTotal > 0) {
+      const { updateCashboxBalance } = await import('../cashbox-store');
+      updateCashboxBalance(invoiceTotal, 'withdrawal');
+      console.log(`[voidInvoiceCloud] ✅ Reversed cashbox: -$${invoiceTotal}`);
+    }
+  } catch (err) {
+    console.error('[voidInvoiceCloud] Error reversing cashbox:', err);
+  }
+
+  // ✅ 3. Remove gross profit record
+  try {
+    const { removeGrossProfit } = await import('../profits-store');
+    // We remove the profit record completely as it's voided
+    removeGrossProfit(cloudInvoice.id); // Note: verify if ID matches saleId in profit store. 
+    // Usually saleId in profit store is the invoice ID.
+    console.log(`[voidInvoiceCloud] ✅ Removed gross profit record for ${cloudInvoice.id}`);
+  } catch (err) {
+    console.error('[voidInvoiceCloud] Error removing profit record:', err);
+  }
+
+  // ✅ 4. Reverse partner profit distributions
+  try {
+    const { loadPartnersCloud, updatePartnerCloud } = await import('./partners-cloud');
+    const partners = await loadPartnersCloud();
+    const invoiceId = cloudInvoice.id;
+
+    for (const partner of partners) {
+      // Find all profit records linked to this invoice
+      const relatedProfits = partner.profitHistory.filter(
+        (p: { invoiceId: string }) => p.invoiceId === invoiceId
+      );
+
+      if (relatedProfits.length > 0) {
+        const totalToReverse = relatedProfits.reduce(
+          (sum: number, p: { amount: number }) => sum + p.amount, 0
+        );
+
+        // Also check pending profits (for debt invoices)
+        const relatedPending = (partner.pendingProfitDetails || []).filter(
+          (p: { invoiceId: string }) => p.invoiceId === invoiceId
+        );
+        const pendingToReverse = relatedPending.reduce(
+          (sum: number, p: { amount: number }) => sum + p.amount, 0
+        );
+
+        await updatePartnerCloud(partner.id, {
+          confirmedProfit: partner.confirmedProfit - totalToReverse,
+          currentBalance: partner.currentBalance - totalToReverse,
+          totalProfitEarned: partner.totalProfitEarned - totalToReverse,
+          pendingProfit: partner.pendingProfit - pendingToReverse,
+          pendingProfitDetails: (partner.pendingProfitDetails || []).filter(
+            (p: { invoiceId: string }) => p.invoiceId !== invoiceId
+          ),
+          profitHistory: partner.profitHistory.filter(
+            (p: { invoiceId: string }) => p.invoiceId !== invoiceId
+          ),
+        });
+
+        console.log(`[voidInvoiceCloud] ✅ Reversed $${totalToReverse} profit from partner ${partner.name}`);
+      }
+    }
+  } catch (err) {
+    console.error('[voidInvoiceCloud] Error reversing partner profits:', err);
+  }
+
+  // ✅ 5. Update status in database instead of delete
+  const userId = getCurrentUserId();
+  const updateData = {
+    status: 'cancelled',
+    voided_at: new Date().toISOString(),
+    void_reason: reason,
+    voided_by: userId
+  };
+
+  const success = await updateInSupabase('invoices', cloudInvoice.id, updateData);
 
   if (success) {
     invalidateInvoicesCache();

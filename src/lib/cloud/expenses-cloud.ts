@@ -32,6 +32,10 @@ export interface CloudExpense {
   notes: string | null;
   distributions: ExpenseDistribution[];
   created_at: string;
+  status?: string;
+  voided_at?: string;
+  void_reason?: string;
+  voided_by?: string;
 }
 
 export interface Expense {
@@ -48,6 +52,10 @@ export interface Expense {
   createdAt: string;
   cashierId?: string;
   cashierName?: string;
+  status?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  voidedBy?: string;
 }
 
 // Expense types with labels
@@ -98,6 +106,10 @@ function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
     createdAt: cloud.created_at,
     cashierId: cloud.cashier_id || undefined,
     cashierName: cloud.cashier_name || cashierNamesCache[cloud.cashier_id || ''] || undefined,
+    status: cloud.status || 'active',
+    voidedAt: cloud.voided_at || undefined,
+    voidReason: cloud.void_reason || undefined,
+    voidedBy: cloud.voided_by || undefined,
   };
 }
 
@@ -306,6 +318,73 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
 
   // ✅ 4. Delete from database
   const success = await deleteFromSupabase('expenses', id);
+
+  if (success) {
+    invalidateExpensesCache();
+    emitEvent(EVENTS.EXPENSES_UPDATED, null);
+  }
+
+  return success;
+};
+
+// Void expense (Cancel with full state reversal)
+export const voidExpenseCloud = async (id: string, reason: string): Promise<boolean> => {
+  const expenses = await loadExpensesCloud();
+  const expense = expenses.find(e => e.id === id);
+
+  if (!expense) return false;
+
+  // Check if already voided
+  if (expense.status === 'voided') {
+    return false;
+  }
+
+  // ✅ 1. Refund partners
+  if (expense.distributions.length > 0) {
+    const { loadPartnersCloud, updatePartnerCloud } = await import('./partners-cloud');
+    const partners = await loadPartnersCloud();
+
+    for (const dist of expense.distributions) {
+      const partner = partners.find(p => p.id === dist.partnerId);
+      if (partner) {
+        await updatePartnerCloud(partner.id, {
+          currentBalance: partner.currentBalance + dist.amount,
+          expenseHistory: partner.expenseHistory.filter(e => e.expenseId !== id),
+        });
+      }
+    }
+  }
+
+  // ✅ 2. Restore cashbox balance (add back the expense amount)
+  try {
+    const { updateCashboxBalance } = await import('../cashbox-store');
+    updateCashboxBalance(expense.amount, 'deposit');
+    console.log(`[voidExpenseCloud] ✅ Restored cashbox: +$${expense.amount}`);
+  } catch (err) {
+    console.error('[voidExpenseCloud] Error restoring cashbox:', err);
+  }
+
+  // ✅ 3. Remove operating expense record from profit tracking
+  try {
+    const { removeOperatingExpense } = await import('../profits-store');
+    removeOperatingExpense(id);
+    console.log(`[voidExpenseCloud] ✅ Removed operating expense record for ${id}`);
+  } catch (err) {
+    console.error('[voidExpenseCloud] Error removing expense record:', err);
+  }
+
+  // ✅ 4. Update status in database instead of delete
+  const { updateInSupabase } = await import('../supabase-store');
+  const userId = getCurrentUserId();
+
+  const updateData = {
+    status: 'voided',
+    voided_at: new Date().toISOString(),
+    void_reason: reason,
+    voided_by: userId
+  };
+
+  const success = await updateInSupabase('expenses', id, updateData);
 
   if (success) {
     invalidateExpensesCache();

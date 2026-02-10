@@ -17,7 +17,8 @@ import {
   ShoppingCart,
   X,
   Check,
-  MoreVertical
+  MoreVertical,
+  Ban
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
-  deleteInvoiceCloud,
+  voidInvoiceCloud,
   updateInvoiceCloud,
   getInvoiceStatsCloud,
   Invoice,
@@ -74,8 +75,10 @@ export default function Invoices() {
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+
+  const [showVoidDialog, setShowVoidDialog] = useState(false);
+  const [invoiceToVoid, setInvoiceToVoid] = useState<Invoice | null>(null);
+  const [voidReason, setVoidReason] = useState('');
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
 
   // Debounce search (300ms)
@@ -137,23 +140,34 @@ export default function Invoices() {
     setShowViewDialog(true);
   };
 
-  const handleDelete = (invoice: Invoice) => {
-    setInvoiceToDelete(invoice);
-    setShowDeleteDialog(true);
+  const handleVoid = (invoice: Invoice) => {
+    setInvoiceToVoid(invoice);
+    setVoidReason('');
+    setShowVoidDialog(true);
   };
 
-  const confirmDelete = async () => {
-    if (invoiceToDelete) {
-      await deleteInvoiceCloud(invoiceToDelete.id);
-      const [invoicesData, statsData] = await Promise.all([
-        loadInvoicesCloud(),
-        getInvoiceStatsCloud()
-      ]);
-      setInvoices(invoicesData);
-      setStats(statsData);
-      toast.success(t('invoices.deleteSuccess'));
-      setShowDeleteDialog(false);
-      setInvoiceToDelete(null);
+  const confirmVoid = async () => {
+    if (invoiceToVoid) {
+      if (!voidReason.trim()) {
+        toast.error(t('common.required'));
+        return;
+      }
+
+      const success = await voidInvoiceCloud(invoiceToVoid.id, voidReason);
+
+      if (success) {
+        const [invoicesData, statsData] = await Promise.all([
+          loadInvoicesCloud(),
+          getInvoiceStatsCloud()
+        ]);
+        setInvoices(invoicesData);
+        setStats(statsData);
+        toast.success(t('invoices.voidSuccess') || 'تم إلغاء الفاتورة بنجاح');
+        setShowVoidDialog(false);
+        setInvoiceToVoid(null);
+      } else {
+        toast.error(t('common.error'));
+      }
     }
   };
 
@@ -697,11 +711,12 @@ export default function Invoices() {
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleDelete(invoice)}
+                          onClick={() => handleVoid(invoice)}
                           className="text-destructive"
+                          disabled={invoice.status === 'cancelled'}
                         >
-                          <Trash2 className="w-4 h-4 ml-2" />
-                          {t('common.delete')}
+                          <Ban className="w-4 h-4 ml-2" />
+                          {t('invoices.voidInvoice') || 'إلغاء الفاتورة'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -727,7 +742,14 @@ export default function Invoices() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">{t('invoices.invoiceNumber')}:</span>
-                  <p className="font-semibold">{selectedInvoice.id}</p>
+                  <p className="font-semibold flex items-center gap-2">
+                    {selectedInvoice.id}
+                    {selectedInvoice.status === 'cancelled' && (
+                      <Badge variant="destructive" className="h-5 text-[10px]">
+                        {t('invoices.voided') || 'ملغاة'}
+                      </Badge>
+                    )}
+                  </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t('invoices.date')}:</span>
@@ -760,7 +782,14 @@ export default function Invoices() {
               {selectedInvoice.type === 'maintenance' && selectedInvoice.serviceDescription && (
                 <div className="bg-muted rounded-lg p-3">
                   <span className="text-sm text-muted-foreground">{t('invoices.service')}:</span>
-                  <p className="font-medium">{selectedInvoice.serviceDescription}</p>
+                  <div className="font-medium flex items-center gap-2">
+                    {selectedInvoice.serviceDescription}
+                    {selectedInvoice.status === 'cancelled' && (
+                      <Badge variant="destructive" className="mt-1 text-[10px] h-5">
+                        {t('invoices.voided') || 'ملغاة'}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -826,24 +855,34 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Void Confirmation Dialog */}
+      <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-destructive flex items-center gap-2">
-              <Trash2 className="w-5 h-5" />
-              {t('invoices.deleteInvoice')}
+              <Ban className="w-5 h-5" />
+              {t('invoices.voidInvoice') || 'إلغاء الفاتورة'}
             </DialogTitle>
             <DialogDescription>
-              {t('invoices.deleteConfirm')}
+              {t('invoices.voidConfirm') || 'هل أنت متأكد من إلغاء هذه الفاتورة؟ سيتم عكس جميع آثارها المالية والمخزنية.'}
             </DialogDescription>
           </DialogHeader>
+
+          <div className="space-y-2 py-4">
+            <label className="text-sm font-medium">{t('invoices.voidReason') || 'سبب الإلغاء'}</label>
+            <Input
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="خطأ في الإدخال، مرتجع..."
+            />
+          </div>
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              {t('common.delete')}
+            <Button variant="destructive" onClick={confirmVoid}>
+              {t('common.confirm') || 'تأكيد الإلغاء'}
             </Button>
           </DialogFooter>
         </DialogContent>

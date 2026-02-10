@@ -15,7 +15,8 @@ import {
   Check,
   X,
   Bell,
-  Settings2
+  Settings2,
+  Ban
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ import { toast } from 'sonner';
 import {
   loadExpensesCloud,
   addExpenseCloud,
+  voidExpenseCloud,
   deleteExpenseCloud,
   getExpenseStatsCloud,
   expenseTypes,
@@ -86,6 +88,9 @@ export default function Expenses() {
   const [showPayConfirmDialog, setShowPayConfirmDialog] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedRecurring, setSelectedRecurring] = useState<RecurringExpense | null>(null);
+  const [showVoidDialog, setShowVoidDialog] = useState(false);
+  const [expenseToVoid, setExpenseToVoid] = useState<Expense | null>(null);
+  const [voidReason, setVoidReason] = useState('');
   const [stats, setStats] = useState({ totalExpenses: 0, totalThisMonth: 0, expenseCount: 0, monthlyCount: 0, byType: {} as Record<string, number> });
 
   // Form state
@@ -279,6 +284,37 @@ export default function Expenses() {
     setShowDeleteDialog(true);
   };
 
+  const openVoidDialog = (expense: Expense) => {
+    setExpenseToVoid(expense);
+    setVoidReason('');
+    setShowVoidDialog(true);
+  };
+
+  const confirmVoid = async () => {
+    if (expenseToVoid) {
+      if (!voidReason.trim()) {
+        toast.error(t('common.required'));
+        return;
+      }
+
+      const success = await voidExpenseCloud(expenseToVoid.id, voidReason);
+
+      if (success) {
+        const [expensesData, statsData] = await Promise.all([
+          loadExpensesCloud(),
+          getExpenseStatsCloud()
+        ]);
+        setExpenses(expensesData);
+        setStats(statsData);
+        toast.success(t('expenses.voidSuccess') || 'تم إلغاء المصروف بنجاح');
+        setShowVoidDialog(false);
+        setExpenseToVoid(null);
+      } else {
+        toast.error(t('common.error'));
+      }
+    }
+  };
+
   const openPayConfirmDialog = (expense: RecurringExpense) => {
     setSelectedRecurring(expense);
     setShowPayConfirmDialog(true);
@@ -430,7 +466,10 @@ export default function Expenses() {
           filteredExpenses.map((expense, index) => (
             <div
               key={expense.id}
-              className="bg-card rounded-xl border border-border p-4 card-hover fade-in"
+              className={cn(
+                "bg-card rounded-xl border border-border p-4 card-hover fade-in",
+                expense.status === 'voided' && "opacity-60 bg-muted/20"
+              )}
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex items-start justify-between gap-4">
@@ -451,7 +490,17 @@ export default function Expenses() {
                   </div>
                 </div>
                 <div className="text-left">
-                  <p className="text-lg font-bold text-destructive">-{formatCurrency(expense.amount)}</p>
+                  <p className={cn(
+                    "text-lg font-bold",
+                    expense.status === 'voided' ? "text-muted-foreground line-through" : "text-destructive"
+                  )}>
+                    -{formatCurrency(expense.amount)}
+                  </p>
+                  {expense.status === 'voided' && (
+                    <span className="text-xs text-destructive font-medium block mt-1">
+                      {t('expenses.voided') || 'ملغى'}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -482,15 +531,17 @@ export default function Expenses() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => openDeleteDialog(expense)}
+                  onClick={() => openVoidDialog(expense)}
+                  disabled={expense.status === 'voided'}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Ban className="w-4 h-4 ml-1" />
+                  {t('expenses.void') || 'إلغاء'}
                 </Button>
               </div>
             </div>
           ))
         )}
-      </div>
+      </div >
 
       {/* Add Expense Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -574,10 +625,10 @@ export default function Expenses() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Add Recurring Expense Dialog */}
-      <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
+      < Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog} >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -675,10 +726,10 @@ export default function Expenses() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Recurring Expenses List Dialog */}
-      <Dialog open={showRecurringListDialog} onOpenChange={setShowRecurringListDialog}>
+      < Dialog open={showRecurringListDialog} onOpenChange={setShowRecurringListDialog} >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -714,10 +765,10 @@ export default function Expenses() {
             )}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Pay Confirmation Dialog */}
-      <AlertDialog open={showPayConfirmDialog} onOpenChange={setShowPayConfirmDialog}>
+      < AlertDialog open={showPayConfirmDialog} onOpenChange={setShowPayConfirmDialog} >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('expenses.confirmPayExpense')}</AlertDialogTitle>
@@ -733,10 +784,10 @@ export default function Expenses() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog >
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      < AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('expenses.confirmDelete')}</AlertDialogTitle>
@@ -752,6 +803,39 @@ export default function Expenses() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Void Confirmation Dialog */}
+      <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Ban className="w-5 h-5" />
+              {t('expenses.voidExpense') || 'إلغاء المصروف'}
+            </DialogTitle>
+            <DialogDescription>
+              {t('expenses.voidConfirm') || 'هل أنت متأكد من إلغاء هذا المصروف؟ سيتم إعادة المبلغ إلى مصدره.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-4">
+            <label className="text-sm font-medium">{t('expenses.voidReason') || 'سبب الإلغاء'}</label>
+            <Input
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="خطأ، مرتجع..."
+            />
+          </div>
+
+          <DialogHeader className="flex-row justify-end space-x-2 space-x-reverse">
+            <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={confirmVoid}>
+              {t('common.confirm') || 'تأكيد الإلغاء'}
+            </Button>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
