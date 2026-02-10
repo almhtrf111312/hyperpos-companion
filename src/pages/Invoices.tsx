@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from 'react';
 import { printHTML, generateClientInvoiceHTML } from '@/lib/native-print';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -61,7 +62,6 @@ import {
   InvoiceType
 } from '@/lib/cloud/invoices-cloud';
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
-import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 
 export default function Invoices() {
