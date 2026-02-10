@@ -160,29 +160,62 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   if (!isOpen) return null;
 
   return (
-    <div className="scanner-ui-overlay fixed inset-0 z-[9999] flex flex-col">
+    <div className="scanner-ui-overlay fixed inset-0 z-[9999] flex flex-col pointer-events-none">
 
-      {/* Top Controls Bar - with safe area padding */}
-      <div className="flex justify-between items-center p-4 pt-safe pointer-events-auto">
-        {/* Close Button (Left) - Larger and more visible */}
+      {/* 
+        Overlay & Scanning Frame Container 
+        Using box-shadow to create the "cutout" effect.
+        The container is centered and has the size of the scanning area.
+        The huge spread radius of the shadow covers the rest of the screen.
+      */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {!isInitializing && !permissionError && (
+          <div
+            className="relative w-72 h-72 rounded-3xl"
+            style={{
+              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
+            }}
+          >
+            {/* Corner Markers - White, Thick, Distinct */}
+            {/* Top Left */}
+            <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white rounded-tl-xl drop-shadow-md"></div>
+            {/* Top Right */}
+            <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white rounded-tr-xl drop-shadow-md"></div>
+            {/* Bottom Left */}
+            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white rounded-bl-xl drop-shadow-md"></div>
+            {/* Bottom Right */}
+            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-xl drop-shadow-md"></div>
+
+            {/* Optional: Subtle pulse animation for the corners or a center line */}
+            <div className="absolute inset-0 opacity-50 animate-pulse bg-white/5 rounded-3xl"></div>
+          </div>
+        )}
+      </div>
+
+      {/* Top Controls - Explicit Exit Button */}
+      <div className="absolute top-0 left-0 right-0 p-4 pt-safe flex justify-between items-start pointer-events-auto">
+        {/* Explicit Exit Button (Top-Right/Left based on RTL) 
+            Since app is RTL, "Back" usually goes to the Right, but standard "Close" often is top-left or top-right.
+            Let's put a clear "X" button on the top-right which is common for "Close".
+        */}
         <Button
-          variant="destructive"
-          size="lg"
+          variant="ghost"
+          size="icon"
           onClick={handleClose}
-          className="rounded-full shadow-2xl min-w-[60px] min-h-[60px] bg-red-500 hover:bg-red-600 text-white border-2 border-white"
+          className="rounded-full w-12 h-12 bg-black/40 text-white hover:bg-black/60 backdrop-blur-md border border-white/20"
         >
-          <X className="w-7 h-7" />
+          <X className="w-8 h-8" />
         </Button>
 
-        {/* Flash Toggle (Right) */}
+        {/* Flash Toggle */}
         {!isInitializing && !permissionError && (
           <Button
-            variant={isTorchOn ? "default" : "outline"}
-            size="lg"
+            variant="ghost"
+            size="icon"
             onClick={toggleTorch}
-            className={`rounded-full shadow-2xl min-w-[60px] min-h-[60px] ${isTorchOn
-              ? 'bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500'
-              : 'bg-white/20 text-white border-white/50 hover:bg-white/30'
+            className={`rounded-full w-12 h-12 backdrop-blur-md border border-white/20 ${isTorchOn
+                ? 'bg-yellow-400/80 text-black hover:bg-yellow-500'
+                : 'bg-black/40 text-white hover:bg-black/60'
               }`}
           >
             {isTorchOn ? <Zap className="w-6 h-6 fill-current" /> : <ZapOff className="w-6 h-6" />}
@@ -190,70 +223,40 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         )}
       </div>
 
-      {/* Center: Scan Guide */}
-      <div className="flex-1 flex items-center justify-center pointer-events-none">
+      {/* Center Messages (Loading / Error) */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+
+        {/* Helper Text (Below Frame) */}
         {!isInitializing && !permissionError && (
-          <div className="relative">
-            {/* Border Frame */}
-            <div className="w-64 h-64 border-4 border-primary/70 rounded-2xl relative">
-              {/* Corner Markers */}
-              <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
-              <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
-              <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
-
-              {/* Scanning Line */}
-              <div className="absolute top-1/2 left-0 w-full h-1 bg-red-500 animate-pulse shadow-[0_0_10px_red]"></div>
-            </div>
-
-            {/* Instruction Text */}
-            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 whitespace-nowrap">
-              <p className="text-white text-center font-medium drop-shadow-lg">
-                وجّه الكاميرا نحو الباركود
-              </p>
-            </div>
+          <div className="mt-80 text-center">
+            <p className="text-white text-lg font-bold drop-shadow-lg tracking-wide bg-black/20 px-4 py-1 rounded-full backdrop-blur-sm">
+              وجّه الكاميرا نحو الباركود
+            </p>
           </div>
         )}
 
         {/* Loading State */}
         {isInitializing && (
-          <div className="flex flex-col items-center gap-4">
-            <div className="bg-black/60 backdrop-blur-md p-6 rounded-full shadow-2xl">
-              <Loader2 className="w-12 h-12 text-white animate-spin" />
-            </div>
-            <p className="text-white font-medium drop-shadow-lg">جاري فتح الكاميرا...</p>
+          <div className="flex flex-col items-center gap-4 z-50">
+            <Loader2 className="w-16 h-16 text-primary animate-spin drop-shadow-lg" />
+            <p className="text-white font-bold text-lg drop-shadow-md">جاري فتح الكاميرا...</p>
           </div>
         )}
 
         {/* Permission Error State */}
         {permissionError && (
-          <div className="bg-black/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-sm mx-4 pointer-events-auto">
-            <p className="text-red-400 text-center mb-4">{permissionError}</p>
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="w-full"
-            >
+          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm mx-4 text-center pointer-events-auto z-50">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">صلاحية الكاميرا مطلوبة</h3>
+            <p className="text-gray-600 mb-6">{permissionError}</p>
+            <Button onClick={handleClose} className="w-full">
               إغلاق
             </Button>
           </div>
         )}
       </div>
-
-      {/* Bottom Close Button - Always visible for easy exit */}
-      {!permissionError && (
-        <div className="p-4 pb-safe flex justify-center pointer-events-auto">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleClose}
-            className="rounded-full shadow-2xl bg-white/10 backdrop-blur-md text-white border-white/50 hover:bg-white/20 min-w-[200px] min-h-[56px] text-lg font-semibold"
-          >
-            <X className="w-5 h-5 ml-2" />
-            إلغاء المسح
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

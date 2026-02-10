@@ -46,6 +46,7 @@ import {
 } from '@/lib/cloud/customers-cloud';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
+import { AppTooltip } from '@/components/ui/AppTooltip';
 import { EVENTS } from '@/lib/events';
 
 export default function Customers() {
@@ -240,13 +241,15 @@ export default function Customers() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('customers.pageTitle')}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          setFormData({ name: '', phone: '', email: '', address: '' });
-          setShowAddDialog(true);
-        }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          {t('customers.addCustomer')}
-        </Button>
+        <AppTooltip tooltipKey="tooltip.customers.add">
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+            setFormData({ name: '', phone: '', email: '', address: '' });
+            setShowAddDialog(true);
+          }}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('customers.addCustomer')}
+          </Button>
+        </AppTooltip>
       </div>
 
       {/* Stats */}
@@ -384,22 +387,28 @@ export default function Customers() {
 
             {/* Actions */}
             <div className="flex gap-2 pt-3 md:pt-4 border-t border-border">
-              <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(customer)}>
-                <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                {t('common.view')}
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openEditDialog(customer)}>
-                <Edit className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                {t('common.edit')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 md:h-9 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => openDeleteDialog(customer)}
-              >
-                <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              </Button>
+              <AppTooltip tooltipKey="tooltip.common.view">
+                <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(customer)}>
+                  <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                  {t('common.view')}
+                </Button>
+              </AppTooltip>
+              <AppTooltip tooltipKey="tooltip.common.edit">
+                <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openEditDialog(customer)}>
+                  <Edit className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                  {t('common.edit')}
+                </Button>
+              </AppTooltip>
+              <AppTooltip tooltipKey="tooltip.common.delete">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 md:h-9 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={() => openDeleteDialog(customer)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                </Button>
+              </AppTooltip>
             </div>
           </div>
         ))}

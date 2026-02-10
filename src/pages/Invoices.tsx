@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { printHTML, generateClientInvoiceHTML } from '@/lib/native-print';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -187,243 +187,56 @@ export default function Invoices() {
     navigate(`/debts?invoiceId=${invoice.id}&autoOpenPayment=true`);
   };
 
-  const handlePrint = (invoice: Invoice) => {
-    // Dynamic store settings with proper defaults
-    const storeDefaults = {
-      storeName: 'HyperPOS Store',
-      storeAddress: '',
-      storePhone: '',
-      storeLogo: '',
-      footer: 'شكراً لتعاملكم معنا!',
-      currencySymbol: 'ر.س'
-    };
-
-    let storeConfig = { ...storeDefaults };
+  const handlePrint = async (invoice: Invoice) => {
+    // Dynamic store settings extraction
+    let storeName = 'HyperPOS Store';
+    let storePhone = '';
+    let storeAddress = '';
+    let storeLogo = '';
+    let footer = 'شكراً لتعاملكم معنا!';
+    let currencySymbol = 'ر.س';
 
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
         const settings = JSON.parse(settingsRaw);
-        storeConfig = {
-          storeName: settings.storeSettings?.name || storeDefaults.storeName,
-          storeAddress: settings.storeSettings?.address || storeDefaults.storeAddress,
-          storePhone: settings.storeSettings?.phone || storeDefaults.storePhone,
-          storeLogo: settings.storeSettings?.logo || storeDefaults.storeLogo,
-          footer: settings.printSettings?.footer || storeDefaults.footer,
-          currencySymbol: settings.currencySymbol || storeDefaults.currencySymbol,
-        };
+        storeName = settings.storeSettings?.name || storeName;
+        storePhone = settings.storeSettings?.phone || '';
+        storeAddress = settings.storeSettings?.address || '';
+        storeLogo = settings.storeSettings?.logo || '';
+        footer = settings.printSettings?.footer || footer;
+        // Find currency symbol based on stored settings if possible, defaulting to SAR/USD or item currency
+        // Here we just use a default or what's in settings.
       }
-    } catch (error) {
-      console.error('Failed to load store settings for print:', error);
-      toast.error(t('invoices.printSettingsError'));
-    }
+    } catch { }
 
-    const { storeName, storeAddress, storePhone, storeLogo, footer } = storeConfig;
+    const printData = {
+      id: invoice.id,
+      date: new Date(invoice.createdAt).toLocaleDateString('ar-SA'),
+      customerName: invoice.customerName,
+      items: invoice.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.total
+      })),
+      subtotal: invoice.subtotal,
+      discount: invoice.discount,
+      total: invoice.total,
+      currencySymbol: currencySymbol, // This might need better dynamic handling if multiple currencies
+      storeName,
+      storePhone,
+      storeAddress,
+      storeLogo,
+      footer,
+      paymentType: 'cash' as const // Simplified for now, or derive from invoice data if available
+    };
 
-    const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
-    const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
+    // Use the new professional template
+    const html = generateClientInvoiceHTML(printData);
 
-    const itemsHtml = invoice.type === 'sale'
-      ? invoice.items.map(item => `
-          <tr>
-            <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
-            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
-          </tr>
-        `).join('')
-      : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || t('invoices.maintenanceService')}</td></tr>`;
-
-    const printContent = `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-          <title>فاتورة - ${invoice.id}</title>
-          <style>
-            /* Reset & Base - Mobile First */
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            body { 
-              font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
-              padding: 10px; 
-              max-width: 80mm; 
-              margin: 0 auto; 
-              font-size: 12px;
-              line-height: 1.4;
-              color: #333;
-            }
-            
-            /* Header */
-            .header { 
-              text-align: center; 
-              margin-bottom: 15px; 
-              border-bottom: 2px dashed #333; 
-              padding-bottom: 12px; 
-            }
-            .logo { 
-              max-width: 60px; 
-              max-height: 60px; 
-              margin: 0 auto 8px; 
-              display: block; 
-              object-fit: contain;
-            }
-            .store-name { 
-              font-size: 1.3em; 
-              font-weight: bold; 
-              margin: 5px 0; 
-              word-wrap: break-word;
-            }
-            .store-info { 
-              font-size: 0.85em; 
-              color: #555; 
-              word-wrap: break-word;
-            }
-            
-            /* Invoice Info */
-            .invoice-info { 
-              margin: 12px 0; 
-              font-size: 0.9em; 
-              border: 1px solid #ddd;
-              border-radius: 6px;
-              padding: 10px;
-              background: #fafafa;
-            }
-            .invoice-info > div { 
-              padding: 3px 0; 
-              display: flex;
-              justify-content: space-between;
-              flex-wrap: wrap;
-            }
-            .invoice-info strong { 
-              color: #333;
-              min-width: 80px;
-            }
-            
-            /* Table */
-            table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin: 12px 0; 
-              font-size: 0.9em;
-            }
-            th { 
-              background: #333; 
-              color: #fff;
-              padding: 8px 5px; 
-              text-align: right; 
-              font-size: 0.85em;
-            }
-            td { 
-              padding: 8px 5px; 
-              border-bottom: 1px solid #eee; 
-              vertical-align: top;
-              word-wrap: break-word;
-              max-width: 120px;
-            }
-            td:first-child {
-              max-width: 45%;
-              overflow-wrap: break-word;
-              hyphens: auto;
-            }
-            td:nth-child(2) { text-align: center; width: 20%; }
-            td:nth-child(3) { text-align: left; width: 25%; white-space: nowrap; }
-            
-            /* Service description for maintenance */
-            .service-desc {
-              white-space: pre-wrap;
-              word-wrap: break-word;
-              line-height: 1.5;
-            }
-            
-            /* Discount */
-            .discount-row {
-              text-align: left;
-              padding: 5px 0;
-              color: #c00;
-              font-weight: 500;
-            }
-            
-            /* Total */
-            .total { 
-              font-size: 1.2em; 
-              font-weight: bold; 
-              margin-top: 12px; 
-              border-top: 2px solid #333; 
-              padding-top: 10px; 
-              text-align: center;
-              background: #f5f5f5;
-              padding: 12px;
-              border-radius: 6px;
-            }
-            
-            /* Footer */
-            .footer { 
-              text-align: center; 
-              margin-top: 20px; 
-              font-size: 0.8em; 
-              color: #666;
-              border-top: 1px dashed #ccc;
-              padding-top: 12px;
-            }
-            
-            /* Print Styles */
-            @media print {
-              body { padding: 5px; max-width: 100%; }
-              .header { page-break-after: avoid; }
-              table { page-break-inside: avoid; }
-              .total { page-break-before: avoid; }
-              @page { 
-                size: 80mm auto; 
-                margin: 5mm; 
-              }
-            }
-            
-            /* Mobile Optimization */
-            @media screen and (max-width: 320px) {
-              body { font-size: 11px; padding: 8px; }
-              .store-name { font-size: 1.1em; }
-              td { padding: 6px 3px; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" onerror="this.style.display='none'" />` : ''}
-            <div class="store-name">${storeName}</div>
-            ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
-            ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
-          </div>
-          <div class="invoice-info">
-            <div><strong>رقم الفاتورة:</strong> <span>${invoice.id}</span></div>
-            <div><strong>التاريخ:</strong> <span>${date} - ${time}</span></div>
-            <div><strong>العميل:</strong> <span>${invoice.customerName}</span></div>
-            ${invoice.customerPhone ? `<div><strong>الهاتف:</strong> <span>${invoice.customerPhone}</span></div>` : ''}
-            <div><strong>النوع:</strong> <span>${invoice.type === 'sale' ? 'مبيعات' : 'صيانة'}</span></div>
-            <div><strong>الدفع:</strong> <span>${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</span></div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>البيان</th>
-                <th>الكمية</th>
-                <th>المبلغ</th>
-              </tr>
-            </thead>
-            <tbody>${itemsHtml}</tbody>
-          </table>
-          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount)}</div>` : ''}
-          <div class="total">
-            الإجمالي: ${formatCurrency(invoice.totalInCurrency)}
-          </div>
-          <div class="footer">${footer}</div>
-        </body>
-      </html>
-    `;
-
-    // استخدام iframe للطباعة بدلاً من window.open
-    printHTML(printContent);
-    toast.success('جاري إرسال الفاتورة للطابعة...');
+    // Print using native/web method
+    await printHTML(html);
   };
   const handleWhatsApp = async (invoice: Invoice) => {
     // Dynamic store settings with proper defaults
@@ -802,20 +615,51 @@ export default function Invoices() {
                         <tr>
                           <th className="px-3 py-2 text-right font-medium text-muted-foreground">المنتج</th>
                           <th className="px-3 py-2 text-center font-medium text-muted-foreground">الكمية</th>
+                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">التكلفة</th>
                           <th className="px-3 py-2 text-center font-medium text-muted-foreground">السعر</th>
+                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">الربح</th>
                           <th className="px-3 py-2 text-left font-medium text-muted-foreground">المجموع</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedInvoice.items.map((item, idx) => (
-                          <tr key={idx} className="border-t border-muted/50">
-                            <td className="px-3 py-2">{item.name}</td>
-                            <td className="px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
-                            <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
-                          </tr>
-                        ))}
+                        {selectedInvoice.items.map((item, idx) => {
+                          const cost = item.costPrice || 0;
+                          const profit = item.profit || 0;
+                          const margin = item.price > 0 ? (profit / item.total) * 100 : 0;
+
+                          return (
+                            <tr key={idx} className="border-t border-muted/50">
+                              <td className="px-3 py-2">{item.name}</td>
+                              <td className="px-3 py-2 text-center">{item.quantity}</td>
+                              <td className="px-3 py-2 text-center text-muted-foreground">{formatCurrency(cost)}</td>
+                              <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
+                              <td className="px-3 py-2 text-center text-success">
+                                {formatCurrency(profit)}
+                                <span className="text-[10px] text-muted-foreground block">
+                                  ({margin.toFixed(1)}%)
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
+                      {/* Summary Footer for Analytics */}
+                      <tfoot className="bg-muted/30 border-t border-muted">
+                        <tr>
+                          <td colSpan={2} className="px-3 py-2 text-right font-medium">الإجماليات:</td>
+                          <td className="px-3 py-2 text-center font-medium text-muted-foreground">
+                            {formatCurrency(selectedInvoice.items.reduce((sum, item) => sum + (item.costPrice || 0) * item.quantity, 0))}
+                          </td>
+                          <td className="px-3 py-2"></td>
+                          <td className="px-3 py-2 text-center font-bold text-success">
+                            {formatCurrency(selectedInvoice.profit || 0)}
+                          </td>
+                          <td className="px-3 py-2 text-left font-bold">
+                            {formatCurrency(selectedInvoice.items.reduce((sum, item) => sum + item.total, 0))}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -824,7 +668,7 @@ export default function Invoices() {
               <div className="border-t pt-4 space-y-2">
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
+                    <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage} %)` : ''}:</span>
                     <span className="text-destructive">-{formatCurrency(selectedInvoice.discount)}</span>
                   </div>
                 )}

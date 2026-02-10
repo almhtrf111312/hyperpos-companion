@@ -433,6 +433,15 @@ export default function POS() {
     }));
   };
 
+  const updatePrice = (id: string, newPrice: number, unit?: 'piece' | 'bulk') => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id && (unit === undefined || item.unit === unit)) {
+        return { ...item, price: newPrice };
+      }
+      return item;
+    }));
+  };
+
   const removeItem = (id: string, unit?: 'piece' | 'bulk') => {
     setCart(prev => prev.filter(item => !(item.id === id && (unit === undefined || item.unit === unit))));
   };
@@ -552,6 +561,7 @@ export default function POS() {
                 discount={discount}
                 customerName={customerName}
                 onUpdateQuantity={updateQuantity}
+                onUpdatePrice={updatePrice}
                 onRemoveItem={removeItem}
                 onClearCart={clearCart}
                 onCurrencyChange={setSelectedCurrency}
@@ -574,6 +584,7 @@ export default function POS() {
             discount={discount}
             customerName={customerName}
             onUpdateQuantity={updateQuantity}
+            onUpdatePrice={updatePrice}
             onRemoveItem={removeItem}
             onClearCart={clearCart}
             onCurrencyChange={setSelectedCurrency}

@@ -1473,6 +1473,149 @@ export const translations = {
     // Missing keys - Services
     'services.selectDeliveryDate': 'اختر تاريخ التسليم',
 
+    // Tooltips - Navigation
+    'tooltip.nav.pos': 'شاشة نقطة البيع والمبيعات',
+    'tooltip.nav.dashboard': 'لوحة التحكم والإحصائيات',
+    'tooltip.nav.products': 'إدارة المنتجات والمخزون',
+    'tooltip.nav.customers': 'إدارة بيانات العملاء',
+    'tooltip.nav.debts': 'تتبع وإدارة الديون',
+    'tooltip.nav.services': 'إدارة طلبات الصيانة والخدمات',
+    'tooltip.nav.invoices': 'عرض وإدارة الفواتير',
+    'tooltip.nav.expenses': 'تسجيل وتتبع المصاريف',
+    'tooltip.nav.partners': 'إدارة الشركاء وتوزيع الأرباح',
+    'tooltip.nav.cashShifts': 'إدارة الصندوق والورديات',
+    'tooltip.nav.warehouses': 'إدارة المستودعات والمخازن',
+    'tooltip.nav.stockTransfer': 'تحويل المخزون بين المستودعات',
+    'tooltip.nav.reports': 'التقارير والإحصائيات التفصيلية',
+    'tooltip.nav.settings': 'إعدادات النظام والتخصيص',
+    'tooltip.nav.appearance': 'تغيير مظهر وألوان التطبيق',
+
+    // Tooltips - Sidebar Actions
+    'tooltip.sidebar.collapse': 'طي/توسيع القائمة الجانبية',
+    'tooltip.sidebar.close': 'إغلاق القائمة',
+    'tooltip.sidebar.logout': 'تسجيل الخروج من الحساب',
+    'tooltip.sidebar.sync': 'حالة مزامنة البيانات',
+    'tooltip.sidebar.network': 'حالة الاتصال بالإنترنت',
+    'tooltip.sidebar.notifications': 'عرض الإشعارات',
+    'tooltip.sidebar.menu': 'فتح القائمة الجانبية',
+
+    // Tooltips - Dashboard
+    'tooltip.dashboard.todaySales': 'إجمالي المبيعات النقدية لهذا اليوم',
+    'tooltip.dashboard.netProfit': 'صافي الأرباح بعد خصم المصاريف',
+    'tooltip.dashboard.dueDebts': 'إجمالي الديون المستحقة من العملاء',
+    'tooltip.dashboard.customers': 'عدد العملاء الفريدين هذا الشهر',
+    'tooltip.dashboard.inventory': 'القيمة الإجمالية للمخزون بسعر التكلفة',
+    'tooltip.dashboard.capital': 'إجمالي رأس مال الشركاء',
+    'tooltip.dashboard.cashbox': 'الرصيد الحالي في الصندوق',
+    'tooltip.dashboard.liquid': 'رأس المال السائل المتاح',
+
+    // Tooltips - Quick Actions
+    'tooltip.quick.newInvoice': 'الانتقال لنقطة البيع لإنشاء فاتورة جديدة',
+    'tooltip.quick.newProduct': 'إضافة منتج جديد للمخزون',
+    'tooltip.quick.newCustomer': 'تسجيل عميل جديد في النظام',
+    'tooltip.quick.recordPayment': 'تسجيل دفعة لسداد دين عميل',
+    'tooltip.quick.maintenance': 'إنشاء طلب صيانة جديد',
+    'tooltip.quick.addExpense': 'تسجيل مصروف جديد',
+    'tooltip.quick.inventory': 'فحص وجرد المخزون الحالي',
+
+    // Tooltips - POS
+    'tooltip.pos.scan': 'مسح باركود المنتج بالكاميرا',
+    'tooltip.pos.search': 'البحث عن منتج بالاسم أو الباركود',
+    'tooltip.pos.clearCart': 'إزالة جميع المنتجات من السلة',
+    'tooltip.pos.sellCash': 'إتمام البيع نقداً',
+    'tooltip.pos.sellCredit': 'إتمام البيع بالآجل (دين)',
+    'tooltip.pos.toggleMode': 'التبديل بين وضع البيع والصيانة',
+    'tooltip.pos.discount': 'تطبيق خصم على الفاتورة',
+    'tooltip.pos.increaseQty': 'زيادة الكمية بمقدار واحد',
+    'tooltip.pos.decreaseQty': 'إنقاص الكمية بمقدار واحد',
+    'tooltip.pos.removeItem': 'حذف المنتج من السلة',
+    'tooltip.pos.calculator': 'فتح الآلة الحاسبة',
+
+    // Tooltips - Products
+    'tooltip.products.add': 'إضافة منتج جديد للمخزون',
+    'tooltip.products.edit': 'تعديل بيانات المنتج',
+    'tooltip.products.delete': 'حذف المنتج من المخزون',
+    'tooltip.products.scan': 'مسح باركود لإضافة أو البحث عن منتج',
+    'tooltip.products.search': 'البحث بالاسم أو الباركود',
+    'tooltip.products.categories': 'إدارة تصنيفات المنتجات',
+    'tooltip.products.filter': 'تصفية المنتجات حسب الحالة',
+    'tooltip.products.purchaseInvoice': 'إنشاء فاتورة شراء جديدة',
+
+    // Tooltips - Customers
+    'tooltip.customers.add': 'إضافة عميل جديد',
+    'tooltip.customers.edit': 'تعديل بيانات العميل',
+    'tooltip.customers.delete': 'حذف العميل',
+    'tooltip.customers.search': 'البحث بالاسم أو رقم الهاتف',
+
+    // Tooltips - Debts
+    'tooltip.debts.add': 'إضافة دين نقدي جديد',
+    'tooltip.debts.pay': 'تسجيل دفعة لسداد الدين',
+    'tooltip.debts.search': 'البحث في الديون',
+    'tooltip.debts.filter': 'تصفية حسب حالة الدين',
+    'tooltip.debts.share': 'مشاركة تفاصيل الدين مع العميل',
+
+    // Tooltips - Invoices
+    'tooltip.invoices.search': 'البحث بالاسم أو رقم الفاتورة',
+    'tooltip.invoices.filter': 'تصفية الفواتير حسب النوع',
+    'tooltip.invoices.details': 'عرض تفاصيل الفاتورة',
+    'tooltip.invoices.delete': 'حذف أو إلغاء الفاتورة',
+    'tooltip.invoices.print': 'طباعة الفاتورة',
+    'tooltip.invoices.share': 'مشاركة الفاتورة',
+
+    // Tooltips - Expenses
+    'tooltip.expenses.add': 'تسجيل مصروف جديد',
+    'tooltip.expenses.addRecurring': 'إضافة مصروف ثابت متكرر',
+    'tooltip.expenses.delete': 'حذف المصروف',
+    'tooltip.expenses.pay': 'دفع المصروف المستحق',
+
+    // Tooltips - Partners
+    'tooltip.partners.add': 'إضافة شريك جديد',
+    'tooltip.partners.edit': 'تعديل بيانات الشريك',
+    'tooltip.partners.delete': 'حذف الشريك',
+    'tooltip.partners.withdraw': 'سحب رصيد من حساب الشريك',
+    'tooltip.partners.deposit': 'إضافة رأس مال للشريك',
+    'tooltip.partners.details': 'عرض تفاصيل وأرباح الشريك',
+
+    // Tooltips - Cashbox & Shifts
+    'tooltip.cashbox.openShift': 'بدء وردية جديدة وتحديد الرصيد الافتتاحي',
+    'tooltip.cashbox.closeShift': 'إغلاق الوردية الحالية ومراجعة الحسابات',
+
+    // Tooltips - Warehouses
+    'tooltip.warehouses.add': 'إضافة مستودع جديد',
+    'tooltip.warehouses.edit': 'تعديل بيانات المستودع',
+    'tooltip.warehouses.delete': 'حذف المستودع',
+
+    // Tooltips - Stock Transfer
+    'tooltip.stockTransfer.create': 'إنشاء أمر تحويل مخزون جديد',
+    'tooltip.stockTransfer.confirm': 'تأكيد وتنفيذ أمر التحويل',
+    'tooltip.stockTransfer.cancel': 'إلغاء أمر التحويل',
+    'tooltip.stockTransfer.print': 'طباعة وصل استلام العهدة',
+
+    // Tooltips - Reports
+    'tooltip.reports.export': 'تصدير التقرير إلى ملف Excel',
+    'tooltip.reports.filter': 'تصفية التقارير حسب الفترة',
+    'tooltip.reports.comprehensive': 'إنشاء تقرير شامل بجميع البيانات',
+    'tooltip.reports.share': 'مشاركة التقرير',
+
+    // Tooltips - Settings
+    'tooltip.settings.save': 'حفظ التغييرات في الإعدادات',
+    'tooltip.settings.backup': 'إنشاء نسخة احتياطية من البيانات',
+    'tooltip.settings.restore': 'استعادة البيانات من نسخة احتياطية',
+    'tooltip.settings.language': 'تغيير لغة واجهة التطبيق',
+    'tooltip.settings.currency': 'إعدادات العملة وسعر الصرف',
+    'tooltip.settings.resetData': 'مسح جميع البيانات وإعادة التعيين',
+
+    // Tooltips - Common Actions
+    'tooltip.common.print': 'طباعة المحتوى',
+    'tooltip.common.share': 'مشاركة المحتوى',
+    'tooltip.common.refresh': 'تحديث البيانات',
+    'tooltip.common.export': 'تصدير البيانات',
+    'tooltip.common.import': 'استيراد بيانات',
+    'tooltip.common.close': 'إغلاق النافذة',
+    'tooltip.common.view': 'عرض التفاصيل',
+    'tooltip.common.edit': 'تعديل العنصر',
+    'tooltip.common.delete': 'حذف العنصر',
+
   },
   en: {
     // Navigation
@@ -3680,6 +3823,149 @@ export const translations = {
 
     // Missing keys - Services
     'services.selectDeliveryDate': 'Select delivery date',
+
+    // Tooltips - Navigation
+    'tooltip.nav.pos': 'Point of Sale & sales screen',
+    'tooltip.nav.dashboard': 'Dashboard & statistics',
+    'tooltip.nav.products': 'Product & inventory management',
+    'tooltip.nav.customers': 'Customer data management',
+    'tooltip.nav.debts': 'Track & manage debts',
+    'tooltip.nav.services': 'Maintenance & service requests',
+    'tooltip.nav.invoices': 'View & manage invoices',
+    'tooltip.nav.expenses': 'Record & track expenses',
+    'tooltip.nav.partners': 'Partner management & profit sharing',
+    'tooltip.nav.cashShifts': 'Cash register & shift management',
+    'tooltip.nav.warehouses': 'Warehouse & storage management',
+    'tooltip.nav.stockTransfer': 'Transfer stock between warehouses',
+    'tooltip.nav.reports': 'Detailed reports & analytics',
+    'tooltip.nav.settings': 'System settings & customization',
+    'tooltip.nav.appearance': 'Change app theme & colors',
+
+    // Tooltips - Sidebar Actions
+    'tooltip.sidebar.collapse': 'Collapse/expand sidebar',
+    'tooltip.sidebar.close': 'Close menu',
+    'tooltip.sidebar.logout': 'Log out of your account',
+    'tooltip.sidebar.sync': 'Data sync status',
+    'tooltip.sidebar.network': 'Internet connection status',
+    'tooltip.sidebar.notifications': 'View notifications',
+    'tooltip.sidebar.menu': 'Open sidebar menu',
+
+    // Tooltips - Dashboard
+    'tooltip.dashboard.todaySales': 'Total cash sales for today',
+    'tooltip.dashboard.netProfit': 'Net profit after deducting expenses',
+    'tooltip.dashboard.dueDebts': 'Total outstanding customer debts',
+    'tooltip.dashboard.customers': 'Unique customers this month',
+    'tooltip.dashboard.inventory': 'Total inventory value at cost price',
+    'tooltip.dashboard.capital': 'Total partner capital',
+    'tooltip.dashboard.cashbox': 'Current cash register balance',
+    'tooltip.dashboard.liquid': 'Available liquid capital',
+
+    // Tooltips - Quick Actions
+    'tooltip.quick.newInvoice': 'Go to POS to create a new invoice',
+    'tooltip.quick.newProduct': 'Add a new product to inventory',
+    'tooltip.quick.newCustomer': 'Register a new customer',
+    'tooltip.quick.recordPayment': 'Record a payment for customer debt',
+    'tooltip.quick.maintenance': 'Create a new maintenance request',
+    'tooltip.quick.addExpense': 'Record a new expense',
+    'tooltip.quick.inventory': 'Check & audit current inventory',
+
+    // Tooltips - POS
+    'tooltip.pos.scan': 'Scan product barcode with camera',
+    'tooltip.pos.search': 'Search product by name or barcode',
+    'tooltip.pos.clearCart': 'Remove all items from cart',
+    'tooltip.pos.sellCash': 'Complete sale with cash payment',
+    'tooltip.pos.sellCredit': 'Complete sale on credit (debt)',
+    'tooltip.pos.toggleMode': 'Switch between sales and maintenance mode',
+    'tooltip.pos.discount': 'Apply discount to invoice',
+    'tooltip.pos.increaseQty': 'Increase quantity by one',
+    'tooltip.pos.decreaseQty': 'Decrease quantity by one',
+    'tooltip.pos.removeItem': 'Remove item from cart',
+    'tooltip.pos.calculator': 'Open calculator',
+
+    // Tooltips - Products
+    'tooltip.products.add': 'Add a new product to inventory',
+    'tooltip.products.edit': 'Edit product details',
+    'tooltip.products.delete': 'Delete product from inventory',
+    'tooltip.products.scan': 'Scan barcode to add or find product',
+    'tooltip.products.search': 'Search by name or barcode',
+    'tooltip.products.categories': 'Manage product categories',
+    'tooltip.products.filter': 'Filter products by status',
+    'tooltip.products.purchaseInvoice': 'Create a new purchase invoice',
+
+    // Tooltips - Customers
+    'tooltip.customers.add': 'Add a new customer',
+    'tooltip.customers.edit': 'Edit customer details',
+    'tooltip.customers.delete': 'Delete customer',
+    'tooltip.customers.search': 'Search by name or phone number',
+
+    // Tooltips - Debts
+    'tooltip.debts.add': 'Add a new cash debt',
+    'tooltip.debts.pay': 'Record a debt payment',
+    'tooltip.debts.search': 'Search debts',
+    'tooltip.debts.filter': 'Filter by debt status',
+    'tooltip.debts.share': 'Share debt details with customer',
+
+    // Tooltips - Invoices
+    'tooltip.invoices.search': 'Search by name or invoice number',
+    'tooltip.invoices.filter': 'Filter invoices by type',
+    'tooltip.invoices.details': 'View invoice details',
+    'tooltip.invoices.delete': 'Delete or void invoice',
+    'tooltip.invoices.print': 'Print invoice',
+    'tooltip.invoices.share': 'Share invoice',
+
+    // Tooltips - Expenses
+    'tooltip.expenses.add': 'Record a new expense',
+    'tooltip.expenses.addRecurring': 'Add a recurring fixed expense',
+    'tooltip.expenses.delete': 'Delete expense',
+    'tooltip.expenses.pay': 'Pay due expense',
+
+    // Tooltips - Partners
+    'tooltip.partners.add': 'Add a new partner',
+    'tooltip.partners.edit': 'Edit partner details',
+    'tooltip.partners.delete': 'Delete partner',
+    'tooltip.partners.withdraw': 'Withdraw from partner account',
+    'tooltip.partners.deposit': 'Add capital to partner',
+    'tooltip.partners.details': 'View partner details & profits',
+
+    // Tooltips - Cashbox & Shifts
+    'tooltip.cashbox.openShift': 'Start a new shift and set opening balance',
+    'tooltip.cashbox.closeShift': 'Close current shift and reconcile accounts',
+
+    // Tooltips - Warehouses
+    'tooltip.warehouses.add': 'Add a new warehouse',
+    'tooltip.warehouses.edit': 'Edit warehouse details',
+    'tooltip.warehouses.delete': 'Delete warehouse',
+
+    // Tooltips - Stock Transfer
+    'tooltip.stockTransfer.create': 'Create a new stock transfer order',
+    'tooltip.stockTransfer.confirm': 'Confirm and execute transfer order',
+    'tooltip.stockTransfer.cancel': 'Cancel transfer order',
+    'tooltip.stockTransfer.print': 'Print custody receipt',
+
+    // Tooltips - Reports
+    'tooltip.reports.export': 'Export report to Excel file',
+    'tooltip.reports.filter': 'Filter reports by period',
+    'tooltip.reports.comprehensive': 'Generate comprehensive report with all data',
+    'tooltip.reports.share': 'Share report',
+
+    // Tooltips - Settings
+    'tooltip.settings.save': 'Save settings changes',
+    'tooltip.settings.backup': 'Create a data backup',
+    'tooltip.settings.restore': 'Restore data from backup',
+    'tooltip.settings.language': 'Change app interface language',
+    'tooltip.settings.currency': 'Currency & exchange rate settings',
+    'tooltip.settings.resetData': 'Clear all data and reset',
+
+    // Tooltips - Common Actions
+    'tooltip.common.print': 'Print content',
+    'tooltip.common.share': 'Share content',
+    'tooltip.common.refresh': 'Refresh data',
+    'tooltip.common.export': 'Export data',
+    'tooltip.common.import': 'Import data',
+    'tooltip.common.close': 'Close window',
+    'tooltip.common.view': 'View details',
+    'tooltip.common.edit': 'Edit item',
+    'tooltip.common.delete': 'Delete item',
   },
 };
 

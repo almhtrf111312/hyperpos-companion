@@ -83,6 +83,7 @@ import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
+import { AppTooltip } from '@/components/ui/AppTooltip';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -678,42 +679,54 @@ export default function Products() {
           {/* Mobile: Grid layout for buttons */}
           <div className="sm:hidden flex flex-col gap-2">
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                <FileText className="w-4 h-4 ml-1" />
+              <AppTooltip tooltipKey="tooltip.products.purchaseInvoice">
+                <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                  <FileText className="w-4 h-4 ml-1" />
+                  {t('purchaseInvoice.addPurchaseInvoice')}
+                </Button>
+              </AppTooltip>
+              <AppTooltip tooltipKey="tooltip.products.add">
+                <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
+                  setFieldsConfig(getEffectiveFieldsConfig());
+                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                  setShowAddDialog(true);
+                }}>
+                  <Plus className="w-4 h-4 ml-1" />
+                  {t('products.addProduct')}
+                </Button>
+              </AppTooltip>
+            </div>
+            <AppTooltip tooltipKey="tooltip.products.categories">
+              <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
+                <Tag className="w-4 h-4 ml-1" />
+                {t('products.categories')}
+              </Button>
+            </AppTooltip>
+          </div>
+          {/* Desktop: Original layout */}
+          <div className="hidden sm:flex gap-2">
+            <AppTooltip tooltipKey="tooltip.products.purchaseInvoice">
+              <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
                 {t('purchaseInvoice.addPurchaseInvoice')}
               </Button>
-              <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
+            </AppTooltip>
+            <AppTooltip tooltipKey="tooltip.products.categories">
+              <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
+                <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                {t('products.categories')}
+              </Button>
+            </AppTooltip>
+            <AppTooltip tooltipKey="tooltip.products.add">
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
                 setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
-                <Plus className="w-4 h-4 ml-1" />
+                <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
                 {t('products.addProduct')}
               </Button>
-            </div>
-            <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
-              <Tag className="w-4 h-4 ml-1" />
-              {t('products.categories')}
-            </Button>
-          </div>
-          {/* Desktop: Original layout */}
-          <div className="hidden sm:flex gap-2">
-            <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-              <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('purchaseInvoice.addPurchaseInvoice')}
-            </Button>
-            <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
-              <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('products.categories')}
-            </Button>
-            <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-              setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-              setShowAddDialog(true);
-            }}>
-              <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('products.addProduct')}
-            </Button>
+            </AppTooltip>
           </div>
         </div>
       </div>
@@ -954,12 +967,16 @@ export default function Products() {
                       })()}
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
-                        <Edit className="w-5 h-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
+                      <AppTooltip tooltipKey="tooltip.common.edit">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
+                          <Edit className="w-5 h-5" />
+                        </Button>
+                      </AppTooltip>
+                      <AppTooltip tooltipKey="tooltip.common.delete">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </AppTooltip>
                     </div>
                   </div>
                 </div>
