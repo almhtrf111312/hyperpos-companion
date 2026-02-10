@@ -1,15 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useLicense } from '@/hooks/use-license';
-import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 export function LicenseWarningBadge() {
   const { user } = useAuth();
   const { isTrial, remainingDays, isValid, expiringWarning, isLoading } = useLicense();
-  const { language } = useLanguage();
   const [isDismissed, setIsDismissed] = useState(false);
+  
+  // Use direct language detection instead of useLanguage hook
+  // to avoid crashes if rendered before LanguageProvider is ready
+  const [language, setLanguage] = useState(getCurrentLanguage());
+  
+  useEffect(() => {
+    const handler = (e: Event) => setLanguage((e as CustomEvent).detail);
+    window.addEventListener('languagechange', handler);
+    return () => window.removeEventListener('languagechange', handler);
+  }, []);
   
   const isRTL = language === 'ar';
 
