@@ -53,7 +53,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       // 2. Fallback to local storage or system default
       const savedLang = getCurrentLanguage();
 
-      if (savedLang === 'auto') {
+      if ((savedLang as string) === 'auto') {
         const systemLang = await getSystemLanguage();
         const mappedLang = mapSystemLanguage(systemLang);
         setLanguageState(mappedLang);
@@ -68,7 +68,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     // ✅ Listen for system language changes
     setupSystemLanguageListener(async (newLang) => {
       const savedLang = getCurrentLanguage();
-      if (savedLang === 'auto') {
+      if ((savedLang as string) === 'auto') {
         setLanguageState(newLang as Language);
         document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
       }
