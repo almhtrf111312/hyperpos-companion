@@ -135,9 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // ===== TWO CLEARING STRATEGIES =====
-
-    // Strategy 1: Just show login page (no reload needed - used when there's no session at all)
+    // Show login page (clear all state, NO reload)
     const showLoginPage = () => {
       console.log('[AuthProvider] No valid session, showing login page');
       setUser(null);
@@ -147,11 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finishLoading();
     };
 
-    // Strategy 2: Nuclear cleanup + reload (used when there's a STALE session that's corrupting state)
-    const clearAuthAndReload = async () => {
-      console.log('[AuthProvider] 🧹 Nuclear cleanup: clearing ALL auth state + reload...');
+    // Clear all auth state and show login (NO page reload - this prevents infinite loops)
+    const clearAuthAndShowLogin = async () => {
+      console.log('[AuthProvider] 🧹 Clearing all auth state...');
 
-      // Step 1: Try local-only signOut (don't contact server)
+      // Step 1: Try local-only signOut
       try {
         await supabase.auth.signOut({ scope: 'local' });
       } catch {
@@ -165,17 +163,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const key = localStorage.key(i);
           if (key && (
             key.startsWith('sb-') ||
-            key === STAY_LOGGED_IN_KEY ||
             key === SESSION_CACHE_KEY ||
             key === 'supabase.auth.token' ||
-            key.includes('auth-token') ||
-            key.includes('supabase')
+            key.includes('auth-token')
           )) {
             keysToRemove.push(key);
           }
         }
         keysToRemove.forEach(key => {
-          console.log('[AuthProvider] 🗑️ Removing localStorage key:', key);
+          console.log('[AuthProvider] 🗑️ Removing:', key);
           localStorage.removeItem(key);
         });
         sessionStorage.clear();
@@ -183,9 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AuthProvider] Error clearing storage:', err);
       }
 
-      // Step 3: Force reload to destroy stale Supabase client in memory
-      console.log('[AuthProvider] 🔄 Forcing page reload for clean state...');
-      window.location.reload();
+      // Step 3: Show login page (NO RELOAD)
+      showLoginPage();
     };
 
     // Immediately restore from cache for faster UI (temporary until verified)
@@ -197,11 +192,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // ===== SAFETY TIMEOUT =====
     const safetyTimeout = setTimeout(() => {
       if (isLoadingRef) {
-        console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (4s) - forcing loading completion');
-        // Safety timeout: just show login, don't reload (avoids infinite loop)
+        console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (8s) - showing login');
         showLoginPage();
       }
-    }, 4000);
+    }, 8000);
 
     // ===== AUTH STATE LISTENER =====
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -258,7 +252,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const deviceId = await getDeviceId();
 
-        // Timeout for auto-login edge function
         const controller = new AbortController();
         const autoLoginTimeout = setTimeout(() => controller.abort(), 5000);
 
@@ -316,12 +309,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('[AuthProvider] Starting auth initialization...');
 
-        // Step 1: Get the locally stored session
         const { data: { session: existingSession } } = await supabase.auth.getSession();
 
         if (!existingSession) {
           console.log('[AuthProvider] No existing session found');
-          // Try auto-login, then finish
           const autoLoginSuccess = await attemptDeviceAutoLogin();
           if (!autoLoginSuccess) {
             showLoginPage();
@@ -331,23 +322,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('[AuthProvider] Found existing session, verifying...');
 
-        // Step 2: Try to refresh the session (this validates the token with the server)
-        // This is the KEY fix - refreshSession will fail if the token is truly expired
+        // Try to refresh the session
         try {
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
 
           if (refreshError || !refreshData.session) {
-            // ❌ Token is invalid/expired and cannot be refreshed
             console.warn('[AuthProvider] ❌ Session refresh failed:', refreshError?.message);
-
-            // Force sign out to clear invalid tokens
-            try { await supabase.auth.signOut(); } catch { /* ignore */ }
-
-            // Try auto-login as fallback
-            const autoLoginSuccess = await attemptDeviceAutoLogin();
-            if (!autoLoginSuccess) {
-              clearAuthAndReload();
-            }
+            // Token is invalid - clear everything and show login (NO RELOAD)
+            await clearAuthAndShowLogin();
             return;
           }
 
@@ -360,32 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cacheSession(refreshData.session);
           }
 
-          // Step 3: Verify the user still exists (with timeout)
-          try {
-            const userCheckPromise = supabase.auth.getUser();
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('getUser timeout')), 3000)
-            );
-
-            const { data: { user: currentUser }, error: userError } = await Promise.race([
-              userCheckPromise,
-              timeoutPromise
-            ]) as any;
-
-            if (userError || !currentUser) {
-              console.warn('[AuthProvider] ❌ User verification failed:', userError?.message);
-              try { await supabase.auth.signOut(); } catch { /* ignore */ }
-              clearAuthAndReload();
-              return;
-            }
-
-            console.log('[AuthProvider] ✅ User verified:', currentUser.email);
-          } catch (err) {
-            // Timeout or error on getUser - session was already refreshed, proceed anyway
-            console.warn('[AuthProvider] getUser check timed out, proceeding with refreshed session');
-          }
-
-          // Step 4: Fetch profile (non-blocking)
+          // Fetch profile (non-blocking)
           if (mounted && refreshData.session?.user) {
             try {
               const profileData = await fetchProfile(refreshData.session.user.id);
@@ -399,14 +356,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         } catch (refreshErr) {
           console.error('[AuthProvider] Unexpected refresh error:', refreshErr);
-          // If refresh throws unexpectedly, clear auth
-          try { await supabase.auth.signOut(); } catch { /* ignore */ }
-          clearAuthAndReload();
+          await clearAuthAndShowLogin();
         }
 
       } catch (err) {
         console.error('[AuthProvider] Auth initialization error:', err);
-        clearAuthAndReload();
+        // On any error, just show login - NEVER reload
+        showLoginPage();
       }
     };
 
