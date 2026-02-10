@@ -112,7 +112,6 @@ Deno.serve(async (req) => {
     }
 
     // Step 2: Check if license is still valid (not expired)
-    const now = new Date();
     const expiresAt = new Date(license.expires_at);
     if (expiresAt < now) {
       return new Response(

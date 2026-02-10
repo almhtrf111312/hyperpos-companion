@@ -1418,6 +1418,61 @@ export const translations = {
     'notifications.daysRemaining': 'متبقي {days} يوم',
     'notifications.licenseExpired': 'انتهى الترخيص',
 
+    // Missing keys - Customers
+    'customers.nameExists': 'اسم العميل موجود مسبقاً',
+    'customers.addFailed': 'فشل في إضافة العميل',
+    'customers.editFailed': 'فشل في تعديل العميل',
+    'customers.deleteFailed': 'فشل في حذف العميل',
+
+    // Missing keys - Debts
+    'debts.shareOpened': 'تم فتح المشاركة',
+    'debts.deleteSuccess': 'تم حذف الدين بنجاح',
+    'debts.deleteFailed': 'فشل في حذف الدين',
+    'common.user': 'مستخدم',
+    'common.deleteError': 'حدث خطأ أثناء الحذف',
+
+    // Missing keys - Expenses
+    'common.required': 'هذا الحقل مطلوب',
+    'common.selectDate': 'اختر تاريخ',
+    'expenses.voidSuccess': 'تم إلغاء المصروف بنجاح',
+    'expenses.voided': 'ملغى',
+    'expenses.void': 'إلغاء',
+    'expenses.voidExpense': 'إلغاء المصروف',
+    'expenses.voidConfirm': 'هل أنت متأكد من إلغاء هذا المصروف؟',
+    'expenses.voidReason': 'سبب الإلغاء',
+
+    // Missing keys - Invoices
+    'invoices.voidSuccess': 'تم إلغاء الفاتورة بنجاح',
+    'invoices.printSettingsError': 'خطأ في تحميل إعدادات الطباعة',
+    'invoices.maintenanceService': 'خدمة صيانة',
+    'invoices.shareOpened': 'تم فتح المشاركة',
+    'invoices.voidInvoice': 'إلغاء الفاتورة',
+    'invoices.voided': 'ملغاة',
+    'invoices.voidConfirm': 'هل أنت متأكد من إلغاء هذه الفاتورة؟',
+    'invoices.voidReason': 'سبب الإلغاء',
+
+    // Missing keys - POS
+    'pos.noWholesalePrice': 'لا يوجد سعر جملة',
+    'pos.productFound': 'تم العثور على المنتج',
+
+    // Missing keys - Reports
+    'reports.custodyValue': 'قيمة العهدة',
+    'reports.cashCustomer': 'عميل نقدي',
+    'reports.noCategory': 'بدون تصنيف',
+    'reports.waitForData': 'انتظر تحميل البيانات',
+    'reports.noDataToExport': 'لا توجد بيانات للتصدير',
+    'reports.noProductsToExport': 'لا توجد منتجات للتصدير',
+    'reports.noStockToExport': 'لا يوجد مخزون للتصدير',
+    'reports.noCustomersToExport': 'لا يوجد عملاء للتصدير',
+    'reports.noPartnersToExport': 'لا يوجد شركاء للتصدير',
+    'reports.noExpensesToExport': 'لا توجد مصاريف للتصدير',
+    'reports.generalShare': 'مشاركة عامة',
+    'reports.specializedPartner': 'شريك متخصص',
+    'reports.shareViaWhatsApp': 'مشاركة عبر واتساب',
+
+    // Missing keys - Services
+    'services.selectDeliveryDate': 'اختر تاريخ التسليم',
+
   },
   en: {
     // Navigation
@@ -3570,6 +3625,61 @@ export const translations = {
     'notifications.licenseExpiring': 'Expiring soon',
     'notifications.daysRemaining': '{days} days remaining',
     'notifications.licenseExpired': 'License expired',
+
+    // Missing keys - Customers
+    'customers.nameExists': 'Customer name already exists',
+    'customers.addFailed': 'Failed to add customer',
+    'customers.editFailed': 'Failed to edit customer',
+    'customers.deleteFailed': 'Failed to delete customer',
+
+    // Missing keys - Debts
+    'debts.shareOpened': 'Share opened',
+    'debts.deleteSuccess': 'Debt deleted successfully',
+    'debts.deleteFailed': 'Failed to delete debt',
+    'common.user': 'User',
+    'common.deleteError': 'Error occurred while deleting',
+
+    // Missing keys - Expenses
+    'common.required': 'This field is required',
+    'common.selectDate': 'Select date',
+    'expenses.voidSuccess': 'Expense voided successfully',
+    'expenses.voided': 'Voided',
+    'expenses.void': 'Void',
+    'expenses.voidExpense': 'Void Expense',
+    'expenses.voidConfirm': 'Are you sure you want to void this expense?',
+    'expenses.voidReason': 'Void reason',
+
+    // Missing keys - Invoices
+    'invoices.voidSuccess': 'Invoice voided successfully',
+    'invoices.printSettingsError': 'Error loading print settings',
+    'invoices.maintenanceService': 'Maintenance Service',
+    'invoices.shareOpened': 'Share opened',
+    'invoices.voidInvoice': 'Void Invoice',
+    'invoices.voided': 'Voided',
+    'invoices.voidConfirm': 'Are you sure you want to void this invoice?',
+    'invoices.voidReason': 'Void reason',
+
+    // Missing keys - POS
+    'pos.noWholesalePrice': 'No wholesale price',
+    'pos.productFound': 'Product found',
+
+    // Missing keys - Reports
+    'reports.custodyValue': 'Custody Value',
+    'reports.cashCustomer': 'Cash Customer',
+    'reports.noCategory': 'No Category',
+    'reports.waitForData': 'Waiting for data to load',
+    'reports.noDataToExport': 'No data to export',
+    'reports.noProductsToExport': 'No products to export',
+    'reports.noStockToExport': 'No stock to export',
+    'reports.noCustomersToExport': 'No customers to export',
+    'reports.noPartnersToExport': 'No partners to export',
+    'reports.noExpensesToExport': 'No expenses to export',
+    'reports.generalShare': 'General Share',
+    'reports.specializedPartner': 'Specialized Partner',
+    'reports.shareViaWhatsApp': 'Share via WhatsApp',
+
+    // Missing keys - Services
+    'services.selectDeliveryDate': 'Select delivery date',
   },
 };
 
