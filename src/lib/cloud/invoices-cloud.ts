@@ -394,25 +394,27 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
     console.warn('[deleteInvoiceCloud] Failed to save to trash:', e);
   }
 
-  // Find by invoice_number
+  // Find by invoice_number - also fetch total for reversal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cloudInvoice } = await (supabase as any)
     .from('invoices')
-    .select('id')
+    .select('id, total, profit')
     .eq('invoice_number', id)
     .eq('user_id', getCurrentUserId())
     .maybeSingle();
 
   if (!cloudInvoice) return false;
 
-  // ✅ Restore Stock logic before deletion
+  // ✅ 1. Restore Stock
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: items } = await (supabase as any)
       .from('invoice_items')
       .select('product_id, quantity')
       .eq('invoice_id', cloudInvoice.id);
 
     if (items && items.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const itemsToRestore = items
         .filter((item: any) => item.product_id)
         .map((item: any) => ({
@@ -429,6 +431,72 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[deleteInvoiceCloud] Error restoring stock:', err);
   }
 
+  // ✅ 2. Reverse cashbox balance (subtract invoice total from fund)
+  try {
+    const invoiceTotal = Number(cloudInvoice.total) || 0;
+    if (invoiceTotal > 0) {
+      const { updateCashboxBalance } = await import('../cashbox-store');
+      updateCashboxBalance(invoiceTotal, 'withdrawal');
+      console.log(`[deleteInvoiceCloud] ✅ Reversed cashbox: -$${invoiceTotal}`);
+    }
+  } catch (err) {
+    console.error('[deleteInvoiceCloud] Error reversing cashbox:', err);
+  }
+
+  // ✅ 3. Remove gross profit record
+  try {
+    const { removeGrossProfit } = await import('../profits-store');
+    removeGrossProfit(id);
+    console.log(`[deleteInvoiceCloud] ✅ Removed gross profit record for ${id}`);
+  } catch (err) {
+    console.error('[deleteInvoiceCloud] Error removing profit record:', err);
+  }
+
+  // ✅ 4. Reverse partner profit distributions
+  try {
+    const { loadPartnersCloud, updatePartnerCloud } = await import('./partners-cloud');
+    const partners = await loadPartnersCloud();
+
+    for (const partner of partners) {
+      // Find all profit records linked to this invoice
+      const relatedProfits = partner.profitHistory.filter(
+        (p: { invoiceId: string }) => p.invoiceId === id
+      );
+
+      if (relatedProfits.length > 0) {
+        const totalToReverse = relatedProfits.reduce(
+          (sum: number, p: { amount: number }) => sum + p.amount, 0
+        );
+
+        // Also check pending profits (for debt invoices)
+        const relatedPending = (partner.pendingProfitDetails || []).filter(
+          (p: { invoiceId: string }) => p.invoiceId === id
+        );
+        const pendingToReverse = relatedPending.reduce(
+          (sum: number, p: { amount: number }) => sum + p.amount, 0
+        );
+
+        await updatePartnerCloud(partner.id, {
+          confirmedProfit: partner.confirmedProfit - totalToReverse,
+          currentBalance: partner.currentBalance - totalToReverse,
+          totalProfitEarned: partner.totalProfitEarned - totalToReverse,
+          pendingProfit: partner.pendingProfit - pendingToReverse,
+          pendingProfitDetails: (partner.pendingProfitDetails || []).filter(
+            (p: { invoiceId: string }) => p.invoiceId !== id
+          ),
+          profitHistory: partner.profitHistory.filter(
+            (p: { invoiceId: string }) => p.invoiceId !== id
+          ),
+        });
+
+        console.log(`[deleteInvoiceCloud] ✅ Reversed $${totalToReverse} profit from partner ${partner.name}`);
+      }
+    }
+  } catch (err) {
+    console.error('[deleteInvoiceCloud] Error reversing partner profits:', err);
+  }
+
+  // ✅ 5. Delete from database
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
 
   if (success) {
