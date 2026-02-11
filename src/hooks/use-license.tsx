@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 
@@ -10,7 +10,7 @@ interface LicenseState {
   isExpired: boolean;
   isRevoked: boolean;
   needsActivation: boolean;
-  ownerNeedsActivation: boolean; // For cashiers when their owner hasn't activated
+  ownerNeedsActivation: boolean;
   expiresAt: string | null;
   remainingDays: number | null;
   error: string | null;
@@ -28,10 +28,9 @@ interface LicenseContextType extends LicenseState {
 
 const LicenseContext = createContext<LicenseContextType | undefined>(undefined);
 
-const TRIAL_DAYS = 30;
-
 export function LicenseProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
+  const lastCheckedUserId = useRef<string | null>(null);
   const [state, setState] = useState<LicenseState>({
     isLoading: true,
     isValid: false,
@@ -62,19 +61,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Safety timeout - if license check takes too long, allow access
-    const safetyTimeout = setTimeout(() => {
-      console.warn('[LicenseProvider] License check timeout - allowing access');
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        isValid: true,
-        hasLicense: true,
-        needsActivation: false,
-        error: 'فشل في التحقق من الترخيص - وضع غير متصل',
-      }));
-    }, 10000); // 10 seconds max
-
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -89,62 +75,79 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const response = await supabase.functions.invoke('check-license', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      try {
+        console.log('[License] Checking license...');
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('License check timeout')), 5000)
+        );
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
+        const invokePromise = supabase.functions.invoke('check-license', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
 
-      const data = response.data;
+        const response = await Promise.race([invokePromise, timeoutPromise]) as any;
 
-      // Check if user was deleted from database
-      if (data.userNotFound) {
-        console.log('User not found in database, signing out...');
-        await supabase.auth.signOut();
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+
+        const data = response.data;
+
+        if (data.userNotFound) {
+          console.log('[License] User not found, signing out...');
+          await supabase.auth.signOut();
+          setState(prev => ({
+            ...prev,
+            isLoading: false,
+            isValid: false,
+            hasLicense: false,
+            needsActivation: false,
+          }));
+          return;
+        }
+
+        lastCheckedUserId.current = user.id;
+        setState({
+          isLoading: false,
+          isValid: data.valid,
+          hasLicense: data.hasLicense,
+          isTrial: data.isTrial || false,
+          isExpired: data.isExpired || false,
+          isRevoked: data.isRevoked || false,
+          needsActivation: data.needsActivation,
+          ownerNeedsActivation: data.ownerNeedsActivation || false,
+          expiresAt: data.expiresAt || null,
+          remainingDays: data.remainingDays || null,
+          error: null,
+          role: data.role || null,
+          maxCashiers: data.maxCashiers || null,
+          licenseTier: data.licenseTier || null,
+          expiringWarning: data.expiringWarning || false,
+        });
+      } catch (edgeFnError) {
+        console.warn('[License] Edge function unavailable, allowing access:', edgeFnError);
+        lastCheckedUserId.current = user.id;
         setState(prev => ({
           ...prev,
           isLoading: false,
-          isValid: false,
-          hasLicense: false,
+          isValid: true,
+          hasLicense: true,
           needsActivation: false,
+          error: 'وضع غير متصل',
         }));
-        return;
       }
-
-      clearTimeout(safetyTimeout);
-      setState({
-        isLoading: false,
-        isValid: data.valid,
-        hasLicense: data.hasLicense,
-        isTrial: data.isTrial || false,
-        isExpired: data.isExpired || false,
-        isRevoked: data.isRevoked || false,
-        needsActivation: data.needsActivation,
-        ownerNeedsActivation: data.ownerNeedsActivation || false,
-        expiresAt: data.expiresAt || null,
-        remainingDays: data.remainingDays || null,
-        error: null,
-        role: data.role || null,
-        maxCashiers: data.maxCashiers || null,
-        licenseTier: data.licenseTier || null,
-        expiringWarning: data.expiringWarning || false,
-      });
     } catch (error) {
-      clearTimeout(safetyTimeout);
-      console.error('Error checking license:', error);
-      // On network error, allow the user to proceed (graceful degradation)
-      // They're already authenticated, so don't block them
+      console.error('[License] Error:', error);
+      lastCheckedUserId.current = user.id;
       setState(prev => ({
         ...prev,
         isLoading: false,
-        isValid: true, // Allow access on network failure
-        hasLicense: true, // Assume they have a license
+        isValid: true,
+        hasLicense: true,
         needsActivation: false,
-        error: 'فشل في التحقق من الترخيص - وضع غير متصل',
+        error: 'وضع غير متصل',
       }));
     }
   }, [user]);
@@ -173,12 +176,10 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error };
       }
 
-      // Refresh license state
       await checkLicense();
-
       return { success: true, expiresAt: data.expiresAt };
     } catch (error) {
-      console.error('Error activating code:', error);
+      console.error('[License] Activation error:', error);
       return { success: false, error: 'حدث خطأ أثناء تفعيل الكود' };
     }
   };
@@ -194,8 +195,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return { success: false, error: 'يجب تسجيل الدخول أولاً' };
       }
 
-      // Use secure Edge Function to start trial
-      // This prevents client-side manipulation of trial parameters
       const response = await supabase.functions.invoke('start-trial', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -203,7 +202,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.error) {
-        console.error('Error starting trial:', response.error);
         return { success: false, error: response.error.message || 'حدث خطأ أثناء بدء الفترة التجريبية' };
       }
 
@@ -213,19 +211,28 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error || 'حدث خطأ أثناء بدء الفترة التجريبية' };
       }
 
-      // Refresh license state
       await checkLicense();
-
       return { success: true };
     } catch (error) {
-      console.error('Error starting trial:', error);
+      console.error('[License] Trial error:', error);
       return { success: false, error: 'حدث خطأ أثناء بدء الفترة التجريبية' };
     }
   };
 
   useEffect(() => {
-    if (!authLoading) {
-      checkLicense();
+    if (!authLoading && user) {
+      if (lastCheckedUserId.current !== user.id) {
+        checkLicense();
+      }
+    } else if (!authLoading && !user) {
+      lastCheckedUserId.current = null;
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        isValid: false,
+        hasLicense: false,
+        needsActivation: false,
+      }));
     }
   }, [user, authLoading, checkLicense]);
 

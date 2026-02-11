@@ -192,21 +192,13 @@ export default function POS() {
 
     setIsLoadingProducts(true);
 
-    // ✅ إبطال الـ Cache قبل التحميل لضمان الحصول على أحدث البيانات
-    invalidateProductsCache();
-
     try {
       const [cloudProducts, cloudCategories] = await Promise.all([
         loadProductsCloud(),
         getCategoryNamesCloud()
       ]);
 
-      // إذا لم تُرجع المنتجات وعدد المحاولات أقل من 3، أعد المحاولة
-      if (cloudProducts.length === 0 && retryCount < 3) {
-        console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1), 1000);
-        return;
-      }
+      // قاعدة بيانات فارغة - لا حاجة لإعادة المحاولة
 
       // Transform to POS format with multi-unit support
       const allPosProducts: POSProduct[] = cloudProducts.map(p => ({
@@ -263,10 +255,9 @@ export default function POS() {
     } catch (error) {
       console.error('Error loading POS data:', error);
 
-      // إعادة المحاولة في حالة الخطأ
-      if (retryCount < 3) {
-        console.log(`[POS] Error loading, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1), 1500);
+      if (retryCount < 1) {
+        console.log(`[POS] Error loading, retrying...`);
+        setTimeout(() => loadData(retryCount + 1), 800);
         return;
       }
     } finally {
@@ -280,16 +271,12 @@ export default function POS() {
 
     const onProductsUpdated = () => loadData();
     const onCategoriesUpdated = () => loadData();
-    const onFocus = () => loadData();
-
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-    window.addEventListener('focus', onFocus);
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-      window.removeEventListener('focus', onFocus);
     };
   }, [loadData]);
 
