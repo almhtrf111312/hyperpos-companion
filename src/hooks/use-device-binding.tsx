@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { useAuth } from './use-auth';
@@ -12,6 +12,7 @@ interface DeviceBindingState {
 
 export function useDeviceBinding() {
   const { user } = useAuth();
+  const lastCheckedUserId = useRef<string | null>(null);
   const [state, setState] = useState<DeviceBindingState>({
     isChecking: true,
     isDeviceBlocked: false,
@@ -21,6 +22,7 @@ export function useDeviceBinding() {
 
   const checkDeviceBinding = useCallback(async () => {
     if (!user) {
+      lastCheckedUserId.current = null;
       setState({
         isChecking: false,
         isDeviceBlocked: false,
@@ -30,42 +32,43 @@ export function useDeviceBinding() {
       return;
     }
 
-    // ✅ FIX: Reduced safety timeout from 8s to 5s
+    if (lastCheckedUserId.current === user.id) {
+      return;
+    }
+
     const safetyTimeout = setTimeout(() => {
-      console.warn('[DeviceBinding] Device check timeout - allowing access');
+      console.warn('[DeviceBinding] Timeout - allowing access');
+      lastCheckedUserId.current = user.id;
       setState(prev => ({
         ...prev,
         isChecking: false,
         isDeviceBlocked: false,
       }));
-    }, 5000); // 5 seconds max
+    }, 3000);
 
     try {
       setState(prev => ({ ...prev, isChecking: true }));
 
-      // Get current device ID
       const currentDeviceId = await getDeviceId();
 
-      // Check if user is Boss - Boss has unlimited device access
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      // If user is Boss, skip device binding entirely
       if (roleData?.role === 'boss') {
         clearTimeout(safetyTimeout);
+        lastCheckedUserId.current = user.id;
         setState({
           isChecking: false,
           isDeviceBlocked: false,
           deviceId: currentDeviceId,
-          registeredDeviceId: null, // Boss doesn't need device registration
+          registeredDeviceId: null,
         });
         return;
       }
 
-      // Get user's license with device info
       const { data: license, error } = await supabase
         .from('app_licenses')
         .select('device_id, is_revoked, allow_multi_device')
@@ -75,10 +78,10 @@ export function useDeviceBinding() {
         .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error checking device binding:', error);
-        clearTimeout(safetyTimeout);
-        // On error, allow access to prevent lockout
+      clearTimeout(safetyTimeout);
+      lastCheckedUserId.current = user.id;
+
+      if (error || !license) {
         setState({
           isChecking: false,
           isDeviceBlocked: false,
@@ -88,45 +91,23 @@ export function useDeviceBinding() {
         return;
       }
 
-      // If no license found, allow access (license guard will handle this)
-      if (!license) {
-        clearTimeout(safetyTimeout);
-        setState({
-          isChecking: false,
-          isDeviceBlocked: false,
-          deviceId: currentDeviceId,
-          registeredDeviceId: null,
-        });
-        return;
-      }
-
-      const registeredDeviceId = license.device_id;
-
-      // If multi-device is allowed, skip device binding check
       if (license.allow_multi_device === true) {
-        clearTimeout(safetyTimeout);
         setState({
           isChecking: false,
           isDeviceBlocked: false,
           deviceId: currentDeviceId,
-          registeredDeviceId: registeredDeviceId || currentDeviceId,
+          registeredDeviceId: license.device_id || currentDeviceId,
         });
         return;
       }
 
-      // If no device registered yet, register this device
-      if (!registeredDeviceId) {
-        const { error: updateError } = await supabase
+      if (!license.device_id) {
+        await supabase
           .from('app_licenses')
           .update({ device_id: currentDeviceId })
           .eq('user_id', user.id)
           .eq('is_revoked', false);
 
-        if (updateError) {
-          console.error('Error registering device:', updateError);
-        }
-
-        clearTimeout(safetyTimeout);
         setState({
           isChecking: false,
           isDeviceBlocked: false,
@@ -136,20 +117,17 @@ export function useDeviceBinding() {
         return;
       }
 
-      // Check if device matches
-      const isBlocked = registeredDeviceId !== currentDeviceId;
-
-      clearTimeout(safetyTimeout);
+      const isBlocked = license.device_id !== currentDeviceId;
       setState({
         isChecking: false,
         isDeviceBlocked: isBlocked,
         deviceId: currentDeviceId,
-        registeredDeviceId,
+        registeredDeviceId: license.device_id,
       });
     } catch (error) {
       clearTimeout(safetyTimeout);
-      console.error('Device binding check error:', error);
-      // On error, allow access
+      lastCheckedUserId.current = user.id;
+      console.error('[DeviceBinding] Error:', error);
       setState({
         isChecking: false,
         isDeviceBlocked: false,
@@ -160,8 +138,20 @@ export function useDeviceBinding() {
   }, [user]);
 
   useEffect(() => {
-    checkDeviceBinding();
-  }, [checkDeviceBinding]);
+    if (user) {
+      if (lastCheckedUserId.current !== user.id) {
+        checkDeviceBinding();
+      }
+    } else {
+      lastCheckedUserId.current = null;
+      setState({
+        isChecking: false,
+        isDeviceBlocked: false,
+        deviceId: null,
+        registeredDeviceId: null,
+      });
+    }
+  }, [user, checkDeviceBinding]);
 
   return {
     ...state,

@@ -67,58 +67,41 @@ function buildState(role: AppRole, ownerId: string): UserRoleState {
   };
 }
 
+const emptyState: UserRoleState = {
+  role: null,
+  ownerId: null,
+  isLoading: false,
+  isBoss: false,
+  isAdmin: false,
+  isCashier: false,
+  isOwner: false,
+  canAccessSettings: false,
+  canAccessReports: false,
+  canAccessPartners: false,
+  canManageLicenses: false,
+  canManageUsers: false,
+  canEditPrice: false,
+};
+
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const lastFetchedUserId = useRef<string | null>(null);
-  const fetchedRoleRef = useRef<AppRole | null>(null);
-  const [state, setState] = useState<UserRoleState>({
-    role: null,
-    ownerId: null,
-    isLoading: true,
-    isBoss: false,
-    isAdmin: false,
-    isCashier: false,
-    isOwner: false,
-    canAccessSettings: false,
-    canAccessReports: false,
-    canAccessPartners: false,
-    canManageLicenses: false,
-    canManageUsers: false,
-    canEditPrice: false,
-  });
+  const [state, setState] = useState<UserRoleState>({ ...emptyState, isLoading: true });
 
   const fetchRole = useCallback(async (force = false) => {
     if (!user) {
       lastFetchedUserId.current = null;
-      fetchedRoleRef.current = null;
       localStorage.removeItem(ROLE_CACHE_KEY);
-      setState({
-        role: null,
-        ownerId: null,
-        isLoading: false,
-        isBoss: false,
-        isAdmin: false,
-        isCashier: false,
-        isOwner: false,
-        canAccessSettings: false,
-        canAccessReports: false,
-        canAccessPartners: false,
-        canManageLicenses: false,
-        canManageUsers: false,
-        canEditPrice: false,
-      });
+      setState(emptyState);
       return;
     }
 
-    if (!force && lastFetchedUserId.current === user.id && fetchedRoleRef.current !== null) {
+    if (!force && lastFetchedUserId.current === user.id) {
       return;
     }
 
     const cached = getCachedRole(user.id);
-    if (!force && cached) {
-      console.log('[UserRole] Using cached role:', cached.role);
-      lastFetchedUserId.current = user.id;
-      fetchedRoleRef.current = cached.role;
+    if (cached) {
       setState(buildState(cached.role, cached.ownerId));
     }
 
@@ -127,7 +110,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         setState(prev => ({ ...prev, isLoading: true }));
       }
 
-      console.log('[UserRole] Fetching role from Supabase for user:', user.id);
+      console.log('[UserRole] Fetching role for:', user.id);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role, owner_id, is_active')
@@ -135,18 +118,17 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         .eq('is_active', true)
         .maybeSingle();
 
-      console.log('[UserRole] Supabase response:', { data, error: error?.message });
-      
       if (error) {
-        console.error('[UserRole] Error fetching role:', error);
+        console.error('[UserRole] Error:', error);
         if (!cached) {
-          setState(prev => ({ ...prev, isLoading: false, role: null }));
+          setState(emptyState);
         }
+        lastFetchedUserId.current = user.id;
         return;
       }
 
       if (!data) {
-        console.warn('[UserRole] No role found for user:', user.id, '- creating admin role');
+        console.warn('[UserRole] No role found, creating admin');
         try {
           const { error: insertError } = await supabase
             .from('user_roles')
@@ -157,49 +139,51 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
               is_active: true,
             });
           if (!insertError) {
-            const role: AppRole = 'admin';
-            const ownerId = user.id;
             lastFetchedUserId.current = user.id;
-            fetchedRoleRef.current = role;
-            cacheRole(user.id, role, ownerId);
-            setState(buildState(role, ownerId));
+            cacheRole(user.id, 'admin', user.id);
+            setState(buildState('admin', user.id));
             return;
           }
-          console.error('[UserRole] Failed to create role:', insertError);
         } catch (e) {
-          console.error('[UserRole] Error creating role:', e);
+          console.error('[UserRole] Insert error:', e);
         }
-        setState(prev => ({ ...prev, isLoading: false, role: null }));
+        lastFetchedUserId.current = user.id;
+        setState(emptyState);
         return;
       }
 
       const role = data.role as AppRole;
       const ownerId = data.owner_id || user.id;
 
+      console.log('[UserRole] Got role:', role);
       lastFetchedUserId.current = user.id;
-      fetchedRoleRef.current = role;
       cacheRole(user.id, role, ownerId);
       setState(buildState(role, ownerId));
     } catch (err) {
-      console.error('Error in fetchRole:', err);
-      const cached = getCachedRole(user.id);
+      console.error('[UserRole] Exception:', err);
+      lastFetchedUserId.current = user.id;
       if (cached) {
-        lastFetchedUserId.current = user.id;
-        fetchedRoleRef.current = cached.role;
         setState(buildState(cached.role, cached.ownerId));
       } else {
-        setState(prev => ({ ...prev, isLoading: false }));
+        setState(emptyState);
       }
     }
   }, [user]);
 
   const refreshRole = useCallback(async () => {
+    lastFetchedUserId.current = null;
     await fetchRole(true);
   }, [fetchRole]);
 
   useEffect(() => {
     if (!authLoading) {
-      fetchRole();
+      if (user) {
+        fetchRole();
+      } else {
+        lastFetchedUserId.current = null;
+        localStorage.removeItem(ROLE_CACHE_KEY);
+        setState(emptyState);
+      }
     }
   }, [user, authLoading, fetchRole]);
 

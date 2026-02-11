@@ -57,6 +57,15 @@ supabase/
 - Migration script: `node scripts/apply-migrations.cjs` (uses SUPABASE_DB_URL + SUPABASE_DB_PASSWORD)
 
 ## Recent Changes
+- **2026-02-11**: Restructured authentication system
+  - Simplified signOut: clears all sb-* and hyperpos_* localStorage, uses `scope: 'local'`
+  - Fixed onAuthStateChange deduplication: prevents multiple SIGNED_IN events from causing reload loops
+  - Removed broken device auto-login edge function (CORS issues)
+  - Made license check resilient: falls back to "allow access" when edge functions unavailable
+  - Reduced all timeouts (auth: 4s, device: 3s, license: 5s)
+  - Simplified LicenseGuard: sequential auth→license check, no skip button needed
+  - Fixed device binding: tracks last-checked user to prevent redundant checks
+  - Fixed user role detection: always fetches from Supabase with proper deduplication
 - **2026-02-11**: Applied all database migrations to Supabase
   - Connected via Session Pooler (aws-1-eu-west-1)
   - 36/37 migrations applied successfully
