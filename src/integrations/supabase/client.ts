@@ -5,6 +5,14 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.error('CRITICAL ERROR: Supabase configuration missing!', {
+    url: !!SUPABASE_URL,
+    key: !!SUPABASE_PUBLISHABLE_KEY
+  });
+  alert('خطأ جسيم: إعدادات الاتصال بقاعدة البيانات مفقودة. يرجى مراجعة الدعم الفني.');
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
