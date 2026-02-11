@@ -1,5 +1,6 @@
 // Native Scanner using @capacitor-community/barcode-scanner
 // SIMPLIFIED VERSION - Clean camera, always-visible controls
+// Build verification trigger
 import { useEffect, useState, useRef } from 'react';
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { X, Zap, ZapOff, Loader2 } from 'lucide-react';
