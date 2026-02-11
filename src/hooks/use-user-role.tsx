@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 
@@ -28,6 +28,7 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
+  const lastFetchedUserId = useRef<string | null>(null);
   const [state, setState] = useState<UserRoleState>({
     role: null,
     ownerId: null,
@@ -44,8 +45,9 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     canEditPrice: false,
   });
 
-  const fetchRole = useCallback(async () => {
+  const fetchRole = useCallback(async (force = false) => {
     if (!user) {
+      lastFetchedUserId.current = null;
       setState({
         role: null,
         ownerId: null,
@@ -61,6 +63,10 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         canManageUsers: false,
         canEditPrice: false,
       });
+      return;
+    }
+
+    if (!force && lastFetchedUserId.current === user.id && state.role !== null) {
       return;
     }
 
@@ -90,6 +96,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
       const isAdmin = role === 'admin';
       const isCashier = role === 'cashier';
       
+      lastFetchedUserId.current = user.id;
       setState({
         role,
         ownerId,
@@ -98,13 +105,12 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         isAdmin,
         isCashier,
         isOwner: isAdmin || isBoss,
-        // Permissions
         canAccessSettings: isBoss || isAdmin,
         canAccessReports: isBoss || isAdmin,
         canAccessPartners: isBoss || isAdmin,
         canManageLicenses: isBoss,
         canManageUsers: isBoss || isAdmin,
-        canEditPrice: isBoss || isAdmin, // فقط المدير والبوس يمكنهم تعديل الأسعار
+        canEditPrice: isBoss || isAdmin,
       });
     } catch (err) {
       console.error('Error in fetchRole:', err);
@@ -113,7 +119,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const refreshRole = useCallback(async () => {
-    await fetchRole();
+    await fetchRole(true);
   }, [fetchRole]);
 
   useEffect(() => {
