@@ -114,42 +114,61 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!force) {
-      const cached = getCachedRole(user.id);
-      if (cached) {
-        lastFetchedUserId.current = user.id;
-        fetchedRoleRef.current = cached.role;
-        setState(buildState(cached.role, cached.ownerId));
-        return;
-      }
+    const cached = getCachedRole(user.id);
+    if (!force && cached) {
+      console.log('[UserRole] Using cached role:', cached.role);
+      lastFetchedUserId.current = user.id;
+      fetchedRoleRef.current = cached.role;
+      setState(buildState(cached.role, cached.ownerId));
     }
 
     try {
-      setState(prev => ({ ...prev, isLoading: true }));
+      if (!cached) {
+        setState(prev => ({ ...prev, isLoading: true }));
+      }
 
+      console.log('[UserRole] Fetching role from Supabase for user:', user.id);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role, owner_id, is_active')
         .eq('user_id', user.id)
-        .order('is_active', { ascending: false })
-        .limit(1)
+        .eq('is_active', true)
         .maybeSingle();
 
+      console.log('[UserRole] Supabase response:', { data, error: error?.message });
+      
       if (error) {
-        console.error('Error fetching role:', error);
-        const cached = getCachedRole(user.id);
-        if (cached) {
-          lastFetchedUserId.current = user.id;
-          fetchedRoleRef.current = cached.role;
-          setState(buildState(cached.role, cached.ownerId));
-        } else {
+        console.error('[UserRole] Error fetching role:', error);
+        if (!cached) {
           setState(prev => ({ ...prev, isLoading: false, role: null }));
         }
         return;
       }
 
       if (!data) {
-        console.warn('[UserRole] No role found for user:', user.id);
+        console.warn('[UserRole] No role found for user:', user.id, '- creating admin role');
+        try {
+          const { error: insertError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: user.id,
+              role: 'admin',
+              owner_id: user.id,
+              is_active: true,
+            });
+          if (!insertError) {
+            const role: AppRole = 'admin';
+            const ownerId = user.id;
+            lastFetchedUserId.current = user.id;
+            fetchedRoleRef.current = role;
+            cacheRole(user.id, role, ownerId);
+            setState(buildState(role, ownerId));
+            return;
+          }
+          console.error('[UserRole] Failed to create role:', insertError);
+        } catch (e) {
+          console.error('[UserRole] Error creating role:', e);
+        }
         setState(prev => ({ ...prev, isLoading: false, role: null }));
         return;
       }

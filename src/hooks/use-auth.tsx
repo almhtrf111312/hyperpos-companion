@@ -454,7 +454,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     // Log logout before signing out
     if (user) {
-      import('@/lib/activity-log').then(({ addActivityLog }) => {
+      try {
+        const { addActivityLog } = await import('@/lib/activity-log');
         addActivityLog(
           'logout',
           user.id,
@@ -462,22 +463,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           `تم تسجيل الخروج`,
           {}
         );
-      });
+      } catch {}
     }
 
-    // Clear auto-login attempt flag so next app open can try again
+    // Clear all cached data
     try {
       sessionStorage.removeItem(AUTO_LOGIN_ATTEMPTED_KEY);
-      // Clear session cache
       cacheSession(null);
+      localStorage.removeItem('hyperpos_role_cache');
+      localStorage.removeItem('hyperpos_current_user_id');
     } catch {
       // Ignore storage errors
     }
 
-    await supabase.auth.signOut();
+    // Clear state first to immediately show login
     setUser(null);
     setSession(null);
     setProfile(null);
+
+    // Then sign out from Supabase
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('[Auth] SignOut error (non-critical):', err);
+    }
   };
 
   return (
