@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { getDeviceId } from '@/lib/device-fingerprint';
@@ -66,7 +66,7 @@ const getCachedSession = () => {
     const cached = localStorage.getItem(SESSION_CACHE_KEY);
     if (cached) {
       const data = JSON.parse(cached);
-      // Check if cache is less than 7 days old (much longer for Android reopens)
+      // Check if cache is less than 7 days old
       const cacheAge = Date.now() - data.cached_at;
       const isExpired = data.expires_at && Date.now() / 1000 > data.expires_at;
       if (cacheAge < 604800000 && !isExpired) { // 7 days
@@ -86,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAutoLoginChecking, setIsAutoLoginChecking] = useState(false);
   const [stayLoggedIn, setStayLoggedInState] = useState(getStayLoggedInPreference);
+  
+  // ✅ FIX: Use ref to prevent finishLoading from being called multiple times
+  const hasFinishedLoading = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -124,13 +127,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    let isLoadingRef = true;
     let mounted = true;
+    hasFinishedLoading.current = false;
 
-    // Helper to safely stop loading
+    // ✅ FIX: Single finishLoading guard using ref
     const finishLoading = () => {
-      if (isLoadingRef && mounted) {
-        isLoadingRef = false;
+      if (!hasFinishedLoading.current && mounted) {
+        hasFinishedLoading.current = true;
         setIsLoading(false);
       }
     };
@@ -145,59 +148,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finishLoading();
     };
 
-    // Clear all auth state and show login (NO page reload - this prevents infinite loops)
-    const clearAuthAndShowLogin = async () => {
-      console.log('[AuthProvider] 🧹 Clearing all auth state...');
-
-      // Step 1: Try local-only signOut
-      try {
-        await supabase.auth.signOut({ scope: 'local' });
-      } catch {
-        console.warn('[AuthProvider] Local signOut failed, continuing cleanup');
-      }
-
-      // Step 2: Clear ALL Supabase auth tokens from localStorage
-      try {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (
-            key.startsWith('sb-') ||
-            key === SESSION_CACHE_KEY ||
-            key === 'supabase.auth.token' ||
-            key.includes('auth-token')
-          )) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => {
-          console.log('[AuthProvider] 🗑️ Removing:', key);
-          localStorage.removeItem(key);
-        });
-        sessionStorage.clear();
-      } catch (err) {
-        console.error('[AuthProvider] Error clearing storage:', err);
-      }
-
-      // Step 3: Show login page (NO RELOAD)
-      showLoginPage();
-    };
-
     // Immediately restore from cache for faster UI (temporary until verified)
     const cachedData = getCachedSession();
     if (cachedData && getStayLoggedInPreference()) {
       setUser(cachedData.user);
     }
 
-    // ===== SAFETY TIMEOUT =====
+    // ✅ FIX: Reduced safety timeout from 8s to 5s
     const safetyTimeout = setTimeout(() => {
-      if (isLoadingRef) {
-        console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (8s) - showing login');
-        showLoginPage();
+      if (!hasFinishedLoading.current) {
+        console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (5s) - finishing loading with current state');
+        // ✅ FIX: Don't clear the user if we have a cached session - just finish loading
+        // The onAuthStateChange listener will update the state when ready
+        finishLoading();
       }
-    }, 8000);
+    }, 5000);
 
-    // ===== AUTH STATE LISTENER =====
+    // ✅ FIX: Let onAuthStateChange be the PRIMARY source of truth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!mounted) return;
@@ -221,19 +188,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } catch (err) {
               console.error('[AuthProvider] Profile fetch failed:', err);
             }
-            finishLoading();
           }, 0);
-        } else {
-          setProfile(null);
           finishLoading();
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          cacheSession(null);
+          finishLoading();
+        }
+        // ✅ FIX: For INITIAL_SESSION with no session, don't immediately show login
+        // Wait for initializeAuth to attempt auto-login first
+        if (event === 'INITIAL_SESSION' && !currentSession) {
+          // Will be handled by initializeAuth below
         }
 
         if (event === 'TOKEN_REFRESHED' && currentSession) {
           cacheSession(currentSession);
-        }
-        if (event === 'SIGNED_OUT') {
-          cacheSession(null);
-          setProfile(null);
         }
       }
     );
@@ -252,8 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const deviceId = await getDeviceId();
 
-        const controller = new AbortController();
-        const autoLoginTimeout = setTimeout(() => controller.abort(), 5000);
+        const autoLoginTimeout = setTimeout(() => {}, 5000);
 
         try {
           const { data, error } = await supabase.functions.invoke('device-auto-login', {
@@ -304,7 +272,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // ===== MAIN SESSION CHECK =====
+    // ✅ FIX: Simplified initializeAuth - rely on onAuthStateChange for session state
+    // Only use getSession() to check if we need auto-login, and refreshSession() 
+    // is handled automatically by the Supabase client
     const initializeAuth = async () => {
       try {
         console.log('[AuthProvider] Starting auth initialization...');
@@ -320,32 +290,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        console.log('[AuthProvider] Found existing session, verifying...');
+        console.log('[AuthProvider] Found existing session, user:', existingSession.user?.email);
 
-        // Try to refresh the session
-        try {
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-
-          if (refreshError || !refreshData.session) {
-            console.warn('[AuthProvider] ❌ Session refresh failed:', refreshError?.message);
-            // Token is invalid - clear everything and show login (NO RELOAD)
-            await clearAuthAndShowLogin();
-            return;
-          }
-
-          // ✅ Session refreshed successfully
-          console.log('[AuthProvider] ✅ Session refreshed successfully');
-
-          if (mounted) {
-            setSession(refreshData.session);
-            setUser(refreshData.session.user);
-            cacheSession(refreshData.session);
-          }
+        // ✅ FIX: Instead of calling refreshSession() which can fail and clear everything,
+        // just use the existing session. The Supabase client will auto-refresh the token
+        // via onAuthStateChange when needed. This prevents the race condition.
+        if (mounted && !hasFinishedLoading.current) {
+          setSession(existingSession);
+          setUser(existingSession.user);
+          cacheSession(existingSession);
 
           // Fetch profile (non-blocking)
-          if (mounted && refreshData.session?.user) {
+          if (existingSession.user) {
             try {
-              const profileData = await fetchProfile(refreshData.session.user.id);
+              const profileData = await fetchProfile(existingSession.user.id);
               if (mounted) setProfile(profileData);
             } catch (err) {
               console.error('[AuthProvider] Profile fetch failed, continuing:', err);
@@ -353,16 +311,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           finishLoading();
+        }
 
+        // ✅ Attempt refresh in background (non-blocking, won't clear session on failure)
+        try {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData?.session && mounted) {
+            setSession(refreshData.session);
+            setUser(refreshData.session.user);
+            cacheSession(refreshData.session);
+            console.log('[AuthProvider] ✅ Background session refresh successful');
+          }
         } catch (refreshErr) {
-          console.error('[AuthProvider] Unexpected refresh error:', refreshErr);
-          await clearAuthAndShowLogin();
+          // ✅ FIX: Don't clear auth on refresh failure - session is still valid until it expires
+          console.warn('[AuthProvider] Background refresh failed (non-critical):', refreshErr);
         }
 
       } catch (err) {
         console.error('[AuthProvider] Auth initialization error:', err);
-        // On any error, just show login - NEVER reload
-        showLoginPage();
+        // On any error, if we have cached user, keep it - just finish loading
+        if (!hasFinishedLoading.current) {
+          finishLoading();
+        }
       }
     };
 
@@ -410,7 +380,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Log successful login
       if (!error && data.user) {
-        // Dynamically import to avoid circular dependencies
         import('@/lib/activity-log').then(({ addActivityLog }) => {
           addActivityLog(
             'login',

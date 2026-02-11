@@ -148,6 +148,10 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
   return 'in_stock';
 };
 
+// ✅ Cache versioning - increment when data structure changes
+const CACHE_VERSION = 2;
+const CACHE_VERSION_KEY = 'hyperpos_cache_version';
+
 // Cache for products
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
@@ -156,12 +160,39 @@ const CACHE_TTL = 10000; // 10 ثواني فقط للمزامنة اللحظية
 // Local storage key for offline fallback
 const LOCAL_PRODUCTS_CACHE_KEY = 'hyperpos_products_cache';
 
+// ✅ Check and clear stale cache on version mismatch
+const ensureCacheVersion = () => {
+  try {
+    const storedVersion = localStorage.getItem(CACHE_VERSION_KEY);
+    if (!storedVersion || parseInt(storedVersion) !== CACHE_VERSION) {
+      console.log('[ProductsCloud] Cache version mismatch, clearing old cache...');
+      localStorage.removeItem(LOCAL_PRODUCTS_CACHE_KEY);
+      // Also clear other stale caches
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('hyperpos_cache_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION.toString());
+    }
+  } catch (e) {
+    console.warn('[ProductsCloud] Cache version check failed:', e);
+  }
+};
+
+// Run version check on module load
+ensureCacheVersion();
+
 // Save products to localStorage as backup
 const saveToLocalCache = (products: Product[]) => {
   try {
     localStorage.setItem(LOCAL_PRODUCTS_CACHE_KEY, JSON.stringify({
       products,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      version: CACHE_VERSION
     }));
   } catch (e) {
     console.warn('Failed to save products to localStorage:', e);
@@ -173,7 +204,14 @@ const loadFromLocalCache = (): Product[] | null => {
   try {
     const cached = localStorage.getItem(LOCAL_PRODUCTS_CACHE_KEY);
     if (cached) {
-      const { products, timestamp } = JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      // ✅ Check version match and freshness
+      if (parsed.version !== CACHE_VERSION) {
+        console.log('[ProductsCloud] Stale cache version, ignoring');
+        localStorage.removeItem(LOCAL_PRODUCTS_CACHE_KEY);
+        return null;
+      }
+      const { products, timestamp } = parsed;
       // Cache is valid for 24 hours locally
       if (Date.now() - timestamp < 86400000) {
         return products;

@@ -10,7 +10,7 @@ interface LicenseState {
   isExpired: boolean;
   isRevoked: boolean;
   needsActivation: boolean;
-  ownerNeedsActivation: boolean; // For cashiers when their owner hasn't activated
+  ownerNeedsActivation: boolean;
   expiresAt: string | null;
   remainingDays: number | null;
   error: string | null;
@@ -27,8 +27,6 @@ interface LicenseContextType extends LicenseState {
 }
 
 const LicenseContext = createContext<LicenseContextType | undefined>(undefined);
-
-const TRIAL_DAYS = 30;
 
 export function LicenseProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
@@ -62,7 +60,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Safety timeout - if license check takes too long, allow access
     const safetyTimeout = setTimeout(() => {
       console.warn('[LicenseProvider] License check timeout - allowing access');
       setState(prev => ({
@@ -73,13 +70,14 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         needsActivation: false,
         error: 'فشل في التحقق من الترخيص - وضع غير متصل',
       }));
-    }, 10000); // 10 seconds max
+    }, 6000);
 
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        clearTimeout(safetyTimeout);
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -105,6 +103,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       if (data.userNotFound) {
         console.log('User not found in database, signing out...');
         await supabase.auth.signOut();
+        clearTimeout(safetyTimeout);
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -137,12 +136,11 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       clearTimeout(safetyTimeout);
       console.error('Error checking license:', error);
       // On network error, allow the user to proceed (graceful degradation)
-      // They're already authenticated, so don't block them
       setState(prev => ({
         ...prev,
         isLoading: false,
-        isValid: true, // Allow access on network failure
-        hasLicense: true, // Assume they have a license
+        isValid: true,
+        hasLicense: true,
         needsActivation: false,
         error: 'فشل في التحقق من الترخيص - وضع غير متصل',
       }));
@@ -173,7 +171,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error };
       }
 
-      // Refresh license state
       await checkLicense();
 
       return { success: true, expiresAt: data.expiresAt };
@@ -194,8 +191,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return { success: false, error: 'يجب تسجيل الدخول أولاً' };
       }
 
-      // Use secure Edge Function to start trial
-      // This prevents client-side manipulation of trial parameters
       const response = await supabase.functions.invoke('start-trial', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -213,7 +208,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error || 'حدث خطأ أثناء بدء الفترة التجريبية' };
       }
 
-      // Refresh license state
       await checkLicense();
 
       return { success: true };
