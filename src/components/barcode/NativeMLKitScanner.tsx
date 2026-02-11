@@ -109,6 +109,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         scanningRef.current = false;
         document.documentElement.classList.remove('barcode-scanner-active');
         if (mountedRef.current) setPermissionError('حدث خطأ أثناء تشغيل الماسح');
+      } finally {
+        scanningRef.current = false;
       }
     };
 
