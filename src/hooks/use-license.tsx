@@ -75,17 +75,19 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
       try {
-        const response = await supabase.functions.invoke('check-license', {
+        console.log('[License] Checking license...');
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('License check timeout')), 5000)
+        );
+
+        const invokePromise = supabase.functions.invoke('check-license', {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
         });
 
-        clearTimeout(timeout);
+        const response = await Promise.race([invokePromise, timeoutPromise]) as any;
 
         if (response.error) {
           throw new Error(response.error.message);
@@ -125,7 +127,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
           expiringWarning: data.expiringWarning || false,
         });
       } catch (edgeFnError) {
-        clearTimeout(timeout);
         console.warn('[License] Edge function unavailable, allowing access:', edgeFnError);
         lastCheckedUserId.current = user.id;
         setState(prev => ({
