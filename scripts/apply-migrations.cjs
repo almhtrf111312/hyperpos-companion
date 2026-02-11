@@ -19,12 +19,13 @@ async function main() {
   console.log(`Found ${files.length} migration files`);
 
   const parsed = new URL(DB_URL);
+  const password = process.env.SUPABASE_DB_PASSWORD || decodeURIComponent(parsed.password);
   const config = {
     host: parsed.hostname,
     port: parseInt(parsed.port || '5432'),
     database: parsed.pathname.slice(1),
     user: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
+    password: password,
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 15000,
   };

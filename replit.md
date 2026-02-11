@@ -40,16 +40,27 @@ supabase/
 - Print and PDF export
 
 ## Environment Variables
-- `VITE_SUPABASE_URL`: Supabase project URL
+- `VITE_SUPABASE_URL`: Supabase project URL (musckmmgmkgpfyycdupe)
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: Supabase anon/public key
-- `VITE_SUPABASE_PROJECT_ID`: Supabase project ID
+- `SUPABASE_DB_URL`: Session pooler connection string (aws-1-eu-west-1)
+- `SUPABASE_DB_PASSWORD`: Database password
+- `SUPABASE_SERVICE_ROLE_KEY`: Service role key for Edge Functions
 
 ## Development
 - Run: `npm run dev` (serves on port 5000)
 - Build: `npm run build`
 - Dependencies require `--legacy-peer-deps` flag due to Capacitor version conflicts
 
+## Database
+- **23 tables** created in Supabase via 37 migration files
+- Tables: activation_codes, app_licenses, app_settings, boss_owners_view, categories, customers, debts, expenses, invoice_items, invoices, maintenance_services, partners, products, profiles, purchase_invoice_items, purchase_invoices, recurring_expenses, stock_transfer_items, stock_transfers, stores, user_roles, warehouse_stock, warehouses
+- Migration script: `node scripts/apply-migrations.cjs` (uses SUPABASE_DB_URL + SUPABASE_DB_PASSWORD)
+
 ## Recent Changes
+- **2026-02-11**: Applied all database migrations to Supabase
+  - Connected via Session Pooler (aws-1-eu-west-1)
+  - 36/37 migrations applied successfully
+  - 1 expected skip (user_roles data insert - users created at runtime)
 - **2026-02-11**: Migrated from Lovable to Replit
   - Configured Vite to serve on port 5000 with allowedHosts for Replit
   - Removed lovable-tagger plugin dependency
