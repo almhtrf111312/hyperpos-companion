@@ -198,7 +198,8 @@ export function DistributorInventoryReport() {
   // Export to Excel
   const exportToExcel = async () => {
     try {
-      const { utils, writeFile } = await import('xlsx');
+      const XLSX = (await import('xlsx-js-style')).default;
+      const { utils, writeFile } = XLSX;
       const selectedWh = warehouses.find(w => w.id === selectedWarehouse);
 
       const exportData = stockData.map(item => ({
