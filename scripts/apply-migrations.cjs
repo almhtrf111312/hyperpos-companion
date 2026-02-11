@@ -2,29 +2,36 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
 
-const PROJECT_REF = 'vdoncnrhtqxnxtftefod';
-const DB_PASSWORD = process.env.SUPABASE_DB_PASSWORD;
+const DB_URL = process.env.SUPABASE_DB_URL;
 
-if (!DB_PASSWORD) {
-  console.error('Missing SUPABASE_DB_PASSWORD');
+if (!DB_URL) {
+  console.error('Missing SUPABASE_DB_URL');
   process.exit(1);
 }
 
 const migrationsDir = path.join(__dirname, '..', 'supabase', 'migrations');
 
-const regions = [
-  'us-east-1', 'eu-central-1', 'eu-west-1', 'us-west-1', 
-  'ap-southeast-1', 'ca-central-1', 'ap-northeast-1',
-  'ap-south-1', 'sa-east-1', 'eu-west-2', 'us-east-2',
-  'ap-northeast-2', 'eu-west-3', 'ap-southeast-2',
-];
+function extractFromUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return {
+      user: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '5432'),
+      database: parsed.pathname.slice(1),
+    };
+  } catch (e) {
+    return null;
+  }
+}
 
-async function tryConnect(config, name) {
-  const client = new Client(config);
-  await client.connect();
-  const res = await client.query('SELECT current_database()');
-  console.log(`CONNECTED! (db: ${res.rows[0].current_database})`);
-  return client;
+function extractProjectRef(url) {
+  const hostMatch = url.match(/db\.([^.]+)\.supabase\.co/);
+  if (hostMatch) return hostMatch[1];
+  const userMatch = url.match(/postgres\.([^:@]+)/);
+  if (userMatch) return userMatch[1];
+  return null;
 }
 
 async function main() {
@@ -33,60 +40,99 @@ async function main() {
     .sort();
 
   console.log(`Found ${files.length} migration files`);
-  console.log(`Password length: ${DB_PASSWORD.length} chars`);
-  console.log('Trying to connect to Supabase PostgreSQL...\n');
+
+  const parsed = extractFromUrl(DB_URL);
+  if (!parsed) {
+    console.error('Could not parse DB URL');
+    process.exit(1);
+  }
+
+  const projectRef = extractProjectRef(DB_URL);
+  console.log(`Project ref: ${projectRef}`);
+  console.log(`User: ${parsed.user}`);
+  console.log(`Host: ${parsed.host}`);
+  console.log(`Port: ${parsed.port}`);
+  console.log(`Password length: ${parsed.password.length}`);
 
   let connectedClient = null;
 
-  for (const region of regions) {
-    if (connectedClient) break;
+  console.log('\n1. Trying direct connection...');
+  try {
+    const client = new Client({
+      host: parsed.host,
+      port: parsed.port,
+      database: parsed.database,
+      user: parsed.user,
+      password: parsed.password,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+    });
+    await client.connect();
+    const res = await client.query('SELECT current_database()');
+    console.log(`Connected! (db: ${res.rows[0].current_database})`);
+    connectedClient = client;
+  } catch (err) {
+    console.log(`Failed: ${err.message}`);
+  }
 
-    const configs = [
-      {
-        name: `Session ${region} (5432)`,
-        config: {
-          host: `aws-0-${region}.pooler.supabase.com`,
-          port: 5432,
-          database: 'postgres',
-          user: `postgres.${PROJECT_REF}`,
-          password: DB_PASSWORD,
-          ssl: { rejectUnauthorized: false },
-          connectionTimeoutMillis: 8000,
-        }
-      },
-      {
-        name: `Transaction ${region} (6543)`,
-        config: {
-          host: `aws-0-${region}.pooler.supabase.com`,
-          port: 6543,
-          database: 'postgres',
-          user: `postgres.${PROJECT_REF}`,
-          password: DB_PASSWORD,
-          ssl: { rejectUnauthorized: false },
-          connectionTimeoutMillis: 8000,
-        }
-      },
+  if (!connectedClient && projectRef) {
+    console.log('\n2. Trying pooler connections...');
+    const regions = [
+      'us-east-1', 'eu-central-1', 'eu-west-1', 'us-west-1',
+      'ap-southeast-1', 'ca-central-1', 'ap-northeast-1',
+      'ap-south-1', 'sa-east-1', 'eu-west-2', 'us-east-2',
+      'ap-northeast-2',
     ];
 
-    for (const c of configs) {
-      try {
-        process.stdout.write(`Trying ${c.name}... `);
-        connectedClient = await tryConnect(c.config, c.name);
-        break;
-      } catch (e) {
-        console.log(`Failed (${e.message.substring(0, 60)})`);
+    for (const region of regions) {
+      if (connectedClient) break;
+      for (const port of [5432, 6543]) {
+        try {
+          process.stdout.write(`  ${region}:${port}... `);
+          const client = new Client({
+            host: `aws-0-${region}.pooler.supabase.com`,
+            port,
+            database: 'postgres',
+            user: `postgres.${projectRef}`,
+            password: parsed.password,
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 8000,
+          });
+          await client.connect();
+          console.log('CONNECTED!');
+          connectedClient = client;
+          break;
+        } catch (e) {
+          console.log(`Failed`);
+        }
       }
     }
   }
 
   if (!connectedClient) {
+    console.log('\n3. Trying with raw connection string...');
+    try {
+      const client = new Client({
+        connectionString: DB_URL,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 15000,
+      });
+      await client.connect();
+      console.log('Connected with raw string!');
+      connectedClient = client;
+    } catch (err) {
+      console.log(`Failed: ${err.message}`);
+    }
+  }
+
+  if (!connectedClient) {
     console.error('\nAll connection methods failed.');
-    console.error('The database password might be incorrect.');
-    console.error('Please check: Supabase Dashboard > Settings > Database > Database password');
+    console.error('Please make sure the connection string from Supabase Dashboard > Connect is correct.');
+    console.error('Try using the "Session pooler" connection string (not Direct).');
     process.exit(1);
   }
 
-  console.log('---');
+  console.log('\n---');
   await runMigrations(connectedClient, files);
   await connectedClient.end();
 }
@@ -121,7 +167,7 @@ async function runMigrations(client, files) {
   }
 
   console.log('---');
-  console.log(`Results: ${success} success, ${failed} failed, ${skipped} skipped`);
+  console.log(`\nResults: ${success} success, ${failed} failed, ${skipped} skipped`);
 
   if (errors.length > 0) {
     console.log('\nError details:');
