@@ -1,80 +1,30 @@
 const fs = require('fs');
 const path = require('path');
+const { Client } = require('pg');
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const PROJECT_REF = 'vdoncnrhtqxnxtftefod';
+const DB_PASSWORD = process.env.SUPABASE_DB_PASSWORD;
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+if (!DB_PASSWORD) {
+  console.error('Missing SUPABASE_DB_PASSWORD');
   process.exit(1);
 }
 
 const migrationsDir = path.join(__dirname, '..', 'supabase', 'migrations');
 
-async function executeSql(sql) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({ query: sql }),
-  });
-  return response;
-}
+const regions = [
+  'us-east-1', 'eu-central-1', 'eu-west-1', 'us-west-1', 
+  'ap-southeast-1', 'ca-central-1', 'ap-northeast-1',
+  'ap-south-1', 'sa-east-1', 'eu-west-2', 'us-east-2',
+  'ap-northeast-2', 'eu-west-3', 'ap-southeast-2',
+];
 
-async function executeSqlDirect(sql) {
-  const response = await fetch(`${SUPABASE_URL}/pg`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({ query: sql }),
-  });
-  return response;
-}
-
-async function executeViaSqlEndpoint(sql) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-      'Prefer': 'return=minimal',
-    },
-    body: sql,
-  });
-  return response;
-}
-
-async function runMigration(sql, filename) {
-  const pgMeta = `${SUPABASE_URL.replace('.supabase.co', '.supabase.co')}/pg/query`;
-  
-  const response = await fetch(pgMeta, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-      'X-Connection-Encrypted': 'true',
-    },
-    body: JSON.stringify({ query: sql }),
-  });
-  
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`HTTP ${response.status}: ${text}`);
-  }
-  
-  const result = await response.json();
-  if (result.error) {
-    throw new Error(result.error);
-  }
-  return result;
+async function tryConnect(config, name) {
+  const client = new Client(config);
+  await client.connect();
+  const res = await client.query('SELECT current_database()');
+  console.log(`CONNECTED! (db: ${res.rows[0].current_database})`);
+  return client;
 }
 
 async function main() {
@@ -83,17 +33,74 @@ async function main() {
     .sort();
 
   console.log(`Found ${files.length} migration files`);
-  console.log(`Supabase URL: ${SUPABASE_URL}`);
-  console.log('---');
+  console.log(`Password length: ${DB_PASSWORD.length} chars`);
+  console.log('Trying to connect to Supabase PostgreSQL...\n');
 
+  let connectedClient = null;
+
+  for (const region of regions) {
+    if (connectedClient) break;
+
+    const configs = [
+      {
+        name: `Session ${region} (5432)`,
+        config: {
+          host: `aws-0-${region}.pooler.supabase.com`,
+          port: 5432,
+          database: 'postgres',
+          user: `postgres.${PROJECT_REF}`,
+          password: DB_PASSWORD,
+          ssl: { rejectUnauthorized: false },
+          connectionTimeoutMillis: 8000,
+        }
+      },
+      {
+        name: `Transaction ${region} (6543)`,
+        config: {
+          host: `aws-0-${region}.pooler.supabase.com`,
+          port: 6543,
+          database: 'postgres',
+          user: `postgres.${PROJECT_REF}`,
+          password: DB_PASSWORD,
+          ssl: { rejectUnauthorized: false },
+          connectionTimeoutMillis: 8000,
+        }
+      },
+    ];
+
+    for (const c of configs) {
+      try {
+        process.stdout.write(`Trying ${c.name}... `);
+        connectedClient = await tryConnect(c.config, c.name);
+        break;
+      } catch (e) {
+        console.log(`Failed (${e.message.substring(0, 60)})`);
+      }
+    }
+  }
+
+  if (!connectedClient) {
+    console.error('\nAll connection methods failed.');
+    console.error('The database password might be incorrect.');
+    console.error('Please check: Supabase Dashboard > Settings > Database > Database password');
+    process.exit(1);
+  }
+
+  console.log('---');
+  await runMigrations(connectedClient, files);
+  await connectedClient.end();
+}
+
+async function runMigrations(client, files) {
   let success = 0;
   let failed = 0;
   let skipped = 0;
+  const errors = [];
 
   for (const file of files) {
     const filePath = path.join(migrationsDir, file);
     const sql = fs.readFileSync(filePath, 'utf-8').trim();
-    
+
     if (!sql) {
       console.log(`[SKIP] ${file} - empty`);
       skipped++;
@@ -101,21 +108,24 @@ async function main() {
     }
 
     try {
-      console.log(`[RUN] ${file}...`);
-      const result = await runMigration(sql, file);
-      console.log(`[OK] ${file}`);
+      process.stdout.write(`[RUN] ${file}... `);
+      await client.query(sql);
+      console.log('OK');
       success++;
     } catch (error) {
-      console.error(`[ERROR] ${file}: ${error.message}`);
+      const shortErr = error.message.split('\n')[0];
+      console.log(`ERROR: ${shortErr}`);
+      errors.push({ file, error: shortErr });
       failed++;
     }
   }
 
   console.log('---');
   console.log(`Results: ${success} success, ${failed} failed, ${skipped} skipped`);
-  
-  if (failed > 0) {
-    process.exit(1);
+
+  if (errors.length > 0) {
+    console.log('\nError details:');
+    errors.forEach(e => console.log(`  ${e.file}: ${e.error}`));
   }
 }
 
