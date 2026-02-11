@@ -147,7 +147,8 @@ export function DistributorCustodyValueReport() {
   // Export to Excel
   const exportToExcel = async () => {
     try {
-      const { utils, writeFile } = await import('xlsx');
+      const XLSX = (await import('xlsx-js-style')).default;
+      const { utils, writeFile } = XLSX;
 
       // Summary sheet
       const summaryData = distributorData.map(d => ({
