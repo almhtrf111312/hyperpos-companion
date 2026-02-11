@@ -14,9 +14,6 @@ build = ["npm", "run", "build"]
 [userenv]
 
 [userenv.shared]
-VITE_SUPABASE_URL = "https://vdoncnrhtqxnxtftefod.supabase.co"
-VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkb25jbnJodHF4bnh0ZnRlZm9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMzE4OTgsImV4cCI6MjA4MzkwNzg5OH0.M7t5dTbmLv_GYYIlrc9esT28tPooaEFiNH8jh3dWs-A"
-VITE_SUPABASE_PROJECT_ID = "vdoncnrhtqxnxtftefod"
 
 [workflows]
 runButton = "Project"
