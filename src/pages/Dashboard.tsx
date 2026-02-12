@@ -33,6 +33,7 @@ import { EVENTS } from '@/lib/events';
 export default function Dashboard() {
   const { t, language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
+  // Dashboard Version 2.0 - Overhaul
   const [stats, setStats] = useState({
     todaySales: 0,
     weekSales: 0,
