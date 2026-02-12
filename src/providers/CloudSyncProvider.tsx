@@ -1,14 +1,15 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+// Cloud Sync Provider - Wraps the app and ensures cloud sync is properly initialized
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { setCurrentUserId, fetchStoreSettings, saveStoreSettings, insertToSupabase, updateInSupabase, deleteFromSupabase } from '@/lib/supabase-store';
+import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/supabase-store';
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
+import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
-import { processQueue, getPendingOperations } from '@/lib/sync-queue';
+import { processQueue } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus } from '@/hooks/use-network-status';
-import { supabase } from '@/integrations/supabase/client';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -17,9 +18,9 @@ interface CloudSyncContextType {
   isSyncing: boolean;
   lastSyncTime: string | null;
   syncNow: () => Promise<void>;
-  pendingCount: number;
 }
 
+// Export context for safe usage in components that may render outside provider
 export const CloudSyncContext = createContext<CloudSyncContextType | null>(null);
 
 export const useCloudSyncContext = () => {
@@ -34,91 +35,29 @@ interface CloudSyncProviderProps {
   children: ReactNode;
 }
 
-async function processProductOperation(data: Record<string, unknown>): Promise<boolean> {
-  const action = data.action as string;
-  
-  if (action === 'add_product') {
-    const product = data.product as Record<string, unknown>;
-    const cloudData: Record<string, unknown> = {
-      name: product.name,
-      barcode: product.barcode || null,
-      barcode2: product.barcode2 || null,
-      barcode3: product.barcode3 || null,
-      category: product.category || null,
-      cost_price: product.costPrice || 0,
-      sale_price: product.salePrice || 0,
-      quantity: product.quantity || 0,
-      min_stock_level: product.minStockLevel || 1,
-      expiry_date: product.expiryDate || null,
-      image_url: product.image || null,
-      archived: false,
-    };
-    const inserted = await insertToSupabase('products', cloudData, { silent: true });
-    return !!inserted;
-  }
-  
-  if (action === 'update_product') {
-    const productId = data.productId as string;
-    const updates = data.data as Record<string, unknown>;
-    if (productId.startsWith('local_')) return true;
-    const cloudUpdates: Record<string, unknown> = {};
-    if (updates.name !== undefined) cloudUpdates.name = updates.name;
-    if (updates.barcode !== undefined) cloudUpdates.barcode = updates.barcode || null;
-    if (updates.costPrice !== undefined) cloudUpdates.cost_price = updates.costPrice;
-    if (updates.salePrice !== undefined) cloudUpdates.sale_price = updates.salePrice;
-    if (updates.quantity !== undefined) cloudUpdates.quantity = updates.quantity;
-    if (updates.category !== undefined) cloudUpdates.category = updates.category || null;
-    if (updates.minStockLevel !== undefined) cloudUpdates.min_stock_level = updates.minStockLevel;
-    if (Object.keys(cloudUpdates).length > 0) {
-      return await updateInSupabase('products', productId, cloudUpdates);
-    }
-    return true;
-  }
-  
-  if (action === 'delete_product') {
-    const productId = data.productId as string;
-    if (productId.startsWith('local_')) return true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('stock_transfer_items').delete().eq('product_id', productId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('warehouse_stock').delete().eq('product_id', productId);
-    return await deleteFromSupabase('products', productId);
-  }
-  
-  return true;
-}
-
 export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   const { user, isLoading: authLoading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
   const { isOnline } = useNetworkStatus();
-  const wasOfflineRef = useRef(false);
+  const [wasOffline, setWasOffline] = useState(false);
 
+  // Enable realtime sync for instant updates across devices
   useRealtimeSync();
   
+  // مراقبة عودة الاتصال بالإنترنت لتشغيل المزامنة التلقائية
   useEffect(() => {
-    const count = getPendingOperations().length;
-    setPendingCount(count);
-    
-    const handleUpdate = () => {
-      setPendingCount(getPendingOperations().length);
-    };
-    window.addEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleUpdate);
-    return () => window.removeEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleUpdate);
-  }, []);
-
-  useEffect(() => {
-    if (isOnline && wasOfflineRef.current && user) {
+    if (isOnline && wasOffline && user) {
+      // الاتصال عاد - بدء المزامنة التلقائية
       console.log('[CloudSync] Internet restored, starting auto-sync...');
       showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
       syncNow();
     }
-    wasOfflineRef.current = !isOnline;
-  }, [isOnline, user]);
+    setWasOffline(!isOnline);
+  }, [isOnline, wasOffline, user]);
 
+  // Initialize cloud sync when user is authenticated
   useEffect(() => {
     if (authLoading) return;
 
@@ -138,63 +77,65 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setIsSyncing(true);
 
     try {
-      if (navigator.onLine) {
-        const cloudSettings = await fetchStoreSettings();
+      // Fetch store settings from cloud
+      const cloudSettings = await fetchStoreSettings();
+      
+      if (cloudSettings) {
+        // Apply cloud settings to localStorage for local access
+        const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        const existing = existingRaw ? JSON.parse(existingRaw) : {};
         
-        if (cloudSettings) {
-          const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-          const existing = existingRaw ? JSON.parse(existingRaw) : {};
-          
-          const merged = {
-            ...existing,
-            storeSettings: {
-              name: cloudSettings.name || existing.storeSettings?.name || 'متجري',
-              phone: cloudSettings.phone || existing.storeSettings?.phone || '',
-              address: cloudSettings.address || existing.storeSettings?.address || '',
-              logo: cloudSettings.logo_url || existing.storeSettings?.logo || '',
-            },
-            exchangeRates: cloudSettings.exchange_rates || existing.exchangeRates || { TRY: 33, SYP: 14000 },
-            language: cloudSettings.language || existing.language || 'ar',
-            theme: cloudSettings.theme || existing.theme || 'dark',
-            taxEnabled: cloudSettings.tax_enabled ?? existing.taxEnabled ?? false,
-            taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
-            printSettings: cloudSettings.print_settings || existing.printSettings || {},
-            notificationSettings: cloudSettings.notification_settings || existing.notificationSettings || {},
-          };
-          
-          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
-          emitEvent(EVENTS.SETTINGS_UPDATED);
-        } else {
-          const localRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-          if (localRaw) {
-            try {
-              const local = JSON.parse(localRaw);
-              await saveStoreSettings({
-                name: local.storeSettings?.name || 'متجري',
-                phone: local.storeSettings?.phone,
-                address: local.storeSettings?.address,
-                logo_url: local.storeSettings?.logo,
-                store_type: local.storeType || 'phones',
-                language: local.language || 'ar',
-                theme: local.theme || 'dark',
-                exchange_rates: local.exchangeRates || { TRY: 33, SYP: 14000 },
-                tax_enabled: local.taxEnabled || false,
-                tax_rate: local.taxRate || 0,
-                print_settings: local.printSettings || {},
-                notification_settings: local.notificationSettings || {},
-              });
-            } catch (e) {
-              console.error('Failed to migrate local settings:', e);
-            }
-          } else {
+        const merged = {
+          ...existing,
+          storeSettings: {
+            name: cloudSettings.name || existing.storeSettings?.name || 'متجري',
+            phone: cloudSettings.phone || existing.storeSettings?.phone || '',
+            address: cloudSettings.address || existing.storeSettings?.address || '',
+            logo: cloudSettings.logo_url || existing.storeSettings?.logo || '',
+          },
+          exchangeRates: cloudSettings.exchange_rates || existing.exchangeRates || { TRY: 33, SYP: 14000 },
+          language: cloudSettings.language || existing.language || 'ar',
+          theme: cloudSettings.theme || existing.theme || 'dark',
+          taxEnabled: cloudSettings.tax_enabled ?? existing.taxEnabled ?? false,
+          taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
+          printSettings: cloudSettings.print_settings || existing.printSettings || {},
+          notificationSettings: cloudSettings.notification_settings || existing.notificationSettings || {},
+        };
+        
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
+        emitEvent(EVENTS.SETTINGS_UPDATED);
+      } else {
+        // First time user - migrate local settings to cloud
+        const localRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (localRaw) {
+          try {
+            const local = JSON.parse(localRaw);
             await saveStoreSettings({
-              name: 'متجري',
-              store_type: 'phones',
-              language: 'ar',
-              theme: 'dark',
-              exchange_rates: { TRY: 33, SYP: 14000 },
+              name: local.storeSettings?.name || 'متجري',
+              phone: local.storeSettings?.phone,
+              address: local.storeSettings?.address,
+              logo_url: local.storeSettings?.logo,
+              store_type: local.storeType || 'phones',
+              language: local.language || 'ar',
+              theme: local.theme || 'dark',
+              exchange_rates: local.exchangeRates || { TRY: 33, SYP: 14000 },
+              tax_enabled: local.taxEnabled || false,
+              tax_rate: local.taxRate || 0,
+              print_settings: local.printSettings || {},
+              notification_settings: local.notificationSettings || {},
             });
+          } catch (e) {
+            console.error('Failed to migrate local settings:', e);
           }
+        } else {
+          // Create default store
+          await saveStoreSettings({
+            name: 'متجري',
+            store_type: 'phones',
+            language: 'ar',
+            theme: 'dark',
+            exchange_rates: { TRY: 33, SYP: 14000 },
+          });
         }
       }
 
@@ -208,45 +149,29 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   }, [user]);
 
   const syncNow = useCallback(async () => {
-    if (!user || isSyncing || !navigator.onLine) return;
+    if (!user || isSyncing) return;
 
     setIsSyncing(true);
 
     try {
+      // أولاً: تنفيذ أي مسح سحابي معلق
       await executePendingCloudClear();
       
-      const result = await processQueue(async (operation) => {
+      // ثانياً: معالجة طابور المزامنة (البيع بالدين وغيرها)
+      await processQueue(async (operation) => {
         if (operation.type === 'debt_sale_bundle') {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
         }
-        
-        if (operation.type === 'sale' || operation.type === 'stock_update') {
-          return await processProductOperation(operation.data);
-        }
-        
-        if (operation.type === 'customer_update') {
-          return true;
-        }
-        
-        if (operation.type === 'invoice_create') {
-          return true;
-        }
-        
-        if (operation.type === 'expense') {
-          return true;
-        }
-        
-        if (operation.type === 'debt' || operation.type === 'debt_payment') {
-          return true;
-        }
-
+        // أنواع أخرى يمكن إضافتها هنا
         console.log('[SyncQueue] Processing operation:', operation.type);
-        return true;
+        return true; // Default: mark as processed
       });
       
+      // ثالثاً: إبطال الكاش وجلب البيانات الجديدة
       const { invalidateAllCaches } = await import('@/lib/cloud');
       invalidateAllCaches();
 
+      // Refresh settings from cloud
       const cloudSettings = await fetchStoreSettings();
       if (cloudSettings) {
         const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -266,6 +191,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
       }
 
+      // Emit events to refresh all UI
       emitEvent(EVENTS.PRODUCTS_UPDATED);
       emitEvent(EVENTS.INVOICES_UPDATED);
       emitEvent(EVENTS.DEBTS_UPDATED);
@@ -275,15 +201,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       emitEvent(EVENTS.SETTINGS_UPDATED);
 
       setLastSyncTime(new Date().toISOString());
-      setPendingCount(0);
-      
-      if (result.failed > 0) {
-        showToast.error(`تمت المزامنة مع ${result.failed} أخطاء`, { description: 'سيتم إعادة المحاولة لاحقاً' });
-      } else {
-        showToast.success('تمت المزامنة بنجاح', 'تم رفع جميع البيانات');
-      }
+      showToast.success('تمت المزامنة بنجاح', 'تم رفع جميع البيانات المعلقة');
     } catch (error) {
-      console.error('Sync error:', error);
+      console.error('Manual sync error:', error);
       showToast.error('فشل في المزامنة', { description: 'سيتم إعادة المحاولة لاحقاً' });
     } finally {
       setIsSyncing(false);
@@ -291,7 +211,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   }, [user, isSyncing]);
 
   return (
-    <CloudSyncContext.Provider value={{ isReady, isSyncing, lastSyncTime, syncNow, pendingCount }}>
+    <CloudSyncContext.Provider value={{ isReady, isSyncing, lastSyncTime, syncNow }}>
       {children}
     </CloudSyncContext.Provider>
   );

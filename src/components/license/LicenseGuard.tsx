@@ -5,7 +5,7 @@ import { useDeviceBinding } from '@/hooks/use-device-binding';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActivationScreen } from './ActivationScreen';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
-import { Loader2, MessageCircle, LogOut, RotateCw } from 'lucide-react';
+import { Loader2, MessageCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Key, Clock } from 'lucide-react';
@@ -27,6 +27,7 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
   const [developerPhone, setDeveloperPhone] = useState<string>('');
   const [isSigningOut, setIsSigningOut] = useState(false);
 
+  // Fetch developer phone
   useEffect(() => {
     const fetchDeveloperPhone = async () => {
       try {
@@ -35,7 +36,7 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
           .select('value')
           .eq('key', 'developer_phone')
           .maybeSingle();
-
+        
         if (!error && data?.value) {
           setDeveloperPhone(data.value);
         }
@@ -43,19 +44,19 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
         console.error('Failed to fetch developer phone:', err);
       }
     };
-
+    
     fetchDeveloperPhone();
   }, []);
 
   const handleContactDeveloper = () => {
     if (!developerPhone) return;
-
+    
     const message = encodeURIComponent(
-      isRTL
+      isRTL 
         ? 'أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro'
         : 'I want to get an activation code for FlowPOS Pro'
     );
-
+    
     const cleanPhone = developerPhone.replace(/[^\d+]/g, '');
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
@@ -82,7 +83,6 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
             variant="default"
             className="w-full h-auto py-4 flex flex-col items-center gap-2"
             onClick={onChooseActivation}
-            data-testid="button-choose-activation"
           >
             <Key className="w-6 h-6" />
             <span className="font-semibold">
@@ -98,7 +98,6 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
             className="w-full h-auto py-4 flex flex-col items-center gap-2"
             onClick={onChooseTrial}
             disabled={isStartingTrial}
-            data-testid="button-start-trial"
           >
             {isStartingTrial ? (
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -113,16 +112,16 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
             </span>
           </Button>
 
+          {/* Contact Developer Button */}
           {developerPhone && (
             <div className="pt-4 border-t space-y-3">
               <p className="text-sm text-muted-foreground text-center">
                 {isRTL ? 'للحصول على كود التفعيل، تواصل معنا:' : 'To get an activation code, contact us:'}
               </p>
-              <Button
-                variant="secondary"
-                className="w-full gap-2"
+              <Button 
+                variant="secondary" 
+                className="w-full gap-2" 
                 onClick={handleContactDeveloper}
-                data-testid="button-contact-developer"
               >
                 <MessageCircle className="w-4 h-4" />
                 {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
@@ -130,12 +129,12 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
             </div>
           )}
 
-          <Button
-            variant="ghost"
-            className="w-full text-muted-foreground gap-2"
+          {/* Sign Out Button */}
+          <Button 
+            variant="ghost" 
+            className="w-full text-muted-foreground hover:text-foreground gap-2" 
             onClick={handleSignOut}
             disabled={isSigningOut}
-            data-testid="button-signout-license"
           >
             {isSigningOut ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -151,96 +150,105 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 }
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
-  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [skipLoading, setSkipLoading] = useState(false);
+  
+  // ✅ FIX: Auth must finish first, then license and device run in parallel
+  // Don't block on device check if license is already resolved
+  const isFullyLoading = authLoading || (isLoading && isCheckingDevice);
+  
+  // ✅ FIX: If either license or device finishes, we can proceed (don't wait for both)
+  const canProceed = skipLoading || (!authLoading && !isLoading) || (!authLoading && !isCheckingDevice && isValid);
 
-  // Timeout state for black screen prevention
-  const [isTakingTooLong, setIsTakingTooLong] = useState(false);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isLoading || authLoading) {
-      timer = setTimeout(() => {
-        setIsTakingTooLong(true);
-      }, 7000); // Show retry if loading takes > 7s
-    } else {
-      setIsTakingTooLong(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isLoading, authLoading]);
-
+  // Update license notification when license data changes
   useEffect(() => {
     if (isValid && hasLicense && expiresAt && remainingDays !== null) {
       checkLicenseStatus(expiresAt, remainingDays, isTrial);
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
-  if (authLoading) {
+  // ✅ FIX: Reduced timeout from 5s to 3s, added skip option at 6s
+  useEffect(() => {
+    if (isFullyLoading && !canProceed) {
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 3000); // 3 seconds for retry button
+
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [isFullyLoading, canProceed]);
+
+  // Show loading with retry + skip buttons if stuck
+  if (!canProceed && (isFullyLoading || (authLoading))) {
+    if (loadingTimeout) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">جاري التحميل...</p>
+            <div className="flex flex-col gap-2 w-48">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setLoadingTimeout(false);
+                  checkLicense();
+                }}
+              >
+                إعادة المحاولة
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setSkipLoading(true)}
+              >
+                تخطي والدخول
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">جاري تحميل بيانات المستخدم...</p>
-          {isTakingTooLong && <p className="text-xs text-destructive animate-pulse">يستغرق الأمر وقتاً أطول من المعتاد...</p>}
+          <p className="text-muted-foreground">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
+  // If user is not logged in, don't guard - let the auth flow handle it
   if (!user) {
     return <>{children}</>;
   }
 
-  // Allow rendering if we have valid license even if background check is running
-  if (isValid && hasLicense && !needsActivation) {
-    return <>{children}</>;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4 text-center">
-        {!isTakingTooLong ? (
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">جاري التحقق من الترخيص...</p>
-          </div>
-        ) : (
-          <div className="max-w-sm w-full bg-card border rounded-lg p-6 shadow-md">
-            <div className="mx-auto w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-              <Clock className="w-6 h-6 text-amber-600" />
-            </div>
-            <h3 className="text-lg font-bold mb-2">التحميل يستغرق وقتاً طويلاً</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
-              يبدو أن الاتصال بطيء أو هناك مشكلة في التحقق من الترخيص.
-            </p>
-            <div className="flex flex-col gap-2">
-              <Button onClick={() => window.location.reload()} variant="outline" className="w-full gap-2">
-                <RotateCw className="w-4 h-4" />
-                إعادة تحميل الصفحة
-              </Button>
-              <Button onClick={() => signOut()} variant="ghost" className="w-full gap-2 text-destructive hover:text-destructive">
-                <LogOut className="w-4 h-4" />
-                تسجيل الخروج
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
+  // Check if device is blocked (SECURITY: This check is critical)
+  // But only if device check has finished
   if (!isCheckingDevice && isDeviceBlocked) {
     return <DeviceBlockedScreen />;
   }
 
+  // If there was a network error but user is authenticated, allow access
   if (isValid && hasLicense) {
     return <>{children}</>;
   }
+  
+  // ✅ FIX: If skip was pressed, allow access
+  if (skipLoading) {
+    return <>{children}</>;
+  }
 
+  // If cashier and owner hasn't activated yet, show waiting message
   if (ownerNeedsActivation && role === 'cashier') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir="rtl">
@@ -257,21 +265,19 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              variant="outline"
+            <Button 
+              variant="outline" 
               className="w-full"
               onClick={() => checkLicense()}
-              data-testid="button-recheck-license"
             >
               إعادة التحقق
             </Button>
-            <Button
-              variant="ghost"
+            <Button 
+              variant="ghost" 
               className="w-full text-muted-foreground"
               onClick={async () => {
                 await supabase.auth.signOut();
               }}
-              data-testid="button-signout-waiting"
             >
               تسجيل الخروج
             </Button>
@@ -281,6 +287,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     );
   }
 
+  // If user has no license and hasn't made a choice yet, show choice screen
   if (!hasLicense && !isStartingTrial) {
     if (showActivation) {
       return <ActivationScreen />;
@@ -299,6 +306,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     );
   }
 
+  // Show loading while starting trial
   if (isStartingTrial) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -310,9 +318,11 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     );
   }
 
+  // If license is invalid or needs activation, show activation screen
   if (needsActivation || (!isValid && hasLicense)) {
     return <ActivationScreen />;
   }
 
+  // License is valid - show the app
   return <>{children}</>;
 }

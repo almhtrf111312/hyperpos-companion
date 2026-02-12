@@ -159,11 +159,9 @@ const AppContent = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Protected routes - Cashier/Distributor/Owner/Boss accessible (Everyone) */}
+          {/* Protected routes - Cashier accessible */}
           <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
           <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
-
-          {/* Base staff routes */}
           <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
           <Route path="/customers/*" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
           <Route path="/debts" element={<ProtectedRoute><MainLayout><Debts /></MainLayout></ProtectedRoute>} />
@@ -174,16 +172,15 @@ const AppContent = () => {
           <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
           <Route path="/appearance" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
 
-          {/* Admin routes - Boss & Owner & Admin */}
-          {/* Note: 'admin' kept for backward compatibility, new users use 'owner' */}
-          <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'owner', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
+          {/* Protected routes - Admin/Boss only */}
+          <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
 
           {/* Boss only routes */}
           <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />

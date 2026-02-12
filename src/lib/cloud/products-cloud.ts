@@ -223,31 +223,23 @@ const loadFromLocalCache = (): Product[] | null => {
   return null;
 };
 
-// Load products - local-first with background cloud sync
+// Load products from cloud with caching and localStorage fallback
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
 
+  // إذا لا يوجد مستخدم، جرب التحميل من localStorage
   if (!userId) {
     const localProducts = loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
+      console.log('[ProductsCloud] Serving from localStorage (no user)');
       return localProducts;
     }
     return [];
   }
 
+  // Check memory cache first
   if (productsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return productsCache;
-  }
-
-  const localProducts = loadFromLocalCache();
-
-  if (!navigator.onLine) {
-    if (localProducts && localProducts.length > 0) {
-      productsCache = localProducts;
-      cacheTimestamp = Date.now();
-      return localProducts;
-    }
-    return [];
   }
 
   try {
@@ -258,23 +250,28 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
     productsCache = cloudProducts.map(toProduct);
     cacheTimestamp = Date.now();
+
+    // حفظ في localStorage كـ backup
     saveToLocalCache(productsCache);
 
     return productsCache;
   } catch (error) {
     console.error('[ProductsCloud] Failed to fetch from cloud:', error);
 
+    // Fallback: محاولة التحميل من الذاكرة المحلية
+    const localProducts = loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
-      productsCache = localProducts;
-      cacheTimestamp = Date.now();
+      console.log('[ProductsCloud] Serving from localStorage (cloud failed)');
       return localProducts;
     }
 
+    // إذا كان هناك cache قديم في الذاكرة، استخدمه
     if (productsCache && productsCache.length > 0) {
+      console.log('[ProductsCloud] Serving from stale memory cache');
       return productsCache;
     }
 
-    return [];
+    throw error;
   }
 };
 
@@ -290,53 +287,25 @@ export const invalidateProductsCache = () => {
   }
 };
 
-// Add product - local-first, sync to cloud in background
+// Add product to cloud
 export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): Promise<Product | null> => {
-  const localId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const localProduct: Product = {
-    ...product,
-    id: localId,
-    status: getStatus(product.quantity || 0, product.minStockLevel),
-  };
+  const cloudData = toCloudProduct(product);
+  const inserted = await insertToSupabase<CloudProduct>('products', cloudData);
 
-  const localProducts = loadFromLocalCache() || [];
-  localProducts.unshift(localProduct);
-  saveToLocalCache(localProducts);
-  productsCache = localProducts;
-  cacheTimestamp = Date.now();
-  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
-
-  if (!navigator.onLine) {
-    const { addToQueue } = await import('../sync-queue');
-    addToQueue('sale', { action: 'add_product', product: product, localId } as Record<string, unknown>);
-    return localProduct;
+  if (inserted) {
+    const newProduct = toProduct(inserted);
+    invalidateProductsCache();
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return newProduct;
   }
 
-  try {
-    const cloudData = toCloudProduct(product);
-    const inserted = await insertToSupabase<CloudProduct>('products', cloudData);
-
-    if (inserted) {
-      const newProduct = toProduct(inserted);
-      const updatedLocal = (loadFromLocalCache() || []).map(p => p.id === localId ? newProduct : p);
-      saveToLocalCache(updatedLocal);
-      productsCache = updatedLocal;
-      cacheTimestamp = Date.now();
-      emitEvent(EVENTS.PRODUCTS_UPDATED, null);
-      return newProduct;
-    }
-  } catch (error) {
-    console.error('[ProductsCloud] Cloud insert failed, queued for sync:', error);
-    const { addToQueue } = await import('../sync-queue');
-    addToQueue('sale', { action: 'add_product', product: product, localId } as Record<string, unknown>);
-  }
-
-  return localProduct;
+  return null;
 };
 
-// Build cloud updates object from product data
-function buildCloudUpdates(data: Partial<Omit<Product, 'id' | 'status'>>): Record<string, unknown> {
+// Update product in cloud
+export const updateProductCloud = async (id: string, data: Partial<Omit<Product, 'id' | 'status'>>): Promise<boolean> => {
   const updates: Record<string, unknown> = {};
+
   if (data.name !== undefined) updates.name = data.name;
   if (data.barcode !== undefined) updates.barcode = data.barcode || null;
   if (data.barcode2 !== undefined) updates.barcode2 = data.barcode2 || null;
@@ -348,12 +317,16 @@ function buildCloudUpdates(data: Partial<Omit<Product, 'id' | 'status'>>): Recor
   if (data.minStockLevel !== undefined) updates.min_stock_level = data.minStockLevel;
   if (data.expiryDate !== undefined) updates.expiry_date = data.expiryDate || null;
   if (data.image !== undefined) updates.image_url = data.image || null;
+  // Unit settings
   if (data.bulkUnit !== undefined) updates.bulk_unit = data.bulkUnit;
   if (data.smallUnit !== undefined) updates.small_unit = data.smallUnit;
   if (data.conversionFactor !== undefined) updates.conversion_factor = data.conversionFactor;
   if (data.bulkCostPrice !== undefined) updates.bulk_cost_price = data.bulkCostPrice;
   if (data.bulkSalePrice !== undefined) updates.bulk_sale_price = data.bulkSalePrice;
   if (data.trackByUnit !== undefined) updates.track_by_unit = data.trackByUnit;
+
+  // ✅ Merge static fields (wholesalePrice, serialNumber, etc.) into custom_fields
+  // These fields are stored inside custom_fields JSONB column, not as separate columns
   const mergedCustomFields: Record<string, unknown> = {
     ...(data.customFields || {}),
     ...(data.serialNumber !== undefined ? { serialNumber: data.serialNumber } : {}),
@@ -362,82 +335,55 @@ function buildCloudUpdates(data: Partial<Omit<Product, 'id' | 'status'>>): Recor
     ...(data.size !== undefined ? { size: data.size } : {}),
     ...(data.color !== undefined ? { color: data.color } : {}),
   };
+
+  // Only update custom_fields if there's something to merge
   if (Object.keys(mergedCustomFields).length > 0) {
     updates.custom_fields = mergedCustomFields;
   } else if (data.customFields !== undefined) {
     updates.custom_fields = data.customFields || null;
   }
-  return updates;
-}
 
-// Update product - local-first, sync to cloud in background
-export const updateProductCloud = async (id: string, data: Partial<Omit<Product, 'id' | 'status'>>): Promise<boolean> => {
-  const localProducts = loadFromLocalCache() || [];
-  const idx = localProducts.findIndex(p => p.id === id);
-  if (idx !== -1) {
-    localProducts[idx] = { ...localProducts[idx], ...data, status: getStatus(data.quantity ?? localProducts[idx].quantity, data.minStockLevel ?? localProducts[idx].minStockLevel) };
-    saveToLocalCache(localProducts);
-    productsCache = localProducts;
-    cacheTimestamp = Date.now();
-  }
-  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  const success = await updateInSupabase('products', id, updates);
 
-  if (!navigator.onLine || id.startsWith('local_')) {
-    const { addToQueue } = await import('../sync-queue');
-    addToQueue('stock_update', { action: 'update_product', productId: id, data } as Record<string, unknown>);
-    return true;
+  if (success) {
+    invalidateProductsCache();
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
   }
 
-  try {
-    const updates = buildCloudUpdates(data);
-    const success = await updateInSupabase('products', id, updates);
-    if (!success) {
-      const { addToQueue } = await import('../sync-queue');
-      addToQueue('stock_update', { action: 'update_product', productId: id, data } as Record<string, unknown>);
-    }
-    return true;
-  } catch (error) {
-    console.error('[ProductsCloud] Cloud update failed, queued for sync:', error);
-    const { addToQueue } = await import('../sync-queue');
-    addToQueue('stock_update', { action: 'update_product', productId: id, data } as Record<string, unknown>);
-    return true;
-  }
+  return success;
 };
 
-// Delete product - local-first, sync to cloud in background
+// Delete product from cloud (with cascading delete of related records)
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
-  const product = productsCache?.find(p => p.id === id) || (loadFromLocalCache() || []).find(p => p.id === id);
-  if (product) {
-    const { addToTrash } = await import('../trash-store');
-    addToTrash('product', product.name, product as unknown as Record<string, unknown>);
-  }
-
-  const localProducts = (loadFromLocalCache() || []).filter(p => p.id !== id);
-  saveToLocalCache(localProducts);
-  productsCache = localProducts;
-  cacheTimestamp = Date.now();
-  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
-
-  if (!navigator.onLine || id.startsWith('local_')) {
-    if (!id.startsWith('local_')) {
-      const { addToQueue } = await import('../sync-queue');
-      addToQueue('stock_update', { action: 'delete_product', productId: id } as Record<string, unknown>);
-    }
-    return true;
-  }
+  const userId = getCurrentUserId();
+  if (!userId) return false;
 
   try {
+    // حفظ نسخة في سلة المحذوفات قبل الحذف
+    const product = productsCache?.find(p => p.id === id);
+    if (product) {
+      const { addToTrash } = await import('../trash-store');
+      addToTrash('product', product.name, product as unknown as Record<string, unknown>);
+    }
+
+    // ✅ المرحلة 1: حذف السجلات المرتبطة أولاً (بسبب المفاتيح الأجنبية)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('stock_transfer_items').delete().eq('product_id', id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('warehouse_stock').delete().eq('product_id', id);
-    await deleteFromSupabase('products', id);
-    return true;
+
+    // ✅ المرحلة 2: حذف المنتج نفسه
+    const success = await deleteFromSupabase('products', id);
+
+    if (success) {
+      invalidateProductsCache();
+      emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    }
+
+    return success;
   } catch (error) {
-    console.error('[deleteProductCloud] Cloud delete failed, queued:', error);
-    const { addToQueue } = await import('../sync-queue');
-    addToQueue('stock_update', { action: 'delete_product', productId: id } as Record<string, unknown>);
-    return true;
+    console.error('[deleteProductCloud] Error:', error);
+    return false;
   }
 };
 

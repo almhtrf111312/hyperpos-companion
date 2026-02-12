@@ -1,7 +1,7 @@
 // Native Scanner using @capacitor-community/barcode-scanner
 // SIMPLIFIED VERSION - Clean camera, always-visible controls
 import { useEffect, useState, useRef } from 'react';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
 import { X, Zap, ZapOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
@@ -25,13 +25,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
   const checkPermission = async (): Promise<boolean> => {
     try {
-      const status = await BarcodeScanner.checkPermissions();
-      if (status.camera === 'granted') return true;
-
-      const request = await BarcodeScanner.requestPermissions();
-      if (request.camera === 'granted') return true;
-
-      if (request.camera === 'denied') {
+      const status = await BarcodeScanner.checkPermission({ force: true });
+      if (status.granted) return true;
+      if (status.denied) {
         setPermissionError('تم رفض صلاحية الكاميرا. يرجى تفعيلها من الإعدادات.');
         return false;
       }
@@ -53,16 +49,19 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     const currentAttempt = initAttemptRef.current;
 
     try {
-      // 1. Ensure clean state
+      // 1. Ensure previous session is fully stopped
+      try {
+        await BarcodeScanner.showBackground();
+        await BarcodeScanner.stopScan();
+      } catch (_) { /* ignore cleanup errors */ }
       document.documentElement.classList.remove('barcode-scanner-active');
-      await BarcodeScanner.stopScan(); // Ensure stopped first
 
-      // Small delay
+      // Small delay to let camera fully release
       await new Promise(r => setTimeout(r, 300));
 
       if (!mountedRef.current || currentAttempt !== initAttemptRef.current) return;
 
-      // 2. Check/Request Permission
+      // 2. Check Permission
       const hasPerm = await checkPermission();
       if (!hasPerm) {
         setIsInitializing(false);
@@ -70,43 +69,35 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // 3. Hide Background & Add Class (MLKit handles background automatically mostly, but good to be safe)
+      // 3. Hide Background & Add Class
+      await BarcodeScanner.hideBackground();
       document.documentElement.classList.add('barcode-scanner-active');
 
-      // 4. Camera is ready
+      // 4. Camera is ready, hide loading spinner
       if (mountedRef.current) setIsInitializing(false);
 
-      // 5. Start Scan
-      // MLKit listener based approach
-      const listener = await BarcodeScanner.addListener('barcodeScanned', async (result) => {
-        if (result.barcode && !hasScannedRef.current) {
-          hasScannedRef.current = true;
-          console.log('[Scanner] Scanned:', result.barcode.rawValue);
-          await stopScanning();
-          playBeep();
-          if (navigator.vibrate) navigator.vibrate(200);
+      // 5. Start simple single scan
+      const result = await BarcodeScanner.startScan();
 
-          // Pass the value
-          if (result.barcode.rawValue) {
-            onScan(result.barcode.rawValue);
-          }
-
-          setTimeout(() => {
-            if (mountedRef.current) onClose();
-          }, 500);
-        }
-      });
-
-      // Keep reference to listener to remove it later if needed (though stopScan cleanup usually suffices)
-      // For simplicity in this functional component, we rely on stopScanning to clean up.
-
-      await BarcodeScanner.startScan(); // This starts the camera feed
+      // 6. Process result
+      if (result.hasContent && !hasScannedRef.current) {
+        hasScannedRef.current = true;
+        console.log('[Scanner] Scanned:', result.content);
+        await stopScanning();
+        playBeep();
+        if (navigator.vibrate) navigator.vibrate(200);
+        onScan(result.content);
+        setTimeout(() => {
+          if (mountedRef.current) onClose();
+        }, 500);
+      } else {
+        await stopScanning();
+        if (mountedRef.current) onClose();
+      }
 
     } catch (err: any) {
       console.error('[Scanner] Scan error:', err);
-      // clean up
-      scanningRef.current = false;
-      document.documentElement.classList.remove('barcode-scanner-active');
+      await stopScanning();
       if (mountedRef.current) setPermissionError('حدث خطأ أثناء تشغيل الماسح');
     } finally {
       scanningRef.current = false;
@@ -119,7 +110,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         await BarcodeScanner.disableTorch();
         setIsTorchOn(false);
       }
-      await BarcodeScanner.removeAllListeners();
+      await BarcodeScanner.showBackground();
       await BarcodeScanner.stopScan();
     } catch (e) {
       console.warn('Stop scanning failed:', e);
@@ -223,8 +214,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             size="icon"
             onClick={toggleTorch}
             className={`rounded-full w-12 h-12 backdrop-blur-md border border-white/20 ${isTorchOn
-              ? 'bg-yellow-400/80 text-black hover:bg-yellow-500'
-              : 'bg-black/40 text-white hover:bg-black/60'
+                ? 'bg-yellow-400/80 text-black hover:bg-yellow-500'
+                : 'bg-black/40 text-white hover:bg-black/60'
               }`}
           >
             {isTorchOn ? <Zap className="w-6 h-6 fill-current" /> : <ZapOff className="w-6 h-6" />}

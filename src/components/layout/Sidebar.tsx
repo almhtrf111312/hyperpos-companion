@@ -130,12 +130,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   });
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-      toast.success(t('auth.logoutSuccess'));
-    } catch (err) {
-      console.error('[Sidebar] Logout error:', err);
-    }
+    await signOut();
+    toast.success(t('auth.logoutSuccess'));
     navigate('/login');
   };
 
