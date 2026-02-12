@@ -240,55 +240,6 @@ export const saveBackupLocally = async (): Promise<boolean> => {
   }
 };
 
-// 🆕 Perform action-based backup with custom name
-export const performActionBackup = async (actionName: string): Promise<boolean> => {
-  try {
-    const config = loadBackupConfig();
-    // Only proceed if enabled (or force if critical?) - User wants it "after every operation"
-    if (!config.enabled) return false;
-
-    console.log(`Starting action backup: ${actionName}`);
-    const backupData = await generateBackupData();
-
-    // Format: backup_ActionName_YYYY-MM-DD_HH-mm-ss.json
-    // Sanitize action name to be safe for filenames
-    const safeActionName = actionName.replace(/[^a-zA-Z0-9أ-ي\s_-]/g, '').trim().replace(/\s+/g, '_');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `backup_${safeActionName}_${timestamp}.json`;
-
-    // Check if running on native platform
-    const isNative = typeof window !== 'undefined' &&
-      !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
-
-    if (isNative) {
-      // Save directly to Documents folder as requested
-      await Filesystem.writeFile({
-        path: fileName, // In Documents root or subfolder? User said "Documents folder"
-        data: JSON.stringify(backupData, null, 2),
-        directory: Directory.Documents,
-        encoding: Encoding.UTF8,
-        recursive: true,
-      });
-      console.log(`Action backup saved to Documents: ${fileName}`);
-    } else {
-      // Web fallback
-      const backups = loadLocalBackups();
-      backups.unshift({
-        fileName,
-        data: backupData,
-        createdAt: new Date().toISOString(),
-      });
-      if (backups.length > 20) backups.pop(); // Keep more for action history
-      localStorage.setItem('hyperpos_local_backups', JSON.stringify(backups));
-    }
-
-    return true;
-  } catch (error) {
-    console.error(`Failed to perform action backup (${actionName}):`, error);
-    return false;
-  }
-};
-
 // Load local backups list
 export const loadLocalBackups = (): Array<{ fileName: string; data: object; createdAt: string }> => {
   try {

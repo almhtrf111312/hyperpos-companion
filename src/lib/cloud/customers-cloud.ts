@@ -8,7 +8,6 @@ import {
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 import { supabase } from '@/integrations/supabase/client';
-import { saveToOfflineCache, loadFromOfflineCache } from '../offline-cache';
 
 export interface CloudCustomer {
   id: string;
@@ -68,35 +67,21 @@ const CACHE_TTL = 30000; // 30 seconds
 // Load customers
 export const loadCustomersCloud = async (): Promise<Customer[]> => {
   const userId = getCurrentUserId();
-  if (!userId) {
-    const cached = loadFromOfflineCache<Customer[]>('customers');
-    if (cached) return cached;
-    return [];
-  }
+  if (!userId) return [];
 
   if (customersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return customersCache;
   }
 
-  try {
-    const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
-      column: 'created_at',
-      ascending: false,
-    });
+  const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
+    column: 'created_at',
+    ascending: false,
+  });
 
-    customersCache = cloudCustomers.map(toCustomer);
-    cacheTimestamp = Date.now();
-    
-    saveToOfflineCache('customers', customersCache);
-    
-    return customersCache;
-  } catch (error) {
-    console.error('[CustomersCloud] Failed to fetch:', error);
-    const cached = loadFromOfflineCache<Customer[]>('customers');
-    if (cached) return cached;
-    if (customersCache) return customersCache;
-    return [];
-  }
+  customersCache = cloudCustomers.map(toCustomer);
+  cacheTimestamp = Date.now();
+  
+  return customersCache;
 };
 
 // ✅ تحميل العملاء مع أسماء الكاشير
@@ -199,17 +184,6 @@ export const updateCustomerCloud = async (
 
 // Delete customer
 export const deleteCustomerCloud = async (id: string): Promise<boolean> => {
-  // حفظ نسخة في سلة المحذوفات
-  try {
-    const customer = customersCache?.find(c => c.id === id);
-    if (customer) {
-      const { addToTrash } = await import('../trash-store');
-      addToTrash('customer', customer.name, customer as unknown as Record<string, unknown>);
-    }
-  } catch (e) {
-    console.warn('[deleteCustomerCloud] Failed to save to trash:', e);
-  }
-
   const success = await deleteFromSupabase('customers', id);
   
   if (success) {

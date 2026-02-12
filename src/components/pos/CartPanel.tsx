@@ -16,8 +16,7 @@ import {
   Search,
   DollarSign,
   Package,
-  Repeat,
-  Calculator as CalculatorIcon,
+  Repeat
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,14 +94,12 @@ interface CartPanelProps {
   discount: number;
   customerName: string;
   onUpdateQuantity: (id: string, change: number, unit?: 'piece' | 'bulk') => void;
-  onUpdatePrice: (id: string, newPrice: number, unit?: 'piece' | 'bulk') => void;
   onRemoveItem: (id: string, unit?: 'piece' | 'bulk') => void;
   onClearCart: () => void;
   onCurrencyChange: (currency: Currency) => void;
   onDiscountChange: (discount: number) => void;
   onCustomerNameChange: (name: string) => void;
   onToggleUnit?: (id: string, currentUnit: 'piece' | 'bulk') => void;
-  onToggleWholesale?: (enable: boolean) => void;
   onClose?: () => void;
   isMobile?: boolean;
 }
@@ -114,14 +111,12 @@ export function CartPanel({
   discount,
   customerName,
   onUpdateQuantity,
-  onUpdatePrice,
   onRemoveItem,
   onClearCart,
   onCurrencyChange,
   onDiscountChange,
   onCustomerNameChange,
   onToggleUnit,
-  onToggleWholesale,
   onClose,
   isMobile = false,
 }: CartPanelProps) {
@@ -204,12 +199,6 @@ export function CartPanel({
   const wholesaleProfit = wholesaleMode
     ? roundCurrency((receivedAmount > 0 ? receivedAmount : subtotal) - wholesaleCOGS)
     : undefined;
-
-  // ✅ الإجمالي المعروض = المبلغ المقبوض في الجملة (when entered)
-  const displayTotal = wholesaleMode && receivedAmount > 0
-    ? receivedAmount
-    : total;
-  const displayTotalInCurrency = displayTotal * selectedCurrency.rate;
 
   const handleCashSale = () => {
     if (cart.length === 0) return;
@@ -376,10 +365,6 @@ export function CartPanel({
         };
       });
 
-      // In wholesale mode, if receivedAmount is entered, that IS the total
-      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
-      const effectiveTotalInCurrency = effectiveTotal * selectedCurrency.rate;
-
       // Create invoice in cloud
       const invoice = await addInvoiceCloud({
         type: 'sale',
@@ -390,8 +375,8 @@ export function CartPanel({
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate,
         taxAmount,
-        total: effectiveTotal,  // ✅ Use effective total
-        totalInCurrency: effectiveTotalInCurrency, // ✅ Use effective total currency
+        total: totalSnapshot,
+        totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
         paymentType: 'cash',
@@ -408,7 +393,7 @@ export function CartPanel({
       const backgroundTasks = [];
 
       // تسجيل الربح
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, effectiveTotal);
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
 
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
@@ -446,7 +431,7 @@ export function CartPanel({
 
       // Update customer stats
       if (customer) {
-        backgroundTasks.push(updateCustomerStatsCloud(customer.id, effectiveTotal, false));
+        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, false));
       }
 
       // Run background tasks in parallel
@@ -459,12 +444,12 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع نقدي بقيمة $${formatNumber(effectiveTotal)} - المنتجات: ${itemsDescription}`,
-          { invoiceId: invoice.id, total: effectiveTotal, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
+          `عملية بيع نقدي بقيمة $${formatNumber(totalSnapshot)} - المنتجات: ${itemsDescription}`,
+          { invoiceId: invoice.id, total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
         );
       }
 
-      addSalesToShift(effectiveTotal);
+      addSalesToShift(totalSnapshot);
       recordActivity();
 
       // ✅ Clear cart only after successful save
@@ -475,14 +460,11 @@ export function CartPanel({
     } catch (error) {
       console.error('Cash sale error:', error);
 
-      // Recalculate effective total for local save
-      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
-
       // في حالة الفشل، حفظ محلياً
       addToQueue('invoice_create', {
         invoice: {
           customer_name: customerNameSnapshot || 'عميل نقدي',
-          total: effectiveTotal,
+          total: totalSnapshot,
           items: cartSnapshot,
         },
         timestamp: Date.now(),
@@ -632,10 +614,6 @@ export function CartPanel({
         };
       });
 
-      // In wholesale mode, if receivedAmount is entered, that IS the total
-      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
-      const effectiveTotalInCurrency = effectiveTotal * selectedCurrency.rate;
-
       // Create invoice using Cloud API
       const invoice = await addInvoiceCloud({
         type: 'sale',
@@ -646,8 +624,8 @@ export function CartPanel({
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate,
         taxAmount,
-        total: effectiveTotal,  // ✅ Use effective total
-        totalInCurrency: effectiveTotalInCurrency, // ✅ Use effective total currency
+        total: totalSnapshot,
+        totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
         paymentType: 'debt',
@@ -664,10 +642,10 @@ export function CartPanel({
       const backgroundTasks = [];
 
       // تسجيل الربح
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, effectiveTotal);
+      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
 
       // Create debt record
-      backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', effectiveTotal));
+      backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', totalSnapshot));
 
       // Distribute profit to partners
       const categoryProfits = Object.entries(profitsByCategory)
@@ -708,7 +686,7 @@ export function CartPanel({
 
       // Update customer stats
       if (customer) {
-        backgroundTasks.push(updateCustomerStatsCloud(customer.id, effectiveTotal, true));
+        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, true));
       }
 
       // Run all background tasks in parallel
@@ -722,10 +700,10 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع بالدين بقيمة $${formatNumber(effectiveTotal)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          `عملية بيع بالدين بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
           {
             invoiceId: invoice.id,
-            total: effectiveTotal,
+            total: totalSnapshot,
             itemsCount: cartSnapshot.length,
             customerName: customerNameSnapshot,
             paymentType: 'debt',
@@ -737,8 +715,8 @@ export function CartPanel({
           'debt_created',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(effectiveTotal)}`,
-          { invoiceId: invoice.id, amount: effectiveTotal, customerName: customerNameSnapshot }
+          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
+          { invoiceId: invoice.id, amount: totalSnapshot, customerName: customerNameSnapshot }
         );
       }
 
@@ -750,15 +728,12 @@ export function CartPanel({
     } catch (error) {
       console.error('Debt sale error:', error);
 
-      // Recalculate effective total for local save
-      const effectiveTotal = wholesaleMode && receivedAmount > 0 ? receivedAmount : totalSnapshot;
-
       // في حالة الفشل، حفظ محلياً
       const bundle = {
         invoiceData: {
           customer_name: customerNameSnapshot || 'عميل',
           customer_phone: customerPhoneSnapshot || '',
-          total: effectiveTotal,
+          total: totalSnapshot,
           items: cartSnapshot,
         },
         timestamp: Date.now(),
@@ -878,18 +853,13 @@ export function CartPanel({
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
 
-    // ✅ استخدام getItemPrice للسعر الصحيح (جملة أو مفرد)
-    const itemsHtml = cart.map(item => {
-      const itemPrice = getItemPrice(item);
-      const itemTotal = roundCurrency(itemPrice * item.quantity * selectedCurrency.rate);
-      return `
+    const itemsHtml = cart.map(item => `
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(itemTotal)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(item.price * item.quantity * selectedCurrency.rate)}</td>
       </tr>
-    `;
-    }).join('');
+    `).join('');
 
     const printContent = `
       <!DOCTYPE html>
@@ -934,9 +904,9 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discountType === 'percent' ? discount + '%' : ''}: -${selectedCurrency.symbol}${formatNumber(discountAmount * selectedCurrency.rate)}</div>` : ''}
+          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discount}%: -${selectedCurrency.symbol}${formatNumber(discountAmount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${selectedCurrency.symbol}${formatNumber(displayTotalInCurrency)}
+            الإجمالي: ${selectedCurrency.symbol}${formatNumber(totalInCurrency)}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -954,25 +924,22 @@ export function CartPanel({
     const store = getStoreSettings();
     const currentDate = new Date().toLocaleDateString('ar-SA');
 
-    // تحضير بيانات الفاتورة للمشاركة - ✅ استخدام getItemPrice و displayTotalInCurrency
+    // تحضير بيانات الفاتورة للمشاركة
     const shareData: InvoiceShareData = {
       id: `POS-${Date.now()}`,
       storeName: store.name,
       storePhone: store.phone,
       customerName: customerName || 'عميل نقدي',
       date: currentDate,
-      items: cart.map(item => {
-        const itemPrice = getItemPrice(item);  // ✅ استخدام السعر الصحيح (جملة أو مفرد)
-        return {
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: itemPrice,
-          total: roundCurrency(itemPrice * item.quantity),
-        };
-      }),
-      subtotal: subtotal,  // ✅ المجموع الفرعي المحسوب صحيحاً
+      items: cart.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.price * item.quantity,
+      })),
+      subtotal,
       discount: discountAmount,
-      total: displayTotalInCurrency,  // ✅ الإجمالي الصحيح (يأخذ بالاعتبار وضع الجملة والمبلغ المقبوض)
+      total: totalInCurrency,
       currencySymbol: selectedCurrency.symbol,
       paymentType: 'cash',
       type: 'sale',
@@ -990,67 +957,51 @@ export function CartPanel({
         "bg-card flex flex-col h-full",
         isMobile ? "rounded-t-2xl" : "border-r border-border"
       )}>
-        {/* Cart Header - Compact */}
-        <div className="p-2 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-10">
+        {/* Cart Header */}
+        <div className="p-3 md:p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <ShoppingCart className="w-5 h-5 text-primary" />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold px-1 min-w-[16px] h-[16px] rounded-full flex items-center justify-center border border-background">
-                    {cart.length}
-                  </span>
-                )}
-              </div>
-              <h2 className="font-bold text-sm hidden sm:block">{t('pos.shoppingCart')}</h2>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              {/* Wholesale Toggle - Compact Pill */}
-              <button
-                onClick={() => {
-                  const newMode = !wholesaleMode;
-                  setWholesaleMode(newMode);
-                  if (onToggleWholesale) onToggleWholesale(newMode);
-                  if (!newMode) setReceivedAmount(0);
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded-full border text-[11px] font-bold transition-all",
-                  wholesaleMode
-                    ? "bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-200"
-                    : "bg-background border-border text-muted-foreground hover:bg-muted"
-                )}
-                title="تفعيل/إلغاء سعر الجملة"
-              >
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  wholesaleMode ? "bg-orange-500 animate-pulse" : "bg-muted-foreground/30"
-                )} />
-                جملة
-              </button>
-
-              {/* Clear Cart - Icon Only */}
+              <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              <h2 className="font-bold text-base md:text-lg">{t('pos.shoppingCart')}</h2>
               {cart.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClearCart}
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  title={t('pos.clear')}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
+                  {cart.length}
+                </span>
               )}
-
-              {/* Sync Indicator - Mini */}
+            </div>
+            <div className="flex items-center gap-2">
+              {/* مؤشر المزامنة في الخلفية */}
               <BackgroundSyncIndicator
                 state={syncState}
                 message={syncMessage}
-                className="hidden sm:flex scale-75 origin-right"
+                className="hidden sm:flex"
               />
-
+              {/* Wholesale Toggle */}
+              <button
+                onClick={() => {
+                  setWholesaleMode(!wholesaleMode);
+                  if (!wholesaleMode) setReceivedAmount(0);
+                }}
+                className={cn(
+                  "text-xs font-bold px-2.5 py-1 rounded-lg transition-all",
+                  wholesaleMode
+                    ? "bg-orange-500 text-white shadow-md"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <Package className="w-3.5 h-3.5 inline-block ml-1" />
+                جملة
+              </button>
+              {cart.length > 0 && (
+                <button
+                  onClick={onClearCart}
+                  className="text-xs md:text-sm text-destructive hover:text-destructive/80"
+                >
+                  {t('pos.clear')}
+                </button>
+              )}
               {isMobile && onClose && (
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
                   <X className="w-4 h-4" />
                 </Button>
               )}
@@ -1125,102 +1076,78 @@ export function CartPanel({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {/* Cart Items */}
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3">
           {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-40">
-              <ShoppingCart className="w-12 h-12 mb-2" />
-              <p className="text-sm">{t('pos.emptyCart')}</p>
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
+              <ShoppingCart className="w-12 h-12 md:w-16 md:h-16 mb-3 md:mb-4 opacity-50" />
+              <p className="text-sm md:text-base">{t('pos.emptyCart')}</p>
+              <p className="text-xs md:text-sm">{t('pos.clickToAdd')}</p>
             </div>
           ) : (
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-card hover:bg-muted/50 border border-border/50 rounded-lg p-2.5 transition-colors group"
+                className="bg-muted rounded-lg md:rounded-xl p-2.5 md:p-3 slide-in-right"
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                {/* Row 1: Name & Delete */}
-                <div className="flex justify-between items-start gap-2 mb-2">
-                  <h4 className="font-medium text-sm leading-tight line-clamp-2 text-foreground/90">
-                    {item.name}
-                  </h4>
-                  <button
-                    onClick={() => onRemoveItem(item.id, item.unit)}
-                    className="text-muted-foreground/50 hover:text-destructive transition-colors p-0.5 -mt-0.5 -mr-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Row 2: Controls (Qty/Unit) & Price */}
-                <div className="flex items-center justify-between gap-2">
-
-                  {/* Left: Quantity & Unit */}
-                  <div className="flex items-center bg-muted/50 rounded-md border border-border/50 h-8">
-                    <button
-                      onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
-                      className="w-7 h-full flex items-center justify-center hover:bg-background rounded-r-md text-foreground/70 hover:text-primary transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-
-                    <span className="w-8 text-center font-bold text-sm tabular-nums">
-                      {item.quantity}
-                    </span>
-
-                    <button
-                      onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
-                      className="w-7 h-full flex items-center justify-center hover:bg-background rounded-l-md text-foreground/70 hover:text-destructive transition-colors"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Unit Toggle Separator */}
-                    {(item.bulkSalePrice && item.bulkSalePrice > 0) && (
-                      <div className="w-[1px] h-4 bg-border mx-0.5" />
-                    )}
-
-                    {/* Unit Badge/Toggle */}
-                    {(item.bulkSalePrice && item.bulkSalePrice > 0) && (
-                      <button
-                        onClick={() => onToggleUnit && onToggleUnit(item.id, item.unit)}
-                        className={cn(
-                          "px-2 h-full flex items-center justify-center text-[10px] font-medium transition-colors rounded-l-md",
-                          item.unit === 'bulk'
-                            ? "text-primary bg-primary/10 hover:bg-primary/20"
-                            : "text-muted-foreground hover:bg-muted-foreground/10"
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-xs md:text-sm line-clamp-2">{item.name}</h4>
+                    {/* Unit Badge with Toggle - only show for bulk items */}
+                    {item.bulkSalePrice && item.bulkSalePrice > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.unit === 'bulk'
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-muted-foreground/20 text-muted-foreground'
+                          }`}>
+                          {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
+                        </span>
+                        {/* Toggle Unit Button */}
+                        {onToggleUnit && (
+                          <button
+                            onClick={() => onToggleUnit(item.id, item.unit)}
+                            className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                            title={item.unit === 'bulk' ? 'تحويل إلى قطعة' : 'تحويل إلى كرتونة'}
+                          >
+                            <Repeat className="w-3 h-3" />
+                          </button>
                         )}
-                        title={item.unit === 'bulk' ? 'تحويل إلى قطعة' : 'تحويل إلى كرتونة'}
-                      >
-                        {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Right: Price & Total */}
-                  <div className="flex items-center gap-2">
-                    {/* Price Input (Hidden in Wholesale Mode) */}
-                    {!wholesaleMode && (
-                      <div className="relative w-16 group/input">
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/70 pointer-events-none">$</span>
-                        <Input
-                          type="number"
-                          value={item.price}
-                          onChange={(e) => onUpdatePrice(item.id, Number(e.target.value), item.unit)}
-                          onFocus={(e) => e.target.select()}
-                          className="h-8 pr-3 pl-1 text-left font-bold text-sm bg-background border-transparent hover:border-border text-foreground/80 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all p-0 rounded-md"
-                          min="0"
-                        />
+                        {/* Show conversion info */}
+                        {item.unit === 'bulk' && item.conversionFactor && item.conversionFactor > 1 && (
+                          <span className="text-[9px] text-muted-foreground">
+                            ({item.conversionFactor} {item.smallUnit || 'قطعة'})
+                          </span>
+                        )}
                       </div>
                     )}
-
-                    {/* Total Price */}
-                    <span className={cn(
-                      "font-bold text-sm text-right min-w-[3.5rem]",
-                      wholesaleMode ? "text-orange-600" : "text-primary"
-                    )}>
-                      ${formatNumber(getItemPrice(item) * item.quantity)}
-                    </span>
                   </div>
-
+                  <button
+                    onClick={() => onRemoveItem(item.id, item.unit)}
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <button
+                      onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
+                    >
+                      <Minus className="w-3 h-3 md:w-4 md:h-4" />
+                    </button>
+                    <span className="w-6 md:w-8 text-center font-semibold text-sm">{item.quantity}</span>
+                    <button
+                      onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
+                    >
+                      <Plus className="w-3 h-3 md:w-4 md:h-4" />
+                    </button>
+                  </div>
+                  <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
+                    ${formatNumber(getItemPrice(item) * item.quantity)}
+                  </p>
                 </div>
               </div>
             ))
@@ -1228,167 +1155,186 @@ export function CartPanel({
         </div>
 
         {/* Cart Footer */}
-        <div className="bg-muted/30 border-t border-border p-3 space-y-3">
+        <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4">
+          {/* Currency Selector */}
+          <div className="flex gap-1.5 md:gap-2">
+            {currencies.map((currency) => (
+              <button
+                key={currency.code}
+                onClick={() => onCurrencyChange(currency)}
+                className={cn(
+                  "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
+                  selectedCurrency.code === currency.code
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {currency.code === 'USD' ? '$ USD' : currency.name}
+              </button>
+            ))}
+          </div>
 
-          {/* Controls Row: Currency & Discount */}
-          <div className="flex gap-2">
-            {/* Currency - Compact */}
-            <div className="flex items-center bg-background border border-border rounded-md px-1 h-9">
-              {currencies.map(c => (
-                <button
-                  key={c.code}
-                  onClick={() => onCurrencyChange(c)}
-                  className={cn(
-                    "px-2 py-0.5 text-xs font-bold rounded transition-colors",
-                    selectedCurrency.code === c.code ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {c.code}
-                </button>
-              ))}
+          {/* Discount - Two Rows */}
+          <div className="space-y-2">
+            {/* Percentage Discount Row */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
+                <Percent className="w-4 h-4" />
+              </div>
+              <Input
+                type="number"
+                placeholder="خصم %"
+                value={discountType === 'percent' ? (discount || '') : ''}
+                onChange={(e) => {
+                  setDiscountType('percent');
+                  onDiscountChange(Number(e.target.value));
+                }}
+                onFocus={() => setDiscountType('percent')}
+                className={cn(
+                  "bg-muted border-0 h-9 text-sm",
+                  discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
+                )}
+                min="0"
+                max="100"
+              />
             </div>
-
-            {/* Discount - Compact */}
-            <div className="flex-1 flex gap-2">
-              <div className="relative flex-1">
-                <Percent className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="%"
-                  className="h-9 pl-7 pr-1 text-sm bg-background"
-                  value={discountType === 'percent' ? (discount || '') : ''}
-                  onChange={(e) => {
-                    setDiscountType('percent');
-                    onDiscountChange(Number(e.target.value));
-                  }}
-                  onFocus={() => setDiscountType('percent')}
-                />
+            {/* Fixed Amount Discount Row */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
+                <DollarSign className="w-4 h-4" />
               </div>
-              <div className="relative flex-1">
-                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="$"
-                  className="h-9 pl-7 pr-1 text-sm bg-background"
-                  value={discountType === 'fixed' ? (discount || '') : ''}
-                  onChange={(e) => {
-                    setDiscountType('fixed');
-                    onDiscountChange(Number(e.target.value));
-                  }}
-                  onFocus={() => setDiscountType('fixed')}
-                />
-              </div>
+              <Input
+                type="number"
+                placeholder="خصم $"
+                value={discountType === 'fixed' ? (discount || '') : ''}
+                onChange={(e) => {
+                  setDiscountType('fixed');
+                  onDiscountChange(Number(e.target.value));
+                }}
+                onFocus={() => setDiscountType('fixed')}
+                className={cn(
+                  "bg-muted border-0 h-9 text-sm",
+                  discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
+                )}
+                min="0"
+              />
             </div>
           </div>
 
-          {/* Wholesale Payment Input */}
+          {/* Wholesale: Received Amount Input */}
           {wholesaleMode && (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-              <span className="text-xs font-bold text-orange-600 whitespace-nowrap">المقبوض:</span>
-              <div className="relative flex-1">
-                <Input
-                  className="h-9 border-orange-200 focus:border-orange-500 bg-background"
-                  value={receivedAmount || ''}
-                  onChange={(e) => setReceivedAmount(Number(e.target.value))}
-                  placeholder="المبلغ المستلم"
-                />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary" onClick={() => setShowCalculator(true)}>
-                  <CalculatorIcon className="w-4 h-4" />
-                </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white flex-shrink-0">
+                <Banknote className="w-4 h-4" />
               </div>
+              <Input
+                type="number"
+                placeholder="المبلغ المقبوض"
+                value={receivedAmount || ''}
+                onChange={(e) => setReceivedAmount(Number(e.target.value))}
+                className="bg-muted border-0 h-9 text-sm ring-2 ring-orange-500/50"
+                min="0"
+                dir="ltr"
+              />
+              {/* زر الآلة الحاسبة */}
+              <button
+                onClick={() => setShowCalculator(true)}
+                className="w-9 h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center flex-shrink-0 transition-colors"
+                title="آلة حاسبة"
+              >
+                <span className="text-lg font-bold">⊞</span>
+              </button>
             </div>
           )}
 
-          {/* Financial Summary */}
-          <div className="bg-background rounded-lg border border-border/50 p-2.5 space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>المجموع الفرعي</span>
+          {/* Summary */}
+          <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{wholesaleMode ? 'إجمالي الجملة' : t('pos.subtotal')}</span>
               <span>${formatNumber(subtotal)}</span>
             </div>
             {discount > 0 && (
-              <div className="flex justify-between text-xs text-success font-medium">
-                <span>خصم</span>
+              <div className="flex justify-between text-success">
+                <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
                 <span>-${formatNumber(discountAmount)}</span>
               </div>
             )}
-
-            {/* Final Total */}
-            <div className="flex justify-between items-center pt-1 mt-1 border-t border-dashed border-border">
-              <span className="font-bold text-base">{t('pos.total')}</span>
-              <div className="flex flex-col items-end">
-                <span className={cn(
-                  "text-xl font-black leading-none",
-                  wholesaleMode ? "text-orange-600" : "text-primary"
-                )}>
-                  {selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}
-                </span>
-                {selectedCurrency.code !== 'USD' && (
-                  <span className="text-[10px] text-muted-foreground font-medium">
-                    ${formatNumber(displayTotalInCurrency / selectedCurrency.rate)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Wholesale Profit */}
             {wholesaleMode && receivedAmount > 0 && (
-              <div className="flex justify-between text-xs pt-1 border-t border-border/30 mt-1">
-                <span>الربح المتوقع</span>
-                <span className={wholesaleProfit >= 0 ? "text-success font-bold" : "text-destructive font-bold"}>
-                  ${formatNumber(wholesaleProfit)}
-                </span>
-              </div>
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">المبلغ المقبوض</span>
+                  <span className="font-semibold">${formatNumber(receivedAmount)}</span>
+                </div>
+                <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
+                  <span>الربح</span>
+                  <span>${formatNumber(wholesaleProfit || 0)}</span>
+                </div>
+              </>
             )}
+            <div className="flex justify-between items-center text-base md:text-lg font-bold pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                <span>{t('pos.total')}</span>
+                {/* زر الآلة الحاسبة */}
+                <button
+                  onClick={() => setShowCalculator(true)}
+                  className="w-7 h-7 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-sm"
+                  title="آلة حاسبة"
+                >
+                  ⊞
+                </button>
+              </div>
+              <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
+                {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
+              </span>
+            </div>
           </div>
 
-          {/* Action Grid (2x2) */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Main Payment Buttons */}
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <Button
-              className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all active:scale-95"
+              className="h-12 md:h-16 bg-success hover:bg-success/90 text-sm md:text-lg font-bold shadow-lg shadow-success/25 transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
-              <div className="flex flex-col items-center">
-                <span className="text-base font-bold">{t('pos.cash')}</span>
-              </div>
+              <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+              {t('pos.cash')}
             </Button>
-
             <Button
               variant="outline"
-              className="h-12 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-50 hover:border-orange-500/50 hover:text-orange-700 transition-all active:scale-95"
+              className="h-12 md:h-16 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-lg font-bold transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleDebtSale}
             >
-              <div className="flex flex-col items-center">
-                <span className="text-base font-bold">{t('pos.debt')}</span>
-              </div>
+              <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+              {t('pos.debt')}
             </Button>
+          </div>
 
-            {/* Secondary Actions */}
+          {/* Action Buttons */}
+          <div className="flex gap-2">
             <Button
-              variant="secondary"
-              className="h-9 text-xs"
+              variant="outline"
+              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
               disabled={cart.length === 0}
               onClick={handlePrint}
             >
-              <Printer className="w-3.5 h-3.5 mr-1" />
+              <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
               {t('pos.print')}
             </Button>
-
             <Button
-              variant="secondary"
-              className="h-9 text-xs"
+              variant="outline"
+              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
               disabled={cart.length === 0}
               onClick={handleWhatsApp}
             >
-              <Send className="w-3.5 h-3.5 mr-1" />
+              <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
               {t('pos.whatsapp')}
             </Button>
           </div>
         </div>
-      </div >
+      </div>
 
       {/* Cash Sale Dialog */}
-      < Dialog open={showCashDialog} onOpenChange={setShowCashDialog} >
+      <Dialog open={showCashDialog} onOpenChange={setShowCashDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1410,8 +1356,8 @@ export function CartPanel({
                 <span className="font-semibold">{customerName || 'بدون اسم'}</span>
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>المبلغ المطلوب:</span>
-                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}</span>
+                <span>الإجمالي:</span>
+                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
               </div>
             </div>
             <div className="flex gap-3">
@@ -1425,10 +1371,10 @@ export function CartPanel({
             </div>
           </div>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Debt Sale Dialog */}
-      < Dialog open={showDebtDialog} onOpenChange={setShowDebtDialog} >
+      <Dialog open={showDebtDialog} onOpenChange={setShowDebtDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1464,7 +1410,7 @@ export function CartPanel({
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>مبلغ الدين:</span>
-                <span>{selectedCurrency.symbol}{formatNumber(displayTotalInCurrency)}</span>
+                <span>{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
               </div>
             </div>
             <div className="flex gap-3">
@@ -1488,10 +1434,10 @@ export function CartPanel({
             </div>
           </div>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Add Customer Dialog */}
-      < Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog} >
+      <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1540,13 +1486,12 @@ export function CartPanel({
             </div>
           </div>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* آلة حاسبة */}
-      < Calculator
+      <Calculator
         isOpen={showCalculator}
-        onClose={() => setShowCalculator(false)
-        }
+        onClose={() => setShowCalculator(false)}
         onResult={(value) => setReceivedAmount(value)}
       />
     </>

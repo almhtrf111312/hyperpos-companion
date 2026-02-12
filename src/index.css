@@ -652,54 +652,6 @@
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
-
-  /* AppTooltip - Desktop (Radix Content) */
-  .app-tooltip-content {
-    background: hsl(var(--popover) / 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--border) / 0.5);
-    color: hsl(var(--popover-foreground));
-    box-shadow: 0 8px 32px -4px hsl(0 0% 0% / 0.4);
-    user-select: none;
-    -webkit-user-select: none;
-    pointer-events: none;
-    max-width: 260px;
-    line-height: 1.5;
-  }
-
-  /* AppTooltip - Mobile (Portal) */
-  .app-tooltip-mobile {
-    background: hsl(var(--popover) / 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--border) / 0.5);
-    color: hsl(var(--popover-foreground));
-    box-shadow: 0 8px 32px -4px hsl(0 0% 0% / 0.4);
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.5;
-    max-width: 240px;
-    text-align: center;
-    user-select: none;
-    -webkit-user-select: none;
-    pointer-events: none;
-    animation: tooltip-fade-in 0.2s ease-out;
-    white-space: nowrap;
-  }
-
-  @keyframes tooltip-fade-in {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -100%) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, -100%) scale(1);
-    }
-  }
 }
 
 /* Font family */

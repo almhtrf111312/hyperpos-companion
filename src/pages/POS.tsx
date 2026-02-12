@@ -433,15 +433,6 @@ export default function POS() {
     }));
   };
 
-  const updatePrice = (id: string, newPrice: number, unit?: 'piece' | 'bulk') => {
-    setCart(prev => prev.map(item => {
-      if (item.id === id && (unit === undefined || item.unit === unit)) {
-        return { ...item, price: newPrice };
-      }
-      return item;
-    }));
-  };
-
   const removeItem = (id: string, unit?: 'piece' | 'bulk') => {
     setCart(prev => prev.filter(item => !(item.id === id && (unit === undefined || item.unit === unit))));
   };
@@ -450,55 +441,6 @@ export default function POS() {
     setCart([]);
     setDiscount(0);
     setCustomerName('');
-  };
-
-  // ✅ تطبيق أسعار الجملة
-  const toggleWholesale = (enable: boolean) => {
-    setCart(prev => prev.map(item => {
-      const product = products.find(p => p.id === item.id);
-      if (!product) return item;
-
-      // إذا تفعيل الجملة: نستخدم سعر الجملة (إذا وجد)
-      // إذا إلغاء الجملة: نعود للسعر العادي (حسب الوحدة)
-      let newPrice = item.price;
-
-      if (enable) {
-        if (item.unit === 'bulk' && item.bulkSalePrice) {
-          // في حالة الكرتونة، لا يوجد عادة "سعر جملة للكرتونة" منفصل في الهيكل الحالي إلا إذا كان wholesalePrice هو للقطعة؟
-          // الافتراض: wholesalePrice هو للقطعة.
-          // ولكن قد يكون هناك منطق مخصص. للأمان، سنستخدم wholesalePrice إذا كان معرفاً، وإلا نبقي السعر.
-          // مراجعة الهيكل: POSProduct لديه bulkSalePrice و wholesalePrice.
-          // سنفترض wholesalePrice هو سعر القطعة بالجملة.
-          // للكرتونة: قد نحتاج معادلة. لكن للتبسيط وحسب الطلب:
-          // "update prices to Wholesale Price".
-          // إذا كان المنتج بالكرتونة، هل نضربه بمعامل التحويل؟
-          // نعم، المنطق السليم: سعر الجملة (للقطعة) * معامل التحويل.
-          if (product.wholesalePrice && product.wholesalePrice > 0) {
-            newPrice = product.wholesalePrice * (product.conversionFactor || 1);
-          }
-        } else {
-          // قطعة
-          if (product.wholesalePrice && product.wholesalePrice > 0) {
-            newPrice = product.wholesalePrice;
-          }
-        }
-      } else {
-        // العودة للسعر العادي
-        if (item.unit === 'bulk') {
-          newPrice = product.bulkSalePrice || (product.price * (product.conversionFactor || 1));
-        } else {
-          newPrice = product.price;
-        }
-      }
-
-      return { ...item, price: newPrice };
-    }));
-
-    if (enable) {
-      showToast.success('تم تطبيق أسعار الجملة');
-    } else {
-      showToast.info('تمت العودة لأسعار المفرق');
-    }
   };
 
   // Keyboard shortcuts for POS (desktop only)
@@ -575,10 +517,10 @@ export default function POS() {
 
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Product Grid Area (70%) */}
+          {/* Products/Maintenance Area */}
           <div className={cn(
-            "flex flex-col h-full overflow-hidden transition-all duration-300",
-            isMobile ? "w-full" : "w-[70%] border-l border-border"
+            "flex-1 flex flex-col h-full overflow-hidden",
+            !isMobile && "border-l border-border"
           )}>
             {activeMode === 'products' || hideMaintenanceSection ? (
               <ProductGrid
@@ -600,9 +542,9 @@ export default function POS() {
             )}
           </div>
 
-          {/* Cart Panel - Desktop (30%) */}
-          {!isMobile && (
-            <div className="w-[30%] flex-shrink-0 bg-card h-full border-r border-border shadow-soft-xl z-10">
+          {/* Cart Panel - Desktop Only (not tablet) */}
+          {!isMobile && !isTablet && (
+            <div className="w-80 flex-shrink-0">
               <CartPanel
                 cart={cart}
                 currencies={currencies}
@@ -610,14 +552,12 @@ export default function POS() {
                 discount={discount}
                 customerName={customerName}
                 onUpdateQuantity={updateQuantity}
-                onUpdatePrice={updatePrice}
                 onRemoveItem={removeItem}
                 onClearCart={clearCart}
                 onCurrencyChange={setSelectedCurrency}
                 onDiscountChange={setDiscount}
                 onCustomerNameChange={setCustomerName}
                 onToggleUnit={toggleCartItemUnit}
-                onToggleWholesale={toggleWholesale}
               />
             </div>
           )}
@@ -634,14 +574,12 @@ export default function POS() {
             discount={discount}
             customerName={customerName}
             onUpdateQuantity={updateQuantity}
-            onUpdatePrice={updatePrice}
             onRemoveItem={removeItem}
             onClearCart={clearCart}
             onCurrencyChange={setSelectedCurrency}
             onDiscountChange={setDiscount}
             onCustomerNameChange={setCustomerName}
             onToggleUnit={toggleCartItemUnit}
-            onToggleWholesale={toggleWholesale}
             onClose={() => setCartOpen(false)}
             isMobile
           />

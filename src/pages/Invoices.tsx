@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { printHTML, generateClientInvoiceHTML } from '@/lib/native-print';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -18,8 +17,7 @@ import {
   ShoppingCart,
   X,
   Check,
-  MoreVertical,
-  Ban
+  MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,13 +53,14 @@ import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
-  voidInvoiceCloud,
+  deleteInvoiceCloud,
   updateInvoiceCloud,
   getInvoiceStatsCloud,
   Invoice,
   InvoiceType
 } from '@/lib/cloud/invoices-cloud';
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
+import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 
 export default function Invoices() {
@@ -75,10 +74,8 @@ export default function Invoices() {
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
-
-  const [showVoidDialog, setShowVoidDialog] = useState(false);
-  const [invoiceToVoid, setInvoiceToVoid] = useState<Invoice | null>(null);
-  const [voidReason, setVoidReason] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
 
   // Debounce search (300ms)
@@ -140,34 +137,23 @@ export default function Invoices() {
     setShowViewDialog(true);
   };
 
-  const handleVoid = (invoice: Invoice) => {
-    setInvoiceToVoid(invoice);
-    setVoidReason('');
-    setShowVoidDialog(true);
+  const handleDelete = (invoice: Invoice) => {
+    setInvoiceToDelete(invoice);
+    setShowDeleteDialog(true);
   };
 
-  const confirmVoid = async () => {
-    if (invoiceToVoid) {
-      if (!voidReason.trim()) {
-        toast.error(t('common.required'));
-        return;
-      }
-
-      const success = await voidInvoiceCloud(invoiceToVoid.id, voidReason);
-
-      if (success) {
-        const [invoicesData, statsData] = await Promise.all([
-          loadInvoicesCloud(),
-          getInvoiceStatsCloud()
-        ]);
-        setInvoices(invoicesData);
-        setStats(statsData);
-        toast.success(t('invoices.voidSuccess') || 'تم إلغاء الفاتورة بنجاح');
-        setShowVoidDialog(false);
-        setInvoiceToVoid(null);
-      } else {
-        toast.error(t('common.error'));
-      }
+  const confirmDelete = async () => {
+    if (invoiceToDelete) {
+      await deleteInvoiceCloud(invoiceToDelete.id);
+      const [invoicesData, statsData] = await Promise.all([
+        loadInvoicesCloud(),
+        getInvoiceStatsCloud()
+      ]);
+      setInvoices(invoicesData);
+      setStats(statsData);
+      toast.success(t('invoices.deleteSuccess'));
+      setShowDeleteDialog(false);
+      setInvoiceToDelete(null);
     }
   };
 
@@ -187,56 +173,243 @@ export default function Invoices() {
     navigate(`/debts?invoiceId=${invoice.id}&autoOpenPayment=true`);
   };
 
-  const handlePrint = async (invoice: Invoice) => {
-    // Dynamic store settings extraction
-    let storeName = 'HyperPOS Store';
-    let storePhone = '';
-    let storeAddress = '';
-    let storeLogo = '';
-    let footer = 'شكراً لتعاملكم معنا!';
-    let currencySymbol = 'ر.س';
+  const handlePrint = (invoice: Invoice) => {
+    // Dynamic store settings with proper defaults
+    const storeDefaults = {
+      storeName: 'HyperPOS Store',
+      storeAddress: '',
+      storePhone: '',
+      storeLogo: '',
+      footer: 'شكراً لتعاملكم معنا!',
+      currencySymbol: 'ر.س'
+    };
+
+    let storeConfig = { ...storeDefaults };
 
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
       if (settingsRaw) {
         const settings = JSON.parse(settingsRaw);
-        storeName = settings.storeSettings?.name || storeName;
-        storePhone = settings.storeSettings?.phone || '';
-        storeAddress = settings.storeSettings?.address || '';
-        storeLogo = settings.storeSettings?.logo || '';
-        footer = settings.printSettings?.footer || footer;
-        // Find currency symbol based on stored settings if possible, defaulting to SAR/USD or item currency
-        // Here we just use a default or what's in settings.
+        storeConfig = {
+          storeName: settings.storeSettings?.name || storeDefaults.storeName,
+          storeAddress: settings.storeSettings?.address || storeDefaults.storeAddress,
+          storePhone: settings.storeSettings?.phone || storeDefaults.storePhone,
+          storeLogo: settings.storeSettings?.logo || storeDefaults.storeLogo,
+          footer: settings.printSettings?.footer || storeDefaults.footer,
+          currencySymbol: settings.currencySymbol || storeDefaults.currencySymbol,
+        };
       }
-    } catch { }
+    } catch (error) {
+      console.error('Failed to load store settings for print:', error);
+      toast.error(t('invoices.printSettingsError'));
+    }
 
-    const printData = {
-      id: invoice.id,
-      date: new Date(invoice.createdAt).toLocaleDateString('ar-SA'),
-      customerName: invoice.customerName,
-      items: invoice.items.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.total
-      })),
-      subtotal: invoice.subtotal,
-      discount: invoice.discount,
-      total: invoice.total,
-      currencySymbol: currencySymbol, // This might need better dynamic handling if multiple currencies
-      storeName,
-      storePhone,
-      storeAddress,
-      storeLogo,
-      footer,
-      paymentType: 'cash' as const // Simplified for now, or derive from invoice data if available
-    };
+    const { storeName, storeAddress, storePhone, storeLogo, footer } = storeConfig;
 
-    // Use the new professional template
-    const html = generateClientInvoiceHTML(printData);
+    const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
+    const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
 
-    // Print using native/web method
-    await printHTML(html);
+    const itemsHtml = invoice.type === 'sale'
+      ? invoice.items.map(item => `
+          <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || t('invoices.maintenanceService')}</td></tr>`;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+          <title>فاتورة - ${invoice.id}</title>
+          <style>
+            /* Reset & Base - Mobile First */
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { 
+              font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
+              padding: 10px; 
+              max-width: 80mm; 
+              margin: 0 auto; 
+              font-size: 12px;
+              line-height: 1.4;
+              color: #333;
+            }
+            
+            /* Header */
+            .header { 
+              text-align: center; 
+              margin-bottom: 15px; 
+              border-bottom: 2px dashed #333; 
+              padding-bottom: 12px; 
+            }
+            .logo { 
+              max-width: 60px; 
+              max-height: 60px; 
+              margin: 0 auto 8px; 
+              display: block; 
+              object-fit: contain;
+            }
+            .store-name { 
+              font-size: 1.3em; 
+              font-weight: bold; 
+              margin: 5px 0; 
+              word-wrap: break-word;
+            }
+            .store-info { 
+              font-size: 0.85em; 
+              color: #555; 
+              word-wrap: break-word;
+            }
+            
+            /* Invoice Info */
+            .invoice-info { 
+              margin: 12px 0; 
+              font-size: 0.9em; 
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              padding: 10px;
+              background: #fafafa;
+            }
+            .invoice-info > div { 
+              padding: 3px 0; 
+              display: flex;
+              justify-content: space-between;
+              flex-wrap: wrap;
+            }
+            .invoice-info strong { 
+              color: #333;
+              min-width: 80px;
+            }
+            
+            /* Table */
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 12px 0; 
+              font-size: 0.9em;
+            }
+            th { 
+              background: #333; 
+              color: #fff;
+              padding: 8px 5px; 
+              text-align: right; 
+              font-size: 0.85em;
+            }
+            td { 
+              padding: 8px 5px; 
+              border-bottom: 1px solid #eee; 
+              vertical-align: top;
+              word-wrap: break-word;
+              max-width: 120px;
+            }
+            td:first-child {
+              max-width: 45%;
+              overflow-wrap: break-word;
+              hyphens: auto;
+            }
+            td:nth-child(2) { text-align: center; width: 20%; }
+            td:nth-child(3) { text-align: left; width: 25%; white-space: nowrap; }
+            
+            /* Service description for maintenance */
+            .service-desc {
+              white-space: pre-wrap;
+              word-wrap: break-word;
+              line-height: 1.5;
+            }
+            
+            /* Discount */
+            .discount-row {
+              text-align: left;
+              padding: 5px 0;
+              color: #c00;
+              font-weight: 500;
+            }
+            
+            /* Total */
+            .total { 
+              font-size: 1.2em; 
+              font-weight: bold; 
+              margin-top: 12px; 
+              border-top: 2px solid #333; 
+              padding-top: 10px; 
+              text-align: center;
+              background: #f5f5f5;
+              padding: 12px;
+              border-radius: 6px;
+            }
+            
+            /* Footer */
+            .footer { 
+              text-align: center; 
+              margin-top: 20px; 
+              font-size: 0.8em; 
+              color: #666;
+              border-top: 1px dashed #ccc;
+              padding-top: 12px;
+            }
+            
+            /* Print Styles */
+            @media print {
+              body { padding: 5px; max-width: 100%; }
+              .header { page-break-after: avoid; }
+              table { page-break-inside: avoid; }
+              .total { page-break-before: avoid; }
+              @page { 
+                size: 80mm auto; 
+                margin: 5mm; 
+              }
+            }
+            
+            /* Mobile Optimization */
+            @media screen and (max-width: 320px) {
+              body { font-size: 11px; padding: 8px; }
+              .store-name { font-size: 1.1em; }
+              td { padding: 6px 3px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" onerror="this.style.display='none'" />` : ''}
+            <div class="store-name">${storeName}</div>
+            ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
+            ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+          </div>
+          <div class="invoice-info">
+            <div><strong>رقم الفاتورة:</strong> <span>${invoice.id}</span></div>
+            <div><strong>التاريخ:</strong> <span>${date} - ${time}</span></div>
+            <div><strong>العميل:</strong> <span>${invoice.customerName}</span></div>
+            ${invoice.customerPhone ? `<div><strong>الهاتف:</strong> <span>${invoice.customerPhone}</span></div>` : ''}
+            <div><strong>النوع:</strong> <span>${invoice.type === 'sale' ? 'مبيعات' : 'صيانة'}</span></div>
+            <div><strong>الدفع:</strong> <span>${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</span></div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>البيان</th>
+                <th>الكمية</th>
+                <th>المبلغ</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount)}</div>` : ''}
+          <div class="total">
+            الإجمالي: ${formatCurrency(invoice.totalInCurrency)}
+          </div>
+          <div class="footer">${footer}</div>
+        </body>
+      </html>
+    `;
+
+    // استخدام iframe للطباعة بدلاً من window.open
+    printHTML(printContent);
+    toast.success('جاري إرسال الفاتورة للطابعة...');
   };
   const handleWhatsApp = async (invoice: Invoice) => {
     // Dynamic store settings with proper defaults
@@ -524,12 +697,11 @@ export default function Invoices() {
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleVoid(invoice)}
+                          onClick={() => handleDelete(invoice)}
                           className="text-destructive"
-                          disabled={invoice.status === 'cancelled'}
                         >
-                          <Ban className="w-4 h-4 ml-2" />
-                          {t('invoices.voidInvoice') || 'إلغاء الفاتورة'}
+                          <Trash2 className="w-4 h-4 ml-2" />
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -555,14 +727,7 @@ export default function Invoices() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">{t('invoices.invoiceNumber')}:</span>
-                  <p className="font-semibold flex items-center gap-2">
-                    {selectedInvoice.id}
-                    {selectedInvoice.status === 'cancelled' && (
-                      <Badge variant="destructive" className="h-5 text-[10px]">
-                        {t('invoices.voided') || 'ملغاة'}
-                      </Badge>
-                    )}
-                  </p>
+                  <p className="font-semibold">{selectedInvoice.id}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t('invoices.date')}:</span>
@@ -595,14 +760,7 @@ export default function Invoices() {
               {selectedInvoice.type === 'maintenance' && selectedInvoice.serviceDescription && (
                 <div className="bg-muted rounded-lg p-3">
                   <span className="text-sm text-muted-foreground">{t('invoices.service')}:</span>
-                  <div className="font-medium flex items-center gap-2">
-                    {selectedInvoice.serviceDescription}
-                    {selectedInvoice.status === 'cancelled' && (
-                      <Badge variant="destructive" className="mt-1 text-[10px] h-5">
-                        {t('invoices.voided') || 'ملغاة'}
-                      </Badge>
-                    )}
-                  </div>
+                  <p className="font-medium">{selectedInvoice.serviceDescription}</p>
                 </div>
               )}
 
@@ -615,51 +773,20 @@ export default function Invoices() {
                         <tr>
                           <th className="px-3 py-2 text-right font-medium text-muted-foreground">المنتج</th>
                           <th className="px-3 py-2 text-center font-medium text-muted-foreground">الكمية</th>
-                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">التكلفة</th>
                           <th className="px-3 py-2 text-center font-medium text-muted-foreground">السعر</th>
-                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">الربح</th>
                           <th className="px-3 py-2 text-left font-medium text-muted-foreground">المجموع</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedInvoice.items.map((item, idx) => {
-                          const cost = item.costPrice || 0;
-                          const profit = item.profit || 0;
-                          const margin = item.price > 0 ? (profit / item.total) * 100 : 0;
-
-                          return (
-                            <tr key={idx} className="border-t border-muted/50">
-                              <td className="px-3 py-2">{item.name}</td>
-                              <td className="px-3 py-2 text-center">{item.quantity}</td>
-                              <td className="px-3 py-2 text-center text-muted-foreground">{formatCurrency(cost)}</td>
-                              <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
-                              <td className="px-3 py-2 text-center text-success">
-                                {formatCurrency(profit)}
-                                <span className="text-[10px] text-muted-foreground block">
-                                  ({margin.toFixed(1)}%)
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
-                            </tr>
-                          );
-                        })}
+                        {selectedInvoice.items.map((item, idx) => (
+                          <tr key={idx} className="border-t border-muted/50">
+                            <td className="px-3 py-2">{item.name}</td>
+                            <td className="px-3 py-2 text-center">{item.quantity}</td>
+                            <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
+                            <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
+                          </tr>
+                        ))}
                       </tbody>
-                      {/* Summary Footer for Analytics */}
-                      <tfoot className="bg-muted/30 border-t border-muted">
-                        <tr>
-                          <td colSpan={2} className="px-3 py-2 text-right font-medium">الإجماليات:</td>
-                          <td className="px-3 py-2 text-center font-medium text-muted-foreground">
-                            {formatCurrency(selectedInvoice.items.reduce((sum, item) => sum + (item.costPrice || 0) * item.quantity, 0))}
-                          </td>
-                          <td className="px-3 py-2"></td>
-                          <td className="px-3 py-2 text-center font-bold text-success">
-                            {formatCurrency(selectedInvoice.profit || 0)}
-                          </td>
-                          <td className="px-3 py-2 text-left font-bold">
-                            {formatCurrency(selectedInvoice.items.reduce((sum, item) => sum + item.total, 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -668,7 +795,7 @@ export default function Invoices() {
               <div className="border-t pt-4 space-y-2">
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage} %)` : ''}:</span>
+                    <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
                     <span className="text-destructive">-{formatCurrency(selectedInvoice.discount)}</span>
                   </div>
                 )}
@@ -699,34 +826,24 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
 
-      {/* Void Confirmation Dialog */}
-      <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-destructive flex items-center gap-2">
-              <Ban className="w-5 h-5" />
-              {t('invoices.voidInvoice') || 'إلغاء الفاتورة'}
+              <Trash2 className="w-5 h-5" />
+              {t('invoices.deleteInvoice')}
             </DialogTitle>
             <DialogDescription>
-              {t('invoices.voidConfirm') || 'هل أنت متأكد من إلغاء هذه الفاتورة؟ سيتم عكس جميع آثارها المالية والمخزنية.'}
+              {t('invoices.deleteConfirm')}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-2 py-4">
-            <label className="text-sm font-medium">{t('invoices.voidReason') || 'سبب الإلغاء'}</label>
-            <Input
-              value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              placeholder="خطأ في الإدخال، مرتجع..."
-            />
-          </div>
-
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="destructive" onClick={confirmVoid}>
-              {t('common.confirm') || 'تأكيد الإلغاء'}
+            <Button variant="destructive" onClick={confirmDelete}>
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

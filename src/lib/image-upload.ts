@@ -111,18 +111,12 @@ export async function uploadProductImage(base64Image: string): Promise<string | 
       throw error;
     }
 
-    // الحصول على signed URL (الباكت خاص الآن)
-    const { data: signedData, error: signError } = await supabase.storage
+    // الحصول على URL العام
+    const { data } = supabase.storage
       .from('product-images')
-      .createSignedUrl(filePath, 60 * 60 * 24 * 365); // صالح لمدة سنة
+      .getPublicUrl(filePath);
 
-    if (signError || !signedData?.signedUrl) {
-      console.error('خطأ في إنشاء signed URL:', signError);
-      // Fallback: store the path for later resolution
-      return `storage:product-images/${filePath}`;
-    }
-
-    return signedData.signedUrl;
+    return data.publicUrl;
   } catch (error) {
     console.error('فشل رفع الصورة:', error);
     return null;
@@ -168,40 +162,5 @@ export async function deleteProductImage(imageUrl: string): Promise<boolean> {
  */
 export function isCloudImage(imageUrl: string | undefined): boolean {
   if (!imageUrl) return false;
-  return (imageUrl.includes('supabase') && imageUrl.includes('product-images')) || imageUrl.startsWith('storage:product-images/');
-}
-
-/**
- * الحصول على signed URL لصورة المنتج
- * يدعم URLs القديمة (public) والمسارات الجديدة (storage:)
- */
-export async function getSignedImageUrl(imageUrl: string): Promise<string> {
-  if (!imageUrl) return '';
-  
-  // base64 images - return as is
-  if (imageUrl.startsWith('data:')) return imageUrl;
-  
-  // New storage path format
-  if (imageUrl.startsWith('storage:product-images/')) {
-    const filePath = imageUrl.replace('storage:product-images/', '');
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .createSignedUrl(filePath, 60 * 60); // 1 hour
-    return data?.signedUrl || '';
-  }
-  
-  // Old public URL format - extract path and create signed URL
-  if (imageUrl.includes('product-images')) {
-    const urlParts = imageUrl.split('/product-images/');
-    if (urlParts.length >= 2) {
-      // Remove query params from path
-      const filePath = urlParts[1].split('?')[0];
-      const { data, error } = await supabase.storage
-        .from('product-images')
-        .createSignedUrl(filePath, 60 * 60); // 1 hour
-      return data?.signedUrl || imageUrl; // fallback to original URL
-    }
-  }
-  
-  return imageUrl;
+  return imageUrl.includes('supabase') && imageUrl.includes('product-images');
 }

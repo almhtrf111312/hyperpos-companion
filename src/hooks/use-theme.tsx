@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark';
 export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'amber' | 'teal' | 'crimson';
@@ -151,13 +150,13 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   root.style.setProperty('--muted-foreground', colors.mutedForeground);
   root.style.setProperty('--border', colors.border);
   root.style.setProperty('--input', colors.input);
-
+  
   // Sidebar
   root.style.setProperty('--sidebar-background', colors.sidebar);
   root.style.setProperty('--sidebar-foreground', colors.sidebarForeground);
   root.style.setProperty('--sidebar-accent', colors.sidebarAccent);
   root.style.setProperty('--sidebar-border', colors.sidebarBorder);
-
+  
   // POS
   root.style.setProperty('--pos-grid', colors.posGrid);
   root.style.setProperty('--pos-item', colors.posItem);
@@ -198,14 +197,14 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number 
   if (enabled && transparency > 0) {
     root.classList.add('blur-theme');
     const alpha = transparency / 100;
-    const bgAlpha = mode === 'dark'
-      ? Math.max(0.1, 1 - alpha)
+    const bgAlpha = mode === 'dark' 
+      ? Math.max(0.1, 1 - alpha) 
       : Math.max(0.1, 1 - alpha);
-    root.style.setProperty('--glass-bg',
-      mode === 'dark'
-        ? `rgba(0, 0, 0, ${bgAlpha})`
+    root.style.setProperty('--glass-bg', 
+      mode === 'dark' 
+        ? `rgba(0, 0, 0, ${bgAlpha})` 
         : `rgba(255, 255, 255, ${bgAlpha})`);
-    root.style.setProperty('--glass-border',
+    root.style.setProperty('--glass-border', 
       mode === 'dark' ? `rgba(255, 255, 255, ${0.05 + alpha * 0.15})` : `rgba(0, 0, 0, ${0.05 + alpha * 0.1})`);
     root.style.setProperty('--blur-intensity', `${Math.max(8, 20 - transparency * 0.1)}px`);
   } else {
@@ -247,57 +246,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setIsInitialized(true);
   }, []);
 
-  // ✅ Listen for Auth changes to load theme from cloud
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user?.user_metadata?.theme) {
-        const theme = session.user.user_metadata.theme;
-        const finalMode = theme.mode || DEFAULT_MODE;
-        const finalColor = theme.color || DEFAULT_COLOR;
-        const finalBlur = theme.blur ?? DEFAULT_BLUR;
-        const finalTransparency = theme.transparency ?? DEFAULT_TRANSPARENCY;
-
-        setModeState(finalMode);
-        setColorState(finalColor);
-        setBlurEnabledState(finalBlur);
-        setTransparencyLevelState(finalTransparency);
-
-        applyTheme(finalMode, finalColor);
-        applyBlurTheme(finalBlur, finalMode, finalTransparency);
-
-        // Update local storage to match cloud
-        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({
-          mode: finalMode,
-          color: finalColor,
-          blur: finalBlur,
-          transparency: finalTransparency
-        }));
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const saveTheme = async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
-    // 1. Save locally
+  const saveTheme = (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: m, color: c, blur: b, transparency: t }));
-
-    // 2. Save to cloud (user_metadata)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await supabase.auth.updateUser({
-        data: {
-          theme: {
-            mode: m,
-            color: c,
-            blur: b,
-            transparency: t
-          }
-        }
-      });
-    }
   };
 
   const setMode = (newMode: ThemeMode) => {

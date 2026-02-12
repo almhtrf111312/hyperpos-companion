@@ -10,7 +10,6 @@ import {
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
-import { saveToOfflineCache, loadFromOfflineCache } from '../offline-cache';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -54,9 +53,6 @@ export interface CloudInvoice {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  voided_at?: string;
-  void_reason?: string;
-  voided_by?: string;
 }
 
 export interface Invoice {
@@ -88,9 +84,6 @@ export interface Invoice {
   updatedAt: string;
   cashierId?: string;
   cashierName?: string;
-  voidedAt?: string;
-  voidReason?: string;
-  voidedBy?: string;
 }
 
 // Transform cloud to legacy
@@ -126,10 +119,7 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
     cashierId: cloud.cashier_id || undefined,
-    cashierName: cloud.cashier_name || null,
-    voidedAt: cloud.voided_at || undefined,
-    voidReason: cloud.void_reason || undefined,
-    voidedBy: cloud.voided_by || undefined,
+    cashierName: cloud.cashier_name || undefined,
   };
 }
 
@@ -163,6 +153,8 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 // Load invoices
 // ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
+  // قد يحدث أن CloudSyncProvider لم يضبط currentUserId بعد (خصوصاً بعد إعادة فتح التطبيق)
+  // لذا نستخدم fallback من جلسة المصادقة لضمان عدم اختفاء الفواتير.
   let userId = getCurrentUserId();
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -171,90 +163,53 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
       setCurrentUserId(user.id);
     }
   }
-  if (!userId) {
-    // Fallback to offline cache
-    const cached = loadFromOfflineCache<Invoice[]>('invoices');
-    if (cached) {
-      console.log('[InvoicesCloud] Serving from offline cache (no user)');
-      return cached;
-    }
-    return [];
-  }
+  if (!userId) return [];
 
   if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return invoicesCache;
   }
 
-  try {
-    const isCashier = await isCashierUser();
+  // Check if user is cashier
+  const isCashier = await isCashierUser();
 
-    let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
-      column: 'created_at',
-      ascending: false,
-    });
+  let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
+    column: 'created_at',
+    ascending: false,
+  });
 
-    if (isCashier) {
-      cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
-    }
-
-    const invoicesWithItems = await Promise.all(
-      cloudInvoices.map(async (cloud) => {
-        const invoice = toInvoice(cloud);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: items } = await (supabase as any)
-          .from('invoice_items')
-          .select('*')
-          .eq('invoice_id', cloud.id);
-
-        const rawItems = (items || []).map((item: Record<string, unknown>) => ({
-          id: item.id as string,
-          name: item.product_name as string,
-          price: Number(item.unit_price) || 0,
-          quantity: Number(item.quantity) || 1,
-          total: Number(item.amount_original) || 0,
-          costPrice: Number(item.cost_price) || 0,
-        }));
-
-        // ✅ Fix for old invoices: detect if item totals don't match invoice total
-        // Old data may have cost_price stored in unit_price and cost-based amounts in amount_original
-        if (rawItems.length > 0 && invoice.total > 0) {
-          const itemsTotal = rawItems.reduce((sum: number, item: InvoiceItem) => sum + item.total, 0);
-
-          // If items total doesn't match invoice total (with tolerance), recalculate
-          if (Math.abs(itemsTotal - invoice.total) > 0.01 && itemsTotal > 0) {
-            // The invoice.total is always correct - redistribute proportionally
-            const ratio = invoice.total / itemsTotal;
-            rawItems.forEach((item: InvoiceItem) => {
-              item.total = Math.round(item.price * item.quantity * ratio * 100) / 100;
-              item.price = Math.round(item.price * ratio * 100) / 100;
-            });
-          }
-        }
-
-        invoice.items = rawItems;
-
-        return invoice;
-      })
-    );
-
-    invoicesCache = invoicesWithItems;
-    cacheTimestamp = Date.now();
-
-    // Save to offline cache
-    saveToOfflineCache('invoices', invoicesCache);
-
-    return invoicesCache;
-  } catch (error) {
-    console.error('[InvoicesCloud] Failed to fetch:', error);
-    // Fallback to offline cache
-    const cached = loadFromOfflineCache<Invoice[]>('invoices');
-    if (cached) {
-      console.log('[InvoicesCloud] Serving from offline cache (fetch failed)');
-      return cached;
-    }
-    if (invoicesCache) return invoicesCache;
-    return [];
+  // ✅ If cashier, filter to only show their own invoices
+  if (isCashier) {
+    cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
   }
+
+  // Load invoice items for each invoice
+  const invoicesWithItems = await Promise.all(
+    cloudInvoices.map(async (cloud) => {
+      const invoice = toInvoice(cloud);
+
+      // Fetch items
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: items } = await (supabase as any)
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', cloud.id);
+
+      invoice.items = (items || []).map((item: Record<string, unknown>) => ({
+        id: item.id as string,
+        name: item.product_name as string,
+        price: Number(item.unit_price) || 0,
+        quantity: Number(item.quantity) || 1,
+        total: Number(item.amount_original) || 0,
+      }));
+
+      return invoice;
+    })
+  );
+
+  invoicesCache = invoicesWithItems;
+  cacheTimestamp = Date.now();
+
+  return invoicesCache;
 };
 
 export const invalidateInvoicesCache = () => {
@@ -392,38 +347,27 @@ export const updateInvoiceCloud = async (
 
 // Delete invoice
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
-  // حفظ نسخة في سلة المحذوفات قبل الحذف
-  try {
-    const invoice = invoicesCache?.find(inv => inv.id === id);
-    if (invoice) {
-      const { addToTrash } = await import('../trash-store');
-      addToTrash('invoice', `فاتورة ${id} - ${invoice.customerName}`, invoice as unknown as Record<string, unknown>);
-    }
-  } catch (e) {
-    console.warn('[deleteInvoiceCloud] Failed to save to trash:', e);
-  }
-
-  // Find by invoice_number - also fetch total for reversal
+  // Find by invoice_number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cloudInvoice } = await (supabase as any)
     .from('invoices')
-    .select('id, total, profit')
+    .select('id')
     .eq('invoice_number', id)
     .eq('user_id', getCurrentUserId())
     .maybeSingle();
 
   if (!cloudInvoice) return false;
 
-  // ✅ 1. Restore Stock
+  // ✅ Restore Stock logic before deletion
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // 1. Fetch items to restore
     const { data: items } = await (supabase as any)
       .from('invoice_items')
       .select('product_id, quantity')
       .eq('invoice_id', cloudInvoice.id);
 
     if (items && items.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // Filter out items without product_id
       const itemsToRestore = items
         .filter((item: any) => item.product_id)
         .map((item: any) => ({
@@ -432,212 +376,19 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
         }));
 
       if (itemsToRestore.length > 0) {
+        // Import dynamically to avoid circular dependency issues if any
         const { restoreStockBatchCloud } = await import('./products-cloud');
         await restoreStockBatchCloud(itemsToRestore);
       }
     }
   } catch (err) {
     console.error('[deleteInvoiceCloud] Error restoring stock:', err);
+    // Continue with deletion even if restoration fails? 
+    // Usually better to fail safe, but user wants deletion to work.
+    // Logging is enough for now.
   }
 
-  // ✅ 2. Reverse cashbox balance (subtract invoice total from fund)
-  try {
-    const invoiceTotal = Number(cloudInvoice.total) || 0;
-    if (invoiceTotal > 0) {
-      const { updateCashboxBalance } = await import('../cashbox-store');
-      updateCashboxBalance(invoiceTotal, 'withdrawal');
-      console.log(`[deleteInvoiceCloud] ✅ Reversed cashbox: -$${invoiceTotal}`);
-    }
-  } catch (err) {
-    console.error('[deleteInvoiceCloud] Error reversing cashbox:', err);
-  }
-
-  // ✅ 3. Remove gross profit record
-  try {
-    const { removeGrossProfit } = await import('../profits-store');
-    removeGrossProfit(id);
-    console.log(`[deleteInvoiceCloud] ✅ Removed gross profit record for ${id}`);
-  } catch (err) {
-    console.error('[deleteInvoiceCloud] Error removing profit record:', err);
-  }
-
-  // ✅ 4. Reverse partner profit distributions
-  try {
-    const { loadPartnersCloud, updatePartnerCloud } = await import('./partners-cloud');
-    const partners = await loadPartnersCloud();
-
-    for (const partner of partners) {
-      // Find all profit records linked to this invoice
-      const relatedProfits = partner.profitHistory.filter(
-        (p: { invoiceId: string }) => p.invoiceId === id
-      );
-
-      if (relatedProfits.length > 0) {
-        const totalToReverse = relatedProfits.reduce(
-          (sum: number, p: { amount: number }) => sum + p.amount, 0
-        );
-
-        // Also check pending profits (for debt invoices)
-        const relatedPending = (partner.pendingProfitDetails || []).filter(
-          (p: { invoiceId: string }) => p.invoiceId === id
-        );
-        const pendingToReverse = relatedPending.reduce(
-          (sum: number, p: { amount: number }) => sum + p.amount, 0
-        );
-
-        await updatePartnerCloud(partner.id, {
-          confirmedProfit: partner.confirmedProfit - totalToReverse,
-          currentBalance: partner.currentBalance - totalToReverse,
-          totalProfitEarned: partner.totalProfitEarned - totalToReverse,
-          pendingProfit: partner.pendingProfit - pendingToReverse,
-          pendingProfitDetails: (partner.pendingProfitDetails || []).filter(
-            (p: { invoiceId: string }) => p.invoiceId !== id
-          ),
-          profitHistory: partner.profitHistory.filter(
-            (p: { invoiceId: string }) => p.invoiceId !== id
-          ),
-        });
-
-        console.log(`[deleteInvoiceCloud] ✅ Reversed $${totalToReverse} profit from partner ${partner.name}`);
-      }
-    }
-  } catch (err) {
-    console.error('[deleteInvoiceCloud] Error reversing partner profits:', err);
-  }
-
-  // ✅ 5. Delete from database
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
-
-  if (success) {
-    invalidateInvoicesCache();
-    emitEvent(EVENTS.INVOICES_UPDATED, null);
-  }
-
-  return success;
-};
-
-// Void invoice (Cancel with full state reversal)
-export const voidInvoiceCloud = async (id: string, reason: string): Promise<boolean> => {
-  // 1. Find by invoice_number or ID
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: cloudInvoice } = await (supabase as any)
-    .from('invoices')
-    .select('id, total, profit, status')
-    .or(`id.eq.${id},invoice_number.eq.${id}`)
-    .eq('user_id', getCurrentUserId())
-    .maybeSingle();
-
-  if (!cloudInvoice) return false;
-
-  // Check if already cancelled
-  if (cloudInvoice.status === 'cancelled') {
-    return false;
-  }
-
-  // ✅ 1. Restore Stock
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: items } = await (supabase as any)
-      .from('invoice_items')
-      .select('product_id, quantity')
-      .eq('invoice_id', cloudInvoice.id);
-
-    if (items && items.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const itemsToRestore = items
-        .filter((item: any) => item.product_id)
-        .map((item: any) => ({
-          productId: item.product_id,
-          quantity: Number(item.quantity) || 0
-        }));
-
-      if (itemsToRestore.length > 0) {
-        const { restoreStockBatchCloud } = await import('./products-cloud');
-        await restoreStockBatchCloud(itemsToRestore);
-      }
-    }
-  } catch (err) {
-    console.error('[voidInvoiceCloud] Error restoring stock:', err);
-  }
-
-  // ✅ 2. Reverse cashbox balance (subtract invoice total from fund)
-  try {
-    const invoiceTotal = Number(cloudInvoice.total) || 0;
-    if (invoiceTotal > 0) {
-      const { updateCashboxBalance } = await import('../cashbox-store');
-      updateCashboxBalance(invoiceTotal, 'withdrawal');
-      console.log(`[voidInvoiceCloud] ✅ Reversed cashbox: -$${invoiceTotal}`);
-    }
-  } catch (err) {
-    console.error('[voidInvoiceCloud] Error reversing cashbox:', err);
-  }
-
-  // ✅ 3. Remove gross profit record
-  try {
-    const { removeGrossProfit } = await import('../profits-store');
-    // We remove the profit record completely as it's voided
-    removeGrossProfit(cloudInvoice.id); // Note: verify if ID matches saleId in profit store. 
-    // Usually saleId in profit store is the invoice ID.
-    console.log(`[voidInvoiceCloud] ✅ Removed gross profit record for ${cloudInvoice.id}`);
-  } catch (err) {
-    console.error('[voidInvoiceCloud] Error removing profit record:', err);
-  }
-
-  // ✅ 4. Reverse partner profit distributions
-  try {
-    const { loadPartnersCloud, updatePartnerCloud } = await import('./partners-cloud');
-    const partners = await loadPartnersCloud();
-    const invoiceId = cloudInvoice.id;
-
-    for (const partner of partners) {
-      // Find all profit records linked to this invoice
-      const relatedProfits = partner.profitHistory.filter(
-        (p: { invoiceId: string }) => p.invoiceId === invoiceId
-      );
-
-      if (relatedProfits.length > 0) {
-        const totalToReverse = relatedProfits.reduce(
-          (sum: number, p: { amount: number }) => sum + p.amount, 0
-        );
-
-        // Also check pending profits (for debt invoices)
-        const relatedPending = (partner.pendingProfitDetails || []).filter(
-          (p: { invoiceId: string }) => p.invoiceId === invoiceId
-        );
-        const pendingToReverse = relatedPending.reduce(
-          (sum: number, p: { amount: number }) => sum + p.amount, 0
-        );
-
-        await updatePartnerCloud(partner.id, {
-          confirmedProfit: partner.confirmedProfit - totalToReverse,
-          currentBalance: partner.currentBalance - totalToReverse,
-          totalProfitEarned: partner.totalProfitEarned - totalToReverse,
-          pendingProfit: partner.pendingProfit - pendingToReverse,
-          pendingProfitDetails: (partner.pendingProfitDetails || []).filter(
-            (p: { invoiceId: string }) => p.invoiceId !== invoiceId
-          ),
-          profitHistory: partner.profitHistory.filter(
-            (p: { invoiceId: string }) => p.invoiceId !== invoiceId
-          ),
-        });
-
-        console.log(`[voidInvoiceCloud] ✅ Reversed $${totalToReverse} profit from partner ${partner.name}`);
-      }
-    }
-  } catch (err) {
-    console.error('[voidInvoiceCloud] Error reversing partner profits:', err);
-  }
-
-  // ✅ 5. Update status in database instead of delete
-  const userId = getCurrentUserId();
-  const updateData = {
-    status: 'cancelled',
-    voided_at: new Date().toISOString(),
-    void_reason: reason,
-    voided_by: userId
-  };
-
-  const success = await updateInSupabase('invoices', cloudInvoice.id, updateData);
 
   if (success) {
     invalidateInvoicesCache();

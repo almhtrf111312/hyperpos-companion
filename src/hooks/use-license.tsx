@@ -62,19 +62,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Safety timeout - if license check takes too long, allow access
-    const safetyTimeout = setTimeout(() => {
-      console.warn('[LicenseProvider] License check timeout - allowing access');
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        isValid: true,
-        hasLicense: true,
-        needsActivation: false,
-        error: 'فشل في التحقق من الترخيص - وضع غير متصل',
-      }));
-    }, 10000); // 10 seconds max
-
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -115,7 +102,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      clearTimeout(safetyTimeout);
       setState({
         isLoading: false,
         isValid: data.valid,
@@ -134,7 +120,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         expiringWarning: data.expiringWarning || false,
       });
     } catch (error) {
-      clearTimeout(safetyTimeout);
       console.error('Error checking license:', error);
       // On network error, allow the user to proceed (graceful degradation)
       // They're already authenticated, so don't block them

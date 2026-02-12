@@ -10,7 +10,6 @@ import {
   LanguageInfo
 } from '@/lib/i18n';
 import { getSystemLanguage, mapSystemLanguage, setupSystemLanguageListener } from '@/lib/system-language';
-import { supabase } from '@/integrations/supabase/client';
 
 interface LanguageContextType {
   language: Language;
@@ -29,31 +28,12 @@ const RTL_LANGUAGES: Language[] = ['ar'];
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getCurrentLanguage);
 
-  // ✅ Auto-detect system language on mount and sync with cloud
+  // ✅ Auto-detect system language on mount
   useEffect(() => {
     const initLanguage = async () => {
-      // 1. Check cloud profile first if user is logged in
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('preferred_language')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (profile?.preferred_language) {
-          const lang = profile.preferred_language as Language;
-          setLanguageState(lang);
-          setLangStorage(lang);
-          document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-          return;
-        }
-      }
-
-      // 2. Fallback to local storage or system default
       const savedLang = getCurrentLanguage();
 
-      if ((savedLang as string) === 'auto') {
+      if (savedLang === 'auto') {
         const systemLang = await getSystemLanguage();
         const mappedLang = mapSystemLanguage(systemLang);
         setLanguageState(mappedLang);
@@ -65,36 +45,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
     initLanguage();
 
-    // ✅ Listen for system language changes
+    // ✅ Listen for system language changes (when user returns from Settings)
     setupSystemLanguageListener(async (newLang) => {
       const savedLang = getCurrentLanguage();
-      if ((savedLang as string) === 'auto') {
+      if (savedLang === 'auto') {
         setLanguageState(newLang as Language);
         document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
       }
     });
-
-    // ✅ Listen for Auth changes to load language
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('preferred_language')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (profile?.preferred_language) {
-          const lang = profile.preferred_language as Language;
-          setLanguageState(lang);
-          setLangStorage(lang);
-          document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-        }
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   useEffect(() => {

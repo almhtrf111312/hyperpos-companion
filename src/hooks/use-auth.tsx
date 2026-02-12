@@ -66,10 +66,10 @@ const getCachedSession = () => {
     const cached = localStorage.getItem(SESSION_CACHE_KEY);
     if (cached) {
       const data = JSON.parse(cached);
-      // Check if cache is less than 7 days old (much longer for Android reopens)
+      // Check if cache is less than 1 hour old and not expired
       const cacheAge = Date.now() - data.cached_at;
       const isExpired = data.expires_at && Date.now() / 1000 > data.expires_at;
-      if (cacheAge < 604800000 && !isExpired) { // 7 days
+      if (cacheAge < 3600000 && !isExpired) {
         return data;
       }
     }
@@ -124,123 +124,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    let isLoadingRef = true;
-    let mounted = true;
-
-    // Helper to safely stop loading
-    const finishLoading = () => {
-      if (isLoadingRef && mounted) {
-        isLoadingRef = false;
-        setIsLoading(false);
-      }
-    };
-
-    // Show login page (clear all state, NO reload)
-    const showLoginPage = () => {
-      console.log('[AuthProvider] No valid session, showing login page');
-      setUser(null);
-      setSession(null);
-      setProfile(null);
-      cacheSession(null);
-      finishLoading();
-    };
-
-    // Clear all auth state and show login (NO page reload - this prevents infinite loops)
-    const clearAuthAndShowLogin = async () => {
-      console.log('[AuthProvider] 🧹 Clearing all auth state...');
-
-      // Step 1: Try local-only signOut
-      try {
-        await supabase.auth.signOut({ scope: 'local' });
-      } catch {
-        console.warn('[AuthProvider] Local signOut failed, continuing cleanup');
-      }
-
-      // Step 2: Clear ALL Supabase auth tokens from localStorage
-      try {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (
-            key.startsWith('sb-') ||
-            key === SESSION_CACHE_KEY ||
-            key === 'supabase.auth.token' ||
-            key.includes('auth-token')
-          )) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => {
-          console.log('[AuthProvider] 🗑️ Removing:', key);
-          localStorage.removeItem(key);
-        });
-        sessionStorage.clear();
-      } catch (err) {
-        console.error('[AuthProvider] Error clearing storage:', err);
-      }
-
-      // Step 3: Show login page (NO RELOAD)
-      showLoginPage();
-    };
-
-    // Immediately restore from cache for faster UI (temporary until verified)
+    // Immediately restore from cache for faster UI
     const cachedData = getCachedSession();
     if (cachedData && getStayLoggedInPreference()) {
       setUser(cachedData.user);
     }
 
-    // ===== SAFETY TIMEOUT =====
-    const safetyTimeout = setTimeout(() => {
-      if (isLoadingRef) {
-        console.warn('[AuthProvider] ⚠️ SAFETY TIMEOUT (8s) - showing login');
-        showLoginPage();
-      }
-    }, 8000);
-
-    // ===== AUTH STATE LISTENER =====
+    // Set up auth state listener BEFORE checking for existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        if (!mounted) return;
-
-        console.log('[AuthProvider] Auth state change:', event, !!currentSession);
-
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
+        // Cache session if stay logged in is enabled
         if (getStayLoggedInPreference()) {
           cacheSession(currentSession);
         }
 
         if (currentSession?.user) {
-          // Fetch profile in background - don't block loading
+          // Use setTimeout to avoid potential deadlocks
           setTimeout(async () => {
-            if (!mounted) return;
-            try {
-              const profileData = await fetchProfile(currentSession.user.id);
-              if (mounted) setProfile(profileData);
-            } catch (err) {
-              console.error('[AuthProvider] Profile fetch failed:', err);
-            }
-            finishLoading();
+            const profileData = await fetchProfile(currentSession.user.id);
+            setProfile(profileData);
+            setIsLoading(false);
           }, 0);
         } else {
           setProfile(null);
-          finishLoading();
+          setIsLoading(false);
         }
 
+        // Handle token refresh events
         if (event === 'TOKEN_REFRESHED' && currentSession) {
           cacheSession(currentSession);
         }
+
+        // Handle sign out
         if (event === 'SIGNED_OUT') {
           cacheSession(null);
-          setProfile(null);
         }
       }
     );
 
-    // ===== DEVICE AUTO-LOGIN =====
+    // Attempt device auto-login function
     const attemptDeviceAutoLogin = async () => {
       try {
+        // Check if we already attempted auto-login recently
         const alreadyAttempted = sessionStorage.getItem(AUTO_LOGIN_ATTEMPTED_KEY);
         if (alreadyAttempted) {
           console.log('[AutoLogin] Already attempted, skipping');
@@ -249,49 +177,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('[AutoLogin] Starting device auto-login...');
         setIsAutoLoginChecking(true);
-
+        
         const deviceId = await getDeviceId();
+        console.log('[AutoLogin] Device ID:', deviceId);
 
-        const controller = new AbortController();
-        const autoLoginTimeout = setTimeout(() => controller.abort(), 5000);
+        const { data, error } = await supabase.functions.invoke('device-auto-login', {
+          body: { device_id: deviceId }
+        });
 
-        try {
-          const { data, error } = await supabase.functions.invoke('device-auto-login', {
-            body: { device_id: deviceId }
-          });
+        if (error) {
+          console.error('[AutoLogin] Edge function error:', error);
+          return false;
+        }
 
-          clearTimeout(autoLoginTimeout);
+        console.log('[AutoLogin] Response:', data);
 
-          if (error) {
-            console.error('[AutoLogin] Edge function error:', error);
-            return false;
-          }
+        if (data?.success && data?.action_link) {
+          // Extract token from action link and verify with OTP
+          try {
+            const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+              email: data.email,
+              token: data.verification_token,
+              type: 'magiclink'
+            });
 
-          if (data?.success && data?.action_link) {
-            try {
-              const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
-                email: data.email,
-                token: data.verification_token,
-                type: 'magiclink'
-              });
-
-              if (otpError) {
-                console.error('[AutoLogin] OTP verification error:', otpError);
-                return false;
-              }
-
-              if (otpData?.session) {
-                console.log('[AutoLogin] Session restored successfully!');
-                cacheSession(otpData.session);
-                return true;
-              }
-            } catch (otpErr) {
-              console.error('[AutoLogin] OTP exception:', otpErr);
+            if (otpError) {
+              console.error('[AutoLogin] OTP verification error:', otpError);
+              return false;
             }
+
+            if (otpData?.session) {
+              console.log('[AutoLogin] Session restored successfully!');
+              cacheSession(otpData.session);
+              return true;
+            }
+          } catch (otpErr) {
+            console.error('[AutoLogin] OTP exception:', otpErr);
           }
-        } catch (fetchErr) {
-          clearTimeout(autoLoginTimeout);
-          console.error('[AutoLogin] Fetch error:', fetchErr);
         }
 
         return false;
@@ -299,97 +221,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AutoLogin] Exception:', err);
         return false;
       } finally {
-        if (mounted) setIsAutoLoginChecking(false);
+        setIsAutoLoginChecking(false);
+        // Mark that we attempted auto-login this session
         sessionStorage.setItem(AUTO_LOGIN_ATTEMPTED_KEY, 'true');
       }
     };
 
-    // ===== MAIN SESSION CHECK =====
-    const initializeAuth = async () => {
-      try {
-        console.log('[AuthProvider] Starting auth initialization...');
-
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-
-        if (!existingSession) {
-          console.log('[AuthProvider] No existing session found');
-          const autoLoginSuccess = await attemptDeviceAutoLogin();
-          if (!autoLoginSuccess) {
-            showLoginPage();
-          }
-          return;
+    // Check for existing session and verify user still exists
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+      if (!existingSession) {
+        // No session - try device auto-login
+        const autoLoginSuccess = await attemptDeviceAutoLogin();
+        if (!autoLoginSuccess) {
+          setIsLoading(false);
+          cacheSession(null);
         }
-
-        console.log('[AuthProvider] Found existing session, verifying...');
-
-        // Try to refresh the session
-        try {
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-
-          if (refreshError || !refreshData.session) {
-            console.warn('[AuthProvider] ❌ Session refresh failed:', refreshError?.message);
-            // Token is invalid - clear everything and show login (NO RELOAD)
-            await clearAuthAndShowLogin();
-            return;
-          }
-
-          // ✅ Session refreshed successfully
-          console.log('[AuthProvider] ✅ Session refreshed successfully');
-
-          if (mounted) {
-            setSession(refreshData.session);
-            setUser(refreshData.session.user);
-            cacheSession(refreshData.session);
-          }
-
-          // Fetch profile (non-blocking)
-          if (mounted && refreshData.session?.user) {
-            try {
-              const profileData = await fetchProfile(refreshData.session.user.id);
-              if (mounted) setProfile(profileData);
-            } catch (err) {
-              console.error('[AuthProvider] Profile fetch failed, continuing:', err);
-            }
-          }
-
-          finishLoading();
-
-        } catch (refreshErr) {
-          console.error('[AuthProvider] Unexpected refresh error:', refreshErr);
-          await clearAuthAndShowLogin();
-        }
-
-      } catch (err) {
-        console.error('[AuthProvider] Auth initialization error:', err);
-        // On any error, just show login - NEVER reload
-        showLoginPage();
+        return;
       }
-    };
+      
+      // Verify the user still exists in the database
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) {
+        // User doesn't exist anymore, clear session
+        console.log('User from session does not exist, signing out...');
+        await supabase.auth.signOut();
+        
+        // Try device auto-login as fallback
+        const autoLoginSuccess = await attemptDeviceAutoLogin();
+        if (!autoLoginSuccess) {
+          setIsLoading(false);
+          cacheSession(null);
+        }
+        return;
+      }
+      // The onAuthStateChange will handle setting the session
+    });
 
-    initializeAuth();
-
-    // Periodic session refresh for background/mobile
+    // Periodic session refresh for Android background
     const refreshInterval = setInterval(async () => {
       if (getStayLoggedInPreference()) {
-        try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (currentSession) {
-            const expiresAt = currentSession.expires_at;
-            if (expiresAt && (expiresAt - Date.now() / 1000) < 600) {
-              await supabase.auth.refreshSession();
-            }
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          // Try to refresh if expiring soon (within 10 minutes)
+          const expiresAt = currentSession.expires_at;
+          if (expiresAt && (expiresAt - Date.now() / 1000) < 600) {
+            await supabase.auth.refreshSession();
           }
-        } catch (err) {
-          console.error('[AuthProvider] Periodic refresh error:', err);
         }
       }
-    }, 60000);
+    }, 60000); // Check every minute
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
       clearInterval(refreshInterval);
-      clearTimeout(safetyTimeout);
     };
   }, [fetchProfile]);
 
@@ -399,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
       });
-
+      
       // Set stay logged in preference
       if (!error && data.session) {
         setStayLoggedIn(rememberMe);
@@ -407,7 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cacheSession(data.session);
         }
       }
-
+      
       // Log successful login
       if (!error && data.user) {
         // Dynamically import to avoid circular dependencies
@@ -421,14 +305,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         });
       }
-
+      
       if (error) {
         return { error: new Error(error.message) };
       }
-
-      return {
-        error: null,
-        data: data.user && data.session ? { user: data.user, session: data.session } : undefined
+      
+      return { 
+        error: null, 
+        data: data.user && data.session ? { user: data.user, session: data.session } : undefined 
       };
     } catch (err) {
       return { error: err as Error };
@@ -471,11 +355,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       });
-
+      
       if (error) {
         return { error: new Error(error.message) };
       }
-
+      
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -495,7 +379,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       });
     }
-
+    
     // Clear auto-login attempt flag so next app open can try again
     try {
       sessionStorage.removeItem(AUTO_LOGIN_ATTEMPTED_KEY);
@@ -504,7 +388,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore storage errors
     }
-
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

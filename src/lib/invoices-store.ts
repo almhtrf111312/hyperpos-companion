@@ -18,11 +18,6 @@ export interface InvoiceItem {
   price: number;
   quantity: number;
   total: number;
-  // Analytical fields
-  costPrice?: number;
-  profit?: number;
-  totalCost?: number;
-  totalProfit?: number;
 }
 
 export interface Invoice {
@@ -76,19 +71,19 @@ export const saveInvoices = (invoices: Invoice[]): boolean => {
     });
     return false;
   }
-
+  
   const result = safeSave(INVOICES_STORAGE_KEY, invoices);
-
+  
   if (!result.success) {
     console.error('Failed to save invoices:', result.error);
     toast.error('فشل في حفظ الفواتير', {
-      description: result.error === 'Storage quota exceeded - try clearing old data'
+      description: result.error === 'Storage quota exceeded - try clearing old data' 
         ? 'مساحة التخزين ممتلئة - حاول حذف بعض البيانات القديمة'
         : 'حدث خطأ أثناء الحفظ'
     });
     return false;
   }
-
+  
   // Emit standardized event so other components update in same-tab
   emitEvent(EVENTS.INVOICES_UPDATED, invoices);
   return true;
@@ -102,7 +97,7 @@ const getNextInvoiceNumber = (): string => {
     const year = new Date().getFullYear();
     const counterData = localStorage.getItem(INVOICE_COUNTER_KEY);
     let counter = { year, number: 0 };
-
+    
     if (counterData) {
       const parsed = JSON.parse(counterData);
       if (parsed.year === year) {
@@ -110,10 +105,10 @@ const getNextInvoiceNumber = (): string => {
       }
       // Reset counter if year changed
     }
-
+    
     counter.number += 1;
     localStorage.setItem(INVOICE_COUNTER_KEY, JSON.stringify(counter));
-
+    
     // Format: INV-2026-001
     return `INV-${year}-${String(counter.number).padStart(3, '0')}`;
   } catch (error) {
@@ -140,7 +135,7 @@ export const updateInvoice = (id: string, updates: Partial<Invoice>): Invoice | 
   const invoices = loadInvoices();
   const index = invoices.findIndex(inv => inv.id === id);
   if (index === -1) return null;
-
+  
   invoices[index] = {
     ...invoices[index],
     ...updates,
@@ -153,17 +148,17 @@ export const updateInvoice = (id: string, updates: Partial<Invoice>): Invoice | 
 export const deleteInvoice = (id: string): boolean => {
   const invoices = loadInvoices();
   const invoice = invoices.find(inv => inv.id === id);
-
+  
   if (!invoice) return false;
-
+  
   // Delete associated debt if exists
   if (invoice.paymentType === 'debt') {
     deleteDebtByInvoiceId(id);
   }
-
+  
   // Revert profit distribution
   revertProfitDistribution(id);
-
+  
   const filtered = invoices.filter(inv => inv.id !== id);
   saveInvoices(filtered);
   return true;
@@ -182,7 +177,7 @@ export const getInvoiceStats = () => {
   const invoices = loadInvoices();
   const today = new Date().toDateString();
   const todayInvoices = invoices.filter(inv => new Date(inv.createdAt).toDateString() === today);
-
+  
   return {
     total: invoices.length,
     todayCount: todayInvoices.length,
@@ -197,15 +192,15 @@ export const getInvoiceStats = () => {
 export const markInvoicePaidWithDebtSync = (invoiceId: string): boolean => {
   const invoice = getInvoiceById(invoiceId);
   if (!invoice) return false;
-
+  
   // تحديث الفاتورة مع تصفير المتبقي
-  updateInvoice(invoiceId, {
-    status: 'paid',
+  updateInvoice(invoiceId, { 
+    status: 'paid', 
     paymentType: 'cash',
     debtPaid: invoice.totalInCurrency || invoice.total,
     debtRemaining: 0
   });
-
+  
   // مزامنة الدين - تحديده كمدفوع بالكامل
   if (invoice.paymentType === 'debt') {
     const debts = loadDebts();
@@ -214,6 +209,6 @@ export const markInvoicePaidWithDebtSync = (invoiceId: string): boolean => {
       recordPayment(debt.id, debt.remainingDebt);
     }
   }
-
+  
   return true;
 };

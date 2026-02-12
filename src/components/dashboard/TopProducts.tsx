@@ -33,7 +33,6 @@ export function TopProducts() {
             productSales[itemName] = { name: itemName, sales: 0, revenue: 0 };
           }
           productSales[itemName].sales += item.quantity || 0;
-          // ✅ Use item.total - loadInvoicesCloud already corrects old data
           productSales[itemName].revenue += item.total || 0;
         });
       });

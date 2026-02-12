@@ -1,7 +1,7 @@
 // Cloud Expenses Store - Supabase-backed expenses management
-import {
-  fetchFromSupabase,
-  insertToSupabase,
+import { 
+  fetchFromSupabase, 
+  insertToSupabase, 
   deleteFromSupabase,
   getCurrentUserId,
   isCashierUser
@@ -9,7 +9,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
-import { saveToOfflineCache, loadFromOfflineCache } from '../offline-cache';
 
 export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
 export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'cash_adjustment' | 'other';
@@ -32,10 +31,6 @@ export interface CloudExpense {
   notes: string | null;
   distributions: ExpenseDistribution[];
   created_at: string;
-  status?: string;
-  voided_at?: string;
-  void_reason?: string;
-  voided_by?: string;
 }
 
 export interface Expense {
@@ -52,10 +47,6 @@ export interface Expense {
   createdAt: string;
   cashierId?: string;
   cashierName?: string;
-  status?: string;
-  voidedAt?: string;
-  voidReason?: string;
-  voidedBy?: string;
 }
 
 // Expense types with labels
@@ -106,10 +97,6 @@ function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
     createdAt: cloud.created_at,
     cashierId: cloud.cashier_id || undefined,
     cashierName: cloud.cashier_name || cashierNamesCache[cloud.cashier_id || ''] || undefined,
-    status: cloud.status || 'active',
-    voidedAt: cloud.voided_at || undefined,
-    voidReason: cloud.void_reason || undefined,
-    voidedBy: cloud.voided_by || undefined,
   };
 }
 
@@ -121,78 +108,67 @@ const CACHE_TTL = 30000;
 // Load expenses - cashiers see only their expenses, owners see all
 export const loadExpensesCloud = async (): Promise<Expense[]> => {
   const userId = getCurrentUserId();
-  if (!userId) {
-    const cached = loadFromOfflineCache<Expense[]>('expenses');
-    if (cached) return cached;
-    return [];
-  }
+  if (!userId) return [];
 
   if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return expensesCache;
   }
 
-  try {
-    const isCashier = await isCashierUser();
-
-    let cloudExpenses: (CloudExpense & { cashier_name?: string })[];
-
-    if (isCashier) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from('expenses')
-        .select('*')
-        .eq('cashier_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching cashier expenses:', error);
-        cloudExpenses = [];
-      } else {
-        cloudExpenses = data || [];
-      }
+  // Check if user is cashier for filtering
+  const isCashier = await isCashierUser();
+  
+  let cloudExpenses: (CloudExpense & { cashier_name?: string })[];
+  
+  if (isCashier) {
+    // Cashiers see only their own expenses
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('expenses')
+      .select('*')
+      .eq('cashier_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching cashier expenses:', error);
+      cloudExpenses = [];
     } else {
-      cloudExpenses = await fetchFromSupabase<CloudExpense>('expenses', {
-        column: 'created_at',
-        ascending: false,
-      });
+      cloudExpenses = data || [];
     }
-
-    // Fetch cashier names
-    const cashierIds = [...new Set(cloudExpenses.filter(e => e.cashier_id).map(e => e.cashier_id!))];
-    if (cashierIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profiles } = await (supabase as any)
-        .from('profiles')
-        .select('user_id, full_name')
-        .in('user_id', cashierIds);
-
-      if (profiles) {
-        const nameMap: Record<string, string> = {};
-        profiles.forEach((p: { user_id: string; full_name: string }) => {
-          nameMap[p.user_id] = p.full_name;
-          cashierNamesCache[p.user_id] = p.full_name;
-        });
-
-        cloudExpenses = cloudExpenses.map(e => ({
-          ...e,
-          cashier_name: e.cashier_id ? nameMap[e.cashier_id] : undefined,
-        }));
-      }
-    }
-
-    expensesCache = cloudExpenses.map(toExpense);
-    cacheTimestamp = Date.now();
-
-    saveToOfflineCache('expenses', expensesCache);
-
-    return expensesCache;
-  } catch (error) {
-    console.error('[ExpensesCloud] Failed to fetch:', error);
-    const cached = loadFromOfflineCache<Expense[]>('expenses');
-    if (cached) return cached;
-    if (expensesCache) return expensesCache;
-    return [];
+  } else {
+    // Owners see all expenses (via RLS)
+    cloudExpenses = await fetchFromSupabase<CloudExpense>('expenses', {
+      column: 'created_at',
+      ascending: false,
+    });
   }
+
+  // Fetch cashier names for expenses with cashier_id
+  const cashierIds = [...new Set(cloudExpenses.filter(e => e.cashier_id).map(e => e.cashier_id!))];
+  if (cashierIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profiles } = await (supabase as any)
+      .from('profiles')
+      .select('user_id, full_name')
+      .in('user_id', cashierIds);
+    
+    if (profiles) {
+      const nameMap: Record<string, string> = {};
+      profiles.forEach((p: { user_id: string; full_name: string }) => {
+        nameMap[p.user_id] = p.full_name;
+        cashierNamesCache[p.user_id] = p.full_name;
+      });
+      
+      cloudExpenses = cloudExpenses.map(e => ({
+        ...e,
+        cashier_name: e.cashier_id ? nameMap[e.cashier_id] : undefined,
+      }));
+    }
+  }
+
+  expensesCache = cloudExpenses.map(toExpense);
+  cacheTimestamp = Date.now();
+  
+  return expensesCache;
 };
 
 export const invalidateExpensesCache = () => {
@@ -210,19 +186,19 @@ export const addExpenseCloud = async (expenseData: {
 }): Promise<Expense | null> => {
   const partners = await loadPartnersCloud();
   const distributions: ExpenseDistribution[] = [];
-
+  
   // Get partners who share expenses
   const expensePartners = partners.filter(p => p.sharesExpenses);
-
+  
   if (expensePartners.length > 0) {
-    const totalExpenseShare = expensePartners.reduce((sum, p) =>
+    const totalExpenseShare = expensePartners.reduce((sum, p) => 
       sum + (p.expenseSharePercentage ?? p.sharePercentage), 0);
-
+    
     for (const partner of expensePartners) {
       const partnerExpenseShare = partner.expenseSharePercentage ?? partner.sharePercentage;
       const partnerRatio = totalExpenseShare > 0 ? partnerExpenseShare / totalExpenseShare : 0;
       const partnerAmount = expenseData.amount * partnerRatio;
-
+      
       if (partnerAmount > 0) {
         distributions.push({
           partnerId: partner.id,
@@ -230,7 +206,7 @@ export const addExpenseCloud = async (expenseData: {
           amount: partnerAmount,
           percentage: partnerRatio * 100,
         });
-
+        
         // Deduct from partner's balance
         await updatePartnerCloud(partner.id, {
           currentBalance: partner.currentBalance - partnerAmount,
@@ -246,9 +222,9 @@ export const addExpenseCloud = async (expenseData: {
       }
     }
   }
-
+  
   const userId = getCurrentUserId();
-
+  
   const inserted = await insertToSupabase<CloudExpense>('expenses', {
     expense_type: expenseData.type,
     amount: expenseData.amount,
@@ -258,13 +234,13 @@ export const addExpenseCloud = async (expenseData: {
     distributions,
     cashier_id: userId, // ✅ Track which user created this expense
   });
-
+  
   if (inserted) {
     invalidateExpensesCache();
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
     return toExpense(inserted);
   }
-
+  
   return null;
 };
 
@@ -272,21 +248,13 @@ export const addExpenseCloud = async (expenseData: {
 export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
   const expenses = await loadExpensesCloud();
   const expense = expenses.find(e => e.id === id);
-
+  
   if (!expense) return false;
-
-  // حفظ نسخة في سلة المحذوفات
-  try {
-    const { addToTrash } = await import('../trash-store');
-    addToTrash('expense', `${expense.typeLabel} - ${expense.amount}`, expense as unknown as Record<string, unknown>);
-  } catch (e) {
-    console.warn('[deleteExpenseCloud] Failed to save to trash:', e);
-  }
-
-  // ✅ 1. Refund partners
+  
+  // Refund partners
   if (expense.distributions.length > 0) {
     const partners = await loadPartnersCloud();
-
+    
     for (const dist of expense.distributions) {
       const partner = partners.find(p => p.id === dist.partnerId);
       if (partner) {
@@ -297,100 +265,14 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
       }
     }
   }
-
-  // ✅ 2. Restore cashbox balance (add back the expense amount)
-  try {
-    const { updateCashboxBalance } = await import('../cashbox-store');
-    updateCashboxBalance(expense.amount, 'deposit');
-    console.log(`[deleteExpenseCloud] ✅ Restored cashbox: +$${expense.amount}`);
-  } catch (err) {
-    console.error('[deleteExpenseCloud] Error restoring cashbox:', err);
-  }
-
-  // ✅ 3. Remove operating expense record from profit tracking
-  try {
-    const { removeOperatingExpense } = await import('../profits-store');
-    removeOperatingExpense(id);
-    console.log(`[deleteExpenseCloud] ✅ Removed operating expense record for ${id}`);
-  } catch (err) {
-    console.error('[deleteExpenseCloud] Error removing expense record:', err);
-  }
-
-  // ✅ 4. Delete from database
+  
   const success = await deleteFromSupabase('expenses', id);
-
+  
   if (success) {
     invalidateExpensesCache();
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
   }
-
-  return success;
-};
-
-// Void expense (Cancel with full state reversal)
-export const voidExpenseCloud = async (id: string, reason: string): Promise<boolean> => {
-  const expenses = await loadExpensesCloud();
-  const expense = expenses.find(e => e.id === id);
-
-  if (!expense) return false;
-
-  // Check if already voided
-  if (expense.status === 'voided') {
-    return false;
-  }
-
-  // ✅ 1. Refund partners
-  if (expense.distributions.length > 0) {
-    const { loadPartnersCloud, updatePartnerCloud } = await import('./partners-cloud');
-    const partners = await loadPartnersCloud();
-
-    for (const dist of expense.distributions) {
-      const partner = partners.find(p => p.id === dist.partnerId);
-      if (partner) {
-        await updatePartnerCloud(partner.id, {
-          currentBalance: partner.currentBalance + dist.amount,
-          expenseHistory: partner.expenseHistory.filter(e => e.expenseId !== id),
-        });
-      }
-    }
-  }
-
-  // ✅ 2. Restore cashbox balance (add back the expense amount)
-  try {
-    const { updateCashboxBalance } = await import('../cashbox-store');
-    updateCashboxBalance(expense.amount, 'deposit');
-    console.log(`[voidExpenseCloud] ✅ Restored cashbox: +$${expense.amount}`);
-  } catch (err) {
-    console.error('[voidExpenseCloud] Error restoring cashbox:', err);
-  }
-
-  // ✅ 3. Remove operating expense record from profit tracking
-  try {
-    const { removeOperatingExpense } = await import('../profits-store');
-    removeOperatingExpense(id);
-    console.log(`[voidExpenseCloud] ✅ Removed operating expense record for ${id}`);
-  } catch (err) {
-    console.error('[voidExpenseCloud] Error removing expense record:', err);
-  }
-
-  // ✅ 4. Update status in database instead of delete
-  const { updateInSupabase } = await import('../supabase-store');
-  const userId = getCurrentUserId();
-
-  const updateData = {
-    status: 'voided',
-    voided_at: new Date().toISOString(),
-    void_reason: reason,
-    voided_by: userId
-  };
-
-  const success = await updateInSupabase('expenses', id, updateData);
-
-  if (success) {
-    invalidateExpensesCache();
-    emitEvent(EVENTS.EXPENSES_UPDATED, null);
-  }
-
+  
   return success;
 };
 
@@ -398,16 +280,16 @@ export const voidExpenseCloud = async (id: string, reason: string): Promise<bool
 export const getExpenseStatsCloud = async () => {
   const expenses = await loadExpensesCloud();
   const currentMonth = new Date().toISOString().substring(0, 7);
-
+  
   const monthlyExpenses = expenses.filter(e => e.month === currentMonth);
   const totalThisMonth = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
-
+  
   const byType: Record<string, number> = {};
   monthlyExpenses.forEach(e => {
     const label = e.typeLabel;
     byType[label] = (byType[label] || 0) + e.amount;
   });
-
+  
   return {
     totalExpenses: expenses.reduce((sum, e) => sum + e.amount, 0),
     totalThisMonth,

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,29 +25,26 @@ import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import { useAppPermissions } from "./hooks/use-app-permissions";
-import { PageLoader } from "./components/ui/page-loader";
+import Dashboard from "./pages/Dashboard";
+import POS from "./pages/POS";
+import Products from "./pages/Products";
+import Customers from "./pages/Customers";
+import Debts from "./pages/Debts";
+import Partners from "./pages/Partners";
+import Settings from "./pages/Settings";
+import Services from "./pages/Services";
+import Invoices from "./pages/Invoices";
+import Reports from "./pages/Reports";
+import Expenses from "./pages/Expenses";
+import CashShifts from "./pages/CashShifts";
+import Warehouses from "./pages/Warehouses";
+import StockTransfer from "./pages/StockTransfer";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Appearance from "./pages/Appearance";
+import NotFound from "./pages/NotFound";
+import BossPanel from "./pages/BossPanel";
 import { WarehouseProvider } from "./hooks/use-warehouse";
-
-// Lazy load pages
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const POS = lazy(() => import("./pages/POS"));
-const Products = lazy(() => import("./pages/Products"));
-const Customers = lazy(() => import("./pages/Customers"));
-const Debts = lazy(() => import("./pages/Debts"));
-const Partners = lazy(() => import("./pages/Partners"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Services = lazy(() => import("./pages/Services"));
-const Invoices = lazy(() => import("./pages/Invoices"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Expenses = lazy(() => import("./pages/Expenses"));
-const CashShifts = lazy(() => import("./pages/CashShifts"));
-const Warehouses = lazy(() => import("./pages/Warehouses"));
-const StockTransfer = lazy(() => import("./pages/StockTransfer"));
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
-const Appearance = lazy(() => import("./pages/Appearance"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const BossPanel = lazy(() => import("./pages/BossPanel"));
 
 const queryClient = new QueryClient();
 
@@ -153,41 +150,39 @@ const AppContent = () => {
       <ExitConfirmDialog />
       <Toaster />
       <Sonner />
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
-          {/* Protected routes - Cashier accessible */}
-          <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
-          <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
-          <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
-          <Route path="/customers/*" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
-          <Route path="/debts" element={<ProtectedRoute><MainLayout><Debts /></MainLayout></ProtectedRoute>} />
-          <Route path="/invoices" element={<ProtectedRoute><MainLayout><Invoices /></MainLayout></ProtectedRoute>} />
-          <Route path="/services" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
-          <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
-          <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
-          <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
-          <Route path="/appearance" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
+        {/* Protected routes - Cashier accessible */}
+        <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
+        <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
+        <Route path="/customers/*" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
+        <Route path="/debts" element={<ProtectedRoute><MainLayout><Debts /></MainLayout></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute><MainLayout><Invoices /></MainLayout></ProtectedRoute>} />
+        <Route path="/services" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
+        <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
+        <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
+        <Route path="/appearance" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
 
-          {/* Protected routes - Admin/Boss only */}
-          <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
+        {/* Protected routes - Admin/Boss only */}
+        <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
 
-          {/* Boss only routes */}
-          <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />
+        {/* Boss only routes */}
+        <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </>
   );
 };

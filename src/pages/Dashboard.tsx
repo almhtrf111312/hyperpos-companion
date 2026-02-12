@@ -34,10 +34,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     todaySales: 0,
     todayCount: 0,
-    todayProfit: 0,
-    todayCOGS: 0,
+    todayProfit: 0,        // Gross profit (Sales - COGS)
+    todayCOGS: 0,          // ✅ Cost of Goods Sold
     todayExpenses: 0,
-    netProfit: 0,
+    netProfit: 0,          // Net profit = Gross profit - Expenses
     profitMargin: 0,
     totalDebtAmount: 0,
     debtCustomers: 0,
@@ -49,10 +49,6 @@ export default function Dashboard() {
     liquidCapital: 0,
     deficit: 0,
     deficitPercentage: 0,
-    weekSales: 0,
-    weekCount: 0,
-    monthSales: 0,
-    monthCount: 0,
   });
 
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -81,22 +77,6 @@ export default function Dashboard() {
       );
 
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-      // ✅ Calculate weekly and monthly sales
-      const now = new Date();
-      const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      const weekInvoices = invoices.filter(inv => {
-        const d = new Date(inv.createdAt);
-        return d >= weekAgo && inv.status !== 'cancelled';
-      });
-      const monthInvoices2 = invoices.filter(inv => {
-        const d = new Date(inv.createdAt);
-        return d >= monthStart && inv.status !== 'cancelled';
-      });
-      const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      const monthSales = monthInvoices2.reduce((sum, inv) => sum + inv.total, 0);
 
       // ✅ Calculate Profit & COGS directly from Cloud Data (Source of Truth)
       const todayGrossProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
@@ -181,10 +161,6 @@ export default function Dashboard() {
         liquidCapital,
         deficit,
         deficitPercentage,
-        weekSales,
-        weekCount: weekInvoices.length,
-        monthSales,
-        monthCount: monthInvoices2.length,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -219,33 +195,34 @@ export default function Dashboard() {
   }, [loadStats]);
 
   return (
-    <div className="p-3 md:p-4 space-y-3 md:space-y-4">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between pr-14 md:pr-0">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{today}</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
+          <p className="text-muted-foreground mt-1">{today}</p>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 border border-success/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-          <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
+          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+          <span className="text-sm font-medium text-success">{t('dashboard.synced')}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+      {/* Stats Grid - First Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
           subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
-          icon={<DollarSign className="w-5 h-5" />}
+          icon={<DollarSign className="w-6 h-6" />}
           variant="primary"
           linkTo="/pos"
         />
         <StatCard
           title={t('dashboard.netProfit')}
           value={formatCurrency(stats.netProfit)}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
-          icon={<TrendingUp className="w-5 h-5" />}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
+          icon={<TrendingUp className="w-6 h-6" />}
           variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"
         />
@@ -253,7 +230,7 @@ export default function Dashboard() {
           title={t('dashboard.dueDebts')}
           value={formatCurrency(stats.totalDebtAmount)}
           subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
-          icon={<CreditCard className="w-5 h-5" />}
+          icon={<CreditCard className="w-6 h-6" />}
           variant="warning"
           linkTo="/debts"
         />
@@ -261,87 +238,62 @@ export default function Dashboard() {
           title={t('dashboard.customersThisMonth')}
           value={stats.uniqueCustomers.toString()}
           subtitle={t('dashboard.uniqueCustomers')}
-          icon={<Users className="w-5 h-5" />}
+          icon={<Users className="w-6 h-6" />}
           variant="default"
           linkTo="/customers"
         />
       </div>
 
-      {/* Sales Period Cards */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="text-center">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('dashboard.todaySales')}</p>
-            <p className="text-sm sm:text-base font-bold text-primary mt-0.5">{formatCurrency(stats.todaySales)}</p>
-            <p className="text-[10px] text-muted-foreground/70">{stats.todayCount} {t('dashboard.invoice')}</p>
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="text-center">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('dashboard.weekSales')}</p>
-            <p className="text-sm sm:text-base font-bold text-info mt-0.5">{formatCurrency(stats.weekSales)}</p>
-            <p className="text-[10px] text-muted-foreground/70">{stats.weekCount} {t('dashboard.invoice')}</p>
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="text-center">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('dashboard.monthSales')}</p>
-            <p className="text-sm sm:text-base font-bold text-success mt-0.5">{formatCurrency(stats.monthSales)}</p>
-            <p className="text-[10px] text-muted-foreground/70">{stats.monthCount} {t('dashboard.invoice')}</p>
-          </div>
-        </div>
-      </div>
-
       {/* Stats Grid - Capital Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
         {/* Inventory value */}
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-info/10">
-              <Package className="w-4 h-4 text-info" />
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-info/10">
+              <Package className="w-5 h-5 text-info" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.inventoryValue')}</p>
-              <p className="text-sm sm:text-base font-bold text-foreground">{formatCurrency(stats.inventoryValue)}</p>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('dashboard.inventoryValue')}</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.inventoryValue)}</p>
             </div>
           </div>
         </div>
 
         {/* Total capital */}
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-primary/10">
-              <Wallet className="w-4 h-4 text-primary" />
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Wallet className="w-5 h-5 text-primary" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.totalCapital')}</p>
-              <p className="text-sm sm:text-base font-bold text-foreground">{formatCurrency(stats.totalCapital)}</p>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('dashboard.totalCapital')}</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.totalCapital)}</p>
             </div>
           </div>
         </div>
 
         {/* Cashbox balance */}
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-success/10">
-              <Banknote className="w-4 h-4 text-success" />
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-success/10">
+              <Banknote className="w-5 h-5 text-success" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.cashboxBalance')}</p>
-              <p className="text-sm sm:text-base font-bold text-success">{formatCurrency(stats.cashboxBalance)}</p>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance')}</p>
+              <p className="text-xl font-bold text-success">{formatCurrency(stats.cashboxBalance)}</p>
             </div>
           </div>
         </div>
 
         {/* Available capital */}
-        <div className="bg-card rounded-lg border border-border p-2.5">
-          <div className="flex items-center gap-2">
-            <div className={`p-1.5 rounded-md ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
-              <DollarSign className={`w-4 h-4 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
+              <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t('dashboard.liquidCapital')}</p>
-              <p className={`text-sm sm:text-base font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital')}</p>
+              <p className={`text-xl font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                 {formatCurrency(stats.liquidCapital)}
               </p>
             </div>
@@ -376,14 +328,14 @@ export default function Dashboard() {
       <QuickActions />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Invoices - Takes 2 columns */}
         <div className="lg:col-span-2">
           <RecentInvoices />
         </div>
 
         {/* Right Column */}
-        <div className="space-y-3">
+        <div className="space-y-6">
           <LowStockAlerts />
           <DebtAlerts />
         </div>

@@ -53,7 +53,6 @@ import {
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
-import { AppTooltip } from '@/components/ui/AppTooltip';
 import { processDebtPayment } from '@/lib/unified-transactions';
 import { shareDebt, DebtShareData } from '@/lib/native-share';
 
@@ -328,12 +327,10 @@ export default function Debts() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('debts.title')}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('debts.subtitle')}</p>
         </div>
-        <AppTooltip tooltipKey="tooltip.debts.add">
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowAddDebtDialog(true)}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            {t('debts.addCashDebt')}
-          </Button>
-        </AppTooltip>
+        <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowAddDebtDialog(true)}>
+          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+          {t('debts.addCashDebt')}
+        </Button>
       </div>
 
       {/* Stats */}
@@ -499,41 +496,33 @@ export default function Debts() {
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <AppTooltip tooltipKey="tooltip.common.view">
-                      <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(debt)}>
-                        <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                        {t('common.view')}
-                      </Button>
-                    </AppTooltip>
-                    <AppTooltip tooltipKey="tooltip.debts.share">
-                      <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => handleShareDebt(debt)}>
-                        <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                        {t('common.share')}
-                      </Button>
-                    </AppTooltip>
+                    <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(debt)}>
+                      <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                      {t('common.view')}
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => handleShareDebt(debt)}>
+                      <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                      {t('common.share')}
+                    </Button>
                     {debt.remainingDebt > 0 && (
-                      <AppTooltip tooltipKey="tooltip.debts.pay">
-                        <Button size="sm" className="h-8 md:h-9 bg-success hover:bg-success/90 text-xs md:text-sm" onClick={() => openPaymentDialog(debt)}>
-                          <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                          {t('debts.payment')}
-                        </Button>
-                      </AppTooltip>
+                      <Button size="sm" className="h-8 md:h-9 bg-success hover:bg-success/90 text-xs md:text-sm" onClick={() => openPaymentDialog(debt)}>
+                        <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                        {t('debts.payment')}
+                      </Button>
                     )}
                     {/* ✅ زر حذف الدين */}
-                    <AppTooltip tooltipKey="tooltip.common.delete">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-8 md:h-9 text-xs md:text-sm"
-                        onClick={() => {
-                          setSelectedDebt(debt);
-                          setShowDeleteDialog(true);
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                        {t('common.delete')}
-                      </Button>
-                    </AppTooltip>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 md:h-9 text-xs md:text-sm"
+                      onClick={() => {
+                        setSelectedDebt(debt);
+                        setShowDeleteDialog(true);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                      {t('common.delete')}
+                    </Button>
                   </div>
                 </div>
               </div>
