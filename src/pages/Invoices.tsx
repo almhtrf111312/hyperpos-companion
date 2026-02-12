@@ -5,7 +5,7 @@ import {
   Search,
   Eye,
   Edit,
-  Trash2,
+  Undo2,
   Printer,
   Send,
   Filter,
@@ -54,6 +54,7 @@ import { EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
   deleteInvoiceCloud,
+  refundInvoiceCloud,
   updateInvoiceCloud,
   getInvoiceStatsCloud,
   Invoice,
@@ -74,8 +75,8 @@ export default function Invoices() {
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
 
   // Debounce search (300ms)
@@ -137,23 +138,27 @@ export default function Invoices() {
     setShowViewDialog(true);
   };
 
-  const handleDelete = (invoice: Invoice) => {
-    setInvoiceToDelete(invoice);
-    setShowDeleteDialog(true);
+  const handleRefund = (invoice: Invoice) => {
+    setInvoiceToRefund(invoice);
+    setShowRefundDialog(true);
   };
 
-  const confirmDelete = async () => {
-    if (invoiceToDelete) {
-      await deleteInvoiceCloud(invoiceToDelete.id);
-      const [invoicesData, statsData] = await Promise.all([
-        loadInvoicesCloud(),
-        getInvoiceStatsCloud()
-      ]);
-      setInvoices(invoicesData);
-      setStats(statsData);
-      toast.success(t('invoices.deleteSuccess'));
-      setShowDeleteDialog(false);
-      setInvoiceToDelete(null);
+  const confirmRefund = async () => {
+    if (invoiceToRefund) {
+      const success = await refundInvoiceCloud(invoiceToRefund.id);
+      if (success) {
+        const [invoicesData, statsData] = await Promise.all([
+          loadInvoicesCloud(),
+          getInvoiceStatsCloud()
+        ]);
+        setInvoices(invoicesData);
+        setStats(statsData);
+        toast.success('تم استرداد الفاتورة بنجاح وإعادة المخزون');
+      } else {
+        toast.error('فشل في استرداد الفاتورة');
+      }
+      setShowRefundDialog(false);
+      setInvoiceToRefund(null);
     }
   };
 
@@ -620,6 +625,12 @@ export default function Invoices() {
                         <Badge variant={invoice.paymentType === 'cash' ? 'default' : 'secondary'}>
                           {invoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
                         </Badge>
+                        {invoice.status === 'refunded' && (
+                          <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                            <Undo2 className="w-3 h-3 ml-1" />
+                            مسترجعة
+                          </Badge>
+                        )}
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                           invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
                             <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
@@ -695,14 +706,18 @@ export default function Invoices() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(invoice)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 ml-2" />
-                          {t('common.delete')}
-                        </DropdownMenuItem>
+                        {invoice.status !== 'refunded' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleRefund(invoice)}
+                              className="text-orange-600"
+                            >
+                              <Undo2 className="w-4 h-4 ml-2" />
+                              استرداد الفاتورة
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -826,24 +841,33 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Refund Confirmation Dialog */}
+      <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2">
-              <Trash2 className="w-5 h-5" />
-              {t('invoices.deleteInvoice')}
+            <DialogTitle className="text-orange-600 flex items-center gap-2">
+              <Undo2 className="w-5 h-5" />
+              استرداد الفاتورة
             </DialogTitle>
             <DialogDescription>
-              {t('invoices.deleteConfirm')}
+              {invoiceToRefund && (
+                <>
+                  هل أنت متأكد من استرداد الفاتورة <strong>{invoiceToRefund.id}</strong>؟
+                  <br />
+                  <span className="text-sm text-muted-foreground mt-2 block">
+                    سيتم: إعادة المنتجات للمخزون • إلغاء الدين المرتبط • عكس الأرباح
+                  </span>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRefundDialog(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              {t('common.delete')}
+            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={confirmRefund}>
+              <Undo2 className="w-4 h-4 ml-2" />
+              تأكيد الاسترداد
             </Button>
           </DialogFooter>
         </DialogContent>
