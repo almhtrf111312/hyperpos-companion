@@ -13,7 +13,7 @@ import { emitEvent, EVENTS } from '../events';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
-export type InvoiceStatus = 'paid' | 'pending' | 'cancelled';
+export type InvoiceStatus = 'paid' | 'pending' | 'cancelled' | 'refunded';
 
 export interface InvoiceItem {
   id: string;
@@ -358,36 +358,6 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   if (!cloudInvoice) return false;
 
-  // ✅ Restore Stock logic before deletion
-  try {
-    // 1. Fetch items to restore
-    const { data: items } = await (supabase as any)
-      .from('invoice_items')
-      .select('product_id, quantity')
-      .eq('invoice_id', cloudInvoice.id);
-
-    if (items && items.length > 0) {
-      // Filter out items without product_id
-      const itemsToRestore = items
-        .filter((item: any) => item.product_id)
-        .map((item: any) => ({
-          productId: item.product_id,
-          quantity: Number(item.quantity) || 0
-        }));
-
-      if (itemsToRestore.length > 0) {
-        // Import dynamically to avoid circular dependency issues if any
-        const { restoreStockBatchCloud } = await import('./products-cloud');
-        await restoreStockBatchCloud(itemsToRestore);
-      }
-    }
-  } catch (err) {
-    console.error('[deleteInvoiceCloud] Error restoring stock:', err);
-    // Continue with deletion even if restoration fails? 
-    // Usually better to fail safe, but user wants deletion to work.
-    // Logging is enough for now.
-  }
-
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
 
   if (success) {
@@ -396,6 +366,84 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   }
 
   return success;
+};
+
+// Refund invoice - marks as refunded, restores stock, settles debts
+export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
+  const userId = getCurrentUserId();
+  if (!userId) return false;
+
+  // Find by invoice_number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: cloudInvoice } = await (supabase as any)
+    .from('invoices')
+    .select('id, payment_type, invoice_type, total, profit')
+    .eq('invoice_number', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!cloudInvoice) return false;
+
+  // 1. Restore stock for sale invoices
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: items } = await (supabase as any)
+      .from('invoice_items')
+      .select('product_id, quantity')
+      .eq('invoice_id', cloudInvoice.id);
+
+    if (items && items.length > 0) {
+      const itemsToRestore = items
+        .filter((item: any) => item.product_id)
+        .map((item: any) => ({
+          productId: item.product_id,
+          quantity: Number(item.quantity) || 0,
+        }));
+
+      if (itemsToRestore.length > 0) {
+        const { restoreStockBatchCloud } = await import('./products-cloud');
+        await restoreStockBatchCloud(itemsToRestore);
+      }
+    }
+  } catch (err) {
+    console.error('[refundInvoiceCloud] Error restoring stock:', err);
+  }
+
+  // 2. Delete associated debt if payment was on credit
+  if (cloudInvoice.payment_type === 'debt') {
+    try {
+      const { deleteDebtByInvoiceIdCloud } = await import('./debts-cloud');
+      await deleteDebtByInvoiceIdCloud(id);
+    } catch (err) {
+      console.error('[refundInvoiceCloud] Error deleting debt:', err);
+    }
+  }
+
+  // 3. Revert profit distribution
+  try {
+    const { revertProfitDistribution } = await import('../partners-store');
+    revertProfitDistribution(id);
+  } catch (err) {
+    console.error('[refundInvoiceCloud] Error reverting profit:', err);
+  }
+
+  // 4. Mark invoice as refunded (keep for audit trail)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('invoices')
+    .update({
+      status: 'refunded',
+      notes: `مسترجعة بتاريخ ${new Date().toLocaleDateString('ar-SA')}`,
+    })
+    .eq('id', cloudInvoice.id);
+
+  if (!error) {
+    invalidateInvoicesCache();
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    return true;
+  }
+
+  return false;
 };
 
 // Get invoice by ID

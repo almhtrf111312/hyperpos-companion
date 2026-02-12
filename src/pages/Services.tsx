@@ -9,7 +9,7 @@ import {
   CheckCircle,
   Eye,
   Edit,
-  Trash2,
+  Undo2,
   Save,
   User,
   Smartphone,
@@ -54,7 +54,7 @@ interface RepairRequest {
   diagnosis?: string;
   estimatedCost?: number;
   finalCost?: number;
-  status: 'pending' | 'in_progress' | 'waiting_parts' | 'completed' | 'cancelled' | 'delivered';
+  status: 'pending' | 'in_progress' | 'waiting_parts' | 'completed' | 'cancelled' | 'delivered' | 'refunded';
   createdAt: string;
   estimatedDate?: string;
   completedAt?: string;
@@ -100,6 +100,7 @@ const getStatusConfig = (t: (key: string) => string) => ({
   completed: { label: t('services.completed'), icon: CheckCircle, color: 'badge-success' },
   cancelled: { label: t('services.cancelled'), icon: XCircle, color: 'badge-danger' },
   delivered: { label: t('services.delivered'), icon: CheckCircle, color: 'badge-success' },
+  refunded: { label: 'مسترجع', icon: Undo2, color: 'badge-warning' },
 });
 
 const getFilterOptions = (t: (key: string) => string) => [
@@ -271,13 +272,15 @@ export default function Services() {
     toast.success(t('services.requestUpdated'));
   };
 
-  const handleDeleteRequest = () => {
+  const handleRefundRequest = () => {
     if (!selectedRequest) return;
 
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
+    setRequests(requests.map(r =>
+      r.id === selectedRequest.id ? { ...r, status: 'refunded' as const } : r
+    ));
     setShowDeleteDialog(false);
     setSelectedRequest(null);
-    toast.success(t('services.requestDeleted'));
+    toast.success('تم استرداد الطلب بنجاح');
   };
 
   const handleUpdateStatus = (request: RepairRequest, newStatus: RepairRequest['status']) => {
@@ -616,9 +619,11 @@ export default function Services() {
                 <Button variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9" onClick={() => openEditDialog(request)}>
                   <Edit className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9 text-destructive" onClick={() => openDeleteDialog(request)}>
-                  <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                </Button>
+                {request.status !== 'refunded' && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9 text-orange-600" onClick={() => openDeleteDialog(request)}>
+                    <Undo2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  </Button>
+                )}
               </div>
             </div>
           );
@@ -976,19 +981,22 @@ export default function Services() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Refund Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2 text-orange-600">
+              <Undo2 className="w-5 h-5" />
+              استرداد طلب الصيانة
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حذف طلب الصيانة "{selectedRequest?.id}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.
+              سيتم تحديد طلب الصيانة "{selectedRequest?.id}" كمسترجع. سيبقى في السجلات لأغراض التدقيق.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteRequest} className="bg-destructive hover:bg-destructive/90">
-              حذف
+            <AlertDialogAction onClick={handleRefundRequest} className="bg-orange-600 hover:bg-orange-700">
+              تأكيد الاسترداد
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
