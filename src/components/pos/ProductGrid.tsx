@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Search, Barcode, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,40 +8,6 @@ import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
-import { isCloudImage, getSignedImageUrl } from '@/lib/image-upload';
-
-// ✅ Smart product image component that handles signed URLs for private bucket
-function ProductImage({ src, alt }: { src: string; alt: string }) {
-  const [resolvedUrl, setResolvedUrl] = useState<string>(src);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (isCloudImage(src)) {
-      getSignedImageUrl(src).then(url => {
-        if (!cancelled && url) setResolvedUrl(url);
-      }).catch(() => {
-        if (!cancelled) setHasError(true);
-      });
-    } else {
-      setResolvedUrl(src);
-    }
-    return () => { cancelled = true; };
-  }, [src]);
-
-  if (hasError || !resolvedUrl) {
-    return <Package className="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/50" />;
-  }
-
-  return (
-    <img
-      src={resolvedUrl}
-      alt={alt}
-      className="w-full h-full object-cover"
-      onError={() => setHasError(true)}
-    />
-  );
-}
 
 interface Product {
   id: string;
@@ -201,7 +167,11 @@ export function ProductGrid({
             >
               <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3 overflow-hidden">
                 {product.image ? (
-                  <ProductImage src={product.image} alt={product.name} />
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <Package className="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/50" />
                 )}

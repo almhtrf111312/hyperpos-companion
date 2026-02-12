@@ -30,7 +30,7 @@ export function useDeviceBinding() {
       return;
     }
 
-    // ✅ FIX: Reduced safety timeout from 8s to 5s
+    // Safety timeout - if device check takes too long, allow access
     const safetyTimeout = setTimeout(() => {
       console.warn('[DeviceBinding] Device check timeout - allowing access');
       setState(prev => ({
@@ -38,7 +38,7 @@ export function useDeviceBinding() {
         isChecking: false,
         isDeviceBlocked: false,
       }));
-    }, 5000); // 5 seconds max
+    }, 8000); // 8 seconds max
 
     try {
       setState(prev => ({ ...prev, isChecking: true }));

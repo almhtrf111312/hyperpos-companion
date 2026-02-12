@@ -155,68 +155,69 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
+  const [showChoice, setShowChoice] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const [skipLoading, setSkipLoading] = useState(false);
   
-  // ✅ FIX: Auth must finish first, then license and device run in parallel
-  // Don't block on device check if license is already resolved
-  const isFullyLoading = authLoading || (isLoading && isCheckingDevice);
-  
-  // ✅ FIX: If either license or device finishes, we can proceed (don't wait for both)
-  const canProceed = skipLoading || (!authLoading && !isLoading) || (!authLoading && !isCheckingDevice && isValid);
+  const isFullyLoading = authLoading || isLoading || isCheckingDevice;
 
   // Update license notification when license data changes
   useEffect(() => {
     if (isValid && hasLicense && expiresAt && remainingDays !== null) {
+      // Always check license status to show notifications
       checkLicenseStatus(expiresAt, remainingDays, isTrial);
+      console.log('[LicenseGuard] License status updated:', { 
+        expiresAt, 
+        remainingDays, 
+        isTrial, 
+        isValid 
+      });
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
-  // ✅ FIX: Reduced timeout from 5s to 3s, added skip option at 6s
+  // Timeout to detect stuck loading state (prevents UI blocking on rotation)
   useEffect(() => {
-    if (isFullyLoading && !canProceed) {
+    if (isFullyLoading) {
       const timer = setTimeout(() => {
         setLoadingTimeout(true);
-      }, 3000); // 3 seconds for retry button
+      }, 5000); // 5 seconds timeout
 
       return () => clearTimeout(timer);
     } else {
       setLoadingTimeout(false);
     }
-  }, [isFullyLoading, canProceed]);
+  }, [isFullyLoading]);
 
-  // Show loading with retry + skip buttons if stuck
-  if (!canProceed && (isFullyLoading || (authLoading))) {
-    if (loadingTimeout) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">جاري التحميل...</p>
-            <div className="flex flex-col gap-2 w-48">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setLoadingTimeout(false);
-                  checkLicense();
-                }}
-              >
-                إعادة المحاولة
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setSkipLoading(true)}
-              >
-                تخطي والدخول
-              </Button>
-            </div>
-          </div>
+  // Show loading with retry button if stuck
+  if (isFullyLoading && loadingTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">جاري التحميل...</p>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setLoadingTimeout(false);
+              checkLicense();
+            }}
+          >
+            إعادة المحاولة
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            إعادة تحميل التطبيق
+          </Button>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
+  // Show loading while checking auth, license, or device
+  if (isFullyLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -233,18 +234,12 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   }
 
   // Check if device is blocked (SECURITY: This check is critical)
-  // But only if device check has finished
-  if (!isCheckingDevice && isDeviceBlocked) {
+  if (isDeviceBlocked) {
     return <DeviceBlockedScreen />;
   }
 
   // If there was a network error but user is authenticated, allow access
   if (isValid && hasLicense) {
-    return <>{children}</>;
-  }
-  
-  // ✅ FIX: If skip was pressed, allow access
-  if (skipLoading) {
     return <>{children}</>;
   }
 
@@ -288,6 +283,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   }
 
   // If user has no license and hasn't made a choice yet, show choice screen
+  // But only for admin/owner users - cashiers should never see this
   if (!hasLicense && !isStartingTrial) {
     if (showActivation) {
       return <ActivationScreen />;
