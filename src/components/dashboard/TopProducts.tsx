@@ -61,7 +61,7 @@ export function TopProducts() {
   const maxSales = topProducts.length > 0 ? Math.max(...topProducts.map(p => p.sales)) : 1;
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-6">
+    <div className="glass rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-foreground">{t('topProducts.title')}</h3>
         <span className="text-sm text-muted-foreground">{t('topProducts.fromInvoices')}</span>
@@ -81,7 +81,7 @@ export function TopProducts() {
               className="flex items-center gap-4 fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center flex-shrink-0">
                 <Package className="w-5 h-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
@@ -95,7 +95,7 @@ export function TopProducts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-muted/30 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-primary rounded-full transition-all duration-500"
                       style={{ width: `${(product.sales / maxSales) * 100}%` }}

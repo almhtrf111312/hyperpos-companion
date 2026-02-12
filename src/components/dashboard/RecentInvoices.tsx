@@ -44,7 +44,7 @@ export function RecentInvoices() {
   const loadData = useCallback(async () => {
     try {
       const data = await loadInvoicesCloud();
-      setInvoices(data.slice(0, 10)); // Show last 10 invoices
+      setInvoices(data.slice(0, 5)); // ✅ Show last 5 invoices only
     } catch (error) {
       console.error('Error loading invoices:', error);
     } finally {
@@ -173,22 +173,20 @@ export function RecentInvoices() {
 
   return (
     <>
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">آخر الفواتير</h3>
-            <button
-              onClick={handleViewAll}
-              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-            >
-              عرض الكل
-            </button>
-          </div>
+      <div className="glass rounded-2xl p-6 overflow-hidden">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-foreground">آخر الفواتير</h3>
+          <button
+            onClick={handleViewAll}
+            className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+          >
+            عرض الكل
+          </button>
         </div>
 
         {invoices.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileX className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+          <div className="p-8 text-center">
+            <FileX className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
             <p className="text-muted-foreground">لا توجد فواتير بعد</p>
             <p className="text-sm text-muted-foreground/70 mt-1">ابدأ بإنشاء فاتورة جديدة من نقطة البيع</p>
             <Button
@@ -203,58 +201,52 @@ export function RecentInvoices() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">العميل</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">المبلغ</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الحالة</th>
-                  <th className="text-right py-4 px-6 text-sm font-medium text-muted-foreground">الوقت</th>
-                  <th className="text-center py-4 px-6 text-sm font-medium text-muted-foreground">إجراءات</th>
+                <tr className="border-b border-border/50 text-right">
+                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
+                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">العميل</th>
+                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">المبلغ</th>
+                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.map((invoice, index) => (
                   <tr
                     key={invoice.id}
-                    className={cn(
-                      "border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer fade-in",
-                    )}
+                    className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer fade-in"
                     style={{ animationDelay: `${index * 50}ms` }}
                     onClick={() => handleViewInvoice(invoice)}
                   >
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <span className="font-mono text-sm text-foreground">{invoice.id}</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <span className="font-medium text-foreground">{invoice.customerName}</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <span className="font-semibold text-foreground">
                         {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4">
                       <span className={cn(
-                        "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
+                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                         statusStyles[invoice.status]
                       )}>
                         {statusLabels[invoice.status]}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-muted-foreground">{formatTime(invoice.createdAt)}</span>
-                    </td>
-                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
                         <button
-                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           onClick={() => handleViewInvoice(invoice)}
                           title="عرض الفاتورة"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           onClick={() => handlePrintInvoice(invoice)}
                           title="طباعة"
                         >
@@ -262,7 +254,7 @@ export function RecentInvoices() {
                         </button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                            <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
@@ -301,7 +293,7 @@ export function RecentInvoices() {
 
       {/* Invoice View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg glass border-white/10">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>تفاصيل الفاتورة {selectedInvoice?.id}</DialogTitle>
             <Button
@@ -316,7 +308,7 @@ export function RecentInvoices() {
           {selectedInvoice && (
             <div className="space-y-4 py-4">
               {/* Customer Info */}
-              <div className="bg-muted rounded-lg p-4">
+              <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-muted-foreground">العميل:</span>
                   <span className="font-semibold">{selectedInvoice.customerName}</span>
@@ -346,7 +338,7 @@ export function RecentInvoices() {
                 <h4 className="font-semibold mb-3">المنتجات</h4>
                 <div className="space-y-2">
                   {selectedInvoice.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                    <div key={idx} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                       <div>
                         <p className="font-medium">{item.name}</p>
                         <p className="text-sm text-muted-foreground">الكمية: {item.quantity}</p>
@@ -358,7 +350,7 @@ export function RecentInvoices() {
               </div>
 
               {/* Total */}
-              <div className="border-t border-border pt-4">
+              <div className="border-t border-border/50 pt-4">
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between items-center text-sm text-muted-foreground mb-2">
                     <span>الخصم:</span>

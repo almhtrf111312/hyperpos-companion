@@ -10,7 +10,9 @@ import {
   Wallet,
   Loader2,
   Banknote,
-  TrendingDown
+  TrendingDown,
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
@@ -33,6 +35,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     todaySales: 0,
+    weekSales: 0,
+    monthSales: 0,
     todayCount: 0,
     todayProfit: 0,        // Gross profit (Sales - COGS)
     todayCOGS: 0,          // ✅ Cost of Goods Sold
@@ -71,7 +75,8 @@ export default function Dashboard() {
       ]);
 
       // Calculate today's sales and profit from Cloud Invoices
-      const todayStr = new Date().toDateString();
+      const todayDate = new Date();
+      const todayStr = todayDate.toDateString();
       const todayInvoices = invoices.filter(inv =>
         new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
       );
@@ -103,14 +108,26 @@ export default function Dashboard() {
       // Calculate profit margin
       const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
 
-      // Get unique customers this month
+      // Get unique customers this month & Month Sales
       const thisMonth = new Date().getMonth();
       const thisYear = new Date().getFullYear();
+
       const monthInvoices = invoices.filter(inv => {
         const date = new Date(inv.createdAt);
-        return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
+        return date.getMonth() === thisMonth && date.getFullYear() === thisYear && inv.status !== 'cancelled';
       });
+
       const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
+      const monthSales = monthInvoices.reduce((sum, inv) => sum + inv.total, 0);
+
+      // Calculate Week Sales
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const weekInvoices = invoices.filter(inv =>
+        new Date(inv.createdAt) >= oneWeekAgo && inv.status !== 'cancelled'
+      );
+      const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
       // Calculate inventory value
       const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
@@ -145,6 +162,8 @@ export default function Dashboard() {
 
       setStats({
         todaySales,
+        weekSales,
+        monthSales,
         todayCount: todayInvoices.length,
         todayProfit,
         todayCOGS,
@@ -195,7 +214,7 @@ export default function Dashboard() {
   }, [loadStats]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between pr-14 md:pr-0">
         <div>
@@ -208,8 +227,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid - First Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+      {/* Stats Grid - First Row (4 Columns Enforced) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
@@ -244,10 +263,36 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Stats Grid - Capital Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+      {/* Sales Performance Row (New - 2 or 4 Columns) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="glass rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Calendar className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">مبيعات هذا الأسبوع</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.weekSales)}</p>
+            </div>
+          </div>
+        </div>
+        <div className="glass rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-info/10">
+              <BarChart3 className="w-5 h-5 text-info" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">مبيعات هذا الشهر</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.monthSales)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid - Capital Row (4 Columns Enforced) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Inventory value */}
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="glass rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-info/10">
               <Package className="w-5 h-5 text-info" />
@@ -260,7 +305,7 @@ export default function Dashboard() {
         </div>
 
         {/* Total capital */}
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="glass rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Wallet className="w-5 h-5 text-primary" />
@@ -273,7 +318,7 @@ export default function Dashboard() {
         </div>
 
         {/* Cashbox balance */}
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="glass rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-success/10">
               <Banknote className="w-5 h-5 text-success" />
@@ -286,7 +331,7 @@ export default function Dashboard() {
         </div>
 
         {/* Available capital */}
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="glass rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'}`}>
               <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
@@ -324,10 +369,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Actions (Compacted) */}
       <QuickActions />
 
-      {/* Main Content Grid */}
+      {/* Main Content Grid (Lists) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Invoices - Takes 2 columns */}
         <div className="lg:col-span-2">

@@ -74,27 +74,29 @@ const colorStyles = {
 
 export function QuickActions() {
   const { t } = useLanguage();
-  
+
   return (
-    <div className="bg-card rounded-2xl border border-border p-6">
-      <h3 className="text-lg font-semibold text-foreground mb-4">{t('quickActions.title')}</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="glass rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold text-foreground">{t('quickActions.title')}</h3>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {actions.map((action, index) => (
           <Link
             key={action.path}
             to={action.path}
             className={cn(
-              "flex flex-col items-center gap-3 p-4 rounded-xl border transition-all duration-200 card-hover fade-in",
+              "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 card-hover fade-in",
               colorStyles[action.color]
             )}
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            <div className="p-3 rounded-xl bg-current/10">
-              <action.icon className="w-6 h-6" />
+            <div className="p-2 rounded-lg bg-current/10">
+              <action.icon className="w-5 h-5" />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-foreground">{t(action.labelKey)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t(action.descriptionKey)}</p>
+              <p className="font-semibold text-foreground text-sm">{t(action.labelKey)}</p>
+              <p className="text-xs text-muted-foreground/80 mt-0.5 line-clamp-1">{t(action.descriptionKey)}</p>
             </div>
           </Link>
         ))}
