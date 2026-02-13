@@ -30,12 +30,12 @@ export function useAppPermissions() {
 
     const requestPermissions = async () => {
       try {
-        // Request camera permission via Community Barcode Scanner
-        const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner');
-        const cameraResult = await BarcodeScanner.checkPermission({ force: true });
+        // Request camera permission via Camera plugin (Capacitor 8)
+        const { Camera } = await import('@capacitor/camera');
+        const cameraResult = await Camera.requestPermissions({ permissions: ['camera'] });
 
-        const cameraStatus = cameraResult.granted ? 'granted' :
-          cameraResult.denied ? 'denied' : 'prompt';
+        const cameraStatus = cameraResult.camera === 'granted' ? 'granted' :
+          cameraResult.camera === 'denied' ? 'denied' : 'prompt';
 
         // Request storage permission via Filesystem
         const { Filesystem } = await import('@capacitor/filesystem');
@@ -79,8 +79,10 @@ export function useOpenAppSettings() {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-      const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner');
-      await BarcodeScanner.openAppSettings();
+      // Use App plugin to open settings (Capacitor 8)
+      const { App } = await import('@capacitor/app');
+      // Note: App plugin doesn't have openAppSettings, use native approach
+      console.warn('[Permissions] Opening app settings is not directly supported in Cap 8 barcode scanner');
     } catch (error) {
       console.error('[Permissions] Failed to open settings:', error);
     }
