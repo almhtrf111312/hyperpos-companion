@@ -30,15 +30,12 @@ export function useAppPermissions() {
 
     const requestPermissions = async () => {
       try {
-        // Request camera permission via MLKit Barcode Scanner
-        const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
-        // MLKit uses requestPermissions to check and request
-        const permissions = await BarcodeScanner.requestPermissions();
+        // Request camera permission via Community Barcode Scanner
+        const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner');
+        const cameraResult = await BarcodeScanner.checkPermission({ force: true });
 
-        const rawCamera = permissions.camera;
-        const cameraStatus: 'granted' | 'denied' | 'prompt' =
-          (rawCamera === 'granted' || rawCamera === 'limited') ? 'granted' :
-            (rawCamera === 'denied') ? 'denied' : 'prompt';
+        const cameraStatus = cameraResult.granted ? 'granted' :
+          cameraResult.denied ? 'denied' : 'prompt';
 
         // Request storage permission via Filesystem
         const { Filesystem } = await import('@capacitor/filesystem');
@@ -82,8 +79,8 @@ export function useOpenAppSettings() {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-      const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
-      await BarcodeScanner.openSettings();
+      const { BarcodeScanner } = await import('@capacitor-community/barcode-scanner');
+      await BarcodeScanner.openAppSettings();
     } catch (error) {
       console.error('[Permissions] Failed to open settings:', error);
     }

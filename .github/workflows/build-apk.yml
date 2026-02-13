@@ -137,7 +137,7 @@ jobs:
 
     - name: Build Debug APK
       if: steps.keystore_check.outputs.has_keystore != 'true'
-      run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      run: cd android && chmod +x gradlew && ./gradlew assembleDebug
 
     - name: Create GitHub Release
       if: steps.keystore_check.outputs.has_keystore == 'true'
