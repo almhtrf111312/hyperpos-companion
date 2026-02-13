@@ -22,18 +22,23 @@ import {
   Printer,
   FileText,
   Search,
-  ScanLine
+  ScanLine,
+  RotateCcw
 } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { 
   StockTransfer as StockTransferType,
   StockTransferItem,
+  WarehouseStock,
   loadStockTransfersCloud,
   createStockTransferCloud,
   completeStockTransferCloud,
   cancelStockTransferCloud,
-  getStockTransferItemsCloud
+  getStockTransferItemsCloud,
+  getDistributorAvailableProducts,
+  createReturnTransferCloud,
+  completeReturnTransferCloud
 } from '@/lib/cloud/warehouses-cloud';
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { printHTML } from '@/lib/print-utils';
@@ -57,10 +62,18 @@ export default function StockTransfer() {
   const [transfers, setTransfers] = useState<StockTransferType[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<StockTransferType | null>(null);
   const [selectedTransferItems, setSelectedTransferItems] = useState<StockTransferItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Return form state
+  const [returnFromWarehouseId, setReturnFromWarehouseId] = useState('');
+  const [returnNotes, setReturnNotes] = useState('');
+  const [returnItems, setReturnItems] = useState<{ productId: string; productName: string; quantity: number; available: number }[]>([]);
+  const [distributorStock, setDistributorStock] = useState<WarehouseStock[]>([]);
+  const [isLoadingStock, setIsLoadingStock] = useState(false);
 
   // Form state
   const [toWarehouseId, setToWarehouseId] = useState('');
@@ -317,6 +330,137 @@ export default function StockTransfer() {
     }
   };
 
+  // ==================== Return Stock Handlers ====================
+  const handleReturnWarehouseChange = async (warehouseId: string) => {
+    setReturnFromWarehouseId(warehouseId);
+    setReturnItems([]);
+    setIsLoadingStock(true);
+    try {
+      const stock = await getDistributorAvailableProducts(warehouseId);
+      setDistributorStock(stock);
+    } catch (error) {
+      console.error('Error loading distributor stock:', error);
+      setDistributorStock([]);
+    } finally {
+      setIsLoadingStock(false);
+    }
+  };
+
+  const addReturnItem = (stockItem: WarehouseStock) => {
+    if (returnItems.some(i => i.productId === stockItem.product_id)) return;
+    const product = products.find(p => p.id === stockItem.product_id);
+    setReturnItems(prev => [...prev, {
+      productId: stockItem.product_id,
+      productName: product?.name || 'منتج',
+      quantity: stockItem.quantity || 0,
+      available: stockItem.quantity || 0
+    }]);
+  };
+
+  const updateReturnItemQuantity = (productId: string, quantity: number) => {
+    setReturnItems(prev => prev.map(item => {
+      if (item.productId === productId) {
+        return { ...item, quantity: Math.min(Math.max(1, quantity), item.available) };
+      }
+      return item;
+    }));
+  };
+
+  const removeReturnItem = (productId: string) => {
+    setReturnItems(prev => prev.filter(i => i.productId !== productId));
+  };
+
+  const handleCreateReturn = async () => {
+    if (!mainWarehouse || !returnFromWarehouseId || returnItems.length === 0) return;
+
+    if (!confirm(t('stockTransfer.confirmReturnMessage'))) return;
+
+    const result = await createReturnTransferCloud(
+      returnFromWarehouseId,
+      mainWarehouse.id,
+      returnItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unit: 'piece' as const,
+        quantityInPieces: item.quantity
+      })),
+      returnNotes
+    );
+
+    if (result) {
+      // Auto-complete the return
+      const success = await completeReturnTransferCloud(result.id);
+      if (success) {
+        toast.success(t('stockTransfer.returnSuccess'));
+        // Print return receipt
+        await printReturnReceipt(result);
+        setIsReturnDialogOpen(false);
+        resetReturnForm();
+        const newTransfers = await loadStockTransfersCloud();
+        setTransfers(newTransfers);
+        refreshWarehouses();
+      } else {
+        toast.error(t('stockTransfer.returnFailed'));
+      }
+    } else {
+      toast.error(t('stockTransfer.returnFailed'));
+    }
+  };
+
+  const printReturnReceipt = async (transfer: StockTransferType) => {
+    const items = await getStockTransferItemsCloud(transfer.id);
+    const fromWarehouse = warehouses.find(w => w.id === transfer.from_warehouse_id);
+    const isRTL = document.documentElement.dir === 'rtl';
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}">
+      <head><meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; direction: ${isRTL ? 'rtl' : 'ltr'}; }
+        h1 { text-align: center; margin-bottom: 20px; color: #d97706; }
+        .info div { margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: ${isRTL ? 'right' : 'left'}; }
+        th { background: #fef3c7; }
+        .signature { margin-top: 50px; display: flex; justify-content: space-between; }
+        .signature div { text-align: center; }
+      </style></head>
+      <body>
+        <h1>${t('stockTransfer.returnReceiptTitle')}</h1>
+        <div class="info">
+          <div><strong>${t('stockTransfer.transferNumber')}:</strong> ${transfer.transfer_number}</div>
+          <div><strong>${t('stockTransfer.date')}:</strong> ${format(new Date(transfer.created_at), 'yyyy/MM/dd HH:mm', { locale: ar })}</div>
+          <div><strong>${t('stockTransfer.from')}:</strong> ${fromWarehouse?.name || ''}</div>
+          <div><strong>${t('stockTransfer.to')}:</strong> ${t('stockTransfer.mainWarehouse')}</div>
+          ${transfer.notes ? `<div><strong>${t('common.notes')}:</strong> ${transfer.notes}</div>` : ''}
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>${t('stockTransfer.product')}</th><th>${t('stockTransfer.quantity')}</th></tr></thead>
+          <tbody>
+            ${items.map((item, i) => {
+              const product = products.find(p => p.id === item.product_id);
+              return `<tr><td>${i + 1}</td><td>${product?.name || ''}</td><td>${item.quantity_in_pieces}</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <div class="signature">
+          <div><p>${t('stockTransfer.signReceiver')}</p><p>________________</p></div>
+          <div><p>${t('stockTransfer.signSender')}</p><p>________________</p></div>
+        </div>
+      </body></html>
+    `;
+    printHTML(html);
+  };
+
+  const resetReturnForm = () => {
+    setReturnFromWarehouseId('');
+    setReturnNotes('');
+    setReturnItems([]);
+    setDistributorStock([]);
+  };
+
+
   const viewTransferDetails = async (transfer: StockTransferType) => {
     setSelectedTransfer(transfer);
     const items = await getStockTransferItemsCloud(transfer.id);
@@ -445,19 +589,27 @@ export default function StockTransfer() {
             <p className="text-muted-foreground">{t('stockTransfer.subtitle')}</p>
           </div>
           
-          <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-            setIsCreateDialogOpen(open);
-            if (open) {
-              // Refresh warehouses when opening dialog
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => {
+              setIsReturnDialogOpen(true);
               refreshWarehouses();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                {t('stockTransfer.createTransfer')}
-              </Button>
-            </DialogTrigger>
+            }}>
+              <RotateCcw className="w-4 h-4" />
+              {t('stockTransfer.returnStock')}
+            </Button>
+
+            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+              setIsCreateDialogOpen(open);
+              if (open) {
+                refreshWarehouses();
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  {t('stockTransfer.createTransfer')}
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -687,7 +839,163 @@ export default function StockTransfer() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
+
+        {/* Return Stock Dialog */}
+        <Dialog open={isReturnDialogOpen} onOpenChange={(open) => {
+          setIsReturnDialogOpen(open);
+          if (!open) resetReturnForm();
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="w-5 h-5" />
+                {t('stockTransfer.createReturn')}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Select distributor warehouse */}
+              <div>
+                <Label>{t('stockTransfer.selectSourceWarehouse')}</Label>
+                <Select value={returnFromWarehouseId} onValueChange={handleReturnWarehouseChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('stockTransfer.selectWarehouse')} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    {vehicleWarehouses.length > 0 ? (
+                      vehicleWarehouses.map(w => (
+                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-muted-foreground text-sm">
+                        {t('stockTransfer.noDistributorWarehouses')}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Available products */}
+              {returnFromWarehouseId && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">{t('stockTransfer.availableForReturn')}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingStock ? (
+                      <div className="text-center py-4 text-muted-foreground">{t('stockTransfer.loading')}</div>
+                    ) : distributorStock.length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground">{t('stockTransfer.noStockToReturn')}</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {distributorStock
+                          .filter(s => !returnItems.some(ri => ri.productId === s.product_id))
+                          .map(stockItem => {
+                            const product = products.find(p => p.id === stockItem.product_id);
+                            return (
+                              <div
+                                key={stockItem.id}
+                                className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors"
+                                onClick={() => addReturnItem(stockItem)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Package className="w-4 h-4 text-muted-foreground" />
+                                  <span>{product?.name || stockItem.product_id}</span>
+                                </div>
+                                <Badge variant="secondary">{t('stockTransfer.availableQuantity')}: {stockItem.quantity}</Badge>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Selected return items */}
+              {returnItems.length > 0 && (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('stockTransfer.product')}</TableHead>
+                        <TableHead>{t('stockTransfer.availableQuantity')}</TableHead>
+                        <TableHead>{t('stockTransfer.returnQuantity')}</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {returnItems.map(item => (
+                        <TableRow key={item.productId}>
+                          <TableCell className="font-medium">{item.productName}</TableCell>
+                          <TableCell>{item.available}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => updateReturnItemQuantity(item.productId, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={item.available}
+                                value={item.quantity}
+                                onChange={(e) => updateReturnItemQuantity(item.productId, parseInt(e.target.value) || 1)}
+                                className="w-16 h-7 text-center"
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => updateReturnItemQuantity(item.productId, item.quantity + 1)}
+                                disabled={item.quantity >= item.available}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => removeReturnItem(item.productId)}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <Label>{t('stockTransfer.notesOptional')}</Label>
+                <Textarea
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  placeholder={t('stockTransfer.notesPlaceholder')}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setIsReturnDialogOpen(false); resetReturnForm(); }}>
+                  {t('stockTransfer.cancel')}
+                </Button>
+                <Button onClick={handleCreateReturn} disabled={returnItems.length === 0}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  {t('stockTransfer.confirmReturn')}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Transfers List */}
         <Card>
@@ -721,7 +1029,15 @@ export default function StockTransfer() {
                   <TableBody>
                     {transfers.map(transfer => (
                       <TableRow key={transfer.id}>
-                        <TableCell className="font-mono">{transfer.transfer_number}</TableCell>
+                        <TableCell className="font-mono">
+                          {transfer.transfer_number}
+                          {' '}
+                          {(transfer as any).transfer_type === 'return' ? (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 text-[10px] px-1.5">{t('stockTransfer.typeReturn')}</Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 text-[10px] px-1.5">{t('stockTransfer.typeOutgoing')}</Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{getWarehouseName(transfer.from_warehouse_id)}</TableCell>
                         <TableCell>{getWarehouseName(transfer.to_warehouse_id)}</TableCell>
                         <TableCell>{getStatusBadge(transfer.status)}</TableCell>

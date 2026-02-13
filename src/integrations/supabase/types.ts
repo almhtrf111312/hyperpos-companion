@@ -926,6 +926,7 @@ export type Database = {
           status: string | null
           to_warehouse_id: string
           transfer_number: string
+          transfer_type: string
           transferred_at: string | null
           transferred_by: string | null
           updated_at: string | null
@@ -939,6 +940,7 @@ export type Database = {
           status?: string | null
           to_warehouse_id: string
           transfer_number: string
+          transfer_type?: string
           transferred_at?: string | null
           transferred_by?: string | null
           updated_at?: string | null
@@ -952,6 +954,7 @@ export type Database = {
           status?: string | null
           to_warehouse_id?: string
           transfer_number?: string
+          transfer_type?: string
           transferred_at?: string | null
           transferred_by?: string | null
           updated_at?: string | null

@@ -38,6 +38,7 @@ export interface StockTransfer {
   to_warehouse_id: string;
   transfer_number: string;
   status: 'pending' | 'completed' | 'cancelled';
+  transfer_type: 'outgoing' | 'return';
   notes: string | null;
   transferred_by: string | null;
   transferred_at: string | null;
@@ -360,11 +361,12 @@ export const checkWarehouseStockAvailability = async (
 // ==================== Stock Transfers ====================
 
 // Generate transfer number
-const generateTransferNumber = (): string => {
+const generateTransferNumber = (type: 'outgoing' | 'return' = 'outgoing'): string => {
+  const prefix = type === 'return' ? 'RTN' : 'TRF';
   const date = new Date();
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `TRF-${dateStr}-${random}`;
+  return `${prefix}-${dateStr}-${random}`;
 };
 
 // Load all transfers
@@ -411,7 +413,8 @@ export const createStockTransferCloud = async (
       user_id: userId,
       from_warehouse_id: fromWarehouseId,
       to_warehouse_id: toWarehouseId,
-      transfer_number: generateTransferNumber(),
+      transfer_number: generateTransferNumber('outgoing'),
+      transfer_type: 'outgoing' as string,
       status: 'pending',
       notes
     })
@@ -584,4 +587,155 @@ export const fetchAllWarehouseStocksCloud = async (): Promise<WarehouseStock[]> 
   }
 
   return (data || []) as WarehouseStock[];
+};
+
+// ==================== Stock Return (استرداد العهدة) ====================
+
+// Get products available in a distributor's warehouse
+export const getDistributorAvailableProducts = async (warehouseId: string): Promise<WarehouseStock[]> => {
+  const { supabase } = await import('@/integrations/supabase/client');
+
+  const { data, error } = await supabase
+    .from('warehouse_stock')
+    .select('*')
+    .eq('warehouse_id', warehouseId)
+    .gt('quantity', 0);
+
+  if (error) {
+    console.error('[WarehouseStock] Get available products error:', error);
+    return [];
+  }
+
+  return (data || []) as WarehouseStock[];
+};
+
+// Create a return stock transfer
+export const createReturnTransferCloud = async (
+  fromWarehouseId: string,
+  toWarehouseId: string,
+  items: { productId: string; quantity: number; unit: 'piece' | 'bulk'; quantityInPieces: number }[],
+  notes?: string
+): Promise<StockTransfer | null> => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+
+  const { data: transfer, error: transferError } = await supabase
+    .from('stock_transfers')
+    .insert({
+      user_id: userId,
+      from_warehouse_id: fromWarehouseId,
+      to_warehouse_id: toWarehouseId,
+      transfer_number: generateTransferNumber('return'),
+      transfer_type: 'return' as string,
+      status: 'pending',
+      notes
+    })
+    .select()
+    .single();
+
+  if (transferError || !transfer) {
+    console.error('[StockReturn] Create error:', transferError);
+    return null;
+  }
+
+  const itemsToInsert = items.map(item => ({
+    transfer_id: transfer.id,
+    product_id: item.productId,
+    quantity: item.quantity,
+    unit: item.unit,
+    quantity_in_pieces: item.quantityInPieces
+  }));
+
+  const { error: itemsError } = await supabase
+    .from('stock_transfer_items')
+    .insert(itemsToInsert);
+
+  if (itemsError) {
+    console.error('[StockReturn] Items error:', itemsError);
+    await supabase.from('stock_transfers').delete().eq('id', transfer.id);
+    return null;
+  }
+
+  return transfer as StockTransfer;
+};
+
+// Complete return transfer: deduct from distributor warehouse, add to main products.quantity
+export const completeReturnTransferCloud = async (transferId: string): Promise<boolean> => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  const userId = getCurrentUserId();
+  if (!userId) return false;
+
+  const { data: transfer, error: fetchError } = await supabase
+    .from('stock_transfers')
+    .select('*, stock_transfer_items(*)')
+    .eq('id', transferId)
+    .single();
+
+  if (fetchError || !transfer) {
+    console.error('[StockReturn] Fetch error:', fetchError);
+    return false;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items = (transfer as any).stock_transfer_items as StockTransferItem[];
+
+  for (const item of items) {
+    // 1. Deduct from distributor's warehouse_stock
+    const { data: warehouseStock } = await supabase
+      .from('warehouse_stock')
+      .select('quantity')
+      .eq('warehouse_id', transfer.from_warehouse_id)
+      .eq('product_id', item.product_id)
+      .maybeSingle();
+
+    const currentWarehouseQty = warehouseStock?.quantity || 0;
+    const newWarehouseQty = Math.max(0, currentWarehouseQty - item.quantity_in_pieces);
+
+    await supabase
+      .from('warehouse_stock')
+      .upsert({
+        warehouse_id: transfer.from_warehouse_id,
+        product_id: item.product_id,
+        quantity: newWarehouseQty,
+        last_updated: new Date().toISOString()
+      }, { onConflict: 'warehouse_id,product_id' });
+
+    // 2. Add back to products.quantity (main inventory)
+    const { data: product } = await supabase
+      .from('products')
+      .select('quantity')
+      .eq('id', item.product_id)
+      .single();
+
+    if (product) {
+      const newProductQty = (product.quantity || 0) + item.quantity_in_pieces;
+      await supabase
+        .from('products')
+        .update({ quantity: newProductQty })
+        .eq('id', item.product_id);
+    }
+  }
+
+  // Update transfer status
+  const { error: updateError } = await supabase
+    .from('stock_transfers')
+    .update({
+      status: 'completed',
+      transferred_by: userId,
+      transferred_at: new Date().toISOString()
+    })
+    .eq('id', transferId);
+
+  if (updateError) {
+    console.error('[StockReturn] Complete error:', updateError);
+    return false;
+  }
+
+  const { invalidateProductsCache } = await import('./products-cloud');
+  invalidateProductsCache();
+
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
+  return true;
 };
