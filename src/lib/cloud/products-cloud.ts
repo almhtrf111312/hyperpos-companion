@@ -8,7 +8,7 @@ import {
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 import { supabase } from '@/integrations/supabase/client';
-import { saveProductsToIDB, loadProductsFromIDB } from '../indexeddb-cache';
+import { saveProductsToIDB, loadProductsFromIDB, getProductByBarcodeIDB } from '../indexeddb-cache';
 
 export interface CloudProduct {
   id: string;
@@ -397,8 +397,20 @@ export const getProductByIdCloud = async (id: string): Promise<Product | null> =
   return products.find(p => p.id === id) || null;
 };
 
-// Get product by barcode (searches all barcodes)
+// Get product by barcode (searches all barcodes) - IDB first for instant offline lookup
 export const getProductByBarcodeCloud = async (barcode: string): Promise<Product | null> => {
+  // Try IDB first for instant result (even offline)
+  try {
+    const idbResult = await getProductByBarcodeIDB<Product>(barcode);
+    if (idbResult) {
+      console.log('[ProductsCloud] ⚡ Barcode found in IDB:', barcode);
+      return idbResult;
+    }
+  } catch (e) {
+    console.warn('[ProductsCloud] IDB barcode lookup failed:', e);
+  }
+
+  // Fallback to memory cache / cloud
   const products = await loadProductsCloud();
   return products.find(p =>
     p.barcode === barcode ||
