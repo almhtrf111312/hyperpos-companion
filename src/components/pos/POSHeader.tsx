@@ -2,6 +2,7 @@ import { Menu, ShoppingCart, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
+import { SyncStatusMenu } from '@/components/layout/SyncStatusMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
@@ -53,6 +54,9 @@ export function POSHeader({
 
       {/* Left side - Actions */}
       <div className="flex items-center gap-2">
+        {/* Sync Status Menu */}
+        <SyncStatusMenu />
+        
         {/* Keyboard shortcuts help - Desktop only */}
         {!isMobile && <KeyboardShortcutsHelp />}
         

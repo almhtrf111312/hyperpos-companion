@@ -30,7 +30,7 @@ import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { NotificationBell } from './NotificationBell';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
-import { SyncQueueIndicator } from './SyncQueueIndicator';
+import { SyncStatusMenu } from './SyncStatusMenu';
 
 interface NavItem {
   icon: React.ElementType;
@@ -180,8 +180,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
           
           {/* أزرار التحكم - المزامنة + الحالة + الجرس + زر الطي/الإغلاق */}
           <div className="flex items-center gap-1">
-            {/* حالة طابور المزامنة */}
-            <SyncQueueIndicator />
+            {/* حالة المزامنة */}
+            <SyncStatusMenu />
             
             {/* حالة الاتصال */}
             <NetworkStatusIndicator compact={effectiveCollapsed} />
