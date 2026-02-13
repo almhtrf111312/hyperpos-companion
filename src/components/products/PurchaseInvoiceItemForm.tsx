@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { Package, Barcode, Tag, Hash, DollarSign, Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
+import { getEffectiveFieldsConfig } from '@/lib/product-fields-config';
 
 interface PurchaseInvoiceItemFormProps {
   onAdd: (item: {
@@ -32,6 +32,7 @@ interface ExistingProduct {
 
 export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInvoiceItemFormProps) {
   const { t } = useLanguage();
+  const fieldsConfig = getEffectiveFieldsConfig();
 
   const [productName, setProductName] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -40,12 +41,20 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   const [costPrice, setCostPrice] = useState('');
   const [salePrice, setSalePrice] = useState('');
 
+  // Dynamic fields
+  const [wholesalePrice, setWholesalePrice] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [warranty, setWarranty] = useState('');
+  const [size, setSize] = useState('');
+  const [color, setColor] = useState('');
+  const [minStockLevel, setMinStockLevel] = useState('');
+
   // Search existing products
   const [searchResults, setSearchResults] = useState<ExistingProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ExistingProduct | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Search for existing products by name or barcode
   useEffect(() => {
     const searchProducts = async () => {
       if (productName.length < 2 && barcode.length < 3) {
@@ -85,9 +94,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   };
 
   const handleSubmit = () => {
-    if (!productName || !quantity || !costPrice) {
-      return;
-    }
+    if (!productName || !quantity || !costPrice) return;
 
     onAdd({
       product_name: productName,
@@ -99,21 +106,27 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       product_id: selectedProduct?.id
     });
 
-    // Reset form for next item
+    // Reset form
     setProductName('');
     setBarcode('');
     setCategory('');
     setQuantity('1');
     setCostPrice('');
     setSalePrice('');
+    setWholesalePrice('');
+    setExpiryDate('');
+    setSerialNumber('');
+    setWarranty('');
+    setSize('');
+    setColor('');
+    setMinStockLevel('');
     setSelectedProduct(null);
   };
 
   return (
-    <div className="p-3 border rounded-lg bg-card space-y-3">
+    <div className="p-4 border rounded-lg bg-card space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium text-sm flex items-center gap-2">
-          <Package className="w-4 h-4" />
+        <h3 className="font-medium text-sm">
           {selectedProduct ? t('purchaseInvoice.updateStock') : t('purchaseInvoice.addNewProduct')}
         </h3>
         {selectedProduct && (
@@ -124,13 +137,9 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       </div>
 
       {/* Product Name */}
-      <div className="space-y-1 relative">
-        <Label className="flex items-center gap-1 text-xs">
-          <Package className="w-3 h-3" />
-          {t('products.name')} *
-        </Label>
+      <div className="space-y-1.5 relative">
+        <Label className="text-sm">{t('products.name')} *</Label>
         <Input
-          className="h-9"
           value={productName}
           onChange={(e) => {
             setProductName(e.target.value);
@@ -138,7 +147,6 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           }}
           placeholder={t('products.exampleName')}
         />
-        {/* Search dropdown */}
         {showSearch && searchResults.length > 0 && (
           <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg max-h-32 overflow-y-auto">
             {searchResults.map((product) => (
@@ -155,15 +163,11 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         )}
       </div>
 
-      {/* Barcode + Category Row */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1 text-xs">
-            <Barcode className="w-3 h-3" />
-            {t('products.barcode')}
-          </Label>
+      {/* Barcode + Category */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.barcode')}</Label>
           <Input
-            className="h-9"
             value={barcode}
             onChange={(e) => {
               setBarcode(e.target.value);
@@ -172,13 +176,9 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
             placeholder="123..."
           />
         </div>
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1 text-xs">
-            <Tag className="w-3 h-3" />
-            {t('products.category')}
-          </Label>
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.category')}</Label>
           <Input
-            className="h-9"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder={t('products.category')}
@@ -186,41 +186,29 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         </div>
       </div>
 
-      {/* Quantity + Prices Row */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1 text-xs">
-            <Hash className="w-3 h-3" />
-            # *
-          </Label>
+      {/* Quantity + Prices */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.quantity')} *</Label>
           <Input
-            className="h-9 text-center"
             type="number"
             min="1"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1 text-xs">
-            <DollarSign className="w-3 h-3" />
-            $ شراء *
-          </Label>
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.costPrice')} *</Label>
           <Input
-            className="h-9 text-center"
             type="number"
             step="0.01"
             value={costPrice}
             onChange={(e) => setCostPrice(e.target.value)}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1 text-xs">
-            <DollarSign className="w-3 h-3" />
-            $ بيع
-          </Label>
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.salePrice')}</Label>
           <Input
-            className="h-9 text-center"
             type="number"
             step="0.01"
             value={salePrice}
@@ -229,13 +217,94 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         </div>
       </div>
 
+      {/* Dynamic Fields Based on Settings */}
+      {fieldsConfig.wholesalePrice && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">سعر الجملة</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={wholesalePrice}
+            onChange={(e) => setWholesalePrice(e.target.value)}
+            placeholder="0.00"
+          />
+        </div>
+      )}
+
+      {fieldsConfig.expiryDate && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">تاريخ الصلاحية</Label>
+          <Input
+            type="date"
+            value={expiryDate}
+            onChange={(e) => setExpiryDate(e.target.value)}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.serialNumber && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">الرقم التسلسلي</Label>
+          <Input
+            value={serialNumber}
+            onChange={(e) => setSerialNumber(e.target.value)}
+            placeholder="IMEI / ISBN"
+          />
+        </div>
+      )}
+
+      {fieldsConfig.warranty && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">الضمان</Label>
+          <Input
+            value={warranty}
+            onChange={(e) => setWarranty(e.target.value)}
+            placeholder="مثال: 12 شهر"
+          />
+        </div>
+      )}
+
+      {fieldsConfig.sizeColor && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm">المقاس</Label>
+            <Input
+              value={size}
+              onChange={(e) => setSize(e.target.value)}
+              placeholder="S / M / L / XL"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm">اللون</Label>
+            <Input
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="أحمر، أزرق..."
+            />
+          </div>
+        </div>
+      )}
+
+      {fieldsConfig.minStockLevel && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">الحد الأدنى للمخزون</Label>
+          <Input
+            type="number"
+            min="0"
+            value={minStockLevel}
+            onChange={(e) => setMinStockLevel(e.target.value)}
+            placeholder="5"
+          />
+        </div>
+      )}
+
       {/* Buttons */}
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onClose} disabled={loading} className="flex-1 h-9 text-xs">
+      <div className="flex gap-2 pt-1">
+        <Button variant="outline" size="sm" onClick={onClose} disabled={loading} className="flex-1">
           {t('purchaseInvoice.finishAdding')}
         </Button>
-        <Button size="sm" onClick={handleSubmit} disabled={loading || !productName || !quantity || !costPrice} className="flex-1 h-9 text-xs">
-          <Plus className="w-3 h-3 ml-1" />
+        <Button size="sm" onClick={handleSubmit} disabled={loading || !productName || !quantity || !costPrice} className="flex-1">
+          <Plus className="w-4 h-4 ml-1" />
           {loading ? t('common.loading') : t('purchaseInvoice.addAndContinue')}
         </Button>
       </div>
