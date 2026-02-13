@@ -319,6 +319,64 @@ export default function Settings() {
 
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+  // Snapshot of settings when page loads - for revert functionality
+  const settingsSnapshotRef = useRef<{
+    storeSettings: typeof storeSettings;
+    exchangeRates: typeof exchangeRates;
+    currencyNames: typeof currencyNames;
+    notificationSettings: typeof notificationSettings;
+    printSettings: typeof printSettings;
+    backupSettings: typeof backupSettings;
+    hideMaintenanceSection: boolean;
+  } | null>(null);
+
+  // Capture snapshot on first render only
+  useEffect(() => {
+    if (!settingsSnapshotRef.current) {
+      settingsSnapshotRef.current = {
+        storeSettings: { ...storeSettings },
+        exchangeRates: { ...exchangeRates },
+        currencyNames: { ...currencyNames },
+        notificationSettings: { ...notificationSettings },
+        printSettings: { ...printSettings },
+        backupSettings: { ...backupSettings },
+        hideMaintenanceSection,
+      };
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = (() => {
+    const snap = settingsSnapshotRef.current;
+    if (!snap) return false;
+    return (
+      JSON.stringify(storeSettings) !== JSON.stringify(snap.storeSettings) ||
+      JSON.stringify(exchangeRates) !== JSON.stringify(snap.exchangeRates) ||
+      JSON.stringify(currencyNames) !== JSON.stringify(snap.currencyNames) ||
+      JSON.stringify(notificationSettings) !== JSON.stringify(snap.notificationSettings) ||
+      JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings) ||
+      JSON.stringify(backupSettings) !== JSON.stringify(snap.backupSettings) ||
+      hideMaintenanceSection !== snap.hideMaintenanceSection
+    );
+  })();
+
+  // Revert all settings to snapshot
+  const handleRevert = () => {
+    const snap = settingsSnapshotRef.current;
+    if (!snap) return;
+    setStoreSettings({ ...snap.storeSettings });
+    setExchangeRates({ ...snap.exchangeRates });
+    setCurrencyNames({ ...snap.currencyNames });
+    setNotificationSettings({ ...snap.notificationSettings });
+    setPrintSettings({ ...snap.printSettings });
+    setBackupSettings({ ...snap.backupSettings });
+    setHideMaintenanceSection(snap.hideMaintenanceSection);
+    toast({
+      title: t('common.success'),
+      description: isRTL ? 'تم التراجع عن التغييرات' : 'Changes reverted',
+    });
+  };
+
   // Handlers
   const handleSaveSettings = async () => {
     const tryRate = Number(exchangeRates.TRY);
@@ -382,6 +440,17 @@ export default function Settings() {
 
     setIsSavingSettings(false);
 
+    // Update snapshot after successful save
+    settingsSnapshotRef.current = {
+      storeSettings: { ...storeSettings },
+      exchangeRates: { ...exchangeRates },
+      currencyNames: { ...currencyNames },
+      notificationSettings: { ...notificationSettings },
+      printSettings: { ...printSettings },
+      backupSettings: { ...backupSettings },
+      hideMaintenanceSection,
+    };
+
     if (cloudSuccess) {
       toast({
         title: t('common.saved'),
@@ -390,7 +459,7 @@ export default function Settings() {
     } else {
       toast({
         title: t('common.saved'),
-        description: 'تم الحفظ محلياً. قد يكون هناك مشكلة في المزامنة السحابية.',
+        description: isRTL ? 'تم الحفظ محلياً. قد يكون هناك مشكلة في المزامنة السحابية.' : 'Saved locally. Cloud sync may have an issue.',
       });
     }
   };
@@ -897,13 +966,7 @@ export default function Settings() {
       case 'currencies':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
-              <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
-                {isSavingSettings ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
-                حفظ العملات
-              </Button>
-            </div>
+            <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
 
             {/* العملة الأولى */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-4">
@@ -1318,17 +1381,12 @@ export default function Settings() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* Header with Save Button */}
-      <div className="flex items-center justify-between gap-4 pr-14 md:pr-0">
+      {/* Header */}
+      <div className="flex items-center gap-4 pr-14 md:pr-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
         </div>
-
-        <Button size="lg" className="px-6 md:px-8 py-3 text-base shrink-0" onClick={handleSaveSettings}>
-          <Save className="w-5 h-5 ml-2" />
-          <span className="hidden sm:inline">{t('common.save')}</span>
-        </Button>
       </div>
 
       {/* Tabs Grid */}
@@ -1490,6 +1548,41 @@ export default function Settings() {
         }}
         userId={passwordChangeUserId || undefined}
       />
+
+      {/* Floating Save/Revert Bar */}
+      <div
+        className={cn(
+          "fixed bottom-0 inset-x-0 z-50 transition-all duration-300 ease-in-out",
+          hasUnsavedChanges
+            ? "translate-y-0 opacity-100"
+            : "translate-y-full opacity-0 pointer-events-none"
+        )}
+      >
+        <div className="bg-background/80 backdrop-blur-xl border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
+          <div className="max-w-screen-xl mx-auto px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-between gap-3">
+            <Button
+              variant="outline"
+              onClick={handleRevert}
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              {isRTL ? 'تراجع' : 'Revert'}
+            </Button>
+            <Button
+              onClick={handleSaveSettings}
+              disabled={isSavingSettings}
+              className="gap-2 px-6"
+            >
+              {isSavingSettings ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {t('common.save')}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
