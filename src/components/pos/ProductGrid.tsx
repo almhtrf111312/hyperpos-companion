@@ -82,12 +82,17 @@ export function ProductGrid({
     }
   };
 
+  const touchMovedRef = useRef(false);
+
   const handleLongPressStart = (product: Product) => {
+    touchMovedRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
-      setSelectedProduct(product);
-      setDetailsDialogOpen(true);
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
+      if (!touchMovedRef.current) {
+        setSelectedProduct(product);
+        setDetailsDialogOpen(true);
+        if (navigator.vibrate) navigator.vibrate(50);
+      }
+    }, 1000);
   };
 
   const handleLongPressEnd = () => {
@@ -95,6 +100,11 @@ export function ProductGrid({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  };
+
+  const handleTouchMove = () => {
+    touchMovedRef.current = true;
+    handleLongPressEnd();
   };
 
   const handleProductClick = (product: Product) => {
@@ -107,6 +117,7 @@ export function ProductGrid({
     onTouchStart: () => handleLongPressStart(product),
     onTouchEnd: handleLongPressEnd,
     onTouchCancel: handleLongPressEnd,
+    onTouchMove: handleTouchMove,
     onMouseDown: () => handleLongPressStart(product),
     onMouseUp: handleLongPressEnd,
     onMouseLeave: handleLongPressEnd,
@@ -136,7 +147,7 @@ export function ProductGrid({
                 "p-2 md:p-2.5 transition-colors",
                 viewMode === 'grid' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
-              title="بطاقات"
+              title={t('pos.viewGrid')}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -146,7 +157,7 @@ export function ProductGrid({
                 "p-2 md:p-2.5 transition-colors",
                 viewMode === 'list' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
-              title="أسطر"
+              title={t('pos.viewList')}
             >
               <List className="w-4 h-4" />
             </button>
@@ -156,7 +167,7 @@ export function ProductGrid({
                 "p-2 md:p-2.5 transition-colors",
                 viewMode === 'compact' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
-              title="بدون صور"
+              title={t('pos.viewCompact')}
             >
               <AlignJustify className="w-4 h-4" />
             </button>

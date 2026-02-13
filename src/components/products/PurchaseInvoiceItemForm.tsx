@@ -420,7 +420,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       {/* Dynamic Fields Based on Settings */}
       {fieldsConfig.wholesalePrice && (
         <div className="space-y-1.5">
-          <Label className="text-sm">سعر الجملة</Label>
+          <Label className="text-sm">{t('products.wholesalePrice')}</Label>
           <Input
             type="number"
             step="0.01"

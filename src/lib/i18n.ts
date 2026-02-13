@@ -421,6 +421,21 @@ export const translations = {
     'products.saveProduct': 'حفظ المنتج',
     'products.unitSettings': 'إعدادات الوحدات (كرتونة / قطعة)',
     'products.minStockLevelLbl': 'الحد الأدنى للمخزون',
+    'products.profitMargin': 'هامش الربح',
+    'products.avgDailyProfit': 'متوسط الربح اليومي',
+    'products.bulkPrice': 'سعر الجملة',
+    'products.profitTrend': 'تطور الأرباح',
+    'products.noDataInPeriod': 'لا توجد بيانات في الفترة المحددة',
+    'products.profitTrendDays': 'تطور الأرباح - آخر {days} يوم',
+    'products.compareProfits': 'مقارنة الربح الإجمالي وصافي الربح على مدار الفترة',
+    'products.totalSalesLabel': 'إجمالي المبيعات',
+    'products.grossProfitLabel': 'الربح الإجمالي',
+    'products.expensesLabel': 'المصروفات',
+    'products.netProfitLabel': 'صافي الربح',
+    'products.dateLabel': 'التاريخ',
+    'pos.viewGrid': 'بطاقات',
+    'pos.viewList': 'أسطر',
+    'pos.viewCompact': 'بدون صور',
 
 
     // Units
@@ -1852,6 +1867,21 @@ export const translations = {
     'products.saveProduct': 'Save Product',
     'products.unitSettings': 'Unit Settings (Carton / Piece)',
     'products.minStockLevelLbl': 'Minimum Stock Level',
+    'products.profitMargin': 'Profit Margin',
+    'products.avgDailyProfit': 'Avg Daily Profit',
+    'products.bulkPrice': 'Wholesale Price',
+    'products.profitTrend': 'Profit Trend',
+    'products.noDataInPeriod': 'No data in the selected period',
+    'products.profitTrendDays': 'Profit Trend - Last {days} days',
+    'products.compareProfits': 'Compare gross and net profit over the period',
+    'products.totalSalesLabel': 'Total Sales',
+    'products.grossProfitLabel': 'Gross Profit',
+    'products.expensesLabel': 'Expenses',
+    'products.netProfitLabel': 'Net Profit',
+    'products.dateLabel': 'Date',
+    'pos.viewGrid': 'Grid',
+    'pos.viewList': 'List',
+    'pos.viewCompact': 'Compact',
 
 
 

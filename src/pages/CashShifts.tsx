@@ -99,26 +99,26 @@ export default function CashShifts() {
     const interval = setInterval(() => {
       const status = calculateShiftStatus(openShift);
       setShiftStatus(status);
-    }, 30000); // Every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [openShift]);
 
   // Get user display name
-  const userName = profile?.full_name || user?.email?.split('@')[0] || 'مستخدم';
+  const userName = profile?.full_name || user?.email?.split('@')[0] || t('products.defaultUser');
   const userId = user?.id || 'unknown';
 
   // Handle start shift
   const handleStartShift = () => {
     const amount = parseFloat(openingCash);
     if (isNaN(amount) || amount < 0) {
-      toast.error('يرجى إدخال مبلغ صحيح');
+      toast.error(t('cashShifts.enterValidAmount'));
       return;
     }
 
     const newShift = openShiftFn(amount, userId, userName);
-    addActivityLog('shift_opened', userId, userName, `فتح وردية جديدة برصيد ${amount.toFixed(2)} `);
-    toast.success('تم فتح الوردية بنجاح');
+    addActivityLog('shift_opened', userId, userName, `${t('cashShifts.startShift')} - ${amount.toFixed(2)}`);
+    toast.success(t('cashShifts.shiftOpened'));
 
     setShowStartDialog(false);
     setOpeningCash('');
@@ -131,22 +131,22 @@ export default function CashShifts() {
 
     const amount = parseFloat(closingCash);
     if (isNaN(amount) || amount < 0) {
-      toast.error('يرجى إدخال المبلغ الفعلي في الصندوق');
+      toast.error(t('cashShifts.enterValidAmount'));
       return;
     }
 
-    const result = closeShiftFn(amount, createAdjustment ? 'تسوية تلقائية للفرق' : undefined);
+    const result = closeShiftFn(amount, createAdjustment ? t('cashShifts.createAdjustment') : undefined);
 
     if (result) {
       const { shift: closedShift, discrepancy } = result;
       const discrepancyText = discrepancy === 0
-        ? 'بدون فرق'
+        ? t('cashShifts.noDiscrepancy')
         : discrepancy > 0
-          ? `فائض ${discrepancy.toFixed(2)} `
-          : `عجز ${Math.abs(discrepancy).toFixed(2)} `;
+          ? `${t('cashShifts.surplus')} ${discrepancy.toFixed(2)}`
+          : `${t('cashShifts.shortage')} ${Math.abs(discrepancy).toFixed(2)}`;
 
-      addActivityLog('shift_closed', userId, userName, `إغلاق الوردية - ${discrepancyText} `);
-      toast.success('تم إغلاق الوردية بنجاح');
+      addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText}`);
+      toast.success(t('cashShifts.shiftClosed'));
     }
 
     setShowCloseDialog(false);
@@ -174,26 +174,26 @@ export default function CashShifts() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Wallet className="h-7 w-7 text-primary" />
-            الصندوق والورديات
+            {t('cashShifts.pageTitle')}
           </h1>
-          <p className="text-muted-foreground mt-1">إدارة الورديات النقدية ومراقبة الصندوق</p>
+          <p className="text-muted-foreground mt-1">{t('cashShifts.pageSubtitle')}</p>
         </div>
 
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadData}>
-            <RefreshCw className="h-4 w-4 ml-2" />
-            تحديث
+            <RefreshCw className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+            {t('cashShifts.refresh')}
           </Button>
 
           {openShift ? (
             <Button variant="destructive" onClick={() => setShowCloseDialog(true)}>
-              <StopCircle className="h-4 w-4 ml-2" />
-              إغلاق الوردية
+              <StopCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              {t('cashShifts.closeShift')}
             </Button>
           ) : (
             <Button onClick={() => setShowStartDialog(true)}>
-              <PlayCircle className="h-4 w-4 ml-2" />
-              فتح وردية
+              <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              {t('cashShifts.startShift')}
             </Button>
           )}
         </div>
@@ -207,41 +207,41 @@ export default function CashShifts() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary animate-pulse" />
-                  وردية مفتوحة
+                  {t('cashShifts.currentShift')}
                 </CardTitle>
                 <CardDescription>
-                  بدأت في {formatDateTime(openShift.openedAt)} • {openShift.userName}
+                  {t('cashShifts.startedAt')} {formatDateTime(openShift.openedAt)} • {openShift.userName}
                 </CardDescription>
               </div>
               <Badge variant="default" className="bg-green-500">
-                نشطة
+                {t('cashShifts.active')}
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-background rounded-lg p-4 border">
-                <div className="text-sm text-muted-foreground mb-1">رصيد الافتتاح</div>
+                <div className="text-sm text-muted-foreground mb-1">{t('cashShifts.openingCash')}</div>
                 <div className="text-xl font-bold">{formatCurrency(openShift.openingCash, '$')}</div>
               </div>
               <div className="bg-background rounded-lg p-4 border">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                  المبيعات النقدية
+                  {t('cashShifts.cashSales')}
                 </div>
                 <div className="text-xl font-bold text-green-600">{formatCurrency(shiftStatus.cashSales, '$')}</div>
               </div>
               <div className="bg-background rounded-lg p-4 border">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <TrendingDown className="h-4 w-4 text-red-500" />
-                  المصروفات
+                  {t('cashShifts.cashExpenses')}
                 </div>
                 <div className="text-xl font-bold text-red-600">{formatCurrency(shiftStatus.cashExpenses, '$')}</div>
               </div>
               <div className="bg-background rounded-lg p-4 border border-primary">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <DollarSign className="h-4 w-4 text-primary" />
-                  الرصيد المتوقع
+                  {t('cashShifts.expectedCash')}
                 </div>
                 <div className="text-xl font-bold text-primary">{formatCurrency(shiftStatus.expectedCash, '$')}</div>
               </div>
@@ -252,11 +252,11 @@ export default function CashShifts() {
         <Card className="border-dashed border-2">
           <CardContent className="py-12 text-center">
             <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">لا توجد وردية مفتوحة</h3>
-            <p className="text-muted-foreground mb-4">ابدأ وردية جديدة لتتبع المعاملات النقدية</p>
+            <h3 className="text-lg font-semibold mb-2">{t('cashShifts.noOpenShift')}</h3>
+            <p className="text-muted-foreground mb-4">{t('cashShifts.startNewShift')}</p>
             <Button onClick={() => setShowStartDialog(true)}>
-              <PlayCircle className="h-4 w-4 ml-2" />
-              فتح وردية جديدة
+              <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              {t('cashShifts.startShift')}
             </Button>
           </CardContent>
         </Card>
@@ -265,28 +265,28 @@ export default function CashShifts() {
       {/* Recent Shifts */}
       <Card>
         <CardHeader>
-          <CardTitle>الورديات السابقة</CardTitle>
-          <CardDescription>آخر 10 ورديات</CardDescription>
+          <CardTitle>{t('cashShifts.recentShifts')}</CardTitle>
+          <CardDescription>{t('cashShifts.last10Shifts')}</CardDescription>
         </CardHeader>
         <CardContent>
           {recentShifts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              لا توجد ورديات سابقة
+              {t('cashShifts.noShifts')}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>المستخدم</TableHead>
-                    <TableHead>وقت الفتح</TableHead>
-                    <TableHead>وقت الإغلاق</TableHead>
-                    <TableHead>الافتتاح</TableHead>
-                    <TableHead>المبيعات</TableHead>
-                    <TableHead>المتوقع</TableHead>
-                    <TableHead>الفعلي</TableHead>
-                    <TableHead>الفرق</TableHead>
-                    <TableHead>الحالة</TableHead>
+                    <TableHead>{t('cashShifts.user')}</TableHead>
+                    <TableHead>{t('cashShifts.openTime')}</TableHead>
+                    <TableHead>{t('cashShifts.closeTime')}</TableHead>
+                    <TableHead>{t('cashShifts.opening')}</TableHead>
+                    <TableHead>{t('cashShifts.sales')}</TableHead>
+                    <TableHead>{t('cashShifts.expected')}</TableHead>
+                    <TableHead>{t('cashShifts.actual')}</TableHead>
+                    <TableHead>{t('cashShifts.discrepancy')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -320,7 +320,7 @@ export default function CashShifts() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={shift.status === 'open' ? 'default' : 'secondary'}>
-                          {shift.status === 'open' ? 'مفتوحة' : 'مغلقة'}
+                          {shift.status === 'open' ? t('cashShifts.status.open') : t('cashShifts.status.closed')}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -338,16 +338,16 @@ export default function CashShifts() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PlayCircle className="h-5 w-5 text-primary" />
-              فتح وردية جديدة
+              {t('cashShifts.startShiftTitle')}
             </DialogTitle>
             <DialogDescription>
-              أدخل المبلغ الموجود في الصندوق عند بداية الوردية
+              {t('cashShifts.startShiftDesc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="openingCash">رصيد الافتتاح ($)</Label>
+              <Label htmlFor="openingCash">{t('cashShifts.openingCash')} ($)</Label>
               <Input
                 id="openingCash"
                 type="number"
@@ -361,16 +361,16 @@ export default function CashShifts() {
             </div>
 
             <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-              <strong>الموظف:</strong> {userName}
+              <strong>{t('cashShifts.employee')}:</strong> {userName}
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
-              إلغاء
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleStartShift}>
-              فتح الوردية
+              {t('cashShifts.startShift')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -382,10 +382,10 @@ export default function CashShifts() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <StopCircle className="h-5 w-5 text-destructive" />
-              إغلاق الوردية
+              {t('cashShifts.closeShiftTitle')}
             </DialogTitle>
             <DialogDescription>
-              أدخل المبلغ الفعلي الموجود في الصندوق الآن
+              {t('cashShifts.closeShiftDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -393,26 +393,26 @@ export default function CashShifts() {
             {/* Summary */}
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-muted/50 rounded-lg p-3">
-                <div className="text-muted-foreground">رصيد الافتتاح</div>
+                <div className="text-muted-foreground">{t('cashShifts.openingCash')}</div>
                 <div className="font-bold">{formatCurrency(openShift?.openingCash || 0, '$')}</div>
               </div>
               <div className="bg-green-50 dark:bg-green-950 rounded-lg p-3">
-                <div className="text-muted-foreground">المبيعات</div>
+                <div className="text-muted-foreground">{t('cashShifts.cashSales')}</div>
                 <div className="font-bold text-green-600">{formatCurrency(shiftStatus.cashSales, '$')}</div>
               </div>
               <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3">
-                <div className="text-muted-foreground">المصروفات</div>
+                <div className="text-muted-foreground">{t('cashShifts.cashExpenses')}</div>
                 <div className="font-bold text-red-600">{formatCurrency(shiftStatus.cashExpenses, '$')}</div>
               </div>
               <div className="bg-primary/10 rounded-lg p-3">
-                <div className="text-muted-foreground">المتوقع</div>
+                <div className="text-muted-foreground">{t('cashShifts.expected')}</div>
                 <div className="font-bold text-primary">{formatCurrency(shiftStatus.expectedCash, '$')}</div>
               </div>
             </div>
 
             {/* Input */}
             <div className="space-y-2">
-              <Label htmlFor="closingCash">المبلغ الفعلي في الصندوق ($)</Label>
+              <Label htmlFor="closingCash">{t('cashShifts.closingCash')} ($)</Label>
               <Input
                 id="closingCash"
                 type="number"
@@ -427,12 +427,12 @@ export default function CashShifts() {
 
             {/* Discrepancy Preview */}
             {closingCash && (
-              <div className={`rounded - lg p - 4 border - 2 ${previewDiscrepancy === 0
+              <div className={`rounded-lg p-4 border-2 ${previewDiscrepancy === 0
                   ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
                   : previewDiscrepancy > 0
                     ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
                     : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                } `}>
+                }`}>
                 <div className="flex items-center gap-2 mb-1">
                   {previewDiscrepancy === 0 ? (
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -443,18 +443,18 @@ export default function CashShifts() {
                   )}
                   <span className="font-semibold">
                     {previewDiscrepancy === 0
-                      ? 'الصندوق متطابق'
+                      ? t('cashShifts.noDiscrepancy')
                       : previewDiscrepancy > 0
-                        ? 'فائض في الصندوق'
-                        : 'عجز في الصندوق'}
+                        ? t('cashShifts.surplus')
+                        : t('cashShifts.shortage')}
                   </span>
                 </div>
-                <div className={`text - 2xl font - bold ${previewDiscrepancy === 0
+                <div className={`text-2xl font-bold ${previewDiscrepancy === 0
                     ? 'text-green-600'
                     : previewDiscrepancy > 0
                       ? 'text-blue-600'
                       : 'text-red-600'
-                  } `}>
+                  }`}>
                   {previewDiscrepancy > 0 ? '+' : ''}{formatCurrency(previewDiscrepancy, '$')}
                 </div>
               </div>
@@ -469,7 +469,7 @@ export default function CashShifts() {
                   onCheckedChange={(checked) => setCreateAdjustment(checked as boolean)}
                 />
                 <Label htmlFor="createAdjustment" className="cursor-pointer text-sm">
-                  تسجيل الفرق كمصروف تسوية تلقائي
+                  {t('cashShifts.createAdjustment')}
                 </Label>
               </div>
             )}
@@ -477,10 +477,10 @@ export default function CashShifts() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
-              إلغاء
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleCloseShift}>
-              إغلاق الوردية
+              {t('cashShifts.closeShift')}
             </Button>
           </DialogFooter>
         </DialogContent>

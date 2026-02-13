@@ -32,9 +32,9 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xs mx-4 max-h-[60vh] overflow-y-auto rounded-2xl p-3 [&>button[aria-label='Close']]:hidden">
-        {/* Close Button - Top Right */}
-        <div className="absolute left-2 top-2 z-10">
+      <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto rounded-2xl p-4 [&>button[aria-label='Close']]:hidden">
+        {/* Close Button */}
+        <div className="absolute start-2 top-2 z-10">
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-colors"
@@ -47,10 +47,10 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
           <DialogTitle className="text-base font-bold text-center px-6 leading-tight">{product.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2">
-          {/* Product Image - Smaller */}
+        <div className="space-y-3">
+          {/* Product Image */}
           {product.image ? (
-            <div className="w-full h-28 rounded-lg overflow-hidden bg-muted">
+            <div className="w-full h-32 rounded-xl overflow-hidden bg-muted">
               <img
                 src={product.image}
                 alt={product.name}
@@ -58,7 +58,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
               />
             </div>
           ) : (
-            <div className="w-full h-20 rounded-lg bg-muted flex items-center justify-center">
+            <div className="w-full h-24 rounded-xl bg-muted flex items-center justify-center">
               <Package className="w-10 h-10 text-muted-foreground/50" />
             </div>
           )}
@@ -66,7 +66,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
           {/* Product Details Grid */}
           <div className="grid grid-cols-2 gap-3">
             {/* Category */}
-            <div className="glass-card p-3 rounded-lg">
+            <div className="glass-card p-3 rounded-xl">
               <div className="flex items-center gap-2 mb-1">
                 <Layers className="w-4 h-4 text-primary" />
                 <span className="text-xs text-muted-foreground">{t('products.category')}</span>
@@ -75,7 +75,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
             </div>
 
             {/* Sale Price */}
-            <div className="glass-card p-3 rounded-lg">
+            <div className="glass-card p-3 rounded-xl">
               <div className="flex items-center gap-2 mb-1">
                 <DollarSign className="w-4 h-4 text-green-500" />
                 <span className="text-xs text-muted-foreground">{t('products.salePrice')}</span>
@@ -85,11 +85,11 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
             {/* Bulk Price (if available) */}
             {product.bulkSalePrice && product.bulkSalePrice > 0 && (
-              <div className="glass-card p-3 rounded-lg">
+              <div className="glass-card p-3 rounded-xl">
                 <div className="flex items-center gap-2 mb-1">
                   <Box className="w-4 h-4 text-blue-500" />
                   <span className="text-xs text-muted-foreground">
-                    سعر الجملة ({product.bulkUnit || 'كرتونة'})
+                    {t('products.bulkPrice')} ({product.bulkUnit || t('products.unitCarton')})
                   </span>
                 </div>
                 <p className="font-bold text-sm text-blue-600">${product.bulkSalePrice}</p>
@@ -98,7 +98,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
             {/* Barcode */}
             {product.barcode && (
-              <div className="glass-card p-3 rounded-lg col-span-2">
+              <div className="glass-card p-3 rounded-xl col-span-2">
                 <div className="flex items-center gap-2 mb-1">
                   <Barcode className="w-4 h-4 text-primary" />
                   <span className="text-xs text-muted-foreground">{t('products.barcode')}</span>
@@ -109,7 +109,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
           </div>
 
           {/* Stock Information */}
-          <div className="glass-card p-4 rounded-lg">
+          <div className="glass-card p-4 rounded-xl">
             <h4 className="font-semibold mb-2 text-sm">{t('products.stock')}</h4>
             <DualUnitDisplayCompact
               totalPieces={product.quantity}
@@ -121,18 +121,18 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
           {/* Cost Prices (if available) */}
           {(product.costPrice || product.bulkCostPrice) && (
-            <div className="glass-card p-4 rounded-lg">
+            <div className="glass-card p-4 rounded-xl">
               <h4 className="font-semibold mb-2 text-sm">{t('products.costPrice')}</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {product.costPrice && (
                   <div>
-                    <span className="text-muted-foreground">{product.smallUnit || 'قطعة'}: </span>
+                    <span className="text-muted-foreground">{product.smallUnit || t('products.unitPiece')}: </span>
                     <span className="font-semibold">${product.costPrice}</span>
                   </div>
                 )}
                 {product.bulkCostPrice && product.bulkCostPrice > 0 && (
                   <div>
-                    <span className="text-muted-foreground">{product.bulkUnit || 'كرتونة'}: </span>
+                    <span className="text-muted-foreground">{product.bulkUnit || t('products.unitCarton')}: </span>
                     <span className="font-semibold">${product.bulkCostPrice}</span>
                   </div>
                 )}
@@ -142,10 +142,10 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
           {/* Profit Margin (if cost price available) */}
           {product.costPrice && product.costPrice > 0 && (
-            <div className="glass-card p-4 rounded-lg bg-primary/5">
-              <h4 className="font-semibold mb-2 text-sm">هامش الربح</h4>
+            <div className="glass-card p-4 rounded-xl bg-primary/5">
+              <h4 className="font-semibold mb-2 text-sm">{t('products.profitMargin')}</h4>
               <div className="text-sm">
-                <span className="text-muted-foreground">هامش الربح: </span>
+                <span className="text-muted-foreground">{t('products.profitMargin')}: </span>
                 <span className="font-bold text-primary">
                   {((((product.price - product.costPrice) / product.costPrice) * 100).toFixed(2))}%
                 </span>
@@ -155,12 +155,12 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
         </div>
 
         {/* Footer with Explicit Close Button */}
-        <div className="mt-4 flex justify-center sticky bottom-0 bg-background/95 backdrop-blur py-2 border-t -mx-3 px-3">
+        <div className="mt-3 flex justify-center sticky bottom-0 bg-background/95 backdrop-blur py-2 border-t -mx-4 px-4">
           <button
             onClick={onClose}
-            className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2 rounded-lg transition-colors"
+            className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2.5 rounded-xl transition-colors"
           >
-            {t('common.close') || 'إغلاق'}
+            {t('common.close')}
           </button>
         </div>
       </DialogContent>
