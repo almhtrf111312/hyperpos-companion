@@ -104,25 +104,10 @@ jobs:
         # ✅ حقن signingConfigs في build.gradle لضمان توقيع ثابت
         GRADLE_FILE="android/app/build.gradle"
         
-        # إنشاء ملف signing config مؤقت
-        cat > /tmp/signing_block.gradle << 'SIGN'
-    signingConfigs {
-        release {
-            storeFile file("flowpos-release.keystore")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias System.getenv("KEY_ALIAS") ?: ""
-            keyPassword System.getenv("KEY_PASSWORD") ?: ""
-        }
-    }
-
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-        }
-SIGN
+        # إنشاء ملف signing config مؤقت باستخدام printf
+        printf '    signingConfigs {\n        release {\n            storeFile file("flowpos-release.keystore")\n            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""\n            keyAlias System.getenv("KEY_ALIAS") ?: ""\n            keyPassword System.getenv("KEY_PASSWORD") ?: ""\n        }\n    }\n\n    buildTypes {\n        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false\n        }\n' > /tmp/signing_block.gradle
         
-        # استبدال buildTypes block بالكامل
+        # استبدال buildTypes block
         sed -i '/buildTypes {/r /tmp/signing_block.gradle' "$GRADLE_FILE"
         sed -i '0,/buildTypes {/{/buildTypes {/d}' "$GRADLE_FILE"
         
