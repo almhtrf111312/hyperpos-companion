@@ -239,14 +239,14 @@ export default function Dashboard() {
           value={formatCurrency(stats.todaySales)}
           subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
           icon={<DollarSign className="w-6 h-6" />}
-          variant="primary"
+          variant="success"
           linkTo="/pos"
         />
         {/* Sales Week */}
-        <div className="glass rounded-xl p-4 card-hover bg-primary/5 border-primary/20">
+        <div className="glass rounded-xl p-4 card-hover bg-success/5 border-success/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
-              <Calendar className="w-5 h-5 text-primary" />
+            <div className="p-2 rounded-lg bg-success/10 backdrop-blur-sm">
+              <Calendar className="w-5 h-5 text-success" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">مبيعات هذا الأسبوع</p>
@@ -255,10 +255,10 @@ export default function Dashboard() {
           </div>
         </div>
         {/* Sales Month */}
-        <div className="glass rounded-xl p-4 card-hover bg-primary/5 border-primary/20">
+        <div className="glass rounded-xl p-4 card-hover bg-success/5 border-success/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
-              <BarChart3 className="w-5 h-5 text-primary" />
+            <div className="p-2 rounded-lg bg-success/10 backdrop-blur-sm">
+              <BarChart3 className="w-5 h-5 text-success" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">مبيعات هذا الشهر</p>
@@ -276,7 +276,7 @@ export default function Dashboard() {
           value={formatCurrency(stats.netProfit)}
           subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
           icon={<TrendingUp className="w-6 h-6" />}
-          variant={stats.netProfit >= 0 ? "success" : "warning"}
+          variant="primary"
           linkTo="/reports"
         />
         {/* Due Debts */}
