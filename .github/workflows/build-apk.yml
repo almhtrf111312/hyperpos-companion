@@ -22,7 +22,13 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
 
-    # 2. Node.js
+    # 2. Setup Gradle (يحل مشاكل الكاش والتوافق)
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.14.3'
+
+    # 3. Node.js
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
