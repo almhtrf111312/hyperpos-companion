@@ -8,6 +8,7 @@ import {
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
 import { supabase } from '@/integrations/supabase/client';
+import { saveProductsToIDB, loadProductsFromIDB } from '../indexeddb-cache';
 
 export interface CloudProduct {
   id: string;
@@ -151,49 +152,63 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
 // Cache for products
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 10000; // 10 ثواني فقط للمزامنة اللحظية
+const CACHE_TTL = 10000; // 10 seconds
 
-// Local storage key for offline fallback
+// Local storage key for offline fallback (legacy, kept as secondary fallback)
 const LOCAL_PRODUCTS_CACHE_KEY = 'hyperpos_products_cache';
 
-// Save products to localStorage as backup
+// Save products to IndexedDB + localStorage as backup
 const saveToLocalCache = (products: Product[]) => {
+  // Primary: IndexedDB
+  saveProductsToIDB(products).catch(e => console.warn('[ProductsCloud] IDB save failed:', e));
+  // Secondary: localStorage
   try {
     localStorage.setItem(LOCAL_PRODUCTS_CACHE_KEY, JSON.stringify({
       products,
       timestamp: Date.now()
     }));
   } catch (e) {
-    console.warn('Failed to save products to localStorage:', e);
+    console.warn('[ProductsCloud] localStorage save failed:', e);
   }
 };
 
-// Load products from localStorage
-const loadFromLocalCache = (): Product[] | null => {
+// Load products from IndexedDB first, then localStorage fallback
+const loadFromLocalCache = async (): Promise<Product[] | null> => {
+  // Try IndexedDB first (faster, larger capacity)
+  try {
+    const idbResult = await loadProductsFromIDB<Product>();
+    if (idbResult && idbResult.products.length > 0 && Date.now() - idbResult.timestamp < 86400000) {
+      console.log('[ProductsCloud] ✅ Serving from IndexedDB cache (' + idbResult.products.length + ' products)');
+      return idbResult.products;
+    }
+  } catch (e) {
+    console.warn('[ProductsCloud] IDB load failed:', e);
+  }
+
+  // Fallback: localStorage
   try {
     const cached = localStorage.getItem(LOCAL_PRODUCTS_CACHE_KEY);
     if (cached) {
       const { products, timestamp } = JSON.parse(cached);
-      // Cache is valid for 24 hours locally
       if (Date.now() - timestamp < 86400000) {
+        console.log('[ProductsCloud] Serving from localStorage fallback');
         return products;
       }
     }
   } catch (e) {
-    console.warn('Failed to load products from localStorage:', e);
+    console.warn('[ProductsCloud] localStorage load failed:', e);
   }
   return null;
 };
 
-// Load products from cloud with caching and localStorage fallback
+// Load products from cloud with caching and IndexedDB/localStorage fallback
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
 
-  // إذا لا يوجد مستخدم، جرب التحميل من localStorage
+  // If no user, try local cache
   if (!userId) {
-    const localProducts = loadFromLocalCache();
+    const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
-      console.log('[ProductsCloud] Serving from localStorage (no user)');
       return localProducts;
     }
     return [];
@@ -213,21 +228,19 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
     productsCache = cloudProducts.map(toProduct);
     cacheTimestamp = Date.now();
 
-    // حفظ في localStorage كـ backup
+    // Save to IndexedDB + localStorage as backup
     saveToLocalCache(productsCache);
 
     return productsCache;
   } catch (error) {
-    console.error('[ProductsCloud] Failed to fetch from cloud:', error);
+    console.error('[ProductsCloud] Cloud fetch failed, trying offline cache:', error);
 
-    // Fallback: محاولة التحميل من الذاكرة المحلية
-    const localProducts = loadFromLocalCache();
+    // Fallback: IndexedDB → localStorage → stale memory
+    const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
-      console.log('[ProductsCloud] Serving from localStorage (cloud failed)');
       return localProducts;
     }
 
-    // إذا كان هناك cache قديم في الذاكرة، استخدمه
     if (productsCache && productsCache.length > 0) {
       console.log('[ProductsCloud] Serving from stale memory cache');
       return productsCache;
