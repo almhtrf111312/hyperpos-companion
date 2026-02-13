@@ -201,10 +201,11 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number 
     const bgAlpha = mode === 'dark' 
       ? Math.max(0.1, 1 - alpha) 
       : Math.max(0.1, 1 - alpha);
+    // Use theme-aware colors instead of pure black/white
     root.style.setProperty('--glass-bg', 
       mode === 'dark' 
-        ? `rgba(0, 0, 0, ${bgAlpha})` 
-        : `rgba(255, 255, 255, ${bgAlpha})`);
+        ? `hsla(222, 47%, 8%, ${bgAlpha})` 
+        : `hsla(0, 0%, 100%, ${bgAlpha})`);
     root.style.setProperty('--glass-border', 
       mode === 'dark' ? `rgba(255, 255, 255, ${0.05 + alpha * 0.15})` : `rgba(0, 0, 0, ${0.05 + alpha * 0.1})`);
     root.style.setProperty('--blur-intensity', `${Math.max(8, 20 - transparency * 0.1)}px`);
