@@ -10,7 +10,7 @@ export interface Notification {
   message: string;
   timestamp: Date;
   read: boolean;
-  persistent?: boolean; // Persistent notifications won't be cleared with "clear all"
+  persistent?: boolean;
   data?: {
     customerId?: string;
     customerName?: string;
@@ -26,28 +26,45 @@ export interface Notification {
 
 interface NotificationsContextType {
   notifications: Notification[];
+  archivedNotifications: Notification[];
   unreadCount: number;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotification: (id: string) => void;
   clearAllNotifications: () => void;
+  archiveNotification: (id: string) => void;
+  restoreNotification: (id: string) => void;
+  deleteArchivedNotification: (id: string) => void;
+  clearAllArchived: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   refreshNotifications: () => void;
   checkLicenseStatus: (expiresAt: string | null, remainingDays: number | null, isTrial?: boolean) => void;
 }
 
-// Export context for safe usage in components that may render before provider is ready
 export const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
-// Helper to get expiry status from date string
+const ARCHIVED_STORAGE_KEY = 'hyperpos_archived_notifications';
+
+const loadArchivedFromStorage = (): Notification[] => {
+  try {
+    const raw = localStorage.getItem(ARCHIVED_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw).map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) }));
+  } catch { return []; }
+};
+
+const saveArchivedToStorage = (items: Notification[]) => {
+  try {
+    localStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(items));
+  } catch {}
+};
+
 const getExpiryStatus = (expiryDate: string): 'expired' | 'expiring_soon' | 'valid' => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const expiry = new Date(expiryDate);
   expiry.setHours(0, 0, 0, 0);
-  
   const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
   if (diffDays < 0) return 'expired';
   if (diffDays <= 30) return 'expiring_soon';
   return 'valid';
@@ -55,52 +72,41 @@ const getExpiryStatus = (expiryDate: string): 'expired' | 'expiring_soon' | 'val
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [archivedNotifications, setArchivedNotifications] = useState<Notification[]>(loadArchivedFromStorage);
   const [hasCheckedInitial, setHasCheckedInitial] = useState(false);
+
+  // Sync archived to localStorage
+  useEffect(() => {
+    saveArchivedToStorage(archivedNotifications);
+  }, [archivedNotifications]);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     setNotifications(prev => {
-      // Prevent duplicate notifications based on type and relevant data
       const exists = prev.some(n => {
         if (n.type !== notification.type) return false;
-        
-        // For product notifications, check productId
-        if (notification.data?.productId && n.data?.productId === notification.data.productId) {
-          return true;
-        }
-        
-        // For debt notifications, check customerId
-        if (notification.data?.customerId && n.data?.customerId === notification.data.customerId) {
-          return true;
-        }
-        
-        // For license notifications, always replace
+        if (notification.data?.productId && n.data?.productId === notification.data.productId) return true;
+        if (notification.data?.customerId && n.data?.customerId === notification.data.customerId) return true;
         if (n.type === 'license_status' || n.type === 'license_expiring') {
           return notification.type === 'license_status' || notification.type === 'license_expiring';
         }
-        
         return false;
       });
-      
       if (exists) return prev;
-      
+
       const newNotification: Notification = {
         ...notification,
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         timestamp: new Date(),
         read: false,
       };
-      
       return [newNotification, ...prev];
     });
-    
-    // Show toast notification (but not for license_status as it's informational)
+
     if (notification.type !== 'license_status') {
-      const toastType = notification.type.includes('overdue') || 
-                       notification.type === 'out_of_stock' || 
+      const toastType = notification.type.includes('overdue') ||
+                       notification.type === 'out_of_stock' ||
                        notification.type === 'expired'
-        ? 'error' 
-        : 'warning';
-      
+        ? 'error' : 'warning';
       if (toastType === 'error') {
         toast.error(notification.title, { description: notification.message });
       } else {
@@ -110,9 +116,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   }, []);
 
   const markAllAsRead = useCallback(() => {
@@ -124,29 +128,49 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearAllNotifications = useCallback(() => {
-    // Keep persistent notifications (like license status)
     setNotifications(prev => prev.filter(n => n.persistent));
+  }, []);
+
+  const archiveNotification = useCallback((id: string) => {
+    setNotifications(prev => {
+      const notification = prev.find(n => n.id === id);
+      if (notification) {
+        setArchivedNotifications(archived => [notification, ...archived]);
+      }
+      return prev.filter(n => n.id !== id);
+    });
+  }, []);
+
+  const restoreNotification = useCallback((id: string) => {
+    setArchivedNotifications(prev => {
+      const notification = prev.find(n => n.id === id);
+      if (notification) {
+        setNotifications(active => [notification, ...active]);
+      }
+      return prev.filter(n => n.id !== id);
+    });
+  }, []);
+
+  const deleteArchivedNotification = useCallback((id: string) => {
+    setArchivedNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const clearAllArchived = useCallback(() => {
+    setArchivedNotifications([]);
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Check license status and add notification
   const checkLicenseStatus = useCallback((expiresAt: string | null, remainingDays: number | null, isTrial?: boolean) => {
     if (!expiresAt || remainingDays === null) return;
-    
-    // Remove existing license notifications first
     setNotifications(prev => prev.filter(n => n.type !== 'license_status' && n.type !== 'license_expiring'));
-    
+
     const expiryDate = new Date(expiresAt).toLocaleDateString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      year: 'numeric', month: 'long', day: 'numeric',
     });
-    
     const trialPrefix = isTrial ? '(تجريبي) ' : '';
-    
+
     if (remainingDays <= 7) {
-      // Warning: License expiring soon
       const newNotification: Notification = {
         id: 'license_expiring_' + Date.now(),
         type: 'license_expiring',
@@ -155,47 +179,34 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         timestamp: new Date(),
         read: false,
         persistent: true,
-        data: {
-          licenseExpiresAt: expiresAt,
-          licenseDaysRemaining: remainingDays,
-        },
+        data: { licenseExpiresAt: expiresAt, licenseDaysRemaining: remainingDays },
       };
       setNotifications(prev => [newNotification, ...prev]);
-      
-      // Show toast for expiring
       toast.warning(newNotification.title, { description: newNotification.message });
     } else if (remainingDays <= 30 || isTrial) {
-      // Show notification for trial users or when 30 days or less remaining
       const newNotification: Notification = {
         id: 'license_status_' + Date.now(),
         type: 'license_status',
         title: `🔑 ${trialPrefix}حالة الترخيص`,
-        message: isTrial 
-          ? `متبقي ${remainingDays} يوم من الفترة التجريبية` 
+        message: isTrial
+          ? `متبقي ${remainingDays} يوم من الفترة التجريبية`
           : `الترخيص صالح حتى ${expiryDate} (متبقي ${remainingDays} يوم)`,
         timestamp: new Date(),
-        read: false, // Mark as unread to show badge
+        read: false,
         persistent: true,
-        data: {
-          licenseExpiresAt: expiresAt,
-          licenseDaysRemaining: remainingDays,
-        },
+        data: { licenseExpiresAt: expiresAt, licenseDaysRemaining: remainingDays },
       };
       setNotifications(prev => [newNotification, ...prev]);
     } else {
-      // Info: License status for long-term licenses
       const newNotification: Notification = {
         id: 'license_status_' + Date.now(),
         type: 'license_status',
         title: `✅ الترخيص مفعّل`,
         message: `الترخيص صالح حتى ${expiryDate}`,
         timestamp: new Date(),
-        read: true, // Mark as read by default (informational)
+        read: true,
         persistent: true,
-        data: {
-          licenseExpiresAt: expiresAt,
-          licenseDaysRemaining: remainingDays,
-        },
+        data: { licenseExpiresAt: expiresAt, licenseDaysRemaining: remainingDays },
       };
       setNotifications(prev => [newNotification, ...prev]);
     }
@@ -203,104 +214,61 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const checkAlerts = useCallback(async () => {
     try {
-      // Load real data from cloud
-      const [products, debts] = await Promise.all([
-        loadProductsCloud(),
-        loadDebtsCloud()
-      ]);
-      
+      const [products, debts] = await Promise.all([loadProductsCloud(), loadDebtsCloud()]);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Check overdue debts
       debts.forEach(debt => {
         if (debt.remainingDebt > 0 && debt.dueDate) {
           const dueDate = new Date(debt.dueDate);
           dueDate.setHours(0, 0, 0, 0);
-          
           const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          
           if (diffDays < 0) {
             addNotification({
-              type: 'debt_overdue',
-              title: 'دين متأخر',
+              type: 'debt_overdue', title: 'دين متأخر',
               message: `الدين المستحق من ${debt.customerName} بقيمة $${debt.remainingDebt} متأخر عن موعد السداد`,
-              data: {
-                customerId: debt.id,
-                customerName: debt.customerName,
-                amount: debt.remainingDebt,
-              },
+              data: { customerId: debt.id, customerName: debt.customerName, amount: debt.remainingDebt },
             });
           } else if (diffDays === 0) {
             addNotification({
-              type: 'debt_due_today',
-              title: 'دين مستحق اليوم',
+              type: 'debt_due_today', title: 'دين مستحق اليوم',
               message: `الدين المستحق من ${debt.customerName} بقيمة $${debt.remainingDebt} يستحق اليوم`,
-              data: {
-                customerId: debt.id,
-                customerName: debt.customerName,
-                amount: debt.remainingDebt,
-              },
+              data: { customerId: debt.id, customerName: debt.customerName, amount: debt.remainingDebt },
             });
           }
         }
       });
 
-      // Check low stock products
-      const lowStockProducts = products.filter(p => p.status === 'low_stock');
-      lowStockProducts.forEach(product => {
+      products.filter(p => p.status === 'low_stock').forEach(product => {
         addNotification({
-          type: 'low_stock',
-          title: 'مخزون منخفض',
+          type: 'low_stock', title: 'مخزون منخفض',
           message: `المنتج "${product.name}" لديه كمية منخفضة (${product.quantity} فقط)`,
-          data: {
-            productId: product.id,
-            productName: product.name,
-            quantity: product.quantity,
-          },
+          data: { productId: product.id, productName: product.name, quantity: product.quantity },
         });
       });
 
-      // Check out of stock products
-      const outOfStockProducts = products.filter(p => p.status === 'out_of_stock');
-      outOfStockProducts.forEach(product => {
+      products.filter(p => p.status === 'out_of_stock').forEach(product => {
         addNotification({
-          type: 'out_of_stock',
-          title: 'نفذ المخزون',
+          type: 'out_of_stock', title: 'نفذ المخزون',
           message: `المنتج "${product.name}" نفذ من المخزون`,
-          data: {
-            productId: product.id,
-            productName: product.name,
-            quantity: 0,
-          },
+          data: { productId: product.id, productName: product.name, quantity: 0 },
         });
       });
 
-      // Check expired and expiring products
       products.forEach(product => {
         if (product.expiryDate) {
           const status = getExpiryStatus(product.expiryDate);
           if (status === 'expired') {
             addNotification({
-              type: 'expired',
-              title: 'منتج منتهي الصلاحية ⚠️',
+              type: 'expired', title: 'منتج منتهي الصلاحية ⚠️',
               message: `المنتج "${product.name}" انتهت صلاحيته في ${product.expiryDate}`,
-              data: {
-                productId: product.id,
-                productName: product.name,
-                expiryDate: product.expiryDate,
-              },
+              data: { productId: product.id, productName: product.name, expiryDate: product.expiryDate },
             });
           } else if (status === 'expiring_soon') {
             addNotification({
-              type: 'expiring_soon',
-              title: 'صلاحية قريبة الانتهاء',
+              type: 'expiring_soon', title: 'صلاحية قريبة الانتهاء',
               message: `المنتج "${product.name}" ستنتهي صلاحيته في ${product.expiryDate}`,
-              data: {
-                productId: product.id,
-                productName: product.name,
-                expiryDate: product.expiryDate,
-              },
+              data: { productId: product.id, productName: product.name, expiryDate: product.expiryDate },
             });
           }
         }
@@ -311,19 +279,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [addNotification]);
 
   const refreshNotifications = useCallback(() => {
-    // Clear non-persistent notifications
     setNotifications(prev => prev.filter(n => n.persistent));
-    setTimeout(() => {
-      checkAlerts();
-    }, 100);
+    setTimeout(() => { checkAlerts(); }, 100);
   }, [checkAlerts]);
 
-  // Check for alerts on mount
   useEffect(() => {
     if (hasCheckedInitial) return;
     setHasCheckedInitial(true);
-
-    // Small delay to show toasts after page load
     const timer = setTimeout(checkAlerts, 1000);
     return () => clearTimeout(timer);
   }, [hasCheckedInitial, checkAlerts]);
@@ -331,11 +293,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   return (
     <NotificationsContext.Provider value={{
       notifications,
+      archivedNotifications,
       unreadCount,
       markAsRead,
       markAllAsRead,
       clearNotification,
       clearAllNotifications,
+      archiveNotification,
+      restoreNotification,
+      deleteArchivedNotification,
+      clearAllArchived,
       addNotification,
       refreshNotifications,
       checkLicenseStatus,
@@ -345,14 +312,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Default context value for when hook is used outside provider
 const defaultNotificationsContext: NotificationsContextType = {
   notifications: [],
+  archivedNotifications: [],
   unreadCount: 0,
   markAsRead: () => {},
   markAllAsRead: () => {},
   clearNotification: () => {},
   clearAllNotifications: () => {},
+  archiveNotification: () => {},
+  restoreNotification: () => {},
+  deleteArchivedNotification: () => {},
+  clearAllArchived: () => {},
   addNotification: () => {},
   refreshNotifications: () => {},
   checkLicenseStatus: () => {},
@@ -360,7 +331,6 @@ const defaultNotificationsContext: NotificationsContextType = {
 
 export function useNotifications() {
   const context = useContext(NotificationsContext);
-  // Return default context if not within provider (safe fallback)
   if (!context) {
     console.warn('useNotifications called outside NotificationsProvider, using default values');
     return defaultNotificationsContext;

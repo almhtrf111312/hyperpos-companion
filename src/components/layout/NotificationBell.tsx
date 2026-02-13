@@ -1,6 +1,6 @@
 import { useState, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, AlertTriangle, Clock, Package, X, CheckCheck, Trash2, CalendarX, Key, Shield, Pin, Loader2, CheckCircle } from 'lucide-react';
+import { Bell, AlertTriangle, Clock, Package, X, CheckCheck, Trash2, CalendarX, Key, Shield, Pin, Loader2, CheckCircle, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotifications, Notification } from '@/hooks/use-notifications';
 import {
@@ -21,46 +21,14 @@ import { useLanguage } from '@/hooks/use-language';
 import { useLicense } from '@/hooks/use-license';
 
 const notificationConfig: Record<Notification['type'], { icon: typeof AlertTriangle; color: string; bgColor: string }> = {
-  debt_overdue: {
-    icon: AlertTriangle,
-    color: 'text-destructive',
-    bgColor: 'bg-destructive/10',
-  },
-  debt_due_today: {
-    icon: Clock,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-  },
-  low_stock: {
-    icon: Package,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-  },
-  out_of_stock: {
-    icon: Package,
-    color: 'text-destructive',
-    bgColor: 'bg-destructive/10',
-  },
-  expired: {
-    icon: CalendarX,
-    color: 'text-destructive',
-    bgColor: 'bg-destructive/10',
-  },
-  expiring_soon: {
-    icon: CalendarX,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-  },
-  license_status: {
-    icon: Key,
-    color: 'text-primary',
-    bgColor: 'bg-primary/10',
-  },
-  license_expiring: {
-    icon: Shield,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-  },
+  debt_overdue: { icon: AlertTriangle, color: 'text-destructive', bgColor: 'bg-destructive/10' },
+  debt_due_today: { icon: Clock, color: 'text-warning', bgColor: 'bg-warning/10' },
+  low_stock: { icon: Package, color: 'text-warning', bgColor: 'bg-warning/10' },
+  out_of_stock: { icon: Package, color: 'text-destructive', bgColor: 'bg-destructive/10' },
+  expired: { icon: CalendarX, color: 'text-destructive', bgColor: 'bg-destructive/10' },
+  expiring_soon: { icon: CalendarX, color: 'text-warning', bgColor: 'bg-warning/10' },
+  license_status: { icon: Key, color: 'text-primary', bgColor: 'bg-primary/10' },
+  license_expiring: { icon: Shield, color: 'text-warning', bgColor: 'bg-warning/10' },
 };
 
 function formatTimeAgo(date: Date, isRTL: boolean): string {
@@ -103,8 +71,8 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
       unreadCount, 
       markAsRead, 
       markAllAsRead, 
-      clearNotification,
-      clearAllNotifications 
+      clearAllNotifications,
+      archiveNotification,
     } = useNotifications();
     
     const { activateCode, isTrial, isExpired, expiresAt, remainingDays } = useLicense();
@@ -132,14 +100,10 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
         setActivationError(isRTL ? 'يرجى إدخال كود التفعيل' : 'Please enter activation code');
         return;
       }
-
       setIsActivating(true);
       setActivationError(null);
-
       const result = await activateCode(activationCode.trim());
-
       setIsActivating(false);
-
       if (result.success) {
         setActivationSuccess(true);
         setActivationCode('');
@@ -157,30 +121,23 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
 
     const formatDate = (dateStr: string) => {
       return new Date(dateStr).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        year: 'numeric', month: 'long', day: 'numeric',
       });
     };
 
     const handleNotificationClick = (notification: Notification) => {
       markAsRead(notification.id);
-      
-      // For license notifications, show activation dialog instead of navigating
       if (notification.type === 'license_status' || notification.type === 'license_expiring') {
         setIsOpen(false);
         setShowActivationDialog(true);
         return;
       }
-      
-      // Navigate based on notification type
       if (notification.type === 'debt_overdue' || notification.type === 'debt_due_today') {
         navigate('/debts');
       } else if (notification.type === 'low_stock' || notification.type === 'out_of_stock' || 
                  notification.type === 'expired' || notification.type === 'expiring_soon') {
         navigate('/products');
       }
-      
       setIsOpen(false);
     };
 
@@ -195,10 +152,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                 compact ? "p-2" : "p-3"
               )}
             >
-              <Bell className={cn(
-                "text-muted-foreground",
-                compact ? "w-4 h-4" : "w-5 h-5"
-              )} />
+              <Bell className={cn("text-muted-foreground", compact ? "w-4 h-4" : "w-5 h-5")} />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -206,11 +160,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent 
-            className="w-80 md:w-96 p-0 bg-card border-border" 
-            align="end"
-            sideOffset={8}
-          >
+          <PopoverContent className="w-80 md:w-96 p-0 bg-card border-border" align="end" sideOffset={8}>
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
@@ -224,19 +174,12 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1">
-                {unreadCount > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 text-xs"
-                    onClick={markAllAsRead}
-                  >
-                    <CheckCheck className="w-4 h-4 me-1" />
-                    {isRTL ? 'قراءة الكل' : 'Mark all read'}
-                  </Button>
-                )}
-              </div>
+              {unreadCount > 0 && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={markAllAsRead}>
+                  <CheckCheck className="w-4 h-4 me-1" />
+                  {isRTL ? 'قراءة الكل' : 'Mark all read'}
+                </Button>
+              )}
             </div>
 
             {/* Notifications List */}
@@ -260,7 +203,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                       <div 
                         key={notification.id}
                         className={cn(
-                          "p-4 hover:bg-muted/50 transition-colors cursor-pointer relative group",
+                          "p-4 hover:bg-muted/50 transition-colors cursor-pointer relative",
                           !notification.read && "bg-primary/5"
                         )}
                         onClick={() => handleNotificationClick(notification)}
@@ -289,27 +232,26 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                             <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
                               {notification.message}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatTimeAgo(notification.timestamp, isRTL)}
-                            </p>
+                            <div className="flex items-center justify-between mt-1.5">
+                              <p className="text-xs text-muted-foreground">
+                                {formatTimeAgo(notification.timestamp, isRTL)}
+                              </p>
+                              {/* Always-visible Archive button */}
+                              {!notification.persistent && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    archiveNotification(notification.id);
+                                  }}
+                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors"
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
+                                  <span>{isRTL ? 'إخفاء' : 'Hide'}</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        
-                        {/* Delete button - only show for non-persistent notifications */}
-                        {!notification.persistent && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              clearNotification(notification.id);
-                            }}
-                            className={cn(
-                              "absolute top-2 p-1.5 rounded-lg bg-muted hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all",
-                              isRTL ? "left-2" : "right-2"
-                            )}
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
                     );
                   })}
@@ -345,7 +287,6 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
             </DialogHeader>
 
             <div className="space-y-4">
-              {/* Current License Status */}
               <div className="bg-muted rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm text-muted-foreground">
@@ -356,8 +297,8 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                     isExpired 
                       ? 'bg-destructive/10 text-destructive' 
                       : isTrial 
-                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        ? 'bg-warning/10 text-warning'
+                        : 'bg-success/10 text-success'
                   )}>
                     {isExpired 
                       ? (isRTL ? 'منتهي' : 'Expired')
@@ -370,32 +311,23 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                 
                 {expiresAt && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {isRTL ? 'تاريخ الانتهاء:' : 'Expires:'}
-                    </span>
-                    <span className={isExpired ? 'text-destructive' : 'text-foreground'}>
-                      {formatDate(expiresAt)}
-                    </span>
+                    <span className="text-muted-foreground">{isRTL ? 'تاريخ الانتهاء:' : 'Expires:'}</span>
+                    <span className={isExpired ? 'text-destructive' : 'text-foreground'}>{formatDate(expiresAt)}</span>
                   </div>
                 )}
                 
                 {remainingDays !== null && remainingDays > 0 && (
                   <div className="flex justify-between text-sm mt-1">
-                    <span className="text-muted-foreground">
-                      {isRTL ? 'الأيام المتبقية:' : 'Days remaining:'}
-                    </span>
-                    <span className="text-foreground font-medium">
-                      {remainingDays} {isRTL ? 'يوم' : 'days'}
-                    </span>
+                    <span className="text-muted-foreground">{isRTL ? 'الأيام المتبقية:' : 'Days remaining:'}</span>
+                    <span className="text-foreground font-medium">{remainingDays} {isRTL ? 'يوم' : 'days'}</span>
                   </div>
                 )}
               </div>
 
-              {/* Activation Input */}
               {activationSuccess ? (
-                <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  <span className="text-green-700 dark:text-green-300">
+                <div className="flex items-center gap-3 p-4 bg-success/10 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-success" />
+                  <span className="text-success">
                     {isRTL ? 'تم تفعيل الكود بنجاح!' : 'Code activated successfully!'}
                   </span>
                 </div>
@@ -414,10 +346,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                       placeholder="HYPER-XXXX-XXXX-XXXX-XXXX"
                       value={activationCode}
                       onChange={handleCodeChange}
-                      className={cn(
-                        "font-mono tracking-wider text-center",
-                        isRTL ? 'pr-10' : 'pl-10'
-                      )}
+                      className={cn("font-mono tracking-wider text-center", isRTL ? 'pr-10' : 'pl-10')}
                       maxLength={25}
                       disabled={isActivating}
                     />
@@ -430,25 +359,14 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                     </div>
                   )}
                   
-                  <Button 
-                    onClick={handleActivate} 
-                    className="w-full" 
-                    disabled={isActivating || !activationCode.trim()}
-                  >
+                  <Button onClick={handleActivate} className="w-full" disabled={isActivating || !activationCode.trim()}>
                     {isActivating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className={isRTL ? 'mr-2' : 'ml-2'}>
-                          {isRTL ? 'جاري التحقق...' : 'Verifying...'}
-                        </span>
+                        <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'جاري التحقق...' : 'Verifying...'}</span>
                       </>
                     ) : (
-                      <>
-                        <Key className="w-4 h-4" />
-                        <span className={isRTL ? 'mr-2' : 'ml-2'}>
-                          {isRTL ? 'تفعيل الكود' : 'Activate Code'}
-                        </span>
-                      </>
+                      <>{isRTL ? 'تفعيل الكود' : 'Activate Code'}</>
                     )}
                   </Button>
                 </div>
