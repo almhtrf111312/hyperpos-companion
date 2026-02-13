@@ -5,7 +5,7 @@ import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { MaintenancePanel } from '@/components/pos/MaintenancePanel';
 import { ScannedProductDialog } from '@/components/pos/ScannedProductDialog';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { Sidebar, MobileMenuTrigger } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wrench } from 'lucide-react';
@@ -514,11 +514,15 @@ export default function POS() {
       )}>
         {/* Header */}
         <POSHeader
-          onMenuClick={() => setSidebarOpen(true)}
           onCartClick={() => setCartOpen(true)}
           cartItemsCount={cartItemsCount}
           showCartButton={false}
         />
+
+        {/* Mobile menu trigger - same as MainLayout */}
+        {isMobile && !sidebarOpen && (
+          <MobileMenuTrigger onClick={() => setSidebarOpen(true)} />
+        )}
 
         {/* Mode Tabs - Mobile Only (hidden if maintenance section is hidden) */}
         {isMobile && !hideMaintenanceSection && (
