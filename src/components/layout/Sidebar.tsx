@@ -29,7 +29,6 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { NotificationBell } from './NotificationBell';
-import { NetworkStatusIndicator } from './NetworkStatusIndicator';
 import { SyncStatusMenu } from './SyncStatusMenu';
 
 interface NavItem {
@@ -182,9 +181,6 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
           <div className="flex items-center gap-1">
             {/* حالة المزامنة */}
             <SyncStatusMenu />
-            
-            {/* حالة الاتصال */}
-            <NetworkStatusIndicator compact={effectiveCollapsed} />
             
             {/* جرس الإشعارات */}
             <NotificationBell compact={true} />
