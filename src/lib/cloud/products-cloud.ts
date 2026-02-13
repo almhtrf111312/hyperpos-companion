@@ -7,6 +7,7 @@ import {
   getCurrentUserId
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
 import { saveProductsToIDB, loadProductsFromIDB, getProductByBarcodeIDB } from '../indexeddb-cache';
 
@@ -297,6 +298,7 @@ export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): 
     const newProduct = toProduct(inserted);
     invalidateProductsCache();
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    triggerAutoBackup(`منتج جديد: ${product.name}`);
     return newProduct;
   }
 
@@ -349,6 +351,7 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (success) {
     invalidateProductsCache();
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    triggerAutoBackup(`تعديل منتج: ${id}`);
   }
 
   return success;

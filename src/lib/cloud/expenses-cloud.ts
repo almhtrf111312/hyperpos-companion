@@ -8,6 +8,7 @@ import {
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
+import { triggerAutoBackup } from '../local-auto-backup';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
 
 export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
@@ -266,6 +267,7 @@ export const addExpenseCloud = async (expenseData: {
   if (inserted) {
     invalidateExpensesCache();
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
+    triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
     return toExpense(inserted);
   }
   

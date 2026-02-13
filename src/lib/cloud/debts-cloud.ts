@@ -9,6 +9,7 @@ import {
   isCashierUser
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { triggerAutoBackup } from '../local-auto-backup';
 import { updateInvoiceCloud } from './invoices-cloud';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -229,6 +230,7 @@ export const addDebtCloud = async (
   if (inserted) {
     invalidateDebtsCache();
     emitEvent(EVENTS.DEBTS_UPDATED, null);
+    triggerAutoBackup(`دين جديد: ${debtData.customerName}`);
     return toDebt(inserted);
   }
 

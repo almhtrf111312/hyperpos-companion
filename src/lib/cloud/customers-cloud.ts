@@ -7,6 +7,7 @@ import {
   getCurrentUserId 
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CloudCustomer {
@@ -178,6 +179,7 @@ export const addCustomerCloud = async (
   if (inserted) {
     invalidateCustomersCache();
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+    triggerAutoBackup(`عميل جديد: ${normalizedName}`);
     return toCustomer(inserted);
   }
   
