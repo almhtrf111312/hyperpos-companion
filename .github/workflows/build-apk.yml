@@ -34,7 +34,17 @@ jobs:
       with:
         node-version: 22
         cache: 'npm'
-        
+
+    # 4. Update Version FIRST (before cap add android)
+    - name: Update Version Code
+      run: |
+        VERSION_CODE=${{ github.run_number }}
+        VERSION_NAME="1.0.${VERSION_CODE}"
+        echo "{\"versionCode\": ${VERSION_CODE}, \"versionName\": \"${VERSION_NAME}\"}" > version.json
+        echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
+        echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+        echo "✅ Version: ${VERSION_NAME} (code: ${VERSION_CODE})"
+
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
     
@@ -45,7 +55,7 @@ jobs:
       run: |
         npm install @capacitor/cli@latest @capacitor/android@latest @capacitor/assets@latest --save-dev --legacy-peer-deps
         
-    # 3. توليد الأندرويد + إضافة أذونات
+    # 5. توليد الأندرويد + إضافة أذونات
     - name: Initialize Capacitor & Permissions
       run: |
         rm -rf android
@@ -101,15 +111,78 @@ jobs:
         }
         EOF
         
-        # ✅ حقن signingConfigs في build.gradle لضمان توقيع ثابت
-        GRADLE_FILE="android/app/build.gradle"
-        
-        # إنشاء ملف signing config مؤقت باستخدام printf
-        printf '    signingConfigs {\n        release {\n            storeFile file("flowpos-release.keystore")\n            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""\n            keyAlias System.getenv("KEY_ALIAS") ?: ""\n            keyPassword System.getenv("KEY_PASSWORD") ?: ""\n        }\n    }\n\n    buildTypes {\n        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false\n        }\n' > /tmp/signing_block.gradle
-        
-        # استبدال buildTypes block
-        sed -i '/buildTypes {/r /tmp/signing_block.gradle' "$GRADLE_FILE"
-        sed -i '0,/buildTypes {/{/buildTypes {/d}' "$GRADLE_FILE"
+        # ✅ كتابة build.gradle كاملاً مع signingConfigs مدمج (بدلاً من sed الخطير)
+        cat > android/app/build.gradle << 'GRADLE'
+        apply plugin: 'com.android.application'
+
+        android {
+            namespace = "com.flowpos.pro"
+            compileSdk = rootProject.ext.compileSdkVersion
+            defaultConfig {
+                applicationId "com.flowpos.pro"
+                minSdkVersion rootProject.ext.minSdkVersion
+                targetSdkVersion rootProject.ext.targetSdkVersion
+                
+                // Read version from version.json
+                def versionPropsFile = file('../../version.json')
+                def versionProps = new groovy.json.JsonSlurper().parseText(versionPropsFile.text)
+                
+                versionCode versionProps.versionCode
+                versionName versionProps.versionName
+                
+                testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                aaptOptions {
+                    ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+                }
+            }
+            
+            signingConfigs {
+                release {
+                    storeFile file("flowpos-release.keystore")
+                    storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+                    keyAlias System.getenv("KEY_ALIAS") ?: ""
+                    keyPassword System.getenv("KEY_PASSWORD") ?: ""
+                }
+            }
+            
+            buildTypes {
+                release {
+                    signingConfig signingConfigs.release
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+                }
+            }
+        }
+
+        repositories {
+            flatDir{
+                dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+            }
+        }
+
+        dependencies {
+            implementation fileTree(include: ['*.jar'], dir: 'libs')
+            implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+            implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+            implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+            implementation project(':capacitor-android')
+            testImplementation "junit:junit:$junitVersion"
+            androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+            androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+            implementation project(':capacitor-cordova-android-plugins')
+        }
+
+        apply from: 'capacitor.build.gradle'
+
+        try {
+            def servicesJSON = file('google-services.json')
+            if (servicesJSON.text) {
+                apply plugin: 'com.google.gms.google-services'
+            }
+        } catch(Exception e) {
+            logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+        }
+        GRADLE
         
         # حقن الأذونات في AndroidManifest.xml
         PERMISSIONS='<uses-permission android:name="android.permission.CAMERA" />\n'
@@ -140,19 +213,13 @@ jobs:
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i "s|<application|$PERMISSIONS|" "$MANIFEST"
         
-        echo "✅ Permissions, Share queries, and signingConfigs injected successfully"
+        echo "✅ Permissions, Share queries, and signingConfigs written successfully"
 
     - name: Generate Assets & Sync
       run: |
         npx capacitor-assets generate --android --iconBackgroundColor "#1e40af" --assetPath resources
         npx cap sync android
     
-    - name: Update Version Code
-      run: |
-        VERSION_CODE=${{ github.run_number }}
-        VERSION_NAME="1.0.$VERSION_CODE"
-        echo "{\"versionCode\": $VERSION_CODE, \"versionName\": \"$VERSION_NAME\"}" > version.json
-
     - name: Check for Keystore
       id: keystore_check
       run: |
@@ -185,8 +252,8 @@ jobs:
       if: steps.keystore_check.outputs.has_keystore == 'true'
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v1.0.${{ github.run_number }}
-        name: FlowPOS Pro v1.0.${{ github.run_number }}
+        tag_name: v${{ env.VERSION_NAME }}
+        name: FlowPOS Pro v${{ env.VERSION_NAME }}
         files: android/app/build/outputs/apk/release/app-release.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -194,7 +261,7 @@ jobs:
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: FlowPOS-Pro-APK-v1.0.${{ github.run_number }}
+        name: FlowPOS-Pro-APK-v${{ env.VERSION_NAME }}
         path: android/app/build/outputs/apk/**/*.apk
         retention-days: 30
 
@@ -203,8 +270,9 @@ jobs:
         echo "## 🚀 FlowPOS Build Result" >> $GITHUB_STEP_SUMMARY
         echo "| Type | Status | Version |" >> $GITHUB_STEP_SUMMARY
         echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-        echo "| **Result** | ✅ Success | v1.0.${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Result** | ✅ Success | v${{ env.VERSION_NAME }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Version Code** | ${{ env.VERSION_CODE }} | For upgrade compatibility |" >> $GITHUB_STEP_SUMMARY
         echo "| **Java** | JDK 21 | Capacitor 8 |" >> $GITHUB_STEP_SUMMARY
         echo "| **Gradle** | 8.14.3 | AGP 8.13.0 |" >> $GITHUB_STEP_SUMMARY
-        echo "| **Signing** | signingConfigs embedded | Consistent identity |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Signing** | Full build.gradle rewrite | Consistent identity |" >> $GITHUB_STEP_SUMMARY
         echo "- **Permissions Added:** Camera, Storage (Read/Write), Internet, Vibrate" >> $GITHUB_STEP_SUMMARY

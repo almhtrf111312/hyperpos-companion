@@ -18,7 +18,10 @@ import {
   Loader2,
   Boxes,
   Truck,
-  FileText
+  FileText,
+  LayoutGrid,
+  List,
+  AlignJustify
 } from 'lucide-react';
 import { cn, toWesternNumerals, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -106,6 +109,16 @@ export default function Products() {
   const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  
+  // View mode state (grid = cards, list = rows with images, compact = text-only)
+  type ViewMode = 'grid' | 'list' | 'compact';
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('products_view_mode') as ViewMode) || 'grid';
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('products_view_mode', viewMode);
+  }, [viewMode]);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'form' | 'barcode1' | 'barcode2' | 'barcode3'>('search');
@@ -817,6 +830,33 @@ export default function Products() {
             >
               <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
             </Button>
+            {/* View Mode Buttons */}
+            <div className="flex bg-muted rounded-lg p-0.5 lg:hidden">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setViewMode('compact')}
+              >
+                <AlignJustify className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {categories.map((category) => (
@@ -883,11 +923,96 @@ export default function Products() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:hidden gap-3">
+          <div className={cn(
+            "lg:hidden gap-3",
+            viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2" : "flex flex-col"
+          )}>
             {filteredProducts.map((product, index) => {
               const status = statusConfig[product.status];
               const profit = product.salePrice - product.costPrice;
 
+              // Compact view - text only rows
+              if (viewMode === 'compact') {
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between py-2.5 px-3 bg-card rounded-lg border border-border fade-in"
+                    style={{ animationDelay: `${index * 15}ms` }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
+                        <span className={cn("px-1.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap", status.color)}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        <span>${formatNumber(product.salePrice, 2)}</span>
+                        <span className="text-success">${formatNumber(profit, 2)}</span>
+                        <span>{product.quantity} {product.smallUnit || t('products.unitPiece')}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5 flex-shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDeleteDialog(product)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // List view - horizontal rows with small images
+              if (viewMode === 'list') {
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border fade-in"
+                    style={{ animationDelay: `${index * 20}ms` }}
+                  >
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {product.image ? (
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="w-6 h-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
+                        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap", status.color)}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs mt-1">
+                        <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>
+                        <span className="font-semibold text-primary">${formatNumber(product.salePrice, 2)}</span>
+                        <span className="text-success">${formatNumber(profit, 2)}</span>
+                        <DualUnitDisplay
+                          totalPieces={product.quantity}
+                          conversionFactor={product.conversionFactor || 1}
+                          bulkUnit={product.bulkUnit}
+                          smallUnit={product.smallUnit}
+                          showTotal={false}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5 flex-shrink-0">
+                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditDialog(product)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => openDeleteDialog(product)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Grid view - full cards (default)
               return (
                 <div
                   key={product.id}
@@ -938,7 +1063,6 @@ export default function Products() {
                           size="sm"
                         />
                       </div>
-                      {/* عرض كمية العهدة */}
                       {(() => {
                         const custodyQty = getCustodyQuantity(product.id);
                         if (custodyQty > 0) {
