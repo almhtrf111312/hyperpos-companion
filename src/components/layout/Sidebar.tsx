@@ -85,7 +85,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
       if (isMobile && isOpen) {
         onToggle();
       }
-    }, 100); // 100ms delay للانسيابية
+    }, 250); // 250ms delay for smooth transition
     
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1352,7 +1352,7 @@ export default function Products() {
                 )}
                 {fieldsConfig.wholesalePrice && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
                     <Input
                       type="number"
                       dir="ltr"
@@ -1698,7 +1698,7 @@ export default function Products() {
                 )}
                 {fieldsConfig.wholesalePrice && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">سعر الجملة ($)</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
                     <Input
                       type="number"
                       dir="ltr"
