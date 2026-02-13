@@ -15,6 +15,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { SectionDivider } from '@/components/dashboard/SectionDivider';
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TopProducts } from '@/components/dashboard/TopProducts';
@@ -33,16 +34,15 @@ import { EVENTS } from '@/lib/events';
 export default function Dashboard() {
   const { t, language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
-  // Dashboard Version 2.0 - Overhaul
   const [stats, setStats] = useState({
     todaySales: 0,
     weekSales: 0,
     monthSales: 0,
     todayCount: 0,
-    todayProfit: 0,        // Gross profit (Sales - COGS)
-    todayCOGS: 0,          // ✅ Cost of Goods Sold
+    todayProfit: 0,
+    todayCOGS: 0,
     todayExpenses: 0,
-    netProfit: 0,          // Net profit = Gross profit - Expenses
+    netProfit: 0,
     profitMargin: 0,
     totalDebtAmount: 0,
     debtCustomers: 0,
@@ -75,7 +75,6 @@ export default function Dashboard() {
         loadDebtsCloud()
       ]);
 
-      // Calculate today's sales and profit from Cloud Invoices
       const todayDate = new Date();
       const todayStr = todayDate.toDateString();
       const todayInvoices = invoices.filter(inv =>
@@ -83,33 +82,23 @@ export default function Dashboard() {
       );
 
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-
-      // ✅ Calculate Profit & COGS directly from Cloud Data (Source of Truth)
       const todayGrossProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+      const todayCOGS = todaySales - todayGrossProfit;
 
-      // Calculate COGS = Sales - Profit (Approximation if strictly not stored on invoice root, 
-      // but usually available or derivable. Ideally items have cost, but invoice.profit is stored)
-      const todayCOGS = todaySales - todayGrossProfit; // Derived
-
-      // Calculate Today's Expenses from Cloud
       const todayExpensesRecords = expenses.filter(exp =>
         new Date(exp.date).toDateString() === todayStr
       );
       const todayExpenses = todayExpensesRecords.reduce((sum, exp) => sum + exp.amount, 0);
 
-      // ✅ Net Profit = Gross Profit - Expenses
-      const todayProfit = todayGrossProfit; // For consistency with UI naming (Gross)
+      const todayProfit = todayGrossProfit;
       const netProfit = todayGrossProfit - todayExpenses;
 
-      // ✅ Calculate debts from actual debts table (more accurate)
       const activeDebts = debts.filter(d => d.status !== 'fully_paid');
       const totalDebtAmount = activeDebts.reduce((sum, d) => sum + d.remainingDebt, 0);
       const debtCustomers = new Set(activeDebts.map(d => d.customerName)).size;
 
-      // Calculate profit margin
       const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
 
-      // Get unique customers this month & Month Sales
       const thisMonth = new Date().getMonth();
       const thisYear = new Date().getFullYear();
 
@@ -121,7 +110,6 @@ export default function Dashboard() {
       const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
       const monthSales = monthInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
-      // Calculate Week Sales
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -130,15 +118,10 @@ export default function Dashboard() {
       );
       const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
-      // Calculate inventory value
       const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
 
-      // ✅ Calculate total capital from multiple sources
-      // 1. Capital from partners (Cloud) - Primary source
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
 
-      // ✅ 2. Calculate cumulative cashbox balance (Calculated Global Cash)
-      // Formula: (Cash sales + Debt payments) + (Capital + Money injection) - (Expenses + Withdrawals)
       const totalSalesCash = invoices
         .filter(inv => inv.status !== 'cancelled' && inv.paymentType === 'cash')
         .reduce((sum, inv) => sum + inv.total, 0);
@@ -151,13 +134,10 @@ export default function Dashboard() {
 
       const totalWithdrawals = partners.reduce((sum, p) => sum + (p.totalWithdrawn || 0), 0);
 
-      // Use current capital as an indicator of money entering the system
       const globalCashBalance = (totalSalesCash + totalDebtPaid + totalCapital) - (totalExpenses + totalWithdrawals);
 
-      // ✅ 3. Available capital (Liquid Capital) = Cashbox balance
       const liquidCapital = globalCashBalance;
 
-      // ✅ Calculate deficit and percentage
       const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;
       const deficitPercentage = totalCapital > 0 ? (deficit / totalCapital) * 100 : 0;
 
@@ -194,7 +174,6 @@ export default function Dashboard() {
 
     const handleUpdate = () => loadStats();
 
-    // ✅ Listen to all financial events
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
@@ -228,162 +207,115 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Actions (Moved to Top) */}
+      {/* Quick Actions */}
       <QuickActions />
 
-      {/* Row 1: Sales Performance (3 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        {/* Sales Today */}
+      {/* Section: المبيعات */}
+      <SectionDivider title="المبيعات" />
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
           subtitle={`${stats.todayCount} ${t('dashboard.invoice')}`}
-          icon={<DollarSign className="w-6 h-6" />}
+          icon={<DollarSign />}
           variant="primary"
           linkTo="/pos"
         />
-        {/* Sales Week */}
-        <div className="glass rounded-xl p-4 card-hover bg-primary/5 border-primary/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
-              <Calendar className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">مبيعات هذا الأسبوع</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.weekSales)}</p>
-            </div>
-          </div>
-        </div>
-        {/* Sales Month */}
-        <div className="glass rounded-xl p-4 card-hover bg-primary/5 border-primary/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
-              <BarChart3 className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">مبيعات هذا الشهر</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.monthSales)}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="مبيعات الأسبوع"
+          value={formatCurrency(stats.weekSales)}
+          icon={<Calendar />}
+          variant="primary"
+          linkTo="/invoices"
+        />
+        <StatCard
+          title="مبيعات الشهر"
+          value={formatCurrency(stats.monthSales)}
+          icon={<BarChart3 />}
+          variant="primary"
+          linkTo="/reports"
+        />
       </div>
 
-      {/* Row 2: Business Health (3 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        {/* Net Profit */}
+      {/* Section: الأداء المالي */}
+      <SectionDivider title="الأداء المالي" />
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         <StatCard
           title={t('dashboard.netProfit')}
           value={formatCurrency(stats.netProfit)}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
-          icon={<TrendingUp className="w-6 h-6" />}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
+          icon={<TrendingUp />}
           variant={stats.netProfit >= 0 ? "success" : "warning"}
           linkTo="/reports"
         />
-        {/* Due Debts */}
         <StatCard
           title={t('dashboard.dueDebts')}
           value={formatCurrency(stats.totalDebtAmount)}
           subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
-          icon={<CreditCard className="w-6 h-6" />}
+          icon={<CreditCard />}
           variant="warning"
           linkTo="/debts"
         />
-        {/* Customers */}
         <StatCard
           title={t('dashboard.customersThisMonth')}
           value={stats.uniqueCustomers.toString()}
           subtitle={t('dashboard.uniqueCustomers')}
-          icon={<Users className="w-6 h-6" />}
+          icon={<Users />}
           variant="default"
           linkTo="/customers"
         />
       </div>
 
-      {/* Row 3: Assets & Capital (3 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        {/* Inventory Value */}
-        <div className="glass rounded-xl p-4 card-hover bg-info/5 border-info/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-info/10 backdrop-blur-sm">
-              <Package className="w-5 h-5 text-info" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.inventoryValue')}</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.inventoryValue)}</p>
-            </div>
-          </div>
-        </div>
+      {/* Section: تقارير رأس المال */}
+      <SectionDivider title="تقارير رأس المال" />
 
-        {/* Total Capital */}
-        <div className="glass rounded-xl p-4 card-hover bg-indigo-500/5 border-indigo-500/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-indigo-500/10 backdrop-blur-sm">
-              <Wallet className="w-5 h-5 text-indigo-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.totalCapital')}</p>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.totalCapital)}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Cashbox Balance */}
-        <div className="glass rounded-xl p-4 card-hover bg-emerald-500/5 border-emerald-500/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10 backdrop-blur-sm">
-              <Banknote className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance')}</p>
-              <p className="text-xl font-bold text-emerald-500">{formatCurrency(stats.cashboxBalance)}</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <StatCard
+          title={t('dashboard.inventoryValue')}
+          value={formatCurrency(stats.inventoryValue)}
+          icon={<Package />}
+          variant="default"
+          linkTo="/products"
+        />
+        <StatCard
+          title={t('dashboard.totalCapital')}
+          value={formatCurrency(stats.totalCapital)}
+          icon={<Wallet />}
+          variant="default"
+          linkTo="/partners"
+        />
+        <StatCard
+          title={t('dashboard.cashboxBalance')}
+          value={formatCurrency(stats.cashboxBalance)}
+          icon={<Banknote />}
+          variant="success"
+          linkTo="/cashbox"
+        />
+        <StatCard
+          title={t('dashboard.liquidCapital')}
+          value={formatCurrency(stats.liquidCapital)}
+          icon={<DollarSign />}
+          variant={stats.liquidCapital >= 0 ? "default" : "danger"}
+          linkTo="/reports"
+        />
       </div>
 
-      {/* Row 4: Liquid Capital (3 Columns with Placeholders) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        {/* Liquid Capital */}
-        <div className="glass rounded-xl p-4 card-hover bg-blue-500/5 border-blue-500/20">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-blue-500/10' : 'bg-destructive/10'} backdrop-blur-sm`}>
-              <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-blue-500' : 'text-destructive'}`} />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital')}</p>
-              <p className={`text-xl font-bold ${stats.liquidCapital >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-                {formatCurrency(stats.liquidCapital)}
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Section: آخر الفواتير */}
+      <SectionDivider title="آخر الفواتير" />
 
-        {/* Placeholder 1 */}
-        <div className="hidden md:flex glass rounded-xl p-4 items-center justify-center opacity-30 border-dashed border-border/50">
-          <span className="text-sm text-muted-foreground/50">Coming Soon</span>
-        </div>
-
-        {/* Placeholder 2 */}
-        <div className="hidden md:flex glass rounded-xl p-4 items-center justify-center opacity-30 border-dashed border-border/50">
-          <span className="text-sm text-muted-foreground/50">Coming Soon</span>
-        </div>
-      </div>
-
-      {/* Main Content Grid (Lists) */}
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Invoices - Takes 2 columns */}
         <div className="lg:col-span-2">
           <RecentInvoices />
         </div>
-
-        {/* Right Column */}
         <div className="space-y-6">
           <LowStockAlerts />
           <DebtAlerts />
         </div>
       </div>
 
-      {/* Top Products */}
       <TopProducts />
     </div>
   );

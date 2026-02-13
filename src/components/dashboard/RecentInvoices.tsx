@@ -22,9 +22,9 @@ import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils
 import { EVENTS } from '@/lib/events';
 
 const statusStyles: Record<string, string> = {
-  paid: 'badge-success',
-  pending: 'badge-warning',
-  cancelled: 'badge-danger',
+  paid: 'bg-success/10 text-success',
+  pending: 'bg-warning/10 text-warning',
+  cancelled: 'bg-destructive/10 text-destructive',
 };
 
 const statusLabels: Record<string, string> = {
@@ -40,11 +40,10 @@ export function RecentInvoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load invoices from Cloud
   const loadData = useCallback(async () => {
     try {
       const data = await loadInvoicesCloud();
-      setInvoices(data.slice(0, 5)); // ✅ Show last 5 invoices only
+      setInvoices(data.slice(0, 5));
     } catch (error) {
       console.error('Error loading invoices:', error);
     } finally {
@@ -54,8 +53,6 @@ export function RecentInvoices() {
 
   useEffect(() => {
     loadData();
-
-    // Listen for updates
     window.addEventListener(EVENTS.INVOICES_UPDATED, loadData);
     return () => window.removeEventListener(EVENTS.INVOICES_UPDATED, loadData);
   }, [loadData]);
@@ -66,7 +63,6 @@ export function RecentInvoices() {
   };
 
   const handlePrintInvoice = (invoice: Invoice) => {
-    // Use dynamic store settings utilities
     const storeSettings = getStoreSettings();
     const printSettings = getPrintSettings();
 
@@ -171,9 +167,14 @@ export function RecentInvoices() {
     return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const shortenId = (id: string) => {
+    if (id.length > 8) return '...' + id.slice(-6);
+    return id;
+  };
+
   return (
     <>
-      <div className="glass rounded-2xl p-6 overflow-hidden">
+      <div className="glass rounded-2xl p-4 md:p-6 overflow-hidden">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-foreground">آخر الفواتير</h3>
           <button
@@ -198,96 +199,134 @@ export function RecentInvoices() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border/50 text-right">
-                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
-                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">العميل</th>
-                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">المبلغ</th>
-                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                  <th className="py-3 px-4 text-sm font-medium text-muted-foreground">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((invoice, index) => (
-                  <tr
-                    key={invoice.id}
-                    className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer fade-in"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                    onClick={() => handleViewInvoice(invoice)}
-                  >
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-sm text-foreground">{invoice.id}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-foreground">{invoice.customerName}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-foreground">
-                        {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={cn(
-                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                        statusStyles[invoice.status]
-                      )}>
-                        {statusLabels[invoice.status]}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          onClick={() => handleViewInvoice(invoice)}
-                          title="عرض الفاتورة"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          onClick={() => handlePrintInvoice(invoice)}
-                          title="طباعة"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
-                              <Eye className="w-4 h-4 ml-2" />
-                              عرض التفاصيل
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCopyInvoice(invoice)}>
-                              <Copy className="w-4 h-4 ml-2" />
-                              نسخ الرقم
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
-                              <Edit className="w-4 h-4 ml-2" />
-                              تعديل
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteInvoice(invoice)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 ml-2" />
-                              حذف
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
+          <>
+            {/* Desktop: Table view */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border/50 text-right">
+                    <th className="py-3 px-4 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
+                    <th className="py-3 px-4 text-sm font-medium text-muted-foreground">العميل</th>
+                    <th className="py-3 px-4 text-sm font-medium text-muted-foreground">المبلغ</th>
+                    <th className="py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                    <th className="py-3 px-4 text-sm font-medium text-muted-foreground">إجراءات</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice, index) => (
+                    <tr
+                      key={invoice.id}
+                      className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer fade-in"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                      onClick={() => handleViewInvoice(invoice)}
+                    >
+                      <td className="py-3 px-4">
+                        <span className="font-mono text-sm text-foreground">{invoice.id}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-foreground">{invoice.customerName}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-foreground">
+                          {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={cn(
+                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                          statusStyles[invoice.status]
+                        )}>
+                          {statusLabels[invoice.status]}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <button
+                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            onClick={() => handleViewInvoice(invoice)}
+                            title="عرض الفاتورة"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            onClick={() => handlePrintInvoice(invoice)}
+                            title="طباعة"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                                <Eye className="w-4 h-4 ml-2" />
+                                عرض التفاصيل
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCopyInvoice(invoice)}>
+                                <Copy className="w-4 h-4 ml-2" />
+                                نسخ الرقم
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
+                                <Edit className="w-4 h-4 ml-2" />
+                                تعديل
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteInvoice(invoice)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 ml-2" />
+                                حذف
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile: Compact card view */}
+            <div className="md:hidden space-y-0">
+              {invoices.map((invoice, index) => (
+                <div
+                  key={invoice.id}
+                  className={cn(
+                    "flex items-center justify-between gap-2 py-3 px-2 cursor-pointer transition-colors",
+                    index % 2 === 0 ? "bg-muted/20" : "bg-transparent",
+                    index < invoices.length - 1 && "border-b border-border/30"
+                  )}
+                  onClick={() => handleViewInvoice(invoice)}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      {shortenId(invoice.id)}
+                    </span>
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {invoice.customerName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-semibold text-foreground whitespace-nowrap">
+                      {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
+                    </span>
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap",
+                      statusStyles[invoice.status]
+                    )}>
+                      {statusLabels[invoice.status]}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -307,7 +346,6 @@ export function RecentInvoices() {
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-4 py-4">
-              {/* Customer Info */}
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-muted-foreground">العميل:</span>
@@ -333,7 +371,6 @@ export function RecentInvoices() {
                 </div>
               </div>
 
-              {/* Items */}
               <div>
                 <h4 className="font-semibold mb-3">المنتجات</h4>
                 <div className="space-y-2">
@@ -349,7 +386,6 @@ export function RecentInvoices() {
                 </div>
               </div>
 
-              {/* Total */}
               <div className="border-t border-border/50 pt-4">
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between items-center text-sm text-muted-foreground mb-2">
@@ -363,7 +399,6 @@ export function RecentInvoices() {
                 </div>
               </div>
 
-              {/* Status */}
               <div className="flex justify-center">
                 <span className={cn(
                   "inline-flex items-center px-4 py-2 rounded-full text-sm font-medium",
@@ -373,7 +408,6 @@ export function RecentInvoices() {
                 </span>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"

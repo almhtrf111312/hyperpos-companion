@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
   Store,
   DollarSign,
@@ -38,7 +39,8 @@ import {
   Package,
   AlertTriangle,
   ExternalLink,
-  Wrench
+  Wrench,
+  Archive
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
@@ -175,6 +177,7 @@ export default function Settings() {
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
     { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
+    { id: 'archive', label: isRTL ? 'الأرشيف' : 'Archive', icon: Archive },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
   ];
 
@@ -1322,6 +1325,9 @@ export default function Settings() {
             <LicenseManagement />
           </div>
         );
+
+      case 'archive':
+        return <ArchiveSection />;
 
       case 'reset':
         return <DataResetSection />;
