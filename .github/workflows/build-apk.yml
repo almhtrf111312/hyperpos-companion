@@ -144,7 +144,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v1.0.${{ github.run_number }}
-        name: Release v1.0.${{ github.run_number }}
+        name: FlowPOS Pro v1.0.${{ github.run_number }}
         files: android/app/build/outputs/apk/release/app-release.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -152,9 +152,9 @@ jobs:
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: FlowPOS-APK
+        name: FlowPOS-Pro-APK-v1.0.${{ github.run_number }}
         path: android/app/build/outputs/apk/**/*.apk
-        retention-days: 14
+        retention-days: 30
 
     - name: Build Summary
       run: |
