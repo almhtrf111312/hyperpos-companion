@@ -302,6 +302,9 @@ export const translations = {
     'common.show': 'عرض',
     'common.hide': 'إخفاء',
     'common.found': 'تم العثور على',
+    'common.user': 'مستخدم',
+    'common.deleteError': 'فشل في الحذف',
+    'common.selectDate': 'اختر التاريخ',
 
 
     'common.export': 'تصدير',
@@ -485,6 +488,10 @@ export const translations = {
     'customers.createdAt': 'تاريخ التسجيل',
     'customers.noCustomers': 'لا يوجد عملاء',
     'customers.deleteConfirm': 'هل أنت متأكد من حذف هذا العميل؟',
+    'customers.nameExists': 'يوجد عميل بنفس الاسم',
+    'customers.addFailed': 'فشل في إضافة العميل',
+    'customers.editFailed': 'فشل في تعديل بيانات العميل',
+    'customers.deleteFailed': 'فشل في حذف العميل',
 
     // Invoices
     'invoices.title': 'الفواتير',
@@ -519,6 +526,9 @@ export const translations = {
     'invoices.discount': 'الخصم',
     'invoices.total': 'الإجمالي',
     'invoices.profit': 'الربح',
+    'invoices.printSettingsError': 'فشل في تحميل إعدادات الطباعة',
+    'invoices.maintenanceService': 'خدمة صيانة',
+    'invoices.shareOpened': 'تم فتح المشاركة بنجاح',
 
     // Debts
     'debts.title': 'الديون',
@@ -589,6 +599,9 @@ export const translations = {
     'debts.selectDueDate': 'يرجى تحديد تاريخ الاستحقاق',
     'debts.cashDebtCreated': 'تم إنشاء دين نقدي:',
     'debts.debtAddedSuccess': 'تم إضافة الدين بنجاح',
+    'debts.shareOpened': 'تم فتح المشاركة بنجاح',
+    'debts.deleteSuccess': 'تم حذف الدين بنجاح',
+    'debts.deleteFailed': 'فشل في حذف الدين',
 
     // Expenses
     'expenses.title': 'المصاريف',
@@ -884,6 +897,8 @@ export const translations = {
     'pos.barcodeNotFound': 'الباركود غير موجود',
     'pos.productNotFound': 'المنتج غير موجود',
     'pos.scanned': 'تمت القراءة بنجاح',
+    'pos.noWholesalePrice': 'لا يوجد سعر جملة لهذا المنتج',
+    'pos.productFound': 'تم العثور على: {name}',
     'pos.cashSaleShortcut': 'اضغط F1 لتأكيد البيع النقدي',
     'pos.debtSaleShortcut': 'اضغط F2 لتأكيد البيع بالدين',
     'pos.enterCustomerName': 'يجب إدخال اسم العميل أولاً',
@@ -964,11 +979,24 @@ export const translations = {
     'reports.expenseBreakdown': 'توزيع المصاريف',
     'reports.noExpenses': 'لا توجد مصاريف',
     'reports.distributorInventory': 'جرد العهدة',
+    'reports.custodyValue': 'قيمة العهدة',
+    'reports.cashCustomer': 'عميل نقدي',
+    'reports.noCategory': 'بدون تصنيف',
+    'reports.waitForData': 'يرجى الانتظار حتى تحميل البيانات',
+    'reports.noDataToExport': 'لا توجد بيانات للتصدير',
+    'reports.noProductsToExport': 'لا توجد منتجات للتصدير',
+    'reports.noStockToExport': 'لا يوجد مخزون للتصدير',
+    'reports.noCustomersToExport': 'لا يوجد عملاء للتصدير',
+    'reports.noPartnersToExport': 'لا يوجد شركاء للتصدير',
+    'reports.noExpensesToExport': 'لا توجد مصاريف للتصدير',
     'reports.loadError': 'فشل في تحميل بيانات التقارير',
     'reports.exportSuccessPDF': 'تم تصدير التقرير بصيغة PDF بنجاح',
     'reports.exportSuccessExcel': 'تم تصدير التقرير بصيغة Excel بنجاح',
     'reports.exportError': 'فشل في تصدير التقرير',
     'reports.shareWhatsapp': 'تم فتح واتساب للمشاركة',
+    'reports.generalShare': 'نسبة عامة',
+    'reports.specializedPartner': 'شريك بنسب مخصصة',
+    'reports.shareViaWhatsApp': 'مشاركة عبر واتساب',
     'reports.backupSuccess': 'تم إنشاء النسخة الاحتياطية بنجاح',
     'reports.backupError': 'فشل في إنشاء النسخة الاحتياطية',
 
@@ -1257,6 +1285,7 @@ export const translations = {
     'services.initialDiagnosisPlaceholder': 'التشخيص المبدئي...',
     'services.expectedCostLabel': 'التكلفة المتوقعة ($)',
     'services.expectedDelivery': 'تاريخ التسليم المتوقع',
+    'services.selectDeliveryDate': 'اختر تاريخ التسليم',
     'services.responsibleTech': 'الفني المسؤول',
     'services.techNamePlaceholder': 'اسم الفني',
     'services.notes': 'ملاحظات',
@@ -1700,6 +1729,9 @@ export const translations = {
     'common.show': 'Show',
     'common.hide': 'Hide',
     'common.found': 'Found',
+    'common.user': 'User',
+    'common.deleteError': 'Failed to delete',
+    'common.selectDate': 'Select date',
 
 
     'common.export': 'Export',
@@ -1873,6 +1905,10 @@ export const translations = {
     'customers.createdAt': 'Registration Date',
     'customers.noCustomers': 'No customers',
     'customers.deleteConfirm': 'Are you sure you want to delete this customer?',
+    'customers.nameExists': 'A customer with this name already exists',
+    'customers.addFailed': 'Failed to add customer',
+    'customers.editFailed': 'Failed to update customer',
+    'customers.deleteFailed': 'Failed to delete customer',
 
     // Invoices
     'invoices.title': 'Invoices',
@@ -1907,6 +1943,9 @@ export const translations = {
     'invoices.discount': 'Discount',
     'invoices.total': 'Total',
     'invoices.profit': 'Profit',
+    'invoices.printSettingsError': 'Failed to load print settings',
+    'invoices.maintenanceService': 'Maintenance Service',
+    'invoices.shareOpened': 'Share opened successfully',
 
     // Debts
     'debts.title': 'Debts',
@@ -1977,6 +2016,9 @@ export const translations = {
     'debts.selectDueDate': 'Please select due date',
     'debts.cashDebtCreated': 'Cash debt created:',
     'debts.debtAddedSuccess': 'Debt added successfully',
+    'debts.shareOpened': 'Share opened successfully',
+    'debts.deleteSuccess': 'Debt deleted successfully',
+    'debts.deleteFailed': 'Failed to delete debt',
 
     // Expenses
     'expenses.title': 'Expenses',
@@ -2236,6 +2278,10 @@ export const translations = {
     'pos.addedToCart': '"{name}" added to cart',
     'pos.barcode': 'Barcode',
     'pos.barcodeNotFound': 'No product found with this barcode',
+    'pos.productNotFound': 'Product not found',
+    'pos.scanned': 'Scanned successfully',
+    'pos.noWholesalePrice': 'No wholesale price for this product',
+    'pos.productFound': 'Found: {name}',
     'pos.cashSaleShortcut': 'Press F1 to confirm cash sale',
     'pos.debtSaleShortcut': 'Press F2 to confirm debt sale',
     'pos.enterCustomerName': 'Please enter customer name first',
@@ -2315,6 +2361,25 @@ export const translations = {
     'reports.currentBalance': 'Current Balance',
     'reports.expenseBreakdown': 'Expense Breakdown',
     'reports.noExpenses': 'No expenses',
+    'reports.distributorInventory': 'Distributor Inventory',
+    'reports.custodyValue': 'Custody Value',
+    'reports.cashCustomer': 'Cash Customer',
+    'reports.noCategory': 'Uncategorized',
+    'reports.waitForData': 'Please wait for data to load',
+    'reports.noDataToExport': 'No data to export',
+    'reports.noProductsToExport': 'No products to export',
+    'reports.noStockToExport': 'No stock to export',
+    'reports.noCustomersToExport': 'No customers to export',
+    'reports.noPartnersToExport': 'No partners to export',
+    'reports.noExpensesToExport': 'No expenses to export',
+    'reports.loadError': 'Failed to load report data',
+    'reports.exportSuccessPDF': 'Report exported to PDF successfully',
+    'reports.exportSuccessExcel': 'Report exported to Excel successfully',
+    'reports.exportError': 'Failed to export report',
+    'reports.shareWhatsapp': 'WhatsApp opened for sharing',
+    'reports.generalShare': 'General share',
+    'reports.specializedPartner': 'Specialized partner',
+    'reports.shareViaWhatsApp': 'Share via WhatsApp',
 
     // Settings
     'settings.title': 'Settings',
@@ -2586,6 +2651,7 @@ export const translations = {
     'services.initialDiagnosisPlaceholder': 'Initial diagnosis...',
     'services.expectedCostLabel': 'Expected Cost ($)',
     'services.expectedDelivery': 'Expected Delivery Date',
+    'services.selectDeliveryDate': 'Select delivery date',
     'services.responsibleTech': 'Responsible Technician',
     'services.techNamePlaceholder': 'Technician name',
     'services.notes': 'Notes',
@@ -3009,6 +3075,10 @@ export const translations = {
     'customers.createdAt': 'Joined Date',
     'customers.noCustomers': 'No customers found',
     'customers.deleteConfirm': 'Are you sure you want to delete this customer?',
+    'customers.nameExists': 'Customer with this name already exists',
+    'customers.addFailed': 'Failed to add customer',
+    'customers.editFailed': 'Failed to update customer',
+    'customers.deleteFailed': 'Failed to delete customer',
 
     // Invoices
     'invoices.title': 'Invoices',
@@ -3043,6 +3113,9 @@ export const translations = {
     'invoices.discount': 'Discount',
     'invoices.total': 'Total',
     'invoices.profit': 'Profit',
+    'invoices.printSettingsError': 'Failed to load print settings',
+    'invoices.maintenanceService': 'Maintenance Service',
+    'invoices.shareOpened': 'Share opened',
 
     // Debts
     'debts.title': 'Debts',
@@ -3113,6 +3186,9 @@ export const translations = {
     'debts.selectDueDate': 'Please select due date',
     'debts.cashDebtCreated': 'Cash debt created:',
     'debts.debtAddedSuccess': 'Debt added successfully',
+    'debts.shareOpened': 'Share opened',
+    'debts.deleteSuccess': 'Debt deleted',
+    'debts.deleteFailed': 'Failed to delete debt',
 
     // Expenses
     'expenses.title': 'Expenses',
@@ -3360,6 +3436,8 @@ export const translations = {
     'pos.barcodeNotFound': 'Barcode not found',
     'pos.productNotFound': 'Product not found',
     'pos.scanned': 'Scanned successfully',
+    'pos.noWholesalePrice': 'No wholesale price set',
+    'pos.productFound': 'Found: {name}',
 
     'pos.cashSaleShortcut': 'F1 for Cash Sale',
     'pos.debtSaleShortcut': 'F2 for Debt Sale',
@@ -3440,11 +3518,24 @@ export const translations = {
     'reports.expenseBreakdown': 'Expense Breakdown',
     'reports.noExpenses': 'No expenses',
     'reports.distributorInventory': 'Distributor Inventory',
+    'reports.custodyValue': 'Custody Value',
+    'reports.cashCustomer': 'Cash Customer',
+    'reports.noCategory': 'Uncategorized',
+    'reports.waitForData': 'Please wait for data to load',
+    'reports.noDataToExport': 'No data to export',
+    'reports.noProductsToExport': 'No products to export',
+    'reports.noStockToExport': 'No stock to export',
+    'reports.noCustomersToExport': 'No customers to export',
+    'reports.noPartnersToExport': 'No partners to export',
+    'reports.noExpensesToExport': 'No expenses to export',
     'reports.loadError': 'Failed to load report data',
     'reports.exportSuccessPDF': 'Report exported to PDF successfully',
     'reports.exportSuccessExcel': 'Report exported to Excel successfully',
     'reports.exportError': 'Failed to export report',
     'reports.shareWhatsapp': 'WhatsApp opened for sharing',
+    'reports.generalShare': 'General share',
+    'reports.specializedPartner': 'Specialized partner',
+    'reports.shareViaWhatsApp': 'Share via WhatsApp',
     'reports.backupSuccess': 'Backup created successfully',
     'reports.backupError': 'Failed to create backup',
 
