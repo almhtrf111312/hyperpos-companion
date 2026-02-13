@@ -280,19 +280,7 @@
   -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
 }
 
-.blur-theme .bg-muted,
-.blur-theme [class*="bg-muted"]:not(.bg-muted-foreground) {
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(calc(var(--blur-intensity) / 2)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) / 2)) !important;
-}
-
-.blur-theme .bg-secondary,
-.blur-theme [class*="bg-secondary"]:not(.bg-secondary-foreground) {
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(calc(var(--blur-intensity) / 2)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) / 2)) !important;
-}
+/* bg-muted and bg-secondary: NO glass effect to avoid black boxes on small elements */
 
 /* Dialog and Sheet backgrounds with blur */
 .blur-theme [role="dialog"],
@@ -322,12 +310,13 @@
   border: 1px solid var(--glass-border) !important;
 }
 
-/* Toast notifications - ensure text is always readable */
+/* Toast notifications - ALWAYS opaque and readable, never glass */
 .blur-theme [data-sonner-toast] {
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(calc(var(--blur-intensity) + 10px)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 10px)) !important;
-  border: 1px solid var(--glass-border) !important;
+  background: hsl(var(--card)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .blur-theme [data-sonner-toast] [data-title],
@@ -336,19 +325,30 @@
 }
 
 .blur-theme [data-sonner-toast][data-type="success"] {
-  background: hsla(var(--success) / 0.85) !important;
-  color: hsl(var(--success-foreground)) !important;
+  background: hsl(var(--success) / 0.15) !important;
+  color: hsl(var(--success)) !important;
+  border-color: hsl(var(--success) / 0.3) !important;
 }
 
 .blur-theme [data-sonner-toast][data-type="error"] {
-  background: hsla(var(--destructive) / 0.85) !important;
-  color: hsl(var(--destructive-foreground)) !important;
+  background: hsl(var(--destructive) / 0.15) !important;
+  color: hsl(var(--destructive)) !important;
+  border-color: hsl(var(--destructive) / 0.3) !important;
 }
 
-/* Buttons with subtle glass effect in blur theme */
+/* Inputs and buttons - NO glass in blur theme */
+.blur-theme input,
+.blur-theme select,
+.blur-theme textarea,
+.blur-theme [data-slot="input"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Buttons: no extra glass backdrop */
 .blur-theme .bg-primary {
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 @layer base {
