@@ -80,29 +80,34 @@ export function QuickActions() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-foreground">{t('quickActions.title')}</h3>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         {actions.map((action, index) => (
           <Link
             key={action.path}
             to={action.path}
             className={cn(
-              "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 card-hover fade-in relative overflow-hidden group",
-              // Glassmorphism base for all buttons
+              "flex flex-col items-center justify-center gap-2 p-2 rounded-xl border transition-all duration-300 card-hover fade-in relative overflow-hidden group h-24 md:h-28",
               "bg-card/30 backdrop-blur-sm hover:bg-card/50",
               colorStyles[action.color]
             )}
             style={{ animationDelay: `${index * 50}ms` }}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="p-2.5 rounded-xl bg-background/50 backdrop-blur-md shadow-sm group-hover:scale-110 transition-transform duration-300">
+            <div className="p-2 rounded-lg bg-background/50 backdrop-blur-md shadow-sm group-hover:scale-110 transition-transform duration-300">
               <action.icon className="w-5 h-5" />
             </div>
-            <div className="text-center z-10">
-              <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">{t(action.labelKey)}</p>
-              <p className="text-[10px] text-muted-foreground/80 mt-0.5 line-clamp-1">{t(action.descriptionKey)}</p>
+            <div className="text-center z-10 w-full px-1">
+              <p className="font-semibold text-foreground text-xs md:text-sm whitespace-nowrap overflow-hidden text-ellipsis group-hover:text-primary transition-colors">{t(action.labelKey)}</p>
             </div>
           </Link>
         ))}
+        {/* 2 Empty Placeholders for 3x3 Grid */}
+        <div className="h-24 md:h-28 rounded-xl border border-dashed border-border/30 bg-muted/5 backdrop-blur-sm flex items-center justify-center opacity-50">
+          <span className="sr-only">Empty Slot 1</span>
+        </div>
+        <div className="h-24 md:h-28 rounded-xl border border-dashed border-border/30 bg-muted/5 backdrop-blur-sm flex items-center justify-center opacity-50">
+          <span className="sr-only">Empty Slot 2</span>
+        </div>
       </div>
     </div>
   );
