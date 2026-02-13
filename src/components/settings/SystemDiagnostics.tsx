@@ -12,12 +12,24 @@ import {
   AlertCircle,
   UserX,
   UserCheck,
-  Clock
+  Clock,
+  Trash2,
+  Wrench
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -53,32 +65,27 @@ export function SystemDiagnostics() {
   const [users, setUsers] = useState<DiagnosticUser[]>([]);
   const [stats, setStats] = useState<DiagnosticStats | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [deleteTarget, setDeleteTarget] = useState<DiagnosticUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchDiagnostics = async () => {
     setIsLoading(true);
     try {
-      // Fetch all user roles
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role, is_active, owner_id, created_at');
-
       if (rolesError) throw rolesError;
 
-      // Fetch all profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, full_name');
-
       if (profilesError) throw profilesError;
 
-      // Fetch all licenses
       const { data: licensesData, error: licensesError } = await supabase
         .from('app_licenses')
         .select('user_id, expires_at, is_revoked, is_trial, license_tier');
-
       if (licensesError) throw licensesError;
 
-      // Fetch user emails via edge function
       const userIds = rolesData?.map(r => r.user_id) || [];
       let emailMap: Record<string, string> = {};
       
@@ -87,7 +94,6 @@ export function SystemDiagnostics() {
           const { data: emailsData, error: emailsError } = await supabase.functions.invoke('get-users-emails', {
             body: { userIds },
           });
-          
           if (!emailsError && emailsData?.emails) {
             emailMap = emailsData.emails;
           }
@@ -96,16 +102,12 @@ export function SystemDiagnostics() {
         }
       }
 
-      // Build diagnostic users
       const diagnosticUsers: DiagnosticUser[] = [];
       const now = new Date();
 
-      // Create a set of all user IDs from roles
       const roleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
       const profileUserIds = new Set(profilesData?.map(p => p.user_id) || []);
       const licenseUserIds = new Set(licensesData?.map(l => l.user_id) || []);
-
-      // Get all unique user IDs
       const allUserIds = new Set([...roleUserIds, ...profileUserIds, ...licenseUserIds]);
 
       for (const userId of allUserIds) {
@@ -115,35 +117,19 @@ export function SystemDiagnostics() {
         
         const issues: string[] = [];
         
-        // Check for missing role
-        if (!role) {
-          issues.push('دور مفقود');
-        }
+        if (!role) issues.push('دور مفقود');
+        if (!profile) issues.push('ملف شخصي مفقود');
         
-        // Check for missing profile
-        if (!profile) {
-          issues.push('ملف شخصي مفقود');
-        }
-        
-        // Check license issues for admins
         if (role?.role === 'admin' || role?.role === 'boss') {
           if (!license) {
             issues.push('ترخيص مفقود');
           } else {
-            const expiresAt = new Date(license.expires_at);
-            if (expiresAt < now) {
-              issues.push('ترخيص منتهي');
-            }
-            if (license.is_revoked) {
-              issues.push('ترخيص ملغى');
-            }
+            if (new Date(license.expires_at) < now) issues.push('ترخيص منتهي');
+            if (license.is_revoked) issues.push('ترخيص ملغى');
           }
         }
         
-        // Check inactive role
-        if (role && !role.is_active) {
-          issues.push('دور غير نشط');
-        }
+        if (role && !role.is_active) issues.push('دور غير نشط');
 
         diagnosticUsers.push({
           user_id: userId,
@@ -160,16 +146,12 @@ export function SystemDiagnostics() {
         });
       }
 
-      // Sort: users with issues first, then by role
       diagnosticUsers.sort((a, b) => {
-        if (a.issues.length !== b.issues.length) {
-          return b.issues.length - a.issues.length;
-        }
+        if (a.issues.length !== b.issues.length) return b.issues.length - a.issues.length;
         const roleOrder = { boss: 0, admin: 1, cashier: 2 };
         return (roleOrder[a.role as keyof typeof roleOrder] ?? 3) - (roleOrder[b.role as keyof typeof roleOrder] ?? 3);
       });
 
-      // Calculate stats
       const statsData: DiagnosticStats = {
         total_users: allUserIds.size,
         users_with_roles: roleUserIds.size,
@@ -186,44 +168,86 @@ export function SystemDiagnostics() {
       setLastRefresh(new Date());
     } catch (error) {
       console.error('Error fetching diagnostics:', error);
-      toast({
-        title: 'خطأ',
-        description: 'فشل في جلب بيانات التشخيص',
-        variant: 'destructive',
-      });
+      toast({ title: 'خطأ', description: 'فشل في جلب بيانات التشخيص', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDiagnostics();
-  }, []);
+  useEffect(() => { fetchDiagnostics(); }, []);
+
+  const handleDeleteUser = async (user: DiagnosticUser) => {
+    setIsDeleting(true);
+    try {
+      const deleteType = user.role === 'admin' ? 'owner' : user.role === 'boss' ? 'boss' : 'user';
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: user.user_id, deleteType },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: 'تم الحذف', description: `تم حذف الحساب "${user.full_name || user.email}" بنجاح` });
+      setDeleteTarget(null);
+      fetchDiagnostics();
+    } catch (error: any) {
+      console.error('Delete user error:', error);
+      toast({ title: 'خطأ', description: error.message || 'فشل في حذف الحساب', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCreateProfile = async (userId: string) => {
+    try {
+      const { error } = await supabase.from('profiles').insert({ user_id: userId, full_name: 'مستخدم جديد' });
+      if (error) throw error;
+      toast({ title: 'تم', description: 'تم إنشاء الملف الشخصي' });
+      fetchDiagnostics();
+    } catch (error: any) {
+      toast({ title: 'خطأ', description: error.message || 'فشل في إنشاء الملف الشخصي', variant: 'destructive' });
+    }
+  };
 
   const usersWithIssues = users.filter(u => u.issues.length > 0);
   const healthyUsers = users.filter(u => u.issues.length === 0);
 
   const getRoleBadge = (role: string | null) => {
     switch (role) {
-      case 'boss':
-        return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">بوس</Badge>;
-      case 'admin':
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">مدير</Badge>;
-      case 'cashier':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">كاشير</Badge>;
-      default:
-        return <Badge variant="destructive">بدون دور</Badge>;
+      case 'boss': return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">بوس</Badge>;
+      case 'admin': return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">مدير</Badge>;
+      case 'cashier': return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">كاشير</Badge>;
+      default: return <Badge variant="destructive">بدون دور</Badge>;
     }
   };
 
   const getStatusIcon = (user: DiagnosticUser) => {
-    if (user.issues.length === 0) {
-      return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-    }
-    if (user.issues.some(i => i.includes('مفقود'))) {
-      return <XCircle className="w-5 h-5 text-red-500" />;
-    }
+    if (user.issues.length === 0) return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+    if (user.issues.some(i => i.includes('مفقود'))) return <XCircle className="w-5 h-5 text-red-500" />;
     return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+  };
+
+  const getActionButtons = (user: DiagnosticUser) => {
+    const buttons: React.ReactNode[] = [];
+
+    if (user.issues.includes('ملف شخصي مفقود') && user.has_role) {
+      buttons.push(
+        <Button key="profile" size="sm" variant="outline" className="text-xs gap-1" onClick={() => handleCreateProfile(user.user_id)}>
+          <Wrench className="w-3 h-3" /> إنشاء ملف
+        </Button>
+      );
+    }
+
+    // Always allow delete for problematic accounts (orphans, missing role, etc.)
+    if (user.role !== 'boss') {
+      buttons.push(
+        <Button key="delete" size="sm" variant="destructive" className="text-xs gap-1" onClick={() => setDeleteTarget(user)}>
+          <Trash2 className="w-3 h-3" /> حذف الحساب
+        </Button>
+      );
+    }
+
+    return buttons.length > 0 ? <div className="flex flex-wrap gap-1">{buttons}</div> : <span className="text-muted-foreground text-xs">-</span>;
   };
 
   if (isLoading) {
@@ -340,6 +364,7 @@ export function SystemDiagnostics() {
                   <TableHead className="text-right">البريد</TableHead>
                   <TableHead className="text-right">الدور</TableHead>
                   <TableHead className="text-right">المشاكل</TableHead>
+                  <TableHead className="text-right">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -362,6 +387,7 @@ export function SystemDiagnostics() {
                         ))}
                       </div>
                     </TableCell>
+                    <TableCell>{getActionButtons(user)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -456,6 +482,39 @@ export function SystemDiagnostics() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد حذف الحساب</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف حساب <strong>{deleteTarget?.full_name || deleteTarget?.email}</strong> نهائياً؟
+              <br />
+              سيتم حذف جميع البيانات المرتبطة بهذا الحساب ولا يمكن التراجع عن هذا الإجراء.
+              {deleteTarget?.role === 'admin' && (
+                <span className="block mt-2 text-destructive font-medium">
+                  ⚠️ هذا حساب مدير - سيتم حذف جميع الحسابات التابعة له أيضاً!
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTarget) handleDeleteUser(deleteTarget);
+              }}
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Trash2 className="w-4 h-4 ml-2" />}
+              حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

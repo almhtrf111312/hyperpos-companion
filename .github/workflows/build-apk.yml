@@ -95,6 +95,24 @@ jobs:
         }
         EOF
         
+        # ✅ حقن signingConfigs في build.gradle لضمان توقيع ثابت
+        GRADLE_FILE="android/app/build.gradle"
+        
+        # إضافة signingConfigs قبل buildTypes
+        sed -i '/buildTypes {/i \
+    signingConfigs {\
+        release {\
+            storeFile file("flowpos-release.keystore")\
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""\
+            keyAlias System.getenv("KEY_ALIAS") ?: ""\
+            keyPassword System.getenv("KEY_PASSWORD") ?: ""\
+        }\
+    }\
+' "$GRADLE_FILE"
+        
+        # تعديل buildType release لاستخدام signingConfig
+        sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false\n        }/' "$GRADLE_FILE"
+        
         # حقن الأذونات في AndroidManifest.xml
         PERMISSIONS='<uses-permission android:name="android.permission.CAMERA" />\n'
         PERMISSIONS+='    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n'
@@ -124,7 +142,7 @@ jobs:
         MANIFEST="android/app/src/main/AndroidManifest.xml"
         sed -i "s|<application|$PERMISSIONS|" "$MANIFEST"
         
-        echo "✅ Permissions and Share queries injected successfully"
+        echo "✅ Permissions, Share queries, and signingConfigs injected successfully"
 
     - name: Generate Assets & Sync
       run: |
@@ -135,7 +153,6 @@ jobs:
       run: |
         VERSION_CODE=${{ github.run_number }}
         VERSION_NAME="1.0.$VERSION_CODE"
-        # تحديث version.json (يُقرأ من build.gradle)
         echo "{\"versionCode\": $VERSION_CODE, \"versionName\": \"$VERSION_NAME\"}" > version.json
 
     - name: Check for Keystore
@@ -153,14 +170,14 @@ jobs:
 
     - name: Build Signed Release APK
       if: steps.keystore_check.outputs.has_keystore == 'true'
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleRelease \
-          -Pandroid.injected.signing.store.file=$PWD/app/flowpos-release.keystore \
-          -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+        ./gradlew assembleRelease
 
     - name: Build Debug APK
       if: steps.keystore_check.outputs.has_keystore != 'true'
@@ -191,4 +208,5 @@ jobs:
         echo "| **Result** | ✅ Success | v1.0.${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
         echo "| **Java** | JDK 21 | Capacitor 8 |" >> $GITHUB_STEP_SUMMARY
         echo "| **Gradle** | 8.14.3 | AGP 8.13.0 |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Signing** | signingConfigs embedded | Consistent identity |" >> $GITHUB_STEP_SUMMARY
         echo "- **Permissions Added:** Camera, Storage (Read/Write), Internet, Vibrate" >> $GITHUB_STEP_SUMMARY

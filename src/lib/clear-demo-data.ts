@@ -24,7 +24,7 @@ const STORAGE_KEYS_TO_CLEAR = [
 
 // Version key to track if data has been cleared
 const CLEAR_VERSION_KEY = 'hyperpos_clear_version';
-const CURRENT_CLEAR_VERSION = '3'; // Increment this to trigger a new clear
+const CURRENT_CLEAR_VERSION = '4'; // Increment this to trigger a new clear
 
 export const clearDemoDataOnce = () => {
   try {
