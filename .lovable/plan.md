@@ -1,118 +1,123 @@
 
-# خطة المزامنة الشاملة: كاش أوفلاين لجميع البيانات + مزامنة الإعدادات سحابياً
+# خطة تسريع فتح التطبيق وتحليل ترابط البيانات
 
-## ملخص المشروع
-إضافة طبقة تخزين محلي (localStorage) لجميع وحدات البيانات المتبقية التي لا تعمل أوفلاين حالياً، بالإضافة إلى حفظ إعدادات المظهر (الثيم واللون والشفافية) في قاعدة البيانات السحابية بحيث تتزامن بين جميع الأجهزة.
+## المشكلة الرئيسية: تأخير شاشة "جاري التحميل"
 
----
+عند فتح التطبيق، يتم تنفيذ 3 عمليات شبكية **بالتتابع** قبل عرض أي محتوى:
 
-## الجزء الأول: كاش أوفلاين للبيانات (7 وحدات)
+```text
+Auth (getSession + getUser + fetchProfile)
+  --> License (check-license edge function)
+    --> Device Binding (user_roles + app_licenses queries)
+```
 
-سيتم تطبيق نفس النمط المستخدم في المنتجات والفواتير (حفظ في localStorage عند التحميل، قراءة من localStorage عند انقطاع الإنترنت) على كل من:
-
-### 1. العملاء (customers-cloud.ts)
-- إضافة `saveCustomersToLocalCache()` و `loadCustomersFromLocalCache()`
-- عند `loadCustomersCloud`: حفظ محلي بعد التحميل من السحابة، وقراءة من المحلي إذا `!navigator.onLine`
-
-### 2. الديون (debts-cloud.ts)
-- نفس النمط: حفظ/قراءة من localStorage
-- عند `loadDebtsCloud`: فحص الاتصال أولاً، إرجاع الكاش المحلي إذا أوفلاين
-
-### 3. المصاريف (expenses-cloud.ts)
-- إضافة كاش محلي لـ `loadExpensesCloud`
-
-### 4. التصنيفات (categories-cloud.ts)
-- إضافة كاش محلي لـ `loadCategoriesCloud`
-
-### 5. الشركاء (partners-cloud.ts)
-- إضافة كاش محلي لـ `loadPartnersCloud`
-
-### 6. المستودعات (warehouses-cloud.ts)
-- إضافة كاش محلي لـ `loadWarehousesCloud`
-- إضافة كاش لـ `loadWarehouseStockCloud` (كاش لكل مستودع)
-
-### 7. فواتير الشراء (purchase-invoices-cloud.ts)
-- إضافة كاش محلي لـ `loadPurchaseInvoicesCloud`
+كل عملية تنتظر الأخرى. إذا كان الاتصال بطيئاً، يمكن أن يستغرق الأمر 10-20 ثانية.
 
 ---
 
-## الجزء الثاني: مزامنة الإعدادات والمظهر سحابياً
+## الجزء الأول: تسريع فتح التطبيق (3 تعديلات)
 
-### المشكلة الحالية
-إعدادات الثيم (الوضع، اللون، الشفافية) محفوظة فقط في `localStorage` - عند تسجيل الدخول من جهاز آخر تضيع الإعدادات.
+### 1. كاش محلي لنتيجة الترخيص (الحل الأساسي)
+حفظ آخر نتيجة ناجحة من `check-license` في localStorage. عند فتح التطبيق:
+- عرض التطبيق فوراً بناءً على الكاش المحلي
+- تحديث الترخيص في الخلفية بدون حظر الواجهة
 
-### الحل
-استخدام جدول `stores` الموجود بالفعل (يحتوي على أعمدة `theme` و `language`) لحفظ إعدادات المظهر الكاملة:
+**الملف:** `src/hooks/use-license.tsx`
+- إضافة `LICENSE_CACHE_KEY` لحفظ آخر نتيجة ناجحة
+- عند التهيئة: تحميل الكاش أولاً → تعيين `isLoading = false` فوراً → ثم التحقق من السحابة في الخلفية
 
-1. **تحديث جدول stores**: إضافة عمود `theme_settings` من نوع `jsonb` لحفظ كل إعدادات المظهر (mode, color, blur, transparency)
+### 2. كاش محلي لفحص الجهاز
+حفظ آخر نتيجة ناجحة من فحص Device Binding.
 
-2. **تحديث use-theme.tsx**: 
-   - عند التهيئة: تحميل الإعدادات من `stores` السحابية أولاً، ثم استخدام localStorage كنسخة احتياطية
-   - عند الحفظ: حفظ في localStorage + تحديث `stores` في السحابة
+**الملف:** `src/hooks/use-device-binding.tsx`
+- حفظ `deviceId` و `isBlocked` في localStorage
+- عند التهيئة: تحميل الكاش فوراً → تحديث في الخلفية
 
-3. **تحديث إعدادات المتجر العامة**: أي إعدادات أخرى في صفحة الإعدادات (العملة، الضريبة، الإشعارات، الطباعة) محفوظة بالفعل في جدول `stores` السحابي
+### 3. تقليل timeout شاشة التحميل
+تقليل timeout من 5 ثواني إلى 3 ثواني وإضافة زر "تخطي والدخول" بعد 6 ثواني.
+
+**الملف:** `src/components/license/LicenseGuard.tsx`
+- تقليل timeout إلى 3 ثواني
+- إضافة زر "تخطي والدخول" بعد 6 ثواني يعرض التطبيق مباشرة
+
+---
+
+## الجزء الثاني: تسريع تهيئة الثيم
+حالياً `ThemeProvider` يستدعي `supabase.auth.getUser()` عند كل فتح، مما يضيف تأخيراً إضافياً.
+
+**الملف:** `src/hooks/use-theme.tsx`
+- تحميل الثيم من localStorage أولاً وفوراً (بدون await)
+- مزامنة من السحابة في الخلفية فقط (لا يحظر العرض)
+
+---
+
+## الجزء الثالث: تحليل وتصحيح ترابط البيانات
+
+### تدفق البيع النقدي (التحقق من صحته)
+```text
+بيع منتج
+  |-- إنشاء فاتورة (invoices + invoice_items)
+  |-- خصم المخزون (products.quantity أو warehouse_stock)
+  |-- تحديث إحصائيات العميل (customers.total_purchases)
+  |-- تسجيل الربح (profits-store)
+  |-- توزيع الربح على الشركاء (partners.current_balance)
+  |-- إضافة للوردية (cashbox-store)
+```
+
+### تدفق البيع بالدين
+```text
+بيع بالدين
+  |-- إنشاء فاتورة (status: pending, paymentType: debt)
+  |-- إنشاء سجل دين (debts table)
+  |-- خصم المخزون
+  |-- تحديث العميل (total_debt + total_purchases)
+  |-- تسجيل الربح + توزيع على الشركاء
+  |-- لا يُضاف للصندوق (لأنه دين)
+```
+
+### تدفق المصاريف
+```text
+إضافة مصروف
+  |-- إنشاء سجل مصروف (expenses table)
+  |-- خصم من أرصدة الشركاء حسب نسبة المشاركة
+```
+
+### ما يجب التحقق منه وإصلاحه:
+
+1. **CartPanel.tsx**: التأكد أن البيع بالدين لا يُضاف للصندوق/الوردية
+2. **CartPanel.tsx**: التأكد أن توزيع الأرباح يتم بشكل صحيح للشركاء عند كل بيع
+3. **CartPanel.tsx**: التأكد أن خصم المخزون يتم من المستودع الصحيح
+4. **Debts**: التأكد أن تسديد دين يُحدّث حقل `debt_paid` و `debt_remaining` في الفاتورة المرتبطة
+5. **Expenses**: التأكد أن المصاريف تُخصم من أرصدة الشركاء بالنسبة الصحيحة
 
 ---
 
 ## التفاصيل التقنية
 
-### نمط الكاش الموحد لكل وحدة بيانات
-
-```text
-loadXxxCloud()
-  |
-  +-- هل الإنترنت مقطوع؟ --> نعم --> قراءة من localStorage --> إرجاع
-  |
-  +-- لا --> جلب من السحابة
-        |
-        +-- نجح؟ --> حفظ في localStorage + إرجاع
-        |
-        +-- فشل؟ --> قراءة من localStorage (fallback)
-```
-
-### مفاتيح التخزين المحلي الجديدة
-- `hyperpos_customers_cache`
-- `hyperpos_debts_cache`
-- `hyperpos_expenses_cache`
-- `hyperpos_categories_cache`
-- `hyperpos_partners_cache`
-- `hyperpos_warehouses_cache`
-- `hyperpos_warehouse_stock_cache_{id}`
-- `hyperpos_purchase_invoices_cache`
-
-### Migration لجدول stores
-```sql
-ALTER TABLE stores ADD COLUMN IF NOT EXISTS theme_settings jsonb DEFAULT '{}';
-```
-
-### تدفق مزامنة الثيم
+### نمط كاش الترخيص الجديد (use-license.tsx)
 
 ```text
 فتح التطبيق
   |
-  +-- مسجل دخول؟
+  +-- هل يوجد كاش ترخيص محلي؟
   |     |
-  |     +-- نعم --> جلب theme_settings من stores
-  |     |             |
-  |     |             +-- موجود؟ --> تطبيق + حفظ في localStorage
-  |     |             |
-  |     |             +-- غير موجود؟ --> استخدام localStorage
+  |     +-- نعم --> عرض التطبيق فوراً + isLoading = false
+  |     |            |
+  |     |            +-- تحديث من السحابة في الخلفية
   |     |
-  |     +-- لا --> استخدام localStorage
-  |
-  عند تغيير الثيم
-  |
-  +-- حفظ في localStorage
-  +-- تحديث stores في السحابة (إذا مسجل دخول)
+  |     +-- لا --> عرض شاشة التحميل (كالعادة)
+  |                  |
+  |                  +-- فحص الترخيص من السحابة
 ```
 
 ### الملفات المتأثرة
-1. `src/lib/cloud/customers-cloud.ts` - إضافة كاش محلي
-2. `src/lib/cloud/debts-cloud.ts` - إضافة كاش محلي
-3. `src/lib/cloud/expenses-cloud.ts` - إضافة كاش محلي
-4. `src/lib/cloud/categories-cloud.ts` - إضافة كاش محلي
-5. `src/lib/cloud/partners-cloud.ts` - إضافة كاش محلي
-6. `src/lib/cloud/warehouses-cloud.ts` - إضافة كاش محلي
-7. `src/lib/cloud/purchase-invoices-cloud.ts` - إضافة كاش محلي
-8. `src/hooks/use-theme.tsx` - مزامنة الثيم مع السحابة
-9. **Migration**: إضافة عمود `theme_settings` لجدول `stores`
+1. `src/hooks/use-license.tsx` - كاش محلي للترخيص + تحميل خلفي
+2. `src/hooks/use-device-binding.tsx` - كاش محلي لفحص الجهاز
+3. `src/components/license/LicenseGuard.tsx` - تقليل timeout + زر تخطي
+4. `src/hooks/use-theme.tsx` - تحميل localStorage أولاً بدون حظر
+5. `src/components/pos/CartPanel.tsx` - مراجعة وتصحيح تدفقات البيع إذا لزم الأمر
+
+### النتيجة المتوقعة
+- فتح التطبيق خلال أقل من ثانية واحدة (من الكاش المحلي)
+- تحديث البيانات في الخلفية بدون تأثير على تجربة المستخدم
+- ترابط صحيح بين جميع وحدات البيانات (فواتير، مخزون، ديون، شركاء، مصاريف)
