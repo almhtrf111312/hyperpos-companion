@@ -100,6 +100,7 @@ interface CartPanelProps {
   onDiscountChange: (discount: number) => void;
   onCustomerNameChange: (name: string) => void;
   onToggleUnit?: (id: string, currentUnit: 'piece' | 'bulk') => void;
+  onUpdateItemPrice?: (id: string, newPrice: number, unit: 'piece' | 'bulk') => void;
   onClose?: () => void;
   isMobile?: boolean;
 }
@@ -117,6 +118,7 @@ export function CartPanel({
   onDiscountChange,
   onCustomerNameChange,
   onToggleUnit,
+  onUpdateItemPrice,
   onClose,
   isMobile = false,
 }: CartPanelProps) {
@@ -1243,6 +1245,12 @@ export function CartPanel({
                     <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   </button>
                 </div>
+                {/* Wholesale unit price display */}
+                {wholesaleMode && (
+                  <div className="text-[10px] text-orange-500 mb-1">
+                    سعر الوحدة: ${formatNumber(getItemPrice(item))} × {item.quantity}
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 md:gap-2">
                     <button
@@ -1259,9 +1267,22 @@ export function CartPanel({
                       <Plus className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
                   </div>
-                  <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
-                    ${formatNumber(getItemPrice(item) * item.quantity)}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    {/* Editable unit price input for Boss/Admin */}
+                    {onUpdateItemPrice && (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={getItemPrice(item)}
+                        onChange={(e) => onUpdateItemPrice(item.id, Number(e.target.value), item.unit)}
+                        className="w-16 h-7 text-xs text-center bg-background border p-1"
+                        dir="ltr"
+                      />
+                    )}
+                    <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
+                      ${formatNumber(getItemPrice(item) * item.quantity)}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))

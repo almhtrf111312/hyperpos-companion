@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/hooks/use-language';
-import { Plus } from 'lucide-react';
+import { Plus, Camera, ScanLine, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getEffectiveFieldsConfig } from '@/lib/product-fields-config';
+import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { uploadProductImage } from '@/lib/image-upload';
 
 interface PurchaseInvoiceItemFormProps {
   onAdd: (item: {
@@ -16,6 +20,22 @@ interface PurchaseInvoiceItemFormProps {
     cost_price: number;
     sale_price?: number;
     product_id?: string;
+    // Extended fields
+    wholesale_price?: number;
+    expiry_date?: string;
+    serial_number?: string;
+    warranty?: string;
+    size?: string;
+    color?: string;
+    min_stock_level?: number;
+    image_url?: string;
+    // Dual unit fields
+    track_by_unit?: string;
+    bulk_unit?: string;
+    small_unit?: string;
+    conversion_factor?: number;
+    bulk_cost_price?: number;
+    bulk_sale_price?: number;
   }) => void;
   onClose: () => void;
   loading: boolean;
@@ -50,10 +70,33 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   const [color, setColor] = useState('');
   const [minStockLevel, setMinStockLevel] = useState('');
 
+  // Dual unit fields
+  const [trackByUnit, setTrackByUnit] = useState('piece');
+  const [bulkUnit, setBulkUnit] = useState('كرتونة');
+  const [smallUnit, setSmallUnit] = useState('قطعة');
+  const [conversionFactor, setConversionFactor] = useState('1');
+  const [bulkCostPrice, setBulkCostPrice] = useState('');
+  const [bulkSalePrice, setBulkSalePrice] = useState('');
+
+  // Image
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Barcode scanner
+  const [showScanner, setShowScanner] = useState(false);
+
+  // Categories
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+
   // Search existing products
   const [searchResults, setSearchResults] = useState<ExistingProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ExistingProduct | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+
+  // Load categories
+  useEffect(() => {
+    getCategoryNamesCloud().then(setCategoryNames);
+  }, []);
 
   useEffect(() => {
     const searchProducts = async () => {
@@ -93,6 +136,50 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setShowSearch(false);
   };
 
+  const handleBarcodeScan = (scannedBarcode: string) => {
+    setBarcode(scannedBarcode);
+    setShowScanner(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const url = await uploadProductImage(base64);
+        if (url) setImageUrl(url);
+        setUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleCameraCapture = async () => {
+    try {
+      const { Camera: CapCamera } = await import('@capacitor/camera');
+      const photo = await (CapCamera as any).getPhoto({
+        quality: 70,
+        resultType: 'base64' as any,
+        source: 'CAMERA' as any,
+      });
+      if (photo?.base64String) {
+        setUploadingImage(true);
+        const base64 = `data:image/jpeg;base64,${photo.base64String}`;
+        const url = await uploadProductImage(base64);
+        if (url) setImageUrl(url);
+        setUploadingImage(false);
+      }
+    } catch {
+      // Camera not available or cancelled
+    }
+  };
+
   const handleSubmit = () => {
     if (!productName || !quantity || !costPrice) return;
 
@@ -103,7 +190,21 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       quantity: parseInt(quantity),
       cost_price: parseFloat(costPrice),
       sale_price: salePrice ? parseFloat(salePrice) : undefined,
-      product_id: selectedProduct?.id
+      product_id: selectedProduct?.id,
+      wholesale_price: wholesalePrice ? parseFloat(wholesalePrice) : undefined,
+      expiry_date: expiryDate || undefined,
+      serial_number: serialNumber || undefined,
+      warranty: warranty || undefined,
+      size: size || undefined,
+      color: color || undefined,
+      min_stock_level: minStockLevel ? parseInt(minStockLevel) : undefined,
+      image_url: imageUrl || undefined,
+      track_by_unit: trackByUnit,
+      bulk_unit: bulkUnit,
+      small_unit: smallUnit,
+      conversion_factor: parseInt(conversionFactor) || 1,
+      bulk_cost_price: bulkCostPrice ? parseFloat(bulkCostPrice) : undefined,
+      bulk_sale_price: bulkSalePrice ? parseFloat(bulkSalePrice) : undefined,
     });
 
     // Reset form
@@ -120,6 +221,13 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setSize('');
     setColor('');
     setMinStockLevel('');
+    setImageUrl('');
+    setTrackByUnit('piece');
+    setBulkUnit('كرتونة');
+    setSmallUnit('قطعة');
+    setConversionFactor('1');
+    setBulkCostPrice('');
+    setBulkSalePrice('');
     setSelectedProduct(null);
   };
 
@@ -163,10 +271,10 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         )}
       </div>
 
-      {/* Barcode + Category */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-sm">{t('products.barcode')}</Label>
+      {/* Barcode with Camera Button */}
+      <div className="space-y-1.5">
+        <Label className="text-sm">{t('products.barcode')}</Label>
+        <div className="flex gap-2">
           <Input
             value={barcode}
             onChange={(e) => {
@@ -174,16 +282,34 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
               setSelectedProduct(null);
             }}
             placeholder="123..."
+            className="flex-1"
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 flex-shrink-0"
+            onClick={() => setShowScanner(true)}
+            title={t('pos.scanBarcode')}
+          >
+            <ScanLine className="w-4 h-4" />
+          </Button>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-sm">{t('products.category')}</Label>
-          <Input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder={t('products.category')}
-          />
-        </div>
+      </div>
+
+      {/* Category Dropdown */}
+      <div className="space-y-1.5">
+        <Label className="text-sm">{t('products.category')}</Label>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder={t('products.category')} />
+          </SelectTrigger>
+          <SelectContent>
+            {categoryNames.map((cat) => (
+              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Quantity + Prices */}
@@ -214,6 +340,80 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
             value={salePrice}
             onChange={(e) => setSalePrice(e.target.value)}
           />
+        </div>
+      </div>
+
+      {/* Dual Unit Settings */}
+      <div className="p-3 bg-muted/50 rounded-lg border border-border space-y-2.5">
+        <Label className="text-sm font-medium">إعدادات الوحدة</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">وحدة التتبع</Label>
+            <Select value={trackByUnit} onValueChange={setTrackByUnit}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="piece">قطعة</SelectItem>
+                <SelectItem value="bulk">كرتونة</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">معامل التحويل</Label>
+            <Input
+              type="number"
+              min="1"
+              value={conversionFactor}
+              onChange={(e) => setConversionFactor(e.target.value)}
+              className="h-8 text-xs"
+              placeholder="12"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">اسم الوحدة الكبيرة</Label>
+            <Input
+              value={bulkUnit}
+              onChange={(e) => setBulkUnit(e.target.value)}
+              className="h-8 text-xs"
+              placeholder="كرتونة"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">اسم الوحدة الصغيرة</Label>
+            <Input
+              value={smallUnit}
+              onChange={(e) => setSmallUnit(e.target.value)}
+              className="h-8 text-xs"
+              placeholder="قطعة"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">سعر تكلفة الكرتونة</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={bulkCostPrice}
+              onChange={(e) => setBulkCostPrice(e.target.value)}
+              className="h-8 text-xs"
+              placeholder="0.00"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">سعر بيع الكرتونة</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={bulkSalePrice}
+              onChange={(e) => setBulkSalePrice(e.target.value)}
+              className="h-8 text-xs"
+              placeholder="0.00"
+            />
+          </div>
         </div>
       </div>
 
@@ -298,6 +498,34 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         </div>
       )}
 
+      {/* Product Image */}
+      <div className="space-y-1.5">
+        <Label className="text-sm">صورة المنتج</Label>
+        <div className="flex gap-2">
+          {imageUrl && (
+            <img src={imageUrl} alt="Product" className="w-12 h-12 rounded-lg object-cover border" />
+          )}
+          <label className="flex-1">
+            <div className="flex items-center gap-2 px-3 py-2 border border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors text-sm text-muted-foreground">
+              <ImageIcon className="w-4 h-4" />
+              <span>{uploadingImage ? 'جاري الرفع...' : 'اختر صورة'}</span>
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 flex-shrink-0"
+            onClick={handleCameraCapture}
+            disabled={uploadingImage}
+            title="التقاط صورة"
+          >
+            <Camera className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
       {/* Buttons */}
       <div className="flex gap-2 pt-1">
         <Button variant="outline" size="sm" onClick={onClose} disabled={loading} className="flex-1">
@@ -308,6 +536,13 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           {loading ? t('common.loading') : t('purchaseInvoice.addAndContinue')}
         </Button>
       </div>
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleBarcodeScan}
+      />
     </div>
   );
 }
