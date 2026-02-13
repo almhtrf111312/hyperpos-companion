@@ -3,7 +3,7 @@
  * Displays in header: Online/Offline/Syncing with last 10 operations
  */
 import { useState, useEffect, useContext } from 'react';
-import { Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,6 +15,7 @@ import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
 import { loadHistory, SyncHistoryItem, SYNC_HISTORY_UPDATED, cleanupSyncedItems } from '@/lib/sync-history';
 import { EVENTS } from '@/lib/events';
+import { loadRecentBackups, formatBackupSize, BACKUP_UPDATED_EVENT, LocalBackup } from '@/lib/local-auto-backup';
 
 export function SyncStatusMenu() {
   const { isRTL } = useLanguage();
@@ -25,6 +26,7 @@ export function SyncStatusMenu() {
 
   const [queueStatus, setQueueStatus] = useState<SyncQueueStatus>(getQueueStatus());
   const [history, setHistory] = useState<SyncHistoryItem[]>(loadHistory());
+  const [recentBackups, setRecentBackups] = useState<LocalBackup[]>(loadRecentBackups());
 
   useEffect(() => {
     const handleQueueUpdate = () => setQueueStatus(getQueueStatus());
@@ -32,16 +34,21 @@ export function SyncStatusMenu() {
       const ce = e as CustomEvent<SyncHistoryItem[]>;
       setHistory(ce.detail || loadHistory());
     };
+    const handleBackupUpdate = (e: Event) => {
+      const ce = e as CustomEvent<LocalBackup[]>;
+      setRecentBackups(ce.detail || loadRecentBackups());
+    };
 
     window.addEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleQueueUpdate);
     window.addEventListener(SYNC_HISTORY_UPDATED, handleHistoryUpdate);
+    window.addEventListener(BACKUP_UPDATED_EVENT, handleBackupUpdate);
 
-    // Cleanup old synced items periodically
     const cleanup = setInterval(cleanupSyncedItems, 5 * 60 * 1000);
 
     return () => {
       window.removeEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleQueueUpdate);
       window.removeEventListener(SYNC_HISTORY_UPDATED, handleHistoryUpdate);
+      window.removeEventListener(BACKUP_UPDATED_EVENT, handleBackupUpdate);
       clearInterval(cleanup);
     };
   }, []);
@@ -209,6 +216,31 @@ export function SyncStatusMenu() {
             </div>
           )}
         </ScrollArea>
+
+        {/* Local Backups Section */}
+        {recentBackups.length > 0 && (
+          <div className="border-t border-border">
+            <div className="px-4 py-2 flex items-center gap-2">
+              <Database className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">
+                {isRTL ? 'النسخ المحلية' : 'Local Backups'}
+              </span>
+            </div>
+            <div className="divide-y divide-border">
+              {recentBackups.slice(0, 3).map((b) => (
+                <div key={b.id} className="flex items-center gap-3 px-4 py-2">
+                  <Database className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{b.reason}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatTime(b.timestamp)} · {formatBackupSize(b.size)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer stats */}
         {(pendingCount > 0 || hasIssues) && (

@@ -155,7 +155,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
       <aside 
         className={cn(
-          "fixed top-0 h-screen bg-sidebar z-50 transition-all duration-300 flex flex-col",
+          "fixed top-0 h-screen bg-sidebar z-50 transition-all duration-300 flex flex-col pt-[env(safe-area-inset-top)]",
           // RTL: sidebar on right, LTR: sidebar on left
           isRTL ? "right-0 border-l border-sidebar-border" : "left-0 border-r border-sidebar-border",
           isMobile 
@@ -299,7 +299,7 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`fixed top-4 z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden ${
+      className={`fixed top-[calc(1rem+env(safe-area-inset-top))] z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden ${
         isRTL ? 'right-4' : 'left-4'
       }`}
     >

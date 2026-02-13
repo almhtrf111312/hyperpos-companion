@@ -25,6 +25,7 @@ import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import { useAppPermissions } from "./hooks/use-app-permissions";
+import { PrivacyPolicyScreen, usePrivacyAccepted } from "./components/PrivacyPolicyScreen";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Products from "./pages/Products";
@@ -56,6 +57,9 @@ const AppContent = () => {
 
   // Request camera and storage permissions early on native platforms
   useAppPermissions();
+
+  // Privacy policy acceptance
+  const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();
 
   // Setup wizard removed - users go directly to login/signup
   // Settings can be configured from Settings page after login
@@ -142,7 +146,10 @@ const AppContent = () => {
     );
   }
 
-  // Setup wizard removed - directly show app content
+  // Privacy policy check
+  if (!privacyAccepted) {
+    return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
+  }
 
   return (
     <>

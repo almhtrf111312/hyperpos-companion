@@ -43,7 +43,7 @@ import {
   Archive
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
-import GoogleDriveSection from '@/components/settings/GoogleDriveSection';
+import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 // ThemeSection تم نقله لصفحة مستقلة /appearance
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
@@ -962,31 +962,8 @@ export default function Settings() {
       case 'sync':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <GoogleDriveSection
-              getBackupData={() => {
-                const data: Record<string, any> = {};
-                for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (key?.startsWith('hyperpos_')) {
-                    try {
-                      data[key] = JSON.parse(localStorage.getItem(key) || '');
-                    } catch {
-                      data[key] = localStorage.getItem(key);
-                    }
-                  }
-                }
-                return data;
-              }}
-              onRestoreBackup={(data) => {
-                Object.entries(data).forEach(([key, value]) => {
-                  localStorage.setItem(key, JSON.stringify(value));
-                });
-                window.dispatchEvent(new Event('productsUpdated'));
-                window.dispatchEvent(new Event('customersUpdated'));
-                window.dispatchEvent(new Event('debtsUpdated'));
-                window.dispatchEvent(new Event('invoicesUpdated'));
-              }}
-            />
+            {/* Local Auto-Backup Section */}
+            <LocalBackupSection />
             <div className="pt-4 border-t border-border">
               <h3 className="text-base font-semibold text-foreground mb-4">{t('settings.localSync')}</h3>
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl">

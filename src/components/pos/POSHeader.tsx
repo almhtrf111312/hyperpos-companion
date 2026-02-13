@@ -38,7 +38,7 @@ export function POSHeader({
   };
 
   return (
-    <header className="h-14 md:h-16 bg-card border-b border-border flex items-center justify-between px-3 md:px-4 sticky top-0 z-20">
+    <header className="h-14 md:h-16 bg-card border-b border-border flex items-center justify-between px-3 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)]">
       {/* Right side - Menu and Title */}
       <div className="flex items-center gap-2">
         <Button

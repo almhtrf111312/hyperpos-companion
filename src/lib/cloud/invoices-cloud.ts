@@ -10,6 +10,7 @@ import {
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import { emitEvent, EVENTS } from '../events';
+import { triggerAutoBackup } from '../local-auto-backup';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -360,6 +361,7 @@ export const addInvoiceCloud = async (
 
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
+    triggerAutoBackup(`فاتورة جديدة #${invoiceNumber}`);
 
     return {
       ...invoice,
