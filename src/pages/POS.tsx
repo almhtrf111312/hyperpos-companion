@@ -448,6 +448,16 @@ export default function POS() {
     setCustomerName('');
   };
 
+  // Update item price manually (for Boss/Admin discounts)
+  const updateItemPrice = (id: string, newPrice: number, unit: 'piece' | 'bulk') => {
+    if (newPrice < 0) return;
+    setCart(prev => prev.map(item =>
+      item.id === id && item.unit === unit
+        ? { ...item, price: newPrice }
+        : item
+    ));
+  };
+
   // Keyboard shortcuts for POS (desktop only)
   const [scannerTrigger, setScannerTrigger] = useState(0);
 
@@ -563,6 +573,7 @@ export default function POS() {
                 onDiscountChange={setDiscount}
                 onCustomerNameChange={setCustomerName}
                 onToggleUnit={toggleCartItemUnit}
+                onUpdateItemPrice={updateItemPrice}
               />
             </div>
           )}
@@ -585,6 +596,7 @@ export default function POS() {
             onDiscountChange={setDiscount}
             onCustomerNameChange={setCustomerName}
             onToggleUnit={toggleCartItemUnit}
+            onUpdateItemPrice={updateItemPrice}
             onClose={() => setCartOpen(false)}
             isMobile
           />
