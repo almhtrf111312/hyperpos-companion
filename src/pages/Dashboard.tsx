@@ -228,8 +228,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid - First Row (4 Columns Enforced) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      {/* Quick Actions (Moved to Top) */}
+      <QuickActions />
+
+      {/* Row 1: Sales Performance (3 Columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        {/* Sales Today */}
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
@@ -238,35 +242,8 @@ export default function Dashboard() {
           variant="primary"
           linkTo="/pos"
         />
-        <StatCard
-          title={t('dashboard.netProfit')}
-          value={formatCurrency(stats.netProfit)}
-          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
-          icon={<TrendingUp className="w-6 h-6" />}
-          variant={stats.netProfit >= 0 ? "success" : "warning"}
-          linkTo="/reports"
-        />
-        <StatCard
-          title={t('dashboard.dueDebts')}
-          value={formatCurrency(stats.totalDebtAmount)}
-          subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
-          icon={<CreditCard className="w-6 h-6" />}
-          variant="warning"
-          linkTo="/debts"
-        />
-        <StatCard
-          title={t('dashboard.customersThisMonth')}
-          value={stats.uniqueCustomers.toString()}
-          subtitle={t('dashboard.uniqueCustomers')}
-          icon={<Users className="w-6 h-6" />}
-          variant="default"
-          linkTo="/customers"
-        />
-      </div>
-
-      {/* Sales Performance Row (New - 2 or 4 Columns) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-        <div className="glass rounded-xl p-4 card-hover">
+        {/* Sales Week */}
+        <div className="glass rounded-xl p-4 card-hover bg-primary/5 border-primary/20">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
               <Calendar className="w-5 h-5 text-primary" />
@@ -277,10 +254,11 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="glass rounded-xl p-4 card-hover">
+        {/* Sales Month */}
+        <div className="glass rounded-xl p-4 card-hover bg-primary/5 border-primary/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-info/10 backdrop-blur-sm">
-              <BarChart3 className="w-5 h-5 text-info" />
+            <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
+              <BarChart3 className="w-5 h-5 text-primary" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">مبيعات هذا الشهر</p>
@@ -290,10 +268,41 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid - Capital Row (4 Columns Enforced) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        {/* Inventory value */}
-        <div className="glass rounded-xl p-4 card-hover">
+      {/* Row 2: Business Health (3 Columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        {/* Net Profit */}
+        <StatCard
+          title={t('dashboard.netProfit')}
+          value={formatCurrency(stats.netProfit)}
+          subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}% | ${t('nav.expenses')}: ${formatCurrency(stats.todayExpenses)}`}
+          icon={<TrendingUp className="w-6 h-6" />}
+          variant={stats.netProfit >= 0 ? "success" : "warning"}
+          linkTo="/reports"
+        />
+        {/* Due Debts */}
+        <StatCard
+          title={t('dashboard.dueDebts')}
+          value={formatCurrency(stats.totalDebtAmount)}
+          subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
+          icon={<CreditCard className="w-6 h-6" />}
+          variant="warning"
+          linkTo="/debts"
+        />
+        {/* Customers */}
+        <StatCard
+          title={t('dashboard.customersThisMonth')}
+          value={stats.uniqueCustomers.toString()}
+          subtitle={t('dashboard.uniqueCustomers')}
+          icon={<Users className="w-6 h-6" />}
+          variant="default"
+          linkTo="/customers"
+        />
+      </div>
+
+      {/* Row 3: Assets & Capital (3 Columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        {/* Inventory Value */}
+        <div className="glass rounded-xl p-4 card-hover bg-info/5 border-info/20">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-info/10 backdrop-blur-sm">
               <Package className="w-5 h-5 text-info" />
@@ -305,11 +314,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Total capital */}
-        <div className="glass rounded-xl p-4 card-hover">
+        {/* Total Capital */}
+        <div className="glass rounded-xl p-4 card-hover bg-indigo-500/5 border-indigo-500/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm">
-              <Wallet className="w-5 h-5 text-primary" />
+            <div className="p-2 rounded-lg bg-indigo-500/10 backdrop-blur-sm">
+              <Wallet className="w-5 h-5 text-indigo-500" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.totalCapital')}</p>
@@ -318,24 +327,27 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Cashbox balance */}
-        <div className="glass rounded-xl p-4 card-hover">
+        {/* Cashbox Balance */}
+        <div className="glass rounded-xl p-4 card-hover bg-emerald-500/5 border-emerald-500/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10 backdrop-blur-sm">
-              <Banknote className="w-5 h-5 text-success" />
+            <div className="p-2 rounded-lg bg-emerald-500/10 backdrop-blur-sm">
+              <Banknote className="w-5 h-5 text-emerald-500" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.cashboxBalance')}</p>
-              <p className="text-xl font-bold text-success">{formatCurrency(stats.cashboxBalance)}</p>
+              <p className="text-xl font-bold text-emerald-500">{formatCurrency(stats.cashboxBalance)}</p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Available capital */}
-        <div className="glass rounded-xl p-4 card-hover">
+      {/* Row 4: Liquid Capital (3 Columns with Placeholders) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        {/* Liquid Capital */}
+        <div className="glass rounded-xl p-4 card-hover bg-blue-500/5 border-blue-500/20">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-info/10' : 'bg-destructive/10'} backdrop-blur-sm`}>
-              <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-info' : 'text-destructive'}`} />
+            <div className={`p-2 rounded-lg ${stats.liquidCapital >= 0 ? 'bg-blue-500/10' : 'bg-destructive/10'} backdrop-blur-sm`}>
+              <DollarSign className={`w-5 h-5 ${stats.liquidCapital >= 0 ? 'text-blue-500' : 'text-destructive'}`} />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('dashboard.liquidCapital')}</p>
@@ -345,33 +357,17 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Deficit - only shows if > 0 */}
-      {stats.deficit > 0 && (
-        <div className="bg-destructive/10 rounded-xl border border-destructive/30 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-destructive/20">
-                <TrendingDown className="w-5 h-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-destructive/80">{t('dashboard.deficit')}</p>
-                <p className="text-2xl font-bold text-destructive">
-                  {formatCurrency(stats.deficit)}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-destructive/80">{t('dashboard.deficitPercentage')}</p>
-              <p className="text-xl font-bold text-destructive">{stats.deficitPercentage.toFixed(1)}%</p>
-            </div>
-          </div>
+        {/* Placeholder 1 */}
+        <div className="hidden md:flex glass rounded-xl p-4 items-center justify-center opacity-30 border-dashed border-border/50">
+          <span className="text-sm text-muted-foreground/50">Coming Soon</span>
         </div>
-      )}
 
-      {/* Quick Actions (Compacted) */}
-      <QuickActions />
+        {/* Placeholder 2 */}
+        <div className="hidden md:flex glass rounded-xl p-4 items-center justify-center opacity-30 border-dashed border-border/50">
+          <span className="text-sm text-muted-foreground/50">Coming Soon</span>
+        </div>
+      </div>
 
       {/* Main Content Grid (Lists) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

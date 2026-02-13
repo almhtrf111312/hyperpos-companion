@@ -106,7 +106,7 @@ export function DebtAlerts() {
   const overdueCount = debts.filter(d => d.status === 'overdue').length;
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-6">
+    <div className="glass rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-foreground">{t('debtAlerts.title')}</h3>
         {overdueCount > 0 && (
