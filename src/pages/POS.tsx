@@ -183,17 +183,21 @@ export default function POS() {
   const [showScannedDialog, setShowScannedDialog] = useState(false);
 
   // Load products and categories from cloud with retry logic
-  const loadData = useCallback(async (retryCount = 0) => {
+  // ✅ تحميل فوري من IndexedDB ثم تحديث من السحابة في الخلفية
+  const loadData = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
     // ✅ انتظار تحميل الـ profile أولاً
     if (profile === undefined) {
       console.log('[POS] Profile not loaded yet, waiting...');
       return;
     }
 
-    setIsLoadingProducts(true);
+    // فقط عرض Loading في المرة الأولى (ليس عند التحديث الخلفي)
+    if (!isBackgroundRefresh) {
+      setIsLoadingProducts(true);
+    }
 
-    // ✅ إبطال الـ Cache قبل التحميل لضمان الحصول على أحدث البيانات
-    invalidateProductsCache();
+    // ❌ لا نمسح الكاش هنا - نتركه يخدم المنتجات فوراً
+    // invalidateProductsCache(); -- تم إزالته لتحميل فوري
 
     try {
       const [cloudProducts, cloudCategories] = await Promise.all([
@@ -204,7 +208,7 @@ export default function POS() {
       // إذا لم تُرجع المنتجات وعدد المحاولات أقل من 3، أعد المحاولة
       if (cloudProducts.length === 0 && retryCount < 3) {
         console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1), 1000);
+        setTimeout(() => loadData(retryCount + 1, isBackgroundRefresh), 1000);
         return;
       }
 
@@ -266,7 +270,7 @@ export default function POS() {
       // إعادة المحاولة في حالة الخطأ
       if (retryCount < 3) {
         console.log(`[POS] Error loading, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1), 1500);
+        setTimeout(() => loadData(retryCount + 1, isBackgroundRefresh), 1500);
         return;
       }
     } finally {
@@ -278,9 +282,10 @@ export default function POS() {
   useEffect(() => {
     loadData();
 
-    const onProductsUpdated = () => loadData();
-    const onCategoriesUpdated = () => loadData();
-    const onFocus = () => loadData();
+    // التحديثات اللاحقة تكون في الخلفية (بدون شاشة تحميل)
+    const onProductsUpdated = () => loadData(0, true);
+    const onCategoriesUpdated = () => loadData(0, true);
+    const onFocus = () => loadData(0, true);
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
