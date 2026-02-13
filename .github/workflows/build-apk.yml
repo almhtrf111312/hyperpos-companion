@@ -104,20 +104,27 @@ jobs:
         # ✅ حقن signingConfigs في build.gradle لضمان توقيع ثابت
         GRADLE_FILE="android/app/build.gradle"
         
-        # إضافة signingConfigs قبل buildTypes
-        sed -i '/buildTypes {/i \
-    signingConfigs {\
-        release {\
-            storeFile file("flowpos-release.keystore")\
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""\
-            keyAlias System.getenv("KEY_ALIAS") ?: ""\
-            keyPassword System.getenv("KEY_PASSWORD") ?: ""\
-        }\
-    }\
-' "$GRADLE_FILE"
+        # إنشاء ملف signing config مؤقت
+        cat > /tmp/signing_block.gradle << 'SIGN'
+    signingConfigs {
+        release {
+            storeFile file("flowpos-release.keystore")
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias System.getenv("KEY_ALIAS") ?: ""
+            keyPassword System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+SIGN
         
-        # تعديل buildType release لاستخدام signingConfig
-        sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false\n        }/' "$GRADLE_FILE"
+        # استبدال buildTypes block بالكامل
+        sed -i '/buildTypes {/r /tmp/signing_block.gradle' "$GRADLE_FILE"
+        sed -i '0,/buildTypes {/{/buildTypes {/d}' "$GRADLE_FILE"
         
         # حقن الأذونات في AndroidManifest.xml
         PERMISSIONS='<uses-permission android:name="android.permission.CAMERA" />\n'
