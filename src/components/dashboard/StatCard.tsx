@@ -17,20 +17,22 @@ interface StatCardProps {
 }
 
 const variantStyles = {
-  default: 'bg-card border-border',
-  primary: 'bg-primary/10 border-primary/20',
-  success: 'bg-success/10 border-success/20',
-  warning: 'bg-warning/10 border-warning/20',
-  danger: 'bg-destructive/10 border-destructive/20',
+  default: 'glass border-border/50',
+  primary: 'glass bg-primary/5 border-primary/20',
+  success: 'glass bg-success/5 border-success/20',
+  warning: 'glass bg-warning/5 border-warning/20',
+  danger: 'glass bg-destructive/5 border-destructive/20',
 };
 
 const iconBgStyles = {
-  default: 'bg-muted',
-  primary: 'bg-primary/20',
-  success: 'bg-success/20',
-  warning: 'bg-warning/20',
-  danger: 'bg-destructive/20',
+  default: 'bg-muted/50 backdrop-blur-md',
+  primary: 'bg-primary/20 backdrop-blur-md',
+  success: 'bg-success/20 backdrop-blur-md',
+  warning: 'bg-warning/20 backdrop-blur-md',
+  danger: 'bg-destructive/20 backdrop-blur-md',
 };
+
+// ... (keep iconColorStyles)
 
 const iconColorStyles = {
   default: 'text-foreground',
@@ -42,6 +44,8 @@ const iconColorStyles = {
 
 export function StatCard({ title, value, subtitle, icon, trend, variant = 'default', linkTo }: StatCardProps) {
   const navigate = useNavigate();
+
+  // ... (keep helper methods)
 
   const getTrendIcon = () => {
     if (!trend) return null;
@@ -64,11 +68,11 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   };
 
   return (
-    <div 
+    <div
       className={cn(
-        "rounded-xl border p-3 md:p-4 card-hover",
+        "rounded-xl p-3 md:p-4 card-hover transition-all duration-300",
         variantStyles[variant],
-        linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50"
+        linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50 hover:bg-card/90"
       )}
       onClick={handleClick}
       role={linkTo ? "button" : undefined}
@@ -92,7 +96,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
           )}
         </div>
         <div className={cn(
-          "p-2 rounded-lg shrink-0",
+          "p-2 rounded-lg shrink-0 transition-transform duration-300 group-hover:scale-110",
           iconBgStyles[variant]
         )}>
           <div className={cn(iconColorStyles[variant], "[&>svg]:w-4 [&>svg]:h-4 md:[&>svg]:w-5 md:[&>svg]:h-5")}>

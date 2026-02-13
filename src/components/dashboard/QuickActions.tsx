@@ -65,11 +65,11 @@ const actions: QuickAction[] = [
 ];
 
 const colorStyles = {
-  primary: 'bg-primary/10 text-primary hover:bg-primary/20 border-primary/20',
-  success: 'bg-success/10 text-success hover:bg-success/20 border-success/20',
-  warning: 'bg-warning/10 text-warning hover:bg-warning/20 border-warning/20',
-  info: 'bg-info/10 text-info hover:bg-info/20 border-info/20',
-  accent: 'bg-accent/10 text-accent hover:bg-accent/20 border-accent/20',
+  primary: 'border-primary/20 hover:border-primary/50 text-primary',
+  success: 'border-success/20 hover:border-success/50 text-success',
+  warning: 'border-warning/20 hover:border-warning/50 text-warning',
+  info: 'border-info/20 hover:border-info/50 text-info',
+  accent: 'border-accent/20 hover:border-accent/50 text-accent',
 };
 
 export function QuickActions() {
@@ -86,17 +86,20 @@ export function QuickActions() {
             key={action.path}
             to={action.path}
             className={cn(
-              "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 card-hover fade-in",
+              "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 card-hover fade-in relative overflow-hidden group",
+              // Glassmorphism base for all buttons
+              "bg-card/30 backdrop-blur-sm hover:bg-card/50",
               colorStyles[action.color]
             )}
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            <div className="p-2 rounded-lg bg-current/10">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="p-2.5 rounded-xl bg-background/50 backdrop-blur-md shadow-sm group-hover:scale-110 transition-transform duration-300">
               <action.icon className="w-5 h-5" />
             </div>
-            <div className="text-center">
-              <p className="font-semibold text-foreground text-sm">{t(action.labelKey)}</p>
-              <p className="text-xs text-muted-foreground/80 mt-0.5 line-clamp-1">{t(action.descriptionKey)}</p>
+            <div className="text-center z-10">
+              <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">{t(action.labelKey)}</p>
+              <p className="text-[10px] text-muted-foreground/80 mt-0.5 line-clamp-1">{t(action.descriptionKey)}</p>
             </div>
           </Link>
         ))}
