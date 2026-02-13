@@ -112,9 +112,9 @@ Deno.serve(async (req) => {
     }
 
     // Step 2: Check if license is still valid (not expired)
-    const now = new Date();
+    const nowCheck = new Date();
     const expiresAt = new Date(license.expires_at);
-    if (expiresAt < now) {
+    if (expiresAt < nowCheck) {
       return new Response(
         JSON.stringify({ success: false, found: true, error: 'License expired' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
