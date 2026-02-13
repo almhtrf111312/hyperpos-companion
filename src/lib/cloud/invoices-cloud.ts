@@ -128,6 +128,39 @@ let invoicesCache: Invoice[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
+// Local storage key for offline fallback
+const LOCAL_INVOICES_CACHE_KEY = 'hyperpos_invoices_cache';
+
+// Save invoices to localStorage for offline access
+const saveInvoicesToLocalCache = (invoices: Invoice[]) => {
+  try {
+    localStorage.setItem(LOCAL_INVOICES_CACHE_KEY, JSON.stringify({
+      invoices,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.warn('[InvoicesCloud] localStorage save failed:', e);
+  }
+};
+
+// Load invoices from localStorage
+const loadInvoicesFromLocalCache = (): Invoice[] | null => {
+  try {
+    const cached = localStorage.getItem(LOCAL_INVOICES_CACHE_KEY);
+    if (cached) {
+      const { invoices, timestamp } = JSON.parse(cached);
+      // 24hr TTL
+      if (Date.now() - timestamp < 86400000 && invoices?.length > 0) {
+        console.log('[InvoicesCloud] 📴 Serving', invoices.length, 'invoices from local cache');
+        return invoices;
+      }
+    }
+  } catch (e) {
+    console.warn('[InvoicesCloud] localStorage load failed:', e);
+  }
+  return null;
+};
+
 // Generate invoice number
 const getNextInvoiceNumber = async (): Promise<string> => {
   const date = new Date();
@@ -140,21 +173,17 @@ const getNextInvoiceNumber = async (): Promise<string> => {
   const invoices = await loadInvoicesCloud();
 
   // Filter invoices created today to sequence them
-  // Assuming ID format is YYYYMMDD-XXX
   const todayInvoices = invoices.filter(inv =>
     inv.id.startsWith(datePrefix)
   );
 
   const nextNumber = todayInvoices.length + 1;
-  // Use 3 digits for sequence (e.g. 001)
   return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
 };
 
 // Load invoices
 // ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
-  // قد يحدث أن CloudSyncProvider لم يضبط currentUserId بعد (خصوصاً بعد إعادة فتح التطبيق)
-  // لذا نستخدم fallback من جلسة المصادقة لضمان عدم اختفاء الفواتير.
   let userId = getCurrentUserId();
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -163,53 +192,91 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
       setCurrentUserId(user.id);
     }
   }
-  if (!userId) return [];
+  if (!userId) {
+    // Try local cache even without userId
+    const localInvoices = loadInvoicesFromLocalCache();
+    return localInvoices || [];
+  }
 
   if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return invoicesCache;
   }
 
-  // Check if user is cashier
-  const isCashier = await isCashierUser();
-
-  let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
-    column: 'created_at',
-    ascending: false,
-  });
-
-  // ✅ If cashier, filter to only show their own invoices
-  if (isCashier) {
-    cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
+  // Check if offline
+  if (!navigator.onLine) {
+    const localInvoices = loadInvoicesFromLocalCache();
+    if (localInvoices) {
+      invoicesCache = localInvoices;
+      cacheTimestamp = Date.now();
+      return localInvoices;
+    }
+    return invoicesCache || [];
   }
 
-  // Load invoice items for each invoice
-  const invoicesWithItems = await Promise.all(
-    cloudInvoices.map(async (cloud) => {
-      const invoice = toInvoice(cloud);
+  try {
+    // Check if user is cashier
+    const isCashier = await isCashierUser();
 
-      // Fetch items
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: items } = await (supabase as any)
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', cloud.id);
+    let cloudInvoices = await fetchFromSupabase<CloudInvoice>('invoices', {
+      column: 'created_at',
+      ascending: false,
+    });
 
-      invoice.items = (items || []).map((item: Record<string, unknown>) => ({
-        id: item.id as string,
-        name: item.product_name as string,
-        price: Number(item.unit_price) || 0,
-        quantity: Number(item.quantity) || 1,
-        total: Number(item.amount_original) || 0,
-      }));
+    // If cloud returned empty, check local cache
+    if (cloudInvoices.length === 0) {
+      const localInvoices = loadInvoicesFromLocalCache();
+      if (localInvoices && localInvoices.length > 0) {
+        console.log('[InvoicesCloud] ⚠️ Cloud returned empty, using local cache');
+        invoicesCache = localInvoices;
+        cacheTimestamp = Date.now();
+        return localInvoices;
+      }
+    }
 
-      return invoice;
-    })
-  );
+    // ✅ If cashier, filter to only show their own invoices
+    if (isCashier) {
+      cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
+    }
 
-  invoicesCache = invoicesWithItems;
-  cacheTimestamp = Date.now();
+    // Load invoice items for each invoice
+    const invoicesWithItems = await Promise.all(
+      cloudInvoices.map(async (cloud) => {
+        const invoice = toInvoice(cloud);
 
-  return invoicesCache;
+        // Fetch items
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: items } = await (supabase as any)
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_id', cloud.id);
+
+        invoice.items = (items || []).map((item: Record<string, unknown>) => ({
+          id: item.id as string,
+          name: item.product_name as string,
+          price: Number(item.unit_price) || 0,
+          quantity: Number(item.quantity) || 1,
+          total: Number(item.amount_original) || 0,
+        }));
+
+        return invoice;
+      })
+    );
+
+    invoicesCache = invoicesWithItems;
+    cacheTimestamp = Date.now();
+
+    // Save to local cache for offline access
+    if (invoicesCache.length > 0) {
+      saveInvoicesToLocalCache(invoicesCache);
+    }
+
+    return invoicesCache;
+  } catch (error) {
+    console.error('[InvoicesCloud] Cloud fetch failed:', error);
+    const localInvoices = loadInvoicesFromLocalCache();
+    if (localInvoices) return localInvoices;
+    return invoicesCache || [];
+  }
 };
 
 export const invalidateInvoicesCache = () => {

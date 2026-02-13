@@ -219,34 +219,60 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
     return productsCache;
   }
 
+  // Check if we're online
+  const isOnline = navigator.onLine;
+
+  if (!isOnline) {
+    // Offline: serve from local cache directly
+    const localProducts = await loadFromLocalCache();
+    if (localProducts && localProducts.length > 0) {
+      productsCache = localProducts;
+      cacheTimestamp = Date.now();
+      console.log('[ProductsCloud] 📴 Offline - serving', localProducts.length, 'products from local cache');
+      return localProducts;
+    }
+    return productsCache || [];
+  }
+
   try {
     const cloudProducts = await fetchFromSupabase<CloudProduct>('products', {
       column: 'created_at',
       ascending: false
     });
 
+    // If cloud returned empty but we have local cache, it might be a network issue
+    if (cloudProducts.length === 0) {
+      const localProducts = await loadFromLocalCache();
+      if (localProducts && localProducts.length > 0) {
+        console.log('[ProductsCloud] ⚠️ Cloud returned empty, using local cache');
+        productsCache = localProducts;
+        cacheTimestamp = Date.now();
+        return localProducts;
+      }
+    }
+
     productsCache = cloudProducts.map(toProduct);
     cacheTimestamp = Date.now();
 
-    // Save to IndexedDB + localStorage as backup
-    saveToLocalCache(productsCache);
+    // Save to IndexedDB + localStorage as backup (only if we got data)
+    if (productsCache.length > 0) {
+      saveToLocalCache(productsCache);
+    }
 
     return productsCache;
   } catch (error) {
     console.error('[ProductsCloud] Cloud fetch failed, trying offline cache:', error);
 
-    // Fallback: IndexedDB → localStorage → stale memory
     const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
       return localProducts;
     }
 
     if (productsCache && productsCache.length > 0) {
-      console.log('[ProductsCloud] Serving from stale memory cache');
       return productsCache;
     }
 
-    throw error;
+    return [];
   }
 };
 
