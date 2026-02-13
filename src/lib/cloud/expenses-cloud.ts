@@ -100,6 +100,22 @@ function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
   };
 }
 
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_expenses_cache';
+
+const saveExpensesLocally = (expenses: Expense[]) => {
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(expenses));
+  } catch { /* ignore */ }
+};
+
+const loadExpensesLocally = (): Expense[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
 // Cache
 let expensesCache: Expense[] | null = null;
 let cacheTimestamp = 0;
@@ -112,6 +128,17 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
 
   if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return expensesCache;
+  }
+
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadExpensesLocally();
+    if (local) {
+      expensesCache = local;
+      cacheTimestamp = Date.now();
+      return local;
+    }
+    return [];
   }
 
   // Check if user is cashier for filtering
@@ -167,6 +194,7 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
 
   expensesCache = cloudExpenses.map(toExpense);
   cacheTimestamp = Date.now();
+  saveExpensesLocally(expensesCache);
   
   return expensesCache;
 };

@@ -55,22 +55,47 @@
    sale_price?: number;
  }
  
+ // Local storage cache helpers
+ const LOCAL_CACHE_KEY = 'hyperpos_purchase_invoices_cache';
+
+ const savePurchaseInvoicesLocally = (invoices: PurchaseInvoice[]) => {
+   try {
+     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(invoices));
+   } catch { /* ignore */ }
+ };
+
+ const loadPurchaseInvoicesLocally = (): PurchaseInvoice[] | null => {
+   try {
+     const data = localStorage.getItem(LOCAL_CACHE_KEY);
+     return data ? JSON.parse(data) : null;
+   } catch { return null; }
+ };
+
  // Load all purchase invoices
  export async function loadPurchaseInvoicesCloud(): Promise<PurchaseInvoice[]> {
    const { data: { user } } = await supabase.auth.getUser();
    if (!user) return [];
- 
+
+   // Offline: return local cache
+   if (!navigator.onLine) {
+     const local = loadPurchaseInvoicesLocally();
+     if (local) return local;
+     return [];
+   }
+
    const { data, error } = await supabase
      .from('purchase_invoices')
      .select('*')
      .order('created_at', { ascending: false });
- 
+
    if (error) {
      console.error('Error loading purchase invoices:', error);
      return [];
    }
- 
-   return (data || []) as PurchaseInvoice[];
+
+   const invoices = (data || []) as PurchaseInvoice[];
+   savePurchaseInvoicesLocally(invoices);
+   return invoices;
  }
  
  // Load single purchase invoice with items

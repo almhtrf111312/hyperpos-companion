@@ -42,6 +42,22 @@ const defaultCategoryNames = [
   'صيانة',
 ];
 
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_categories_cache';
+
+const saveCategoriesLocally = (categories: Category[]) => {
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(categories));
+  } catch { /* ignore */ }
+};
+
+const loadCategoriesLocally = (): Category[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
 // Cache
 let categoriesCache: Category[] | null = null;
 let cacheTimestamp = 0;
@@ -60,6 +76,17 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
     return categoriesCache;
   }
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadCategoriesLocally();
+    if (local) {
+      categoriesCache = local;
+      cacheTimestamp = Date.now();
+      return local;
+    }
+    return [];
+  }
+
   const cloudCategories = await fetchFromSupabase<CloudCategory>('categories', {
     column: 'created_at',
     ascending: true,
@@ -69,18 +96,19 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
   if (cloudCategories.length === 0 && !defaultCreationPromise) {
     defaultCreationPromise = createDefaultCategories();
     await defaultCreationPromise;
-    // Reload after creating defaults
     const reloadedCategories = await fetchFromSupabase<CloudCategory>('categories', {
       column: 'created_at',
       ascending: true,
     });
     categoriesCache = reloadedCategories.map(toCategory);
     cacheTimestamp = Date.now();
+    saveCategoriesLocally(categoriesCache);
     return categoriesCache;
   }
 
   categoriesCache = cloudCategories.map(toCategory);
   cacheTimestamp = Date.now();
+  saveCategoriesLocally(categoriesCache);
   
   return categoriesCache;
 };

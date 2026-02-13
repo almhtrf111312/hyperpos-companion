@@ -81,6 +81,22 @@ function toDebt(cloud: CloudDebt & { cashier_name?: string }): Debt {
   };
 }
 
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_debts_cache';
+
+const saveDebtsLocally = (debts: Debt[]) => {
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(debts));
+  } catch { /* ignore */ }
+};
+
+const loadDebtsLocally = (): Debt[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
 // Cache
 let debtsCache: Debt[] | null = null;
 let cacheTimestamp = 0;
@@ -123,6 +139,17 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
     return debtsCache;
   }
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadDebtsLocally();
+    if (local) {
+      debtsCache = local;
+      cacheTimestamp = Date.now();
+      return local;
+    }
+    return [];
+  }
+
   // Check if current user is a cashier
   const isCashier = await isCashierUser();
 
@@ -161,6 +188,7 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
 
   debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
   cacheTimestamp = Date.now();
+  saveDebtsLocally(debtsCache);
 
   return debtsCache;
 };
