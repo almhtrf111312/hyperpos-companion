@@ -992,6 +992,7 @@ export type Database = {
           tax_enabled: boolean | null
           tax_rate: number | null
           theme: string | null
+          theme_settings: Json | null
           updated_at: string | null
           user_id: string
         }
@@ -1012,6 +1013,7 @@ export type Database = {
           tax_enabled?: boolean | null
           tax_rate?: number | null
           theme?: string | null
+          theme_settings?: Json | null
           updated_at?: string | null
           user_id: string
         }
@@ -1032,6 +1034,7 @@ export type Database = {
           tax_enabled?: boolean | null
           tax_rate?: number | null
           theme?: string | null
+          theme_settings?: Json | null
           updated_at?: string | null
           user_id?: string
         }

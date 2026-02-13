@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark';
 export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'amber' | 'teal' | 'crimson';
@@ -220,34 +221,83 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved) {
-        const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency } = JSON.parse(saved);
-        const finalMode = savedMode || DEFAULT_MODE;
-        const finalColor = savedColor || DEFAULT_COLOR;
-        const finalBlur = savedBlur ?? DEFAULT_BLUR;
-        const finalTransparency = savedTransparency ?? DEFAULT_TRANSPARENCY;
-        setModeState(finalMode);
-        setColorState(finalColor);
-        setBlurEnabledState(finalBlur);
-        setTransparencyLevelState(finalTransparency);
-        applyTheme(finalMode, finalColor);
-        applyBlurTheme(finalBlur, finalMode, finalTransparency);
-      } else {
+    const initTheme = async () => {
+      try {
+        // Try loading from cloud first
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: store } = await (supabase as any)
+            .from('stores')
+            .select('theme_settings')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          const cloudSettings = store?.theme_settings;
+          if (cloudSettings && cloudSettings.mode) {
+            const finalMode = cloudSettings.mode || DEFAULT_MODE;
+            const finalColor = cloudSettings.color || DEFAULT_COLOR;
+            const finalBlur = cloudSettings.blur ?? DEFAULT_BLUR;
+            const finalTransparency = cloudSettings.transparency ?? DEFAULT_TRANSPARENCY;
+            setModeState(finalMode);
+            setColorState(finalColor);
+            setBlurEnabledState(finalBlur);
+            setTransparencyLevelState(finalTransparency);
+            applyTheme(finalMode, finalColor);
+            applyBlurTheme(finalBlur, finalMode, finalTransparency);
+            localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: finalMode, color: finalColor, blur: finalBlur, transparency: finalTransparency }));
+            setIsInitialized(true);
+            return;
+          }
+        }
+      } catch { /* fall through to localStorage */ }
+
+      // Fallback to localStorage
+      try {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved) {
+          const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency } = JSON.parse(saved);
+          const finalMode = savedMode || DEFAULT_MODE;
+          const finalColor = savedColor || DEFAULT_COLOR;
+          const finalBlur = savedBlur ?? DEFAULT_BLUR;
+          const finalTransparency = savedTransparency ?? DEFAULT_TRANSPARENCY;
+          setModeState(finalMode);
+          setColorState(finalColor);
+          setBlurEnabledState(finalBlur);
+          setTransparencyLevelState(finalTransparency);
+          applyTheme(finalMode, finalColor);
+          applyBlurTheme(finalBlur, finalMode, finalTransparency);
+        } else {
+          applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
+          applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
+          localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR, blur: DEFAULT_BLUR, transparency: DEFAULT_TRANSPARENCY }));
+        }
+      } catch {
         applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
         applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
-        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR, blur: DEFAULT_BLUR, transparency: DEFAULT_TRANSPARENCY }));
       }
-    } catch {
-      applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
-    }
-    setIsInitialized(true);
+      setIsInitialized(true);
+    };
+
+    initTheme();
+  }, []);
+
+  const syncThemeToCloud = useCallback(async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const themeSettings = { mode: m, color: c, blur: b, transparency: t };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('stores')
+        .update({ theme_settings: themeSettings })
+        .eq('user_id', user.id);
+    } catch { /* ignore cloud sync errors */ }
   }, []);
 
   const saveTheme = (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: m, color: c, blur: b, transparency: t }));
+    syncThemeToCloud(m, c, b, t);
   };
 
   const setMode = (newMode: ThemeMode) => {

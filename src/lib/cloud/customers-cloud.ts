@@ -59,6 +59,22 @@ function toCustomer(cloud: CloudCustomer): Customer {
   };
 }
 
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_customers_cache';
+
+const saveCustomersLocally = (customers: Customer[]) => {
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(customers));
+  } catch { /* ignore */ }
+};
+
+const loadCustomersLocally = (): Customer[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
 // Cache
 let customersCache: Customer[] | null = null;
 let cacheTimestamp = 0;
@@ -73,6 +89,17 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
     return customersCache;
   }
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadCustomersLocally();
+    if (local) {
+      customersCache = local;
+      cacheTimestamp = Date.now();
+      return local;
+    }
+    return [];
+  }
+
   const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
     column: 'created_at',
     ascending: false,
@@ -80,6 +107,7 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
 
   customersCache = cloudCustomers.map(toCustomer);
   cacheTimestamp = Date.now();
+  saveCustomersLocally(customersCache);
   
   return customersCache;
 };

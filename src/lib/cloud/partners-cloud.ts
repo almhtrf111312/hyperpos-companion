@@ -168,6 +168,22 @@ function toCloudPartner(partner: Partial<Partner>): Record<string, unknown> {
   return cloud;
 }
 
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_partners_cache';
+
+const savePartnersLocally = (partners: Partner[]) => {
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(partners));
+  } catch { /* ignore */ }
+};
+
+const loadPartnersLocally = (): Partner[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
 // Cache
 let partnersCache: Partner[] | null = null;
 let cacheTimestamp = 0;
@@ -182,6 +198,17 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
     return partnersCache;
   }
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadPartnersLocally();
+    if (local) {
+      partnersCache = local;
+      cacheTimestamp = Date.now();
+      return local;
+    }
+    return [];
+  }
+
   const cloudPartners = await fetchFromSupabase<CloudPartner>('partners', {
     column: 'created_at',
     ascending: true,
@@ -189,6 +216,7 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
 
   partnersCache = cloudPartners.map(toPartner);
   cacheTimestamp = Date.now();
+  savePartnersLocally(partnersCache);
   
   return partnersCache;
 };

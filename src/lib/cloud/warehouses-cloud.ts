@@ -54,6 +54,35 @@ export interface StockTransferItem {
   quantity_in_pieces: number;
 }
 
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_warehouses_cache';
+
+const saveWarehousesLocally = (warehouses: Warehouse[]) => {
+  try {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(warehouses));
+  } catch { /* ignore */ }
+};
+
+const loadWarehousesLocally = (): Warehouse[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
+const saveWarehouseStockLocally = (warehouseId: string, stock: WarehouseStock[]) => {
+  try {
+    localStorage.setItem(`hyperpos_warehouse_stock_cache_${warehouseId}`, JSON.stringify(stock));
+  } catch { /* ignore */ }
+};
+
+const loadWarehouseStockLocally = (warehouseId: string): WarehouseStock[] | null => {
+  try {
+    const data = localStorage.getItem(`hyperpos_warehouse_stock_cache_${warehouseId}`);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
+
 // Cache for warehouses
 let warehousesCache: Warehouse[] | null = null;
 let cacheTimestamp = 0;
@@ -68,6 +97,17 @@ export const loadWarehousesCloud = async (): Promise<Warehouse[]> => {
     return warehousesCache;
   }
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadWarehousesLocally();
+    if (local) {
+      warehousesCache = local;
+      cacheTimestamp = Date.now();
+      return local;
+    }
+    return [];
+  }
+
   const warehouses = await fetchFromSupabase<Warehouse>('warehouses', {
     column: 'created_at',
     ascending: true
@@ -75,6 +115,7 @@ export const loadWarehousesCloud = async (): Promise<Warehouse[]> => {
 
   warehousesCache = warehouses;
   cacheTimestamp = Date.now();
+  saveWarehousesLocally(warehouses);
 
   return warehousesCache;
 };
@@ -143,6 +184,13 @@ export const loadWarehouseStockCloud = async (warehouseId: string): Promise<Ware
   const userId = getCurrentUserId();
   if (!userId) return [];
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    const local = loadWarehouseStockLocally(warehouseId);
+    if (local) return local;
+    return [];
+  }
+
   const { supabase } = await import('@/integrations/supabase/client');
 
   const { data, error } = await supabase
@@ -155,7 +203,9 @@ export const loadWarehouseStockCloud = async (warehouseId: string): Promise<Ware
     return [];
   }
 
-  return (data || []) as WarehouseStock[];
+  const stock = (data || []) as WarehouseStock[];
+  saveWarehouseStockLocally(warehouseId, stock);
+  return stock;
 };
 
 // Update stock for a product in warehouse
@@ -322,10 +372,23 @@ export const loadStockTransfersCloud = async (): Promise<StockTransfer[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
+  // Offline: return local cache
+  if (!navigator.onLine) {
+    try {
+      const data = localStorage.getItem('hyperpos_stock_transfers_cache');
+      if (data) return JSON.parse(data);
+    } catch { /* ignore */ }
+    return [];
+  }
+
   const transfers = await fetchFromSupabase<StockTransfer>('stock_transfers', {
     column: 'created_at',
     ascending: false
   });
+
+  try {
+    localStorage.setItem('hyperpos_stock_transfers_cache', JSON.stringify(transfers));
+  } catch { /* ignore */ }
 
   return transfers;
 };
