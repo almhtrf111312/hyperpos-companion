@@ -220,66 +220,63 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [transparencyLevel, setTransparencyLevelState] = useState<number>(DEFAULT_TRANSPARENCY);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // ✅ Step 1: Load from localStorage IMMEDIATELY (synchronous, no blocking)
   useEffect(() => {
-    const initTheme = async () => {
-      try {
-        // Try loading from cloud first
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: store } = await (supabase as any)
-            .from('stores')
-            .select('theme_settings')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          const cloudSettings = store?.theme_settings;
-          if (cloudSettings && cloudSettings.mode) {
-            const finalMode = cloudSettings.mode || DEFAULT_MODE;
-            const finalColor = cloudSettings.color || DEFAULT_COLOR;
-            const finalBlur = cloudSettings.blur ?? DEFAULT_BLUR;
-            const finalTransparency = cloudSettings.transparency ?? DEFAULT_TRANSPARENCY;
-            setModeState(finalMode);
-            setColorState(finalColor);
-            setBlurEnabledState(finalBlur);
-            setTransparencyLevelState(finalTransparency);
-            applyTheme(finalMode, finalColor);
-            applyBlurTheme(finalBlur, finalMode, finalTransparency);
-            localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: finalMode, color: finalColor, blur: finalBlur, transparency: finalTransparency }));
-            setIsInitialized(true);
-            return;
-          }
-        }
-      } catch { /* fall through to localStorage */ }
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved) {
+        const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency } = JSON.parse(saved);
+        const finalMode = savedMode || DEFAULT_MODE;
+        const finalColor = savedColor || DEFAULT_COLOR;
+        const finalBlur = savedBlur ?? DEFAULT_BLUR;
+        const finalTransparency = savedTransparency ?? DEFAULT_TRANSPARENCY;
+        setModeState(finalMode);
+        setColorState(finalColor);
+        setBlurEnabledState(finalBlur);
+        setTransparencyLevelState(finalTransparency);
+        applyTheme(finalMode, finalColor);
+        applyBlurTheme(finalBlur, finalMode, finalTransparency);
+      } else {
+        applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
+        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
+      }
+    } catch {
+      applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
+      applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
+    }
+    setIsInitialized(true);
+  }, []);
 
-      // Fallback to localStorage
+  // ✅ Step 2: Sync from cloud in BACKGROUND (non-blocking)
+  useEffect(() => {
+    const syncFromCloud = async () => {
       try {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
-        if (saved) {
-          const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency } = JSON.parse(saved);
-          const finalMode = savedMode || DEFAULT_MODE;
-          const finalColor = savedColor || DEFAULT_COLOR;
-          const finalBlur = savedBlur ?? DEFAULT_BLUR;
-          const finalTransparency = savedTransparency ?? DEFAULT_TRANSPARENCY;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: store } = await (supabase as any)
+          .from('stores')
+          .select('theme_settings')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        const cloudSettings = store?.theme_settings;
+        if (cloudSettings && cloudSettings.mode) {
+          const finalMode = cloudSettings.mode || DEFAULT_MODE;
+          const finalColor = cloudSettings.color || DEFAULT_COLOR;
+          const finalBlur = cloudSettings.blur ?? DEFAULT_BLUR;
+          const finalTransparency = cloudSettings.transparency ?? DEFAULT_TRANSPARENCY;
           setModeState(finalMode);
           setColorState(finalColor);
           setBlurEnabledState(finalBlur);
           setTransparencyLevelState(finalTransparency);
           applyTheme(finalMode, finalColor);
           applyBlurTheme(finalBlur, finalMode, finalTransparency);
-        } else {
-          applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-          applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
-          localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: DEFAULT_MODE, color: DEFAULT_COLOR, blur: DEFAULT_BLUR, transparency: DEFAULT_TRANSPARENCY }));
+          localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: finalMode, color: finalColor, blur: finalBlur, transparency: finalTransparency }));
         }
-      } catch {
-        applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
-        applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
-      }
-      setIsInitialized(true);
+      } catch { /* ignore cloud sync errors */ }
     };
-
-    initTheme();
+    syncFromCloud();
   }, []);
 
   const syncThemeToCloud = useCallback(async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
