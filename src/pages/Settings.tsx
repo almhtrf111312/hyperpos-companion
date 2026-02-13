@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Undo2 } from 'lucide-react';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
   Store,
@@ -42,7 +43,7 @@ import {
   Wrench,
   Archive
 } from 'lucide-react';
-import { downloadJSON, isNativePlatform } from '@/lib/file-download';
+import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 // ThemeSection تم نقله لصفحة مستقلة /appearance
@@ -52,6 +53,7 @@ import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog
 import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
+import { ProductFieldsConfig, loadProductFieldsConfig, saveProductFieldsConfig } from '@/lib/product-fields-config';
 import DataResetSection from '@/components/settings/DataResetSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { cn, formatDateTime } from '@/lib/utils';
@@ -296,6 +298,10 @@ export default function Settings() {
     persisted?.hideMaintenanceSection ?? false
   );
 
+  // Product fields config state (for unified save)
+  const [productFieldsConfig, setProductFieldsConfig] = useState<ProductFieldsConfig | null>(null);
+  const [productFieldsChanged, setProductFieldsChanged] = useState(false);
+
   // Dialogs
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
@@ -328,6 +334,7 @@ export default function Settings() {
     printSettings: typeof printSettings;
     backupSettings: typeof backupSettings;
     hideMaintenanceSection: boolean;
+    productFieldsConfig: ProductFieldsConfig | null;
   } | null>(null);
 
   // Capture snapshot on first render only
@@ -341,6 +348,7 @@ export default function Settings() {
         printSettings: { ...printSettings },
         backupSettings: { ...backupSettings },
         hideMaintenanceSection,
+        productFieldsConfig: loadProductFieldsConfig(),
       };
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -356,7 +364,8 @@ export default function Settings() {
       JSON.stringify(notificationSettings) !== JSON.stringify(snap.notificationSettings) ||
       JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings) ||
       JSON.stringify(backupSettings) !== JSON.stringify(snap.backupSettings) ||
-      hideMaintenanceSection !== snap.hideMaintenanceSection
+      hideMaintenanceSection !== snap.hideMaintenanceSection ||
+      productFieldsChanged
     );
   })();
 
@@ -371,6 +380,8 @@ export default function Settings() {
     setPrintSettings({ ...snap.printSettings });
     setBackupSettings({ ...snap.backupSettings });
     setHideMaintenanceSection(snap.hideMaintenanceSection);
+    setProductFieldsConfig(snap.productFieldsConfig);
+    setProductFieldsChanged(false);
     toast({
       title: t('common.success'),
       description: isRTL ? 'تم التراجع عن التغييرات' : 'Changes reverted',
@@ -438,6 +449,12 @@ export default function Settings() {
       print_settings: printSettings,
     });
 
+    // Save product fields config if changed
+    if (productFieldsChanged && productFieldsConfig) {
+      await saveProductFieldsConfig(productFieldsConfig);
+      setProductFieldsChanged(false);
+    }
+
     setIsSavingSettings(false);
 
     // Update snapshot after successful save
@@ -449,6 +466,7 @@ export default function Settings() {
       printSettings: { ...printSettings },
       backupSettings: { ...backupSettings },
       hideMaintenanceSection,
+      productFieldsConfig: productFieldsConfig || loadProductFieldsConfig(),
     };
 
     if (cloudSuccess) {
@@ -816,7 +834,14 @@ export default function Settings() {
       case 'productFields':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
-            <ProductFieldsSection storeType={storeSettings.type} />
+            <ProductFieldsSection
+              storeType={storeSettings.type}
+              onConfigChange={(config) => {
+                setProductFieldsConfig(config);
+                setProductFieldsChanged(true);
+              }}
+              pendingConfig={productFieldsConfig}
+            />
           </div>
         );
       case 'language':
@@ -1390,14 +1415,11 @@ export default function Settings() {
       </div>
 
       {/* Tabs Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {settingsTabs
           .filter(tab => {
-            // Boss sees everything
             if (isBoss) return true;
-            // Admin sees everything except bossOnly
             if (isOwnerAdmin && !(tab as any).bossOnly) return true;
-            // Others see only non-admin and non-boss tabs
             return !tab.adminOnly && !(tab as any).bossOnly;
           })
           .map((tab) => (
@@ -1405,22 +1427,22 @@ export default function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200",
+                "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200",
                 activeTab === tab.id
                   ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
                   : "border-border bg-card hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
               )}
             >
               <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
               )}>
-                <tab.icon className="w-6 h-6" />
+                <tab.icon className="w-5 h-5" />
               </div>
               <span className={cn(
-                "font-medium text-sm text-center leading-tight",
+                "font-medium text-xs text-center leading-tight",
                 activeTab === tab.id ? "text-primary" : "text-foreground"
               )}>
                 {tab.label}
@@ -1549,39 +1571,35 @@ export default function Settings() {
         userId={passwordChangeUserId || undefined}
       />
 
-      {/* Floating Save/Revert Bar */}
+      {/* Floating Action Buttons (FAB) */}
       <div
         className={cn(
-          "fixed bottom-0 inset-x-0 z-50 transition-all duration-300 ease-in-out",
+          "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
+          isRTL ? "right-6" : "left-6",
           hasUnsavedChanges
-            ? "translate-y-0 opacity-100"
-            : "translate-y-full opacity-0 pointer-events-none"
+            ? "scale-100 opacity-100"
+            : "scale-0 opacity-0 pointer-events-none"
         )}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="bg-background/80 backdrop-blur-xl border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
-          <div className="max-w-screen-xl mx-auto px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-between gap-3">
-            <Button
-              variant="outline"
-              onClick={handleRevert}
-              className="gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {isRTL ? 'تراجع' : 'Revert'}
-            </Button>
-            <Button
-              onClick={handleSaveSettings}
-              disabled={isSavingSettings}
-              className="gap-2 px-6"
-            >
-              {isSavingSettings ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              {t('common.save')}
-            </Button>
-          </div>
-        </div>
+        <Button
+          onClick={handleSaveSettings}
+          disabled={isSavingSettings}
+          className="w-14 h-14 rounded-full shadow-lg p-0"
+        >
+          {isSavingSettings ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <Save className="w-6 h-6" />
+          )}
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={handleRevert}
+          className="w-14 h-14 rounded-full shadow-lg p-0"
+        >
+          <Undo2 className="w-6 h-6" />
+        </Button>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Package, Save, RotateCcw } from 'lucide-react';
+import { Settings2, Package, RotateCcw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -17,25 +17,23 @@ import { CustomFieldsManager } from './CustomFieldsManager';
 
 interface ProductFieldsSectionProps {
   storeType: string;
+  onConfigChange?: (config: ProductFieldsConfig) => void;
+  pendingConfig?: ProductFieldsConfig | null;
 }
 
-export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
+export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig }: ProductFieldsSectionProps) {
   const [config, setConfig] = useState<ProductFieldsConfig>(() => {
     const userConfig = loadProductFieldsConfig();
     if (userConfig) return userConfig;
     return getDefaultFieldsByStoreType(storeType as StoreType);
   });
 
-  const [hasChanges, setHasChanges] = useState(false);
-
   useEffect(() => {
-    // Sync from cloud on mount
     const syncFromCloud = async () => {
       const cloudConfig = await syncProductFieldsFromCloud();
       if (cloudConfig) {
         setConfig(cloudConfig);
       } else {
-        // Check if user has custom config, otherwise use store type defaults
         const userConfig = loadProductFieldsConfig();
         if (!userConfig) {
           setConfig(getDefaultFieldsByStoreType(storeType as StoreType));
@@ -45,37 +43,33 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
     syncFromCloud();
   }, [storeType]);
 
-  const handleToggle = async (field: keyof ProductFieldsConfig) => {
+  // Sync with pending config from parent (for revert)
+  useEffect(() => {
+    if (pendingConfig) {
+      setConfig(pendingConfig);
+    }
+  }, [pendingConfig]);
+
+  const handleToggle = (field: keyof ProductFieldsConfig) => {
     const newConfig = {
       ...config,
       [field]: !config[field],
     };
     setConfig(newConfig);
-
-    // Auto-save immediately (no need for 'Save' button)
-    const success = await saveProductFieldsConfig(newConfig);
-    if (success) {
-      console.log('[ProductFieldsSection] Auto-saved config:', newConfig);
-      toast.success(`تم ${newConfig[field] ? 'تفعيل' : 'تعطيل'} ${FIELD_LABELS[field].name}`);
-    }
-    setHasChanges(false);
-  };
-
-  const handleSave = async () => {
-    const success = await saveProductFieldsConfig(config);
-    if (success) {
-      toast.success('تم حفظ إعدادات الحقول ومزامنتها');
-      setHasChanges(false);
-    } else {
-      toast.error('فشل في حفظ الإعدادات');
+    // Notify parent instead of saving directly
+    if (onConfigChange) {
+      onConfigChange(newConfig);
     }
   };
 
   const handleReset = async () => {
     const defaults = getDefaultFieldsByStoreType(storeType as StoreType);
     setConfig(defaults);
-    await saveProductFieldsConfig(defaults);
-    setHasChanges(false);
+    if (onConfigChange) {
+      onConfigChange(defaults);
+    } else {
+      await saveProductFieldsConfig(defaults);
+    }
     toast.success('تم استعادة الإعدادات الافتراضية');
   };
 
@@ -83,14 +77,7 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
 
   return (
     <div className="space-y-6">
-      {/* Save/Reset Buttons at Top */}
       <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
-        {hasChanges && (
-          <Button size="sm" onClick={handleSave}>
-            <Save className="w-4 h-4 ml-2" />
-            حفظ التغييرات
-          </Button>
-        )}
         <Button variant="outline" size="sm" onClick={handleReset}>
           <RotateCcw className="w-4 h-4 ml-2" />
           استعادة الافتراضي
@@ -142,7 +129,6 @@ export function ProductFieldsSection({ storeType }: ProductFieldsSectionProps) {
 
       <Separator className="my-6" />
 
-      {/* Custom Fields Section */}
       <CustomFieldsManager />
     </div>
   );

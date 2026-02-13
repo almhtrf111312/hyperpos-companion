@@ -72,6 +72,9 @@ const saveFileNative = async (
   mimeType: string
 ): Promise<boolean> => {
   try {
+    // Request storage permissions first
+    await requestStoragePermissions();
+
     // 1. Try Documents directory first (Preferred: Accessible without special permissions on Android 11+)
     try {
       const result = await Filesystem.writeFile({
@@ -207,4 +210,40 @@ export const getDownloadPath = (): string => {
     return 'مجلد التنزيلات (Downloads)';
   }
   return 'مجلد التنزيلات';
+};
+
+/**
+ * List backup files from native Documents/HyperPOS/ directory
+ */
+export interface NativeBackupFile {
+  name: string;
+  uri: string;
+  size: number;
+  ctime: number; // creation timestamp
+}
+
+export const listNativeBackups = async (): Promise<NativeBackupFile[]> => {
+  if (!isNativePlatform()) return [];
+
+  try {
+    const result = await Filesystem.readdir({
+      path: 'HyperPOS',
+      directory: Directory.Documents,
+    });
+
+    const backups: NativeBackupFile[] = result.files
+      .filter(f => f.name.endsWith('.json') && f.type === 'file')
+      .map(f => ({
+        name: f.name,
+        uri: f.uri || '',
+        size: f.size || 0,
+        ctime: f.ctime || 0,
+      }))
+      .sort((a, b) => b.ctime - a.ctime);
+
+    return backups;
+  } catch (error) {
+    console.log('[FileDownload] Cannot read HyperPOS directory:', error);
+    return [];
+  }
 };
