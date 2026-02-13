@@ -1117,8 +1117,8 @@ export function CartPanel({
                 </button>
               )}
               {isMobile && onClose && (
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-                  <X className="w-4 h-4" />
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 rounded-full bg-muted/60 hover:bg-destructive/10">
+                  <X className="w-5 h-5" />
                 </Button>
               )}
             </div>

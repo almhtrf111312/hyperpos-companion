@@ -127,16 +127,24 @@ export default function POS() {
     }
   }, [cart]);
 
-  // استعادة السلة
+  // استعادة السلة - فقط إذا كانت السلة فارغة حالياً
   const restoreCart = useCallback(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
       if (saved) {
         const items = JSON.parse(saved);
         if (Array.isArray(items) && items.length > 0) {
-          setCart(items);
-          showToast.success(`تم استعادة ${items.length} منتج`);
-          console.log('[POS] Cart restored:', items.length, 'items');
+          setCart(prev => {
+            // لا تستعيد إذا السلة تحتوي بالفعل على نفس العناصر
+            if (prev.length > 0) {
+              console.log('[POS] Cart already has items, skipping restore');
+              localStorage.removeItem(CART_STORAGE_KEY);
+              return prev;
+            }
+            showToast.success(`تم استعادة ${items.length} منتج`);
+            console.log('[POS] Cart restored:', items.length, 'items');
+            return items;
+          });
         }
         localStorage.removeItem(CART_STORAGE_KEY);
       }
@@ -582,7 +590,7 @@ export default function POS() {
 
       {/* Cart Sheet - Mobile */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-        <SheetContent side="bottom" className="h-[85vh] p-0">
+        <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden">
           <CartPanel
             cart={cart}
             currencies={currencies}
