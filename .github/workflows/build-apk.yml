@@ -15,7 +15,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    # 1. Node.js أولاً
+    # 1. Java أولاً (JDK 21 مطلوب لـ Capacitor 8)
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    # 2. Node.js
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -30,9 +37,9 @@ jobs:
     
     - name: Install Capacitor packages
       run: |
-        npm install @capacitor/cli@6 @capacitor/core@6 @capacitor/android@6 @capacitor/assets@latest --save-dev --legacy-peer-deps
+        npm install @capacitor/cli@latest @capacitor/android@latest @capacitor/assets@latest --save-dev --legacy-peer-deps
         
-    # 2. توليد الأندرويد + إضافة أذونات + ML Kit dependencies
+    # 3. توليد الأندرويد + إضافة أذونات
     - name: Initialize Capacitor & Permissions
       run: |
         rm -rf android
@@ -50,10 +57,6 @@ jobs:
               "formats": "ALL",
               "lensFacing": "BACK"
             },
-            "BarcodeScannerOptions": {
-              "formats": "ALL",
-              "lensFacing": "BACK"
-            },
             "Filesystem": { "androidExternalStorage": true }
           }
         }
@@ -61,7 +64,38 @@ jobs:
         
         npx cap add android
         
-        # قائمة الأذونات (كاميرا + تخزين + إنترنت + Vibration)
+        # تحديث Gradle wrapper إلى 8.14.3 (مطلوب لـ AGP 8.13.0)
+        cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-all.zip
+        networkTimeout=10000
+        validateDistributionUrl=true
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
+        
+        # تحديث variables.gradle للتوافق مع Capacitor 8
+        cat > android/variables.gradle << 'EOF'
+        ext {
+            minSdkVersion = 26
+            compileSdkVersion = 36
+            targetSdkVersion = 36
+            androidxActivityVersion = '1.11.0'
+            androidxAppCompatVersion = '1.7.1'
+            androidxCoordinatorLayoutVersion = '1.3.0'
+            androidxCoreVersion = '1.17.0'
+            androidxFragmentVersion = '1.8.9'
+            coreSplashScreenVersion = '1.2.0'
+            androidxWebkitVersion = '1.14.0'
+            junitVersion = '4.13.2'
+            androidxJunitVersion = '1.3.0'
+            androidxEspressoCoreVersion = '3.7.0'
+            cordovaAndroidVersion = '14.0.1'
+        }
+        EOF
+        
+        # حقن الأذونات في AndroidManifest.xml
         PERMISSIONS='<uses-permission android:name="android.permission.CAMERA" />\n'
         PERMISSIONS+='    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n'
         PERMISSIONS+='    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n'
@@ -92,14 +126,6 @@ jobs:
         
         echo "✅ Permissions and Share queries injected successfully"
 
-    # 3. Java بعد توليد المجلد (لإصلاح مشكلة الكاش)
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        cache: 'gradle' 
-
     - name: Generate Assets & Sync
       run: |
         npx capacitor-assets generate --android --iconBackgroundColor "#1e40af" --assetPath resources
@@ -108,8 +134,9 @@ jobs:
     - name: Update Version Code
       run: |
         VERSION_CODE=${{ github.run_number }}
-        sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
-        sed -i 's/versionName "1.0"/versionName "1.0.'$VERSION_CODE'"/' android/app/build.gradle
+        VERSION_NAME="1.0.$VERSION_CODE"
+        # تحديث version.json (يُقرأ من build.gradle)
+        echo "{\"versionCode\": $VERSION_CODE, \"versionName\": \"$VERSION_NAME\"}" > version.json
 
     - name: Check for Keystore
       id: keystore_check
@@ -162,4 +189,6 @@ jobs:
         echo "| Type | Status | Version |" >> $GITHUB_STEP_SUMMARY
         echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
         echo "| **Result** | ✅ Success | v1.0.${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
-        echo "- **Permissions Added:** Camera, Storage (Read/Write), Internet" >> $GITHUB_STEP_SUMMARY
+        echo "| **Java** | JDK 21 | Capacitor 8 |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Gradle** | 8.14.3 | AGP 8.13.0 |" >> $GITHUB_STEP_SUMMARY
+        echo "- **Permissions Added:** Camera, Storage (Read/Write), Internet, Vibrate" >> $GITHUB_STEP_SUMMARY
