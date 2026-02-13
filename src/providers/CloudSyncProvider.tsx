@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
 import { processQueue } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
+import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
 import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 
@@ -161,6 +162,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       await processQueue(async (operation) => {
         if (operation.type === 'debt_sale_bundle') {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
+        }
+        if (operation.type === 'invoice_create') {
+          return await processCashSaleBundleFromQueue(operation.data as { bundle: any });
         }
         // أنواع أخرى يمكن إضافتها هنا
         console.log('[SyncQueue] Processing operation:', operation.type);
