@@ -55,6 +55,8 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   const [expectedTotalQuantity, setExpectedTotalQuantity] = useState('');
   const [expectedGrandTotal, setExpectedGrandTotal] = useState('');
   const [notes, setNotes] = useState('');
+  const [supplierNumber, setSupplierNumber] = useState('');
+  const [companyNumber, setCompanyNumber] = useState('');
 
   // Invoice state
   const [currentInvoice, setCurrentInvoice] = useState<PurchaseInvoice | null>(null);
@@ -73,6 +75,8 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setExpectedTotalQuantity('');
       setExpectedGrandTotal('');
       setNotes('');
+      setSupplierNumber('');
+      setCompanyNumber('');
       setCurrentInvoice(null);
       setInvoiceItems([]);
       setShowItemForm(false);
@@ -94,7 +98,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       expected_items_count: parseInt(expectedItemsCount),
       expected_total_quantity: parseInt(expectedTotalQuantity),
       expected_grand_total: parseFloat(expectedGrandTotal),
-      notes
+      notes: JSON.stringify({ text: notes, supplierNumber, companyNumber })
     });
     setLoading(false);
 
@@ -251,45 +255,85 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
               />
             </div>
 
-            {/* Expected Values - Improved Grid */}
-            <div className="p-3 bg-muted/50 rounded-xl space-y-3">
-              <h3 className="font-medium text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-warning" />
+            {/* Invoice Date */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1 text-sm">
+                <Calendar className="w-4 h-4" />
+                تاريخ الفاتورة
+              </Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            {/* Supplier Number (stored in notes as JSON) */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1 text-sm">
+                <Hash className="w-4 h-4" />
+                رقم المورد
+              </Label>
+              <Input
+                value={supplierNumber}
+                onChange={(e) => setSupplierNumber(e.target.value)}
+                placeholder="مثال: SUP-001"
+                className="h-10"
+              />
+            </div>
+
+            {/* Company Number */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1 text-sm">
+                <Building className="w-4 h-4" />
+                رقم الشركة
+              </Label>
+              <Input
+                value={companyNumber}
+                onChange={(e) => setCompanyNumber(e.target.value)}
+                placeholder="مثال: COM-001"
+                className="h-10"
+              />
+            </div>
+
+            {/* Expected Values - Separate Rows */}
+            <div className="p-4 bg-muted/50 rounded-xl border border-border space-y-3">
+              <h3 className="font-semibold text-sm flex items-center gap-2 text-foreground">
+                <Package className="w-4 h-4 text-primary" />
                 {t('purchaseInvoice.expectedValues')}
               </h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('purchaseInvoice.expectedItemsCount')} *</Label>
+
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm text-muted-foreground w-36 flex-shrink-0">{t('purchaseInvoice.expectedItemsCount')} *</Label>
                   <Input
                     type="number"
                     value={expectedItemsCount}
                     onChange={(e) => setExpectedItemsCount(e.target.value)}
                     placeholder="10"
-                    className="h-9 text-center"
+                    className="h-9 flex-1"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('purchaseInvoice.expectedQuantity')} *</Label>
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm text-muted-foreground w-36 flex-shrink-0">{t('purchaseInvoice.expectedQuantity')} *</Label>
                   <Input
                     type="number"
                     value={expectedTotalQuantity}
                     onChange={(e) => setExpectedTotalQuantity(e.target.value)}
                     placeholder="100"
-                    className="h-9 text-center"
+                    className="h-9 flex-1"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                    <DollarSign className="w-3 h-3" />
-                    {t('purchaseInvoice.expectedTotal')} *
-                  </Label>
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm text-muted-foreground w-36 flex-shrink-0">{t('purchaseInvoice.expectedTotal')} *</Label>
                   <Input
                     type="number"
                     step="0.01"
                     value={expectedGrandTotal}
                     onChange={(e) => setExpectedGrandTotal(e.target.value)}
                     placeholder="1000.00"
-                    className="h-9 text-center"
+                    className="h-9 flex-1"
                   />
                 </div>
               </div>
