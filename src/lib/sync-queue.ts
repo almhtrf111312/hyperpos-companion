@@ -7,6 +7,7 @@
 
 import { secureSet, secureGet, secureRemove } from './secure-storage';
 import { emitEvent, EVENTS } from './events';
+import { addToHistory, updateHistoryStatus } from './sync-history';
 
 // Storage key
 const SYNC_QUEUE_KEY = 'sync_queue';
@@ -101,6 +102,9 @@ export const addToQueue = (
   
   queue.push(operation);
   saveQueue(queue);
+  
+  // Track in history for UI display
+  addToHistory(operation.id, type);
   
   console.log(`[SyncQueue] Added operation: ${type}`, operation.id);
   
@@ -203,21 +207,25 @@ export const processQueue = async (
     
     for (const operation of pending) {
       updateOperationStatus(operation.id, 'processing');
+      updateHistoryStatus(operation.id, 'syncing');
       
       try {
         const success = await processor(operation);
         
         if (success) {
           removeFromQueue(operation.id);
+          updateHistoryStatus(operation.id, 'synced');
           processed++;
           console.log(`[SyncQueue] Processed: ${operation.id}`);
         } else {
           updateOperationStatus(operation.id, 'failed', 'Processing returned false');
+          updateHistoryStatus(operation.id, 'failed', 'Processing returned false');
           failed++;
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         updateOperationStatus(operation.id, 'failed', errorMessage);
+        updateHistoryStatus(operation.id, 'failed', errorMessage);
         failed++;
         console.error(`[SyncQueue] Failed: ${operation.id}`, error);
       }

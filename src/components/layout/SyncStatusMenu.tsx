@@ -1,0 +1,230 @@
+/**
+ * Sync Status Menu - Shows sync state with history dropdown
+ * Displays in header: Online/Offline/Syncing with last 10 operations
+ */
+import { useState, useEffect, useContext } from 'react';
+import { Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
+import { useNetworkStatus } from '@/hooks/use-network-status';
+import { CloudSyncContext } from '@/providers/CloudSyncProvider';
+import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
+import { loadHistory, SyncHistoryItem, SYNC_HISTORY_UPDATED, cleanupSyncedItems } from '@/lib/sync-history';
+import { EVENTS } from '@/lib/events';
+
+export function SyncStatusMenu() {
+  const { isRTL } = useLanguage();
+  const { isOnline } = useNetworkStatus();
+  const cloudContext = useContext(CloudSyncContext);
+  const isSyncing = cloudContext?.isSyncing ?? false;
+  const syncNow = cloudContext?.syncNow ?? (async () => {});
+
+  const [queueStatus, setQueueStatus] = useState<SyncQueueStatus>(getQueueStatus());
+  const [history, setHistory] = useState<SyncHistoryItem[]>(loadHistory());
+
+  useEffect(() => {
+    const handleQueueUpdate = () => setQueueStatus(getQueueStatus());
+    const handleHistoryUpdate = (e: Event) => {
+      const ce = e as CustomEvent<SyncHistoryItem[]>;
+      setHistory(ce.detail || loadHistory());
+    };
+
+    window.addEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleQueueUpdate);
+    window.addEventListener(SYNC_HISTORY_UPDATED, handleHistoryUpdate);
+
+    // Cleanup old synced items periodically
+    const cleanup = setInterval(cleanupSyncedItems, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleQueueUpdate);
+      window.removeEventListener(SYNC_HISTORY_UPDATED, handleHistoryUpdate);
+      clearInterval(cleanup);
+    };
+  }, []);
+
+  const pendingCount = queueStatus.pendingCount + queueStatus.processingCount;
+  const hasIssues = queueStatus.failedCount > 0;
+
+  // Determine overall status
+  const getStatus = () => {
+    if (!isOnline) return 'offline';
+    if (isSyncing || queueStatus.isProcessing) return 'syncing';
+    if (hasIssues) return 'error';
+    if (pendingCount > 0) return 'pending';
+    return 'synced';
+  };
+
+  const status = getStatus();
+
+  const statusConfig = {
+    offline: {
+      icon: CloudOff,
+      color: 'text-destructive',
+      label: isRTL ? 'غير متصل' : 'Offline',
+      animate: 'animate-pulse',
+    },
+    syncing: {
+      icon: RefreshCw,
+      color: 'text-primary',
+      label: isRTL ? 'جاري المزامنة...' : 'Syncing...',
+      animate: 'animate-spin',
+    },
+    error: {
+      icon: AlertTriangle,
+      color: 'text-destructive',
+      label: isRTL ? 'خطأ في المزامنة' : 'Sync Error',
+      animate: '',
+    },
+    pending: {
+      icon: Clock,
+      color: 'text-warning',
+      label: isRTL ? 'عمليات معلقة' : 'Pending',
+      animate: '',
+    },
+    synced: {
+      icon: Cloud,
+      color: 'text-green-500',
+      label: isRTL ? 'متصل ومزامن' : 'Synced',
+      animate: '',
+    },
+  };
+
+  const config = statusConfig[status];
+  const StatusIcon = config.icon;
+
+  const getItemStatusIcon = (itemStatus: SyncHistoryItem['status']) => {
+    switch (itemStatus) {
+      case 'synced':
+        return <Check className="h-3.5 w-3.5 text-green-500" />;
+      case 'pending':
+        return <Clock className="h-3.5 w-3.5 text-warning" />;
+      case 'syncing':
+        return <RefreshCw className="h-3.5 w-3.5 text-primary animate-spin" />;
+      case 'failed':
+        return <AlertTriangle className="h-3.5 w-3.5 text-destructive" />;
+    }
+  };
+
+  const getItemStatusLabel = (itemStatus: SyncHistoryItem['status']) => {
+    const labels = {
+      synced: isRTL ? 'تمت المزامنة' : 'Synced',
+      pending: isRTL ? 'معلق' : 'Pending',
+      syncing: isRTL ? 'جاري...' : 'Syncing',
+      failed: isRTL ? 'فشل' : 'Failed',
+    };
+    return labels[itemStatus];
+  };
+
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString(isRTL ? 'ar' : 'en', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Sorted: pending/failed first, then by time desc
+  const sortedHistory = [...history].sort((a, b) => {
+    const priority = { failed: 0, pending: 1, syncing: 2, synced: 3 };
+    const pDiff = priority[a.status] - priority[b.status];
+    if (pDiff !== 0) return pDiff;
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("relative h-9 w-9", config.color)}
+        >
+          <StatusIcon className={cn("h-4.5 w-4.5", config.animate)} />
+          {(pendingCount > 0 || hasIssues) && (
+            <span className={cn(
+              "absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center",
+              hasIssues
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-warning text-warning-foreground"
+            )}>
+              {hasIssues ? queueStatus.failedCount : pendingCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        className="w-72 p-0"
+        align={isRTL ? 'start' : 'end'}
+        side="bottom"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <StatusIcon className={cn("h-4 w-4", config.color, config.animate)} />
+            <span className="font-medium text-sm">{config.label}</span>
+          </div>
+          {isOnline && pendingCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => syncNow()}
+              disabled={isSyncing}
+            >
+              <RefreshCw className={cn("h-3 w-3", isRTL ? "ml-1" : "mr-1", isSyncing && "animate-spin")} />
+              {isRTL ? 'مزامنة' : 'Sync'}
+            </Button>
+          )}
+        </div>
+
+        {/* History List */}
+        <ScrollArea className="max-h-64">
+          {sortedHistory.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+              {isRTL ? 'لا توجد عمليات حديثة' : 'No recent operations'}
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {sortedHistory.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+                  {getItemStatusIcon(item.status)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatTime(item.timestamp)}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={item.status === 'failed' ? 'destructive' : item.status === 'synced' ? 'secondary' : 'outline'}
+                    className="text-[10px] px-1.5 py-0"
+                  >
+                    {getItemStatusLabel(item.status)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Footer stats */}
+        {(pendingCount > 0 || hasIssues) && (
+          <div className="px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground">
+            {pendingCount > 0 && (
+              <span>{isRTL ? `${pendingCount} عملية معلقة` : `${pendingCount} pending`}</span>
+            )}
+            {pendingCount > 0 && hasIssues && ' • '}
+            {hasIssues && (
+              <span className="text-destructive">
+                {isRTL ? `${queueStatus.failedCount} فاشلة` : `${queueStatus.failedCount} failed`}
+              </span>
+            )}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
