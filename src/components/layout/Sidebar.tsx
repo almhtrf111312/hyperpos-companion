@@ -79,12 +79,18 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const { t, tDynamic, storeType, isRTL } = useLanguage();
   const { isBoss, isAdmin } = useUserRole();
 
-  useEffect(() => {
+  // On mobile, close sidebar first then navigate after animation
+  const handleNavClick = (e: React.MouseEvent, path: string) => {
     if (isMobile && isOpen) {
-      requestAnimationFrame(() => {
-        onToggle();
-      });
+      e.preventDefault();
+      onToggle(); // close sidebar (triggers animation)
+      setTimeout(() => {
+        navigate(path);
+      }, 300); // match transition duration
     }
+  };
+
+  useEffect(() => {
     if (isTablet && !collapsed) setCollapsed(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
@@ -223,6 +229,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
+                    onClick={(e) => handleNavClick(e, item.path)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg transition-all duration-200 group relative",
                       effectiveCollapsed && !isMobile ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
