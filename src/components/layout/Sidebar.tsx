@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { NotificationBell } from './NotificationBell';
 import { SyncStatusMenu } from './SyncStatusMenu';
-import { getVisibleSections } from '@/lib/store-type-config';
+import { getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
 
 interface NavItem {
   icon: React.ElementType;
@@ -41,6 +41,7 @@ interface NavItem {
   badge?: number;
   adminOnly?: boolean;
   requiresMaintenance?: boolean; // Only show if maintenance is visible for store type
+  hideInNoInventory?: boolean; // Hide when store operates without inventory (e.g., bakery)
 }
 
 const navItems: NavItem[] = [
@@ -54,8 +55,8 @@ const navItems: NavItem[] = [
   { icon: UserCheck, translationKey: 'nav.partners', path: '/partners', adminOnly: true },
   { icon: Receipt, translationKey: 'nav.expenses', path: '/expenses' },
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts' },
-  { icon: Package, translationKey: 'nav.warehouses', path: '/warehouses', adminOnly: true },
-  { icon: Package, translationKey: 'nav.stockTransfer', path: '/stock-transfer', adminOnly: true },
+  { icon: Package, translationKey: 'nav.warehouses', path: '/warehouses', adminOnly: true, hideInNoInventory: true },
+  { icon: Package, translationKey: 'nav.stockTransfer', path: '/stock-transfer', adminOnly: true, hideInNoInventory: true },
   { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true },
   { icon: Palette, translationKey: 'settings.theme', path: '/appearance' },
   { icon: HelpCircle, translationKey: 'nav.help', path: '/help' },
@@ -130,9 +131,11 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const effectiveCollapsed = isMobile ? false : collapsed;
 
   const visibleSections = getVisibleSections(storeType);
+  const noInventory = isNoInventoryMode(storeType);
   const filteredNavItems = navItems.filter(item => {
     if (item.adminOnly && !(isBoss || isAdmin)) return false;
     if (item.requiresMaintenance && !visibleSections.maintenance) return false;
+    if (item.hideInNoInventory && noInventory) return false;
     return true;
   });
 

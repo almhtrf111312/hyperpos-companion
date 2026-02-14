@@ -1,4 +1,5 @@
  import { supabase } from '@/integrations/supabase/client';
+ import { isNoInventoryMode } from '@/lib/store-type-config';
  
  export interface PurchaseInvoice {
    id: string;
@@ -229,77 +230,114 @@
    const { invoice, items } = await loadPurchaseInvoiceWithItems(invoiceId);
    if (!invoice || items.length === 0) return false;
  
-   // Start transaction-like operations
-   try {
-     // For each item, create or update product
-     for (const item of items) {
-       if (item.product_id) {
-         // Update existing product quantity
-         const { data: product } = await supabase
-           .from('products')
-           .select('quantity, purchase_history')
-           .eq('id', item.product_id)
-           .single();
- 
-         if (product) {
-           const newQuantity = (product.quantity || 0) + item.quantity;
-           const purchaseHistory = Array.isArray(product.purchase_history) 
-             ? product.purchase_history 
-             : [];
-           
-           purchaseHistory.push({
-             invoice_id: invoiceId,
-             invoice_number: invoice.invoice_number,
-             supplier_name: invoice.supplier_name,
-             date: invoice.invoice_date,
-             quantity: item.quantity,
-             cost_price: item.cost_price,
-             added_at: new Date().toISOString()
-           });
- 
-           await supabase
-             .from('products')
-             .update({
-               quantity: newQuantity,
-               cost_price: item.cost_price,
-               purchase_history: purchaseHistory
-             })
-             .eq('id', item.product_id);
-         }
-       } else {
-         // Create new product
-         const { data: newProduct } = await supabase
-           .from('products')
-           .insert({
-             user_id: user.id,
-             name: item.product_name,
-             barcode: item.barcode,
-             category: item.category,
-             quantity: item.quantity,
-             cost_price: item.cost_price,
-             sale_price: item.sale_price || item.cost_price,
-             purchase_history: [{
-               invoice_id: invoiceId,
-               invoice_number: invoice.invoice_number,
-               supplier_name: invoice.supplier_name,
-               date: invoice.invoice_date,
-               quantity: item.quantity,
-               cost_price: item.cost_price,
-               added_at: new Date().toISOString()
-             }]
-           })
-           .select()
-           .single();
- 
-         // Update item with new product_id
-         if (newProduct) {
-           await supabase
-             .from('purchase_invoice_items')
-             .update({ product_id: newProduct.id })
-             .eq('id', item.id);
-         }
-       }
-     }
+    // Start transaction-like operations
+    try {
+      const noInventory = isNoInventoryMode();
+
+      // For each item, create or update product
+      for (const item of items) {
+        if (item.product_id) {
+          if (noInventory) {
+            // في وضع الفرن: فقط تحديث سعر التكلفة وسجل الشراء بدون زيادة الكمية
+            const { data: product } = await supabase
+              .from('products')
+              .select('purchase_history')
+              .eq('id', item.product_id)
+              .single();
+
+            if (product) {
+              const purchaseHistory = Array.isArray(product.purchase_history) 
+                ? product.purchase_history 
+                : [];
+              
+              purchaseHistory.push({
+                invoice_id: invoiceId,
+                invoice_number: invoice.invoice_number,
+                supplier_name: invoice.supplier_name,
+                date: invoice.invoice_date,
+                quantity: item.quantity,
+                cost_price: item.cost_price,
+                added_at: new Date().toISOString()
+              });
+
+              await supabase
+                .from('products')
+                .update({
+                  cost_price: item.cost_price,
+                  purchase_history: purchaseHistory
+                })
+                .eq('id', item.product_id);
+            }
+          } else {
+            // Update existing product quantity + stock
+            const { data: product } = await supabase
+              .from('products')
+              .select('quantity, purchase_history')
+              .eq('id', item.product_id)
+              .single();
+  
+            if (product) {
+              const newQuantity = (product.quantity || 0) + item.quantity;
+              const purchaseHistory = Array.isArray(product.purchase_history) 
+                ? product.purchase_history 
+                : [];
+              
+              purchaseHistory.push({
+                invoice_id: invoiceId,
+                invoice_number: invoice.invoice_number,
+                supplier_name: invoice.supplier_name,
+                date: invoice.invoice_date,
+                quantity: item.quantity,
+                cost_price: item.cost_price,
+                added_at: new Date().toISOString()
+              });
+  
+              await supabase
+                .from('products')
+                .update({
+                  quantity: newQuantity,
+                  cost_price: item.cost_price,
+                  purchase_history: purchaseHistory
+                })
+                .eq('id', item.product_id);
+            }
+          }
+        } else {
+          // Create new product
+          const newProductData: any = {
+            user_id: user.id,
+            name: item.product_name,
+            barcode: item.barcode,
+            category: item.category,
+            quantity: noInventory ? 99999 : item.quantity,
+            cost_price: item.cost_price,
+            sale_price: item.sale_price || item.cost_price,
+            purchase_history: [{
+              invoice_id: invoiceId,
+              invoice_number: invoice.invoice_number,
+              supplier_name: invoice.supplier_name,
+              date: invoice.invoice_date,
+              quantity: item.quantity,
+              cost_price: item.cost_price,
+              added_at: new Date().toISOString()
+            }]
+          };
+
+          const { data: newProduct } = await supabase
+            .from('products')
+            .insert(newProductData)
+            .select()
+            .single();
+
+          // Update item with new product_id
+          if (newProduct) {
+            await supabase
+              .from('purchase_invoice_items')
+              .update({ product_id: newProduct.id })
+              .eq('id', item.id);
+          }
+        }
+      }
  
      // Update invoice status
      await supabase

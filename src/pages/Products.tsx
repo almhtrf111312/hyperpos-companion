@@ -86,11 +86,13 @@ import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
+import { isNoInventoryMode } from '@/lib/store-type-config';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { t, tDynamic } = useLanguage();
+  const noInventory = isNoInventoryMode();
 
   const statusConfig = {
     in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
@@ -493,10 +495,12 @@ export default function Products() {
 
     setIsSaving(true);
 
-    // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
-    const quantityInPieces = formData.trackByUnit === 'bulk'
-      ? formData.quantity * formData.conversionFactor
-      : formData.quantity;
+    // تحويل الكمية إلى قطع قبل الحفظ - في وضع الفرن، استخدم كمية كبيرة
+    const quantityInPieces = noInventory
+      ? 99999
+      : (formData.trackByUnit === 'bulk'
+        ? formData.quantity * formData.conversionFactor
+        : formData.quantity);
 
     // حساب سعر تكلفة الكرتونة تلقائياً
     const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
@@ -748,6 +752,7 @@ export default function Products() {
       </div>
 
       {/* Stats - Fixed */}
+      {!noInventory && (
       <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
       <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
           <button
@@ -820,6 +825,7 @@ export default function Products() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Filters - Fixed */}
       <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
@@ -1401,6 +1407,7 @@ export default function Products() {
                     ))}
                   </select>
                 </div>
+                {!noInventory && (
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">الكمية</label>
                   <Input
@@ -1412,6 +1419,7 @@ export default function Products() {
                     onChange={(e) => handleNumericChange('quantity', e.target.value)}
                   />
                 </div>
+                )}
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
                   <Input

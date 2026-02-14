@@ -597,6 +597,12 @@ export const getTerminology = (storeType: string, key: TerminologyKey, language:
   return langTerms[key] || terminologyMap.general[language === 'ar' ? 'ar' : (language === 'tr' ? 'tr' : 'en')][key];
 };
 
+// Check if the store type operates without inventory tracking (e.g., bakery)
+export const isNoInventoryMode = (storeType?: string): boolean => {
+  const type = storeType || getCurrentStoreType();
+  return type === 'bakery';
+};
+
 // Get current store type from localStorage
 export const getCurrentStoreType = (): string => {
   try {
