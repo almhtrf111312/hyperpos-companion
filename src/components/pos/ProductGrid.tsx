@@ -118,18 +118,7 @@ export function ProductGrid({
       {/* Search, View Toggle, and Categories */}
       <div className="p-3 md:p-4 border-b border-border space-y-3">
         <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder={tDynamic('productSearch')}
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
-            />
-          </div>
-
-          {/* View Mode Buttons */}
+          {/* View Mode Buttons - moved to left */}
           <div className="flex border rounded-lg overflow-hidden flex-shrink-0">
             <button
               onClick={() => setViewMode('grid')}
@@ -161,6 +150,17 @@ export function ProductGrid({
             >
               <AlignJustify className="w-4 h-4" />
             </button>
+          </div>
+
+          <div className="flex-1 relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder={tDynamic('productSearch')}
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
+            />
           </div>
 
           <Button
