@@ -3,6 +3,7 @@ import { ShoppingCart, Plus, Users, CreditCard, Wrench, Package, Receipt } from 
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { TranslationKey } from '@/lib/i18n';
+import { getVisibleSections } from '@/lib/store-type-config';
 
 interface QuickAction {
   icon: React.ElementType;
@@ -10,6 +11,7 @@ interface QuickAction {
   descriptionKey: TranslationKey;
   path: string;
   color: 'primary' | 'success' | 'warning' | 'info' | 'accent';
+  requiresMaintenance?: boolean;
 }
 
 const actions: QuickAction[] = [
@@ -47,6 +49,7 @@ const actions: QuickAction[] = [
     descriptionKey: 'quickActions.maintenanceRequestDesc',
     path: '/services/new',
     color: 'accent',
+    requiresMaintenance: true,
   },
   {
     icon: Receipt,
@@ -73,7 +76,9 @@ const colorStyles = {
 };
 
 export function QuickActions() {
-  const { t } = useLanguage();
+  const { t, tDynamic, storeType } = useLanguage();
+  const visibleSections = getVisibleSections(storeType);
+  const filteredActions = actions.filter(a => !a.requiresMaintenance || visibleSections.maintenance);
 
   return (
     <div className="glass rounded-2xl p-4">
@@ -81,7 +86,7 @@ export function QuickActions() {
         <h3 className="text-lg font-semibold text-foreground">{t('quickActions.title')}</h3>
       </div>
       <div className="grid grid-cols-3 gap-2 md:gap-3">
-        {actions.map((action, index) => (
+        {filteredActions.map((action, index) => (
           <Link
             key={action.path}
             to={action.path}

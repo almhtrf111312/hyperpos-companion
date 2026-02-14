@@ -104,7 +104,7 @@ type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rat
 export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
-  const { t } = useLanguage();
+  const { t, tDynamic } = useLanguage();
   const { profile } = useAuth();
   const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -531,7 +531,7 @@ export default function POS() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="products" className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4" />
-                  {t('pos.products')}
+                  {tDynamic('products')}
                 </TabsTrigger>
                 <TabsTrigger value="maintenance" className="flex items-center gap-2">
                   <Wrench className="w-4 h-4" />

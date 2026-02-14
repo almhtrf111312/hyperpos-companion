@@ -90,7 +90,7 @@ import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDial
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  const { t } = useLanguage();
+  const { t, tDynamic } = useLanguage();
 
   const statusConfig = {
     in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
@@ -685,8 +685,8 @@ export default function Products() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="hidden sm:block">
-            <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('products.pageTitle')}</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">{t('products.pageSubtitle')}</p>
+            <h1 className="text-xl md:text-3xl font-bold text-foreground">{tDynamic('pageTitle')}</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">{tDynamic('pageSubtitle')}</p>
           </div>
           {/* Mobile: Grid layout for buttons */}
           <div className="sm:hidden flex flex-col gap-2">
@@ -701,7 +701,7 @@ export default function Products() {
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
-                {t('products.addProduct')}
+                {tDynamic('addProduct')}
               </Button>
             </div>
             <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
@@ -725,7 +725,7 @@ export default function Products() {
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('products.addProduct')}
+              {tDynamic('addProduct')}
             </Button>
           </div>
         </div>
@@ -1624,9 +1624,9 @@ export default function Products() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit className="w-5 h-5 text-primary" />
-                {t('products.editProduct')}
+                {tDynamic('editProduct')}
               </DialogTitle>
-              <DialogDescription>{t('products.pageSubtitle')}</DialogDescription>
+              <DialogDescription>{tDynamic('pageSubtitle')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

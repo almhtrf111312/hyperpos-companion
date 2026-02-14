@@ -30,23 +30,26 @@ import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { NotificationBell } from './NotificationBell';
 import { SyncStatusMenu } from './SyncStatusMenu';
+import { getVisibleSections } from '@/lib/store-type-config';
 
 interface NavItem {
   icon: React.ElementType;
   translationKey: TranslationKey;
+  dynamicKey?: string; // If set, use tDynamic instead of t
   path: string;
   badge?: number;
-  adminOnly?: boolean; // Only visible to admin and boss
+  adminOnly?: boolean;
+  requiresMaintenance?: boolean; // Only show if maintenance is visible for store type
 }
 
 const navItems: NavItem[] = [
   { icon: ShoppingCart, translationKey: 'nav.pos', path: '/' },
   { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard', adminOnly: true },
   { icon: FileText, translationKey: 'nav.invoices', path: '/invoices' },
-  { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true },
+  { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true, dynamicKey: 'products' },
   { icon: Users, translationKey: 'nav.customers', path: '/customers' },
   { icon: CreditCard, translationKey: 'nav.debts', path: '/debts' },
-  { icon: Wrench, translationKey: 'nav.services', path: '/services' },
+  { icon: Wrench, translationKey: 'nav.services', path: '/services', requiresMaintenance: true },
   { icon: UserCheck, translationKey: 'nav.partners', path: '/partners', adminOnly: true },
   { icon: Receipt, translationKey: 'nav.expenses', path: '/expenses' },
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts' },
@@ -70,7 +73,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { user, profile, signOut } = useAuth();
-  const { t, isRTL } = useLanguage();
+  const { t, tDynamic, storeType, isRTL } = useLanguage();
   const { isBoss, isAdmin } = useUserRole();
 
   // Close sidebar on mobile, collapse on tablet when navigating
@@ -124,11 +127,10 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   // On mobile, always show full sidebar (not collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
 
-  // Filter nav items based on role - adminOnly items only visible to admin/boss
+  const visibleSections = getVisibleSections(storeType);
   const filteredNavItems = navItems.filter(item => {
-    if (item.adminOnly) {
-      return isBoss || isAdmin;
-    }
+    if (item.adminOnly && !(isBoss || isAdmin)) return false;
+    if (item.requiresMaintenance && !visibleSections.maintenance) return false;
     return true;
   });
 
@@ -233,7 +235,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "animate-pulse")} />
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="font-medium">{t(item.translationKey)}</span>
+                        <span className="font-medium">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
                         {item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                             {item.badge}

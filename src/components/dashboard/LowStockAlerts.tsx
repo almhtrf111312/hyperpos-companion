@@ -8,7 +8,7 @@ import { getLowStockProducts, getCriticalStockAlerts } from '@/lib/products-stor
 import { useLanguage } from '@/hooks/use-language';
 
 export function LowStockAlerts() {
-  const { t } = useLanguage();
+  const { t, tDynamic } = useLanguage();
   
   const { lowStockProducts, criticalCount } = useMemo(() => {
     const products = getLowStockProducts();
@@ -29,7 +29,7 @@ export function LowStockAlerts() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-warning" />
-            {t('lowStock.title')}
+            {tDynamic('lowStockAlert')}
             {criticalCount > 0 && (
               <Badge variant="destructive" className="text-xs">
                 {criticalCount} {t('lowStock.critical')}
