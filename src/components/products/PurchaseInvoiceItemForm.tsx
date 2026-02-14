@@ -24,6 +24,7 @@ interface PurchaseInvoiceItemFormProps {
     wholesale_price?: number;
     expiry_date?: string;
     serial_number?: string;
+    batch_number?: string;
     warranty?: string;
     size?: string;
     color?: string;
@@ -65,6 +66,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   const [wholesalePrice, setWholesalePrice] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
+  const [batchNumber, setBatchNumber] = useState('');
   const [warranty, setWarranty] = useState('');
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
@@ -194,6 +196,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       wholesale_price: wholesalePrice ? parseFloat(wholesalePrice) : undefined,
       expiry_date: expiryDate || undefined,
       serial_number: serialNumber || undefined,
+      batch_number: batchNumber || undefined,
       warranty: warranty || undefined,
       size: size || undefined,
       color: color || undefined,
@@ -217,6 +220,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setWholesalePrice('');
     setExpiryDate('');
     setSerialNumber('');
+    setBatchNumber('');
     setWarranty('');
     setSize('');
     setColor('');
@@ -438,6 +442,17 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
             type="date"
             value={expiryDate}
             onChange={(e) => setExpiryDate(e.target.value)}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.batchNumber && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.batchNumber')}</Label>
+          <Input
+            value={batchNumber}
+            onChange={(e) => setBatchNumber(e.target.value)}
+            placeholder={t('products.batchNumber')}
           />
         </div>
       )}

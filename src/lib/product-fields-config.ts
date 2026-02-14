@@ -6,6 +6,7 @@ import { getCurrentUserId } from './supabase-store';
 
 export interface ProductFieldsConfig {
   expiryDate: boolean;
+  batchNumber: boolean;
   serialNumber: boolean;
   warranty: boolean;
   wholesalePrice: boolean;
@@ -21,6 +22,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'phones':
       return {
         expiryDate: false,
+        batchNumber: false,
         serialNumber: true,
         warranty: true,
         wholesalePrice: true,
@@ -30,6 +32,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'repair':
       return {
         expiryDate: false,
+        batchNumber: false,
         serialNumber: true,
         warranty: true,
         wholesalePrice: false,
@@ -39,6 +42,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'grocery':
       return {
         expiryDate: true,
+        batchNumber: false,
         serialNumber: false,
         warranty: false,
         wholesalePrice: true,
@@ -48,6 +52,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'pharmacy':
       return {
         expiryDate: true,
+        batchNumber: true,
         serialNumber: false,
         warranty: false,
         wholesalePrice: true,
@@ -57,6 +62,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'clothing':
       return {
         expiryDate: false,
+        batchNumber: false,
         serialNumber: false,
         warranty: false,
         wholesalePrice: true,
@@ -66,6 +72,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'restaurant':
       return {
         expiryDate: true,
+        batchNumber: false,
         serialNumber: false,
         warranty: false,
         wholesalePrice: false,
@@ -75,6 +82,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'bakery':
       return {
         expiryDate: true,
+        batchNumber: false,
         serialNumber: false,
         warranty: false,
         wholesalePrice: true,
@@ -84,6 +92,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     case 'bookstore':
       return {
         expiryDate: false,
+        batchNumber: false,
         serialNumber: true,
         warranty: false,
         wholesalePrice: true,
@@ -95,6 +104,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
     default:
       return {
         expiryDate: false,
+        batchNumber: false,
         serialNumber: false,
         warranty: false,
         wholesalePrice: false,
@@ -229,6 +239,10 @@ export const FIELD_LABELS: Record<keyof ProductFieldsConfig, { name: string; des
   expiryDate: {
     name: 'تاريخ الصلاحية',
     description: 'للمنتجات الغذائية والأدوية',
+  },
+  batchNumber: {
+    name: 'رقم التشغيلة',
+    description: 'رقم الدفعة أو التشغيلة للأدوية',
   },
   serialNumber: {
     name: 'الرقم التسلسلي',
