@@ -191,7 +191,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   <option value="phones">هواتف وإلكترونيات</option>
                   <option value="grocery">بقالة</option>
                   <option value="pharmacy">صيدلية</option>
-                  <option value="restaurant">مطعم</option>
+                   <option value="restaurant">مطعم</option>
+                  <option value="bakery">فرن / مخبز</option>
                   <option value="services">خدمات</option>
                   <option value="other">أخرى</option>
                 </select>
