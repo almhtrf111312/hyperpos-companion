@@ -15,7 +15,7 @@ import {
   LogOut,
   Zap,
   Menu,
-  X,
+  
   User,
   Palette,
   FileText,
@@ -171,53 +171,62 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
         )}
       >
         {/* Logo */}
-        <div className="min-h-16 flex items-center justify-between px-4 py-2 border-b border-sidebar-border">
-          <div className={cn("flex items-center gap-3", effectiveCollapsed && !isMobile && "justify-center w-full")}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center glow">
-              <Zap className="w-6 h-6 text-primary-foreground" />
-            </div>
-          {(!effectiveCollapsed || isMobile) && (
-              <div>
-                <h1 className="font-bold text-lg text-foreground">FlowPOS Pro</h1>
-                <p className="text-xs text-muted-foreground">{t('sidebar.systemDesc')}</p>
+        <div className={cn(
+          "border-b border-sidebar-border px-3 py-2",
+          isMobile ? "flex flex-col gap-1" : "min-h-16 flex items-center justify-between px-4"
+        )}>
+          {isMobile ? (
+            <>
+              {/* Mobile: Row 1 - Logo + Title + Icons */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center glow flex-shrink-0">
+                    <Zap className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                  <h1 className="font-bold text-base text-foreground whitespace-nowrap">FlowPOS Pro</h1>
+                </div>
+                <div className="flex items-center gap-1">
+                  <SyncStatusMenu />
+                  <NotificationBell compact={true} />
+                </div>
               </div>
-            )}
-          </div>
-          
-          {/* أزرار التحكم - المزامنة + الحالة + الجرس + زر الطي/الإغلاق */}
-          <div className="flex items-center gap-1">
-            {/* حالة المزامنة */}
-            <SyncStatusMenu />
-            
-            {/* جرس الإشعارات */}
-            <NotificationBell compact={true} />
-            
-            {isMobile ? (
-              <button
-                onClick={onToggle}
-                className="w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors"
-              >
-                <X className="w-4 h-4 text-sidebar-foreground" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setCollapsed(!collapsed)}
-                className={cn(
-                  "w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors",
-                  effectiveCollapsed && (isRTL ? "absolute -left-4 top-6" : "absolute -right-4 top-6"),
-                  effectiveCollapsed && "bg-primary hover:bg-primary/90"
+              {/* Mobile: Row 2 - Description */}
+              <p className="text-xs text-muted-foreground px-1">{t('sidebar.systemDesc')}</p>
+            </>
+          ) : (
+            <>
+              <div className={cn("flex items-center gap-3", effectiveCollapsed && "justify-center w-full")}>
+                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center glow">
+                  <Zap className="w-6 h-6 text-primary-foreground" />
+                </div>
+                {!effectiveCollapsed && (
+                  <div>
+                    <h1 className="font-bold text-lg text-foreground">FlowPOS Pro</h1>
+                    <p className="text-xs text-muted-foreground">{t('sidebar.systemDesc')}</p>
+                  </div>
                 )}
-              >
-                <ChevronRight className={cn(
-                  "w-4 h-4 transition-transform duration-300",
-                  // Flip arrow direction based on RTL and collapsed state
-                  effectiveCollapsed 
-                    ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
-                    : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
-                )} />
-              </button>
-            )}
-          </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <SyncStatusMenu />
+                <NotificationBell compact={true} />
+                <button
+                  onClick={() => setCollapsed(!collapsed)}
+                  className={cn(
+                    "w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors",
+                    effectiveCollapsed && (isRTL ? "absolute -left-4 top-6" : "absolute -right-4 top-6"),
+                    effectiveCollapsed && "bg-primary hover:bg-primary/90"
+                  )}
+                >
+                  <ChevronRight className={cn(
+                    "w-4 h-4 transition-transform duration-300",
+                    effectiveCollapsed 
+                      ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
+                      : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
+                  )} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Navigation */}
