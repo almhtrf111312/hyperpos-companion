@@ -1474,6 +1474,8 @@ export const translations = {
     'notifications.daysRemaining': 'متبقي {days} يوم',
     'notifications.licenseExpired': 'انتهى الترخيص',
 
+    // Help
+    'nav.help': 'التعليمات',
   },
   en: {
     // Navigation
@@ -3715,6 +3717,9 @@ export const translations = {
     'notifications.licenseExpiring': 'Expiring soon',
     'notifications.daysRemaining': '{days} days remaining',
     'notifications.licenseExpired': 'License expired',
+
+    // Help
+    'nav.help': 'Help',
   },
 };
 

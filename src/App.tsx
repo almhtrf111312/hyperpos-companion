@@ -44,6 +44,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Appearance from "./pages/Appearance";
 import NotFound from "./pages/NotFound";
+import Help from "./pages/Help";
 import BossPanel from "./pages/BossPanel";
 import { WarehouseProvider } from "./hooks/use-warehouse";
 
@@ -174,6 +175,7 @@ const AppContent = () => {
         <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
         <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
         <Route path="/appearance" element={<ProtectedRoute><Appearance /></ProtectedRoute>} />
+        <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
 
         {/* Protected routes - Admin/Boss only */}
         <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
