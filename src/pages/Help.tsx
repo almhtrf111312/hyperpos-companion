@@ -185,6 +185,32 @@ export default function HelpPage() {
           </p>
         </div>
 
+        {/* AI Assistant Hint */}
+        <Card 
+          className="border-primary/20 bg-primary/5 cursor-pointer hover:border-primary/40 transition-colors"
+          onClick={() => {
+            setShowChat(true);
+            document.getElementById('ai-chat-section')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        >
+          <div className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <Bot className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-foreground font-medium">
+                {isAr 
+                  ? 'لم تجد إجابة لسؤالك؟ اسأل المساعد الذكي مباشرة!' 
+                  : "Can't find your answer? Ask the AI Assistant directly!"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isAr ? 'متاح على مدار الساعة للإجابة على جميع استفساراتك' : 'Available 24/7 to answer all your questions'}
+              </p>
+            </div>
+            <ArrowRight className={cn("w-5 h-5 text-primary flex-shrink-0", isRTL && "rotate-180")} />
+          </div>
+        </Card>
+
         {/* Features Grid */}
         <div>
           <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
@@ -254,7 +280,7 @@ export default function HelpPage() {
         </div>
 
         {/* AI Chat Section */}
-        <div>
+        <div id="ai-chat-section">
           <Card className="overflow-hidden">
             <button
               className="w-full p-4 flex items-center justify-between bg-primary/5"
