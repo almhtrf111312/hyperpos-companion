@@ -68,18 +68,8 @@ export function ProductGrid({
 
   const handleBarcodeScan = (barcode: string) => {
     setScannerOpen(false);
-    if (onBarcodeScan) {
-      onBarcodeScan(barcode);
-    } else {
-      const product = products.find(p => p.barcode === barcode);
-      if (product) {
-        onProductClick(product);
-        toast.success(t('pos.addedToCart').replace('{name}', product.name));
-      } else {
-        onSearchChange(barcode);
-        toast.info(`${t('pos.barcode')}: ${barcode}`, { description: t('pos.barcodeNotFound') });
-      }
-    }
+    onSearchChange(barcode);
+    toast.success(`${t('pos.barcode')}: ${barcode}`);
   };
 
   const touchMovedRef = useRef(false);
