@@ -1,44 +1,26 @@
 
 
-# إضافة فلترة محتوى صفحة التعليمات حسب صلاحيات المستخدم
+# إصلاح رابط النسخة الاحتياطية في تطبيق Windows (Electron)
 
-## الوضع الحالي
-- صفحة `/help` متاحة لجميع المستخدمين (كاشير، مالك، بوس) -- هذا صحيح ولا يحتاج تعديل
-- لكن محتوى الصفحة (الميزات والأسئلة الشائعة) يعرض كل شيء بما فيه أقسام لا يملك الكاشير صلاحية الوصول إليها
+## المشكلة
+جميع الروابط الاحتياطية (fallback URLs) في ملفات Electron تشير إلى الرابط القديم `propos.lovable.app` بدلاً من الرابط الحالي `flowpospro.lovable.app`.
 
-## التعديل المطلوب
+## التعديلات المطلوبة
 
-### الملف: `src/pages/Help.tsx`
+### الملف 1: `electron/main.js` (3 تعديلات)
 
-1. **استيراد `useUserRole`** من `@/hooks/use-user-role`
+| السطر | القديم | الجديد |
+|-------|--------|--------|
+| 67 | `https://propos.lovable.app` | `https://flowpospro.lovable.app` |
+| 77 | `propos.lovable.app` | `flowpospro.lovable.app` |
+| 105 | `https://propos.lovable.app` | `https://flowpospro.lovable.app` |
 
-2. **إضافة علامة `adminOnly` للميزات**: الميزات التالية ستظهر فقط للمالك/البوس:
-   - مستودعات متعددة (Multi-Warehouse)
-   - تقارير ذكية (Smart Reports)
-   - خدمات الصيانة (Maintenance) -- تعتمد أيضا على `storeType`
+### الملف 2: `electron/error.html` (تعديل واحد)
 
-3. **إضافة علامة `adminOnly` للأسئلة الشائعة**: الأسئلة التالية ستظهر فقط للمالك/البوس:
-   - "كيف أدير مستودعات متعددة؟"
-   - "كيف أصدّر تقارير المبيعات؟"
+| السطر | القديم | الجديد |
+|-------|--------|--------|
+| 136 | `https://propos.lovable.app` | `https://flowpospro.lovable.app` |
 
-4. **فلترة المحتوى في الـ render**: استخدام `isOwner` (أي `isAdmin || isBoss`) لإخفاء العناصر المقيدة عن الكاشير
+## النتيجة
+عند فشل تحميل الملفات المحلية في نسخة Windows، سيتم توجيه المستخدم إلى الرابط الصحيح `flowpospro.lovable.app` بدلاً من الرابط القديم.
 
-### المنطق:
-```text
-features.filter(f => !f.adminOnly || isOwner)
-faqs.filter(f => !f.adminOnly || isOwner)
-```
-
-الكاشير سيرى: باركود متعدد، نظام الأصناف، أمان البيانات، إدارة العملاء، نظام الديون، الفوترة، وحدات مزدوجة + الأسئلة المتعلقة بها فقط.
-
-### التفاصيل التقنية
-
-**ملف واحد يتأثر**: `src/pages/Help.tsx`
-
-التعديلات:
-- إضافة `import { useUserRole } from '@/hooks/use-user-role'`
-- إضافة خاصية `adminOnly?: boolean` لـ `FeatureItem` interface
-- إضافة `adminOnly: true` للميزات: Warehouse, BarChart3 (Reports), Wrench (Maintenance)
-- إضافة خاصية `adminOnly?: boolean` لـ `FAQItem` interface
-- وضع `adminOnly: true` على أسئلة المستودعات والتقارير
-- في المكون: `const { isOwner } = useUserRole()` ثم فلترة المصفوفات قبل العرض
