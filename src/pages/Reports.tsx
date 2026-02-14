@@ -811,166 +811,201 @@ ${partnerExpenses.map(exp => {
   return (
     <MainLayout>
       <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 pr-14 md:pr-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
-              <p className="text-sm md:text-base text-muted-foreground mt-1">{t('reports.pageSubtitle')}</p>
-            </div>
-            {isLoading && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">{t('common.loading')}</span>
+        {/* Header with gradient accent */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-border p-4 md:p-6">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-24 h-24 bg-primary/5 rounded-full translate-x-1/3 translate-y-1/3" />
+          
+          <div className="relative flex flex-col gap-4 pr-14 md:pr-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-primary" />
+                  </div>
+                  <h1 className="text-xl md:text-2xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
+                </div>
+                <p className="text-sm text-muted-foreground">{t('reports.pageSubtitle')}</p>
               </div>
-            )}
-          </div>
+              {isLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground bg-muted/60 rounded-full px-3 py-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span className="text-xs">{t('common.loading')}</span>
+                </div>
+              )}
+            </div>
 
-          {/* Export Buttons - Mobile Optimized */}
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
-              <FileText className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">PDF</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading} className="flex-1 sm:flex-none min-w-[80px]">
-              <Download className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">Excel</span>
-            </Button>
-            <Button size="sm" onClick={handleBackup} disabled={isLoading} className="flex-1 sm:flex-none min-w-[100px]">
-              <Download className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">{t('reports.backup')}</span>
-            </Button>
-            <Button variant="secondary" size="sm" onClick={handleExportComprehensive} disabled={isLoading} className="flex-1 sm:flex-none min-w-[100px]">
-              <FileText className="w-4 h-4 ml-1" />
-              <span className="text-xs sm:text-sm">تقرير شامل</span>
-            </Button>
+            {/* Date Range & Export - Compact Row */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 px-3 py-1.5">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <Input
+                  type="date"
+                  value={dateRange.from}
+                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                  className="w-32 h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
+                />
+                <span className="text-xs text-muted-foreground">→</span>
+                <Input
+                  type="date"
+                  value={dateRange.to}
+                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                  className="w-32 h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
+                  <FileText className="w-3 h-3 ml-1" />
+                  PDF
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
+                  <Download className="w-3 h-3 ml-1" />
+                  Excel
+                </Button>
+                <Button size="sm" onClick={handleBackup} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
+                  <Download className="w-3 h-3 ml-1" />
+                  {t('reports.backup')}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={handleExportComprehensive} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
+                  <FileText className="w-3 h-3 ml-1" />
+                  شامل
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Date Range - Mobile Optimized */}
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3 sm:items-center">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs sm:text-sm text-muted-foreground">{t('reports.from')}:</span>
-              </div>
-              <Input
-                type="date"
-                value={dateRange.from}
-                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                className="w-full sm:w-36 h-9 text-sm"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <span className="text-xs sm:text-sm text-muted-foreground">{t('reports.to')}:</span>
-              <Input
-                type="date"
-                value={dateRange.to}
-                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                className="w-full sm:w-36 h-9 text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Report Tabs - Mobile Scrollable */}
-        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0 scrollbar-hide">
+        {/* Report Tabs - Pill Style */}
+        <div className="flex gap-1 overflow-x-auto pb-1 -mx-3 px-3 md:mx-0 md:px-0 scrollbar-hide">
           {reports.map((report) => {
             const Icon = report.icon;
+            const isActive = activeReport === report.id;
             return (
               <button
                 key={report.id}
                 onClick={() => setActiveReport(report.id)}
                 className={cn(
-                  "flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all shrink-0",
-                  activeReport === report.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all shrink-0 border",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 border-primary/30 scale-[1.02]"
+                    : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border/50"
                 )}
               >
-                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Icon className={cn("w-3.5 h-3.5", isActive && "drop-shadow-sm")} />
                 <span>{report.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Summary Cards - Mobile Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              {reportData.summary.totalSales > 0 && (
-                <span className="flex items-center text-xs text-success">
-                  <ArrowUpRight className="w-3 h-3" />
-                </span>
-              )}
+        {/* Summary Cards - Glassmorphism Style */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+          <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-primary/20">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 text-primary" />
+                </div>
+                {reportData.summary.totalSales > 0 && (
+                  <span className="flex items-center text-[10px] text-green-600 bg-green-50 dark:bg-green-950/30 rounded-full px-1.5 py-0.5">
+                    <ArrowUpRight className="w-2.5 h-2.5" />
+                  </span>
+                )}
+              </div>
+              <p className="text-base sm:text-xl font-bold text-foreground">{formatCurrency(reportData.summary.totalSales)}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.totalSales')}</p>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">{formatCurrency(reportData.summary.totalSales)}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalSales')}</p>
           </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
-              {reportData.summary.totalProfit > 0 && (
-                <span className="flex items-center text-xs text-success">
-                  <ArrowUpRight className="w-3 h-3" />
-                </span>
-              )}
+          
+          <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-green-500/20">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-3.5 h-3.5 text-green-600" />
+                </div>
+                {reportData.summary.totalProfit > 0 && (
+                  <span className="flex items-center text-[10px] text-green-600 bg-green-50 dark:bg-green-950/30 rounded-full px-1.5 py-0.5">
+                    <ArrowUpRight className="w-2.5 h-2.5" />
+                  </span>
+                )}
+              </div>
+              <p className="text-base sm:text-xl font-bold text-foreground">{formatCurrency(reportData.summary.totalProfit)}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.totalProfit')}</p>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">{formatCurrency(reportData.summary.totalProfit)}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.totalProfit')}</p>
           </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-info" />
+          
+          <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-blue-500/20">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <ShoppingCart className="w-3.5 h-3.5 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-base sm:text-xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.ordersCount')}</p>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">{reportData.summary.totalOrders}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.ordersCount')}</p>
           </div>
-          <div className="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-1 sm:mb-2">
-              <PieChart className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
+          
+          <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-amber-500/20">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <PieChart className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+              </div>
+              <p className="text-base sm:text-xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.avgOrderValue')}</p>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-foreground">${reportData.summary.avgOrderValue.toFixed(0)}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.avgOrderValue')}</p>
           </div>
         </div>
 
         {/* Loading State */}
         {isLoading && (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
-            <Loader2 className="w-12 h-12 mx-auto mb-3 text-primary animate-spin" />
-            <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+            <p className="text-muted-foreground text-sm">جاري تحميل البيانات...</p>
           </div>
         )}
 
         {/* No Data Message */}
         {!isLoading && !reportData.hasData && (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center">
-            <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground">{t('reports.noData')}</p>
-            <p className="text-sm text-muted-foreground">{t('reports.tryChangeDateRange')}</p>
+          <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
+              <ShoppingCart className="w-8 h-8 text-muted-foreground/50" />
+            </div>
+            <p className="text-muted-foreground font-medium">{t('reports.noData')}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t('reports.tryChangeDateRange')}</p>
           </div>
         )}
 
         {/* Sales Chart */}
         {reportData.hasData && activeReport === 'sales' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('reports.dailySales')}</h3>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                {t('reports.dailySales')}
+              </h3>
+            </div>
+            <div className="p-4 sm:p-6">
             {reportData.dailySales.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {reportData.dailySales.map((day, idx) => (
-                  <div key={idx} className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground w-24">{day.date}</span>
-                    <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
+                  <div key={idx} className="flex items-center gap-3 group">
+                    <span className="text-xs text-muted-foreground w-20 font-mono">{day.date}</span>
+                    <div className="flex-1 h-7 bg-muted/60 rounded-lg overflow-hidden">
                       <div
-                        className="h-full bg-gradient-primary rounded-lg transition-all duration-500"
+                        className="h-full bg-gradient-to-l from-primary to-primary/70 rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
                         style={{ width: `${day.sales / maxSales * 100}%` }}
                       />
                     </div>
-                    <span className="text-sm font-semibold w-24 text-left">
+                    <span className="text-xs font-semibold w-20 text-left tabular-nums">
                       {formatCurrency(day.sales)}
                     </span>
                   </div>
@@ -979,10 +1014,11 @@ ${partnerExpenses.map(exp => {
             ) : (
               <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
             )}
+            </div>
           </div>
         )}
 
-        {/* Profit Trend Chart - رسم بياني تطور الأرباح */}
+        {/* Profit Trend Chart */}
         {activeReport === 'profits' && (
           <ProfitTrendChart
             days={60}
@@ -993,21 +1029,27 @@ ${partnerExpenses.map(exp => {
 
         {/* Top Products */}
         {reportData.hasData && activeReport === 'products' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('reports.bestProducts')}</h3>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Package className="w-4 h-4 text-primary" />
+                {t('reports.bestProducts')}
+              </h3>
+            </div>
+            <div className="p-4 sm:p-6">
             {reportData.topProducts.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {reportData.topProducts.map((product, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                  <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                      <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         {idx + 1}
                       </span>
-                      <span className="font-medium">{product.name}</span>
+                      <span className="font-medium text-sm">{product.name}</span>
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-foreground">{formatCurrency(product.revenue)}</p>
-                      <p className="text-xs text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
+                      <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
+                      <p className="text-[10px] text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
                     </div>
                   </div>
                 ))}
@@ -1015,6 +1057,7 @@ ${partnerExpenses.map(exp => {
             ) : (
               <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
             )}
+            </div>
           </div>
         )}
 
@@ -1081,21 +1124,27 @@ ${partnerExpenses.map(exp => {
 
 
         {reportData.hasData && activeReport === 'customers' && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">{t('reports.bestCustomers')}</h3>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                {t('reports.bestCustomers')}
+              </h3>
+            </div>
+            <div className="p-4 sm:p-6">
             {reportData.topCustomers.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {reportData.topCustomers.map((customer, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                  <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                      <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         {idx + 1}
                       </span>
-                      <span className="font-medium">{customer.name}</span>
+                      <span className="font-medium text-sm">{customer.name}</span>
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-foreground">{formatCurrency(customer.total)}</p>
-                      <p className="text-xs text-muted-foreground">{customer.orders} {t('reports.order')}</p>
+                      <p className="font-bold text-sm text-foreground">{formatCurrency(customer.total)}</p>
+                      <p className="text-[10px] text-muted-foreground">{customer.orders} {t('reports.order')}</p>
                     </div>
                   </div>
                 ))}
@@ -1103,6 +1152,7 @@ ${partnerExpenses.map(exp => {
             ) : (
               <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
             )}
+            </div>
           </div>
         )}
 
@@ -1473,23 +1523,30 @@ ${partnerExpenses.map(exp => {
 
         {/* Default view - Top Products when on sales tab */}
         {reportData.hasData && activeReport === 'sales' && reportData.topProducts.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <h3 className="text-lg font-semibold mb-4">أفضل المنتجات مبيعاً</h3>
-            <div className="space-y-3">
-              {reportData.topProducts.map((product, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <span className="font-medium">{product.name}</span>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                أفضل المنتجات مبيعاً
+              </h3>
+            </div>
+            <div className="p-4 sm:p-6">
+              <div className="space-y-2">
+                {reportData.topProducts.map((product, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        {idx + 1}
+                      </span>
+                      <span className="font-medium text-sm">{product.name}</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-sm text-foreground">${formatNumber(product.revenue)}</p>
+                      <p className="text-[10px] text-muted-foreground">{product.sales} قطعة</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="font-bold text-foreground">${formatNumber(product.revenue)}</p>
-                    <p className="text-xs text-muted-foreground">{product.sales} قطعة</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
