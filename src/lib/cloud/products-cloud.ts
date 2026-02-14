@@ -54,6 +54,7 @@ export interface Product {
   expiryDate?: string;
   image?: string;
   serialNumber?: string;
+  batchNumber?: string;
   warranty?: string;
   wholesalePrice?: number;
   size?: string;
@@ -89,6 +90,7 @@ function toProduct(cloud: CloudProduct): Product {
     image: cloud.image_url || undefined,
     // Extract static fields from custom_fields
     serialNumber: customFields?.serialNumber as string | undefined,
+    batchNumber: customFields?.batchNumber as string | undefined,
     warranty: customFields?.warranty as string | undefined,
     wholesalePrice: customFields?.wholesalePrice ? Number(customFields.wholesalePrice) : undefined,
     size: customFields?.size as string | undefined,
@@ -96,7 +98,7 @@ function toProduct(cloud: CloudProduct): Product {
     // Remove static fields from displayed customFields to avoid duplication/clutter
     customFields: customFields ? Object.fromEntries(
       Object.entries(customFields).filter(([key]) =>
-        !['serialNumber', 'warranty', 'wholesalePrice', 'size', 'color'].includes(key)
+        !['serialNumber', 'batchNumber', 'warranty', 'wholesalePrice', 'size', 'color'].includes(key)
       )
     ) : undefined,
     // Unit settings
@@ -115,6 +117,7 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
   const mergedCustomFields = {
     ...(product.customFields || {}),
     ...(product.serialNumber ? { serialNumber: product.serialNumber } : {}),
+    ...(product.batchNumber ? { batchNumber: product.batchNumber } : {}),
     ...(product.warranty ? { warranty: product.warranty } : {}),
     ...(product.wholesalePrice ? { wholesalePrice: product.wholesalePrice } : {}),
     ...(product.size ? { size: product.size } : {}),
@@ -338,6 +341,7 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   const mergedCustomFields: Record<string, unknown> = {
     ...(data.customFields || {}),
     ...(data.serialNumber !== undefined ? { serialNumber: data.serialNumber } : {}),
+    ...(data.batchNumber !== undefined ? { batchNumber: data.batchNumber } : {}),
     ...(data.warranty !== undefined ? { warranty: data.warranty } : {}),
     ...(data.wholesalePrice !== undefined ? { wholesalePrice: data.wholesalePrice } : {}),
     ...(data.size !== undefined ? { size: data.size } : {}),

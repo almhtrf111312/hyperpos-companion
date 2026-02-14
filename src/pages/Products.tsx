@@ -145,6 +145,7 @@ export default function Products() {
     image: '',
     // Dynamic fields (Fix #16)
     serialNumber: '',
+    batchNumber: '',
     warranty: '',
     wholesalePrice: 0,
     size: '',
@@ -397,7 +398,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -517,7 +518,7 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
       setCustomFieldValues({});
@@ -645,6 +646,7 @@ export default function Products() {
       expiryDate: product.expiryDate || '',
       image: product.image || '',
       serialNumber: product.serialNumber || '',
+      batchNumber: product.batchNumber || '',
       warranty: product.warranty || '',
       wholesalePrice: product.wholesalePrice || 0,
       size: product.size || '',
@@ -699,7 +701,7 @@ export default function Products() {
               </Button>
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -723,7 +725,7 @@ export default function Products() {
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1466,6 +1468,16 @@ export default function Products() {
                     />
                   </div>
                 )}
+                {fieldsConfig.batchNumber && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.batchNumber')}</label>
+                    <Input
+                      placeholder={t('products.batchNumber')}
+                      value={formData.batchNumber}
+                      onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
+                    />
+                  </div>
+                )}
                 {fieldsConfig.serialNumber && (
                   <div className="sm:col-span-2">
                     <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
@@ -1819,6 +1831,16 @@ export default function Products() {
                       value={formData.expiryDate}
                       onChange={(date) => setFormData({ ...formData, expiryDate: date })}
                       placeholder={t('products.selectExpiryDate')}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.batchNumber && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.batchNumber')}</label>
+                    <Input
+                      placeholder={t('products.batchNumber')}
+                      value={formData.batchNumber}
+                      onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
                     />
                   </div>
                 )}
