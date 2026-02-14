@@ -172,9 +172,13 @@ export default function BossPanel() {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isSavingLicense, setIsSavingLicense] = useState(false);
 
-  // Developer Settings
-  const [developerPhone, setDeveloperPhone] = useState('');
-  const [isSavingDevSettings, setIsSavingDevSettings] = useState(false);
+  // Contact Links Settings
+  const [contactLinks, setContactLinks] = useState<Record<string, string>>({
+    whatsapp: '', facebook: '', tiktok: '', telegram: '',
+    youtube: '', twitter: '', email: '', olx: '',
+  });
+  const [showContactLinksDialog, setShowContactLinksDialog] = useState(false);
+  const [isSavingContactLinks, setIsSavingContactLinks] = useState(false);
 
   // Create Owner Dialog
   const [showCreateOwnerDialog, setShowCreateOwnerDialog] = useState(false);
@@ -243,50 +247,66 @@ export default function BossPanel() {
     }
   };
 
-  // Fetch developer settings
-  const fetchDeveloperSettings = async () => {
+  // Fetch contact links settings
+  const fetchContactLinksSettings = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: linksData } = await supabase
         .from('app_settings')
         .select('value')
-        .eq('key', 'developer_phone')
+        .eq('key', 'contact_links')
         .maybeSingle();
 
-      if (!error && data?.value) {
-        setDeveloperPhone(data.value);
+      if (linksData?.value) {
+        const parsed = JSON.parse(linksData.value);
+        setContactLinks(prev => ({ ...prev, ...parsed }));
+      } else {
+        // Fallback: read old developer_phone
+        const { data: phoneData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'developer_phone')
+          .maybeSingle();
+        if (phoneData?.value) {
+          setContactLinks(prev => ({ ...prev, whatsapp: phoneData.value || '' }));
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch developer settings:', err);
+      console.error('Failed to fetch contact links:', err);
     }
   };
 
-  // Save developer phone
-  const handleSaveDeveloperPhone = async () => {
-    setIsSavingDevSettings(true);
+  // Save contact links
+  const handleSaveContactLinks = async () => {
+    setIsSavingContactLinks(true);
     try {
+      const now = new Date().toISOString();
+      // Save contact_links JSON
       const { error } = await supabase
         .from('app_settings')
-        .upsert({
-          key: 'developer_phone',
-          value: developerPhone,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'key' });
-
+        .upsert({ key: 'contact_links', value: JSON.stringify(contactLinks), updated_at: now }, { onConflict: 'key' });
       if (error) throw error;
 
-      toast.success('تم حفظ رقم المطور بنجاح');
+      // Also save developer_phone for backward compatibility
+      if (contactLinks.whatsapp) {
+        await supabase
+          .from('app_settings')
+          .upsert({ key: 'developer_phone', value: contactLinks.whatsapp, updated_at: now }, { onConflict: 'key' });
+      }
+
+      toast.success('تم حفظ إعدادات التواصل بنجاح');
+      setShowContactLinksDialog(false);
     } catch (err) {
-      console.error('Error saving developer phone:', err);
-      toast.error('فشل في حفظ رقم المطور');
+      console.error('Error saving contact links:', err);
+      toast.error('فشل في حفظ إعدادات التواصل');
     } finally {
-      setIsSavingDevSettings(false);
+      setIsSavingContactLinks(false);
     }
   };
 
   useEffect(() => {
     if (isBoss) {
       fetchData();
-      fetchDeveloperSettings();
+      fetchContactLinksSettings();
     }
   }, [isBoss]);
 
@@ -982,7 +1002,7 @@ export default function BossPanel() {
           </Card>
         </div>
 
-        {/* Developer Settings */}
+        {/* Contact Links Settings */}
         <Card>
           <CardHeader className="pb-2 px-3 md:px-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
@@ -991,30 +1011,30 @@ export default function BossPanel() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 md:px-6">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="developerPhone">رقم واتساب المطور</Label>
-                <Input
-                  id="developerPhone"
-                  value={developerPhone}
-                  onChange={(e) => setDeveloperPhone(e.target.value)}
-                  placeholder="+970599000000"
-                  className="font-mono"
-                  dir="ltr"
-                />
-                <p className="text-xs text-muted-foreground">
-                  سيظهر هذا الرقم في شاشة التفعيل للتواصل مع المطور
-                </p>
-              </div>
-              <Button
-                onClick={handleSaveDeveloperPhone}
-                disabled={isSavingDevSettings}
-                className="self-end"
-              >
-                {isSavingDevSettings && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
-                حفظ الرقم
-              </Button>
+            <p className="text-sm text-muted-foreground mb-3">
+              إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {Object.entries(contactLinks).filter(([, v]) => v?.trim()).map(([key]) => (
+                <Badge key={key} variant="secondary" className="text-xs">
+                  {key === 'whatsapp' ? '💬 واتساب' :
+                   key === 'facebook' ? '📘 فيسبوك' :
+                   key === 'tiktok' ? '🎵 تيك توك' :
+                   key === 'telegram' ? '✈️ تليجرام' :
+                   key === 'youtube' ? '▶️ يوتيوب' :
+                   key === 'twitter' ? '𝕏 تويتر' :
+                   key === 'email' ? '📧 بريد' :
+                   key === 'olx' ? '🛒 OLX' : key}
+                </Badge>
+              ))}
+              {!Object.values(contactLinks).some(v => v?.trim()) && (
+                <span className="text-xs text-muted-foreground">لم يتم إضافة أي قناة بعد</span>
+              )}
             </div>
+            <Button onClick={() => setShowContactLinksDialog(true)} variant="outline" className="gap-2">
+              <MessageCircle className="w-4 h-4" />
+              تعديل قنوات التواصل
+            </Button>
           </CardContent>
         </Card>
 
@@ -2052,6 +2072,62 @@ export default function BossPanel() {
               <Button variant="destructive" onClick={handleDeleteBoss} disabled={isDeletingBoss || !deleteBossPassword}>
                 {isDeletingBoss ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Trash2 className="w-4 h-4 me-2" />}
                 حذف الحساب
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Contact Links Dialog */}
+        <Dialog open={showContactLinksDialog} onOpenChange={setShowContactLinksDialog}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-primary" />
+                إعدادات قنوات التواصل
+              </DialogTitle>
+              <DialogDescription>
+                أضف روابط التواصل التي ستظهر للمستخدمين في الإعدادات وشاشات التفعيل
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">💬 رقم واتساب</Label>
+                <Input value={contactLinks.whatsapp} onChange={(e) => setContactLinks(prev => ({ ...prev, whatsapp: e.target.value }))} placeholder="+970599000000" dir="ltr" className="font-mono" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">📘 فيسبوك</Label>
+                <Input value={contactLinks.facebook} onChange={(e) => setContactLinks(prev => ({ ...prev, facebook: e.target.value }))} placeholder="https://facebook.com/..." dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">🎵 تيك توك</Label>
+                <Input value={contactLinks.tiktok} onChange={(e) => setContactLinks(prev => ({ ...prev, tiktok: e.target.value }))} placeholder="https://tiktok.com/@..." dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">✈️ تليجرام</Label>
+                <Input value={contactLinks.telegram} onChange={(e) => setContactLinks(prev => ({ ...prev, telegram: e.target.value }))} placeholder="https://t.me/..." dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">▶️ يوتيوب</Label>
+                <Input value={contactLinks.youtube} onChange={(e) => setContactLinks(prev => ({ ...prev, youtube: e.target.value }))} placeholder="https://youtube.com/@..." dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">𝕏 تويتر / X</Label>
+                <Input value={contactLinks.twitter} onChange={(e) => setContactLinks(prev => ({ ...prev, twitter: e.target.value }))} placeholder="https://x.com/..." dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">📧 بريد إلكتروني</Label>
+                <Input value={contactLinks.email} onChange={(e) => setContactLinks(prev => ({ ...prev, email: e.target.value }))} placeholder="support@example.com" dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">🛒 OLX</Label>
+                <Input value={contactLinks.olx} onChange={(e) => setContactLinks(prev => ({ ...prev, olx: e.target.value }))} placeholder="https://olx.com/..." dir="ltr" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowContactLinksDialog(false)}>إلغاء</Button>
+              <Button onClick={handleSaveContactLinks} disabled={isSavingContactLinks}>
+                {isSavingContactLinks && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                حفظ
               </Button>
             </DialogFooter>
           </DialogContent>

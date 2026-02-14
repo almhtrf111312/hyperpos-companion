@@ -18,18 +18,34 @@ export function ActivationCodeInput() {
   const [developerPhone, setDeveloperPhone] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDeveloperPhone = async () => {
-      const { data } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'developer_phone')
-        .single();
-      
-      if (data?.value) {
-        setDeveloperPhone(data.value);
+    const fetchContactInfo = async () => {
+      try {
+        // Try new contact_links first
+        const { data: linksData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'contact_links')
+          .maybeSingle();
+
+        if (linksData?.value) {
+          const parsed = JSON.parse(linksData.value);
+          if (parsed.whatsapp) {
+            setDeveloperPhone(parsed.whatsapp);
+            return;
+          }
+        }
+        // Fallback to old developer_phone
+        const { data } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'developer_phone')
+          .single();
+        if (data?.value) setDeveloperPhone(data.value);
+      } catch (err) {
+        console.error('Failed to fetch contact info:', err);
       }
     };
-    fetchDeveloperPhone();
+    fetchContactInfo();
   }, []);
 
   const handleContactDeveloper = () => {
