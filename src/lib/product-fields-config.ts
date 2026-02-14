@@ -128,15 +128,25 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
     // Emit event to notify components in the same tab
     emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, config);
 
-    // Sync to cloud
+    // Sync to cloud - merge with existing sync_settings instead of overwriting
     const userId = getCurrentUserId();
     if (userId) {
-      // Use sync_settings JSONB column to store product fields config
+      // First read existing sync_settings
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('sync_settings')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const existingSyncSettings = (storeData?.sync_settings as Record<string, unknown>) || {};
+
+      // Merge productFieldsConfig into existing settings
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('stores')
         .update({
           sync_settings: {
+            ...existingSyncSettings,
             productFieldsConfig: config
           }
         })
