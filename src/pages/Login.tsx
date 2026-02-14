@@ -288,21 +288,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Stay Logged In Checkbox */}
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="stayLoggedIn"
-                checked={stayLoggedIn}
-                onCheckedChange={(checked) => setStayLoggedIn(checked === true)}
-                disabled={isLoading || isGoogleLoading}
-              />
-              <Label
-                htmlFor="stayLoggedIn"
-                className="text-sm font-normal cursor-pointer select-none"
-              >
-                تذكرني على هذا الجهاز
-              </Label>
-            </div>
 
             <Button type="submit" className="w-full h-11" disabled={isLoading || isGoogleLoading}>
               {isLoading ? (
