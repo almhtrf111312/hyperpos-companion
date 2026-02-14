@@ -1,66 +1,54 @@
 
 
-# خطة إصلاح أخطاء البناء + تحسين الوضع الليلي مع الشفافية
+# خطة إصلاح: تحديث حقول المنتجات تلقائياً عند تغيير نوع المتجر
 
-## المشكلة 1: أخطاء البناء (TS2345)
+## المشكلة
 
-السبب: مفاتيح ترجمة مستخدمة في الكود موجودة في بلوك `en` و `tr` لكنها **غير موجودة في بلوك `ar`** (الذي يُعرّف النوع `TranslationKey`).
+عند تغيير نوع المتجر (مثلاً من "هواتف" إلى "بقالة")، حقول إضافة المنتج لا تتغير وتبقى كما كانت. السبب الجذري هو تعارض في حفظ الإعدادات بين المحلي والسحابي:
 
-### المفاتيح المفقودة من بلوك `ar`:
+1. عند حفظ الإعدادات، يتم كتابة `sync_settings` في قاعدة البيانات بإعدادات المزامنة فقط، مما يحذف إعدادات حقول المنتجات من السحابة
+2. ثم `saveProductFieldsConfig` يكتب `sync_settings` مرة أخرى بإعدادات الحقول فقط، مما يحذف إعدادات المزامنة
+3. عند إعادة فتح التطبيق، يتم جلب الإعدادات من السحابة وقد تكون قديمة أو محذوفة
 
-**مفاتيح setup (مستخدمة في SetupWizard.tsx):**
-- `setup.storeInfoDesc`, `setup.capitalDesc`, `setup.partnersDesc`, `setup.currenciesDesc`
-- `setup.partnerNum`, `setup.totalCapitalLabel`, `setup.initialCapitalNote`
-- `setup.retail`, `setup.wholesale`, `setup.phones`, `setup.grocery`
-- `setup.pharmacy`, `setup.restaurant`, `setup.bakery`, `setup.services`, `setup.other`
+## الحل
 
-**مفاتيح license (مستخدمة في NotificationBell.tsx):**
-- `license.licenseStatus`, `license.currentStatus`, `license.activated`
-- `license.expiresAt`, `license.remainingDays`, `license.enterCodeLabel`
+### 1. إصلاح `saveProductFieldsConfig` في `src/lib/product-fields-config.ts`
 
-### الحل:
-اضافة هذه المفاتيح الـ 22 في بلوك `ar` بعد مفاتيح setup الموجودة (بعد سطر 1912) ومفاتيح license الموجودة.
+بدلاً من استبدال عمود `sync_settings` بالكامل، يجب قراءة القيمة الحالية أولاً ثم دمج `productFieldsConfig` فيها:
 
----
-
-## المشكلة 2: تصميم سيء في الوضع الليلي + الشفافية
-
-### السبب الجذري:
-في الوضع الليلي مع تفعيل الشفافية، `--glass-bg` يكون `hsla(222, 47%, 9%, 0.31)` (شفافية عالية جدا). هذا يجعل:
-- الكروت شبه شفافة بالكامل - النصوص تصبح غير مقروءة
-- القوائم المنسدلة والحوارات شبه مختفية
-- التباين بين النص والخلفية ضعيف جدا
-
-### الحل:
-تعديل دالة `applyBlurTheme` في `src/hooks/use-theme.tsx` لجعل الوضع الليلي اكثر كثافة:
-
-1. **رفع الحد الأدنى لشفافية الخلفية في الوضع الليلي**: تغيير `bgAlpha` من `0.75 - 0.45t` الى `0.85 - 0.35t` بحيث لا تقل الشفافية عن 50%
-2. **تقوية حدود الزجاج**: زيادة `borderAlpha` لتكون أوضح في الوضع الليلي
-3. **زيادة تشبع الألوان**: رفع `saturate` في CSS من 1.4 الى 1.6 للوضع الليلي
-
-### التفاصيل التقنية:
-
-**ملف `src/hooks/use-theme.tsx` - دالة `applyBlurTheme`:**
 ```text
-// قبل (dark mode):
-const bgAlpha = 0.75 - easedT * 0.45; // 0.75 -> 0.30
-
-// بعد:
-const bgAlpha = 0.88 - easedT * 0.33; // 0.88 -> 0.55
+1. قراءة sync_settings الحالية من جدول stores
+2. دمج productFieldsConfig في الكائن الموجود
+3. كتابة الكائن المدمج مرة واحدة
 ```
 
-**ملف `src/index.css` - تحسين قواعد `.blur-theme` للوضع الليلي:**
-- اضافة قاعدة `.dark.blur-theme` لزيادة كثافة الزجاج في الوضع الليلي
-- رفع `saturate` الى 1.8 للكروت في الوضع الليلي
-- اضافة `background-color` احتياطي اكثر كثافة
+### 2. إصلاح `handleSaveSettings` في `src/pages/Settings.tsx`
+
+عند حفظ الإعدادات العامة، يجب دمج `sync_settings` مع إعدادات حقول المنتجات الموجودة بدلاً من استبدالها:
+
+```text
+1. إذا كان productFieldsChanged = true، دمج productFieldsConfig مع syncSettings قبل الإرسال
+2. إرسال sync_settings مدمجة تحتوي على كلا النوعين من الإعدادات
+3. إزالة الاستدعاء المنفصل لـ saveProductFieldsConfig (لأنه أصبح مدمجاً)
+```
+
+### 3. إصلاح `getEffectiveFieldsConfig` في `src/lib/product-fields-config.ts`
+
+إضافة فحص إضافي: إذا كان نوع المتجر المحفوظ لا يتطابق مع الإعدادات المخزنة، إعادة الإعدادات الافتراضية للنوع الجديد.
 
 ---
 
-## ملخص الملفات المتأثرة:
+## التفاصيل التقنية
 
-| الملف | التغيير |
-|-------|---------|
-| `src/lib/i18n.ts` | اضافة ~22 مفتاح مفقود في بلوك `ar` |
-| `src/hooks/use-theme.tsx` | تعديل `applyBlurTheme` - رفع كثافة الوضع الليلي |
-| `src/index.css` | اضافة قواعد `.dark.blur-theme` محسّنة |
+### الملفات المتأثرة:
+- `src/lib/product-fields-config.ts` - إصلاح دمج sync_settings في السحابة
+- `src/pages/Settings.tsx` - إصلاح حفظ الإعدادات المدمجة
+
+### خطوات التنفيذ:
+
+**الخطوة 1**: تعديل `saveProductFieldsConfig` لقراءة `sync_settings` الحالية ودمج الحقول الجديدة بدلاً من الاستبدال الكامل
+
+**الخطوة 2**: تعديل `handleSaveSettings` لدمج `productFieldsConfig` داخل كائن `sync_settings` المرسل إلى `saveStoreSettings`، بحيث يتم إرسال كل شيء في عملية واحدة
+
+**الخطوة 3**: حفظ إعدادات الحقول إلى localStorage فوراً عند تغيير نوع المتجر (وليس فقط عند الضغط على حفظ) لضمان تطبيقها مباشرة على نموذج إضافة المنتجات
 
