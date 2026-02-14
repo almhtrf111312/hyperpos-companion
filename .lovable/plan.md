@@ -1,100 +1,60 @@
 
 
-# خطة: دعم الباركود المتعدد في التقارير + نظام المتغيرات (Variants)
+# حل مشكلة الأرقام العربية (الهندية) على أندرويد
 
-## تحليل الوضع الحالي
+## المشكلة
+عند ضبط لغة جهاز الأندرويد على العربية، يقوم WebView تلقائيا بتحويل الأرقام الإنجليزية (0-9) إلى أرقام هندية (٠-٩). الحلول الموجودة حاليا في CSS (مثل `font-variant-numeric` و `font-feature-settings`) لا تعمل في WebView الأندرويد لأن التحويل يحدث على مستوى النظام وليس الخط.
 
-بعد فحص الكود، وجدت التالي:
-- قاعدة البيانات تدعم بالفعل `barcode2` و `barcode3` كأعمدة في جدول `products`
-- نموذج إضافة المنتج يدعم إضافة 3 باركودات
-- البحث السحابي (`getProductByBarcodeCloud`) يبحث في الباركودات الثلاثة
-- **مشكلة 1**: البحث المحلي في POS يبحث فقط في `barcode` الأول (السطر 389 في POS.tsx)
-- **مشكلة 2**: تقرير Excel لا يتضمن barcode2 و barcode3
-- **مشكلة 3**: لا يوجد نظام متغيرات (variant_label) للتمييز بين منتجات بنفس الباركود
+## الحل: طبقتان متكاملتان
 
-## بخصوص اقتراح جدول باركود منفصل
+### الطبقة 1: فرض Locale في كود الأندرويد (MainActivity.java)
+تعديل `MainActivity.java` لفرض `Locale.US` على مستوى التطبيق بالكامل عند بدء التشغيل. هذا يمنع WebView من استبدال الأرقام.
 
-اقتراحك باستخدام جدول منفصل للباركود هو اقتراح ممتاز من الناحية النظرية ويتيح عدد غير محدود من الباركودات. لكن في حالتنا:
-- النظام مبني بالكامل على 3 باركودات (barcode, barcode2, barcode3) وهذا يكفي لمعظم الاستخدامات التجارية
-- تغيير البنية لجدول منفصل يتطلب إعادة كتابة كبيرة في: المزامنة السحابية، النسخ الاحتياطي، البحث، التقارير، نقطة البيع
-- 3 باركودات تغطي 99% من الحالات العملية
+```text
+الملف: android/app/src/main/java/com/flowpos/pro/MainActivity.java
 
-**لذلك سنحافظ على البنية الحالية ونضيف ما ينقص:**
+- Override onCreate()
+- فرض Locale.US على Configuration
+- تطبيقه على Resources
+```
+
+### الطبقة 2: تعطيل Digit Substitution في WebView Settings
+إضافة إعداد `setTextZoom` والتحكم في خصائص WebView بعد تحميل Bridge لمنع أي تحويل تلقائي للأرقام.
 
 ---
 
-## التعديلات المطلوبة
+## التفاصيل التقنية
 
-### 1. إصلاح البحث المحلي في POS (مشكلة حرجة)
-**ملف: `src/pages/POS.tsx`** - السطر 389
+### تعديل 1: `android/app/src/main/java/com/flowpos/pro/MainActivity.java`
 
-حاليا البحث المحلي يبحث فقط في الباركود الأول:
-```
-const localProduct = products.find(p => p.barcode === barcode);
-```
+إضافة كود لفرض Locale الإنجليزي عند بدء التطبيق:
+- استيراد `android.os.Bundle`, `java.util.Locale`, `android.content.res.Configuration`
+- في `onCreate`: إنشاء `Configuration` جديد مع `Locale.US`
+- تطبيقه عبر `getResources().updateConfiguration()`
+- هذا يجبر WebView على عرض الأرقام بالشكل الغربي (0-9)
 
-التعديل: البحث في كل الباركودات + عرض نافذة اختيار إذا وُجد أكثر من منتج:
-```
-const matches = products.filter(p => 
-  p.barcode === barcode || p.barcode2 === barcode || p.barcode3 === barcode
-);
-if (matches.length > 1) -> عرض VariantPickerDialog
-if (matches.length === 1) -> إضافة مباشرة
-```
+### تعديل 2: `src/index.css` - تعزيز CSS الموجود
 
-### 2. إضافة barcode2/barcode3 في واجهة POS
-**ملف: `src/pages/POS.tsx`** - POSProduct interface
-
-إضافة `barcode2` و `barcode3` في POSProduct interface وتمريرهما عند تحويل المنتجات.
-
-### 3. إضافة عمود variant_label في قاعدة البيانات
-**Migration SQL:**
-```sql
-ALTER TABLE products ADD COLUMN variant_label text DEFAULT NULL;
+إضافة قاعدة CSS إضافية تستهدف جميع العناصر النصية:
+```css
+* {
+  unicode-bidi: plaintext;
+}
 ```
 
-### 4. تحديث المزامنة السحابية
-**ملف: `src/lib/cloud/products-cloud.ts`**
-- إضافة `variant_label` في CloudProduct interface
-- إضافته في دوال التحويل `toProduct` و `toCloudProduct`
-- إضافته في `updateProductCloud`
+وإضافة `lang="en"` attribute على عناصر الأرقام عبر JavaScript.
 
-### 5. إضافة حقل "المتغير" في نموذج المنتج
-**ملف: `src/pages/Products.tsx`**
-- إضافة حقل `variantLabel` في formData
-- عرض حقل إدخال "المتغير / الوصف" تحت اسم المنتج
-- أمثلة للمستخدم: "فقط شاحن"، "مع وصلة Type-C"، "مع وصلة iPhone"
+### تعديل 3: `src/lib/utils.ts` - تعزيز دوال التنسيق
 
-### 6. إنشاء نافذة اختيار المتغير
-**ملف جديد: `src/components/pos/VariantPickerDialog.tsx`**
-- نافذة بسيطة تعرض المنتجات المطابقة للباركود
-- كل منتج يعرض: الاسم + المتغير + السعر + الكمية
-- الضغط على منتج يضيفه للسلة
-
-### 7. تحديث تقرير Excel
-**ملف: `src/lib/excel-export.ts`**
-- إضافة أعمدة: "باركود 2"، "باركود 3"، "المتغير" في `exportProductsToExcel`
-
-**ملف: `src/pages/Reports.tsx`**
-- تمرير barcode2، barcode3، variantLabel عند استدعاء التقرير
+التأكد من أن جميع دوال `formatNumber` و `formatCurrency` و `formatDate` تستخدم `Intl.NumberFormat('en-US')` بدلا من `toLocaleString` لضمان عدم تدخل locale الجهاز.
 
 ---
-
-## ترتيب التنفيذ
-
-1. Migration: إضافة عمود `variant_label`
-2. تحديث `products-cloud.ts`: دعم variant_label
-3. تحديث `Products.tsx`: حقل المتغير في النموذج
-4. تحديث `POS.tsx`: إصلاح البحث + دعم barcode2/3 + منطق المتغيرات
-5. إنشاء `VariantPickerDialog.tsx`
-6. تحديث `excel-export.ts` و `Reports.tsx`: أعمدة التقارير الجديدة
 
 ## الملفات المتأثرة
-- `src/lib/cloud/products-cloud.ts` - دعم variant_label
-- `src/pages/Products.tsx` - حقل المتغير
-- `src/pages/POS.tsx` - إصلاح البحث + منطق المتغيرات
-- `src/components/pos/VariantPickerDialog.tsx` - ملف جديد
-- `src/lib/excel-export.ts` - أعمدة التقارير
-- `src/pages/Reports.tsx` - تمرير البيانات الجديدة
-- Migration SQL - عمود variant_label
+1. `android/app/src/main/java/com/flowpos/pro/MainActivity.java` - فرض Locale.US
+2. `src/index.css` - تعزيزات CSS إضافية (اختياري)
+3. `src/lib/utils.ts` - التحقق من دوال التنسيق (موجود بالفعل بشكل صحيح)
+
+## ملاحظة مهمة
+بعد التعديل، يجب عمل `git pull` ثم `npx cap sync` ثم إعادة بناء التطبيق لتطبيق التغييرات على الأندرويد.
 
