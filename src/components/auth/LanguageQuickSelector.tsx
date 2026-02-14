@@ -7,9 +7,9 @@ export function LanguageQuickSelector() {
   const selectedLanguage = languages.find(l => l.code === language);
 
   return (
-    <div className="absolute top-4 end-4 z-10">
+    <div className="flex justify-center z-10">
       <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
-        <SelectTrigger className="w-auto min-w-[100px] h-8 text-xs border-border/50 bg-background/80 backdrop-blur-sm">
+        <SelectTrigger className="w-auto min-w-[130px] h-10 text-sm border-border/50 bg-background/80 backdrop-blur-sm">
           <SelectValue>
             <span>{selectedLanguage?.nativeName}</span>
           </SelectValue>
