@@ -14,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       duration={2000}
       closeButton
       style={{
-        '--width': 'min(80vw, 340px)',
+        '--width': 'min(75vw, 300px)',
       } as React.CSSProperties}
       toastOptions={{
         classNames: {
