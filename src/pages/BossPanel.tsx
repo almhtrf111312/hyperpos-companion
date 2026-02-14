@@ -1031,11 +1031,20 @@ export default function BossPanel() {
     }
   };
 
-  const filteredOwners = owners.filter(owner =>
-    owner.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.user_id.includes(searchTerm)
-  );
+  const filteredOwners = owners
+    .filter(owner =>
+      owner.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      owner.user_id.includes(searchTerm)
+    )
+    .sort((a, b) => {
+      if (a.role === 'boss' && b.role !== 'boss') return -1;
+      if (a.role !== 'boss' && b.role === 'boss') return 1;
+      return 0;
+    });
+
+  const totalSubAccounts = owners.reduce((sum, o) => sum + (o.cashiers?.length || 0), 0);
+  const totalUsers = owners.length + totalSubAccounts;
 
   const filteredCodes = codes.filter(code =>
     code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1085,9 +1094,9 @@ export default function BossPanel() {
               <p className="text-xs md:text-sm text-muted-foreground">إدارة التراخيص والمستخدمين</p>
             </div>
           </div>
-          <Button onClick={fetchData} variant="outline" size="icon" className="flex-shrink-0">
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
+          {isLoading && (
+            <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+          )}
         </div>
 
         {/* Tabs */}
@@ -1120,32 +1129,38 @@ export default function BossPanel() {
           <TabsContent value="users" className="space-y-4">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-500 flex-shrink-0" />
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
                     <div className="min-w-0">
-                      <p className="text-lg md:text-2xl font-bold">{owners.length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">إجمالي الملاك</p>
+                      <p className="text-lg md:text-2xl font-bold">{totalUsers}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">إجمالي المستخدمين</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden bg-gradient-to-br from-violet-500/10 to-violet-600/5 border-violet-500/20">
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <Key className="w-6 h-6 md:w-8 md:h-8 text-green-500 flex-shrink-0" />
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                      <UserPlus className="w-4 h-4 md:w-5 md:h-5 text-violet-600 dark:text-violet-400" />
+                    </div>
                     <div className="min-w-0">
-                      <p className="text-lg md:text-2xl font-bold">{codes.filter(c => c.is_active).length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">أكواد نشطة</p>
+                      <p className="text-lg md:text-2xl font-bold">{totalSubAccounts}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">الحسابات التابعة</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20">
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 flex-shrink-0" />
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
                     <div className="min-w-0">
                       <p className="text-lg md:text-2xl font-bold">{owners.filter(o => o.license_expires && new Date(o.license_expires) > new Date() && !o.license_revoked).length}</p>
                       <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص فعالة</p>
@@ -1153,10 +1168,12 @@ export default function BossPanel() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
                 <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <XCircle className="w-6 h-6 md:w-8 md:h-8 text-red-500 flex-shrink-0" />
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-600 dark:text-red-400" />
+                    </div>
                     <div className="min-w-0">
                       <p className="text-lg md:text-2xl font-bold">{licenseIssueOwners.length}</p>
                       <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص بها مشاكل</p>
@@ -1385,7 +1402,7 @@ export default function BossPanel() {
                             <div className="mt-2 border-t pt-2">
                               <button
                                 onClick={() => toggleOwnerExpanded(owner.user_id)}
-                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
                               >
                                 {expandedOwners.has(owner.user_id) ? (
                                   <ChevronDown className="w-3 h-3" />
@@ -1554,14 +1571,17 @@ export default function BossPanel() {
                               </span>
                             )}
                             {linkedOwner && (
-                              <span className="flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                                <Mail className="w-3 h-3" />
-                                مرتبط بـ: {linkedOwner.name || linkedOwner.email || 'غير معروف'}
+                              <span className="flex items-center gap-1.5 bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
+                                <Mail className="w-3.5 h-3.5" />
+                                مرتبط بـ: {linkedOwner.name || 'بدون اسم'}
+                                {linkedOwner.email && (
+                                  <span className="font-mono text-[11px] opacity-80">({linkedOwner.email})</span>
+                                )}
                               </span>
                             )}
                           </div>
                           {code.note && (
-                            <p className="text-[10px] md:text-xs text-muted-foreground italic">📝 {code.note}</p>
+                            <p className="text-xs text-muted-foreground italic">📝 {code.note}</p>
                           )}
                         </div>
                       );
