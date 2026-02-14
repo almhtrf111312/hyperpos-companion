@@ -863,43 +863,42 @@ export default function Settings() {
         );
       case 'store':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
             <div>
-              <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.storeInfo')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.storeName')}</label>
-                  <div className="relative">
+              <h2 className="text-lg md:text-xl font-bold text-foreground mb-3">{t('settings.storeInfo')}</h2>
+              <div className="space-y-2">
+                {/* اسم المتجر */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('settings.storeName')}</label>
+                  <div className="relative flex-1">
                     <Store className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={storeSettings.name}
                       onChange={(e) => setStoreSettings({ ...storeSettings, name: e.target.value })}
-                      className="pr-10 bg-muted border-0"
+                      className="pr-10 bg-muted border-0 h-9"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.storeType')}</label>
+                {/* نوع المحل */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('settings.storeType')}</label>
                   <select
                     value={storeSettings.type}
                     onChange={(e) => {
                       const newType = e.target.value;
                       setStoreSettings({ ...storeSettings, type: newType });
-                      // إخفاء الصيانة تلقائياً لغير محلات الهواتف والصيانة
                       if (newType !== 'phones' && newType !== 'repair') {
                         setHideMaintenanceSection(true);
                       } else {
                         setHideMaintenanceSection(false);
                       }
-                      // تفعيل الحقول المناسبة تلقائياً حسب نوع النشاط
                       const defaultFields = getDefaultFieldsByStoreType(newType as StoreType);
                       setProductFieldsConfig(defaultFields);
                       setProductFieldsChanged(true);
-                      // طلب تأكيد قبل تغيير التصنيفات
                       setPendingStoreType(newType);
                       setStoreTypeConfirmOpen(true);
                     }}
-                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                    className="flex-1 h-9 px-3 rounded-md bg-muted border-0 text-foreground text-sm"
                   >
                     <option value="phones">{t('settings.storeTypes.phones')}</option>
                     <option value="grocery">{t('settings.storeTypes.grocery')}</option>
@@ -911,9 +910,10 @@ export default function Settings() {
                     <option value="general">{t('settings.storeTypes.general')}</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('common.phone')}</label>
-                  <div className="relative">
+                {/* الهاتف */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('common.phone')}</label>
+                  <div className="relative flex-1">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={storeSettings.phone}
@@ -922,29 +922,31 @@ export default function Settings() {
                         setStoreSettings({ ...storeSettings, phone: val });
                       }}
                       inputMode="tel"
-                      className="pr-10 bg-muted border-0"
+                      className="pr-10 bg-muted border-0 h-9"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('common.email')}</label>
-                  <div className="relative">
+                {/* البريد */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('common.email')}</label>
+                  <div className="relative flex-1">
                     <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={storeSettings.email}
                       onChange={(e) => setStoreSettings({ ...storeSettings, email: e.target.value })}
-                      className="pr-10 bg-muted border-0"
+                      className="pr-10 bg-muted border-0 h-9"
                     />
                   </div>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.address')}</label>
-                  <div className="relative">
+                {/* العنوان */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('settings.address')}</label>
+                  <div className="relative flex-1">
                     <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={storeSettings.address}
                       onChange={(e) => setStoreSettings({ ...storeSettings, address: e.target.value })}
-                      className="pr-10 bg-muted border-0"
+                      className="pr-10 bg-muted border-0 h-9"
                     />
                   </div>
                 </div>
@@ -952,130 +954,113 @@ export default function Settings() {
             </div>
 
             {/* Logo Upload */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold text-foreground">{t('settings.storeLogo')}</h3>
-              <div className="flex items-center gap-4">
-                {storeSettings.logo ? (
-                  <div className="relative">
-                    <img
-                      src={storeSettings.logo}
-                      alt={t('settings.storeLogo')}
-                      className="w-20 h-20 rounded-lg object-cover border border-border"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -left-2 h-6 w-6"
-                      onClick={handleRemoveLogo}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted">
-                    <Store className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                )}
-                <div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                    id="logo-upload"
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              {storeSettings.logo ? (
+                <div className="relative">
+                  <img
+                    src={storeSettings.logo}
+                    alt={t('settings.storeLogo')}
+                    className="w-14 h-14 rounded-lg object-cover border border-border"
                   />
-                  <label htmlFor="logo-upload">
-                    <Button variant="outline" asChild>
-                      <span className="cursor-pointer">
-                        <Upload className="w-4 h-4 ml-2" />
-                        {t('settings.uploadLogo')}
-                      </span>
-                    </Button>
-                  </label>
-                  <p className="text-xs text-muted-foreground mt-1">{t('settings.logoRequirements')}</p>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -left-2 h-5 w-5"
+                    onClick={handleRemoveLogo}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
                 </div>
+              ) : (
+                <div className="w-14 h-14 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted">
+                  <Store className="w-6 h-6 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  id="logo-upload"
+                />
+                <label htmlFor="logo-upload">
+                  <Button variant="outline" size="sm" asChild>
+                    <span className="cursor-pointer">
+                      <Upload className="w-4 h-4 ml-2" />
+                      {t('settings.uploadLogo')}
+                    </span>
+                  </Button>
+                </label>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('settings.logoRequirements')}</p>
               </div>
             </div>
 
-            {/* POS Options - إخفاء الصيانة تلقائياً لغير محلات الهواتف والصيانة */}
+            {/* POS Options - إخفاء الصيانة */}
             {(storeSettings.type === 'phones' || storeSettings.type === 'repair') && (
-              <div className="space-y-4 pt-4 border-t border-border">
-                <h3 className="text-base font-semibold text-foreground">خيارات نقطة البيع</h3>
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Wrench className="w-5 h-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">إخفاء قسم الصيانة</p>
-                      <p className="text-sm text-muted-foreground">إخفاء تبويب الصيانة من شاشة نقطة البيع</p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={hideMaintenanceSection}
-                    onCheckedChange={setHideMaintenanceSection}
-                  />
+              <div className="flex items-center justify-between py-2 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">إخفاء قسم الصيانة</span>
                 </div>
+                <Switch
+                  checked={hideMaintenanceSection}
+                  onCheckedChange={setHideMaintenanceSection}
+                />
               </div>
             )}
 
             {/* Language Section */}
-            <div className="pt-4 border-t border-border">
+            <div className="border-t border-border pt-2">
               <LanguageSection />
             </div>
 
             {/* Currencies Section */}
-            <div className="pt-4 border-t border-border space-y-6">
-              <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
-
+            <div className="pt-2 border-t border-border space-y-3">
+              <h3 className="text-base font-semibold text-foreground">{t('settings.exchangeRates')}</h3>
+              
               {/* العملة الأولى */}
-              <div className="bg-muted/50 rounded-xl p-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">اسم العملة الأولى</label>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
                   <Input
                     value={currencyNames.TRY}
                     onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
-                    className="bg-background border-border"
+                    className="flex-1 bg-muted border-0 h-9 text-sm"
                     placeholder={t('settings.currencyTryPlaceholder')}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">سعر الصرف</label>
-                  <div className="relative">
+                  <div className="relative flex-1">
                     <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={exchangeRates.TRY}
                       onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
-                      className="pr-10 bg-background border-border"
+                      className="pr-10 bg-muted border-0 h-9 text-sm"
                       placeholder="32"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
                 </div>
+                <p className="text-xs text-muted-foreground px-1">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
               </div>
 
               {/* العملة الثانية */}
-              <div className="bg-muted/50 rounded-xl p-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">اسم العملة الثانية</label>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
                   <Input
                     value={currencyNames.SYP}
                     onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
-                    className="bg-background border-border"
+                    className="flex-1 bg-muted border-0 h-9 text-sm"
                     placeholder={t('settings.currencySypPlaceholder')}
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">سعر الصرف</label>
-                  <div className="relative">
+                  <div className="relative flex-1">
                     <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={exchangeRates.SYP}
                       onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
-                      className="pr-10 bg-background border-border"
+                      className="pr-10 bg-muted border-0 h-9 text-sm"
                       placeholder="14500"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.SYP} {currencyNames.SYP}</p>
                 </div>
+                <p className="text-xs text-muted-foreground px-1">1 {t('settings.dollar')} = {exchangeRates.SYP} {currencyNames.SYP}</p>
               </div>
             </div>
           </div>
