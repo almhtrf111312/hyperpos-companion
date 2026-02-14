@@ -104,23 +104,24 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
           </span>
         </div>
 
-        <div className="grid gap-4">
+        <div className="space-y-1">
           {fields.map((field) => (
             <div
               key={field}
-              className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50"
+              className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors"
             >
-              <div className="flex-1">
-                <div className="font-medium text-foreground">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-foreground">
                   {FIELD_LABELS[field].name}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {FIELD_LABELS[field].description}
-                </div>
+                </span>
+                <span className="text-xs text-muted-foreground mr-2">
+                  — {FIELD_LABELS[field].description}
+                </span>
               </div>
               <Switch
                 checked={config[field]}
                 onCheckedChange={() => handleToggle(field)}
+                className="flex-shrink-0"
               />
             </div>
           ))}
