@@ -34,11 +34,17 @@ import { loadCustomersCloud, Customer } from '@/lib/cloud/customers-cloud';
 import { loadPartnersCloud, Partner, ProfitRecord } from '@/lib/cloud/partners-cloud';
 import { loadCategoriesCloud, Category } from '@/lib/cloud/categories-cloud';
 import { loadExpensesCloud, Expense } from '@/lib/cloud/expenses-cloud';
+import { loadDebtsCloud, Debt } from '@/lib/cloud/debts-cloud';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PartnerProfitDetailedReport } from '@/components/reports/PartnerProfitDetailedReport';
 import { ProfitTrendChart } from '@/components/reports/ProfitTrendChart';
 import { DistributorInventoryReport } from '@/components/reports/DistributorInventoryReport';
 import { DistributorCustodyValueReport } from '@/components/reports/DistributorCustodyValueReport';
+import { PurchaseInvoicesReport } from '@/components/reports/PurchaseInvoicesReport';
+import { DebtsReport } from '@/components/reports/DebtsReport';
+import { CashierPerformanceReport } from '@/components/reports/CashierPerformanceReport';
+import { MaintenanceReport } from '@/components/reports/MaintenanceReport';
+import { DailyClosingReport } from '@/components/reports/DailyClosingReport';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import {
   exportInvoicesToExcel,
@@ -77,18 +83,20 @@ export default function Reports() {
   const [cloudPartners, setCloudPartners] = useState<Partner[]>([]);
   const [cloudCategories, setCloudCategories] = useState<Category[]>([]);
   const [cloudExpenses, setCloudExpenses] = useState<Expense[]>([]);
+  const [cloudDebts, setCloudDebts] = useState<Debt[]>([]);
 
   // ✅ تحميل البيانات من Cloud
   const loadCloudData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [invoices, products, customers, partners, categories, expenses] = await Promise.all([
+      const [invoices, products, customers, partners, categories, expenses, debts] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
         loadCustomersCloud(),
         loadPartnersCloud(),
         loadCategoriesCloud(),
-        loadExpensesCloud()
+        loadExpensesCloud(),
+        loadDebtsCloud()
       ]);
 
       setCloudInvoices(invoices);
@@ -97,6 +105,7 @@ export default function Reports() {
       setCloudPartners(partners);
       setCloudCategories(categories);
       setCloudExpenses(expenses);
+      setCloudDebts(debts);
     } catch (error) {
       console.error('Error loading cloud data for reports:', error);
       toast.error(t('reports.loadError'));
@@ -133,7 +142,7 @@ export default function Reports() {
   // Auto-open tab from URL params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value'].includes(tab)) {
+    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -149,6 +158,11 @@ export default function Reports() {
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
+    { id: 'purchases', label: 'فواتير المشتريات', icon: FileText },
+    { id: 'debts', label: 'تقرير الديون', icon: Banknote },
+    { id: 'cashier-performance', label: 'أداء الكاشير', icon: Users },
+    { id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList },
+    { id: 'daily-closing', label: 'الإغلاق اليومي', icon: Calendar },
     { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
     { id: 'custody-value', label: t('reports.custodyValue'), icon: Wallet },
   ];
@@ -1123,7 +1137,30 @@ ${partnerExpenses.map(exp => {
           </div>
         )}
 
+        {/* Purchase Invoices Report */}
+        {activeReport === 'purchases' && (
+          <PurchaseInvoicesReport dateRange={dateRange} />
+        )}
 
+        {/* Debts Report */}
+        {activeReport === 'debts' && (
+          <DebtsReport dateRange={dateRange} />
+        )}
+
+        {/* Cashier Performance Report */}
+        {activeReport === 'cashier-performance' && (
+          <CashierPerformanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} />
+        )}
+
+        {/* Maintenance Report */}
+        {activeReport === 'maintenance' && (
+          <MaintenanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} />
+        )}
+
+        {/* Daily Closing Report */}
+        {activeReport === 'daily-closing' && (
+          <DailyClosingReport invoices={cloudInvoices} expenses={cloudExpenses} debts={cloudDebts} isLoading={isLoading} />
+        )}
         {reportData.hasData && activeReport === 'customers' && (
           <div className="bg-card rounded-2xl border border-border overflow-hidden">
             <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
