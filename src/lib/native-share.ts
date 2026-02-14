@@ -153,26 +153,26 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
 
   const paymentLabel = paymentType === 'cash' ? '💵 نقدي' : '📋 آجل';
 
-  return `╔══════════════════════╗
-      *${storeName}*
-╚══════════════════════╝
+  return `────────────────
+${storeName}
+────────────────
 
-📄 *فاتورة رقم:* ${id}
-📅 *التاريخ:* ${date}
+📄 فاتورة رقم: ${id}
+📅 التاريخ: ${date}
 
-━━━━━━━━━━━━━━━━━━━━━
-👤 *العميل:* ${customerName}
-${customerPhone ? `📱 *الهاتف:* ${customerPhone}` : ''}
-━━━━━━━━━━━━━━━━━━━━━
+────────────────
+👤 العميل: ${customerName}
+${customerPhone ? `📱 الهاتف: ${customerPhone}` : ''}
+────────────────
 
-${type === 'sale' ? '🛒 *المشتريات:*' : '🔧 *الخدمة:*'}
+${type === 'sale' ? '🛒 المشتريات:' : '🔧 الخدمة:'}
 ${itemsList}
 
-━━━━━━━━━━━━━━━━━━━━━
-${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${currencySymbol}${formatNumber(discount)}\n` : ''}💰 *الإجمالي:* ${currencySymbol}${formatNumber(total)}
-💳 *طريقة الدفع:* ${paymentLabel}
+────────────────
+${type === 'sale' && items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
+💳 طريقة الدفع: ${paymentLabel}
 
-━━━━━━━━━━━━━━━━━━━━━
+────────────────
 ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
 
 شكراً لتعاملكم معنا! 🙏`;
@@ -226,17 +226,17 @@ export function generateDebtShareText(data: DebtShareData): string {
     dueDate,
   } = data;
 
-  return `📋 *تذكير بالدين*
+  return `📋 تذكير بالدين
 
-👤 *العميل:* ${customerName}
-${customerPhone ? `📱 *الهاتف:* ${customerPhone}` : ''}
-${invoiceId ? `📄 *رقم الفاتورة:* ${invoiceId}` : ''}
+👤 العميل: ${customerName}
+${customerPhone ? `📱 الهاتف: ${customerPhone}` : ''}
+${invoiceId ? `📄 رقم الفاتورة: ${invoiceId}` : ''}
 
-💰 *إجمالي الدين:* ${currencySymbol}${formatNumber(totalDebt)}
-💵 *المتبقي:* ${currencySymbol}${formatNumber(remainingDebt)}
-${dueDate ? `📅 *تاريخ الاستحقاق:* ${dueDate}` : ''}
+💰 إجمالي الدين: ${currencySymbol}${formatNumber(totalDebt)}
+💵 المتبقي: ${currencySymbol}${formatNumber(remainingDebt)}
+${dueDate ? `📅 تاريخ الاستحقاق: ${dueDate}` : ''}
 
-━━━━━━━━━━━━━━━━━━━━━
+────────────────
 نرجو التواصل لتسوية المبلغ 🙏`;
 }
 

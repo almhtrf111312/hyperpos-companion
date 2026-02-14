@@ -305,10 +305,31 @@ async function printOnNative(htmlContent: string): Promise<boolean> {
   try {
     const fileName = `receipt_${Date.now()}.html`;
 
+    // إضافة زر إغلاق داخل HTML (يظهر فقط على الشاشة ولا يطبع)
+    const closeButtonHTML = `
+      <style>
+        @media print { .close-btn-container { display: none !important; } }
+        .close-btn-container {
+          position: fixed; top: 0; left: 0; right: 0;
+          background: #f44336; padding: 12px; text-align: center; z-index: 9999;
+        }
+        .close-btn-container button {
+          background: white; color: #f44336; border: none; padding: 10px 32px;
+          font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;
+        }
+      </style>
+      <div class="close-btn-container">
+        <button onclick="window.close(); history.back(); setTimeout(function(){window.close();},100);">✕ إغلاق / Close</button>
+      </div>
+    `;
+
+    // إدراج زر الإغلاق في بداية body
+    const enhancedHTML = htmlContent.replace('<body>', '<body>' + closeButtonHTML);
+
     // حفظ الملف مؤقتاً
     const result = await Filesystem.writeFile({
       path: fileName,
-      data: htmlContent,
+      data: enhancedHTML,
       directory: Directory.Cache,
       encoding: Encoding.UTF8,
     });
@@ -318,7 +339,7 @@ async function printOnNative(htmlContent: string): Promise<boolean> {
       title: 'طباعة الفاتورة',
       text: 'فاتورة جاهزة للطباعة',
       url: result.uri,
-      dialogTitle: 'طباعة عبر',
+      dialogTitle: 'طباعة - اختر الطابعة أو التطبيق',
     });
 
     // حذف الملف بعد المشاركة
@@ -331,22 +352,15 @@ async function printOnNative(htmlContent: string): Promise<boolean> {
       } catch {
         // تجاهل أخطاء الحذف
       }
-    }, 5000);
+    }, 10000);
 
     return true;
   } catch (error) {
     console.error('[NativePrint] Native print failed:', error);
 
-    // Fallback: حاول فتح الطباعة مباشرة
+    // Fallback: استخدم iframe بدلاً من window.open لتجنب مشكلة عدم القدرة على الإغلاق
     try {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.print();
-        setTimeout(() => printWindow.close(), 1000);
-        return true;
-      }
+      return printOnWeb(htmlContent);
     } catch {
       // تجاهل
     }
