@@ -168,7 +168,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
+        <div className="min-h-16 flex items-center justify-between px-4 py-2 border-b border-sidebar-border">
           <div className={cn("flex items-center gap-3", effectiveCollapsed && !isMobile && "justify-center w-full")}>
             <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center glow">
               <Zap className="w-6 h-6 text-primary-foreground" />
