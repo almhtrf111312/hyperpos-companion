@@ -132,8 +132,19 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
   const visibleSections = getVisibleSections(storeType);
   const noInventory = isNoInventoryMode(storeType);
+  
+  // Get allowed pages for cashier users
+  const allowedPages = profile?.allowed_pages as string[] | null;
+  
   const filteredNavItems = navItems.filter(item => {
-    if (item.adminOnly && !(isBoss || isAdmin)) return false;
+    if (item.adminOnly && !(isBoss || isAdmin)) {
+      // If cashier has explicit permission for this page, show it
+      if (allowedPages && allowedPages.length > 0) {
+        const pageKey = item.path.replace('/', '') || 'pos';
+        if (allowedPages.includes(pageKey)) return true;
+      }
+      return false;
+    }
     if (item.requiresMaintenance && !visibleSections.maintenance) return false;
     if (item.hideInNoInventory && noInventory) return false;
     return true;

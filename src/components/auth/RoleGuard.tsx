@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useUserRole, AppRole } from '@/hooks/use-user-role';
+import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
 
 interface RoleGuardProps {
@@ -10,6 +11,17 @@ interface RoleGuardProps {
   fallback?: ReactNode;
 }
 
+// Map routes to page keys for allowed_pages check
+const routeToPageKey: Record<string, string> = {
+  '/dashboard': 'dashboard',
+  '/products': 'products',
+  '/partners': 'partners',
+  '/reports': 'reports',
+  '/warehouses': 'warehouses',
+  '/stock-transfer': 'stock-transfer',
+  '/settings': 'settings',
+};
+
 export function RoleGuard({ 
   children, 
   allowedRoles, 
@@ -17,6 +29,8 @@ export function RoleGuard({
   fallback 
 }: RoleGuardProps) {
   const { role, isLoading } = useUserRole();
+  const { profile } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -27,6 +41,20 @@ export function RoleGuard({
   }
 
   if (!role || !allowedRoles.includes(role)) {
+    // Check if cashier has explicit permission for this page
+    if (role === 'cashier' && profile) {
+      const allowedPages = (profile as any).allowed_pages as string[] | null;
+      if (allowedPages && allowedPages.length > 0) {
+        const currentPath = location.pathname;
+        // Check exact match or prefix match for nested routes
+        const pageKey = routeToPageKey[currentPath] || 
+          Object.entries(routeToPageKey).find(([route]) => currentPath.startsWith(route))?.[1];
+        if (pageKey && allowedPages.includes(pageKey)) {
+          return <>{children}</>;
+        }
+      }
+    }
+    
     if (fallback) {
       return <>{fallback}</>;
     }

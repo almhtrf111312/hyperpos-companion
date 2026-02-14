@@ -14,6 +14,7 @@ export interface UserData {
   phone?: string;
   role: 'admin' | 'cashier' | 'boss';
   userType?: UserType;
+  allowedPages?: string[] | null;
   isCurrentUser?: boolean;
   isOwner?: boolean;
 }
@@ -43,10 +44,10 @@ export function useUsersManagement() {
         return;
       }
 
-      // Fetch profiles for each user (including phone and user_type)
+      // Fetch profiles for each user (including phone, user_type, and allowed_pages)
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, full_name, phone, user_type');
+        .select('user_id, full_name, phone, user_type, allowed_pages');
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
@@ -101,6 +102,7 @@ export function useUsersManagement() {
           phone: userProfile?.phone || '',
           role: dbRole,
           userType: userType,
+          allowedPages: Array.isArray(userProfile?.allowed_pages) ? userProfile.allowed_pages as string[] : null,
           isCurrentUser: isCurrentUserFlag,
           isOwner: isOwnerFlag,
         };
@@ -127,7 +129,7 @@ export function useUsersManagement() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: UserType = 'cashier', phone?: string) => {
+  const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: UserType = 'cashier', phone?: string, allowedPages?: string[]) => {
     try {
       // Ensure user is logged in
       const { data: { session } } = await supabase.auth.getSession();
@@ -143,7 +145,7 @@ export function useUsersManagement() {
 
       // Call backend function to create the user - this won't affect the current session
       const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email, password, fullName, role, userType, phone },
+        body: { email, password, fullName, role, userType, phone, allowedPages },
       });
 
       if (error) {
@@ -223,9 +225,9 @@ export function useUsersManagement() {
     }
   };
 
-  const updateUserProfile = async (userId: string, fullName: string, userType?: UserType, phone?: string) => {
+  const updateUserProfile = async (userId: string, fullName: string, userType?: UserType, phone?: string, allowedPages?: string[] | null) => {
     try {
-      const updateData: { full_name: string; user_type?: string; phone?: string } = { full_name: fullName };
+      const updateData: { full_name: string; user_type?: string; phone?: string; allowed_pages?: string[] | null } = { full_name: fullName };
       
       if (userType) {
         updateData.user_type = userType;
@@ -233,6 +235,10 @@ export function useUsersManagement() {
       
       if (phone !== undefined) {
         updateData.phone = phone;
+      }
+
+      if (allowedPages !== undefined) {
+        updateData.allowed_pages = allowedPages;
       }
 
       console.log('Updating profile for user:', userId, 'with data:', updateData);

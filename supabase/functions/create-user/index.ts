@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     }
 
     // Get user data from request body
-    const { email, password, fullName, role, userType, phone } = await req.json();
+    const { email, password, fullName, role, userType, phone, allowedPages } = await req.json();
     
     if (!email || !password) {
       return new Response(
@@ -172,13 +172,16 @@ Deno.serve(async (req) => {
     
     console.log('Role created successfully:', finalRole, 'with owner_id:', ownerId);
 
-    // Update profile with user_type and phone if provided
-    const profileUpdate: { user_type?: string; phone?: string } = {};
+    // Update profile with user_type, phone, and allowed_pages if provided
+    const profileUpdate: { user_type?: string; phone?: string; allowed_pages?: unknown } = {};
     if (userType) {
       profileUpdate.user_type = userType;
     }
     if (phone) {
       profileUpdate.phone = phone;
+    }
+    if (allowedPages && Array.isArray(allowedPages)) {
+      profileUpdate.allowed_pages = allowedPages;
     }
     
     if (Object.keys(profileUpdate).length > 0) {
