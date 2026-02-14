@@ -14,6 +14,12 @@ interface DownloadOptions {
   mimeType?: string;
 }
 
+export interface DownloadResult {
+  success: boolean;
+  path?: string;
+  filename?: string;
+}
+
 /**
  * Check if running on native platform (Android/iOS)
  */
@@ -46,20 +52,19 @@ const requestStoragePermissions = async (): Promise<boolean> => {
 /**
  * Download/save a file - works on both web and native
  */
-export const downloadFile = async (options: DownloadOptions): Promise<boolean> => {
+export const downloadFile = async (options: DownloadOptions): Promise<DownloadResult> => {
   const { filename, content, mimeType = 'application/json' } = options;
 
   try {
     if (isNativePlatform()) {
-      // Native platform - use Filesystem API
       return await saveFileNative(filename, content, mimeType);
     } else {
-      // Web browser - use traditional download
-      return downloadFileWeb(filename, content, mimeType);
+      const success = downloadFileWeb(filename, content, mimeType);
+      return { success, path: 'Downloads', filename };
     }
   } catch (error) {
     console.error('Download error:', error);
-    return false;
+    return { success: false };
   }
 };
 
@@ -70,12 +75,11 @@ const saveFileNative = async (
   filename: string,
   content: string,
   mimeType: string
-): Promise<boolean> => {
+): Promise<DownloadResult> => {
   try {
-    // Request storage permissions first
     await requestStoragePermissions();
 
-    // 1. Try Documents directory first (Preferred: Accessible without special permissions on Android 11+)
+    // 1. Try Documents directory first
     try {
       const result = await Filesystem.writeFile({
         path: `HyperPOS/${filename}`,
@@ -86,12 +90,12 @@ const saveFileNative = async (
       });
 
       console.log('[FileDownload] Saved to Documents/HyperPOS:', result.uri);
-      return true;
+      return { success: true, path: 'Documents/HyperPOS', filename };
     } catch (documentsError) {
       console.warn('[FileDownload] Documents save failed, trying Downloads:', documentsError);
     }
 
-    // 2. Try Downloads directory (External Storage)
+    // 2. Try Downloads directory
     try {
       const result = await Filesystem.writeFile({
         path: `Download/${filename}`,
@@ -102,13 +106,12 @@ const saveFileNative = async (
       });
 
       console.log('[FileDownload] Saved to Downloads:', result.uri);
-      return true;
+      return { success: true, path: 'Download', filename };
     } catch (externalError) {
       console.warn('[FileDownload] ExternalStorage save failed:', externalError);
     }
 
     // 3. Fallback: Save to Cache and Open Share Dialog
-    // This is the most reliable fallback if direct access is restricted
     const cacheResult = await Filesystem.writeFile({
       path: filename,
       data: content,
@@ -125,10 +128,10 @@ const saveFileNative = async (
       dialogTitle: 'حفظ النسخة الاحتياطية',
     });
 
-    return true;
+    return { success: true, path: 'Cache (مشاركة)', filename };
   } catch (error) {
     console.error('[FileDownload] All save methods failed:', error);
-    return false;
+    return { success: false };
   }
 };
 
@@ -163,7 +166,7 @@ const downloadFileWeb = (
 export const downloadJSON = async (
   filename: string,
   data: object
-): Promise<boolean> => {
+): Promise<DownloadResult> => {
   const content = JSON.stringify(data, null, 2);
   return downloadFile({
     filename,
@@ -178,7 +181,7 @@ export const downloadJSON = async (
 export const downloadText = async (
   filename: string,
   content: string
-): Promise<boolean> => {
+): Promise<DownloadResult> => {
   return downloadFile({
     filename,
     content,
@@ -192,8 +195,7 @@ export const downloadText = async (
 export const downloadCSV = async (
   filename: string,
   content: string
-): Promise<boolean> => {
-  // Add BOM for Excel compatibility with Arabic
+): Promise<DownloadResult> => {
   const BOM = '\uFEFF';
   return downloadFile({
     filename,
