@@ -1381,7 +1381,7 @@ export default function BossPanel() {
                           </div>
 
                           {/* Cashiers Tree View */}
-                          {!isBossUser && owner.cashiers && owner.cashiers.length > 0 && (
+                          {owner.cashiers && owner.cashiers.length > 0 && (
                             <div className="mt-2 border-t pt-2">
                               <button
                                 onClick={() => toggleOwnerExpanded(owner.user_id)}
@@ -1408,8 +1408,13 @@ export default function BossPanel() {
                                     return (
                                       <div key={cashier.user_id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
                                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                                          <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
-                                          <Badge variant="outline" className={`text-[10px] ${typeColor}`}>{typeLabel}</Badge>
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
+                                            {cashier.email && (
+                                              <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[180px]">{cashier.email}</span>
+                                            )}
+                                          </div>
+                                          <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${typeColor}`}>{typeLabel}</Badge>
                                           {!cashier.is_active && (
                                             <Badge variant="destructive" className="text-[10px]">معطل</Badge>
                                           )}
