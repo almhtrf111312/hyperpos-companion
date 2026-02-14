@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export function ActivationScreen() {
   const { activateCode, isTrial, isExpired } = useLicense();
-  const { language } = useLanguage();
+  const { t, direction, isRTL } = useLanguage();
   const { signOut } = useAuth();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,9 +19,6 @@ export function ActivationScreen() {
   const [success, setSuccess] = useState(false);
   const [developerPhone, setDeveloperPhone] = useState<string>('');
 
-  const isRTL = language === 'ar';
-
-  // جلب رقم المطور من الإعدادات العامة
   useEffect(() => {
     const fetchDeveloperPhone = async () => {
       try {
@@ -30,7 +27,6 @@ export function ActivationScreen() {
           .select('value')
           .eq('key', 'developer_phone')
           .maybeSingle();
-        
         if (!error && data?.value) {
           setDeveloperPhone(data.value);
         }
@@ -38,49 +34,38 @@ export function ActivationScreen() {
         console.error('Failed to fetch developer phone:', err);
       }
     };
-    
     fetchDeveloperPhone();
   }, []);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
     await signOut();
-    // After signout, the auth state will change and redirect to login
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
-      setError(isRTL ? 'يرجى إدخال كود التفعيل' : 'Please enter activation code');
+      setError(t('license.enterCode'));
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
     const result = await activateCode(code.trim());
-
     setIsLoading(false);
-
     if (result.success) {
       setSuccess(true);
     } else {
-      setError(result.error || (isRTL ? 'كود التفعيل غير صالح' : 'Invalid activation code'));
+      setError(result.error || t('license.invalidCode'));
     }
   };
 
   const formatCode = (value: string) => {
-    // Remove non-alphanumeric characters and convert to uppercase
     let cleaned = value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
-    
-    // If starts with HYPER-, preserve it
     if (cleaned.startsWith('HYPER-')) {
       const afterPrefix = cleaned.slice(6).replace(/-/g, '');
       const parts = afterPrefix.match(/.{1,4}/g) || [];
       return 'HYPER-' + parts.join('-');
     }
-    
-    // Otherwise format normally with dashes every 4 chars
     cleaned = cleaned.replace(/-/g, '');
     const parts = cleaned.match(/.{1,4}/g) || [];
     return parts.join('-');
@@ -94,35 +79,22 @@ export function ActivationScreen() {
 
   const handleContactDeveloper = () => {
     if (!developerPhone) return;
-    
-    const message = encodeURIComponent(
-      isRTL 
-        ? 'أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro'
-        : 'I want to get an activation code for FlowPOS Pro'
-    );
-    
-    // تنظيف الرقم من أي رموز غير رقمية (ما عدا +)
+    const message = encodeURIComponent(t('license.wantCode'));
     const cleanPhone = developerPhone.replace(/[^\d+]/g, '');
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={direction}>
         <Card className="w-full max-w-md shadow-xl">
           <CardContent className="pt-8 pb-8 text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              {isRTL ? 'تم التفعيل بنجاح!' : 'Activation Successful!'}
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              {isRTL ? 'يمكنك الآن استخدام التطبيق بالكامل' : 'You can now use the full application'}
-            </p>
-            <Button onClick={() => window.location.reload()} className="w-full">
-              {isRTL ? 'متابعة' : 'Continue'}
-            </Button>
+            <h2 className="text-xl font-bold text-foreground mb-2">{t('license.activationSuccess')}</h2>
+            <p className="text-muted-foreground mb-4">{t('license.canUseFullApp')}</p>
+            <Button onClick={() => window.location.reload()} className="w-full">{t('license.continue')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -130,7 +102,7 @@ export function ActivationScreen() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={direction}>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center pb-2">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -138,16 +110,16 @@ export function ActivationScreen() {
           </div>
           <CardTitle className="text-xl">
             {isTrial && isExpired
-              ? (isRTL ? 'انتهت الفترة التجريبية' : 'Trial Period Ended')
+              ? t('license.trialEnded')
               : isExpired
-                ? (isRTL ? 'انتهت صلاحية الترخيص' : 'License Expired')
-                : (isRTL ? 'التطبيق يحتاج تفعيل' : 'Activation Required')
+                ? t('license.licenseExpired')
+                : t('license.activationRequired')
             }
           </CardTitle>
           <CardDescription>
             {isTrial && isExpired
-              ? (isRTL ? 'لقد استمتعت بالتطبيق لمدة 30 يوماً مجاناً!' : 'You enjoyed 30 days of free trial!')
-              : (isRTL ? 'يرجى إدخال كود التفعيل للمتابعة' : 'Please enter your activation code to continue')
+              ? t('license.trialEndedDesc')
+              : t('license.enterCodeToContinue')
             }
           </CardDescription>
         </CardHeader>
@@ -174,53 +146,29 @@ export function ActivationScreen() {
                 </div>
               )}
             </div>
-
             <Button type="submit" className="w-full" disabled={isLoading || !code.trim()}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className={isRTL ? 'mr-2' : 'ml-2'}>
-                    {isRTL ? 'جاري التحقق...' : 'Verifying...'}
-                  </span>
+                  <span className="ms-2">{t('license.verifying')}</span>
                 </>
               ) : (
-                isRTL ? 'تفعيل التطبيق' : 'Activate Application'
+                t('license.activateApp')
               )}
             </Button>
           </form>
 
           <div className="pt-4 border-t space-y-3">
-            <p className="text-sm text-muted-foreground text-center">
-              {isRTL ? 'للحصول على كود التفعيل، تواصل معنا:' : 'To get an activation code, contact us:'}
-            </p>
-            
+            <p className="text-sm text-muted-foreground text-center">{t('license.getCodeContact')}</p>
             {developerPhone && (
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleContactDeveloper}
-              >
+              <Button variant="outline" className="w-full gap-2" onClick={handleContactDeveloper}>
                 <MessageCircle className="w-4 h-4" />
-                <span className={isRTL ? 'mr-2' : 'ml-2'}>
-                  {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
-                </span>
+                {t('license.contactDeveloper')}
               </Button>
             )}
-            
-            <Button 
-              variant="ghost" 
-              className="w-full text-muted-foreground hover:text-foreground" 
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-            >
-              {isSigningOut ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <LogOut className="w-4 h-4" />
-              )}
-              <span className={isRTL ? 'mr-2' : 'ml-2'}>
-                {isRTL ? 'تسجيل الخروج والدخول بحساب آخر' : 'Sign out and use another account'}
-              </span>
+            <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground gap-2" onClick={handleSignOut} disabled={isSigningOut}>
+              {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+              <span className="ms-2">{t('license.signOutOther')}</span>
             </Button>
           </div>
         </CardContent>
