@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     // Get all profiles
     const { data: profiles, error: profilesError } = await adminClient
       .from('profiles')
-      .select('user_id, full_name')
+      .select('user_id, full_name, user_type')
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError)
@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
         user_id: user.id,
         email: user.email,
         full_name: profile?.full_name || null,
+        user_type: profile?.user_type || null,
         role: role?.role || null,
         owner_id: role?.owner_id || null,
         is_active: role?.is_active ?? true,
@@ -156,10 +157,31 @@ Deno.serve(async (req) => {
       }
     })
 
-    // Filter to only show owners (admin role) and their data - exclude boss and cashiers from main list
-    const owners = usersWithDetails.filter(u => u.role === 'admin' || u.role === 'boss')
+    // Build cashiers map by owner
+    const cashiersByOwner = new Map<string, any[]>()
+    for (const user of usersWithDetails) {
+      if (user.role === 'cashier' && user.owner_id) {
+        const list = cashiersByOwner.get(user.owner_id) || []
+        list.push({
+          user_id: user.user_id,
+          email: user.email,
+          full_name: user.full_name,
+          user_type: user.user_type || 'cashier',
+          is_active: user.is_active,
+        })
+        cashiersByOwner.set(user.owner_id, list)
+      }
+    }
 
-    console.log(`Returning ${owners.length} owners with emails`)
+    // Filter to only show owners (admin role) and their data - include cashiers as nested
+    const owners = usersWithDetails
+      .filter(u => u.role === 'admin' || u.role === 'boss')
+      .map(owner => ({
+        ...owner,
+        cashiers: cashiersByOwner.get(owner.user_id) || [],
+      }))
+
+    console.log(`Returning ${owners.length} owners with emails and nested cashiers`)
 
     return new Response(
       JSON.stringify({ users: owners }),
