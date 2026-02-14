@@ -15,7 +15,7 @@ type ArchiveTab = 'notifications' | 'general';
 type GeneralSubTab = 'debts' | 'products' | 'invoices';
 
 export function ArchiveSection() {
-  const { isRTL } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const [activeTab, setActiveTab] = useState<ArchiveTab>('notifications');
   const [generalSubTab, setGeneralSubTab] = useState<GeneralSubTab>('debts');
   
@@ -26,7 +26,6 @@ export function ArchiveSection() {
     clearAllArchived,
   } = useNotifications();
 
-  // General archive data
   const [paidDebts, setPaidDebts] = useState<any[]>([]);
   const [outOfStockProducts, setOutOfStockProducts] = useState<any[]>([]);
   const [cancelledInvoices, setCancelledInvoices] = useState<Invoice[]>([]);
@@ -59,18 +58,16 @@ export function ArchiveSection() {
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-    if (diffDays === 0) return isRTL ? 'اليوم' : 'Today';
-    if (diffDays === 1) return isRTL ? 'أمس' : 'Yesterday';
-    return isRTL ? `منذ ${diffDays} يوم` : `${diffDays} days ago`;
+    if (diffDays === 0) return t('archive.today');
+    if (diffDays === 1) return t('archive.yesterday');
+    return t('archive.daysAgo').replace('{days}', String(diffDays));
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <Archive className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold text-foreground">
-          {isRTL ? 'الأرشيف' : 'Archive'}
-        </h3>
+        <h3 className="text-lg font-semibold text-foreground">{t('archive.title')}</h3>
       </div>
 
       {/* Tabs */}
@@ -85,7 +82,7 @@ export function ArchiveSection() {
           )}
         >
           <Bell className="w-4 h-4" />
-          {isRTL ? 'أرشيف الإشعارات' : 'Notifications'}
+          {t('archive.notifications')}
           {archivedNotifications.length > 0 && (
             <span className="px-1.5 py-0.5 text-xs rounded-full bg-muted">{archivedNotifications.length}</span>
           )}
@@ -100,7 +97,7 @@ export function ArchiveSection() {
           )}
         >
           <Package className="w-4 h-4" />
-          {isRTL ? 'الأرشيف العام' : 'General Archive'}
+          {t('archive.general')}
         </button>
       </div>
 
@@ -110,14 +107,14 @@ export function ArchiveSection() {
           {archivedNotifications.length === 0 ? (
             <div className="text-center py-12">
               <Bell className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">{isRTL ? 'لا توجد إشعارات مؤرشفة' : 'No archived notifications'}</p>
+              <p className="text-muted-foreground">{t('archive.noArchivedNotifications')}</p>
             </div>
           ) : (
             <>
               <div className="flex justify-end">
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={clearAllArchived}>
                   <Trash2 className="w-4 h-4 me-1" />
-                  {isRTL ? 'حذف الكل' : 'Delete All'}
+                  {t('archive.deleteAll')}
                 </Button>
               </div>
               <ScrollArea className="max-h-96">
@@ -130,10 +127,10 @@ export function ArchiveSection() {
                         <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(notification.timestamp)}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => restoreNotification(notification.id)} title={isRTL ? 'استعادة' : 'Restore'}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => restoreNotification(notification.id)} title={t('archive.restore')}>
                           <Undo2 className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => deleteArchivedNotification(notification.id)} title={isRTL ? 'حذف نهائي' : 'Delete'}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => deleteArchivedNotification(notification.id)} title={t('archive.deletePermanent')}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -149,12 +146,11 @@ export function ArchiveSection() {
       {/* General Archive */}
       {activeTab === 'general' && (
         <div className="space-y-4">
-          {/* Sub tabs */}
           <div className="flex gap-2">
             {([
-              { id: 'debts' as GeneralSubTab, label: isRTL ? 'ديون مدفوعة' : 'Paid Debts', count: paidDebts.length, icon: CreditCard },
-              { id: 'products' as GeneralSubTab, label: isRTL ? 'منتجات نفذت' : 'Out of Stock', count: outOfStockProducts.length, icon: Package },
-              { id: 'invoices' as GeneralSubTab, label: isRTL ? 'فواتير ملغاة' : 'Cancelled', count: cancelledInvoices.length, icon: FileX },
+              { id: 'debts' as GeneralSubTab, label: t('archive.paidDebts'), count: paidDebts.length, icon: CreditCard },
+              { id: 'products' as GeneralSubTab, label: t('archive.outOfStock'), count: outOfStockProducts.length, icon: Package },
+              { id: 'invoices' as GeneralSubTab, label: t('archive.cancelled'), count: cancelledInvoices.length, icon: FileX },
             ]).map(tab => (
               <button
                 key={tab.id}
@@ -174,55 +170,48 @@ export function ArchiveSection() {
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">{isRTL ? 'جاري التحميل...' : 'Loading...'}</div>
+            <div className="text-center py-8 text-muted-foreground">{t('archive.loading')}</div>
           ) : (
             <ScrollArea className="max-h-96">
-              {/* Paid Debts */}
               {generalSubTab === 'debts' && (
                 paidDebts.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">{isRTL ? 'لا توجد ديون مدفوعة' : 'No paid debts'}</div>
+                  <div className="text-center py-8 text-muted-foreground">{t('archive.noPaidDebts')}</div>
                 ) : (
                   <div className="space-y-2">
                     {paidDebts.map(debt => (
                       <div key={debt.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
                         <div>
                           <p className="text-sm font-medium text-foreground">{debt.customerName}</p>
-                          <p className="text-xs text-muted-foreground">${formatNumber(debt.totalDebt)} - {isRTL ? 'مدفوع بالكامل' : 'Fully Paid'}</p>
+                          <p className="text-xs text-muted-foreground">${formatNumber(debt.totalDebt)} - {t('archive.fullyPaid')}</p>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
-                          {isRTL ? 'مدفوع' : 'Paid'}
-                        </span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">{t('archive.paid')}</span>
                       </div>
                     ))}
                   </div>
                 )
               )}
 
-              {/* Out of Stock Products */}
               {generalSubTab === 'products' && (
                 outOfStockProducts.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">{isRTL ? 'لا توجد منتجات نفذت' : 'No out of stock products'}</div>
+                  <div className="text-center py-8 text-muted-foreground">{t('archive.noOutOfStock')}</div>
                 ) : (
                   <div className="space-y-2">
                     {outOfStockProducts.map(product => (
                       <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
                         <div>
                           <p className="text-sm font-medium text-foreground">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{product.category || (isRTL ? 'بدون تصنيف' : 'No category')}</p>
+                          <p className="text-xs text-muted-foreground">{product.category || t('archive.noCategory')}</p>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
-                          {isRTL ? 'نفذ' : 'Out'}
-                        </span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">{t('archive.out')}</span>
                       </div>
                     ))}
                   </div>
                 )
               )}
 
-              {/* Cancelled Invoices */}
               {generalSubTab === 'invoices' && (
                 cancelledInvoices.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">{isRTL ? 'لا توجد فواتير ملغاة' : 'No cancelled invoices'}</div>
+                  <div className="text-center py-8 text-muted-foreground">{t('archive.noCancelled')}</div>
                 ) : (
                   <div className="space-y-2">
                     {cancelledInvoices.map(invoice => (
@@ -231,9 +220,7 @@ export function ArchiveSection() {
                           <p className="text-sm font-medium text-foreground">{invoice.customerName}</p>
                           <p className="text-xs text-muted-foreground">#{invoice.id.slice(-6)} - {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}</p>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
-                          {isRTL ? 'ملغاة' : 'Cancelled'}
-                        </span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">{t('archive.cancelledStatus')}</span>
                       </div>
                     ))}
                   </div>

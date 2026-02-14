@@ -1562,6 +1562,10 @@ export const translations = {
     'gdrive.deleteSuccessDesc': 'تم حذف النسخة من Google Drive',
     'gdrive.deleteFailed': 'فشل في حذف النسخة',
     'gdrive.signInFailed': 'فشل تسجيل الدخول بحساب Google',
+    'gdrive.reconnectRequired': 'يرجى إعادة الربط مع Google Drive',
+    'gdrive.uploadFailed': 'فشل في رفع النسخة الاحتياطية',
+    'gdrive.restoredFrom': 'تم استعادة النسخة من',
+    'gdrive.downloadFailed': 'فشل في تنزيل النسخة الاحتياطية',
 
     // System Diagnostics
     'diagnostics.title': 'تشخيص النظام',
@@ -1680,6 +1684,16 @@ export const translations = {
     'productFields.resetDefault': 'استعادة الافتراضي',
     'productFields.resetSuccess': 'تم استعادة الإعدادات الافتراضية',
     'productFields.autoConfig': 'يتم تحديد الحقول الافتراضية تلقائياً بناءً على نوع نشاطك',
+    'productFields.autoNote': 'يتم تحديد الحقول الافتراضية تلقائياً بناءً على نوع نشاطك',
+    'productFields.storeType.phones': 'هواتف وإلكترونيات',
+    'productFields.storeType.grocery': 'بقالة ومواد غذائية',
+    'productFields.storeType.pharmacy': 'صيدلية',
+    'productFields.storeType.clothing': 'ملابس وأزياء',
+    'productFields.storeType.restaurant': 'مطعم',
+    'productFields.storeType.repair': 'ورشة صيانة',
+    'productFields.storeType.bookstore': 'مكتبة',
+    'productFields.storeType.general': 'متجر عام',
+    'productFields.storeType.custom': 'مخصص',
   },
   en: {
     // Navigation
@@ -4601,6 +4615,10 @@ export const translations = {
     'gdrive.deleteSuccessDesc': 'Yedek Google Drive\'dan silindi',
     'gdrive.deleteFailed': 'Yedek silinemedi',
     'gdrive.signInFailed': 'Google ile giriş başarısız',
+    'gdrive.reconnectRequired': 'Lütfen Google Drive\'a tekrar bağlanın',
+    'gdrive.uploadFailed': 'Yedek yüklenemedi',
+    'gdrive.restoredFrom': 'Yedek geri yüklendi:',
+    'gdrive.downloadFailed': 'Yedek indirilemedi',
 
     // System Diagnostics
     'diagnostics.title': 'Sistem Tanılama',
@@ -4719,6 +4737,16 @@ export const translations = {
     'productFields.resetDefault': 'Varsayılana Sıfırla',
     'productFields.resetSuccess': 'Varsayılan ayarlar geri yüklendi',
     'productFields.autoConfig': 'Varsayılan alanlar mağaza türünüze göre otomatik belirlenir',
+    'productFields.autoNote': 'Varsayılan alanlar mağaza türünüze göre otomatik belirlenir',
+    'productFields.storeType.phones': 'Telefon ve Elektronik',
+    'productFields.storeType.grocery': 'Market ve Gıda',
+    'productFields.storeType.pharmacy': 'Eczane',
+    'productFields.storeType.clothing': 'Giyim ve Moda',
+    'productFields.storeType.restaurant': 'Restoran',
+    'productFields.storeType.repair': 'Tamir Atölyesi',
+    'productFields.storeType.bookstore': 'Kitapçı',
+    'productFields.storeType.general': 'Genel Mağaza',
+    'productFields.storeType.custom': 'Özel',
   },
   fa: {
     // Navigation

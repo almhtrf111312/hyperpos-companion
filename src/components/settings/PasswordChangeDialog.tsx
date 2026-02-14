@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/hooks/use-language';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PasswordChangeDialogProps {
@@ -22,6 +23,7 @@ export function PasswordChangeDialog({
   isOwnPassword = false,
 }: PasswordChangeDialogProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -44,26 +46,25 @@ export function PasswordChangeDialog({
 
   const handleSubmit = async () => {
     if (isOwnPassword && !form.currentPassword) {
-      toast({ title: 'خطأ', description: 'يرجى إدخال كلمة المرور الحالية', variant: 'destructive' });
+      toast({ title: t('password.error'), description: t('password.currentRequired'), variant: 'destructive' });
       return;
     }
     if (!form.newPassword) {
-      toast({ title: 'خطأ', description: 'يرجى إدخال كلمة المرور الجديدة', variant: 'destructive' });
+      toast({ title: t('password.error'), description: t('password.newRequired'), variant: 'destructive' });
       return;
     }
     if (form.newPassword.length < 6) {
-      toast({ title: 'خطأ', description: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل', variant: 'destructive' });
+      toast({ title: t('password.error'), description: t('password.minLength'), variant: 'destructive' });
       return;
     }
     if (form.newPassword !== form.confirmPassword) {
-      toast({ title: 'خطأ', description: 'كلمة المرور غير متطابقة', variant: 'destructive' });
+      toast({ title: t('password.error'), description: t('password.mismatch'), variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
       if (isOwnPassword) {
-        // For own password change, verify current password first
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) throw new Error('User not found');
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -71,7 +72,7 @@ export function PasswordChangeDialog({
           password: form.currentPassword,
         });
         if (signInError) {
-          toast({ title: 'خطأ', description: 'كلمة المرور الحالية غير صحيحة', variant: 'destructive' });
+          toast({ title: t('password.error'), description: t('password.currentWrong'), variant: 'destructive' });
           setIsLoading(false);
           return;
         }
@@ -79,16 +80,15 @@ export function PasswordChangeDialog({
         const { error } = await supabase.auth.updateUser({ password: form.newPassword });
         if (error) throw error;
       } else {
-        // For admin changing other user's password, use secure edge function
         if (!userId) {
-          toast({ title: 'خطأ', description: 'معرف المستخدم غير موجود', variant: 'destructive' });
+          toast({ title: t('password.error'), description: t('password.userNotFound'), variant: 'destructive' });
           setIsLoading(false);
           return;
         }
 
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
-          toast({ title: 'خطأ', description: 'يرجى تسجيل الدخول مرة أخرى', variant: 'destructive' });
+          toast({ title: t('password.error'), description: t('profile.loginAgain'), variant: 'destructive' });
           setIsLoading(false);
           return;
         }
@@ -101,7 +101,7 @@ export function PasswordChangeDialog({
         });
 
         if (response.error) {
-          throw new Error(response.error.message || 'فشل في تغيير كلمة المرور');
+          throw new Error(response.error.message || t('password.changeFailed'));
         }
 
         if (response.data?.error) {
@@ -109,10 +109,10 @@ export function PasswordChangeDialog({
         }
       }
 
-      toast({ title: 'تم بنجاح', description: 'تم تغيير كلمة المرور بنجاح' });
+      toast({ title: t('password.changeSuccess'), description: t('password.changeSuccess') });
       handleClose();
     } catch (error: any) {
-      toast({ title: 'خطأ', description: error.message || 'فشل في تغيير كلمة المرور', variant: 'destructive' });
+      toast({ title: t('password.error'), description: error.message || t('password.changeFailed'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -124,18 +124,18 @@ export function PasswordChangeDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="w-5 h-5 text-primary" />
-            {isOwnPassword ? 'تغيير كلمة المرور' : 'تغيير كلمة مرور المستخدم'}
+            {isOwnPassword ? t('password.change') : t('password.changeUser')}
           </DialogTitle>
         </DialogHeader>
 
         {!isOwnPassword && userName && (
-          <p className="text-sm text-muted-foreground">تغيير كلمة مرور: <strong>{userName}</strong></p>
+          <p className="text-sm text-muted-foreground">{t('password.changingFor')} <strong>{userName}</strong></p>
         )}
 
         <div className="space-y-4 py-4">
           {isOwnPassword && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">كلمة المرور الحالية</label>
+              <label className="text-sm font-medium">{t('password.currentPassword')}</label>
               <div className="relative">
                 <Input
                   type={showCurrentPassword ? 'text' : 'password'}
@@ -153,7 +153,7 @@ export function PasswordChangeDialog({
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">كلمة المرور الجديدة</label>
+            <label className="text-sm font-medium">{t('password.newPassword')}</label>
             <div className="relative">
               <Input type={showNewPassword ? 'text' : 'password'} value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} placeholder="••••••••" className="pl-10" disabled={isLoading} />
               <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -163,7 +163,7 @@ export function PasswordChangeDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">تأكيد كلمة المرور</label>
+            <label className="text-sm font-medium">{t('password.confirmPassword')}</label>
             <div className="relative">
               <Input type={showConfirmPassword ? 'text' : 'password'} value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} placeholder="••••••••" className="pl-10" disabled={isLoading} />
               <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -174,9 +174,9 @@ export function PasswordChangeDialog({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto" disabled={isLoading}>إلغاء</Button>
+          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto" disabled={isLoading}>{t('password.cancel')}</Button>
           <Button onClick={handleSubmit} className="w-full sm:w-auto" disabled={isLoading}>
-            {isLoading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الحفظ...</> : 'تغيير كلمة المرور'}
+            {isLoading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />{t('password.saving')}</> : t('password.changeBtn')}
           </Button>
         </DialogFooter>
       </DialogContent>
