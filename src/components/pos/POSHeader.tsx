@@ -41,7 +41,7 @@ export function POSHeader({
             <ShoppingCart className="w-4 h-4" />
             <span>{t('pos.cart')}</span>
             {cartItemsCount > 0 && (
-              <span className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-bold">
+              <span className="absolute -top-1 ltr:-left-1 rtl:-right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-bold">
                 {cartItemsCount}
               </span>
             )}

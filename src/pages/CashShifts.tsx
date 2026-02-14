@@ -170,7 +170,7 @@ export default function CashShifts() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pr-14 md:pr-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Wallet className="h-7 w-7 text-primary" />

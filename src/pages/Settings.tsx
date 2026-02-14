@@ -1488,7 +1488,7 @@ export default function Settings() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 pr-14 md:pr-0">
+      <div className="flex items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
@@ -1703,7 +1703,7 @@ export default function Settings() {
       <div
         className={cn(
           "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
-          isRTL ? "right-6" : "left-6",
+          isRTL ? "left-6" : "right-6",
           hasUnsavedChanges
             ? "scale-100 opacity-100"
             : "scale-0 opacity-0 pointer-events-none"

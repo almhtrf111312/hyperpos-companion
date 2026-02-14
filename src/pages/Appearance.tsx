@@ -54,7 +54,7 @@ export default function Appearance() {
       <div
         className={cn(
           "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
-          isRTL ? "right-6" : "left-6",
+          isRTL ? "left-6" : "right-6",
           hasChanges
             ? "scale-100 opacity-100"
             : "scale-0 opacity-0 pointer-events-none"
