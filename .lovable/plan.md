@@ -1,26 +1,70 @@
 
 
-# إصلاح رابط النسخة الاحتياطية في تطبيق Windows (Electron)
+# ميزة "روابط التواصل الديناميكية"
 
-## المشكلة
-جميع الروابط الاحتياطية (fallback URLs) في ملفات Electron تشير إلى الرابط القديم `propos.lovable.app` بدلاً من الرابط الحالي `flowpospro.lovable.app`.
+## الملخص
+توسيع نظام التواصل الحالي (واتساب فقط) إلى 8 قنوات تواصل يديرها البوس وتظهر للمستخدمين كأزرار تفاعلية ملونة.
+
+---
 
 ## التعديلات المطلوبة
 
-### الملف 1: `electron/main.js` (3 تعديلات)
+### 1. لوحة البوس (`src/pages/BossPanel.tsx`)
+- استبدال حقل "رقم واتساب المطور" الحالي بزر "إعدادات التواصل"
+- عند النقر يفتح Dialog يحتوي على الحقول الثمانية:
+  - واتساب (مع رمز الدولة)
+  - فيسبوك، تيك توك، تليجرام، يوتيوب، تويتر/X، بريد إلكتروني، OLX
+- الحفظ في `app_settings` بمفتاح `contact_links` كـ JSON
+- الحفاظ على التوافق مع `developer_phone` الحالي (قراءة القيمة القديمة كـ fallback)
 
-| السطر | القديم | الجديد |
-|-------|--------|--------|
-| 67 | `https://propos.lovable.app` | `https://flowpospro.lovable.app` |
-| 77 | `propos.lovable.app` | `flowpospro.lovable.app` |
-| 105 | `https://propos.lovable.app` | `https://flowpospro.lovable.app` |
+### 2. مكون جديد: `src/components/settings/ContactLinksSection.tsx`
+- مكون يعرض أزرار التواصل الملونة بأيقونات مخصصة
+- يقرأ من `app_settings` مفتاح `contact_links`
+- يعرض فقط القنوات التي لها قيمة
+- ألوان الأزرار:
+  - واتساب: اخضر
+  - فيسبوك: ازرق
+  - تيك توك: اسود
+  - تليجرام: ازرق فاتح
+  - يوتيوب: احمر
+  - تويتر/X: رمادي غامق
+  - بريد: برتقالي
+  - OLX: اصفر/ذهبي
 
-### الملف 2: `electron/error.html` (تعديل واحد)
+### 3. صفحة الإعدادات (`src/pages/Settings.tsx`)
+- اضافة قسم "التواصل مع المطور" بعد قسم "تصفير البيانات"
+- يستخدم المكون `ContactLinksSection` لعرض الأزرار
 
-| السطر | القديم | الجديد |
-|-------|--------|--------|
-| 136 | `https://propos.lovable.app` | `https://flowpospro.lovable.app` |
+### 4. تحديث شاشات التفعيل
+- تحديث `LicenseGuard.tsx` و `ActivationCodeInput.tsx` لقراءة الروابط الجديدة مع fallback للنظام القديم (`developer_phone`)
 
-## النتيجة
-عند فشل تحميل الملفات المحلية في نسخة Windows، سيتم توجيه المستخدم إلى الرابط الصحيح `flowpospro.lovable.app` بدلاً من الرابط القديم.
+---
+
+## التفاصيل التقنية
+
+### هيكلية البيانات
+لن يتم إنشاء جدول جديد. سيتم استخدام `app_settings` الموجود:
+
+```text
+key: "contact_links"
+value: JSON string {
+  "whatsapp": "+970599000000",
+  "facebook": "https://facebook.com/...",
+  "tiktok": "https://tiktok.com/@...",
+  "telegram": "https://t.me/...",
+  "youtube": "https://youtube.com/@...",
+  "twitter": "https://x.com/...",
+  "email": "support@example.com",
+  "olx": "https://olx.com/..."
+}
+```
+
+### منطق فتح الروابط
+- واتساب: `https://wa.me/{phone}`
+- بريد إلكتروني: `mailto:{email}`
+- باقي الروابط: فتح مباشر بـ `window.open(url, '_blank')`
+
+### التوافق العكسي
+- عند القراءة: إذا لم يوجد `contact_links`، يتم قراءة `developer_phone` القديم واستخدامه للواتساب
+- عند الحفظ من البوس: يتم حفظ كلا المفتاحين (`contact_links` + `developer_phone` للتوافق)
 
