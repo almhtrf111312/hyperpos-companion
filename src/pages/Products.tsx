@@ -686,7 +686,7 @@ export default function Products() {
         {/* Show restoring indicator if needed? Maybe just toasts are enough */}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="hidden sm:block">
+          <div>
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{tDynamic('pageTitle')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{tDynamic('pageSubtitle')}</p>
           </div>

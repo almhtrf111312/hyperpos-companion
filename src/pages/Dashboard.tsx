@@ -198,8 +198,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
-          <p className="text-muted-foreground mt-1">{today}</p>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{today}</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
