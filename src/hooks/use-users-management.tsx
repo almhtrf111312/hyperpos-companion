@@ -32,7 +32,7 @@ export function useUsersManagement() {
       // Fetch all user roles with profiles
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select('id, user_id, role, created_at');
+        .select('id, user_id, role, created_at, owner_id');
 
       if (rolesError) {
         console.error('Error fetching roles:', rolesError);
@@ -53,11 +53,13 @@ export function useUsersManagement() {
         console.error('Error fetching profiles:', profilesError);
       }
 
-      // Get the first admin (owner) - sorted by created_at
+      // Get the first admin/boss (owner) - sorted by created_at
       const sortedRoles = [...(rolesData || [])].sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
-      const ownerUserId = sortedRoles.find(r => r.role === 'admin')?.user_id;
+      const ownerUserId = sortedRoles.find(r => r.role === 'admin' || r.role === 'boss')?.user_id;
+
+      console.log(`[Users] Fetched ${rolesData?.length} roles, ${profilesData?.length} profiles`);
 
       // Fetch emails for all users via edge function
       const userIds = rolesData.map(r => r.user_id);
@@ -97,7 +99,7 @@ export function useUsersManagement() {
         return {
           id: role.id,
           user_id: role.user_id,
-          name: userProfile?.full_name || (isCurrentUserFlag ? (profile?.full_name || currentUser?.email?.split('@')[0] || 'مستخدم') : 'مستخدم'),
+          name: userProfile?.full_name || (isCurrentUserFlag ? (profile?.full_name || currentUser?.email?.split('@')[0] || 'مستخدم') : 'بدون اسم'),
           email: userEmail,
           phone: userProfile?.phone || '',
           role: dbRole,
