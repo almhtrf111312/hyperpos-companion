@@ -149,7 +149,7 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
                   background: `linear-gradient(135deg, hsl(${value.primary}), hsl(${value.accent}))`
                 }}
               />
-              <span className="text-xs font-medium text-foreground truncate w-full text-center">
+              <span className="text-xs font-medium text-foreground truncate w-full text-center hidden md:block">
                 {value.nameAr}
               </span>
               {pendingColor === key && (
