@@ -985,6 +985,7 @@ export default function Settings() {
                     <option value="pharmacy">{t('settings.storeTypes.pharmacy')}</option>
                     <option value="clothing">{t('settings.storeTypes.clothing')}</option>
                     <option value="restaurant">{t('settings.storeTypes.restaurant')}</option>
+                    <option value="bakery">{t('settings.storeTypes.bakery')}</option>
                     <option value="repair">{t('settings.storeTypes.repair')}</option>
                     <option value="bookstore">{t('settings.storeTypes.bookstore')}</option>
                     <option value="general">{t('settings.storeTypes.general')}</option>
