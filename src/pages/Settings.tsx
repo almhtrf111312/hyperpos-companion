@@ -1819,6 +1819,15 @@ export default function Settings() {
             <Button
               variant="outline"
               onClick={() => {
+                // Save store type to localStorage immediately so getCurrentStoreType() reads the new value
+                try {
+                  const raw = localStorage.getItem('hyperpos_settings_v1');
+                  if (raw) {
+                    const parsed = JSON.parse(raw);
+                    parsed.storeSettings = { ...parsed.storeSettings, type: storeSettings.type };
+                    localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
+                  }
+                } catch (e) { console.warn('Failed to persist store type:', e); }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 emitEvent(EVENTS.STORE_TYPE_CHANGED);
@@ -1854,6 +1863,15 @@ export default function Settings() {
                     }
                   })();
                 }
+                // Save store type to localStorage immediately so getCurrentStoreType() reads the new value
+                try {
+                  const raw = localStorage.getItem('hyperpos_settings_v1');
+                  if (raw) {
+                    const parsed = JSON.parse(raw);
+                    parsed.storeSettings = { ...parsed.storeSettings, type: storeSettings.type };
+                    localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
+                  }
+                } catch (e) { console.warn('Failed to persist store type:', e); }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 emitEvent(EVENTS.STORE_TYPE_CHANGED);
