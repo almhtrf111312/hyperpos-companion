@@ -81,8 +81,8 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1.5 min-w-0 flex-1">
           <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{title}</p>
-          <div className="space-y-0.5">
-            <p className="text-lg md:text-xl font-bold text-foreground count-up">{value}</p>
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-base md:text-xl font-bold text-foreground count-up truncate">{value}</p>
             {subtitle && (
               <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
             )}
