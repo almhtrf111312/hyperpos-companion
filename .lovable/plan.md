@@ -1,37 +1,64 @@
 
-# توحيد عناوين الصفحات
+
+# تخصيص إعدادات الصيدلية (أصناف + حقول)
 
 ## المشكلة
-عناوين الصفحات غير متناسقة في الحجم والموقع:
-- **نقطة البيع**: `text-base md:text-lg` (صغير جداً)
-- **لوحة التحكم**: `text-3xl` ثابت (كبير على الموبايل)
-- **الفواتير**: `text-2xl` بدون `text-foreground` ومع أيقونة داخل العنوان
-- **المنتجات**: العنوان مخفي تماماً على الموبايل (`hidden sm:block`)
-
-## النمط الصحيح (من الصفحات الجيدة مثل العملاء والديون)
-```text
-h1: text-xl md:text-3xl font-bold text-foreground
-subtitle: text-sm md:text-base text-muted-foreground mt-1
-container: rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0
-```
+عند اختيار نوع المتجر "صيدلية"، الأصناف والحقول الحالية لا تتناسب مع احتياجات الصيدلية الفعلية. كما أن حقل "رقم التشغيلة" (Batch/Lot Number) غير موجود في النظام.
 
 ## التغييرات المطلوبة
 
-### 1. لوحة التحكم (`src/pages/Dashboard.tsx` - سطر 201)
-- تغيير `text-3xl` الى `text-xl md:text-3xl`
-- تغيير subtitle من `text-muted-foreground` الى `text-sm md:text-base text-muted-foreground`
+### 1. تحديث أصناف الصيدلية الافتراضية
+**الملف:** `src/lib/store-type-config.ts`
 
-### 2. الفواتير (`src/pages/Invoices.tsx` - سطر 471)
-- تغيير `text-2xl font-bold` الى `text-xl md:text-3xl font-bold text-foreground`
-- ازالة الأيقونة من داخل العنوان (لتطابق باقي الصفحات)
+الأصناف الحالية:
+```
+مسكنات، مضادات حيوية، فيتامينات، أدوية قلب وضغط، أدوية سكري، مستحضرات تجميل، مستلزمات طبية
+```
 
-### 3. المنتجات (`src/pages/Products.tsx` - سطر 689)
-- ازالة `hidden sm:block` لإظهار العنوان على الموبايل أيضاً
-- التأكد من أن الحجم `text-xl md:text-3xl font-bold text-foreground`
+الأصناف الجديدة:
+```
+أدوية، مستحضرات تجميل، مكملات، عناية بالبشرة، مستلزمات طبية
+```
 
-### 4. نقطة البيع (`src/components/pos/POSHeader.tsx` - سطر 25)
-- تغيير `font-bold text-base md:text-lg` الى `text-xl md:text-3xl font-bold text-foreground`
-- تعديل ارتفاع الهيدر ليتناسب مع الحجم الجديد
+### 2. إضافة حقل "رقم التشغيلة" (Batch Number) كحقل جديد في النظام
 
-## النتيجة
-جميع الصفحات ستستخدم نفس حجم العنوان ونفس الموقع، مما يعطي تجربة بصرية متناسقة.
+**الملف:** `src/lib/product-fields-config.ts`
+- إضافة `batchNumber: boolean` إلى واجهة `ProductFieldsConfig`
+- إضافة القيمة الافتراضية لكل نوع متجر (مفعّل فقط للصيدلية)
+- إضافة التسمية في `FIELD_LABELS`
+
+### 3. تحديث حقول الصيدلية الافتراضية
+**الملف:** `src/lib/product-fields-config.ts`
+
+الحقول المفعّلة للصيدلية:
+- تاريخ الصلاحية (expiryDate): مفعّل
+- رقم التشغيلة (batchNumber): مفعّل -- جديد
+- سعر الجملة (wholesalePrice): مفعّل
+- الحد الأدنى للمخزون (minStockLevel): مفعّل
+- الرقم التسلسلي: معطّل
+- الضمان: معطّل
+- المقاس واللون: معطّل
+
+### 4. إضافة حقل رقم التشغيلة في نماذج المنتجات
+
+**الملفات:**
+- `src/pages/Products.tsx` -- إضافة حقل الإدخال في نموذج إضافة/تعديل المنتج (مشروط بـ `fieldsConfig.batchNumber`)
+- `src/components/products/PurchaseInvoiceItemForm.tsx` -- إضافة نفس الحقل في نموذج فاتورة الشراء
+
+### 5. حفظ رقم التشغيلة في السحابة
+
+**الملف:** `src/lib/cloud/products-cloud.ts`
+- إضافة `batchNumber` إلى الحقول المخزنة في `custom_fields` (JSONB) مثل serialNumber و warranty
+
+### 6. إضافة الترجمات
+
+**الملف:** `src/lib/i18n.ts`
+- `products.batchNumber`: "رقم التشغيلة" / "Batch Number" / "Parti Numarasi"
+
+### 7. إضافة الحقل في إعدادات الحقول
+
+**الملف:** `src/components/settings/ProductFieldsSection.tsx`
+- سيظهر تلقائياً لأنه يعتمد على `FIELD_LABELS` الموجود في `product-fields-config.ts`
+
+## ملاحظة
+هذا التغيير خاص بالصيدلية فقط. سيتم تطبيق تغييرات أنواع المتاجر الأخرى تباعاً حسب طلبك.
