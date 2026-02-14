@@ -38,21 +38,24 @@ export function percentageOf(amount: number, percentage: number): number {
   return roundCurrency(((amount || 0) * (percentage || 0)) / 100);
 }
 
-// Format number with Western numerals (123) - always uses en-US locale
+// Format number with Western numerals (123) - uses Intl.NumberFormat for Android WebView compatibility
 export function formatNumber(num: number, decimals: number = 3): string {
-  return roundCurrency(num).toLocaleString('en-US', {
+  const formatter = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    maximumFractionDigits: decimals,
+    useGrouping: true,
   });
+  return formatter.format(roundCurrency(num));
 }
 
-// Format currency with Western numerals - always rounds to 2 decimals
+// Format currency with Western numerals - uses Intl.NumberFormat for Android WebView compatibility
 export function formatCurrency(amount: number, symbol: string = '$', decimals: number = 2): string {
-  const rounded = roundCurrency(amount);
-  return `${symbol}${rounded.toLocaleString('en-US', {
+  const formatter = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  })}`;
+    maximumFractionDigits: decimals,
+    useGrouping: true,
+  });
+  return `${symbol}${formatter.format(roundCurrency(amount))}`;
 }
 
 // Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)

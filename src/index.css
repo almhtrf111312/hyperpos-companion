@@ -17,6 +17,7 @@
 /* Force Western/English numerals across the entire app */
 * {
   font-variant-numeric: lining-nums tabular-nums;
+  unicode-bidi: plaintext;
 }
 
 /* Override toLocaleString Arabic numerals */
