@@ -8,7 +8,8 @@
   "plugins": {
     "Camera": {
       "photoGalleryPermission": "لاختيار صور المنتجات",
-      "cameraPermission": "لمسح الباركود وتصوير المنتجات"
+      "cameraPermission": "لمسح الباركود وتصوير المنتجات",
+      "saveToGallery": false
     },
     "Filesystem": {
       "androidExternalStorage": true

@@ -308,6 +308,38 @@ export async function upsertToSupabase<T = any>(
   }
 }
 
+// Incremental fetch: get records updated since a given timestamp
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchIncrementalFromSupabase<T = any>(
+  tableName: string,
+  since: string,
+  orderBy?: { column: string; ascending?: boolean }
+): Promise<T[]> {
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any).from(tableName).select('*').gt('updated_at', since);
+
+    if (orderBy) {
+      query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error(`Error incremental fetch ${tableName}:`, error);
+      return [];
+    }
+
+    return (data || []) as T[];
+  } catch (error) {
+    console.error(`Error incremental fetch ${tableName}:`, error);
+    return [];
+  }
+}
+
 // Check if user has data in cloud
 export async function hasCloudData(tableName: string): Promise<boolean> {
   const userId = getCurrentUserId();

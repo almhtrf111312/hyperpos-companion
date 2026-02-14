@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Filesystem } from '@capacitor/filesystem';
 
 interface UseCameraOptions {
   maxSize?: number;
@@ -20,59 +19,108 @@ interface UseCameraResult {
 
 /**
  * Custom hook for camera functionality using Capacitor Camera plugin.
- * Provides native camera access on Android/iOS and falls back to file input on web.
- * 
- * Solves the Android OOM (Out-of-Memory) issue that occurs when using 
- * <input type="file" capture="environment"> by using Capacitor's native camera API
- * which doesn't require killing the app process.
+ * Uses webPath + fetch(Blob) to avoid OOM on low-end Android devices.
  */
 export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
   const { maxSize = 640, quality = 70 } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // For web fallback
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const resolveRef = useRef<((value: string | null) => void) | null>(null);
 
   const isNative = Capacitor.isNativePlatform();
 
   /**
-   * Compress image to reduce size for localStorage storage
+   * Compress a Blob via Canvas and return a base64 data URL.
+   * Works entirely with Blob/ImageBitmap to minimize peak memory.
    */
-  const compressImage = useCallback((base64: string): Promise<string> => {
-    return new Promise((resolve) => {
+  const compressBlob = useCallback(async (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
       const img = new Image();
       img.onload = () => {
+        URL.revokeObjectURL(url);
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
 
-        // Resize if larger than maxSize
         if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
+          if (width > maxSize) { height = (height * maxSize) / width; width = maxSize; }
         } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
+          if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; }
         }
 
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality / 100);
-        resolve(compressedBase64);
+        resolve(canvas.toDataURL('image/jpeg', quality / 100));
       };
-      img.onerror = () => resolve(base64); // Return original if compression fails
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = url;
+    });
+  }, [maxSize, quality]);
+
+  /**
+   * Compress a base64 string (fallback for web file input)
+   */
+  const compressBase64 = useCallback((base64: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxSize) { height = (height * maxSize) / width; width = maxSize; }
+        } else {
+          if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality / 100));
+      };
+      img.onerror = () => resolve(base64);
       img.src = base64;
     });
   }, [maxSize, quality]);
+
+  /**
+   * Ensure camera permissions are granted (native only)
+   */
+  const ensurePermissions = useCallback(async () => {
+    if (!isNative) return true;
+    try {
+      const status = await Camera.checkPermissions();
+      if (status.camera === 'granted') return true;
+      const req = await Camera.requestPermissions({ permissions: ['camera'] });
+      return req.camera === 'granted';
+    } catch (e) {
+      console.warn('[Camera] Permission check failed:', e);
+      return true; // proceed anyway, Camera plugin will prompt
+    }
+  }, [isNative]);
+
+  /**
+   * Process native photo result: fetch webPath as Blob, compress, return base64
+   */
+  const processNativePhoto = useCallback(async (webPath: string | undefined): Promise<string | null> => {
+    if (!webPath) return null;
+    try {
+      const response = await fetch(webPath);
+      const blob = await response.blob();
+      return await compressBlob(blob);
+    } catch (e) {
+      console.error('[Camera] Failed to process photo:', e);
+      return null;
+    }
+  }, [compressBlob]);
 
   /**
    * Take a photo using the device camera
@@ -83,31 +131,22 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
 
     try {
       if (isNative) {
-        // ✅ Use Uri to save memory (33% less than Base64)
+        await ensurePermissions();
+
         const photo = await Camera.getPhoto({
           resultType: CameraResultType.Uri,
           source: CameraSource.Camera,
-          quality: 70,  // Optimal quality for product photos
-          width: 800,   // Better resolution than 640px
+          quality: 70,
+          width: 800,
           correctOrientation: true,
+          saveToGallery: false,
         });
 
-        if (photo.path) {
-          // Read file from Uri
-          const fileData = await Filesystem.readFile({
-            path: photo.path,
-          });
-
-          // Convert to Base64 for storage
-          const base64 = `data:image/jpeg;base64,${fileData.data}`;
-          const compressed = await compressImage(base64);
-          setIsLoading(false);
-          return compressed;
-        }
+        const result = await processNativePhoto(photo.webPath);
         setIsLoading(false);
-        return null;
+        return result;
       } else {
-        // Fallback for web - use file input with capture
+        // Web fallback
         return new Promise((resolve) => {
           if (!fileInputRef.current) {
             fileInputRef.current = document.createElement('input');
@@ -119,33 +158,22 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
             fileInputRef.current.addEventListener('change', async (e) => {
               const target = e.target as HTMLInputElement;
               const file = target.files?.[0];
-
               if (file) {
                 const reader = new FileReader();
                 reader.onloadend = async () => {
-                  const base64 = reader.result as string;
-                  const compressed = await compressImage(base64);
+                  const compressed = await compressBase64(reader.result as string);
                   resolveRef.current?.(compressed);
                   resolveRef.current = null;
                   setIsLoading(false);
                 };
-                reader.onerror = () => {
-                  resolveRef.current?.(null);
-                  resolveRef.current = null;
-                  setIsLoading(false);
-                };
+                reader.onerror = () => { resolveRef.current?.(null); resolveRef.current = null; setIsLoading(false); };
                 reader.readAsDataURL(file);
               } else {
-                resolveRef.current?.(null);
-                resolveRef.current = null;
-                setIsLoading(false);
+                resolveRef.current?.(null); resolveRef.current = null; setIsLoading(false);
               }
-
-              // Reset input for re-selection
               target.value = '';
             });
           }
-
           resolveRef.current = resolve;
           fileInputRef.current.setAttribute('capture', 'environment');
           fileInputRef.current.click();
@@ -158,7 +186,7 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
       console.error('Camera error:', err);
       return null;
     }
-  }, [isNative, maxSize, quality, compressImage]);
+  }, [isNative, compressBase64, ensurePermissions, processNativePhoto]);
 
   /**
    * Pick an image from the device gallery
@@ -169,7 +197,6 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
 
     try {
       if (isNative) {
-        // ✅ Use Uri for gallery selection too
         const photo = await Camera.getPhoto({
           resultType: CameraResultType.Uri,
           source: CameraSource.Photos,
@@ -178,22 +205,10 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
           correctOrientation: true,
         });
 
-        if (photo.path) {
-          // Read file from Uri
-          const fileData = await Filesystem.readFile({
-            path: photo.path,
-          });
-
-          // Convert to Base64 for storage
-          const base64 = `data:image/jpeg;base64,${fileData.data}`;
-          const compressed = await compressImage(base64);
-          setIsLoading(false);
-          return compressed;
-        }
+        const result = await processNativePhoto(photo.webPath);
         setIsLoading(false);
-        return null;
+        return result;
       } else {
-        // Fallback for web - use file input without capture
         return new Promise((resolve) => {
           if (!fileInputRef.current) {
             fileInputRef.current = document.createElement('input');
@@ -205,33 +220,22 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
             fileInputRef.current.addEventListener('change', async (e) => {
               const target = e.target as HTMLInputElement;
               const file = target.files?.[0];
-
               if (file) {
                 const reader = new FileReader();
                 reader.onloadend = async () => {
-                  const base64 = reader.result as string;
-                  const compressed = await compressImage(base64);
+                  const compressed = await compressBase64(reader.result as string);
                   resolveRef.current?.(compressed);
                   resolveRef.current = null;
                   setIsLoading(false);
                 };
-                reader.onerror = () => {
-                  resolveRef.current?.(null);
-                  resolveRef.current = null;
-                  setIsLoading(false);
-                };
+                reader.onerror = () => { resolveRef.current?.(null); resolveRef.current = null; setIsLoading(false); };
                 reader.readAsDataURL(file);
               } else {
-                resolveRef.current?.(null);
-                resolveRef.current = null;
-                setIsLoading(false);
+                resolveRef.current?.(null); resolveRef.current = null; setIsLoading(false);
               }
-
-              // Reset input for re-selection
               target.value = '';
             });
           }
-
           resolveRef.current = resolve;
           fileInputRef.current.removeAttribute('capture');
           fileInputRef.current.click();
@@ -244,12 +248,10 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
       console.error('Gallery error:', err);
       return null;
     }
-  }, [isNative, maxSize, quality, compressImage]);
+  }, [isNative, compressBase64, processNativePhoto]);
 
-  /* 
+  /**
    * Handle Android Process Death / Activity Restoration
-   * When the camera activity finishes, the app might be restarted. 
-   * We need to listen for the 'appRestoredResult' to get the photo data back.
    */
   useEffect(() => {
     if (!isNative) return;
@@ -261,20 +263,11 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
         if (restoreResult.pluginId === 'Camera' && restoreResult.methodName === 'getPhoto' && restoreResult.success) {
           console.log('App restored from Camera activity', restoreResult);
 
-          if (restoreResult.data && restoreResult.data.webPath) {
-            const photoPath = restoreResult.data.webPath; // Or path, depending on resultType. using webPath for now as it's common
-            // If we used CameraResultType.Uri, data might contain `path` or `webPath` appropriate for Filesystem
-
+          const webPath = restoreResult.data?.webPath;
+          if (webPath) {
             try {
-              // For Uri result type, we need to read the file
-              const fileData = await Filesystem.readFile({
-                path: restoreResult.data.path || restoreResult.data.webPath,
-              });
-
-              const base64 = `data:image/jpeg;base64,${fileData.data}`;
-              const compressed = await compressImage(base64);
-
-              if (options.onPhotoRestored) {
+              const compressed = await processNativePhoto(webPath);
+              if (compressed && options.onPhotoRestored) {
                 options.onPhotoRestored(compressed);
               }
             } catch (e) {
@@ -289,17 +282,9 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
     setupListener();
 
     return () => {
-      if (listener) {
-        listener.remove();
-      }
+      if (listener) listener.remove();
     };
-  }, [isNative, compressImage, options]);
+  }, [isNative, processNativePhoto, options]);
 
-  return {
-    takePhoto,
-    pickFromGallery,
-    isLoading,
-    isNative,
-    error,
-  };
+  return { takePhoto, pickFromGallery, isLoading, isNative, error };
 }

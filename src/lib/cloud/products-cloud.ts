@@ -1,6 +1,7 @@
 // Cloud Products Store - Supabase-backed products management
 import {
   fetchFromSupabase,
+  fetchIncrementalFromSupabase,
   insertToSupabase,
   updateInSupabase,
   deleteFromSupabase,
@@ -182,6 +183,7 @@ const CACHE_TTL = 10000; // 10 seconds
 
 // Local storage key for offline fallback (legacy, kept as secondary fallback)
 const LOCAL_PRODUCTS_CACHE_KEY = 'hyperpos_products_cache';
+const LAST_SYNC_TIMESTAMP_KEY = 'hyperpos_products_last_sync';
 
 // Save products to IndexedDB + localStorage as backup
 const saveToLocalCache = (products: Product[]) => {
@@ -227,7 +229,7 @@ const loadFromLocalCache = async (): Promise<Product[] | null> => {
   return null;
 };
 
-// Load products from cloud with caching and IndexedDB/localStorage fallback
+// Load products from cloud with incremental sync (delta sync)
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
 
@@ -249,7 +251,6 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
   const isOnline = navigator.onLine;
 
   if (!isOnline) {
-    // Offline: serve from local cache directly
     const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
       productsCache = localProducts;
@@ -261,26 +262,58 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
   }
 
   try {
-    const cloudProducts = await fetchFromSupabase<CloudProduct>('products', {
-      column: 'created_at',
-      ascending: false
-    });
+    const lastSync = localStorage.getItem(LAST_SYNC_TIMESTAMP_KEY);
 
-    // If cloud returned empty but we have local cache, it might be a network issue
-    if (cloudProducts.length === 0) {
-      const localProducts = await loadFromLocalCache();
-      if (localProducts && localProducts.length > 0) {
-        console.log('[ProductsCloud] ⚠️ Cloud returned empty, using local cache');
-        productsCache = localProducts;
-        cacheTimestamp = Date.now();
-        return localProducts;
+    if (lastSync && productsCache && productsCache.length > 0) {
+      // ✅ Incremental sync: fetch only updated products since last sync
+      const updatedProducts = await fetchIncrementalFromSupabase<CloudProduct>('products', lastSync, {
+        column: 'updated_at',
+        ascending: false
+      });
+
+      if (updatedProducts.length > 0) {
+        console.log('[ProductsCloud] 🔄 Delta sync:', updatedProducts.length, 'updated products');
+        const updatedMap = new Map(updatedProducts.map(p => [p.id, toProduct(p)]));
+        
+        // Merge: replace existing or add new
+        productsCache = productsCache.map(p => updatedMap.get(p.id) || p);
+        // Add truly new products (not in existing cache)
+        const existingIds = new Set(productsCache.map(p => p.id));
+        for (const [id, product] of updatedMap) {
+          if (!existingIds.has(id)) {
+            productsCache.unshift(product);
+          }
+        }
+      } else {
+        console.log('[ProductsCloud] ✅ No changes since last sync');
       }
+    } else {
+      // Full sync (first time or no cache)
+      console.log('[ProductsCloud] 📥 Full sync...');
+      const cloudProducts = await fetchFromSupabase<CloudProduct>('products', {
+        column: 'created_at',
+        ascending: false
+      });
+
+      if (cloudProducts.length === 0) {
+        const localProducts = await loadFromLocalCache();
+        if (localProducts && localProducts.length > 0) {
+          console.log('[ProductsCloud] ⚠️ Cloud returned empty, using local cache');
+          productsCache = localProducts;
+          cacheTimestamp = Date.now();
+          return localProducts;
+        }
+      }
+
+      productsCache = cloudProducts.map(toProduct);
     }
 
-    productsCache = cloudProducts.map(toProduct);
     cacheTimestamp = Date.now();
 
-    // Save to IndexedDB + localStorage as backup (only if we got data)
+    // Update last sync timestamp
+    localStorage.setItem(LAST_SYNC_TIMESTAMP_KEY, new Date().toISOString());
+
+    // Save to local cache
     if (productsCache.length > 0) {
       saveToLocalCache(productsCache);
     }
@@ -306,11 +339,11 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 export const invalidateProductsCache = () => {
   productsCache = null;
   cacheTimestamp = 0;
-  // مسح localStorage لضمان التحديث من السحابة
   try {
     localStorage.removeItem(LOCAL_PRODUCTS_CACHE_KEY);
+    localStorage.removeItem(LAST_SYNC_TIMESTAMP_KEY);
   } catch (e) {
-    console.warn('Failed to clear products localStorage cache:', e);
+    console.warn('Failed to clear products cache:', e);
   }
 };
 
