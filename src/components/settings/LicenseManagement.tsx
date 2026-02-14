@@ -61,10 +61,9 @@ interface License {
 
 export function LicenseManagement() {
   const { toast } = useToast();
-  const { language } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const { isBoss } = useUserRole();
   const navigate = useNavigate();
-  const isRTL = language === 'ar';
 
   const [codes, setCodes] = useState<ActivationCode[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
@@ -82,6 +81,13 @@ export function LicenseManagement() {
     maxUses: 1,
     note: '',
   });
+
+  const getLocale = () => {
+    if (language === 'ar') return 'ar-SA';
+    if (language === 'tr') return 'tr-TR';
+    if (language === 'fa') return 'fa-IR';
+    return 'en-US';
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -102,7 +108,6 @@ export function LicenseManagement() {
       if (licensesData && licensesData.length > 0) {
         const userIds = licensesData.map(l => l.user_id);
         
-        // Fetch profiles and emails in parallel
         const [profilesResult, emailsResult] = await Promise.all([
           supabase.from('profiles').select('user_id, full_name').in('user_id', userIds),
           supabase.functions.invoke('get-users-emails', { body: { userIds } }).catch(() => ({ data: null })),
@@ -121,7 +126,7 @@ export function LicenseManagement() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast({ title: isRTL ? 'خطأ' : 'Error', description: isRTL ? 'فشل في تحميل البيانات' : 'Failed to load data', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('licenseManagement.loadFailed'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -154,10 +159,10 @@ export function LicenseManagement() {
       if (error) throw error;
       setNewCodeCreated(code);
       fetchData();
-      toast({ title: isRTL ? 'تم الإنشاء' : 'Created', description: isRTL ? 'تم إنشاء كود التفعيل بنجاح' : 'Activation code created successfully' });
+      toast({ title: t('licenseManagement.created'), description: t('licenseManagement.codeCreatedSuccess') });
     } catch (error) {
       console.error('Error creating code:', error);
-      toast({ title: isRTL ? 'خطأ' : 'Error', description: isRTL ? 'فشل في إنشاء الكود' : 'Failed to create code', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('licenseManagement.createFailed'), variant: 'destructive' });
     } finally {
       setIsCreating(false);
     }
@@ -166,9 +171,9 @@ export function LicenseManagement() {
   const handleCopyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
-      toast({ title: isRTL ? 'تم النسخ' : 'Copied', description: isRTL ? 'تم نسخ الكود' : 'Code copied to clipboard' });
+      toast({ title: t('licenseManagement.copied'), description: t('licenseManagement.codeCopied') });
     } catch {
-      toast({ title: isRTL ? 'خطأ' : 'Error', description: isRTL ? 'فشل في نسخ الكود' : 'Failed to copy code', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('licenseManagement.copyFailed'), variant: 'destructive' });
     }
   };
 
@@ -178,10 +183,10 @@ export function LicenseManagement() {
       if (error) throw error;
       setDeleteCodeTarget(null);
       fetchData();
-      toast({ title: isRTL ? 'تم الحذف' : 'Deleted', description: isRTL ? 'تم حذف الكود' : 'Code deleted' });
+      toast({ title: t('licenseManagement.deleted'), description: t('licenseManagement.codeDeleted') });
     } catch (error) {
       console.error('Error deleting code:', error);
-      toast({ title: isRTL ? 'خطأ' : 'Error', description: isRTL ? 'فشل في حذف الكود' : 'Failed to delete code', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('licenseManagement.deleteFailed'), variant: 'destructive' });
     }
   };
 
@@ -192,9 +197,9 @@ export function LicenseManagement() {
       if (error) throw error;
       setRevokeTarget(null);
       fetchData();
-      toast({ title: isRTL ? 'تم الإلغاء' : 'Revoked', description: isRTL ? 'تم إلغاء الترخيص بنجاح' : 'License revoked successfully' });
+      toast({ title: t('licenseManagement.revoked'), description: t('licenseManagement.licenseRevoked') });
     } catch (error: any) {
-      toast({ title: isRTL ? 'خطأ' : 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
@@ -210,16 +215,16 @@ export function LicenseManagement() {
       if (data?.error) throw new Error(data.error);
       setDeleteUserTarget(null);
       fetchData();
-      toast({ title: isRTL ? 'تم الحذف' : 'Deleted', description: isRTL ? 'تم حذف المستخدم بالكامل' : 'User deleted completely' });
+      toast({ title: t('licenseManagement.deleted'), description: t('licenseManagement.userDeleted') });
     } catch (error: any) {
-      toast({ title: isRTL ? 'خطأ' : 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(dateStr).toLocaleDateString(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const closeCreateDialog = () => {
@@ -244,14 +249,14 @@ export function LicenseManagement() {
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">{isRTL ? 'إدارة التراخيص' : 'License Management'}</h2>
-            <p className="text-sm text-muted-foreground">{isRTL ? 'هذه الميزة متاحة للمدير الرئيسي فقط' : 'This feature is only available for Boss users'}</p>
+            <h2 className="text-lg font-semibold text-foreground">{t('licenseManagement.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('licenseManagement.bossOnly')}</p>
           </div>
         </div>
         <div className="bg-muted/50 rounded-xl p-6 text-center space-y-4">
           <Crown className="w-12 h-12 mx-auto text-amber-500" />
           <p className="text-muted-foreground">
-            {isRTL ? 'لإدارة أكواد التفعيل والتراخيص، يرجى التواصل مع المدير الرئيسي.' : 'To manage activation codes and licenses, please contact the Boss administrator.'}
+            {t('licenseManagement.bossOnlyDesc')}
           </p>
         </div>
       </div>
@@ -267,18 +272,18 @@ export function LicenseManagement() {
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">{isRTL ? 'إدارة التراخيص' : 'License Management'}</h2>
-            <p className="text-sm text-muted-foreground">{isRTL ? 'إنشاء وإدارة أكواد التفعيل والتراخيص' : 'Create and manage activation codes & licenses'}</p>
+            <h2 className="text-lg font-semibold text-foreground">{t('licenseManagement.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('licenseManagement.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate('/boss')}>
             <ExternalLink className="w-4 h-4" />
-            <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'لوحة Boss' : 'Boss Panel'}</span>
+            <span className="ms-2">{t('licenseManagement.bossPanel')}</span>
           </Button>
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="w-4 h-4" />
-            <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'إنشاء كود' : 'Create Code'}</span>
+            <span className="ms-2">{t('licenseManagement.createCode')}</span>
           </Button>
         </div>
       </div>
@@ -287,11 +292,11 @@ export function LicenseManagement() {
       <div className="bg-card rounded-xl border border-border p-4">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
           <Key className="w-4 h-4" />
-          {isRTL ? 'أكواد التفعيل' : 'Activation Codes'} ({codes.length})
+          {t('licenseManagement.activationCodes')} ({codes.length})
         </h3>
         
         {codes.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-4">{isRTL ? 'لا توجد أكواد بعد' : 'No codes yet'}</p>
+          <p className="text-muted-foreground text-sm text-center py-4">{t('licenseManagement.noCodes')}</p>
         ) : (
           <div className="space-y-2">
             {codes.map((code) => (
@@ -301,11 +306,11 @@ export function LicenseManagement() {
                   <Badge variant={code.is_active && code.current_uses < code.max_uses ? 'default' : 'secondary'} className="text-xs shrink-0">
                     {code.current_uses}/{code.max_uses}
                   </Badge>
-                  {!code.is_active && <Badge variant="destructive" className="text-xs">{isRTL ? 'غير نشط' : 'Inactive'}</Badge>}
+                  {!code.is_active && <Badge variant="destructive" className="text-xs">{t('licenseManagement.inactive')}</Badge>}
                   {code.note && <span className="text-xs text-muted-foreground truncate">{code.note}</span>}
                 </div>
                 <div className="flex items-center gap-1 border-t border-border/50 pt-2">
-                  <span className="text-xs text-muted-foreground flex-1">{code.duration_days}{isRTL ? ' يوم' : 'd'}</span>
+                  <span className="text-xs text-muted-foreground flex-1">{code.duration_days}{t('licenseManagement.days')}</span>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleCopyCode(code.code)}>
                     <Copy className="w-3 h-3" />
                   </Button>
@@ -323,11 +328,11 @@ export function LicenseManagement() {
       <div className="bg-card rounded-xl border border-border p-4">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
           <Users className="w-4 h-4" />
-          {isRTL ? 'التراخيص' : 'Licenses'} ({licenses.length})
+          {t('licenseManagement.licenses')} ({licenses.length})
         </h3>
         
         {licenses.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-8">{isRTL ? 'لا توجد تراخيص بعد' : 'No licenses yet'}</p>
+          <p className="text-muted-foreground text-sm text-center py-8">{t('licenseManagement.noLicenses')}</p>
         ) : (
           <div className="space-y-2">
             {licenses.map((license) => {
@@ -342,7 +347,7 @@ export function LicenseManagement() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
-                      {license.profiles?.full_name || (isRTL ? 'مستخدم' : 'User')}
+                      {license.profiles?.full_name || t('licenseManagement.user')}
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       isRevoked 
@@ -351,7 +356,7 @@ export function LicenseManagement() {
                         ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' 
                         : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                     }`}>
-                      {isRevoked ? (isRTL ? 'ملغى' : 'Revoked') : license.is_trial ? (isRTL ? 'تجريبي' : 'Trial') : (isRTL ? 'مفعّل' : 'Active')}
+                      {isRevoked ? t('licenseManagement.revoked') : license.is_trial ? t('licenseManagement.trial') : t('licenseManagement.active')}
                     </span>
                   </div>
                   {license.email && (
@@ -365,18 +370,18 @@ export function LicenseManagement() {
                     )}
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {isRTL ? 'ينتهي:' : 'Expires:'} {formatDate(license.expires_at)}
-                      {isExpired && <span className="text-destructive font-medium">({isRTL ? 'منتهي' : 'Expired'})</span>}
+                      {t('licenseManagement.expires')} {formatDate(license.expires_at)}
+                      {isExpired && <span className="text-destructive font-medium">({t('licenseManagement.expired')})</span>}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 border-t border-border/50 pt-2">
                     {!isRevoked && (
                       <Button size="sm" variant="outline" className="text-xs gap-1 text-yellow-600 flex-1" onClick={() => setRevokeTarget(license)}>
-                        <Ban className="w-3 h-3" /> {isRTL ? 'إلغاء' : 'Revoke'}
+                        <Ban className="w-3 h-3" /> {t('licenseManagement.revoke')}
                       </Button>
                     )}
                     <Button size="sm" variant="destructive" className="text-xs gap-1 flex-1" onClick={() => setDeleteUserTarget(license)}>
-                      <Trash2 className="w-3 h-3" /> {isRTL ? 'حذف' : 'Delete'}
+                      <Trash2 className="w-3 h-3" /> {t('common.delete')}
                     </Button>
                   </div>
                 </div>
@@ -391,7 +396,7 @@ export function LicenseManagement() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {newCodeCreated ? (isRTL ? 'تم إنشاء الكود' : 'Code Created') : (isRTL ? 'إنشاء كود تفعيل جديد' : 'Create New Activation Code')}
+              {newCodeCreated ? t('licenseManagement.codeCreated') : t('licenseManagement.createNewCode')}
             </DialogTitle>
           </DialogHeader>
 
@@ -403,37 +408,37 @@ export function LicenseManagement() {
               <code className="block text-lg font-mono bg-muted px-4 py-2 rounded-lg mb-4">{newCodeCreated}</code>
               <Button onClick={() => handleCopyCode(newCodeCreated)} className="w-full">
                 <Copy className="w-4 h-4" />
-                <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'نسخ الكود' : 'Copy Code'}</span>
+                <span className="ms-2">{t('licenseManagement.copyCode')}</span>
               </Button>
             </div>
           ) : (
             <>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{isRTL ? 'مدة الصلاحية' : 'Duration'}</label>
+                  <label className="text-sm font-medium">{t('licenseManagement.duration')}</label>
                   <div className="flex gap-2">
                     <Button type="button" variant={newCodeForm.durationDays === 180 ? 'default' : 'outline'} className="flex-1" onClick={() => setNewCodeForm({ ...newCodeForm, durationDays: 180 })}>
-                      {isRTL ? '6 أشهر' : '6 months'}
+                      {t('licenseManagement.sixMonths')}
                     </Button>
                     <Button type="button" variant={newCodeForm.durationDays === 365 ? 'default' : 'outline'} className="flex-1" onClick={() => setNewCodeForm({ ...newCodeForm, durationDays: 365 })}>
-                      {isRTL ? 'سنة كاملة' : '1 year'}
+                      {t('licenseManagement.oneYear')}
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{isRTL ? 'عدد مرات الاستخدام' : 'Max Uses'}</label>
+                  <label className="text-sm font-medium">{t('licenseManagement.maxUses')}</label>
                   <Input type="number" min={1} max={100} value={newCodeForm.maxUses} onChange={(e) => setNewCodeForm({ ...newCodeForm, maxUses: parseInt(e.target.value) || 1 })} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{isRTL ? 'ملاحظة (اختياري)' : 'Note (optional)'}</label>
-                  <Input placeholder={isRTL ? 'مثال: للصديق أحمد' : 'e.g., For friend Ahmed'} value={newCodeForm.note} onChange={(e) => setNewCodeForm({ ...newCodeForm, note: e.target.value })} />
+                  <label className="text-sm font-medium">{t('licenseManagement.noteOptional')}</label>
+                  <Input placeholder={t('licenseManagement.notePlaceholder')} value={newCodeForm.note} onChange={(e) => setNewCodeForm({ ...newCodeForm, note: e.target.value })} />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={closeCreateDialog}>{isRTL ? 'إلغاء' : 'Cancel'}</Button>
+                <Button variant="outline" onClick={closeCreateDialog}>{t('common.cancel')}</Button>
                 <Button onClick={handleCreateCode} disabled={isCreating}>
                   {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'إنشاء الكود' : 'Create Code'}</span>
+                  <span className="ms-2">{t('licenseManagement.createCode')}</span>
                 </Button>
               </DialogFooter>
             </>
@@ -445,13 +450,13 @@ export function LicenseManagement() {
       <AlertDialog open={!!deleteCodeTarget} onOpenChange={(open) => !open && setDeleteCodeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isRTL ? 'تأكيد حذف الكود' : 'Confirm Delete Code'}</AlertDialogTitle>
-            <AlertDialogDescription>{isRTL ? 'هل أنت متأكد من حذف هذا الكود؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure? This action cannot be undone.'}</AlertDialogDescription>
+            <AlertDialogTitle>{t('licenseManagement.confirmDeleteCode')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('licenseManagement.confirmDeleteCodeDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{isRTL ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => deleteCodeTarget && handleDeleteCode(deleteCodeTarget)}>
-              {isRTL ? 'حذف' : 'Delete'}
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -461,22 +466,20 @@ export function LicenseManagement() {
       <AlertDialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isRTL ? 'تأكيد إلغاء الترخيص' : 'Confirm Revoke License'}</AlertDialogTitle>
+            <AlertDialogTitle>{t('licenseManagement.confirmRevoke')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {isRTL 
-                ? `هل أنت متأكد من إلغاء ترخيص "${revokeTarget?.profiles?.full_name || revokeTarget?.email}"؟ سيتم منع المستخدم من الوصول للتطبيق.` 
-                : `Revoke license for "${revokeTarget?.profiles?.full_name || revokeTarget?.email}"?`}
+              {t('licenseManagement.confirmRevokeDesc').replace('{name}', revokeTarget?.profiles?.full_name || revokeTarget?.email || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>{isRTL ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-yellow-600 text-white hover:bg-yellow-700"
               disabled={isProcessing}
               onClick={(e) => { e.preventDefault(); if (revokeTarget) handleRevokeLicense(revokeTarget); }}
             >
-              {isProcessing && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-              {isRTL ? 'إلغاء الترخيص' : 'Revoke'}
+              {isProcessing && <Loader2 className="w-4 h-4 animate-spin me-2" />}
+              {t('licenseManagement.revokeLicense')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -486,22 +489,20 @@ export function LicenseManagement() {
       <AlertDialog open={!!deleteUserTarget} onOpenChange={(open) => !open && setDeleteUserTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isRTL ? 'تأكيد حذف المستخدم' : 'Confirm Delete User'}</AlertDialogTitle>
+            <AlertDialogTitle>{t('licenseManagement.confirmDeleteUser')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {isRTL 
-                ? `⚠️ هل أنت متأكد من حذف "${deleteUserTarget?.profiles?.full_name || deleteUserTarget?.email}" نهائياً؟ سيتم حذف جميع البيانات والحسابات التابعة ولا يمكن التراجع.` 
-                : `⚠️ Delete "${deleteUserTarget?.profiles?.full_name || deleteUserTarget?.email}" permanently? All data and sub-accounts will be removed.`}
+              {t('licenseManagement.confirmDeleteUserDesc').replace('{name}', deleteUserTarget?.profiles?.full_name || deleteUserTarget?.email || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>{isRTL ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isProcessing}
               onClick={(e) => { e.preventDefault(); if (deleteUserTarget) handleDeleteUser(deleteUserTarget); }}
             >
-              {isProcessing && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-              {isRTL ? 'حذف نهائي' : 'Delete Permanently'}
+              {isProcessing && <Loader2 className="w-4 h-4 animate-spin me-2" />}
+              {t('licenseManagement.deletePermanently')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

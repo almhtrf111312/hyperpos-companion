@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { cn, formatNumber } from '@/lib/utils';
 import { toast } from 'sonner';
 import { savePartners, Partner } from '@/lib/partners-store';
+import { useLanguage } from '@/hooks/use-language';
 
 interface SetupWizardProps {
   onComplete: () => void;
@@ -32,6 +33,7 @@ interface PartnerInput {
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
+  const { t, isRTL, direction } = useLanguage();
   const [step, setStep] = useState(1);
   const totalSteps = 4;
 
@@ -85,16 +87,15 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   };
 
   const handleComplete = () => {
-    // Validate
     if (!storeInfo.name) {
-      toast.error('يرجى إدخال اسم المحل');
+      toast.error(t('setup.enterStoreName'));
       setStep(1);
       return;
     }
 
     const validPartners = partners.filter(p => p.name);
     if (validPartners.length === 0) {
-      toast.error('يرجى إضافة شريك واحد على الأقل');
+      toast.error(t('setup.addOnePartner'));
       setStep(3);
       return;
     }
@@ -133,7 +134,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         amount: p.capital,
         type: 'deposit' as const,
         date: now.split('T')[0],
-        notes: 'رأس مال أولي'
+        notes: t('setup.initialCapitalNote')
       }] : [],
       confirmedProfit: 0,
       pendingProfit: 0,
@@ -150,10 +151,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
     savePartners(partnersToSave);
 
-    // Mark setup as complete
     localStorage.setItem('hyperpos_setup_complete', 'true');
 
-    toast.success('تم إعداد المحل بنجاح!');
+    toast.success(t('setup.setupComplete'));
     onComplete();
   };
 
@@ -166,49 +166,49 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Store className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold">معلومات المحل</h2>
-              <p className="text-muted-foreground mt-2">أدخل المعلومات الأساسية لمحلك</p>
+              <h2 className="text-2xl font-bold">{t('setup.storeInfo')}</h2>
+              <p className="text-muted-foreground mt-2">{t('setup.storeInfoDesc')}</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">اسم المحل *</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.storeName')}</label>
                 <Input
-                  placeholder="مثال: محل الإلكترونيات"
+                  placeholder={t('setup.storeNamePlaceholder')}
                   value={storeInfo.name}
                   onChange={(e) => setStoreInfo({ ...storeInfo, name: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">نوع النشاط</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.storeType')}</label>
                 <select
                   className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   value={storeInfo.type}
                   onChange={(e) => setStoreInfo({ ...storeInfo, type: e.target.value })}
                 >
-                  <option value="retail">بيع تجزئة</option>
-                  <option value="wholesale">بيع جملة</option>
-                  <option value="phones">هواتف وإلكترونيات</option>
-                  <option value="grocery">بقالة</option>
-                  <option value="pharmacy">صيدلية</option>
-                   <option value="restaurant">مطعم</option>
-                  <option value="bakery">فرن / مخبز</option>
-                  <option value="services">خدمات</option>
-                  <option value="other">أخرى</option>
+                  <option value="retail">{t('setup.retail')}</option>
+                  <option value="wholesale">{t('setup.wholesale')}</option>
+                  <option value="phones">{t('setup.phones')}</option>
+                  <option value="grocery">{t('setup.grocery')}</option>
+                  <option value="pharmacy">{t('setup.pharmacy')}</option>
+                  <option value="restaurant">{t('setup.restaurant')}</option>
+                  <option value="bakery">{t('setup.bakery')}</option>
+                  <option value="services">{t('setup.services')}</option>
+                  <option value="other">{t('setup.other')}</option>
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">رقم الهاتف</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.phone')}</label>
                 <Input
-                  placeholder="+963 912 345 678"
+                  placeholder={t('setup.phonePlaceholder')}
                   value={storeInfo.phone}
                   onChange={(e) => setStoreInfo({ ...storeInfo, phone: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">العنوان</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.address')}</label>
                 <Input
-                  placeholder="دمشق، شارع النيل"
+                  placeholder={t('setup.addressPlaceholder')}
                   value={storeInfo.address}
                   onChange={(e) => setStoreInfo({ ...storeInfo, address: e.target.value })}
                 />
@@ -224,13 +224,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-success" />
               </div>
-              <h2 className="text-2xl font-bold">رأس المال</h2>
-              <p className="text-muted-foreground mt-2">حدد رأس المال الأولي للمحل</p>
+              <h2 className="text-2xl font-bold">{t('setup.initialCapital')}</h2>
+              <p className="text-muted-foreground mt-2">{t('setup.capitalDesc')}</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">رأس المال الإجمالي ($)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.totalCapital')}</label>
                 <Input
                   type="number"
                   placeholder="0"
@@ -240,7 +240,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 />
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                سيتم توزيع رأس المال على الشركاء في الخطوة التالية
+                {t('setup.distributeCapital')}
               </p>
             </div>
           </div>
@@ -256,15 +256,15 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <div className="w-16 h-16 bg-info/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-info" />
               </div>
-              <h2 className="text-2xl font-bold">الشركاء</h2>
-              <p className="text-muted-foreground mt-2">أضف الشركاء وحدد نسبهم</p>
+              <h2 className="text-2xl font-bold">{t('setup.partners')}</h2>
+              <p className="text-muted-foreground mt-2">{t('setup.partnersDesc')}</p>
             </div>
 
             <div className="space-y-4">
               {partners.map((partner, index) => (
                 <div key={partner.id} className="bg-muted/50 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">الشريك {index + 1}</span>
+                    <span className="text-sm font-medium">{t('setup.partnerNum').replace('{num}', String(index + 1))}</span>
                     {partners.length > 1 && (
                       <Button
                         variant="ghost"
@@ -278,24 +278,24 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <Input
-                      placeholder="الاسم *"
+                      placeholder={t('setup.partnerName')}
                       value={partner.name}
                       onChange={(e) => updatePartner(partner.id, 'name', e.target.value)}
                     />
                     <Input
-                      placeholder="الهاتف"
+                      placeholder={t('setup.partnerPhone')}
                       value={partner.phone}
                       onChange={(e) => updatePartner(partner.id, 'phone', e.target.value)}
                     />
                     <Input
                       type="number"
-                      placeholder="رأس المال"
+                      placeholder={t('setup.partnerCapital')}
                       value={partner.capital || ''}
                       onChange={(e) => updatePartner(partner.id, 'capital', Number(e.target.value))}
                     />
                     <Input
                       type="number"
-                      placeholder="نسبة الأرباح %"
+                      placeholder={t('setup.partnerShare')}
                       value={partner.sharePercentage || ''}
                       onChange={(e) => updatePartner(partner.id, 'sharePercentage', Number(e.target.value))}
                     />
@@ -308,19 +308,19 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 className="w-full"
                 onClick={addPartner}
               >
-                <Plus className="w-4 h-4 ml-2" />
-                إضافة شريك
+                <Plus className="w-4 h-4 me-2" />
+                {t('setup.addPartner')}
               </Button>
 
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">مجموع النسب:</span>
+                  <span className="text-muted-foreground">{t('setup.totalShare')}</span>
                   <span className={cn("font-bold", totalShare === 100 ? "text-success" : "text-destructive")}>
                     {totalShare}%
                   </span>
                 </div>
                 <div className="flex justify-between text-sm mt-2">
-                  <span className="text-muted-foreground">مجموع رأس المال:</span>
+                  <span className="text-muted-foreground">{t('setup.totalCapitalLabel')}</span>
                   <span className="font-bold">${formatNumber(totalCapital)}</span>
                 </div>
               </div>
@@ -335,13 +335,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-warning" />
               </div>
-              <h2 className="text-2xl font-bold">العملات</h2>
-              <p className="text-muted-foreground mt-2">حدد أسعار الصرف</p>
+              <h2 className="text-2xl font-bold">{t('setup.currencies')}</h2>
+              <p className="text-muted-foreground mt-2">{t('setup.currenciesDesc')}</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">الليرة التركية (1 دولار = ؟ TRY)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.tryRate')}</label>
                 <Input
                   type="number"
                   value={currencies.TRY || ''}
@@ -349,7 +349,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">الليرة السورية (1 دولار = ؟ SYP)</label>
+                <label className="text-sm font-medium mb-1.5 block">{t('setup.sypRate')}</label>
                 <Input
                   type="number"
                   value={currencies.SYP || ''}
@@ -366,7 +366,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={direction}>
       <div className="w-full max-w-lg">
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -393,8 +393,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 className="flex-1"
                 onClick={() => setStep(step - 1)}
               >
-                <ArrowRight className="w-4 h-4 ml-2" />
-                السابق
+                {isRTL ? <ArrowRight className="w-4 h-4 me-2" /> : <ArrowLeft className="w-4 h-4 me-2" />}
+                {t('setup.prev')}
               </Button>
             )}
 
@@ -403,16 +403,16 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 className="flex-1"
                 onClick={() => setStep(step + 1)}
               >
-                التالي
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                {t('setup.next')}
+                {isRTL ? <ArrowLeft className="w-4 h-4 ms-2" /> : <ArrowRight className="w-4 h-4 ms-2" />}
               </Button>
             ) : (
               <Button
                 className="flex-1 bg-success hover:bg-success/90"
                 onClick={handleComplete}
               >
-                <CheckCircle className="w-4 h-4 ml-2" />
-                إنهاء الإعداد
+                <CheckCircle className="w-4 h-4 me-2" />
+                {t('setup.finish')}
               </Button>
             )}
           </div>
@@ -427,7 +427,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               onComplete();
             }}
           >
-            تخطي الإعداد
+            {t('setup.skip')}
           </button>
         </div>
       </div>

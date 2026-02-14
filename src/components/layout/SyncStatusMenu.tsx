@@ -18,7 +18,7 @@ import { EVENTS } from '@/lib/events';
 import { loadRecentBackups, formatBackupSize, BACKUP_UPDATED_EVENT, LocalBackup } from '@/lib/local-auto-backup';
 
 export function SyncStatusMenu() {
-  const { isRTL } = useLanguage();
+  const { isRTL, t, language } = useLanguage();
   const { isOnline } = useNetworkStatus();
   const cloudContext = useContext(CloudSyncContext);
   const isSyncing = cloudContext?.isSyncing ?? false;
@@ -56,7 +56,6 @@ export function SyncStatusMenu() {
   const pendingCount = queueStatus.pendingCount + queueStatus.processingCount;
   const hasIssues = queueStatus.failedCount > 0;
 
-  // Determine overall status
   const getStatus = () => {
     if (!isOnline) return 'offline';
     if (isSyncing || queueStatus.isProcessing) return 'syncing';
@@ -71,31 +70,31 @@ export function SyncStatusMenu() {
     offline: {
       icon: CloudOff,
       color: 'text-destructive',
-      label: isRTL ? 'غير متصل' : 'Offline',
+      label: t('sync.offline'),
       animate: 'animate-pulse',
     },
     syncing: {
       icon: RefreshCw,
       color: 'text-primary',
-      label: isRTL ? 'جاري المزامنة...' : 'Syncing...',
+      label: t('sync.syncing'),
       animate: 'animate-spin',
     },
     error: {
       icon: AlertTriangle,
       color: 'text-destructive',
-      label: isRTL ? 'خطأ في المزامنة' : 'Sync Error',
+      label: t('sync.error'),
       animate: '',
     },
     pending: {
       icon: Clock,
       color: 'text-warning',
-      label: isRTL ? 'عمليات معلقة' : 'Pending',
+      label: t('sync.pending'),
       animate: '',
     },
     synced: {
       icon: Cloud,
       color: 'text-green-500',
-      label: isRTL ? 'متصل ومزامن' : 'Synced',
+      label: t('sync.synced'),
       animate: '',
     },
   };
@@ -118,22 +117,29 @@ export function SyncStatusMenu() {
 
   const getItemStatusLabel = (itemStatus: SyncHistoryItem['status']) => {
     const labels = {
-      synced: isRTL ? 'تمت المزامنة' : 'Synced',
-      pending: isRTL ? 'معلق' : 'Pending',
-      syncing: isRTL ? 'جاري...' : 'Syncing',
-      failed: isRTL ? 'فشل' : 'Failed',
+      synced: t('sync.synced'),
+      pending: t('sync.pending'),
+      syncing: t('sync.syncing'),
+      failed: t('sync.error'),
     };
     return labels[itemStatus];
   };
 
+  const getLocale = () => {
+    if (language === 'ar') return 'ar';
+    if (language === 'tr') return 'tr-TR';
+    if (language === 'fa') return 'fa-IR';
+    if (language === 'ku') return 'ku';
+    return 'en';
+  };
+
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString(isRTL ? 'ar' : 'en', {
+    return new Date(timestamp).toLocaleTimeString(getLocale(), {
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-  // Sorted: pending/failed first, then by time desc
   const sortedHistory = [...history].sort((a, b) => {
     const priority = { failed: 0, pending: 1, syncing: 2, synced: 3 };
     const pDiff = priority[a.status] - priority[b.status];
@@ -183,7 +189,7 @@ export function SyncStatusMenu() {
               disabled={isSyncing}
             >
               <RefreshCw className={cn("h-3 w-3", isRTL ? "ml-1" : "mr-1", isSyncing && "animate-spin")} />
-              {isRTL ? 'مزامنة' : 'Sync'}
+              {t('sync.syncBtn')}
             </Button>
           )}
         </div>
@@ -192,7 +198,7 @@ export function SyncStatusMenu() {
         <ScrollArea className="max-h-64">
           {sortedHistory.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              {isRTL ? 'لا توجد عمليات حديثة' : 'No recent operations'}
+              {t('sync.noRecentOperations')}
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -223,7 +229,7 @@ export function SyncStatusMenu() {
             <div className="px-4 py-2 flex items-center gap-2">
               <Database className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-xs font-medium text-muted-foreground">
-                {isRTL ? 'النسخ المحلية' : 'Local Backups'}
+                {t('sync.localBackups')}
               </span>
             </div>
             <div className="divide-y divide-border">
@@ -246,12 +252,12 @@ export function SyncStatusMenu() {
         {(pendingCount > 0 || hasIssues) && (
           <div className="px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground">
             {pendingCount > 0 && (
-              <span>{isRTL ? `${pendingCount} عملية معلقة` : `${pendingCount} pending`}</span>
+              <span>{t('sync.pendingOps').replace('{count}', String(pendingCount))}</span>
             )}
             {pendingCount > 0 && hasIssues && ' • '}
             {hasIssues && (
               <span className="text-destructive">
-                {isRTL ? `${queueStatus.failedCount} فاشلة` : `${queueStatus.failedCount} failed`}
+                {t('sync.failedOps').replace('{count}', String(queueStatus.failedCount))}
               </span>
             )}
           </div>
