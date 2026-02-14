@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Undo2 } from 'lucide-react';
+import { Undo2, Smartphone } from 'lucide-react';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
   Store,
@@ -63,6 +63,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { useUsersManagement, UserData } from '@/hooks/use-users-management';
@@ -327,6 +329,50 @@ export default function Settings() {
   const [isImporting, setIsImporting] = useState(false);
   const [lastBackupResult, setLastBackupResult] = useState<DownloadResult | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  // Transfer license state
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferPassword, setTransferPassword] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [showTransferPassword, setShowTransferPassword] = useState(false);
+
+  const handleTransferLicense = async () => {
+    if (!transferPassword || !currentUser?.email) return;
+    setIsTransferring(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('transfer-license', {
+        body: { email: currentUser.email, password: transferPassword },
+      });
+
+      if (error || !data?.success) {
+        toast({
+          title: isRTL ? 'خطأ' : 'Error',
+          description: data?.error || (isRTL ? 'فشل في نقل الترخيص' : 'Failed to transfer license'),
+          variant: 'destructive',
+        });
+        setIsTransferring(false);
+        return;
+      }
+
+      toast({
+        title: isRTL ? 'تم بنجاح' : 'Success',
+        description: isRTL ? 'تم فك ارتباط الجهاز بنجاح. يمكنك التفعيل من الجهاز الجديد.' : 'Device unlinked successfully. You can now activate on a new device.',
+      });
+
+      // Clear all local data and force sign out
+      setTransferDialogOpen(false);
+      setTransferPassword('');
+      localStorage.clear();
+      await supabase.auth.signOut();
+    } catch (err) {
+      toast({
+        title: isRTL ? 'خطأ' : 'Error',
+        description: isRTL ? 'حدث خطأ غير متوقع' : 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
+    setIsTransferring(false);
+  };
 
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
@@ -1359,7 +1405,31 @@ export default function Settings() {
         );
 
       case 'license':
-        return <ActivationCodeInput />;
+        return (
+          <div className="space-y-6">
+            <ActivationCodeInput />
+            {/* Transfer License Button */}
+            <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Smartphone className="w-4 h-4" />
+                {isRTL ? 'نقل الترخيص' : 'Transfer License'}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {isRTL
+                  ? 'فك ارتباط الترخيص من هذا الجهاز لتتمكن من تفعيله على جهاز جديد. سيتم تسجيل خروجك تلقائياً.'
+                  : 'Unbind the license from this device so you can activate it on a new one. You will be signed out automatically.'}
+              </p>
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
+                onClick={() => setTransferDialogOpen(true)}
+              >
+                <Smartphone className="w-4 h-4" />
+                {isRTL ? 'نقل الترخيص لجهاز آخر' : 'Transfer License to Another Device'}
+              </Button>
+            </div>
+          </div>
+        );
 
       case 'licenses':
         return (
@@ -1558,6 +1628,53 @@ export default function Settings() {
         }}
         userId={passwordChangeUserId || undefined}
       />
+
+      {/* Transfer License Dialog */}
+      <AlertDialog open={transferDialogOpen} onOpenChange={(open) => {
+        setTransferDialogOpen(open);
+        if (!open) { setTransferPassword(''); setShowTransferPassword(false); }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isRTL ? 'نقل الترخيص لجهاز آخر' : 'Transfer License'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isRTL
+                ? 'أدخل كلمة المرور لتأكيد هويتك. سيتم فك ارتباط الترخيص من هذا الجهاز وتسجيل خروجك تلقائياً.'
+                : 'Enter your password to confirm. The license will be unbound from this device and you will be signed out.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <div className="relative">
+              <Input
+                type={showTransferPassword ? 'text' : 'password'}
+                value={transferPassword}
+                onChange={(e) => setTransferPassword(e.target.value)}
+                placeholder={isRTL ? 'كلمة المرور' : 'Password'}
+                className="pe-10"
+                onKeyDown={(e) => { if (e.key === 'Enter' && transferPassword) handleTransferLicense(); }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowTransferPassword(!showTransferPassword)}
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              >
+                {showTransferPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{isRTL ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <Button
+              onClick={handleTransferLicense}
+              disabled={!transferPassword || isTransferring}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {isTransferring ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Smartphone className="w-4 h-4 me-2" />}
+              {isRTL ? 'تأكيد وفك الارتباط' : 'Confirm & Unbind'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Floating Action Buttons (FAB) */}
       <div

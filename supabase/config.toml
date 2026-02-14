@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.device-auto-login]
 verify_jwt = false
+
+[functions.transfer-license]
+verify_jwt = false
