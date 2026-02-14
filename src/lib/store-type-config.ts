@@ -217,6 +217,44 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageSubtitle: 'Manage dishes and prices',
     },
   },
+  bakery: {
+    ar: {
+      product: 'صنف',
+      products: 'قائمة المبيعات',
+      addProduct: 'إضافة صنف',
+      editProduct: 'تعديل الصنف',
+      category: 'التصنيف',
+      categories: 'التصنيفات',
+      barcode: 'الباركود',
+      maintenance: 'الصيانة',
+      productSearch: 'بحث عن صنف أو باركود...',
+      productCount: 'إجمالي الأصناف',
+      lowStockAlert: 'تنبيهات المخزون',
+      topProducts: 'الأصناف الأكثر مبيعاً',
+      newProduct: 'صنف جديد',
+      newProductDesc: 'إضافة صنف للقائمة',
+      pageTitle: 'إدارة المخبز',
+      pageSubtitle: 'تتبع المبيعات والمشتريات والمصاريف',
+    },
+    en: {
+      product: 'Item',
+      products: 'Sales Items',
+      addProduct: 'Add Item',
+      editProduct: 'Edit Item',
+      category: 'Category',
+      categories: 'Categories',
+      barcode: 'Barcode',
+      maintenance: 'Maintenance',
+      productSearch: 'Search item or barcode...',
+      productCount: 'Total Items',
+      lowStockAlert: 'Stock Alerts',
+      topProducts: 'Top Selling Items',
+      newProduct: 'New Item',
+      newProductDesc: 'Add item to list',
+      pageTitle: 'Bakery Management',
+      pageSubtitle: 'Track sales, purchases and expenses',
+    },
+  },
   repair: {
     ar: {
       product: 'قطعة غيار',
@@ -356,6 +394,8 @@ export const getVisibleSections = (storeType: string): VisibleSections => {
       return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: true };
     case 'restaurant':
       return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
+    case 'bakery':
+      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
     case 'bookstore':
       return { maintenance: false, warranty: false, expiry: false, serialNumber: true, sizeColor: false };
     default:
@@ -376,6 +416,8 @@ export const getDefaultCategories = (storeType: string): string[] => {
       return ['قمصان', 'بنطلونات', 'فساتين', 'أحذية', 'حقائب', 'إكسسوارات', 'ملابس أطفال', 'ملابس رياضية'];
     case 'restaurant':
       return ['مقبلات', 'أطباق رئيسية', 'مشروبات', 'حلويات', 'سلطات', 'وجبات سريعة'];
+    case 'bakery':
+      return ['خبز وصمون', 'معجنات', 'حلويات', 'كعك وتورت', 'فطائر', 'مواد خام'];
     case 'repair':
       return ['شاشات', 'بطاريات', 'لوحات إلكترونية', 'كوابل داخلية', 'أزرار ومفاتيح', 'كاميرات', 'سماعات'];
     case 'bookstore':

@@ -13,7 +13,7 @@ export interface ProductFieldsConfig {
   minStockLevel: boolean;
 }
 
-export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restaurant' | 'repair' | 'bookstore' | 'general' | 'custom';
+export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restaurant' | 'repair' | 'bookstore' | 'bakery' | 'general' | 'custom';
 
 // Default fields based on store type
 export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFieldsConfig => {
@@ -69,6 +69,15 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
         serialNumber: false,
         warranty: false,
         wholesalePrice: false,
+        sizeColor: false,
+        minStockLevel: true,
+      };
+    case 'bakery':
+      return {
+        expiryDate: true,
+        serialNumber: false,
+        warranty: false,
+        wholesalePrice: true,
         sizeColor: false,
         minStockLevel: true,
       };
