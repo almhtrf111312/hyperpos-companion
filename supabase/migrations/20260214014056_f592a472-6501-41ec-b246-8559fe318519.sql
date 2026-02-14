@@ -1,0 +1,1 @@
+ALTER TABLE products ADD COLUMN variant_label text DEFAULT NULL;

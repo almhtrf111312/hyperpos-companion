@@ -18,6 +18,7 @@ export interface CloudProduct {
   barcode: string | null;
   barcode2: string | null;  // باركود ثاني
   barcode3: string | null;  // باركود ثالث
+  variant_label: string | null;  // وصف المتغير
   category: string | null;
   description: string | null;
   image_url: string | null;
@@ -43,6 +44,7 @@ export interface Product {
   barcode: string;
   barcode2?: string;  // باركود ثاني
   barcode3?: string;  // باركود ثالث
+  variantLabel?: string;  // وصف المتغير
   category: string;
   costPrice: number;
   salePrice: number;
@@ -76,6 +78,7 @@ function toProduct(cloud: CloudProduct): Product {
     barcode: cloud.barcode || '',
     barcode2: cloud.barcode2 || undefined,
     barcode3: cloud.barcode3 || undefined,
+    variantLabel: cloud.variant_label || undefined,
     category: cloud.category || '',
     costPrice: Number(cloud.cost_price) || 0,
     salePrice: Number(cloud.sale_price) || 0,
@@ -123,6 +126,7 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
     barcode: product.barcode || null,
     barcode2: product.barcode2 || null,
     barcode3: product.barcode3 || null,
+    variant_label: product.variantLabel || null,
     category: product.category || null,
     cost_price: product.costPrice || 0,
     sale_price: product.salePrice || 0,
@@ -313,6 +317,7 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.barcode !== undefined) updates.barcode = data.barcode || null;
   if (data.barcode2 !== undefined) updates.barcode2 = data.barcode2 || null;
   if (data.barcode3 !== undefined) updates.barcode3 = data.barcode3 || null;
+  if (data.variantLabel !== undefined) updates.variant_label = data.variantLabel || null;
   if (data.category !== undefined) updates.category = data.category || null;
   if (data.costPrice !== undefined) updates.cost_price = data.costPrice;
   if (data.salePrice !== undefined) updates.sale_price = data.salePrice;

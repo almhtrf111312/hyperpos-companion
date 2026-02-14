@@ -621,6 +621,7 @@ export type Database = {
           unit: string | null
           updated_at: string | null
           user_id: string
+          variant_label: string | null
         }
         Insert: {
           archived?: boolean | null
@@ -652,6 +653,7 @@ export type Database = {
           unit?: string | null
           updated_at?: string | null
           user_id: string
+          variant_label?: string | null
         }
         Update: {
           archived?: boolean | null
@@ -683,6 +685,7 @@ export type Database = {
           unit?: string | null
           updated_at?: string | null
           user_id?: string
+          variant_label?: string | null
         }
         Relationships: []
       }

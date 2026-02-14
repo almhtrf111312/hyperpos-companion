@@ -5,6 +5,7 @@ import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { MaintenancePanel } from '@/components/pos/MaintenancePanel';
 import { ScannedProductDialog } from '@/components/pos/ScannedProductDialog';
+import { VariantPickerDialog } from '@/components/pos/VariantPickerDialog';
 import { Sidebar, MobileMenuTrigger } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,6 +31,9 @@ interface POSProduct {
   quantity: number;
   image?: string;
   barcode?: string;
+  barcode2?: string;
+  barcode3?: string;
+  variantLabel?: string;
   // Multi-unit support
   bulkUnit?: string;
   smallUnit?: string;
@@ -189,6 +193,9 @@ export default function POS() {
   // Scanned product dialog
   const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
   const [showScannedDialog, setShowScannedDialog] = useState(false);
+  // Variant picker dialog (multiple products with same barcode)
+  const [variantMatches, setVariantMatches] = useState<POSProduct[]>([]);
+  const [showVariantPicker, setShowVariantPicker] = useState(false);
 
   // Load products and categories from cloud with retry logic
   // ✅ تحميل فوري من IndexedDB ثم تحديث من السحابة في الخلفية
@@ -229,6 +236,9 @@ export default function POS() {
         quantity: p.quantity, // Default quantity from products table
         image: p.image,
         barcode: p.barcode,
+        barcode2: p.barcode2,
+        barcode3: p.barcode3,
+        variantLabel: p.variantLabel,
         bulkUnit: p.bulkUnit || t('products.unitCarton'),
         smallUnit: p.smallUnit || t('products.unitPiece'),
         conversionFactor: p.conversionFactor || 1,
@@ -385,12 +395,22 @@ export default function POS() {
   const handleBarcodeScan = async (barcode: string) => {
     console.log('[POS] Scanned:', barcode);
 
-    // 1. Try local products first (FAST)
-    const localProduct = products.find(p => p.barcode === barcode);
-    if (localProduct) {
-      // ✅ Show product in grid instead of auto-adding
+    // 1. Try local products first (FAST) - search all 3 barcodes
+    const matches = products.filter(p =>
+      p.barcode === barcode || p.barcode2 === barcode || p.barcode3 === barcode
+    );
+
+    if (matches.length > 1) {
+      // Multiple products with same barcode - show variant picker
+      setVariantMatches(matches);
+      setShowVariantPicker(true);
+      return;
+    }
+
+    if (matches.length === 1) {
+      // Single match - show in grid
       setSearchQuery(barcode);
-      showToast.success(t('pos.productFound').replace('{name}', localProduct.name) || `Found: ${localProduct.name}`);
+      showToast.success(t('pos.productFound').replace('{name}', matches[0].name) || `Found: ${matches[0].name}`);
       return;
     }
 
@@ -624,6 +644,21 @@ export default function POS() {
           setScannedProduct(null);
         }}
         onAddToCart={handleAddScannedProduct}
+      />
+
+      {/* Variant Picker Dialog */}
+      <VariantPickerDialog
+        isOpen={showVariantPicker}
+        onClose={() => {
+          setShowVariantPicker(false);
+          setVariantMatches([]);
+        }}
+        products={variantMatches}
+        onSelect={(product) => {
+          addToCart(product, 'piece');
+          setShowVariantPicker(false);
+          setVariantMatches([]);
+        }}
       />
 
       {/* Floating Cart Button - Mobile & Tablet */}

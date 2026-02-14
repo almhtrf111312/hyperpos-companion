@@ -291,6 +291,9 @@ export const exportProductsToExcel = async (
   products: Array<{
     name: string;
     barcode: string;
+    barcode2?: string;
+    barcode3?: string;
+    variantLabel?: string;
     category: string;
     costPrice: number;
     salePrice: number;
@@ -300,7 +303,10 @@ export const exportProductsToExcel = async (
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'المنتج', key: 'name', width: 25 },
-    { header: 'الباركود', key: 'barcode', width: 15 },
+    { header: 'المتغير', key: 'variantLabel', width: 15 },
+    { header: 'باركود 1', key: 'barcode', width: 15 },
+    { header: 'باركود 2', key: 'barcode2', width: 15 },
+    { header: 'باركود 3', key: 'barcode3', width: 15 },
     { header: 'سعر التكلفة', key: 'costPrice', width: 12 },
     { header: 'سعر البيع', key: 'salePrice', width: 12 },
     { header: 'الربح', key: 'profit', width: 10 },
@@ -313,6 +319,9 @@ export const exportProductsToExcel = async (
   const data = products.map(p => ({
     ...p,
     barcode: p.barcode || '-',
+    barcode2: p.barcode2 || '-',
+    barcode3: p.barcode3 || '-',
+    variantLabel: p.variantLabel || '-',
     profit: p.salePrice - p.costPrice,
     minStockLevel: p.minStockLevel || 0,
     category: p.category || 'بدون تصنيف',
