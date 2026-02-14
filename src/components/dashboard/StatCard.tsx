@@ -80,11 +80,11 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
     >
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1.5 min-w-0 flex-1">
-          <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{title}</p>
+          <p className="text-[10px] md:text-sm font-medium text-muted-foreground line-clamp-2 leading-tight">{title}</p>
           <div className="space-y-0.5 min-w-0">
-            <p className="text-base md:text-xl font-bold text-foreground count-up truncate">{value}</p>
+            <p className="text-sm md:text-xl font-bold text-foreground count-up truncate">{value}</p>
             {subtitle && (
-              <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+              <p className="text-[10px] md:text-xs text-muted-foreground truncate">{subtitle}</p>
             )}
           </div>
           {trend && (
@@ -96,7 +96,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
           )}
         </div>
         <div className={cn(
-          "p-2 rounded-lg shrink-0 transition-transform duration-300 group-hover:scale-110",
+          "p-2 rounded-lg shrink-0 transition-transform duration-300 group-hover:scale-110 hidden md:flex",
           iconBgStyles[variant]
         )}>
           <div className={cn(iconColorStyles[variant], "[&>svg]:w-4 [&>svg]:h-4 md:[&>svg]:w-5 md:[&>svg]:h-5")}>
