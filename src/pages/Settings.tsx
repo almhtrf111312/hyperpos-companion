@@ -180,11 +180,11 @@ export default function Settings() {
     { id: 'activity', label: t('settings.activityLog'), icon: Activity, bossOnly: true },
     
     { id: 'license', label: t('settings.license'), icon: Key },
-    { id: 'contact', label: t('license.contactDeveloper'), icon: Phone },
-    { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
+    { id: 'contact', label: t('license.contactDeveloper'), icon: Phone, danger: true },
+    { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true, danger: true },
     { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
     { id: 'archive', label: t('archive.title'), icon: Archive },
-    { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
+    { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true, danger: true },
     
   ];
 
@@ -1538,22 +1538,32 @@ export default function Settings() {
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200",
-                activeTab === tab.id
-                  ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
-                  : "border-border bg-card hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
+                (tab as any).danger
+                  ? activeTab === tab.id
+                    ? "border-destructive bg-destructive/10 shadow-lg scale-[1.02]"
+                    : "border-destructive/20 bg-destructive/5 hover:bg-destructive/10 hover:border-destructive/40 hover:scale-[1.01]"
+                  : activeTab === tab.id
+                    ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
+                    : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
               )}
             >
               <div className={cn(
                 "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
+                (tab as any).danger
+                  ? activeTab === tab.id
+                    ? "bg-destructive text-destructive-foreground"
+                    : "bg-destructive/15 text-destructive"
+                  : activeTab === tab.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
               )}>
                 <tab.icon className="w-5 h-5" />
               </div>
               <span className={cn(
                 "font-medium text-xs text-center leading-tight",
-                activeTab === tab.id ? "text-primary" : "text-foreground"
+                (tab as any).danger
+                  ? activeTab === tab.id ? "text-destructive" : "text-destructive/80"
+                  : activeTab === tab.id ? "text-primary" : "text-foreground"
               )}>
                 {tab.label}
               </span>
