@@ -1032,11 +1032,20 @@ export default function BossPanel() {
   };
 
   const filteredOwners = owners
-    .filter(owner =>
-      owner.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      owner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      owner.user_id.includes(searchTerm)
-    )
+    .filter(owner => {
+      const term = searchTerm.toLowerCase();
+      if (!term) return true;
+      return (
+        owner.full_name?.toLowerCase().includes(term) ||
+        owner.email?.toLowerCase().includes(term) ||
+        owner.user_id.includes(searchTerm) ||
+        owner.activation_code?.toLowerCase().includes(term) ||
+        owner.cashiers?.some(c =>
+          c.full_name?.toLowerCase().includes(term) ||
+          c.email?.toLowerCase().includes(term)
+        )
+      );
+    })
     .sort((a, b) => {
       if (a.role === 'boss' && b.role !== 'boss') return -1;
       if (a.role !== 'boss' && b.role === 'boss') return 1;
