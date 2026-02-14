@@ -1276,7 +1276,7 @@ export default function BossPanel() {
                                 <Smartphone className="w-4 h-4 me-2" />
                                 {owner.allow_multi_device ? 'إلغاء تعدد الأجهزة ✓' : 'تفعيل تعدد الأجهزة'}
                               </DropdownMenuItem>
-                              {owner.device_id && !owner.allow_multi_device && (
+                              {!owner.allow_multi_device && (
                                 <DropdownMenuItem onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المستخدم')}>
                                   <RotateCcw className="w-4 h-4 me-2" />
                                   إعادة تعيين الجهاز

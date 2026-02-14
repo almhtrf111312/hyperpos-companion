@@ -72,6 +72,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
   const backgroundCheckRef = useRef(false);
 
+  const prevUserIdRef = useRef<string | null>(null);
+
   const checkLicense = useCallback(async () => {
     if (!user) {
       setState(prev => ({
@@ -83,6 +85,12 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       }));
       return;
     }
+
+    // Clear cache when user changes to force fresh server check
+    if (prevUserIdRef.current && prevUserIdRef.current !== user.id) {
+      localStorage.removeItem(LICENSE_CACHE_KEY);
+    }
+    prevUserIdRef.current = user.id;
 
     try {
       // Only show loading if no cache
