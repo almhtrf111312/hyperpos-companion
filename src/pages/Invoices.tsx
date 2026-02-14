@@ -468,11 +468,10 @@ export default function Invoices() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary" />
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">
             {t('invoices.title')}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             {t('invoices.subtitle')}
           </p>
         </div>
