@@ -424,6 +424,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore storage errors
     }
     
+    // Clear all user-specific localStorage data
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('hyperpos_') && 
+          key !== 'hyperpos_language' && 
+          key !== 'hyperpos_theme' &&
+          key !== 'hyperpos_last_user_id') {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
