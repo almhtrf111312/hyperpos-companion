@@ -12,6 +12,12 @@ export interface ProductFieldsConfig {
   wholesalePrice: boolean;
   sizeColor: boolean;
   minStockLevel: boolean;
+  weight: boolean;
+  fabricType: boolean;
+  tableNumber: boolean;
+  orderNotes: boolean;
+  author: boolean;
+  publisher: boolean;
 }
 
 export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restaurant' | 'repair' | 'bookstore' | 'bakery' | 'general' | 'custom';
@@ -21,95 +27,59 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
   switch (storeType) {
     case 'phones':
       return {
-        expiryDate: false,
-        batchNumber: false,
-        serialNumber: true,
-        warranty: true,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: false, batchNumber: false, serialNumber: true, warranty: true,
+        wholesalePrice: true, sizeColor: false, minStockLevel: true,
+        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'repair':
       return {
-        expiryDate: false,
-        batchNumber: false,
-        serialNumber: true,
-        warranty: true,
-        wholesalePrice: false,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: false, batchNumber: false, serialNumber: true, warranty: true,
+        wholesalePrice: false, sizeColor: false, minStockLevel: true,
+        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'grocery':
       return {
-        expiryDate: true,
-        batchNumber: false,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: true, batchNumber: false, serialNumber: false, warranty: false,
+        wholesalePrice: true, sizeColor: false, minStockLevel: true,
+        weight: true, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'pharmacy':
       return {
-        expiryDate: true,
-        batchNumber: true,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: true, batchNumber: true, serialNumber: false, warranty: false,
+        wholesalePrice: true, sizeColor: false, minStockLevel: true,
+        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'clothing':
       return {
-        expiryDate: false,
-        batchNumber: false,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: true,
-        minStockLevel: true,
+        expiryDate: false, batchNumber: false, serialNumber: false, warranty: false,
+        wholesalePrice: true, sizeColor: true, minStockLevel: true,
+        weight: false, fabricType: true, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'restaurant':
       return {
-        expiryDate: true,
-        batchNumber: false,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: false,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: true, batchNumber: false, serialNumber: false, warranty: false,
+        wholesalePrice: false, sizeColor: false, minStockLevel: true,
+        weight: false, fabricType: false, tableNumber: true, orderNotes: true, author: false, publisher: false,
       };
     case 'bakery':
       return {
-        expiryDate: true,
-        batchNumber: false,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: true, batchNumber: false, serialNumber: false, warranty: false,
+        wholesalePrice: true, sizeColor: false, minStockLevel: true,
+        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'bookstore':
       return {
-        expiryDate: false,
-        batchNumber: false,
-        serialNumber: true,
-        warranty: false,
-        wholesalePrice: true,
-        sizeColor: false,
-        minStockLevel: true,
+        expiryDate: false, batchNumber: false, serialNumber: true, warranty: false,
+        wholesalePrice: true, sizeColor: false, minStockLevel: true,
+        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: true, publisher: true,
       };
     case 'general':
     case 'custom':
     default:
       return {
-        expiryDate: false,
-        batchNumber: false,
-        serialNumber: false,
-        warranty: false,
-        wholesalePrice: false,
-        sizeColor: false,
-        minStockLevel: false,
+        expiryDate: false, batchNumber: false, serialNumber: false, warranty: false,
+        wholesalePrice: false, sizeColor: false, minStockLevel: false,
+        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
   }
 };
@@ -263,5 +233,29 @@ export const FIELD_LABELS: Record<keyof ProductFieldsConfig, { name: string; des
   minStockLevel: {
     name: 'الحد الأدنى للمخزون',
     description: 'تنبيه عند انخفاض الكمية',
+  },
+  weight: {
+    name: 'الوزن',
+    description: 'وزن المنتج بالكيلو أو الجرام',
+  },
+  fabricType: {
+    name: 'نوع القماش',
+    description: 'نوع قماش الملابس',
+  },
+  tableNumber: {
+    name: 'رقم الطاولة',
+    description: 'رقم الطاولة في المطعم',
+  },
+  orderNotes: {
+    name: 'ملاحظات الطلب',
+    description: 'ملاحظات خاصة بالطلب',
+  },
+  author: {
+    name: 'اسم المؤلف',
+    description: 'مؤلف الكتاب',
+  },
+  publisher: {
+    name: 'دار النشر',
+    description: 'دار نشر الكتاب',
   },
 };

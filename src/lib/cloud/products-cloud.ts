@@ -59,6 +59,12 @@ export interface Product {
   wholesalePrice?: number;
   size?: string;
   color?: string;
+  weight?: string;
+  fabricType?: string;
+  tableNumber?: string;
+  orderNotes?: string;
+  author?: string;
+  publisher?: string;
   customFields?: Record<string, string | number>;
   // Unit settings for multi-unit support
   bulkUnit?: string;
@@ -95,10 +101,16 @@ function toProduct(cloud: CloudProduct): Product {
     wholesalePrice: customFields?.wholesalePrice ? Number(customFields.wholesalePrice) : undefined,
     size: customFields?.size as string | undefined,
     color: customFields?.color as string | undefined,
+    weight: customFields?.weight as string | undefined,
+    fabricType: customFields?.fabricType as string | undefined,
+    tableNumber: customFields?.tableNumber as string | undefined,
+    orderNotes: customFields?.orderNotes as string | undefined,
+    author: customFields?.author as string | undefined,
+    publisher: customFields?.publisher as string | undefined,
     // Remove static fields from displayed customFields to avoid duplication/clutter
     customFields: customFields ? Object.fromEntries(
       Object.entries(customFields).filter(([key]) =>
-        !['serialNumber', 'batchNumber', 'warranty', 'wholesalePrice', 'size', 'color'].includes(key)
+        !['serialNumber', 'batchNumber', 'warranty', 'wholesalePrice', 'size', 'color', 'weight', 'fabricType', 'tableNumber', 'orderNotes', 'author', 'publisher'].includes(key)
       )
     ) : undefined,
     // Unit settings
@@ -122,6 +134,12 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
     ...(product.wholesalePrice ? { wholesalePrice: product.wholesalePrice } : {}),
     ...(product.size ? { size: product.size } : {}),
     ...(product.color ? { color: product.color } : {}),
+    ...(product.weight ? { weight: product.weight } : {}),
+    ...(product.fabricType ? { fabricType: product.fabricType } : {}),
+    ...(product.tableNumber ? { tableNumber: product.tableNumber } : {}),
+    ...(product.orderNotes ? { orderNotes: product.orderNotes } : {}),
+    ...(product.author ? { author: product.author } : {}),
+    ...(product.publisher ? { publisher: product.publisher } : {}),
   };
 
   return {
@@ -346,6 +364,12 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
     ...(data.wholesalePrice !== undefined ? { wholesalePrice: data.wholesalePrice } : {}),
     ...(data.size !== undefined ? { size: data.size } : {}),
     ...(data.color !== undefined ? { color: data.color } : {}),
+    ...(data.weight !== undefined ? { weight: data.weight } : {}),
+    ...(data.fabricType !== undefined ? { fabricType: data.fabricType } : {}),
+    ...(data.tableNumber !== undefined ? { tableNumber: data.tableNumber } : {}),
+    ...(data.orderNotes !== undefined ? { orderNotes: data.orderNotes } : {}),
+    ...(data.author !== undefined ? { author: data.author } : {}),
+    ...(data.publisher !== undefined ? { publisher: data.publisher } : {}),
   };
 
   // Only update custom_fields if there's something to merge
