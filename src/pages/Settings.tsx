@@ -325,6 +325,7 @@ export default function Settings() {
     phone: '',
     role: 'cashier' as 'admin' | 'cashier',
     userType: 'cashier' as 'cashier' | 'distributor' | 'pos',
+    allowedPages: [] as string[],
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -574,7 +575,7 @@ export default function Settings() {
 
   const handleAddUser = () => {
     setSelectedUser(null);
-    setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier' });
+    setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier', allowedPages: [] });
     setUserDialogOpen(true);
   };
 
@@ -589,7 +590,8 @@ export default function Settings() {
       password: '',
       phone: user.phone || '',
       role: formRole as 'admin' | 'cashier',
-      userType: user.userType || 'cashier'
+      userType: user.userType || 'cashier',
+      allowedPages: user.allowedPages || [],
     });
     setUserDialogOpen(true);
   };
@@ -624,27 +626,29 @@ export default function Settings() {
     setIsSavingUser(true);
 
     if (selectedUser) {
-      // Update existing user - update profile with name, userType, and phone
+      // Update existing user - update profile with name, userType, phone, and allowedPages
       const nameChanged = userForm.name !== selectedUser.name;
       const userTypeChanged = userForm.userType !== selectedUser.userType;
       const phoneChanged = userForm.phone !== (selectedUser.phone || '');
+      const pagesChanged = JSON.stringify(userForm.allowedPages) !== JSON.stringify(selectedUser.allowedPages || []);
 
       let success = true;
 
       // Update profile if anything changed
-      if (nameChanged || userTypeChanged || phoneChanged) {
+      if (nameChanged || userTypeChanged || phoneChanged || pagesChanged) {
         success = await updateUserProfile(
           selectedUser.user_id,
           userForm.name,
           userForm.userType,
-          userForm.phone
+          userForm.phone,
+          userForm.allowedPages.length > 0 ? userForm.allowedPages : null
         );
       }
 
       if (success) {
         setUserDialogOpen(false);
         setSelectedUser(null);
-        setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier' });
+        setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier', allowedPages: [] });
       }
     } else {
       // Add new user
@@ -668,7 +672,7 @@ export default function Settings() {
         return;
       }
 
-      const success = await addUser(userForm.email, userForm.password, userForm.name, userForm.role, userForm.userType, userForm.phone);
+      const success = await addUser(userForm.email, userForm.password, userForm.name, userForm.role, userForm.userType, userForm.phone, userForm.allowedPages.length > 0 ? userForm.allowedPages : undefined);
       if (success) {
         setUserDialogOpen(false);
       }
@@ -1652,6 +1656,40 @@ export default function Settings() {
                     ? t('settings.userTypePOSDesc')
                     : t('settings.userTypeDistributorDesc')}
               </p>
+            </div>
+            {/* Allowed Pages - checkboxes for page permissions */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{isRTL ? 'القوائم المسموح بها' : 'Allowed Pages'}</label>
+              <p className="text-xs text-muted-foreground">
+                {isRTL ? 'حدد القوائم الإضافية التي يستطيع هذا المستخدم الوصول إليها' : 'Select additional pages this user can access'}
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {[
+                  { key: 'dashboard', label: t('nav.dashboard') },
+                  { key: 'products', label: isRTL ? 'المنتجات' : 'Products' },
+                  { key: 'partners', label: t('nav.partners') },
+                  { key: 'reports', label: t('nav.reports') },
+                  { key: 'warehouses', label: t('nav.warehouses') },
+                  { key: 'stock-transfer', label: t('nav.stockTransfer') },
+                  { key: 'settings', label: t('nav.settings') },
+                ].map(page => (
+                  <label key={page.key} className="flex items-center gap-2 text-sm cursor-pointer p-1.5 rounded-lg hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={userForm.allowedPages.includes(page.key)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setUserForm(prev => ({ ...prev, allowedPages: [...prev.allowedPages, page.key] }));
+                        } else {
+                          setUserForm(prev => ({ ...prev, allowedPages: prev.allowedPages.filter(p => p !== page.key) }));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-primary text-primary accent-primary"
+                    />
+                    {page.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -691,6 +691,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allowed_pages: Json | null
           avatar_url: string | null
           created_at: string
           full_name: string | null
@@ -702,6 +703,7 @@ export type Database = {
           user_type: string | null
         }
         Insert: {
+          allowed_pages?: Json | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
@@ -713,6 +715,7 @@ export type Database = {
           user_type?: string | null
         }
         Update: {
+          allowed_pages?: Json | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
