@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, Store, Eye, EyeOff } from 'lucide-react';
+import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -49,7 +50,8 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4" dir={direction}>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4 relative" dir={direction}>
+      <LanguageQuickSelector />
       <Card className="w-full max-w-md shadow-2xl border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
