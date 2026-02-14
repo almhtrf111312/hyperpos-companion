@@ -17,7 +17,8 @@ export function MainLayout({ children }: MainLayoutProps) {
   // Sidebar is collapsed by default on tablet
   const sidebarCollapsed = isTablet;
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleSidebar = useCallback(() => setSidebarOpen(false), []);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
 
   // Close sidebar on orientation change to prevent stuck overlay
   useOrientationChange(useCallback(() => {
@@ -32,7 +33,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       
       {/* Mobile menu trigger - positioned to not overlap with notification bar */}
       {isMobile && !sidebarOpen && (
-        <MobileMenuTrigger onClick={toggleSidebar} />
+        <MobileMenuTrigger onClick={openSidebar} />
       )}
 
       {/* Main content - margin based on RTL/LTR */}
