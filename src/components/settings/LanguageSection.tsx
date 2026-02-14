@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Globe, Check, Save } from 'lucide-react';
@@ -10,7 +9,6 @@ import { Language } from '@/lib/i18n';
 export function LanguageSection() {
   const { language, setLanguage, t, languages } = useLanguage();
   
-  // الحالة المؤقتة للغة (لا تُحفظ حتى الضغط على زر الحفظ)
   const [pendingLanguage, setPendingLanguage] = useState<Language>(language);
   const hasChanges = pendingLanguage !== language;
 
@@ -30,26 +28,16 @@ export function LanguageSection() {
   const selectedLanguage = languages.find(l => l.code === pendingLanguage);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Globe className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <CardTitle className="text-lg">{t('settings.language')}</CardTitle>
-            <CardDescription>{t('settings.selectLanguage')}</CardDescription>
-          </div>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{t('settings.language')}</span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
         <Select value={pendingLanguage} onValueChange={handleLanguageSelect}>
-          <SelectTrigger className="w-full h-12">
+          <SelectTrigger className="w-40 h-9">
             <SelectValue>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{selectedLanguage?.nativeName}</span>
-                <span className="text-muted-foreground">({selectedLanguage?.name})</span>
-              </div>
+              <span className="text-sm">{selectedLanguage?.nativeName}</span>
             </SelectValue>
           </SelectTrigger>
           <SelectContent 
@@ -60,34 +48,28 @@ export function LanguageSection() {
             sideOffset={4}
           >
             {languages.map((lang) => (
-              <SelectItem key={lang.code} value={lang.code} className="py-3">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{lang.nativeName}</span>
-                    <span className="text-muted-foreground text-sm">({lang.name})</span>
-                  </div>
-                  {pendingLanguage === lang.code && (
-                    <Check className="w-4 h-4 text-primary" />
-                  )}
+              <SelectItem key={lang.code} value={lang.code} className="py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{lang.nativeName}</span>
+                  <span className="text-muted-foreground text-xs">({lang.name})</span>
                 </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+      </div>
 
-        {/* Save/Cancel Buttons */}
-        {hasChanges && (
-          <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} className="flex-1">
-              <Save className="w-4 h-4 ml-2" />
-              {t('common.save')}
-            </Button>
-            <Button variant="outline" onClick={handleCancel} className="flex-1">
-              {t('common.cancel')}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {hasChanges && (
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleSave} className="flex-1 h-8">
+            <Save className="w-3 h-3 ml-1" />
+            {t('common.save')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCancel} className="flex-1 h-8">
+            {t('common.cancel')}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
