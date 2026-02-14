@@ -1,97 +1,50 @@
 
+# إصلاح الأرقام العربية/الهندية على الهاتف المحمول
 
-# خطة تحسين واجهة المنتجات ونقطة البيع وإعدادات الوحدات وتسجيل Google Drive
+## المشكلة
 
-## 1. تصغير بطاقات إحصائيات المنتجات (إجمالي / متوفر / منخفض / نفذ)
+خط Cairo يعرض الأرقام بالشكل الهندي (٠١٢٣٤٥٦٧٨٩) على أجهزة الهاتف المحمول عندما يكون النظام باللغة العربية. الحل الحالي (`font-variant-numeric: lining-nums`) لا يعمل لأن Cairo يختار الأرقام العربية حسب لغة النظام وليس حسب خصائص CSS.
 
-**المشكلة**: البطاقات الأربع تأخذ مساحة كبيرة على الهاتف (grid-cols-2 مع padding كبير).
+## الحل
 
-**الحل**:
-- تغيير الشبكة على الهاتف من `grid-cols-2` إلى `grid-cols-4` لعرض الأربع بطاقات في سطر واحد
-- تصغير الأيقونات والأرقام والنصوص
-- تقليل الـ padding من `p-3` إلى `p-2`
-- تصغير الأيقونات من `w-4 h-4` إلى `w-3.5 h-3.5`
-- تصغير الأرقام من `text-lg` إلى `text-base`
+تحميل خط Inter حصريا للأرقام فقط باستخدام تقنية `unicode-range` في CSS. هذا يجعل المتصفح يستخدم Inter لعرض الأرقام (0-9) والرموز الرياضية، بينما يبقى Cairo للنصوص.
 
-**الملف**: `src/pages/Products.tsx` (سطور 734-805)
-
----
-
-## 2. إزاحة عنوان "نقطة البيع" لتجنب تغطية زر القائمة
-
-**المشكلة**: زر القائمة العائم يغطي جزءا من كلمة "نقطة" في عنوان POS.
-
-**الحل**: زيادة الـ padding في الـ header من `rtl:pr-14` إلى `rtl:pr-16` لإعطاء مساحة أكبر.
-
-**الملف**: `src/components/pos/POSHeader.tsx` (سطر 39)
-
----
-
-## 3. إزالة الأمثلة الوصفية من حقول إدخال المنتجات
-
-**المشكلة**: الحقول تحتوي على أمثلة مثل "مثال: iPhone 15 Pro" وهذا غير احترافي.
-
-**الحل**: تغيير الـ placeholders في `i18n.ts` لتكون وصفية بدون أمثلة:
-- `products.exampleName`: "اسم المنتج" بدلا من "مثال: iPhone 15 Pro"
-- `products.exampleSerial`: "الرقم التسلسلي" بدلا من "مثال: 123456789012345"
-- `products.exampleWarranty`: "مدة الضمان" بدلا من "مثال: 12 شهر"
-- `products.exampleSize`: "المقاس" بدلا من "مثال: XL"
-- `products.exampleColor`: "اللون" بدلا من "مثال: أسود"
-- نفس التغييرات للترجمة الإنجليزية
-
-**الملف**: `src/lib/i18n.ts`
-
----
-
-## 4. تحسين واجهة إعدادات الوحدات (UnitSettingsTab)
-
-**المشكلة**: واجهة اختيار وحدة الإدخال تستخدم Switch (تبديل) وهو غير واضح. المطلوب نقطتين (Radio buttons) بدلا منه.
-
-**الحل**:
-- استبدال الـ Switch بزرين (Radio-style buttons) واضحين
-- كل زر يحتوي على اسم الوحدة (قطعة / كرتونة)
-- الزر المحدد يظهر بلون أساسي (primary) والآخر بلون محايد
-- تبسيط الشرح وإزالة التعقيد
-
-**التصميم الجديد**:
 ```text
-وحدة إدخال الكمية:
-[ قطعة ]  [ كرتونة ]
-   ^           
- (محدد بلون أزرق)
+ترتيب الخطوط:
+  Inter Digits (أرقام 0-9 ورموز فقط)
+        |
+      Cairo (النصوص العربية والإنجليزية)
+        |
+     sans-serif (احتياطي)
 ```
 
-**الملف**: `src/components/products/UnitSettingsTab.tsx` (سطور 145-162)
+## التغييرات
 
----
+### 1. ملف `src/index.css`
 
-## 5. تسجيل دخول Google Drive بدون تعقيد (بدون Google Console)
+- إضافة `@font-face` لخط Inter مع `unicode-range` محدد للأرقام والرموز فقط
+- تحديث `font-family` في body ليضع Inter Digits قبل Cairo
+- إضافة `font-variant-numeric: tabular-nums` على حقول الإدخال والجداول
 
-**المشكلة**: حاليا يتطلب النظام إدخال Google Client ID يدويا من Google Console، وهو معقد للمستخدم العادي.
+### 2. ملف `tailwind.config.ts`
 
-**الحل**: استخدام Lovable Cloud المدمج لتسجيل الدخول بحساب Google تلقائيا بدون أي إعداد:
-1. استخدام `lovable.auth.signInWithOAuth("google")` للحصول على توثيق Google
-2. بعد التوثيق، استخدام الـ access token للوصول إلى Google Drive API
-3. طلب صلاحية `drive.file` لإنشاء وقراءة ملفات النسخ الاحتياطي فقط
-4. تبسيط واجهة Google Drive Section بحيث يكون هناك فقط زر "تسجيل الدخول بحساب Google" بدون حاجة لإدخال Client ID
+- تحديث `fontFamily.cairo` ليشمل `'Inter Digits'` قبل `'Cairo'`
 
-**التنفيذ**:
-- تعديل `GoogleDriveSection.tsx`: إزالة حقل إدخال Client ID، إضافة زر تسجيل دخول مباشر عبر Lovable Cloud
-- تعديل `google-drive.ts`: إضافة دعم للحصول على token من Lovable Cloud auth بدلا من OAuth popup اليدوي
-- استخدام الـ Google token من جلسة Supabase Auth للوصول إلى Google Drive
+### 3. ملف `index.html`
 
-**الملف**: `src/components/settings/GoogleDriveSection.tsx`, `src/lib/google-drive.ts`
+- إضافة preconnect لـ Google Fonts لتسريع تحميل الخط
 
----
+## التفاصيل التقنية
 
-## الملفات المتأثرة
+سيتم تعريف `@font-face` بالشكل التالي:
+- اسم الخط: `Inter Digits`
+- المصدر: Google Fonts CDN (woff2 - حجم صغير جدا)
+- `unicode-range`: أرقام 0-9، نقطة، فاصلة، نسبة مئوية، علامة الدولار، زائد، ناقص
+- `font-weight: 100 900` لدعم جميع الأوزان
+- `font-display: swap` لعدم تأخير عرض الصفحة
 
-| الملف | التغيير |
-|:---|:---|
-| `src/pages/Products.tsx` | تصغير بطاقات الإحصائيات (4 في سطر واحد) |
-| `src/components/pos/POSHeader.tsx` | زيادة padding لإزاحة العنوان عن زر القائمة |
-| `src/lib/i18n.ts` | إزالة الأمثلة من placeholders المنتجات |
-| `src/components/products/UnitSettingsTab.tsx` | استبدال Switch بأزرار Radio-style لاختيار الوحدة |
-| `src/components/settings/GoogleDriveSection.tsx` | تبسيط تسجيل الدخول بحساب Google |
-| `src/lib/google-drive.ts` | إضافة دعم Lovable Cloud auth للوصول لـ Google Drive |
+## النتيجة المتوقعة
 
+- جميع الأرقام تظهر بالشكل الإنجليزي (0123456789) على جميع الأجهزة
+- النصوص العربية تبقى بخط Cairo بدون تغيير
+- لا حاجة لتعديل أي مكون React - التغيير على مستوى CSS فقط
