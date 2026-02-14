@@ -80,11 +80,12 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const { isBoss, isAdmin } = useUserRole();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isTablet && !collapsed) setCollapsed(true);
-      if (isMobile && isOpen) onToggle();
-    }, 250);
-    return () => clearTimeout(timer);
+    if (isMobile && isOpen) {
+      requestAnimationFrame(() => {
+        onToggle();
+      });
+    }
+    if (isTablet && !collapsed) setCollapsed(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
@@ -137,10 +138,12 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
   return (
     <>
-      {/* Mobile overlay */}
-      {isMobile && isOpen && (
+      {isMobile && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+          className={cn(
+            "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300",
+            isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
           onClick={onToggle}
         />
       )}
@@ -243,7 +246,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="text-[13px] truncate">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
+                        <span className="text-sm truncate">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
                         {item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                             {item.badge}
