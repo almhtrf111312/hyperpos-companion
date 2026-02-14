@@ -302,6 +302,10 @@ export default function Settings() {
   const [productFieldsConfig, setProductFieldsConfig] = useState<ProductFieldsConfig | null>(null);
   const [productFieldsChanged, setProductFieldsChanged] = useState(false);
 
+  // Store type change confirmation
+  const [storeTypeConfirmOpen, setStoreTypeConfirmOpen] = useState(false);
+  const [pendingStoreType, setPendingStoreType] = useState<string | null>(null);
+
   // Dialogs
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
@@ -891,20 +895,9 @@ export default function Settings() {
                       const defaultFields = getDefaultFieldsByStoreType(newType as StoreType);
                       setProductFieldsConfig(defaultFields);
                       setProductFieldsChanged(true);
-                      // تحديث التصنيفات الافتراضية حسب نوع النشاط
-                      const defaultCats = getDefaultCategories(newType);
-                      const newCategories: Category[] = defaultCats.map((name, i) => ({
-                        id: `auto_${Date.now()}_${i}`,
-                        name,
-                        createdAt: new Date().toISOString(),
-                      }));
-                      saveCategories(newCategories);
-                      toast({
-                        title: isRTL ? 'تم التحديث' : 'Updated',
-                        description: isRTL
-                          ? 'تم تحديث الحقول والتصنيفات تلقائياً حسب نوع النشاط الجديد'
-                          : 'Fields and categories updated automatically for the new business type',
-                      });
+                      // طلب تأكيد قبل تغيير التصنيفات
+                      setPendingStoreType(newType);
+                      setStoreTypeConfirmOpen(true);
                     }}
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   >
@@ -1612,6 +1605,57 @@ export default function Settings() {
           <Undo2 className="w-6 h-6" />
         </Button>
       </div>
+
+      {/* تأكيد تغيير التصنيفات عند تغيير نوع المحل */}
+      <Dialog open={storeTypeConfirmOpen} onOpenChange={setStoreTypeConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isRTL ? 'تغيير التصنيفات' : 'Update Categories'}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {isRTL
+              ? 'هل تريد استبدال التصنيفات الحالية بتصنيفات افتراضية تناسب نوع النشاط الجديد؟ سيتم حذف التصنيفات الحالية.'
+              : 'Do you want to replace your current categories with default ones for the new business type? Your existing categories will be removed.'}
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStoreTypeConfirmOpen(false);
+                setPendingStoreType(null);
+                toast({
+                  title: isRTL ? 'تم التحديث' : 'Updated',
+                  description: isRTL ? 'تم تحديث الحقول فقط، التصنيفات لم تتغير' : 'Fields updated, categories unchanged',
+                });
+              }}
+            >
+              {isRTL ? 'الاحتفاظ بالتصنيفات الحالية' : 'Keep Current'}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (pendingStoreType) {
+                  const defaultCats = getDefaultCategories(pendingStoreType);
+                  const newCategories: Category[] = defaultCats.map((name, i) => ({
+                    id: `auto_${Date.now()}_${i}`,
+                    name,
+                    createdAt: new Date().toISOString(),
+                  }));
+                  saveCategories(newCategories);
+                }
+                setStoreTypeConfirmOpen(false);
+                setPendingStoreType(null);
+                toast({
+                  title: isRTL ? 'تم التحديث' : 'Updated',
+                  description: isRTL ? 'تم تحديث الحقول والتصنيفات حسب نوع النشاط الجديد' : 'Fields and categories updated for the new business type',
+                });
+              }}
+            >
+              {isRTL ? 'استبدال التصنيفات' : 'Replace Categories'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
