@@ -1,50 +1,47 @@
 
-# إصلاح الأرقام العربية/الهندية على الهاتف المحمول
+# إصلاح خطأ redirect_uri_mismatch عند تسجيل الدخول بـ Google
 
 ## المشكلة
-
-خط Cairo يعرض الأرقام بالشكل الهندي (٠١٢٣٤٥٦٧٨٩) على أجهزة الهاتف المحمول عندما يكون النظام باللغة العربية. الحل الحالي (`font-variant-numeric: lining-nums`) لا يعمل لأن Cairo يختار الأرقام العربية حسب لغة النظام وليس حسب خصائص CSS.
+عند محاولة تسجيل الدخول بحساب Google من تطبيق الهاتف، يظهر خطأ 400: `redirect_uri_mismatch`. السبب:
+- الكود الحالي يستخدم `supabase.auth.signInWithOAuth` مباشرة
+- على الهاتف (Capacitor)، `window.location.origin` يكون `https://localhost` وهو غير مسجّل في إعدادات Google OAuth
+- يجب استخدام `lovable.auth.signInWithOAuth` الذي يُدير العملية تلقائياً عبر Lovable Cloud
 
 ## الحل
 
-تحميل خط Inter حصريا للأرقام فقط باستخدام تقنية `unicode-range` في CSS. هذا يجعل المتصفح يستخدم Inter لعرض الأرقام (0-9) والرموز الرياضية، بينما يبقى Cairo للنصوص.
+### 1. تعديل `src/hooks/use-auth.tsx`
+- تغيير دالة `signInWithGoogle` لاستخدام `lovable.auth.signInWithOAuth("google")` بدلاً من `supabase.auth.signInWithOAuth`
+- استخدام عنوان التطبيق المنشور (`https://flowpospro.lovable.app`) كـ `redirect_uri` لضمان التوافق مع الهاتف والويب
+- إزالة scope الخاص بـ Google Drive من هذه الدالة (يمكن طلبه لاحقاً عند الحاجة لـ Google Drive فقط)
 
-```text
-ترتيب الخطوط:
-  Inter Digits (أرقام 0-9 ورموز فقط)
-        |
-      Cairo (النصوص العربية والإنجليزية)
-        |
-     sans-serif (احتياطي)
-```
-
-## التغييرات
-
-### 1. ملف `src/index.css`
-
-- إضافة `@font-face` لخط Inter مع `unicode-range` محدد للأرقام والرموز فقط
-- تحديث `font-family` في body ليضع Inter Digits قبل Cairo
-- إضافة `font-variant-numeric: tabular-nums` على حقول الإدخال والجداول
-
-### 2. ملف `tailwind.config.ts`
-
-- تحديث `fontFamily.cairo` ليشمل `'Inter Digits'` قبل `'Cairo'`
-
-### 3. ملف `index.html`
-
-- إضافة preconnect لـ Google Fonts لتسريع تحميل الخط
+### 2. تعديل `src/pages/Login.tsx`
+- تحديث دالة `handleGoogleSignIn` للتعامل مع النتيجة الجديدة من Lovable Cloud (التي قد تُرجع `redirected: true`)
 
 ## التفاصيل التقنية
 
-سيتم تعريف `@font-face` بالشكل التالي:
-- اسم الخط: `Inter Digits`
-- المصدر: Google Fonts CDN (woff2 - حجم صغير جدا)
-- `unicode-range`: أرقام 0-9، نقطة، فاصلة، نسبة مئوية، علامة الدولار، زائد، ناقص
-- `font-weight: 100 900` لدعم جميع الأوزان
-- `font-display: swap` لعدم تأخير عرض الصفحة
+الكود الحالي:
+```typescript
+const { error } = await supabase.auth.signInWithOAuth({
+  provider: 'google',
+  options: {
+    redirectTo: window.location.origin,
+    queryParams: { ... }
+  }
+});
+```
 
-## النتيجة المتوقعة
+الكود الجديد:
+```typescript
+import { lovable } from "@/integrations/lovable/index";
 
-- جميع الأرقام تظهر بالشكل الإنجليزي (0123456789) على جميع الأجهزة
-- النصوص العربية تبقى بخط Cairo بدون تغيير
-- لا حاجة لتعديل أي مكون React - التغيير على مستوى CSS فقط
+const { error } = await lovable.auth.signInWithOAuth("google", {
+  redirect_uri: window.location.origin,
+});
+```
+
+## الملفات المتأثرة
+
+| الملف | التغيير |
+|:---|:---|
+| `src/hooks/use-auth.tsx` | تغيير signInWithGoogle لاستخدام lovable.auth |
+| `src/pages/Login.tsx` | تحديث handleGoogleSignIn للتعامل مع الاستجابة الجديدة |
