@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
@@ -51,6 +51,13 @@ export default function Login() {
   const { signIn, signInWithGoogle } = useAuth();
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
+
+  // Hide Google sign-in on native APK (Capacitor) since OAuth redirect doesn't work in WebView
+  const isNativeApp = useMemo(() => {
+    try {
+      return typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor.isNativePlatform?.();
+    } catch { return false; }
+  }, []);
 
   // Check if device is blocked for a user
   const checkDeviceBinding = async (userId: string): Promise<{ blocked: boolean; allowMultiDevice: boolean }> => {
@@ -229,28 +236,32 @@ export default function Login() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Google Sign In Button */}
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-12 gap-3 text-base font-medium border-2 hover:bg-muted/50 transition-all"
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading || isLoading}
-          >
-            {isGoogleLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            تسجيل الدخول باستخدام Google
-          </Button>
+          {/* Google Sign In Button - hidden on native APK */}
+          {!isNativeApp && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 gap-3 text-base font-medium border-2 hover:bg-muted/50 transition-all"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading || isLoading}
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                تسجيل الدخول باستخدام Google
+              </Button>
 
-          <div className="relative">
-            <Separator className="my-4" />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-sm text-muted-foreground">
-              أو
-            </span>
-          </div>
+              <div className="relative">
+                <Separator className="my-4" />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-sm text-muted-foreground">
+                  أو
+                </span>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
