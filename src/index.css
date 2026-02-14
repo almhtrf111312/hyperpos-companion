@@ -447,6 +447,14 @@
   .card-hover:hover {
     @apply -translate-y-1;
     box-shadow: var(--shadow-card);
+    border-color: hsl(var(--primary) / 0.2);
+  }
+
+  /* Interactive card (clickable) */
+  .card-interactive {
+    @apply rounded-2xl border border-border/50 bg-card transition-all duration-300 cursor-pointer;
+    @apply hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/20;
+    @apply active:scale-[0.98];
   }
 
   /* POS Grid Item */

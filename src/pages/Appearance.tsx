@@ -1,18 +1,12 @@
-import { ThemeSection } from '@/components/settings/ThemeSection';
-import { MainLayout } from '@/components/layout/MainLayout';
-import { useLanguage } from '@/hooks/use-language';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Appearance() {
-  const { t } = useLanguage();
+  const navigate = useNavigate();
 
-  return (
-    <MainLayout>
-      <div className="p-4 md:p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-foreground mb-6 pt-12 md:pt-0">
-          {t('settings.theme')}
-        </h1>
-        <ThemeSection />
-      </div>
-    </MainLayout>
-  );
+  useEffect(() => {
+    navigate('/settings', { replace: true });
+  }, [navigate]);
+
+  return null;
 }
