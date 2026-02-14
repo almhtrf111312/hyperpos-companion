@@ -1,84 +1,75 @@
-import { useState } from 'react';
-import { Sun, Moon, Palette, Check, Save, Blend } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sun, Moon, Palette, Check, Blend } from 'lucide-react';
 import { useTheme, themeColors, ThemeColor, ThemeMode } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { toast } from 'sonner';
 
-export function ThemeSection() {
-  const { mode, color, blurEnabled, transparencyLevel, setFullTheme } = useTheme();
+export interface PendingTheme {
+  mode: ThemeMode;
+  color: ThemeColor;
+  blur: boolean;
+  transparency: number;
+}
+
+interface ThemeSectionProps {
+  onPendingChange?: (pending: PendingTheme, hasChanges: boolean) => void;
+  resetSignal?: number; // increment to trigger reset
+}
+
+export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps) {
+  const { mode, color, blurEnabled, transparencyLevel } = useTheme();
   const { t } = useLanguage();
   
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
   const [pendingBlur, setPendingBlur] = useState<boolean>(blurEnabled);
   const [pendingTransparency, setPendingTransparency] = useState<number>(transparencyLevel);
-  const [hasChanges, setHasChanges] = useState(false);
 
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
 
-  const checkChanges = (m: ThemeMode, c: ThemeColor, b: boolean, tr: number) => {
-    setHasChanges(m !== mode || c !== color || b !== blurEnabled || tr !== transparencyLevel);
+  // Reset when parent requests it
+  useEffect(() => {
+    if (resetSignal !== undefined && resetSignal > 0) {
+      setPendingMode(mode);
+      setPendingColor(color);
+      setPendingBlur(blurEnabled);
+      setPendingTransparency(transparencyLevel);
+    }
+  }, [resetSignal, mode, color, blurEnabled, transparencyLevel]);
+
+  const notifyChange = (m: ThemeMode, c: ThemeColor, b: boolean, tr: number) => {
+    const hasChanges = m !== mode || c !== color || b !== blurEnabled || tr !== transparencyLevel;
+    onPendingChange?.({ mode: m, color: c, blur: b, transparency: tr }, hasChanges);
   };
 
   const handleModeChange = (newMode: ThemeMode) => {
     setPendingMode(newMode);
-    checkChanges(newMode, pendingColor, pendingBlur, pendingTransparency);
+    notifyChange(newMode, pendingColor, pendingBlur, pendingTransparency);
   };
 
   const handleColorChange = (newColor: ThemeColor) => {
     setPendingColor(newColor);
-    checkChanges(pendingMode, newColor, pendingBlur, pendingTransparency);
+    notifyChange(pendingMode, newColor, pendingBlur, pendingTransparency);
   };
 
   const handleBlurChange = (enabled: boolean) => {
     setPendingBlur(enabled);
-    if (!enabled) {
-      setPendingTransparency(0);
-      checkChanges(pendingMode, pendingColor, false, 0);
-    } else {
-      if (pendingTransparency === 0) setPendingTransparency(30);
-      checkChanges(pendingMode, pendingColor, true, pendingTransparency || 30);
-    }
+    const newTransparency = !enabled ? 0 : (pendingTransparency === 0 ? 30 : pendingTransparency);
+    if (!enabled) setPendingTransparency(0);
+    else if (pendingTransparency === 0) setPendingTransparency(30);
+    notifyChange(pendingMode, pendingColor, enabled, newTransparency);
   };
 
   const handleTransparencyChange = (value: number[]) => {
     const val = value[0];
     setPendingTransparency(val);
-    checkChanges(pendingMode, pendingColor, pendingBlur, val);
-  };
-
-  const handleSave = () => {
-    setFullTheme(pendingMode, pendingColor, pendingBlur, pendingTransparency);
-    setHasChanges(false);
-    toast.success(t('settings.languageChanged'));
-  };
-
-  const handleCancel = () => {
-    setPendingMode(mode);
-    setPendingColor(color);
-    setPendingBlur(blurEnabled);
-    setPendingTransparency(transparencyLevel);
-    setHasChanges(false);
+    notifyChange(pendingMode, pendingColor, pendingBlur, val);
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-      {hasChanges && (
-        <div className="flex gap-3 pb-4 border-b border-border">
-          <Button onClick={handleSave} className="flex-1">
-            <Save className="w-4 h-4 ml-2" />
-            {t('common.save')}
-          </Button>
-          <Button variant="outline" onClick={handleCancel} className="flex-1">
-            {t('common.cancel')}
-          </Button>
-        </div>
-      )}
-
+    <div className="space-y-6">
       <div>
         <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">
           {t('settings.theme')}

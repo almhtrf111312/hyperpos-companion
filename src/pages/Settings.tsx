@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Undo2, Smartphone } from 'lucide-react';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
+import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
+import { useTheme } from '@/hooks/use-theme';
 import {
   Store,
   DollarSign,
@@ -41,12 +43,13 @@ import {
   AlertTriangle,
   ExternalLink,
   Wrench,
-  Archive
+  Archive,
+  Palette
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile, DownloadResult } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
-// ThemeSection تم نقله لصفحة مستقلة /appearance
+// ThemeSection integrated as a tab
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog';
@@ -168,6 +171,12 @@ export default function Settings() {
   const [isSavingUser, setIsSavingUser] = useState(false);
   const navigate = useNavigate();
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
+  const { mode: currentThemeMode, color: currentThemeColor, blurEnabled: currentBlur, transparencyLevel: currentTransparency, setFullTheme } = useTheme();
+
+  // Theme pending state
+  const [pendingTheme, setPendingTheme] = useState<PendingTheme | null>(null);
+  const [themeHasChanges, setThemeHasChanges] = useState(false);
+  const [themeResetSignal, setThemeResetSignal] = useState(0);
 
   const settingsTabs = [
     { id: 'profile', label: t('settings.profile'), icon: User },
@@ -184,6 +193,7 @@ export default function Settings() {
     { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
     { id: 'archive', label: isRTL ? 'الأرشيف' : 'Archive', icon: Archive },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
+    { id: 'appearance', label: t('settings.theme'), icon: Palette },
   ];
 
   const persisted = loadPersistedSettings();
@@ -417,7 +427,8 @@ export default function Settings() {
       JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings) ||
       JSON.stringify(backupSettings) !== JSON.stringify(snap.backupSettings) ||
       hideMaintenanceSection !== snap.hideMaintenanceSection ||
-      productFieldsChanged
+      productFieldsChanged ||
+      themeHasChanges
     );
   })();
 
@@ -434,6 +445,10 @@ export default function Settings() {
     setHideMaintenanceSection(snap.hideMaintenanceSection);
     setProductFieldsConfig(snap.productFieldsConfig);
     setProductFieldsChanged(false);
+    // Reset theme
+    setThemeHasChanges(false);
+    setPendingTheme(null);
+    setThemeResetSignal(prev => prev + 1);
     toast({
       title: t('common.success'),
       description: isRTL ? 'تم التراجع عن التغييرات' : 'Changes reverted',
@@ -505,6 +520,13 @@ export default function Settings() {
     if (productFieldsChanged && productFieldsConfig) {
       await saveProductFieldsConfig(productFieldsConfig);
       setProductFieldsChanged(false);
+    }
+
+    // Save theme if changed
+    if (themeHasChanges && pendingTheme) {
+      setFullTheme(pendingTheme.mode, pendingTheme.color, pendingTheme.blur, pendingTheme.transparency);
+      setThemeHasChanges(false);
+      setPendingTheme(null);
     }
 
     setIsSavingSettings(false);
@@ -1475,6 +1497,17 @@ export default function Settings() {
               <ContactLinksSection />
             </div>
           </div>
+        );
+
+      case 'appearance':
+        return (
+          <ThemeSection
+            onPendingChange={(pending, hasChanges) => {
+              setPendingTheme(pending);
+              setThemeHasChanges(hasChanges);
+            }}
+            resetSignal={themeResetSignal}
+          />
         );
 
       default:

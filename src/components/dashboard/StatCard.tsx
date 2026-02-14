@@ -70,7 +70,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   return (
     <div
       className={cn(
-        "rounded-xl p-3 md:p-4 card-hover transition-all duration-300",
+        "rounded-2xl p-3 md:p-4 card-hover transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
         variantStyles[variant],
         linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50 hover:bg-card/90"
       )}
