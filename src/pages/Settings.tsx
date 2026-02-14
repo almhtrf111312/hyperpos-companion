@@ -57,6 +57,7 @@ import { ProductFieldsConfig, loadProductFieldsConfig, saveProductFieldsConfig, 
 import { getDefaultCategories } from '@/lib/store-type-config';
 import { saveCategories, Category } from '@/lib/categories-store';
 import DataResetSection from '@/components/settings/DataResetSection';
+import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -1453,7 +1454,28 @@ export default function Settings() {
         return <ArchiveSection />;
 
       case 'reset':
-        return <DataResetSection />;
+        return (
+          <div className="space-y-6">
+            <DataResetSection />
+            {/* Contact Developer Section */}
+            <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <Phone className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground">
+                    {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {isRTL ? 'تواصل مع فريق الدعم الفني' : 'Contact the support team'}
+                  </p>
+                </div>
+              </div>
+              <ContactLinksSection />
+            </div>
+          </div>
+        );
 
       default:
         return null;

@@ -28,8 +28,23 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
-    const fetchDeveloperPhone = async () => {
+    const fetchContactInfo = async () => {
       try {
+        // Try new contact_links first
+        const { data: linksData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'contact_links')
+          .maybeSingle();
+
+        if (linksData?.value) {
+          const parsed = JSON.parse(linksData.value);
+          if (parsed.whatsapp) {
+            setDeveloperPhone(parsed.whatsapp);
+            return;
+          }
+        }
+        // Fallback to old developer_phone
         const { data, error } = await supabase
           .from('app_settings')
           .select('value')
@@ -37,10 +52,10 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
           .maybeSingle();
         if (!error && data?.value) setDeveloperPhone(data.value);
       } catch (err) {
-        console.error('Failed to fetch developer phone:', err);
+        console.error('Failed to fetch contact info:', err);
       }
     };
-    fetchDeveloperPhone();
+    fetchContactInfo();
   }, []);
 
   const handleContactDeveloper = () => {
