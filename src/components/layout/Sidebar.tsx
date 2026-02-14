@@ -301,11 +301,11 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`fixed top-[calc(1rem+env(safe-area-inset-top))] z-30 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg glow md:hidden ${
-        isRTL ? 'right-4' : 'left-4'
+      className={`fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-30 w-9 h-9 rounded-lg bg-primary/80 backdrop-blur-sm text-primary-foreground flex items-center justify-center shadow-md md:hidden ${
+        isRTL ? 'right-3' : 'left-3'
       }`}
     >
-      <Menu className="w-6 h-6" />
+      <Menu className="w-4.5 h-4.5" />
     </button>
   );
 }
