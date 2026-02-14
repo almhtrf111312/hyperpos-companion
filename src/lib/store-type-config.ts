@@ -24,6 +24,7 @@ export type TerminologyKey =
 interface TerminologySet {
   ar: Record<TerminologyKey, string>;
   en: Record<TerminologyKey, string>;
+  tr: Record<TerminologyKey, string>;
 }
 
 const terminologyMap: Record<string, TerminologySet> = {
@@ -64,6 +65,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Product Management',
       pageSubtitle: 'Manage product inventory and prices',
     },
+    tr: {
+      product: 'Ürün',
+      products: 'Ürünler',
+      addProduct: 'Ürün Ekle',
+      editProduct: 'Ürünü Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'Barkod / IMEI',
+      maintenance: 'Bakım',
+      productSearch: 'Ürün veya barkod ara...',
+      productCount: 'Toplam Ürün',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satanlar',
+      newProduct: 'Yeni Ürün',
+      newProductDesc: 'Stoğa ürün ekle',
+      pageTitle: 'Ürün Yönetimi',
+      pageSubtitle: 'Ürün stok ve fiyat yönetimi',
+    },
   },
   grocery: {
     ar: {
@@ -101,6 +120,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Add product to inventory',
       pageTitle: 'Product Management',
       pageSubtitle: 'Manage grocery inventory and prices',
+    },
+    tr: {
+      product: 'Ürün',
+      products: 'Ürünler',
+      addProduct: 'Ürün Ekle',
+      editProduct: 'Ürünü Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Ürün veya barkod ara...',
+      productCount: 'Toplam Ürün',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satanlar',
+      newProduct: 'Yeni Ürün',
+      newProductDesc: 'Stoğa ürün ekle',
+      pageTitle: 'Ürün Yönetimi',
+      pageSubtitle: 'Market stok ve fiyat yönetimi',
     },
   },
   pharmacy: {
@@ -140,6 +177,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Medicine Management',
       pageSubtitle: 'Manage medicine inventory and prices',
     },
+    tr: {
+      product: 'İlaç',
+      products: 'İlaçlar',
+      addProduct: 'İlaç Ekle',
+      editProduct: 'İlacı Düzenle',
+      category: 'İlaç Grubu',
+      categories: 'İlaç Grupları',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'İlaç veya barkod ara...',
+      productCount: 'Toplam İlaç',
+      lowStockAlert: 'İlaç Stok Uyarıları',
+      topProducts: 'En Çok Satan İlaçlar',
+      newProduct: 'Yeni İlaç',
+      newProductDesc: 'Stoğa ilaç ekle',
+      pageTitle: 'İlaç Yönetimi',
+      pageSubtitle: 'İlaç stok ve fiyat yönetimi',
+    },
   },
   clothing: {
     ar: {
@@ -177,6 +232,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Add item to inventory',
       pageTitle: 'Item Management',
       pageSubtitle: 'Manage clothing inventory and prices',
+    },
+    tr: {
+      product: 'Ürün',
+      products: 'Ürünler',
+      addProduct: 'Ürün Ekle',
+      editProduct: 'Ürünü Düzenle',
+      category: 'Tür',
+      categories: 'Türler',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Ürün veya barkod ara...',
+      productCount: 'Toplam Ürün',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satanlar',
+      newProduct: 'Yeni Ürün',
+      newProductDesc: 'Stoğa ürün ekle',
+      pageTitle: 'Ürün Yönetimi',
+      pageSubtitle: 'Giyim stok ve fiyat yönetimi',
     },
   },
   restaurant: {
@@ -216,6 +289,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Menu Management',
       pageSubtitle: 'Manage dishes and prices',
     },
+    tr: {
+      product: 'Yemek',
+      products: 'Menü',
+      addProduct: 'Yemek Ekle',
+      editProduct: 'Yemeği Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Yemek ara...',
+      productCount: 'Toplam Yemek',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Sipariş Edilenler',
+      newProduct: 'Yeni Yemek',
+      newProductDesc: 'Menüye yemek ekle',
+      pageTitle: 'Menü Yönetimi',
+      pageSubtitle: 'Yemek ve fiyat yönetimi',
+    },
   },
   bakery: {
     ar: {
@@ -253,6 +344,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Add item to list',
       pageTitle: 'Bakery Management',
       pageSubtitle: 'Track sales, purchases and expenses',
+    },
+    tr: {
+      product: 'Ürün',
+      products: 'Satış Ürünleri',
+      addProduct: 'Ürün Ekle',
+      editProduct: 'Ürünü Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Ürün veya barkod ara...',
+      productCount: 'Toplam Ürün',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satanlar',
+      newProduct: 'Yeni Ürün',
+      newProductDesc: 'Listeye ürün ekle',
+      pageTitle: 'Fırın Yönetimi',
+      pageSubtitle: 'Satış, alış ve gider takibi',
     },
   },
   repair: {
@@ -292,6 +401,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Spare Parts Management',
       pageSubtitle: 'Manage spare parts inventory and prices',
     },
+    tr: {
+      product: 'Yedek Parça',
+      products: 'Yedek Parçalar',
+      addProduct: 'Parça Ekle',
+      editProduct: 'Parçayı Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Parça veya barkod ara...',
+      productCount: 'Toplam Parça',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satan Parçalar',
+      newProduct: 'Yeni Parça',
+      newProductDesc: 'Stoğa parça ekle',
+      pageTitle: 'Yedek Parça Yönetimi',
+      pageSubtitle: 'Parça stok ve fiyat yönetimi',
+    },
   },
   bookstore: {
     ar: {
@@ -330,6 +457,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Book Management',
       pageSubtitle: 'Manage book inventory and prices',
     },
+    tr: {
+      product: 'Kitap',
+      products: 'Kitaplar',
+      addProduct: 'Kitap Ekle',
+      editProduct: 'Kitabı Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'ISBN / Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Kitap veya ISBN ara...',
+      productCount: 'Toplam Kitap',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satan Kitaplar',
+      newProduct: 'Yeni Kitap',
+      newProductDesc: 'Stoğa kitap ekle',
+      pageTitle: 'Kitap Yönetimi',
+      pageSubtitle: 'Kitap stok ve fiyat yönetimi',
+    },
   },
   general: {
     ar: {
@@ -367,6 +512,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Add product to inventory',
       pageTitle: 'Product Management',
       pageSubtitle: 'Manage product inventory and prices',
+    },
+    tr: {
+      product: 'Ürün',
+      products: 'Ürünler',
+      addProduct: 'Ürün Ekle',
+      editProduct: 'Ürünü Düzenle',
+      category: 'Kategori',
+      categories: 'Kategoriler',
+      barcode: 'Barkod',
+      maintenance: 'Bakım',
+      productSearch: 'Ürün veya barkod ara...',
+      productCount: 'Toplam Ürün',
+      lowStockAlert: 'Stok Uyarıları',
+      topProducts: 'En Çok Satanlar',
+      newProduct: 'Yeni Ürün',
+      newProductDesc: 'Stoğa ürün ekle',
+      pageTitle: 'Ürün Yönetimi',
+      pageSubtitle: 'Ürün stok ve fiyat yönetimi',
     },
   },
 };
@@ -430,8 +593,8 @@ export const getDefaultCategories = (storeType: string): string[] => {
 // Get terminology for a specific store type and language
 export const getTerminology = (storeType: string, key: TerminologyKey, language: string): string => {
   const config = terminologyMap[storeType] || terminologyMap.general;
-  const langTerms = language === 'ar' ? config.ar : config.en;
-  return langTerms[key] || terminologyMap.general[language === 'ar' ? 'ar' : 'en'][key];
+  const langTerms = language === 'ar' ? config.ar : (language === 'tr' ? config.tr : config.en);
+  return langTerms[key] || terminologyMap.general[language === 'ar' ? 'ar' : (language === 'tr' ? 'tr' : 'en')][key];
 };
 
 // Get current store type from localStorage
