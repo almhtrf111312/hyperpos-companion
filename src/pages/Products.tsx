@@ -733,72 +733,72 @@ export default function Products() {
 
       {/* Stats - Fixed */}
       <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+      <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
           <button
             onClick={() => setStatusFilter('all')}
             className={cn(
-              "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
               statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
             )}
           >
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
-                <Package className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+              <div className="p-1 md:p-2 rounded-lg bg-primary/10">
+                <Package className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
               </div>
               <div>
-                <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{t('products.total')}</p>
+                <p className="text-base md:text-2xl font-bold text-foreground">{stats.total}</p>
+                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.total')}</p>
               </div>
             </div>
           </button>
           <button
             onClick={() => setStatusFilter('in_stock')}
             className={cn(
-              "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
               statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
             )}
           >
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 rounded-lg bg-success/10">
-                <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-success" />
+            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+              <div className="p-1 md:p-2 rounded-lg bg-success/10">
+                <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
               </div>
               <div>
-                <p className="text-lg md:text-2xl font-bold text-foreground">{stats.inStock}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{t('products.available')}</p>
+                <p className="text-base md:text-2xl font-bold text-foreground">{stats.inStock}</p>
+                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.available')}</p>
               </div>
             </div>
           </button>
           <button
             onClick={() => setStatusFilter('low_stock')}
             className={cn(
-              "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
               statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
             )}
           >
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 rounded-lg bg-warning/10">
-                <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-warning" />
+            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+              <div className="p-1 md:p-2 rounded-lg bg-warning/10">
+                <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
               </div>
               <div>
-                <p className="text-lg md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{t('products.low')}</p>
+                <p className="text-base md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
+                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.low')}</p>
               </div>
             </div>
           </button>
           <button
             onClick={() => setStatusFilter('out_of_stock')}
             className={cn(
-              "bg-card rounded-xl border p-3 md:p-4 text-right transition-all hover:shadow-md",
+              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
               statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
             )}
           >
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 rounded-lg bg-destructive/10">
-                <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
+            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+              <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
+                <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
               </div>
               <div>
-                <p className="text-lg md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
+                <p className="text-base md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
+                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
               </div>
             </div>
           </button>

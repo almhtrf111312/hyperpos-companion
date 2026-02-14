@@ -368,13 +368,13 @@ export const translations = {
     'products.removeImage': 'حذف الصورة',
 
     // Placeholders
-    'products.exampleName': 'مثال: iPhone 15 Pro',
-    'products.exampleBarcode': '123456789012',
+    'products.exampleName': 'اسم المنتج',
+    'products.exampleBarcode': 'الباركود',
     'products.selectExpiryDate': 'اختر تاريخ الصلاحية',
-    'products.exampleSerial': 'مثال: 123456789012345',
-    'products.exampleWarranty': 'مثال: 12 شهر',
-    'products.exampleSize': 'مثال: XL',
-    'products.exampleColor': 'مثال: أسود',
+    'products.exampleSerial': 'الرقم التسلسلي',
+    'products.exampleWarranty': 'مدة الضمان',
+    'products.exampleSize': 'المقاس',
+    'products.exampleColor': 'اللون',
 
     'products.serialNumber': 'الرقم التسلسلي',
     'products.warranty': 'الضمان',

@@ -36,7 +36,7 @@ export function POSHeader({
   };
 
   return (
-    <header className="h-14 md:h-16 bg-card border-b border-border flex items-center justify-between px-3 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] rtl:pr-14 ltr:pl-14 md:rtl:pr-4 md:ltr:pl-4">
+    <header className="h-14 md:h-16 bg-card border-b border-border flex items-center justify-between px-3 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] rtl:pr-16 ltr:pl-16 md:rtl:pr-4 md:ltr:pl-4">
       {/* Right side - Title */}
       <div className="flex items-center gap-2">
         <h1 className="font-bold text-base md:text-lg">{t('pos.title')}</h1>
