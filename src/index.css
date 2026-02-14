@@ -908,3 +908,10 @@ html.barcode-scanner-active .ion-page {
   -webkit-backdrop-filter: none !important;
   z-index: 9999;
 }
+
+/* Protect toasts from transparency system */
+[data-sonner-toaster] [data-sonner-toast] {
+  opacity: 1 !important;
+  background-color: hsl(var(--card)) !important;
+  backdrop-filter: none !important;
+}

@@ -14,12 +14,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
       duration={2000}
       closeButton
       style={{
-        '--width': 'min(85vw, 420px)',
+        '--width': 'min(80vw, 340px)',
       } as React.CSSProperties}
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:!bg-card group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-xl group-[.toaster]:rounded-xl group-[.toaster]:backdrop-blur-none group-[.toaster]:border",
+            "group toast group-[.toaster]:!bg-card group-[.toaster]:!opacity-100 group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-xl group-[.toaster]:rounded-xl group-[.toaster]:!backdrop-blur-none group-[.toaster]:border",
           description: "group-[.toast]:text-muted-foreground group-[.toast]:text-sm",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
