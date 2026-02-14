@@ -13,7 +13,7 @@ interface TopProduct {
 }
 
 export function TopProducts() {
-  const { t } = useLanguage();
+  const { t, tDynamic } = useLanguage();
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,7 +63,7 @@ export function TopProducts() {
   return (
     <div className="glass rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-foreground">{t('topProducts.title')}</h3>
+        <h3 className="text-lg font-semibold text-foreground">{tDynamic('topProducts')}</h3>
         <span className="text-sm text-muted-foreground">{t('topProducts.fromInvoices')}</span>
       </div>
 

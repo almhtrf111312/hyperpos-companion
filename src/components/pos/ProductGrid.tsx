@@ -49,7 +49,7 @@ export function ProductGrid({
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const { t } = useLanguage();
+  const { t, tDynamic } = useLanguage();
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem('pos_view_mode') as ViewMode) || 'grid';
@@ -132,7 +132,7 @@ export function ProductGrid({
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder={t('pos.searchProducts')}
+              placeholder={tDynamic('productSearch')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
