@@ -31,18 +31,33 @@ const notificationConfig: Record<Notification['type'], { icon: typeof AlertTrian
   license_expiring: { icon: Shield, color: 'text-warning', bgColor: 'bg-warning/10' },
 };
 
-function formatTimeAgo(date: Date, isRTL: boolean): string {
+function formatTimeAgo(date: Date, language: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (isRTL) {
+  if (language === 'ar') {
     if (diffMins < 1) return 'الآن';
     if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
     if (diffHours < 24) return `منذ ${diffHours} ساعة`;
     return `منذ ${diffDays} يوم`;
+  } else if (language === 'tr') {
+    if (diffMins < 1) return 'Şimdi';
+    if (diffMins < 60) return `${diffMins} dk önce`;
+    if (diffHours < 24) return `${diffHours} saat önce`;
+    return `${diffDays} gün önce`;
+  } else if (language === 'fa') {
+    if (diffMins < 1) return 'الان';
+    if (diffMins < 60) return `${diffMins} دقیقه پیش`;
+    if (diffHours < 24) return `${diffHours} ساعت پیش`;
+    return `${diffDays} روز پیش`;
+  } else if (language === 'ku') {
+    if (diffMins < 1) return 'ئێستا';
+    if (diffMins < 60) return `پێش ${diffMins} خولەک`;
+    if (diffHours < 24) return `پێش ${diffHours} کاتژمێر`;
+    return `پێش ${diffDays} ڕۆژ`;
   } else {
     if (diffMins < 1) return 'Now';
     if (diffMins < 60) return `${diffMins} min ago`;
@@ -58,7 +73,7 @@ interface NotificationBellProps {
 export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellProps>(
   ({ compact = false }, ref) => {
     const navigate = useNavigate();
-    const { isRTL } = useLanguage();
+    const { isRTL, t, language } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [showActivationDialog, setShowActivationDialog] = useState(false);
     const [activationCode, setActivationCode] = useState('');
@@ -97,7 +112,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
 
     const handleActivate = async () => {
       if (!activationCode.trim()) {
-        setActivationError(isRTL ? 'يرجى إدخال كود التفعيل' : 'Please enter activation code');
+        setActivationError(t('license.enterCode'));
         return;
       }
       setIsActivating(true);
@@ -108,7 +123,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
         setActivationSuccess(true);
         setActivationCode('');
       } else {
-        setActivationError(result.error || (isRTL ? 'كود التفعيل غير صالح' : 'Invalid activation code'));
+        setActivationError(result.error || t('license.invalidCode'));
       }
     };
 
@@ -119,8 +134,15 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
       setActivationSuccess(false);
     };
 
+    const getLocale = () => {
+      if (language === 'ar') return 'ar-SA';
+      if (language === 'tr') return 'tr-TR';
+      if (language === 'fa') return 'fa-IR';
+      return 'en-US';
+    };
+
     const formatDate = (dateStr: string) => {
-      return new Date(dateStr).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+      return new Date(dateStr).toLocaleDateString(getLocale(), {
         year: 'numeric', month: 'long', day: 'numeric',
       });
     };
@@ -166,18 +188,18 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-primary" />
                 <h3 className="font-semibold text-foreground">
-                  {isRTL ? 'الإشعارات' : 'Notifications'}
+                  {t('notification.notifications')}
                 </h3>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-                    {unreadCount} {isRTL ? 'جديد' : 'new'}
+                    {unreadCount} {t('notification.new')}
                   </span>
                 )}
               </div>
               {unreadCount > 0 && (
                 <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={markAllAsRead}>
                   <CheckCheck className="w-4 h-4 me-1" />
-                  {isRTL ? 'قراءة الكل' : 'Mark all read'}
+                  {t('notification.markAllRead')}
                 </Button>
               )}
             </div>
@@ -190,7 +212,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                     <Bell className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground">
-                    {isRTL ? 'لا توجد إشعارات' : 'No notifications'}
+                    {t('notification.noNotifications')}
                   </p>
                 </div>
               ) : (
@@ -234,9 +256,8 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                             </p>
                             <div className="flex items-center justify-between mt-1.5">
                               <p className="text-xs text-muted-foreground">
-                                {formatTimeAgo(notification.timestamp, isRTL)}
+                                {formatTimeAgo(notification.timestamp, language)}
                               </p>
-                              {/* Always-visible Archive button */}
                               {!notification.persistent && (
                                 <button
                                   onClick={(e) => {
@@ -246,7 +267,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors"
                                 >
                                   <Archive className="w-3.5 h-3.5" />
-                                  <span>{isRTL ? 'إخفاء' : 'Hide'}</span>
+                                  <span>{t('notification.hide')}</span>
                                 </button>
                               )}
                             </div>
@@ -269,7 +290,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                   onClick={clearAllNotifications}
                 >
                   <Trash2 className="w-4 h-4 me-2" />
-                  {isRTL ? 'مسح جميع الإشعارات' : 'Clear all notifications'}
+                  {t('notification.clearAll')}
                 </Button>
               </div>
             )}
@@ -282,7 +303,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Key className="w-5 h-5 text-primary" />
-                {isRTL ? 'حالة الترخيص والتفعيل' : 'License Status & Activation'}
+                {t('license.licenseStatus')}
               </DialogTitle>
             </DialogHeader>
 
@@ -290,7 +311,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
               <div className="bg-muted rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm text-muted-foreground">
-                    {isRTL ? 'الحالة الحالية:' : 'Current Status:'}
+                    {t('license.currentStatus')}
                   </span>
                   <span className={cn(
                     "text-xs px-2 py-1 rounded-full font-medium",
@@ -301,25 +322,25 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                         : 'bg-success/10 text-success'
                   )}>
                     {isExpired 
-                      ? (isRTL ? 'منتهي' : 'Expired')
+                      ? t('license.expired')
                       : isTrial 
-                        ? (isRTL ? 'تجريبي' : 'Trial')
-                        : (isRTL ? 'مفعّل' : 'Active')
+                        ? t('license.trial')
+                        : t('license.activated')
                     }
                   </span>
                 </div>
                 
                 {expiresAt && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{isRTL ? 'تاريخ الانتهاء:' : 'Expires:'}</span>
+                    <span className="text-muted-foreground">{t('license.expiresAt')}</span>
                     <span className={isExpired ? 'text-destructive' : 'text-foreground'}>{formatDate(expiresAt)}</span>
                   </div>
                 )}
                 
                 {remainingDays !== null && remainingDays > 0 && (
                   <div className="flex justify-between text-sm mt-1">
-                    <span className="text-muted-foreground">{isRTL ? 'الأيام المتبقية:' : 'Days remaining:'}</span>
-                    <span className="text-foreground font-medium">{remainingDays} {isRTL ? 'يوم' : 'days'}</span>
+                    <span className="text-muted-foreground">{t('license.remainingDays')}</span>
+                    <span className="text-foreground font-medium">{remainingDays} {t('license.daysPlural')}</span>
                   </div>
                 )}
               </div>
@@ -328,13 +349,13 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                 <div className="flex items-center gap-3 p-4 bg-success/10 rounded-lg">
                   <CheckCircle className="w-5 h-5 text-success" />
                   <span className="text-success">
-                    {isRTL ? 'تم تفعيل الكود بنجاح!' : 'Code activated successfully!'}
+                    {t('license.activationSuccess')}
                   </span>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-foreground">
-                    {isRTL ? 'أدخل كود التفعيل:' : 'Enter activation code:'}
+                    {t('license.enterCodeLabel')}
                   </label>
                   <div className="relative">
                     <Key className={cn(
@@ -363,10 +384,10 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                     {isActivating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'جاري التحقق...' : 'Verifying...'}</span>
+                        <span className="ms-2">{t('license.verifying')}</span>
                       </>
                     ) : (
-                      <>{isRTL ? 'تفعيل الكود' : 'Activate Code'}</>
+                      <>{t('license.activateApp')}</>
                     )}
                   </Button>
                 </div>

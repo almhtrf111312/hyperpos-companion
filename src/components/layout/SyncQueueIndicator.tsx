@@ -26,7 +26,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
     const [status, setStatus] = useState<SyncQueueStatus>(getQueueStatus());
     const [isRetrying, setIsRetrying] = useState(false);
     const cloudContext = useSafeCloudSyncContext();
-    const { isRTL } = useLanguage();
+    const { isRTL, t, language } = useLanguage();
     
     const isSyncing = cloudContext?.isSyncing ?? false;
     const syncNow = cloudContext?.syncNow ?? (async () => {});
@@ -43,7 +43,6 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
 
       window.addEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleUpdate);
       
-      // تحديث الحالة كل 30 ثانية
       const interval = setInterval(() => {
         setStatus(getQueueStatus());
       }, 30000);
@@ -75,10 +74,16 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
     const hasIssues = failedCount > 0;
     const isActive = isSyncing || isProcessing || isRetrying;
 
-    // لا تعرض شيء إذا كان كل شيء مزامن
     if (totalPending === 0 && failedCount === 0 && !isActive) {
       return null;
     }
+
+    const getLocale = () => {
+      if (language === 'ar') return 'ar';
+      if (language === 'tr') return 'tr-TR';
+      if (language === 'fa') return 'fa-IR';
+      return 'en';
+    };
 
     const getStatusIcon = () => {
       if (isActive) {
@@ -124,7 +129,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">
-                  {isRTL ? 'حالة المزامنة' : 'Sync Status'}
+                  {t('sync.status')}
                 </span>
                 {getStatusIcon()}
               </div>
@@ -132,20 +137,20 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
               <div className="space-y-2 text-sm text-muted-foreground">
                 {totalPending > 0 && (
                   <div className="flex items-center justify-between">
-                    <span>{isRTL ? 'عمليات معلقة:' : 'Pending:'}</span>
+                    <span>{t('sync.pendingCount')}</span>
                     <Badge variant="secondary">{totalPending}</Badge>
                   </div>
                 )}
                 {failedCount > 0 && (
                   <div className="flex items-center justify-between text-destructive">
-                    <span>{isRTL ? 'عمليات فاشلة:' : 'Failed:'}</span>
+                    <span>{t('sync.failedCount')}</span>
                     <Badge variant="destructive">{failedCount}</Badge>
                   </div>
                 )}
                 {status.lastSyncTime && (
                   <div className="text-xs text-muted-foreground/70">
-                    {isRTL ? 'آخر مزامنة: ' : 'Last sync: '}
-                    {new Date(status.lastSyncTime).toLocaleTimeString(isRTL ? 'ar' : 'en')}
+                    {t('sync.lastSyncTime')}
+                    {new Date(status.lastSyncTime).toLocaleTimeString(getLocale())}
                   </div>
                 )}
               </div>
@@ -160,7 +165,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
                     className="flex-1"
                   >
                     <RefreshCw className={cn("h-3.5 w-3.5", isRTL ? "ml-1" : "mr-1", isRetrying && "animate-spin")} />
-                    {isRTL ? 'إعادة المحاولة' : 'Retry'}
+                    {t('sync.retry')}
                   </Button>
                 )}
                 <Button 
@@ -171,7 +176,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
                   className="flex-1"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", isRTL ? "ml-1" : "mr-1", isSyncing && "animate-spin")} />
-                  {isRTL ? 'مزامنة الآن' : 'Sync Now'}
+                  {t('sync.syncNow')}
                 </Button>
               </div>
             </div>
