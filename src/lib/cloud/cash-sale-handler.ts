@@ -11,6 +11,7 @@ import { deductStockBatchCloud } from './products-cloud';
 import { deductWarehouseStockBatchCloud } from './warehouses-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
 import { distributeDetailedProfitCloud } from './partners-cloud';
+import { isNoInventoryMode } from '@/lib/store-type-config';
 
 // ============= Types =============
 
@@ -97,11 +98,13 @@ export async function processCashSaleBundleFromQueue(
       ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
     }
 
-    // 5. Deduct stock
-    if (bundle.warehouseId) {
-      await deductWarehouseStockBatchCloud(bundle.warehouseId, bundle.stockItems);
-    } else {
-      await deductStockBatchCloud(bundle.stockItems);
+    // 5. Deduct stock - تجاوز في وضع الفرن (بدون مخزون)
+    if (!isNoInventoryMode()) {
+      if (bundle.warehouseId) {
+        await deductWarehouseStockBatchCloud(bundle.warehouseId, bundle.stockItems);
+      } else {
+        await deductStockBatchCloud(bundle.stockItems);
+      }
     }
 
     // 6. Update customer stats

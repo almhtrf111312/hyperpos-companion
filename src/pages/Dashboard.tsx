@@ -26,14 +26,17 @@ import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
 import { loadExpensesCloud } from '@/lib/cloud/expenses-cloud';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
+import { loadPurchaseInvoicesCloud } from '@/lib/cloud/purchase-invoices-cloud';
 import { loadCashboxState } from '@/lib/cashbox-store';
 import { getTodayProfit } from '@/lib/profits-store';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
+import { isNoInventoryMode } from '@/lib/store-type-config';
 
 export default function Dashboard() {
   const { t, language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
+  const noInventory = isNoInventoryMode();
   const [stats, setStats] = useState({
     todaySales: 0,
     weekSales: 0,
@@ -54,6 +57,7 @@ export default function Dashboard() {
     liquidCapital: 0,
     deficit: 0,
     deficitPercentage: 0,
+    totalPurchases: 0,
   });
 
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -67,12 +71,13 @@ export default function Dashboard() {
   const loadStats = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [invoices, products, partners, expenses, debts] = await Promise.all([
+      const [invoices, products, partners, expenses, debts, purchaseInvoices] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
         loadPartnersCloud(),
         loadExpensesCloud(),
-        loadDebtsCloud()
+        loadDebtsCloud(),
+        loadPurchaseInvoicesCloud()
       ]);
 
       const todayDate = new Date();
@@ -118,7 +123,12 @@ export default function Dashboard() {
       );
       const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
-      const inventoryValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
+      const inventoryValue = noInventory ? 0 : products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
+
+      // Total purchases (sum of finalized purchase invoices)
+      const totalPurchases = purchaseInvoices
+        .filter(pi => pi.status === 'finalized')
+        .reduce((sum, pi) => sum + (pi.actual_grand_total || 0), 0);
 
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
 
@@ -161,6 +171,7 @@ export default function Dashboard() {
         liquidCapital,
         deficit,
         deficitPercentage,
+        totalPurchases,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -272,13 +283,23 @@ export default function Dashboard() {
       <SectionDivider title="تقارير رأس المال" />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
-        <StatCard
-          title={t('dashboard.inventoryValue')}
-          value={formatCurrency(stats.inventoryValue)}
-          icon={<Package />}
-          variant="primary"
-          linkTo="/products"
-        />
+        {noInventory ? (
+          <StatCard
+            title="إجمالي المشتريات"
+            value={formatCurrency(stats.totalPurchases)}
+            icon={<ShoppingCart />}
+            variant="primary"
+            linkTo="/products"
+          />
+        ) : (
+          <StatCard
+            title={t('dashboard.inventoryValue')}
+            value={formatCurrency(stats.inventoryValue)}
+            icon={<Package />}
+            variant="primary"
+            linkTo="/products"
+          />
+        )}
         <StatCard
           title={t('dashboard.totalCapital')}
           value={formatCurrency(stats.totalCapital)}
@@ -311,7 +332,7 @@ export default function Dashboard() {
           <RecentInvoices />
         </div>
         <div className="space-y-6">
-          <LowStockAlerts />
+          {!noInventory && <LowStockAlerts />}
           <DebtAlerts />
         </div>
       </div>

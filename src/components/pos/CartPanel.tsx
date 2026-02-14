@@ -63,6 +63,7 @@ import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator
 import { addToQueue } from '@/lib/sync-queue';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 import { Calculator } from '@/components/ui/Calculator';
+import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 
 interface CartItem {
   id: string;
@@ -306,27 +307,30 @@ export function CartPanel({
           : item.quantity
       }));
 
-      // التحقق من توفر الكميات
-      // ✅ للمستودع الرئيسي (أو عدم وجود مستودع): استخدم products.quantity
-      // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
-      let stockCheck;
-      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-        // مستودع موزع - استخدم warehouse_stock
-        stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
-      } else {
-        // المستودع الرئيسي أو لا يوجد مستودع - استخدم products.quantity
-        stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
-      }
+      // التحقق من توفر الكميات - تجاوز في وضع الفرن (بدون مخزون)
+      const noInventory = isNoInventoryMode();
+      if (!noInventory) {
+        // ✅ للمستودع الرئيسي (أو عدم وجود مستودع): استخدم products.quantity
+        // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
+        let stockCheck;
+        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
+          // مستودع موزع - استخدم warehouse_stock
+          stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
+        } else {
+          // المستودع الرئيسي أو لا يوجد مستودع - استخدم products.quantity
+          stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
+        }
 
-      if (!stockCheck.success) {
-        const insufficientNames = stockCheck.insufficientItems
-          .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
-          .join('\n');
-        showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-          persistent: true,
-          description: 'اضغط × للإغلاق',
-        });
-        return;
+        if (!stockCheck.success) {
+          const insufficientNames = stockCheck.insufficientItems
+            .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
+            .join('\n');
+          showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+            persistent: true,
+            description: 'اضغط × للإغلاق',
+          });
+          return;
+        }
       }
 
       // Find or create customer
@@ -453,19 +457,21 @@ export function CartPanel({
         );
       }
 
-      // Deduct stock (parallel)
-      const stockItemsToDeduct = cartSnapshot.map(item => ({
-        productId: item.id,
-        quantity: item.unit === 'bulk' && item.conversionFactor
-          ? item.quantity * item.conversionFactor
-          : item.quantity
-      }));
+      // Deduct stock (parallel) - تجاوز في وضع الفرن
+      if (!noInventory) {
+        const stockItemsToDeduct = cartSnapshot.map(item => ({
+          productId: item.id,
+          quantity: item.unit === 'bulk' && item.conversionFactor
+            ? item.quantity * item.conversionFactor
+            : item.quantity
+        }));
 
-      // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
-      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-        backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
-      } else {
-        backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
+        // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
+        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
+          backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
+        } else {
+          backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
+        }
       }
 
       // Update customer stats
@@ -615,25 +621,26 @@ export function CartPanel({
           : item.quantity
       }));
 
-      // التحقق من المخزون
-      // ✅ للمستودع الرئيسي: استخدم products.quantity
-      // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
-      let stockCheck;
-      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-        stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
-      } else {
-        stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
-      }
+      // التحقق من المخزون - تجاوز في وضع الفرن
+      const noInventory = isNoInventoryMode();
+      if (!noInventory) {
+        let stockCheck;
+        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
+          stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
+        } else {
+          stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
+        }
 
-      if (!stockCheck.success) {
-        const insufficientNames = stockCheck.insufficientItems
-          .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
-          .join('\n');
-        showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-          persistent: true,
-          description: 'اضغط × للإغلاق',
-        });
-        return;
+        if (!stockCheck.success) {
+          const insufficientNames = stockCheck.insufficientItems
+            .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
+            .join('\n');
+          showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
+            persistent: true,
+            description: 'اضغط × للإغلاق',
+          });
+          return;
+        }
       }
 
       // Find or create customer
@@ -763,20 +770,21 @@ export function CartPanel({
         );
       }
 
-      // Deduct stock (parallel)
-      const stockItemsToDeduct = cartSnapshot.map(item => ({
-        productId: item.id,
-        productName: item.name,
-        quantity: item.unit === 'bulk' && item.conversionFactor
-          ? item.quantity * item.conversionFactor
-          : item.quantity
-      }));
+      // Deduct stock (parallel) - تجاوز في وضع الفرن
+      if (!noInventory) {
+        const stockItemsToDeduct = cartSnapshot.map(item => ({
+          productId: item.id,
+          productName: item.name,
+          quantity: item.unit === 'bulk' && item.conversionFactor
+            ? item.quantity * item.conversionFactor
+            : item.quantity
+        }));
 
-      // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
-      if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-        backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
-      } else {
-        backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
+        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
+          backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
+        } else {
+          backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
+        }
       }
 
       // Update customer stats
