@@ -20,7 +20,8 @@ import {
   Palette,
   FileText,
   Receipt,
-  Wallet
+  Wallet,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -57,6 +58,7 @@ const navItems: NavItem[] = [
   { icon: Package, translationKey: 'nav.stockTransfer', path: '/stock-transfer', adminOnly: true },
   { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true },
   { icon: Palette, translationKey: 'settings.theme', path: '/appearance' },
+  { icon: HelpCircle, translationKey: 'nav.help', path: '/help' },
   { icon: Settings, translationKey: 'nav.settings', path: '/settings', adminOnly: true },
 ];
 
