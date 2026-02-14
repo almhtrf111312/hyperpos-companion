@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Key, Loader2, CheckCircle, AlertCircle, Calendar, Shield, MessageCircle } from 'lucide-react';
+import { Key, Loader2, CheckCircle, AlertCircle, Calendar, Shield } from 'lucide-react';
 import { useLicense } from '@/hooks/use-license';
 import { useLanguage } from '@/hooks/use-language';
-import { supabase } from '@/integrations/supabase/client';
 
 export function ActivationCodeInput() {
   const { activateCode, isTrial, isExpired, expiresAt, remainingDays } = useLicense();
@@ -14,40 +13,6 @@ export function ActivationCodeInput() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [developerPhone, setDeveloperPhone] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchContactInfo = async () => {
-      try {
-        const { data: linksData } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'contact_links')
-          .maybeSingle();
-
-        if (linksData?.value) {
-          const parsed = JSON.parse(linksData.value);
-          if (parsed.whatsapp) { setDeveloperPhone(parsed.whatsapp); return; }
-        }
-        const { data } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'developer_phone')
-          .single();
-        if (data?.value) setDeveloperPhone(data.value);
-      } catch (err) {
-        console.error('Failed to fetch contact info:', err);
-      }
-    };
-    fetchContactInfo();
-  }, []);
-
-  const handleContactDeveloper = () => {
-    if (!developerPhone) return;
-    const cleanPhone = developerPhone.replace(/[^0-9]/g, '');
-    const message = encodeURIComponent(t('license.whatsappHelp'));
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
-  };
 
   const formatCode = (value: string) => {
     let cleaned = value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
@@ -192,13 +157,6 @@ export function ActivationCodeInput() {
         )}
       </div>
 
-      {/* Contact Developer Button */}
-      {developerPhone && (
-        <Button variant="outline" className="w-full gap-2" onClick={handleContactDeveloper}>
-          <MessageCircle className="w-4 h-4" />
-          {t('license.contactDeveloper')}
-        </Button>
-      )}
     </div>
   );
 }
