@@ -30,17 +30,12 @@ function toCategory(cloud: CloudCategory): Category {
   };
 }
 
-// Default categories for new users
-const defaultCategoryNames = [
-  'هواتف',
-  'أكسسوارات',
-  'سماعات',
-  'شواحن',
-  'قطع غيار',
-  'أجهزة لوحية',
-  'ساعات',
-  'صيانة',
-];
+import { getDefaultCategories, getCurrentStoreType } from '../store-type-config';
+
+// Default categories for new users - dynamic based on store type
+const getDefaultCategoryNames = (): string[] => {
+  return getDefaultCategories(getCurrentStoreType());
+};
 
 // Local storage cache helpers
 const LOCAL_CACHE_KEY = 'hyperpos_categories_cache';
@@ -117,16 +112,17 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
 // ✅ Silently fails if RLS blocks (cashier shouldn't create defaults)
 const createDefaultCategories = async (): Promise<void> => {
   try {
+    const categoryNames = getDefaultCategoryNames();
     // Try to create the first category to test permissions
     const testInsert = await insertToSupabase('categories', 
-      { name: defaultCategoryNames[0] }, 
+      { name: categoryNames[0] }, 
       { silent: true }
     );
     
     // If successful, create the rest
     if (testInsert) {
       await Promise.allSettled(
-        defaultCategoryNames.slice(1).map(name => 
+        categoryNames.slice(1).map(name => 
           insertToSupabase('categories', { name }, { silent: true })
         )
       );

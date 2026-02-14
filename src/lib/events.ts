@@ -28,6 +28,7 @@ export const EVENTS = {
   // Warehouse events
   WAREHOUSES_UPDATED: 'hyperpos:warehouses-updated',
   STOCK_TRANSFERS_UPDATED: 'hyperpos:stock-transfers-updated',
+  STORE_TYPE_CHANGED: 'hyperpos:store-type-changed',
 };
 
 // Subscribe to an event and return unsubscribe function
