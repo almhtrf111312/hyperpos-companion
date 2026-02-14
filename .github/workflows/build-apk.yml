@@ -112,7 +112,7 @@ jobs:
         EOF
         
         # ✅ كتابة build.gradle كاملاً مع signingConfigs مدمج (بدلاً من sed الخطير)
-        cat > android/app/build.gradle << 'GRADLE'
+        cat > android/app/build.gradle << GRADLE
         apply plugin: 'com.android.application'
 
         android {
@@ -123,12 +123,8 @@ jobs:
                 minSdkVersion rootProject.ext.minSdkVersion
                 targetSdkVersion rootProject.ext.targetSdkVersion
                 
-                // Read version from version.json
-                def versionPropsFile = file('../../version.json')
-                def versionProps = new groovy.json.JsonSlurper().parseText(versionPropsFile.text)
-                
-                versionCode versionProps.versionCode
-                versionName versionProps.versionName
+                versionCode ${VERSION_CODE}
+                versionName "${VERSION_NAME}"
                 
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
                 aaptOptions {
