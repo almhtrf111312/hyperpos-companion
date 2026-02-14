@@ -90,8 +90,13 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     // Check if user changed - clear old data
     const lastUserId = localStorage.getItem(LAST_USER_KEY);
     if (lastUserId && lastUserId !== user.id) {
-      console.log('[CloudSync] User changed, clearing old localStorage data');
+      console.log('[CloudSync] User changed, clearing old localStorage data + IndexedDB');
       clearUserLocalStorage();
+      // ✅ مسح IndexedDB عند تغيير المستخدم
+      import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
+        clearProductsIDB();
+        console.log('[CloudSync] Cleared IndexedDB products cache on user change');
+      });
     }
     localStorage.setItem(LAST_USER_KEY, user.id);
 

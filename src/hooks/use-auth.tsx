@@ -325,6 +325,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error(error.message) };
       }
       
+      // ✅ مسح شامل للبيانات المحلية لمنع تسرب بيانات الحساب السابق
+      if (data.user) {
+        // 1. مسح localStorage (ما عدا اللغة والثيم)
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('hyperpos_') && 
+              key !== 'hyperpos_language' && 
+              key !== 'hyperpos_theme' &&
+              key !== 'hyperpos_stay_logged_in' &&
+              key !== 'hyperpos_session_cache') {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log(`[Auth] Cleared ${keysToRemove.length} localStorage keys on sign-in`);
+
+        // 2. مسح IndexedDB (كاش المنتجات)
+        import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
+          clearProductsIDB();
+          console.log('[Auth] Cleared IndexedDB products cache on sign-in');
+        });
+
+        // 3. إبطال كاش الذاكرة للـ cloud stores
+        import('@/lib/cloud').then(({ invalidateAllCaches }) => {
+          invalidateAllCaches();
+          console.log('[Auth] Invalidated all cloud caches on sign-in');
+        });
+      }
+      
       return { 
         error: null, 
         data: data.user && data.session ? { user: data.user, session: data.session } : undefined 
@@ -438,6 +468,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // ✅ مسح IndexedDB وكاش الذاكرة عند تسجيل الخروج
+    try {
+      const { clearProductsIDB } = await import('@/lib/indexeddb-cache');
+      await clearProductsIDB();
+      console.log('[Auth] Cleared IndexedDB on sign-out');
+    } catch (e) { console.warn('[Auth] Failed to clear IDB:', e); }
+
+    try {
+      const { invalidateAllCaches } = await import('@/lib/cloud');
+      invalidateAllCaches();
+      console.log('[Auth] Invalidated cloud caches on sign-out');
+    } catch (e) { console.warn('[Auth] Failed to invalidate caches:', e); }
 
     await supabase.auth.signOut();
     setUser(null);
