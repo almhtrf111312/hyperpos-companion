@@ -18,21 +18,12 @@ import {
   Edit, 
   Save, 
   X, 
-  Plus, 
-  Trash2, 
-  Crown, 
+  Crown,
   Shield,
   Eye,
   EyeOff,
   Loader2
 } from 'lucide-react';
-
-interface BossAccount {
-  user_id: string;
-  email: string;
-  full_name: string | null;
-  created_at: string;
-}
 
 export function ProfileManagement() {
   const { user, profile, refreshProfile } = useAuth();
@@ -58,22 +49,7 @@ export function ProfileManagement() {
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   
-  // Boss accounts management
-  const [bossAccounts, setBossAccounts] = useState<BossAccount[]>([]);
-  const [showAddBossDialog, setShowAddBossDialog] = useState(false);
-  const [newBossForm, setNewBossForm] = useState({
-    email: '',
-    password: '',
-    fullName: ''
-  });
-  const [showNewBossPassword, setShowNewBossPassword] = useState(false);
-  const [isAddingBoss, setIsAddingBoss] = useState(false);
-  const [isLoadingBossAccounts, setIsLoadingBossAccounts] = useState(false);
   
-  // Delete boss account
-  const [showDeleteBossDialog, setShowDeleteBossDialog] = useState(false);
-  const [bossToDelete, setBossToDelete] = useState<BossAccount | null>(null);
-  const [isDeletingBoss, setIsDeletingBoss] = useState(false);
   
   // Email editing (Boss only)
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -86,44 +62,7 @@ export function ProfileManagement() {
     }
   }, [profile]);
 
-  useEffect(() => {
-    if (isBoss) {
-      fetchBossAccounts();
-    }
-  }, [isBoss]);
 
-  const fetchBossAccounts = async () => {
-    if (!isBoss) return;
-    
-    setIsLoadingBossAccounts(true);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.access_token) return;
-
-      const response = await supabase.functions.invoke('get-users-with-emails', {
-        headers: {
-          Authorization: `Bearer ${session.session.access_token}`,
-        },
-      });
-
-      if (response.error) throw response.error;
-
-      const bosses = (response.data?.users || []).filter(
-        (u: any) => u.role === 'boss'
-      );
-      
-      setBossAccounts(bosses.map((b: any) => ({
-        user_id: b.user_id,
-        email: b.email || '',
-        full_name: b.full_name,
-        created_at: b.role_created_at
-      })));
-    } catch (error) {
-      console.error('Error fetching boss accounts:', error);
-    } finally {
-      setIsLoadingBossAccounts(false);
-    }
-  };
 
   const handleSaveName = async () => {
     if (!newName.trim()) {
@@ -259,95 +198,6 @@ export function ProfileManagement() {
     }
   };
 
-  const handleAddBossAccount = async () => {
-    if (!newBossForm.email || !newBossForm.password || !newBossForm.fullName) {
-      toast.error('جميع الحقول مطلوبة');
-      return;
-    }
-
-    if (newBossForm.password.length < 6) {
-      toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return;
-    }
-
-    setIsAddingBoss(true);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.access_token) {
-        toast.error('يرجى تسجيل الدخول مرة أخرى');
-        return;
-      }
-
-      // Call edge function to create new boss account
-      const { data, error } = await supabase.functions.invoke('create-boss-account', {
-        body: {
-          email: newBossForm.email,
-          password: newBossForm.password,
-          fullName: newBossForm.fullName
-        }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'فشل في إرسال الطلب');
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      toast.success('تم إنشاء حساب Boss جديد بنجاح');
-      setShowAddBossDialog(false);
-      setNewBossForm({ email: '', password: '', fullName: '' });
-      fetchBossAccounts();
-    } catch (error: any) {
-      console.error('Error creating boss account:', error);
-      toast.error(error.message || 'فشل في إنشاء الحساب');
-    } finally {
-      setIsAddingBoss(false);
-    }
-  };
-
-  const handleDeleteBossAccount = async () => {
-    if (!bossToDelete) return;
-
-    setIsDeletingBoss(true);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.access_token) {
-        toast.error('يرجى تسجيل الدخول مرة أخرى');
-        return;
-      }
-
-      const response = await supabase.functions.invoke('delete-user', {
-        body: {
-          userId: bossToDelete.user_id,
-          deleteType: 'boss'
-        },
-        headers: {
-          Authorization: `Bearer ${session.session.access_token}`,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'فشل في حذف الحساب');
-      }
-
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-
-      toast.success('تم حذف حساب Boss بنجاح');
-      setShowDeleteBossDialog(false);
-      setBossToDelete(null);
-      fetchBossAccounts();
-    } catch (error: any) {
-      console.error('Error deleting boss account:', error);
-      toast.error(error.message || 'فشل في حذف الحساب');
-    } finally {
-      setIsDeletingBoss(false);
-    }
-  };
 
   const getRoleBadge = () => {
     if (isBoss) {
@@ -526,76 +376,6 @@ export function ProfileManagement() {
         </CardContent>
       </Card>
 
-      {/* Boss Accounts Management - Only visible to Boss */}
-      {isBoss && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-amber-500" />
-                  حسابات Boss
-                </CardTitle>
-                <CardDescription>
-                  إدارة حسابات المسؤولين الرئيسيين (يمكن أن يكون هناك أكثر من حساب Boss)
-                </CardDescription>
-              </div>
-              <Button onClick={() => setShowAddBossDialog(true)}>
-                <Plus className="w-4 h-4 me-1" />
-                إضافة Boss
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingBossAccounts ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : bossAccounts.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">
-                لا توجد حسابات Boss أخرى
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {bossAccounts.map((boss) => (
-                  <div 
-                    key={boss.user_id}
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                        <Crown className="w-5 h-5 text-amber-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{boss.full_name || 'بدون اسم'}</p>
-                        <p className="text-sm text-muted-foreground">{boss.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {boss.user_id === user?.id ? (
-                        <Badge variant="outline">حسابك</Badge>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            setBossToDelete(boss);
-                            setShowDeleteBossDialog(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Password Change Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
         <DialogContent>
@@ -685,132 +465,6 @@ export function ProfileManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Boss Account Dialog */}
-      <Dialog open={showAddBossDialog} onOpenChange={setShowAddBossDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-amber-500" />
-              إضافة حساب Boss جديد
-            </DialogTitle>
-            <DialogDescription>
-              سيتم إنشاء حساب Boss جديد بصلاحيات كاملة
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>الاسم الكامل</Label>
-              <Input
-                value={newBossForm.fullName}
-                onChange={(e) => setNewBossForm({ ...newBossForm, fullName: e.target.value })}
-                placeholder="أدخل الاسم"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>البريد الإلكتروني</Label>
-              <Input
-                type="email"
-                value={newBossForm.email}
-                onChange={(e) => setNewBossForm({ ...newBossForm, email: e.target.value })}
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>كلمة المرور</Label>
-              <div className="relative">
-                <Input
-                  type={showNewBossPassword ? 'text' : 'password'}
-                  value={newBossForm.password}
-                  onChange={(e) => setNewBossForm({ ...newBossForm, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="pe-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewBossPassword(!showNewBossPassword)}
-                  className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
-                >
-                  {showNewBossPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddBossDialog(false)}>
-              إلغاء
-            </Button>
-            <Button onClick={handleAddBossAccount} disabled={isAddingBoss}>
-              {isAddingBoss ? (
-                <>
-                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                  جارٍ الإنشاء...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 me-2" />
-                  إنشاء الحساب
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Boss Account Dialog */}
-      <Dialog open={showDeleteBossDialog} onOpenChange={setShowDeleteBossDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="w-5 h-5" />
-              حذف حساب Boss
-            </DialogTitle>
-            <DialogDescription>
-              هل أنت متأكد من حذف حساب Boss هذا؟ لا يمكن التراجع عن هذا الإجراء.
-            </DialogDescription>
-          </DialogHeader>
-          {bossToDelete && (
-            <div className="p-4 bg-muted/30 rounded-lg border my-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <Crown className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                  <p className="font-medium">{bossToDelete.full_name || 'بدون اسم'}</p>
-                  <p className="text-sm text-muted-foreground">{bossToDelete.email}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowDeleteBossDialog(false);
-                setBossToDelete(null);
-              }}
-            >
-              إلغاء
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteBossAccount} 
-              disabled={isDeletingBoss}
-            >
-              {isDeletingBoss ? (
-                <>
-                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                  جارٍ الحذف...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4 me-2" />
-                  حذف الحساب
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

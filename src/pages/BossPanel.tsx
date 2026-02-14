@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useUserRole } from '@/hooks/use-user-role';
+import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +34,12 @@ import {
   Send,
   Pencil,
   MessageCircle,
-  MoreVertical
+  MoreVertical,
+  UserPlus,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -105,6 +111,7 @@ interface ActivationCode {
 export default function BossPanel() {
   const navigate = useNavigate();
   const { isBoss, isLoading: roleLoading } = useUserRole();
+  const { user } = useAuth();
   const { t, direction } = useLanguage();
   const isMobile = useIsMobile();
 
@@ -168,6 +175,24 @@ export default function BossPanel() {
   // Developer Settings
   const [developerPhone, setDeveloperPhone] = useState('');
   const [isSavingDevSettings, setIsSavingDevSettings] = useState(false);
+
+  // Create Owner Dialog
+  const [showCreateOwnerDialog, setShowCreateOwnerDialog] = useState(false);
+  const [createOwnerForm, setCreateOwnerForm] = useState({ email: '', password: '', fullName: '' });
+  const [showCreateOwnerPassword, setShowCreateOwnerPassword] = useState(false);
+  const [isCreatingOwner, setIsCreatingOwner] = useState(false);
+
+  // Create Boss Dialog
+  const [showCreateBossDialog, setShowCreateBossDialog] = useState(false);
+  const [createBossForm, setCreateBossForm] = useState({ email: '', password: '', fullName: '', bossPassword: '' });
+  const [showCreateBossPasswords, setShowCreateBossPasswords] = useState({ new: false, boss: false });
+  const [isCreatingBoss, setIsCreatingBoss] = useState(false);
+
+  // Delete Boss with password
+  const [deleteBossConfirm, setDeleteBossConfirm] = useState<{ user_id: string; name: string } | null>(null);
+  const [deleteBossPassword, setDeleteBossPassword] = useState('');
+  const [showDeleteBossPassword, setShowDeleteBossPassword] = useState(false);
+  const [isDeletingBoss, setIsDeletingBoss] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isBoss) {
@@ -488,6 +513,154 @@ export default function BossPanel() {
     }
   };
 
+  // Create Owner handler
+  const handleCreateOwner = async () => {
+    if (!createOwnerForm.email || !createOwnerForm.password || !createOwnerForm.fullName) {
+      toast.error('جميع الحقول مطلوبة');
+      return;
+    }
+    if (createOwnerForm.password.length < 6) {
+      toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    setIsCreatingOwner(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: createOwnerForm.email,
+          password: createOwnerForm.password,
+          fullName: createOwnerForm.fullName,
+          role: 'admin',
+        },
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+
+      if (error) throw new Error(error.message || 'فشل في إنشاء الحساب');
+      if (data?.error) throw new Error(data.error);
+
+      toast.success('تم إنشاء حساب المالك بنجاح');
+      setShowCreateOwnerDialog(false);
+      setCreateOwnerForm({ email: '', password: '', fullName: '' });
+      fetchData();
+    } catch (error: any) {
+      console.error('Error creating owner:', error);
+      toast.error(error.message || 'فشل في إنشاء الحساب');
+    } finally {
+      setIsCreatingOwner(false);
+    }
+  };
+
+  // Create Boss handler (with password verification)
+  const handleCreateBoss = async () => {
+    if (!createBossForm.email || !createBossForm.password || !createBossForm.fullName || !createBossForm.bossPassword) {
+      toast.error('جميع الحقول مطلوبة');
+      return;
+    }
+    if (createBossForm.password.length < 6) {
+      toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    setIsCreatingBoss(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const userEmail = session?.session?.user?.email;
+      if (!userEmail || !session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      // Verify boss password first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: createBossForm.bossPassword,
+      });
+
+      if (signInError) {
+        toast.error('كلمة مرور البوس غير صحيحة');
+        setIsCreatingBoss(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-boss-account', {
+        body: {
+          email: createBossForm.email,
+          password: createBossForm.password,
+          fullName: createBossForm.fullName,
+        },
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+
+      if (error) throw new Error(error.message || 'فشل في إنشاء الحساب');
+      if (data?.error) throw new Error(data.error);
+
+      toast.success('تم إنشاء حساب Boss جديد بنجاح');
+      setShowCreateBossDialog(false);
+      setCreateBossForm({ email: '', password: '', fullName: '', bossPassword: '' });
+      fetchData();
+    } catch (error: any) {
+      console.error('Error creating boss:', error);
+      toast.error(error.message || 'فشل في إنشاء الحساب');
+    } finally {
+      setIsCreatingBoss(false);
+    }
+  };
+
+  // Delete Boss handler (with password verification)
+  const handleDeleteBoss = async () => {
+    if (!deleteBossConfirm || !deleteBossPassword) {
+      toast.error('يرجى إدخال كلمة المرور');
+      return;
+    }
+
+    setIsDeletingBoss(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const userEmail = session?.session?.user?.email;
+      if (!userEmail || !session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+
+      // Verify boss password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: deleteBossPassword,
+      });
+
+      if (signInError) {
+        toast.error('كلمة المرور غير صحيحة');
+        setIsDeletingBoss(false);
+        return;
+      }
+
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId: deleteBossConfirm.user_id, deleteType: 'boss' },
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+
+      if (response.error) throw new Error(response.error.message || 'فشل في حذف الحساب');
+      if (response.data?.error) throw new Error(response.data.error);
+
+      toast.success('تم حذف حساب Boss بنجاح');
+      setDeleteBossConfirm(null);
+      setDeleteBossPassword('');
+      fetchData();
+    } catch (error: any) {
+      console.error('Error deleting boss:', error);
+      toast.error(error.message || 'فشل في حذف الحساب');
+    } finally {
+      setIsDeletingBoss(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('تم نسخ الكود');
@@ -744,7 +917,7 @@ export default function BossPanel() {
 
   return (
     <MainLayout>
-      <div className="p-3 md:p-6 space-y-4 md:space-y-6" dir={direction}>
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6 pt-12 md:pt-3" dir={direction}>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -938,11 +1111,21 @@ export default function BossPanel() {
 
         {/* Owners Section */}
         <Card>
-          <CardHeader className="px-3 md:px-6">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <Shield className="w-4 h-4 md:w-5 md:h-5" />
               المستخدمين المسجلين
             </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setShowCreateOwnerDialog(true)} size="sm" variant="outline" className="text-xs md:text-sm">
+                <UserPlus className="w-3 h-3 md:w-4 md:h-4 me-1" />
+                {isMobile ? 'مالك' : 'إضافة مالك'}
+              </Button>
+              <Button onClick={() => setShowCreateBossDialog(true)} size="sm" className="text-xs md:text-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                <Crown className="w-3 h-3 md:w-4 md:h-4 me-1" />
+                {isMobile ? 'Boss' : 'إضافة Boss'}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="px-3 md:px-6">
             <div className="space-y-3 md:space-y-4">
@@ -1015,8 +1198,20 @@ export default function BossPanel() {
                           )}
                         </div>
 
-                        {/* Action Menu - Single button replacing 6 buttons */}
-                        {!isBossUser && (
+                        {/* Action Menu */}
+                        {isBossUser ? (
+                          // Boss user: only show delete if not self
+                          owner.user_id !== user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteBossConfirm({ user_id: owner.user_id, name: owner.full_name || 'هذا البوس' })}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )
+                        ) : (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
@@ -1659,6 +1854,204 @@ export default function BossPanel() {
                   <CheckCircle className="w-4 h-4 me-2" />
                 )}
                 حفظ وتفعيل
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create Owner Dialog */}
+        <Dialog open={showCreateOwnerDialog} onOpenChange={setShowCreateOwnerDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary" />
+                إضافة مالك جديد
+              </DialogTitle>
+              <DialogDescription>
+                سيتم إنشاء حساب مالك مستقل بترخيص منفصل
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>الاسم الكامل</Label>
+                <Input
+                  value={createOwnerForm.fullName}
+                  onChange={(e) => setCreateOwnerForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  placeholder="أدخل الاسم"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>البريد الإلكتروني</Label>
+                <Input
+                  type="email"
+                  value={createOwnerForm.email}
+                  onChange={(e) => setCreateOwnerForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@example.com"
+                  dir="ltr"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>كلمة المرور</Label>
+                <div className="relative">
+                  <Input
+                    type={showCreateOwnerPassword ? 'text' : 'password'}
+                    value={createOwnerForm.password}
+                    onChange={(e) => setCreateOwnerForm(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="••••••••"
+                    className="pe-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateOwnerPassword(!showCreateOwnerPassword)}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                  >
+                    {showCreateOwnerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateOwnerDialog(false)}>إلغاء</Button>
+              <Button onClick={handleCreateOwner} disabled={isCreatingOwner}>
+                {isCreatingOwner ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Plus className="w-4 h-4 me-2" />}
+                إنشاء الحساب
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create Boss Dialog (with password verification) */}
+        <Dialog open={showCreateBossDialog} onOpenChange={setShowCreateBossDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500" />
+                إضافة حساب Boss جديد
+              </DialogTitle>
+              <DialogDescription>
+                سيتم إنشاء حساب Boss بصلاحيات كاملة. يتطلب تأكيد كلمة مرورك.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>الاسم الكامل</Label>
+                <Input
+                  value={createBossForm.fullName}
+                  onChange={(e) => setCreateBossForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  placeholder="أدخل الاسم"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>البريد الإلكتروني</Label>
+                <Input
+                  type="email"
+                  value={createBossForm.email}
+                  onChange={(e) => setCreateBossForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@example.com"
+                  dir="ltr"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>كلمة مرور الحساب الجديد</Label>
+                <div className="relative">
+                  <Input
+                    type={showCreateBossPasswords.new ? 'text' : 'password'}
+                    value={createBossForm.password}
+                    onChange={(e) => setCreateBossForm(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="••••••••"
+                    className="pe-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateBossPasswords(prev => ({ ...prev, new: !prev.new }))}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                  >
+                    {showCreateBossPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2 pt-3 border-t">
+                <Label className="flex items-center gap-2 text-amber-600">
+                  <Lock className="w-4 h-4" />
+                  كلمة مرورك الحالية (للتأكيد)
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showCreateBossPasswords.boss ? 'text' : 'password'}
+                    value={createBossForm.bossPassword}
+                    onChange={(e) => setCreateBossForm(prev => ({ ...prev, bossPassword: e.target.value }))}
+                    placeholder="أدخل كلمة مرورك"
+                    className="pe-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateBossPasswords(prev => ({ ...prev, boss: !prev.boss }))}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                  >
+                    {showCreateBossPasswords.boss ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateBossDialog(false)}>إلغاء</Button>
+              <Button onClick={handleCreateBoss} disabled={isCreatingBoss} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                {isCreatingBoss ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Crown className="w-4 h-4 me-2" />}
+                إنشاء حساب Boss
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Boss Confirmation with Password */}
+        <Dialog open={!!deleteBossConfirm} onOpenChange={() => { setDeleteBossConfirm(null); setDeleteBossPassword(''); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="w-5 h-5" />
+                حذف حساب Boss
+              </DialogTitle>
+              <DialogDescription>
+                هذا الإجراء لا يمكن التراجع عنه. أدخل كلمة مرورك للتأكيد.
+              </DialogDescription>
+            </DialogHeader>
+            {deleteBossConfirm && (
+              <div className="p-4 bg-muted/30 rounded-lg border my-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <Crown className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <p className="font-medium">{deleteBossConfirm.name}</p>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-destructive">
+                <Lock className="w-4 h-4" />
+                كلمة مرورك الحالية
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showDeleteBossPassword ? 'text' : 'password'}
+                  value={deleteBossPassword}
+                  onChange={(e) => setDeleteBossPassword(e.target.value)}
+                  placeholder="أدخل كلمة مرورك للتأكيد"
+                  className="pe-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteBossPassword(!showDeleteBossPassword)}
+                  className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                >
+                  {showDeleteBossPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDeleteBossConfirm(null); setDeleteBossPassword(''); }}>إلغاء</Button>
+              <Button variant="destructive" onClick={handleDeleteBoss} disabled={isDeletingBoss || !deleteBossPassword}>
+                {isDeletingBoss ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Trash2 className="w-4 h-4 me-2" />}
+                حذف الحساب
               </Button>
             </DialogFooter>
           </DialogContent>
