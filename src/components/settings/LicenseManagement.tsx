@@ -261,9 +261,9 @@ export function LicenseManagement() {
   return (
     <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <div>
@@ -272,11 +272,11 @@ export function LicenseManagement() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/boss')}>
+          <Button variant="outline" size="sm" onClick={() => navigate('/boss')}>
             <ExternalLink className="w-4 h-4" />
             <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'لوحة Boss' : 'Boss Panel'}</span>
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="w-4 h-4" />
             <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'إنشاء كود' : 'Create Code'}</span>
           </Button>
@@ -295,8 +295,8 @@ export function LicenseManagement() {
         ) : (
           <div className="space-y-2">
             {codes.map((code) => (
-              <div key={code.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div key={code.id} className="flex flex-col gap-2 p-3 rounded-lg bg-muted">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <code className="text-sm font-mono truncate">{code.code}</code>
                   <Badge variant={code.is_active && code.current_uses < code.max_uses ? 'default' : 'secondary'} className="text-xs shrink-0">
                     {code.current_uses}/{code.max_uses}
@@ -304,8 +304,8 @@ export function LicenseManagement() {
                   {!code.is_active && <Badge variant="destructive" className="text-xs">{isRTL ? 'غير نشط' : 'Inactive'}</Badge>}
                   {code.note && <span className="text-xs text-muted-foreground truncate">{code.note}</span>}
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-xs text-muted-foreground">{code.duration_days}{isRTL ? ' يوم' : 'd'}</span>
+                <div className="flex items-center gap-1 border-t border-border/50 pt-2">
+                  <span className="text-xs text-muted-foreground flex-1">{code.duration_days}{isRTL ? ' يوم' : 'd'}</span>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleCopyCode(code.code)}>
                     <Copy className="w-3 h-3" />
                   </Button>
@@ -336,48 +336,46 @@ export function LicenseManagement() {
               return (
                 <div 
                   key={license.id} 
-                  className={`flex items-center justify-between p-3 rounded-lg ${
+                  className={`flex flex-col gap-2 p-3 rounded-lg ${
                     isRevoked ? 'bg-destructive/10' : isExpired ? 'bg-yellow-500/10' : 'bg-muted'
                   }`}
                 >
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {license.profiles?.full_name || (isRTL ? 'مستخدم' : 'User')}
-                      </span>
-                      {license.email && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Mail className="w-3 h-3" /> {license.email}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        isRevoked 
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          : license.is_trial 
-                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' 
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      }`}>
-                        {isRevoked ? (isRTL ? 'ملغى' : 'Revoked') : license.is_trial ? (isRTL ? 'تجريبي' : 'Trial') : (isRTL ? 'مفعّل' : 'Active')}
-                      </span>
-                      {license.license_tier && (
-                        <Badge variant="outline" className="text-xs">{license.license_tier}</Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {isRTL ? 'ينتهي:' : 'Expires:'} {formatDate(license.expires_at)}
-                        {isExpired && <span className="text-destructive font-medium">({isRTL ? 'منتهي' : 'Expired'})</span>}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      {license.profiles?.full_name || (isRTL ? 'مستخدم' : 'User')}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      isRevoked 
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : license.is_trial 
+                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' 
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    }`}>
+                      {isRevoked ? (isRTL ? 'ملغى' : 'Revoked') : license.is_trial ? (isRTL ? 'تجريبي' : 'Trial') : (isRTL ? 'مفعّل' : 'Active')}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  {license.email && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Mail className="w-3 h-3" /> {license.email}
+                    </span>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {license.license_tier && (
+                      <Badge variant="outline" className="text-xs">{license.license_tier}</Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {isRTL ? 'ينتهي:' : 'Expires:'} {formatDate(license.expires_at)}
+                      {isExpired && <span className="text-destructive font-medium">({isRTL ? 'منتهي' : 'Expired'})</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 border-t border-border/50 pt-2">
                     {!isRevoked && (
-                      <Button size="sm" variant="outline" className="text-xs gap-1 text-yellow-600" onClick={() => setRevokeTarget(license)}>
+                      <Button size="sm" variant="outline" className="text-xs gap-1 text-yellow-600 flex-1" onClick={() => setRevokeTarget(license)}>
                         <Ban className="w-3 h-3" /> {isRTL ? 'إلغاء' : 'Revoke'}
                       </Button>
                     )}
-                    <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={() => setDeleteUserTarget(license)}>
+                    <Button size="sm" variant="destructive" className="text-xs gap-1 flex-1" onClick={() => setDeleteUserTarget(license)}>
                       <Trash2 className="w-3 h-3" /> {isRTL ? 'حذف' : 'Delete'}
                     </Button>
                   </div>
