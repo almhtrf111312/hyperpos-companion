@@ -1177,8 +1177,16 @@ export type Database = {
       }
     }
     Functions: {
+      add_product_quantity: {
+        Args: { _amount: number; _product_id: string }
+        Returns: number
+      }
       can_add_cashier: { Args: { _owner_id: string }; Returns: boolean }
       count_owner_cashiers: { Args: { _owner_id: string }; Returns: number }
+      deduct_product_quantity: {
+        Args: { _amount: number; _product_id: string }
+        Returns: number
+      }
       delete_owner_cascade: { Args: { _owner_id: string }; Returns: boolean }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {

@@ -473,27 +473,15 @@ export const completeStockTransferCloud = async (transferId: string): Promise<bo
 
   // ✅ معالجة كل منتج: خصم من المخزون الرئيسي وإضافة لمستودع الوجهة
   for (const item of items) {
-    // 1. خصم من products.quantity (المخزون الرئيسي/العام)
-    const { data: product, error: productFetchError } = await supabase
-      .from('products')
-      .select('quantity')
-      .eq('id', item.product_id)
-      .single();
+    // 1. خصم من products.quantity (المخزون الرئيسي/العام) - عملية ذرية
+    const { error: deductError } = await supabase
+      .rpc('deduct_product_quantity', {
+        _product_id: item.product_id,
+        _amount: item.quantity_in_pieces
+      });
 
-    if (productFetchError || !product) {
-      console.error('[StockTransfer] Product fetch error:', productFetchError);
-      continue;
-    }
-
-    const newProductQuantity = Math.max(0, (product.quantity || 0) - item.quantity_in_pieces);
-    
-    const { error: productUpdateError } = await supabase
-      .from('products')
-      .update({ quantity: newProductQuantity })
-      .eq('id', item.product_id);
-
-    if (productUpdateError) {
-      console.error('[StockTransfer] Product update error:', productUpdateError);
+    if (deductError) {
+      console.error('[StockTransfer] Atomic deduct error:', deductError);
       continue;
     }
 
@@ -701,19 +689,15 @@ export const completeReturnTransferCloud = async (transferId: string): Promise<b
         last_updated: new Date().toISOString()
       }, { onConflict: 'warehouse_id,product_id' });
 
-    // 2. Add back to products.quantity (main inventory)
-    const { data: product } = await supabase
-      .from('products')
-      .select('quantity')
-      .eq('id', item.product_id)
-      .single();
+    // 2. Add back to products.quantity (main inventory) - عملية ذرية
+    const { error: addError } = await supabase
+      .rpc('add_product_quantity', {
+        _product_id: item.product_id,
+        _amount: item.quantity_in_pieces
+      });
 
-    if (product) {
-      const newProductQty = (product.quantity || 0) + item.quantity_in_pieces;
-      await supabase
-        .from('products')
-        .update({ quantity: newProductQty })
-        .eq('id', item.product_id);
+    if (addError) {
+      console.error('[StockReturn] Atomic add error:', addError);
     }
   }
 
