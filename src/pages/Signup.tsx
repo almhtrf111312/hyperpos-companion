@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Store, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Store, Eye, EyeOff, Phone } from 'lucide-react';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,9 +22,25 @@ export default function Signup() {
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
 
+  const validatePhone = (value: string): boolean => {
+    // Remove spaces, dashes, parentheses
+    const cleaned = value.replace(/[\s\-\(\)]/g, '');
+    // Must only contain digits, optionally starting with +
+    if (!/^\+?\d+$/.test(cleaned)) return false;
+    // Extract digits only
+    const digits = cleaned.replace(/\D/g, '');
+    // Must be 9-15 digits
+    return digits.length >= 9 && digits.length <= 15;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!validatePhone(phone)) {
+      toast.error(t('auth.invalidPhone'));
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast.error(t('auth.passwordMismatch'));
       return;
@@ -36,10 +53,9 @@ export default function Signup() {
 
     setIsLoading(true);
 
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(email, password, fullName, phone);
 
     if (error) {
-      // Use generic error message to prevent user enumeration
       toast.error('حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.');
       setIsLoading(false);
       return;
@@ -76,6 +92,24 @@ export default function Signup() {
                 disabled={isLoading}
                 className="h-11"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">{t('auth.phone')}</Label>
+              <div className="relative">
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder={t('auth.phonePlaceholder')}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-11 pe-10"
+                  dir="ltr"
+                />
+                <Phone className="absolute top-1/2 -translate-y-1/2 end-3 w-4 h-4 text-muted-foreground" />
+              </div>
             </div>
 
             <div className="space-y-2">
