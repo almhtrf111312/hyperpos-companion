@@ -13,8 +13,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-center"
       duration={2000}
       closeButton
+      offset={60}
+      swipeDirections={['left', 'right']}
       style={{
-        '--width': 'min(75vw, 300px)',
+        '--width': 'min(65vw, 280px)',
       } as React.CSSProperties}
       toastOptions={{
         classNames: {
