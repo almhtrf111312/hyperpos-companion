@@ -133,6 +133,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener BEFORE checking for existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        // Skip unnecessary state updates on TOKEN_REFRESHED to prevent re-renders that close dialogs
+        if (event === 'TOKEN_REFRESHED' && currentSession?.user) {
+          setSession(currentSession);
+          // Only update user ref without triggering profile refetch
+          setUser(prev => {
+            if (prev?.id === currentSession.user.id) return prev;
+            return currentSession.user;
+          });
+          if (getStayLoggedInPreference()) {
+            cacheSession(currentSession);
+          }
+          return;
+        }
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
