@@ -25,7 +25,7 @@ interface AuthContextType {
   isAutoLoginChecking: boolean;
   stayLoggedIn: boolean;
   signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null; data?: { user: User; session: Session } }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -333,7 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -341,6 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: {
           data: {
             full_name: fullName,
+            phone: phone || undefined,
           },
           emailRedirectTo: window.location.origin,
         },
