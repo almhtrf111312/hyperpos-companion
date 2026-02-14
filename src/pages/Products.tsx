@@ -1292,8 +1292,8 @@ export default function Products() {
         </div>
 
         {/* Add Product Dialog */}
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe">
+        <Dialog open={showAddDialog} onOpenChange={(open) => { if (!isCameraLoading) setShowAddDialog(open); }}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe" onPointerDownOutside={(e) => { if (isCameraLoading) e.preventDefault(); }} onInteractOutside={(e) => { if (isCameraLoading) e.preventDefault(); }}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary" />
@@ -1745,8 +1745,8 @@ export default function Products() {
         </Dialog>
 
         {/* Edit Product Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe">
+        <Dialog open={showEditDialog} onOpenChange={(open) => { if (!isCameraLoading) setShowEditDialog(open); }}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe" onPointerDownOutside={(e) => { if (isCameraLoading) e.preventDefault(); }} onInteractOutside={(e) => { if (isCameraLoading) e.preventDefault(); }}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit className="w-5 h-5 text-primary" />
