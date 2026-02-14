@@ -64,7 +64,7 @@ function createWindow() {
     } else {
       // Fallback to online version if local files not found
       console.log('Local files not found, loading online version');
-      mainWindow.loadURL('https://propos.lovable.app');
+      mainWindow.loadURL('https://flowpospro.lovable.app');
     }
   }
 
@@ -74,7 +74,7 @@ function createWindow() {
     
     // Allow external URLs
     if (parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') {
-      if (!navigationUrl.includes('propos.lovable.app')) {
+      if (!navigationUrl.includes('flowpospro.lovable.app')) {
         event.preventDefault();
         shell.openExternal(navigationUrl);
       }
@@ -102,7 +102,7 @@ function createWindow() {
         mainWindow.loadFile(errorPath);
       } else {
         // Fallback to online version
-        mainWindow.loadURL('https://propos.lovable.app');
+        mainWindow.loadURL('https://flowpospro.lovable.app');
       }
     }
   });
