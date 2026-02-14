@@ -131,6 +131,8 @@ export default function Products() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showPurchaseInvoiceDialog, setShowPurchaseInvoiceDialog] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   // Form state with dynamic fields
   const [formData, setFormData] = useState({
@@ -1658,11 +1660,26 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                   <div className="flex flex-col gap-3">
                     {formData.image ? (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
-                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => setPreviewImageUrl(formData.image)}>
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; setImageLoadError(true); }}
+                          onLoad={() => setImageLoadError(false)}
+                        />
+                        {imageLoadError && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
+                            <AlertTriangle className="w-5 h-5 text-destructive mb-1" />
+                            <span className="text-[10px] text-destructive">تالفة</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Search className="w-5 h-5 text-white" />
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setFormData({ ...formData, image: '' })}
+                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImageLoadError(false); }}
                           className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
                         >
                           <X className="w-3 h-3" />
@@ -1672,6 +1689,11 @@ export default function Products() {
                       <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
+                    )}
+                    {imageLoadError && formData.image && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => { setFormData({ ...formData, image: '' }); setImageLoadError(false); }}>
+                        <X className="w-3 h-3 ml-1" /> إزالة الصورة التالفة
+                      </Button>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Button
@@ -2085,11 +2107,26 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                   <div className="flex flex-col gap-3">
                     {formData.image ? (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
-                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => setPreviewImageUrl(formData.image)}>
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; setImageLoadError(true); }}
+                          onLoad={() => setImageLoadError(false)}
+                        />
+                        {imageLoadError && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
+                            <AlertTriangle className="w-5 h-5 text-destructive mb-1" />
+                            <span className="text-[10px] text-destructive">تالفة</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Search className="w-5 h-5 text-white" />
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setFormData({ ...formData, image: '' })}
+                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImageLoadError(false); }}
                           className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
                         >
                           <X className="w-3 h-3" />
@@ -2099,6 +2136,11 @@ export default function Products() {
                       <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
+                    )}
+                    {imageLoadError && formData.image && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => { setFormData({ ...formData, image: '' }); setImageLoadError(false); }}>
+                        <X className="w-3 h-3 ml-1" /> إزالة الصورة التالفة
+                      </Button>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Button
@@ -2223,6 +2265,26 @@ export default function Products() {
           onOpenChange={setShowPurchaseInvoiceDialog}
           onSuccess={loadData}
         />
+
+        {/* Image Preview Dialog */}
+        <Dialog open={!!previewImageUrl} onOpenChange={(open) => !open && setPreviewImageUrl(null)}>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:p-4 flex flex-col items-center justify-center">
+            <DialogHeader className="sr-only">
+              <DialogTitle>عرض صورة المنتج</DialogTitle>
+            </DialogHeader>
+            {previewImageUrl && (
+              <img
+                src={previewImageUrl}
+                alt="صورة المنتج"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = '';
+                  e.currentTarget.alt = 'الصورة تالفة أو غير متوفرة';
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
