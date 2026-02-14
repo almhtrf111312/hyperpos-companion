@@ -1032,7 +1032,7 @@ export const translations = {
 
     // Settings
     'settings.title': 'الإعدادات',
-    'settings.profile': 'الملف الشخصي',
+    'settings.profile': 'إعدادات الملف الشخصي',
     'settings.general': 'عام',
     'settings.backup': 'النسخ الاحتياطي',
     'settings.users': 'المستخدمين',
@@ -1143,7 +1143,7 @@ export const translations = {
     'settings.licenseManagement': 'إدارة التراخيص',
     'settings.saveSettings': 'حفظ الإعدادات',
     'settings.settingsSaved': 'تم حفظ الإعدادات بنجاح',
-    'settings.store': 'المتجر',
+    'settings.store': 'إعدادات المتجر',
     'settings.invalidImageType': 'يرجى اختيار ملف صورة صالح',
     'settings.imageTooLarge': 'حجم الصورة كبير جداً (الحد الأقصى 2MB)',
     'settings.logoUploaded': 'تم رفع الشعار بنجاح',
@@ -2545,7 +2545,7 @@ export const translations = {
     'settings.licenseManagement': 'License Management',
     'settings.saveSettings': 'Save Settings',
     'settings.settingsSaved': 'Settings saved successfully',
-    'settings.store': 'Store',
+    'settings.store': 'Store Settings',
     'settings.invalidImageType': 'Please select a valid image file',
     'settings.imageTooLarge': 'Image size too large (max 2MB)',
     'settings.logoUploaded': 'Logo uploaded successfully',
