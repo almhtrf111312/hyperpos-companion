@@ -59,6 +59,12 @@ export function getPrintSettings(): PrintSettings {
  * يعمل على المتصفحات وCapacitor WebView
  */
 export function printHTML(htmlContent: string): void {
+  // على Capacitor/Android استخدم native-print
+  if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
+    import('./native-print').then(mod => mod.printHTML(htmlContent));
+    return;
+  }
+
   // إنشاء iframe مخفي للطباعة
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
