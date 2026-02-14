@@ -136,6 +136,7 @@ export default function Products() {
     barcode: '',
     barcode2: '',  // باركود ثاني
     barcode3: '',  // باركود ثالث
+    variantLabel: '',  // وصف المتغير
     category: t('products.defaultCategory'),
     costPrice: 0,
     salePrice: 0,
@@ -396,7 +397,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -516,7 +517,7 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
       setCustomFieldValues({});
@@ -636,6 +637,7 @@ export default function Products() {
       barcode: product.barcode,
       barcode2: product.barcode2 || '',
       barcode3: product.barcode3 || '',
+      variantLabel: product.variantLabel || '',
       category: product.category,
       costPrice: product.costPrice,
       salePrice: product.salePrice,
@@ -697,7 +699,7 @@ export default function Products() {
               </Button>
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -721,7 +723,7 @@ export default function Products() {
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1363,6 +1365,16 @@ export default function Products() {
                     </div>
                   </div>
                 )}
+                {/* Variant Label */}
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">المتغير / الوصف</label>
+                  <Input
+                    placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
+                    value={formData.variantLabel}
+                    onChange={(e) => setFormData({ ...formData, variantLabel: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
+                </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
                   <select
@@ -1712,6 +1724,16 @@ export default function Products() {
                     </div>
                   </div>
                 )}
+                {/* Variant Label */}
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">المتغير / الوصف</label>
+                  <Input
+                    placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
+                    value={formData.variantLabel}
+                    onChange={(e) => setFormData({ ...formData, variantLabel: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
+                </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
                   <select
