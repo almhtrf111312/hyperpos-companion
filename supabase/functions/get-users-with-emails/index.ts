@@ -25,27 +25,26 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    })
+
+    // Use service role client for all operations
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
 
     // Verify the caller is a boss
     const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsError } = await userClient.auth.getClaims(token)
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token)
     
-    if (claimsError || !claims?.claims?.sub) {
-      console.error('Claims error:', claimsError)
+    if (userError || !userData?.user) {
+      console.error('User verification failed:', userError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const userId = claims.claims.sub
+    const userId = userData.user.id
 
     // Check if user is boss
-    const { data: roleData, error: roleError } = await userClient
+    const { data: roleData, error: roleError } = await adminClient
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
@@ -58,9 +57,6 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Use service role client to access auth.users
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
 
     // Get all users from auth.users
     const { data: authUsers, error: authError } = await adminClient.auth.admin.listUsers({
