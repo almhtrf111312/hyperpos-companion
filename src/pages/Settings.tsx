@@ -173,7 +173,7 @@ export default function Settings() {
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'store', label: t('settings.store'), icon: Store },
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
-    { id: 'backup', label: isRTL ? 'النسخ الاحتياطي والمزامنة' : 'Backup & Sync', icon: Database, adminOnly: true },
+    { id: 'backup', label: t('settings.backupSync'), icon: Database, adminOnly: true },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'printing', label: t('settings.printing'), icon: Printer },
     { id: 'users', label: t('settings.users'), icon: User, adminOnly: true },
@@ -182,7 +182,7 @@ export default function Settings() {
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
     { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
-    { id: 'archive', label: isRTL ? 'الأرشيف' : 'Archive', icon: Archive },
+    { id: 'archive', label: t('archive.title'), icon: Archive },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true },
     
   ];
@@ -348,8 +348,8 @@ export default function Settings() {
 
       if (error || !data?.success) {
         toast({
-          title: isRTL ? 'خطأ' : 'Error',
-          description: data?.error || (isRTL ? 'فشل في نقل الترخيص' : 'Failed to transfer license'),
+          title: t('common.error'),
+          description: data?.error || t('settings.transferFailed'),
           variant: 'destructive',
         });
         setIsTransferring(false);
@@ -357,8 +357,8 @@ export default function Settings() {
       }
 
       toast({
-        title: isRTL ? 'تم بنجاح' : 'Success',
-        description: isRTL ? 'تم فك ارتباط الجهاز بنجاح. يمكنك التفعيل من الجهاز الجديد.' : 'Device unlinked successfully. You can now activate on a new device.',
+        title: t('common.success'),
+        description: t('settings.deviceUnlinked'),
       });
 
       // Clear all local data and force sign out
@@ -368,8 +368,8 @@ export default function Settings() {
       await supabase.auth.signOut();
     } catch (err) {
       toast({
-        title: isRTL ? 'خطأ' : 'Error',
-        description: isRTL ? 'حدث خطأ غير متوقع' : 'An unexpected error occurred',
+        title: t('common.error'),
+        description: t('settings.unexpectedError'),
         variant: 'destructive',
       });
     }
@@ -437,7 +437,7 @@ export default function Settings() {
     setProductFieldsChanged(false);
     toast({
       title: t('common.success'),
-      description: isRTL ? 'تم التراجع عن التغييرات' : 'Changes reverted',
+      description: t('settings.changesReverted'),
     });
   };
 
@@ -530,7 +530,7 @@ export default function Settings() {
     } else {
       toast({
         title: t('common.saved'),
-        description: isRTL ? 'تم الحفظ محلياً. قد يكون هناك مشكلة في المزامنة السحابية.' : 'Saved locally. Cloud sync may have an issue.',
+        description: t('settings.savedLocallyCloudIssue'),
       });
     }
   };
@@ -952,9 +952,9 @@ export default function Settings() {
                     <option value="grocery">{t('settings.storeTypes.grocery')}</option>
                     <option value="pharmacy">{t('settings.storeTypes.pharmacy')}</option>
                     <option value="clothing">{t('settings.storeTypes.clothing')}</option>
-                    <option value="restaurant">{isRTL ? 'مطعم' : 'Restaurant'}</option>
-                    <option value="repair">{isRTL ? 'ورشة صيانة' : 'Repair Shop'}</option>
-                    <option value="bookstore">{isRTL ? 'مكتبة' : 'Bookstore'}</option>
+                    <option value="restaurant">{t('settings.storeTypes.restaurant')}</option>
+                    <option value="repair">{t('settings.storeTypes.repair')}</option>
+                    <option value="bookstore">{t('settings.storeTypes.bookstore')}</option>
                     <option value="general">{t('settings.storeTypes.general')}</option>
                   </select>
                 </div>
@@ -1049,7 +1049,7 @@ export default function Settings() {
               <div className="flex items-center justify-between py-2 border-t border-border">
                 <div className="flex items-center gap-2">
                   <Wrench className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">إخفاء قسم الصيانة</span>
+                  <span className="text-sm font-medium">{t('settings.hideMaintenanceSection')}</span>
                 </div>
                 <Switch
                   checked={hideMaintenanceSection}
@@ -1262,7 +1262,7 @@ export default function Settings() {
                             }}
                           >
                             <Key className="w-3.5 h-3.5" />
-                            <span className="text-xs">{isRTL ? 'كلمة المرور' : 'Password'}</span>
+                            <span className="text-xs">{t('settings.password')}</span>
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" className="flex-1 gap-1" onClick={() => handleEditUser(user)}>
@@ -1291,7 +1291,7 @@ export default function Settings() {
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
             <h2 className="text-lg font-bold text-foreground">
-              {isRTL ? 'النسخ الاحتياطي والمزامنة' : 'Backup & Sync'}
+              {t('settings.backupSync')}
             </h2>
 
             {/* Backup & Import - compact row */}
@@ -1393,11 +1393,11 @@ export default function Settings() {
                   <div className="flex items-center gap-1 border-t border-border/50 pt-1.5">
                     <Button variant="ghost" size="sm" className="flex-1 h-7 gap-1 text-xs" onClick={() => handleRestoreBackup(backup)}>
                       <RefreshCw className="w-3 h-3" />
-                      {isRTL ? 'استعادة' : 'Restore'}
+                      {t('settings.restoreBtn')}
                     </Button>
                     <Button variant="ghost" size="sm" className="flex-1 h-7 gap-1 text-xs text-destructive" onClick={() => handleDeleteBackup(backup)}>
                       <Trash2 className="w-3 h-3" />
-                      {isRTL ? 'حذف' : 'Delete'}
+                      {t('common.delete')}
                     </Button>
                   </div>
                 </div>
@@ -1414,7 +1414,7 @@ export default function Settings() {
             <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Smartphone className="w-4 h-4" />
-                {isRTL ? 'نقل الترخيص' : 'Transfer License'}
+                {t('settings.transferLicense')}
               </h3>
               <p className="text-xs text-muted-foreground">
                 {isRTL
@@ -1427,7 +1427,7 @@ export default function Settings() {
                 onClick={() => setTransferDialogOpen(true)}
               >
                 <Smartphone className="w-4 h-4" />
-                {isRTL ? 'نقل الترخيص لجهاز آخر' : 'Transfer License to Another Device'}
+                {t('settings.transferLicenseDesc')}
               </Button>
             </div>
           </div>
@@ -1466,7 +1466,7 @@ export default function Settings() {
                 </div>
                 <div>
                   <h3 className="font-medium text-foreground">
-                    {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
+                    {t('license.contactDeveloper')}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {isRTL ? 'تواصل مع فريق الدعم الفني' : 'Contact the support team'}
@@ -1586,7 +1586,7 @@ export default function Settings() {
             )}
             {!selectedUser && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">رقم الهاتف (اختياري)</label>
+                <label className="text-sm font-medium">{t('settings.phoneOptional')}</label>
                 <Input
                   type="tel"
                   value={userForm.phone}
@@ -1596,22 +1596,22 @@ export default function Settings() {
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">نوع المستخدم</label>
+              <label className="text-sm font-medium">{t('settings.userTypeLabel')}</label>
               <select
                 value={userForm.userType}
                 onChange={(e) => setUserForm({ ...userForm, userType: e.target.value as 'cashier' | 'distributor' | 'pos' })}
                 className="w-full h-10 px-3 rounded-md bg-muted border-0"
               >
-                <option value="cashier">كاشير (يرى كل المنتجات)</option>
-                <option value="pos">نقطة بيع (منتجات العهدة فقط)</option>
-                <option value="distributor">موزع متجول (منتجات العهدة فقط)</option>
+                <option value="cashier">{t('settings.userTypeCashierOption')}</option>
+                <option value="pos">{t('settings.userTypePOSOption')}</option>
+                <option value="distributor">{t('settings.userTypeDistributorOption')}</option>
               </select>
               <p className="text-xs text-muted-foreground">
                 {userForm.userType === 'cashier'
                   ? t('settings.userTypeCashierDesc')
                   : userForm.userType === 'pos'
-                    ? 'نقطة بيع ثابتة - يرى فقط المنتجات في عهدته'
-                    : 'موزع متجول - يرى فقط المنتجات في سيارته/عهدته'}
+                    ? t('settings.userTypePOSDesc')
+                    : t('settings.userTypeDistributorDesc')}
               </p>
             </div>
           </div>
@@ -1659,11 +1659,9 @@ export default function Settings() {
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isRTL ? 'نقل الترخيص لجهاز آخر' : 'Transfer License'}</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.transferLicenseDesc')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {isRTL
-                ? 'أدخل كلمة المرور لتأكيد هويتك. سيتم فك ارتباط الترخيص من هذا الجهاز وتسجيل خروجك تلقائياً.'
-                : 'Enter your password to confirm. The license will be unbound from this device and you will be signed out.'}
+              {t('settings.transferLicenseConfirm')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
@@ -1672,7 +1670,7 @@ export default function Settings() {
                 type={showTransferPassword ? 'text' : 'password'}
                 value={transferPassword}
                 onChange={(e) => setTransferPassword(e.target.value)}
-                placeholder={isRTL ? 'كلمة المرور' : 'Password'}
+                placeholder={t('settings.password')}
                 className="pe-10"
                 onKeyDown={(e) => { if (e.key === 'Enter' && transferPassword) handleTransferLicense(); }}
               />
@@ -1686,14 +1684,14 @@ export default function Settings() {
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>{isRTL ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <Button
               onClick={handleTransferLicense}
               disabled={!transferPassword || isTransferring}
               className="bg-orange-600 hover:bg-orange-700 text-white"
             >
               {isTransferring ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Smartphone className="w-4 h-4 me-2" />}
-              {isRTL ? 'تأكيد وفك الارتباط' : 'Confirm & Unbind'}
+              {t('settings.confirmUnbind')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1734,12 +1732,10 @@ export default function Settings() {
       <Dialog open={storeTypeConfirmOpen} onOpenChange={setStoreTypeConfirmOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{isRTL ? 'تغيير التصنيفات' : 'Update Categories'}</DialogTitle>
+            <DialogTitle>{t('settings.updateCategories')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            {isRTL
-              ? 'هل تريد استبدال التصنيفات الحالية بتصنيفات افتراضية تناسب نوع النشاط الجديد؟ سيتم حذف التصنيفات الحالية.'
-              : 'Do you want to replace your current categories with default ones for the new business type? Your existing categories will be removed.'}
+            {t('settings.updateCategoriesDesc')}
           </p>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -1748,12 +1744,12 @@ export default function Settings() {
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 toast({
-                  title: isRTL ? 'تم التحديث' : 'Updated',
-                  description: isRTL ? 'تم تحديث الحقول فقط، التصنيفات لم تتغير' : 'Fields updated, categories unchanged',
+                  title: t('settings.updated'),
+                  description: t('settings.fieldsOnlyUpdated'),
                 });
               }}
             >
-              {isRTL ? 'الاحتفاظ بالتصنيفات الحالية' : 'Keep Current'}
+              {t('settings.keepCurrentCategories')}
             </Button>
             <Button
               variant="destructive"
@@ -1770,12 +1766,12 @@ export default function Settings() {
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 toast({
-                  title: isRTL ? 'تم التحديث' : 'Updated',
-                  description: isRTL ? 'تم تحديث الحقول والتصنيفات حسب نوع النشاط الجديد' : 'Fields and categories updated for the new business type',
+                  title: t('settings.updated'),
+                  description: t('settings.fieldsAndCategoriesUpdated'),
                 });
               }}
             >
-              {isRTL ? 'استبدال التصنيفات' : 'Replace Categories'}
+              {t('settings.replaceCategories')}
             </Button>
           </DialogFooter>
         </DialogContent>

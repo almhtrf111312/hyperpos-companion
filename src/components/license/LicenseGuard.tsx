@@ -21,16 +21,14 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
   onChooseTrial: () => void;
   isStartingTrial: boolean;
 }) {
-  const { language } = useLanguage();
+  const { t, direction } = useLanguage();
   const { signOut } = useAuth();
-  const isRTL = language === 'ar';
   const [developerPhone, setDeveloperPhone] = useState<string>('');
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     const fetchContactInfo = async () => {
       try {
-        // Try new contact_links first
         const { data: linksData } = await supabase
           .from('app_settings')
           .select('value')
@@ -44,7 +42,6 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
             return;
           }
         }
-        // Fallback to old developer_phone
         const { data, error } = await supabase
           .from('app_settings')
           .select('value')
@@ -60,9 +57,7 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 
   const handleContactDeveloper = () => {
     if (!developerPhone) return;
-    const message = encodeURIComponent(
-      isRTL ? 'أريد الحصول على كود تفعيل لتطبيق FlowPOS Pro' : 'I want to get an activation code for FlowPOS Pro'
-    );
+    const message = encodeURIComponent(t('license.wantCode'));
     const cleanPhone = developerPhone.replace(/[^\d+]/g, '');
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
@@ -73,41 +68,41 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={direction}>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-xl">
-            {isRTL ? 'مرحباً بك في FlowPOS Pro' : 'Welcome to FlowPOS Pro'}
+            {t('license.welcome')}
           </CardTitle>
           <CardDescription>
-            {isRTL ? 'اختر طريقة تفعيل التطبيق' : 'Choose how to activate the application'}
+            {t('license.chooseActivation')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button variant="default" className="w-full h-auto py-4 flex flex-col items-center gap-2" onClick={onChooseActivation}>
             <Key className="w-6 h-6" />
-            <span className="font-semibold">{isRTL ? 'لدي كود تفعيل' : 'I have an activation code'}</span>
-            <span className="text-xs opacity-80">{isRTL ? 'أدخل كود التفعيل للحصول على ترخيص كامل' : 'Enter your code for full license'}</span>
+            <span className="font-semibold">{t('license.haveCode')}</span>
+            <span className="text-xs opacity-80">{t('license.haveCodeDesc')}</span>
           </Button>
           <Button variant="outline" className="w-full h-auto py-4 flex flex-col items-center gap-2" onClick={onChooseTrial} disabled={isStartingTrial}>
             {isStartingTrial ? <Loader2 className="w-6 h-6 animate-spin" /> : <Clock className="w-6 h-6" />}
-            <span className="font-semibold">{isRTL ? 'تجربة مجانية 30 يوم' : '30-day free trial'}</span>
-            <span className="text-xs opacity-80">{isRTL ? 'جرب التطبيق مجاناً قبل الشراء' : 'Try the app free before purchasing'}</span>
+            <span className="font-semibold">{t('license.freeTrial')}</span>
+            <span className="text-xs opacity-80">{t('license.freeTrialDesc')}</span>
           </Button>
           {developerPhone && (
             <div className="pt-4 border-t space-y-3">
               <p className="text-sm text-muted-foreground text-center">
-                {isRTL ? 'للحصول على كود التفعيل، تواصل معنا:' : 'To get an activation code, contact us:'}
+                {t('license.getCodeContact')}
               </p>
               <Button variant="secondary" className="w-full gap-2" onClick={handleContactDeveloper}>
                 <MessageCircle className="w-4 h-4" />
-                {isRTL ? 'التواصل مع المطور' : 'Contact Developer'}
+                {t('license.contactDeveloper')}
               </Button>
             </div>
           )}
           <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground gap-2" onClick={handleSignOut} disabled={isSigningOut}>
             {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-            {isRTL ? 'تسجيل الخروج والدخول بحساب آخر' : 'Sign out and use another account'}
+            {t('license.signOutOther')}
           </Button>
         </CardContent>
       </Card>
@@ -120,6 +115,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
+  const { t, direction } = useLanguage();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -134,7 +130,6 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
-  // ✅ Timeout: retry after 3s, skip after 6s
   useEffect(() => {
     if (isFullyLoading) {
       const retryTimer = setTimeout(() => setLoadingTimeout(true), 3000);
@@ -146,39 +141,26 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     }
   }, [isFullyLoading]);
 
-  // Skip loading - allow user in
   if (skipLoading) {
     return <>{children}</>;
   }
 
-  // Show loading with retry + skip buttons
   if (isFullyLoading && loadingTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">جاري التحميل...</p>
-          <Button 
-            variant="outline" 
-            onClick={() => { setLoadingTimeout(false); checkLicense(); }}
-          >
-            إعادة المحاولة
+          <p className="text-muted-foreground">{t('license.loading')}</p>
+          <Button variant="outline" onClick={() => { setLoadingTimeout(false); checkLicense(); }}>
+            {t('license.retry')}
           </Button>
           {showSkipButton && (
-            <Button 
-              variant="default"
-              size="sm"
-              onClick={() => setSkipLoading(true)}
-            >
-              تخطي والدخول
+            <Button variant="default" size="sm" onClick={() => setSkipLoading(true)}>
+              {t('license.skipAndEnter')}
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => window.location.reload()}
-          >
-            إعادة تحميل التطبيق
+          <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
+            {t('license.reloadApp')}
           </Button>
         </div>
       </div>
@@ -190,32 +172,30 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">جاري التحميل...</p>
+          <p className="text-muted-foreground">{t('license.loading')}</p>
         </div>
       </div>
     );
   }
 
   if (!user) return <>{children}</>;
-
   if (isDeviceBlocked) return <DeviceBlockedScreen />;
-
   if (isValid && hasLicense) return <>{children}</>;
 
   if (ownerNeedsActivation && role === 'cashier') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={direction}>
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center pb-2">
             <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Clock className="w-8 h-8 text-orange-600 dark:text-orange-400" />
             </div>
-            <CardTitle className="text-xl">في انتظار تفعيل المالك</CardTitle>
-            <CardDescription>صاحب الحساب لم يقم بتفعيل الترخيص بعد. يرجى التواصل معه لتفعيل الحساب.</CardDescription>
+            <CardTitle className="text-xl">{t('license.ownerNotActivated')}</CardTitle>
+            <CardDescription>{t('license.ownerNotActivatedDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full" onClick={() => checkLicense()}>إعادة التحقق</Button>
-            <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => { await supabase.auth.signOut(); }}>تسجيل الخروج</Button>
+            <Button variant="outline" className="w-full" onClick={() => checkLicense()}>{t('license.recheck')}</Button>
+            <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => { await supabase.auth.signOut(); }}>{t('license.signOut')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -242,7 +222,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">جاري بدء الفترة التجريبية...</p>
+          <p className="text-muted-foreground">{t('license.startingTrial')}</p>
         </div>
       </div>
     );

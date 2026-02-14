@@ -4,14 +4,9 @@ import { useLanguage } from '@/hooks/use-language';
 
 export function TrialBanner() {
   const { isTrial, remainingDays, isValid } = useLicense();
-  const { language } = useLanguage();
-  
-  const isRTL = language === 'ar';
+  const { t, isRTL } = useLanguage();
 
-  // Only show for valid trial licenses
-  if (!isValid || !isTrial || remainingDays === null) {
-    return null;
-  }
+  if (!isValid || !isTrial || remainingDays === null) return null;
 
   const isUrgent = remainingDays <= 7;
   const isCritical = remainingDays <= 3;
@@ -28,16 +23,9 @@ export function TrialBanner() {
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="flex items-center justify-center gap-2">
-        {isUrgent ? (
-          <AlertTriangle className="w-4 h-4" />
-        ) : (
-          <Clock className="w-4 h-4" />
-        )}
+        {isUrgent ? <AlertTriangle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
         <span>
-          {isRTL 
-            ? `فترة تجريبية: متبقي ${remainingDays} ${remainingDays === 1 ? 'يوم' : 'أيام'}`
-            : `Trial: ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'} remaining`
-          }
+          {`${t('license.trialPeriod')} ${remainingDays} ${remainingDays === 1 ? t('license.days') : t('license.daysPlural')}`}
         </span>
       </div>
     </div>
