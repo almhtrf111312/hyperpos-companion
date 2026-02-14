@@ -1,99 +1,66 @@
 
 
-# خطة إكمال الترجمة التركية - المرحلة النهائية
+# خطة إصلاح أخطاء البناء + تحسين الوضع الليلي مع الشفافية
 
-## ملخص المشكلة
+## المشكلة 1: أخطاء البناء (TS2345)
 
-بعد الفحص الشامل للتطبيق باللغة التركية، تم اكتشاف **مشكلتين رئيسيتين**:
+السبب: مفاتيح ترجمة مستخدمة في الكود موجودة في بلوك `en` و `tr` لكنها **غير موجودة في بلوك `ar`** (الذي يُعرّف النوع `TranslationKey`).
 
-### المشكلة 1: نظام المصطلحات الديناميكية (store-type-config)
-الملف `store-type-config.ts` يدعم فقط `ar` و `en`. أي لغة غير العربية تعود للإنجليزية. هذا يسبب ظهور كلمة "Products" في القائمة الجانبية بدلا من "Urünler".
+### المفاتيح المفقودة من بلوك `ar`:
 
-### المشكلة 2: نمط `isRTL ? 'عربي' : 'English'` المنتشر
-يوجد **538 استخدام** لنمط `isRTL ? 'نص عربي' : 'English text'` عبر **16 ملف**. هذا النمط يتجاهل نظام الترجمة بالكامل - عند اختيار التركية (LTR)، يظهر النص الإنجليزي بدلا من التركي.
+**مفاتيح setup (مستخدمة في SetupWizard.tsx):**
+- `setup.storeInfoDesc`, `setup.capitalDesc`, `setup.partnersDesc`, `setup.currenciesDesc`
+- `setup.partnerNum`, `setup.totalCapitalLabel`, `setup.initialCapitalNote`
+- `setup.retail`, `setup.wholesale`, `setup.phones`, `setup.grocery`
+- `setup.pharmacy`, `setup.restaurant`, `setup.bakery`, `setup.services`, `setup.other`
 
-## الملفات المتأثرة (16 ملف)
+**مفاتيح license (مستخدمة في NotificationBell.tsx):**
+- `license.licenseStatus`, `license.currentStatus`, `license.activated`
+- `license.expiresAt`, `license.remainingDays`, `license.enterCodeLabel`
 
-| # | الملف | عدد الاستخدامات | الأولوية |
-|---|-------|-----------------|----------|
-| 1 | `store-type-config.ts` | بنية كاملة | عالية |
-| 2 | `Settings.tsx` | ~50+ | عالية |
-| 3 | `LicenseManagement.tsx` | ~40+ | عالية |
-| 4 | `NotificationBell.tsx` | ~30+ | عالية |
-| 5 | `SyncStatusMenu.tsx` | ~25+ | عالية |
-| 6 | `SyncQueueIndicator.tsx` | ~20+ | عالية |
-| 7 | `DeviceBlockedScreen.tsx` | ~15+ | متوسطة |
-| 8 | `SetupWizard.tsx` | ~50+ | عالية |
-| 9 | `Appearance.tsx` | ~5 | متوسطة |
-| 10 | `StockTransfer.tsx` | ~30+ | متوسطة |
-| 11 | `ActivationScreen.tsx` | ~10+ | متوسطة |
-| 12 | `TrialBanner.tsx` | ~5 | منخفضة |
-| 13 | `LicenseWarningBadge.tsx` | ~5 | منخفضة |
-| 14 | `Help.tsx` | محتوى كامل | متوسطة |
-| 15 | `PrivacyPolicyScreen.tsx` | محتوى كامل | متوسطة |
-| 16 | `LicenseGuard.tsx` | ~10+ | متوسطة |
+### الحل:
+اضافة هذه المفاتيح الـ 22 في بلوك `ar` بعد مفاتيح setup الموجودة (بعد سطر 1912) ومفاتيح license الموجودة.
 
-## خطة التنفيذ (3 مراحل)
+---
 
-### المرحلة 1: البنية التحتية والملفات الحرجة
-**الهدف**: إصلاح الأساس وأهم الشاشات
+## المشكلة 2: تصميم سيء في الوضع الليلي + الشفافية
 
-1. **إضافة دعم `tr` لنظام المصطلحات الديناميكية** (`store-type-config.ts`)
-   - إضافة `tr` بجانب `ar` و `en` في `TerminologySet`
-   - ترجمة جميع مصطلحات أنواع المتاجر (phones, clothing, food, etc.)
-   - تحديث دالة `getTerminology` لتدعم `tr`
+### السبب الجذري:
+في الوضع الليلي مع تفعيل الشفافية، `--glass-bg` يكون `hsla(222, 47%, 9%, 0.31)` (شفافية عالية جدا). هذا يجعل:
+- الكروت شبه شفافة بالكامل - النصوص تصبح غير مقروءة
+- القوائم المنسدلة والحوارات شبه مختفية
+- التباين بين النص والخلفية ضعيف جدا
 
-2. **تحويل Settings.tsx** من `isRTL` إلى `t()`
-   - إضافة مفاتيح ترجمة جديدة في `i18n.ts` للنصوص المفقودة
-   - استبدال جميع أنماط `isRTL ? ... : ...` بنصوص مترجمة
+### الحل:
+تعديل دالة `applyBlurTheme` في `src/hooks/use-theme.tsx` لجعل الوضع الليلي اكثر كثافة:
 
-3. **تحويل SyncStatusMenu.tsx و SyncQueueIndicator.tsx**
-   - إضافة مفاتيح `sync.*` في `i18n.ts`
-   - استبدال النصوص المباشرة
+1. **رفع الحد الأدنى لشفافية الخلفية في الوضع الليلي**: تغيير `bgAlpha` من `0.75 - 0.45t` الى `0.85 - 0.35t` بحيث لا تقل الشفافية عن 50%
+2. **تقوية حدود الزجاج**: زيادة `borderAlpha` لتكون أوضح في الوضع الليلي
+3. **زيادة تشبع الألوان**: رفع `saturate` في CSS من 1.4 الى 1.6 للوضع الليلي
 
-### المرحلة 2: شاشات الترخيص والإشعارات
-**الهدف**: ترجمة واجهات الترخيص والإشعارات
+### التفاصيل التقنية:
 
-4. **LicenseManagement.tsx** - تحويل ~40 نص
-5. **NotificationBell.tsx** - تحويل ~30 نص
-6. **DeviceBlockedScreen.tsx** - تحويل ~15 نص
-7. **SetupWizard.tsx** - تحويل ~50 نص (معالج الإعداد الأولي)
-
-### المرحلة 3: باقي الملفات
-**الهدف**: إكمال الترجمة
-
-8. **Appearance.tsx** - تحويل ~5 نصوص
-9. **StockTransfer.tsx** - تحويل ~30 نص
-10. **Help.tsx** - إضافة محتوى تعليمات بالتركية
-11. **PrivacyPolicyScreen.tsx** - إضافة نص سياسة الخصوصية بالتركية
-
-### ملاحظة: لوحة البث (BossPanel)
-لن يتم ترجمة لوحة البث (`BossPanel.tsx`) حسب طلبك - ستبقى بالعربية والإنجليزية فقط.
-
-## تفاصيل تقنية
-
-### التغيير في `store-type-config.ts`:
+**ملف `src/hooks/use-theme.tsx` - دالة `applyBlurTheme`:**
 ```text
-interface TerminologySet {
-  ar: Record<TerminologyKey, string>;
-  en: Record<TerminologyKey, string>;
-  tr: Record<TerminologyKey, string>;  // اضافة جديدة
-}
+// قبل (dark mode):
+const bgAlpha = 0.75 - easedT * 0.45; // 0.75 -> 0.30
+
+// بعد:
+const bgAlpha = 0.88 - easedT * 0.33; // 0.88 -> 0.55
 ```
 
-### نمط التحويل:
-```text
-// قبل (لا يدعم التركية):
-{isRTL ? 'متصل ومزامن' : 'Synced'}
+**ملف `src/index.css` - تحسين قواعد `.blur-theme` للوضع الليلي:**
+- اضافة قاعدة `.dark.blur-theme` لزيادة كثافة الزجاج في الوضع الليلي
+- رفع `saturate` الى 1.8 للكروت في الوضع الليلي
+- اضافة `background-color` احتياطي اكثر كثافة
 
-// بعد (يدعم جميع اللغات):
-{t('sync.synced')}
-```
+---
 
-### عدد المفاتيح الجديدة المتوقعة في i18n.ts:
-- حوالي 150-200 مفتاح جديد عبر المراحل الثلاث
-- تشمل: `sync.*`, `notification.*`, `setup.*`, `stockTransfer.*`, `deviceBlocked.*`
+## ملخص الملفات المتأثرة:
 
-## ملخص النتائج المتوقعة
-بعد إكمال المراحل الثلاث، سيكون التطبيق مترجما بالكامل للتركية مع استثناء لوحة البث فقط.
+| الملف | التغيير |
+|-------|---------|
+| `src/lib/i18n.ts` | اضافة ~22 مفتاح مفقود في بلوك `ar` |
+| `src/hooks/use-theme.tsx` | تعديل `applyBlurTheme` - رفع كثافة الوضع الليلي |
+| `src/index.css` | اضافة قواعد `.dark.blur-theme` محسّنة |
 
