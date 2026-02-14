@@ -1,8 +1,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Package, Boxes, ArrowLeftRight, DollarSign, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 interface UnitSettingsData {
   bulkUnit: string;
@@ -142,23 +142,37 @@ export function UnitSettingsTab({ data, onChange, quantityInPieces, pieceCostPri
         </div>
       </div>
       
-      {/* Track by Unit Toggle */}
-      <div className="flex items-center justify-between pt-3 border-t border-border">
+      {/* Track by Unit Toggle - Radio style buttons */}
+      <div className="pt-3 border-t border-border space-y-2">
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm">وحدة إدخال الكمية:</span>
+          <span className="text-sm font-medium">وحدة إدخال الكمية:</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-sm ${data.trackByUnit === 'piece' ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onChange({ trackByUnit: 'piece' })}
+            className={cn(
+              "flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-all",
+              data.trackByUnit === 'piece'
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:border-muted-foreground/50"
+            )}
+          >
             {data.smallUnit || 'قطعة'}
-          </span>
-          <Switch
-            checked={data.trackByUnit === 'bulk'}
-            onCheckedChange={(checked) => onChange({ trackByUnit: checked ? 'bulk' : 'piece' })}
-          />
-          <span className={`text-sm ${data.trackByUnit === 'bulk' ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ trackByUnit: 'bulk' })}
+            className={cn(
+              "flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-all",
+              data.trackByUnit === 'bulk'
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:border-muted-foreground/50"
+            )}
+          >
             {data.bulkUnit || 'كرتونة'}
-          </span>
+          </button>
         </div>
       </div>
       

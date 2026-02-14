@@ -2,33 +2,26 @@ import { useState, useEffect } from 'react';
 import { 
   Cloud, 
   CloudOff, 
-  Upload, 
   Download, 
   Trash2, 
   RefreshCw,
   CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Settings,
   FolderOpen,
   Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import {
-  getStoredClientId,
-  setStoredClientId,
   getStoredTokens,
   setStoredTokens,
   getStoredFolderId,
   setStoredFolderId,
   isTokenValid,
-  initiateGoogleAuth,
-  parseAuthCallback,
   getUserInfo,
   getOrCreateBackupFolder,
   listBackupFiles,
@@ -37,8 +30,6 @@ import {
   deleteBackupFile,
   disconnectGoogleDrive,
   formatFileSize,
-  getGoogleClientId,
-  hasBuiltInClientId,
   GoogleDriveFile,
   GoogleDriveUserInfo,
   GoogleDriveTokens,
@@ -52,11 +43,7 @@ interface GoogleDriveSectionProps {
 export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: GoogleDriveSectionProps) {
   const { toast } = useToast();
   
-  // Check if built-in Client ID exists
-  const builtInClientId = hasBuiltInClientId();
-  
   // State
-  const [clientId, setClientId] = useState(getStoredClientId() || '');
   const [isConnected, setIsConnected] = useState(false);
   const [userInfo, setUserInfo] = useState<GoogleDriveUserInfo | null>(null);
   const [tokens, setTokens] = useState<GoogleDriveTokens | null>(getStoredTokens());
@@ -64,20 +51,12 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
   const [driveFiles, setDriveFiles] = useState<GoogleDriveFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const [autoUpload, setAutoUpload] = useState(false);
   
   // Dialogs
-  const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [deleteFileDialogOpen, setDeleteFileDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<GoogleDriveFile | null>(null);
-
-  // Check for OAuth callback on mount
-  useEffect(() => {
-    const callbackTokens = parseAuthCallback();
-    if (callbackTokens) {
-      handleAuthCallback(callbackTokens);
-    }
-  }, []);
 
   // Check connection status on mount
   useEffect(() => {
@@ -88,28 +67,39 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
     }
   }, []);
 
-  const handleAuthCallback = async (newTokens: GoogleDriveTokens) => {
-    setTokens(newTokens);
-    setStoredTokens(newTokens);
-    await initializeConnection(newTokens);
-    
-    toast({
-      title: 'تم الربط بنجاح',
-      description: 'تم ربط حساب Google Drive بنجاح',
+  // Listen for auth state changes to get Google provider token
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.provider_token) {
+        // Got a Google provider token from OAuth sign-in
+        const newTokens: GoogleDriveTokens = {
+          access_token: session.provider_token,
+          expires_at: Date.now() + 3600 * 1000, // 1 hour
+        };
+        setStoredTokens(newTokens);
+        setTokens(newTokens);
+        await initializeConnection(newTokens);
+        
+        toast({
+          title: 'تم الربط بنجاح',
+          description: 'تم ربط حساب Google Drive بنجاح',
+        });
+        setIsSigningIn(false);
+      }
     });
-  };
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const initializeConnection = async (authTokens: GoogleDriveTokens) => {
     setIsLoading(true);
     try {
-      // Get user info
       const info = await getUserInfo(authTokens.access_token);
       if (info) {
         setUserInfo(info);
         setIsConnected(true);
       }
 
-      // Get or create backup folder
       let folder = getStoredFolderId();
       if (!folder) {
         folder = await getOrCreateBackupFolder(authTokens.access_token);
@@ -121,7 +111,6 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
         setFolderId(folder);
       }
 
-      // List files
       if (folder) {
         const files = await listBackupFiles(authTokens.access_token, folder);
         setDriveFiles(files);
@@ -133,32 +122,34 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
     }
   };
 
-  const handleConnect = () => {
-    // Use built-in Client ID if available, otherwise use manual input
-    const clientIdToUse = getGoogleClientId() || clientId.trim();
-    
-    if (!clientIdToUse) {
+  const handleSignInWithGoogle = async () => {
+    setIsSigningIn(true);
+    try {
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: {
+          prompt: "consent",
+          access_type: "offline",
+        },
+      });
+      
+      if (error) {
+        console.error('Google sign-in error:', error);
+        toast({
+          title: 'خطأ',
+          description: 'فشل تسجيل الدخول بحساب Google',
+          variant: 'destructive',
+        });
+        setIsSigningIn(false);
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
       toast({
         title: 'خطأ',
-        description: 'يرجى إدخال معرف العميل (Client ID)',
+        description: 'فشل تسجيل الدخول بحساب Google',
         variant: 'destructive',
       });
-      return;
-    }
-    
-    // Store if using manual input
-    if (!builtInClientId && clientId.trim()) {
-      setStoredClientId(clientId.trim());
-    }
-    
-    initiateGoogleAuth(clientIdToUse);
-  };
-
-  // Direct connect for built-in Client ID
-  const handleDirectConnect = () => {
-    const envClientId = getGoogleClientId();
-    if (envClientId) {
-      initiateGoogleAuth(envClientId);
+      setIsSigningIn(false);
     }
   };
 
@@ -318,10 +309,10 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
         <div className="flex items-center gap-2">
           <div className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center",
-            isConnected ? "bg-green-500/20" : "bg-muted"
+            isConnected ? "bg-success/20" : "bg-muted"
           )}>
             {isConnected ? (
-              <Cloud className="w-5 h-5 text-green-500" />
+              <Cloud className="w-5 h-5 text-success" />
             ) : (
               <CloudOff className="w-5 h-5 text-muted-foreground" />
             )}
@@ -331,7 +322,7 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
             <p className="text-sm text-muted-foreground">
               {isConnected ? (
                 <>
-                  <CheckCircle2 className="w-3 h-3 inline ml-1 text-green-500" />
+                  <CheckCircle2 className="w-3 h-3 inline ml-1 text-success" />
                   متصل: {userInfo?.email}
                 </>
               ) : (
@@ -351,15 +342,19 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
               إلغاء الربط
             </Button>
           </div>
-        ) : builtInClientId ? (
-          <Button size="sm" onClick={handleDirectConnect} className="bg-blue-600 hover:bg-blue-700">
-            <Cloud className="w-4 h-4 ml-1" />
-            ربط Google Drive
-          </Button>
         ) : (
-          <Button size="sm" onClick={() => setSetupDialogOpen(true)}>
-            <Cloud className="w-4 h-4 ml-1" />
-            إعداد Google Drive
+          <Button 
+            size="sm" 
+            onClick={handleSignInWithGoogle} 
+            disabled={isSigningIn}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSigningIn ? (
+              <Loader2 className="w-4 h-4 ml-1 animate-spin" />
+            ) : (
+              <Cloud className="w-4 h-4 ml-1" />
+            )}
+            تسجيل الدخول بحساب Google
           </Button>
         )}
       </div>
@@ -379,11 +374,11 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
             />
           </div>
 
-          {/* Cloud Backup Button - Prominent */}
+          {/* Cloud Backup Button */}
           <Button 
             onClick={handleUploadToDrive} 
             disabled={isUploading}
-            className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base"
+            className="w-full bg-primary hover:bg-primary/90 h-12 text-base"
           >
             {isUploading ? (
               <>
@@ -414,8 +409,8 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
               driveFiles.map((file) => (
                 <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted rounded-xl">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                      <Cloud className="w-5 h-5 text-blue-500" />
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <Cloud className="w-5 h-5 text-primary" />
                     </div>
                     <div>
                       <p className="font-medium text-foreground text-sm">{file.name}</p>
@@ -449,65 +444,6 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
         </>
       )}
 
-      {/* Setup Dialog */}
-      <Dialog open={setupDialogOpen} onOpenChange={setSetupDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              إعداد Google Drive
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-              <div className="flex gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-500 mb-1">إعداد مطلوب</p>
-                  <p className="text-muted-foreground">
-                    لربط Google Drive، تحتاج إلى إنشاء مشروع في Google Cloud Console والحصول على Client ID.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="font-medium text-foreground">خطوات الإعداد:</h4>
-              <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-                <li>اذهب إلى <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1">Google Cloud Console <ExternalLink className="w-3 h-3" /></a></li>
-                <li>أنشئ مشروع جديد أو اختر مشروع موجود</li>
-                <li>فعّل Google Drive API من قسم APIs & Services</li>
-                <li>اذهب إلى Credentials وأنشئ OAuth 2.0 Client ID</li>
-                <li>اختر "Web application" وأضف النطاق: <code className="px-1 py-0.5 bg-muted rounded">{window.location.origin}</code></li>
-                <li>انسخ Client ID والصقه أدناه</li>
-              </ol>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">معرف العميل (Client ID)</label>
-              <Input
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                placeholder="xxxxxxx.apps.googleusercontent.com"
-                dir="ltr"
-                className="font-mono text-sm"
-              />
-            </div>
-          </div>
-          
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setSetupDialogOpen(false)} className="w-full sm:w-auto">
-              إلغاء
-            </Button>
-            <Button onClick={handleConnect} className="w-full sm:w-auto">
-              <Cloud className="w-4 h-4 ml-2" />
-              ربط الآن
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteFileDialogOpen} onOpenChange={setDeleteFileDialogOpen}>
         <DialogContent className="max-w-sm">
@@ -515,7 +451,7 @@ export default function GoogleDriveSection({ getBackupData, onRestoreBackup }: G
             <DialogTitle>تأكيد الحذف</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground py-4">
-            هل أنت متأكد من حذف النسخة "{selectedFile?.name}"؟ لا يمكن التراجع عن هذا الإجراء.
+            هل أنت متأكد من حذف النسخة &quot;{selectedFile?.name}&quot;؟ لا يمكن التراجع عن هذا الإجراء.
           </p>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setDeleteFileDialogOpen(false)} className="w-full sm:w-auto">
