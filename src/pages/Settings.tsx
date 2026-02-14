@@ -169,6 +169,34 @@ export default function Settings() {
   const navigate = useNavigate();
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
 
+  // Boss panel password verification
+  const [bossPassword, setBossPassword] = useState('');
+  const [showBossPassword, setShowBossPassword] = useState(false);
+  const [bossPasswordError, setBossPasswordError] = useState('');
+  const [isVerifyingBossPassword, setIsVerifyingBossPassword] = useState(false);
+
+  const handleOpenBossPanel = async () => {
+    if (!bossPassword || !currentUser?.email) return;
+    setIsVerifyingBossPassword(true);
+    setBossPasswordError('');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: bossPassword,
+      });
+      if (error) {
+        setBossPasswordError(t('auth.invalidCredentials') || 'كلمة المرور غير صحيحة');
+      } else {
+        setBossPassword('');
+        navigate('/boss');
+      }
+    } catch {
+      setBossPasswordError('حدث خطأ أثناء التحقق');
+    } finally {
+      setIsVerifyingBossPassword(false);
+    }
+  };
+
   const settingsTabs = [
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'store', label: t('settings.store'), icon: Store },
@@ -182,7 +210,7 @@ export default function Settings() {
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'contact', label: t('license.contactDeveloper'), icon: Phone, danger: true },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true, danger: true },
-    { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
+    
     { id: 'archive', label: t('archive.title'), icon: Archive },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true, danger: true },
     
@@ -932,12 +960,6 @@ export default function Settings() {
       // تم نقل theme إلى صفحة /appearance
       case 'activity':
         return <ActivityLogSection />;
-      case 'diagnostics':
-        return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
-            <SystemDiagnostics />
-          </div>
-        );
       case 'store':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
@@ -1471,18 +1493,45 @@ export default function Settings() {
       case 'licenses':
         return (
           <div className="space-y-6">
-            {/* Quick link to Boss Panel */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+            <div className="bg-card rounded-2xl border border-border p-6 md:p-8 flex flex-col items-center justify-center text-center gap-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
+                <Shield className="w-8 h-8 text-primary" />
+              </div>
               <div>
-                <h3 className="font-medium text-foreground">{t('settings.bossPanel')}</h3>
+                <h3 className="text-lg font-bold text-foreground mb-1">{t('settings.bossPanel')}</h3>
                 <p className="text-sm text-muted-foreground">{t('settings.goToBossPanel')}</p>
               </div>
-              <Button onClick={() => navigate('/boss')} variant="outline" className="gap-2">
-                <ExternalLink className="w-4 h-4" />
-                {t('common.open')}
-              </Button>
+              {bossPasswordError && (
+                <p className="text-sm text-destructive">{bossPasswordError}</p>
+              )}
+              <div className="w-full max-w-xs space-y-3">
+                <div className="relative">
+                  <Input
+                    type={showBossPassword ? 'text' : 'password'}
+                    value={bossPassword}
+                    onChange={(e) => { setBossPassword(e.target.value); setBossPasswordError(''); }}
+                    placeholder={t('auth.password')}
+                    className="pe-10"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleOpenBossPanel(); }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBossPassword(!showBossPassword)}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                  >
+                    {showBossPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={handleOpenBossPanel}
+                  disabled={isVerifyingBossPassword || !bossPassword}
+                  className="w-full gap-2"
+                >
+                  {isVerifyingBossPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+                  {t('common.open')}
+                </Button>
+              </div>
             </div>
-            <LicenseManagement />
           </div>
         );
 

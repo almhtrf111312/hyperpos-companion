@@ -75,6 +75,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 
 interface Owner {
   user_id: string;
@@ -1337,6 +1338,13 @@ export default function BossPanel() {
                 })
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* System Diagnostics Section */}
+        <Card>
+          <CardContent className="p-4 md:p-6">
+            <SystemDiagnostics />
           </CardContent>
         </Card>
 
