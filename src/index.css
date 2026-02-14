@@ -104,6 +104,9 @@
     --blur-intensity: 20px;
     --glass-bg: rgba(0, 0, 0, 0.4);
     --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-highlight: rgba(255, 255, 255, 0.04);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --glass-inset-shadow: inset 0 1px 0 var(--glass-highlight);
   }
 
   .dark {
@@ -254,53 +257,79 @@
   }
 }
 
-/* Blur Theme / Glassmorphism Styles */
+/* ===== Blur Theme / Premium Glassmorphism ===== */
 .blur-theme {
   --blur-intensity: 20px;
 }
 
+/* Cards - primary glass surfaces */
 .blur-theme .bg-card,
 .blur-theme [class*="bg-card"],
 .blur-theme .card,
 .blur-theme [data-slot="card"] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(var(--blur-intensity)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(1.4) !important;
   border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow), var(--glass-inset-shadow) !important;
 }
 
+/* Main background - subtle gradient wash */
 .blur-theme .bg-background {
-  background: linear-gradient(135deg,
-      hsl(var(--primary) / 0.08),
-      hsl(var(--accent) / 0.08)) !important;
+  background: linear-gradient(160deg,
+      hsl(var(--primary) / 0.06) 0%,
+      transparent 40%,
+      hsl(var(--accent) / 0.04) 100%) !important;
 }
 
+/* Popover surfaces */
 .blur-theme .bg-popover,
 .blur-theme [class*="bg-popover"] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 4px)) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 4px)) saturate(1.5) !important;
   border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
 }
 
+/* Sidebar - slightly denser glass */
 .blur-theme .bg-sidebar,
 .blur-theme [class*="sidebar-background"],
 .blur-theme [data-sidebar] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.5) !important;
+  border-color: var(--glass-border) !important;
 }
 
-/* bg-muted and bg-secondary: NO glass effect to avoid black boxes on small elements */
+/* bg-muted and bg-secondary: semi-transparent instead of glass */
+.blur-theme .bg-muted,
+.blur-theme [class*="bg-muted"]:not([class*="text-muted"]) {
+  background: hsl(var(--muted) / 0.5) !important;
+  backdrop-filter: none !important;
+}
 
-/* Dialog and Sheet backgrounds with blur */
+.blur-theme .bg-secondary {
+  background: hsl(var(--secondary) / 0.5) !important;
+  backdrop-filter: none !important;
+}
+
+/* Dialog and Sheet - higher blur for focus */
 .blur-theme [role="dialog"],
 .blur-theme [data-radix-dialog-content],
 .blur-theme [data-radix-alert-dialog-content] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 10px)) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 10px)) saturate(1.6) !important;
   border: 1px solid var(--glass-border) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), var(--glass-inset-shadow) !important;
+}
+
+/* Dialog overlay - frosted backdrop */
+.blur-theme [data-radix-dialog-overlay],
+.blur-theme [data-radix-alert-dialog-overlay] {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
 }
 
 /* Dropdown menus */
@@ -308,26 +337,29 @@
 .blur-theme [data-radix-menu-content],
 .blur-theme [data-radix-dropdown-menu-content] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.5) !important;
   border: 1px solid var(--glass-border) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Select dropdowns */
 .blur-theme [data-radix-select-content] {
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.5) !important;
   border: 1px solid var(--glass-border) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Toast notifications - ALWAYS opaque and readable, never glass */
+/* Toast notifications - ALWAYS opaque and readable */
 .blur-theme [data-sonner-toast] {
   background: hsl(var(--card)) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid hsl(var(--border)) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+  border: 1px solid hsl(var(--border) / 0.6) !important;
   color: hsl(var(--foreground)) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
 }
 
 .blur-theme [data-sonner-toast] [data-title],
@@ -336,30 +368,54 @@
 }
 
 .blur-theme [data-sonner-toast][data-type="success"] {
-  background: hsl(var(--success) / 0.15) !important;
+  background: hsl(var(--success) / 0.12) !important;
   color: hsl(var(--success)) !important;
-  border-color: hsl(var(--success) / 0.3) !important;
+  border-color: hsl(var(--success) / 0.25) !important;
 }
 
 .blur-theme [data-sonner-toast][data-type="error"] {
-  background: hsl(var(--destructive) / 0.15) !important;
+  background: hsl(var(--destructive) / 0.12) !important;
   color: hsl(var(--destructive)) !important;
-  border-color: hsl(var(--destructive) / 0.3) !important;
+  border-color: hsl(var(--destructive) / 0.25) !important;
 }
 
-/* Inputs and buttons - NO glass in blur theme */
+/* Inputs - solid but subtle in glass mode */
 .blur-theme input,
 .blur-theme select,
 .blur-theme textarea,
 .blur-theme [data-slot="input"] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  background: hsl(var(--input) / 0.6) !important;
+  border-color: var(--glass-border) !important;
 }
 
-/* Buttons: no extra glass backdrop */
+.blur-theme input:focus,
+.blur-theme select:focus,
+.blur-theme textarea:focus {
+  border-color: hsl(var(--primary) / 0.5) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15) !important;
+}
+
+/* Buttons: no glass, keep solid */
 .blur-theme .bg-primary {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* Tabs in glass mode */
+.blur-theme [role="tablist"] {
+  background: hsl(var(--muted) / 0.4) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+/* Table rows */
+.blur-theme table tbody tr {
+  border-color: var(--glass-border) !important;
+}
+
+.blur-theme table tbody tr:hover {
+  background: hsl(var(--primary) / 0.04) !important;
 }
 
 @layer base {
