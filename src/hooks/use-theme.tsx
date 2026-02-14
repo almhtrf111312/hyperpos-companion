@@ -203,15 +203,15 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number 
     const easedT = t * t * (3 - 2 * t); // smoothstep
 
     if (mode === 'dark') {
-      // Dark mode: deep navy-tinted glass
-      const bgAlpha = 0.75 - easedT * 0.45; // 0.75 → 0.30
-      const borderAlpha = 0.06 + easedT * 0.12; // subtle white borders
-      const highlightAlpha = 0.02 + easedT * 0.04;
+      // Dark mode: deep navy-tinted glass - higher opacity for readability
+      const bgAlpha = 0.88 - easedT * 0.33; // 0.88 → 0.55
+      const borderAlpha = 0.10 + easedT * 0.15; // stronger white borders
+      const highlightAlpha = 0.03 + easedT * 0.05;
 
       root.style.setProperty('--glass-bg', `hsla(222, 47%, 9%, ${bgAlpha})`);
       root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${borderAlpha})`);
       root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, ${highlightAlpha})`);
-      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, ${0.15 + easedT * 0.15})`);
+      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, ${0.20 + easedT * 0.15})`);
     } else {
       // Light mode: frosted white glass
       const bgAlpha = 0.82 - easedT * 0.42; // 0.82 → 0.40

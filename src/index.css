@@ -418,6 +418,52 @@
   background: hsl(var(--primary) / 0.04) !important;
 }
 
+/* ===== Dark Mode Blur Overrides - denser glass for readability ===== */
+.dark.blur-theme .bg-card,
+.dark.blur-theme [class*="bg-card"],
+.dark.blur-theme .card,
+.dark.blur-theme [data-slot="card"] {
+  backdrop-filter: blur(var(--blur-intensity)) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(1.8) !important;
+}
+
+.dark.blur-theme .bg-popover,
+.dark.blur-theme [class*="bg-popover"] {
+  backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.8) !important;
+}
+
+.dark.blur-theme [role="dialog"],
+.dark.blur-theme [data-radix-dialog-content],
+.dark.blur-theme [data-radix-alert-dialog-content] {
+  backdrop-filter: blur(calc(var(--blur-intensity) + 12px)) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 12px)) saturate(1.8) !important;
+}
+
+.dark.blur-theme [role="menu"],
+.dark.blur-theme [data-radix-menu-content],
+.dark.blur-theme [data-radix-dropdown-menu-content],
+.dark.blur-theme [data-radix-select-content] {
+  backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.8) !important;
+}
+
+.dark.blur-theme .bg-muted,
+.dark.blur-theme [class*="bg-muted"]:not([class*="text-muted"]) {
+  background: hsl(var(--muted) / 0.7) !important;
+}
+
+.dark.blur-theme .bg-secondary {
+  background: hsl(var(--secondary) / 0.7) !important;
+}
+
+.dark.blur-theme input,
+.dark.blur-theme select,
+.dark.blur-theme textarea,
+.dark.blur-theme [data-slot="input"] {
+  background: hsl(var(--input) / 0.8) !important;
+}
+
 @layer base {
   * {
     @apply border-border;
