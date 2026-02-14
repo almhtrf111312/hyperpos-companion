@@ -200,13 +200,17 @@ export default function Login() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const { error } = await signInWithGoogle();
-
-    if (error) {
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast.error('فشل تسجيل الدخول بـ Google');
+        setIsGoogleLoading(false);
+      }
+      // On success, the page will redirect or session will be set automatically
+    } catch (err) {
       toast.error('فشل تسجيل الدخول بـ Google');
       setIsGoogleLoading(false);
     }
-    // Note: On success, the page will redirect to Google OAuth
   };
 
   return (

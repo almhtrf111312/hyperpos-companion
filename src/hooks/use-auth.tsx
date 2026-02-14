@@ -344,20 +344,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-            scope: 'https://www.googleapis.com/auth/drive.file'
-          }
-        }
+      const { lovable } = await import('@/integrations/lovable/index');
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: "https://flowpospro.lovable.app",
       });
+
+      if ((result as any)?.redirected) {
+        return { error: null };
+      }
       
-      if (error) {
-        return { error: new Error(error.message) };
+      if (result?.error) {
+        return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) };
       }
       
       return { error: null };
