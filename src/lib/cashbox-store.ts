@@ -15,6 +15,16 @@ export interface CashboxAdjustment {
   createdAt: string;
 }
 
+export type ShiftAdjustmentType = 'expense_added' | 'income_added';
+
+export interface ShiftAdjustment {
+  id: string;
+  type: ShiftAdjustmentType;
+  amount: number;
+  reason: string;
+  createdAt: string;
+}
+
 export interface Shift {
   id: string;
   openedAt: string;
@@ -24,6 +34,7 @@ export interface Shift {
   expectedCash?: number;
   discrepancy?: number;
   adjustment?: CashboxAdjustment;
+  adjustments?: ShiftAdjustment[];
   userId: string;
   userName: string;
   status: 'open' | 'closed';
@@ -315,11 +326,64 @@ export const calculateShiftStatus = (shift: Shift): {
   cashExpenses: number;
   expectedCash: number;
 } => {
-  // This requires invoices-store, but we'll keep the interface
-  // Implementation will be in the consuming component
   return {
     cashSales: shift.salesTotal || 0,
     cashExpenses: shift.expensesTotal || 0,
     expectedCash: shift.openingCash + (shift.salesTotal || 0) - (shift.expensesTotal || 0)
   };
+};
+
+/**
+ * تسجيل تعديل على الوردية النشطة لتسوية الفارق
+ * expense_added = عجز → يُضاف كمصروف
+ * income_added = فائض → يُضاف كإيراد
+ */
+export const addShiftAdjustment = (
+  type: ShiftAdjustmentType,
+  amount: number,
+  reason: string
+): boolean => {
+  const shifts = loadShifts();
+  const activeIndex = shifts.findIndex(s => s.status === 'open');
+  if (activeIndex === -1) return false;
+
+  const roundedAmount = roundCurrency(amount);
+  const shift = shifts[activeIndex];
+
+  // إنشاء سجل التعديل
+  const adjustment: ShiftAdjustment = {
+    id: Date.now().toString(),
+    type,
+    amount: roundedAmount,
+    reason,
+    createdAt: new Date().toISOString(),
+  };
+
+  // إضافة للمصفوفة
+  if (!shift.adjustments) shift.adjustments = [];
+  shift.adjustments.push(adjustment);
+
+  // تعديل المجاميع
+  if (type === 'expense_added') {
+    // عجز → نضيف للمصاريف حتى ينخفض المتوقع
+    shift.expensesTotal = addCurrency(shift.expensesTotal, roundedAmount);
+  } else {
+    // فائض → نضيف للمبيعات/إيداعات حتى يرتفع المتوقع
+    shift.depositsTotal = addCurrency(shift.depositsTotal, roundedAmount);
+  }
+
+  shifts[activeIndex] = shift;
+  saveShifts(shifts);
+
+  // تحديث رصيد الصندوق أيضاً
+  const state = loadCashboxState();
+  if (type === 'expense_added') {
+    state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
+  } else {
+    state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+  }
+  state.lastUpdated = new Date().toISOString();
+  saveCashboxState(state);
+
+  return true;
 };

@@ -7,6 +7,7 @@ import {
   openShift as openShiftFn,
   closeShift as closeShiftFn,
   calculateShiftStatus,
+  addShiftAdjustment,
   Shift
 } from '@/lib/cashbox-store';
 import { EVENTS } from '@/lib/events';
@@ -44,7 +45,9 @@ import {
   Clock,
   DollarSign,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  ArrowDownRight,
+  ArrowUpRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -286,6 +289,7 @@ export default function CashShifts() {
                     <TableHead>{t('cashShifts.expected')}</TableHead>
                     <TableHead>{t('cashShifts.actual')}</TableHead>
                     <TableHead>{t('cashShifts.discrepancy')}</TableHead>
+                    <TableHead>التعديلات</TableHead>
                     <TableHead>{t('common.status')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -316,6 +320,17 @@ export default function CashShifts() {
                           }>
                             {shift.discrepancy > 0 ? '+' : ''}{formatCurrency(shift.discrepancy, '$')}
                           </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {shift.adjustments && shift.adjustments.length > 0 ? (
+                          <div className="space-y-1">
+                            {shift.adjustments.map(adj => (
+                              <Badge key={adj.id} variant={adj.type === 'expense_added' ? 'destructive' : 'secondary'} className="text-xs">
+                                {adj.type === 'expense_added' ? 'مصروف' : 'إيراد'} {formatCurrency(adj.amount, '$')}
+                              </Badge>
+                            ))}
+                          </div>
                         ) : '-'}
                       </TableCell>
                       <TableCell>
@@ -457,6 +472,50 @@ export default function CashShifts() {
                   }`}>
                   {previewDiscrepancy > 0 ? '+' : ''}{formatCurrency(previewDiscrepancy, '$')}
                 </div>
+              </div>
+            )}
+
+            {/* Adjustment buttons */}
+            {closingCash && previewDiscrepancy !== 0 && openShift && (
+              <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-3">
+                {previewDiscrepancy < 0 ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                    onClick={() => {
+                      const diff = Math.abs(previewDiscrepancy);
+                      const success = addShiftAdjustment('expense_added', diff, 'عجز في الصندوق');
+                      if (success) {
+                        toast.success(`تم تسجيل ${formatCurrency(diff, '$')} كمصروف`);
+                        loadData();
+                      }
+                    }}
+                  >
+                    <ArrowDownRight className="w-4 h-4 ml-1" />
+                    تسجيل {formatCurrency(Math.abs(previewDiscrepancy), '$')} كمصروف
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-green-600 border-green-300 hover:bg-green-50"
+                    onClick={() => {
+                      const diff = previewDiscrepancy;
+                      const success = addShiftAdjustment('income_added', diff, 'فائض في الصندوق');
+                      if (success) {
+                        toast.success(`تم تسجيل ${formatCurrency(diff, '$')} كإيراد إضافي`);
+                        loadData();
+                      }
+                    }}
+                  >
+                    <ArrowUpRight className="w-4 h-4 ml-1" />
+                    تسجيل {formatCurrency(previewDiscrepancy, '$')} كإيراد
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  سيتم تعديل المجاميع لمطابقة الرصيد الفعلي
+                </p>
               </div>
             )}
 
