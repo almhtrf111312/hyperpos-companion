@@ -39,7 +39,10 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+  KeyRound,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -77,6 +80,14 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 
+interface CashierInfo {
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  user_type: string;
+  is_active: boolean;
+}
+
 interface Owner {
   user_id: string;
   email: string | null;
@@ -93,6 +104,7 @@ interface Owner {
   allow_multi_device?: boolean;
   is_trial?: boolean;
   activation_code?: string | null;
+  cashiers?: CashierInfo[];
 }
 
 interface ActivationCode {
@@ -198,6 +210,20 @@ export default function BossPanel() {
   const [deleteBossPassword, setDeleteBossPassword] = useState('');
   const [showDeleteBossPassword, setShowDeleteBossPassword] = useState(false);
   const [isDeletingBoss, setIsDeletingBoss] = useState(false);
+
+  // Cashier password change
+  const [cashierPasswordDialog, setCashierPasswordDialog] = useState<{ userId: string; name: string } | null>(null);
+  const [cashierNewPassword, setCashierNewPassword] = useState('');
+  const [showCashierNewPassword, setShowCashierNewPassword] = useState(false);
+  const [isChangingCashierPassword, setIsChangingCashierPassword] = useState(false);
+
+  // Cashier edit name
+  const [editCashierNameDialog, setEditCashierNameDialog] = useState<{ userId: string; name: string } | null>(null);
+  const [cashierNewName, setCashierNewName] = useState('');
+  const [isSavingCashierName, setIsSavingCashierName] = useState(false);
+
+  // Expanded owners (to show/hide cashier list)
+  const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!roleLoading && !isBoss) {
@@ -827,7 +853,97 @@ export default function BossPanel() {
     }
   };
 
-  // Generate code for edit license dialog
+  // Cashier password change handler
+  const handleChangeCashierPassword = async () => {
+    if (!cashierPasswordDialog || !cashierNewPassword) return;
+    if (cashierNewPassword.length < 6) {
+      toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    setIsChangingCashierPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-change-password', {
+        body: { userId: cashierPasswordDialog.userId, newPassword: cashierNewPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`تم تغيير كلمة مرور "${cashierPasswordDialog.name}" بنجاح`);
+      setCashierPasswordDialog(null);
+      setCashierNewPassword('');
+    } catch (error: any) {
+      console.error('Error changing cashier password:', error);
+      toast.error(error.message || 'فشل في تغيير كلمة المرور');
+    } finally {
+      setIsChangingCashierPassword(false);
+    }
+  };
+
+  // Cashier edit name handler
+  const handleSaveCashierName = async () => {
+    if (!editCashierNameDialog || !cashierNewName.trim()) return;
+
+    setIsSavingCashierName(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: cashierNewName.trim() })
+        .eq('user_id', editCashierNameDialog.userId);
+
+      if (error) throw error;
+
+      toast.success('تم تحديث اسم الحساب التابع بنجاح');
+      setEditCashierNameDialog(null);
+      setCashierNewName('');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating cashier name:', error);
+      toast.error('فشل في تحديث الاسم');
+    } finally {
+      setIsSavingCashierName(false);
+    }
+  };
+
+  // Delete cashier handler
+  const handleDeleteCashier = async (cashierUserId: string, cashierName: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: cashierUserId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed');
+
+      toast.success(`تم حذف "${cashierName}" بنجاح`);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting cashier:', error);
+      toast.error('فشل في حذف الحساب التابع');
+    }
+  };
+
+  // Reset cashier device handler
+  const handleResetCashierDevice = async (cashierUserId: string, cashierName: string) => {
+    try {
+      const { error } = await supabase.rpc('reset_user_device', { _target_user_id: cashierUserId });
+      if (error) throw error;
+      toast.success(`تم إعادة تعيين جهاز "${cashierName}" بنجاح`);
+      fetchData();
+    } catch (error) {
+      console.error('Error resetting cashier device:', error);
+      toast.error('فشل في إعادة تعيين الجهاز');
+    }
+  };
+
+  const toggleOwnerExpanded = (ownerId: string) => {
+    setExpandedOwners(prev => {
+      const next = new Set(prev);
+      if (next.has(ownerId)) next.delete(ownerId);
+      else next.add(ownerId);
+      return next;
+    });
+  };
+
   const generateCodeForEditLicense = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const array = new Uint8Array(16);
@@ -1003,42 +1119,6 @@ export default function BossPanel() {
           </Card>
         </div>
 
-        {/* Contact Links Settings */}
-        <Card>
-          <CardHeader className="pb-2 px-3 md:px-6">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
-              إعدادات التواصل
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 md:px-6">
-            <p className="text-sm text-muted-foreground mb-3">
-              إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {Object.entries(contactLinks).filter(([, v]) => v?.trim()).map(([key]) => (
-                <Badge key={key} variant="secondary" className="text-xs">
-                  {key === 'whatsapp' ? '💬 واتساب' :
-                   key === 'facebook' ? '📘 فيسبوك' :
-                   key === 'tiktok' ? '🎵 تيك توك' :
-                   key === 'telegram' ? '✈️ تليجرام' :
-                   key === 'youtube' ? '▶️ يوتيوب' :
-                   key === 'twitter' ? '𝕏 تويتر' :
-                   key === 'email' ? '📧 بريد' :
-                   key === 'olx' ? '🛒 OLX' : key}
-                </Badge>
-              ))}
-              {!Object.values(contactLinks).some(v => v?.trim()) && (
-                <span className="text-xs text-muted-foreground">لم يتم إضافة أي قناة بعد</span>
-              )}
-            </div>
-            <Button onClick={() => setShowContactLinksDialog(true)} variant="outline" className="gap-2">
-              <MessageCircle className="w-4 h-4" />
-              تعديل قنوات التواصل
-            </Button>
-          </CardContent>
-        </Card>
-
         {/* Search */}
         <div className="relative">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1049,86 +1129,6 @@ export default function BossPanel() {
             className="ps-10"
           />
         </div>
-
-        {/* Activation Codes Section */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <Key className="w-4 h-4 md:w-5 md:h-5" />
-              أكواد التفعيل
-            </CardTitle>
-            <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
-              <Plus className="w-3 h-3 md:w-4 md:h-4 me-1 md:me-2" />
-              {isMobile ? 'جديد' : 'كود جديد'}
-            </Button>
-          </CardHeader>
-          <CardContent className="px-3 md:px-6">
-            <div className="space-y-2 md:space-y-3">
-              {filteredCodes.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا توجد أكواد</p>
-              ) : (
-                filteredCodes.map((code) => (
-                  <div key={code.id} className="p-2 md:p-3 bg-muted/50 rounded-lg space-y-2">
-                    {/* Code row */}
-                    <div className="flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => copyToClipboard(code.code)}
-                        className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
-                      >
-                        {isMobile ? code.code.slice(0, 12) + '...' : code.code}
-                        <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
-                      </button>
-                      <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setEditCodeDialog(code);
-                            setEditCodeForm({
-                              duration_days: code.duration_days,
-                              max_uses: code.max_uses,
-                              max_cashiers: code.max_cashiers,
-                              license_tier: code.license_tier,
-                              note: code.note || '',
-                            });
-                          }}
-                        >
-                          <Pencil className="w-4 h-4 text-primary" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleToggleCode(code.id, code.is_active)}
-                        >
-                          {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                    {/* Badges row */}
-                    <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                      <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">
-                        {code.is_active ? 'نشط' : 'معطل'}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.duration_days}ي</Badge>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses}</Badge>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers}ك</Badge>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Owners Section */}
         <Card>
@@ -1333,9 +1333,148 @@ export default function BossPanel() {
                           </span>
                         )}
                       </div>
+
+                      {/* Cashiers Tree View */}
+                      {!isBossUser && owner.cashiers && owner.cashiers.length > 0 && (
+                        <div className="mt-2 border-t pt-2">
+                          <button
+                            onClick={() => toggleOwnerExpanded(owner.user_id)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {expandedOwners.has(owner.user_id) ? (
+                              <ChevronDown className="w-3 h-3" />
+                            ) : (
+                              <ChevronRight className="w-3 h-3" />
+                            )}
+                            <Users className="w-3 h-3" />
+                            <span>{owner.cashiers.length} حساب تابع</span>
+                          </button>
+
+                          {expandedOwners.has(owner.user_id) && (
+                            <div className="mt-2 space-y-1.5 ms-4 border-s-2 border-muted ps-3">
+                              {owner.cashiers.map((cashier) => {
+                                const typeLabel = cashier.user_type === 'distributor' ? 'موزع' :
+                                  cashier.user_type === 'pos' ? 'نقطة بيع' : 'كاشير';
+                                const typeColor = cashier.user_type === 'distributor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  cashier.user_type === 'pos' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                  'bg-muted text-muted-foreground';
+
+                                return (
+                                  <div key={cashier.user_id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
+                                      <Badge variant="outline" className={`text-[10px] ${typeColor}`}>{typeLabel}</Badge>
+                                      {!cashier.is_active && (
+                                        <Badge variant="destructive" className="text-[10px]">معطل</Badge>
+                                      )}
+                                    </div>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                                          <MoreVertical className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuLabel>إدارة الحساب التابع</DropdownMenuLabel>
+                                        {cashier.email && (
+                                          <DropdownMenuItem onClick={() => copyToClipboard(cashier.email!)}>
+                                            <Mail className="w-4 h-4 me-2" />
+                                            نسخ الإيميل
+                                          </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onClick={() => {
+                                          setEditCashierNameDialog({ userId: cashier.user_id, name: cashier.full_name || '' });
+                                          setCashierNewName(cashier.full_name || '');
+                                        }}>
+                                          <Pencil className="w-4 h-4 me-2" />
+                                          تعديل الاسم
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => {
+                                          setCashierPasswordDialog({ userId: cashier.user_id, name: cashier.full_name || cashier.email || '' });
+                                          setCashierNewPassword('');
+                                        }}>
+                                          <KeyRound className="w-4 h-4 me-2" />
+                                          تغيير كلمة المرور
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleResetCashierDevice(cashier.user_id, cashier.full_name || 'هذا الحساب')}>
+                                          <RotateCcw className="w-4 h-4 me-2" />
+                                          إعادة تعيين الجهاز
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => setDeleteConfirm({ type: 'owner', id: cashier.user_id, name: cashier.full_name || 'هذا الحساب' })}
+                                          className="text-destructive focus:text-destructive"
+                                        >
+                                          <Trash2 className="w-4 h-4 me-2" />
+                                          حذف الحساب
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Activation Codes Section */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Key className="w-4 h-4 md:w-5 md:h-5" />
+              أكواد التفعيل
+            </CardTitle>
+            <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
+              <Plus className="w-3 h-3 md:w-4 md:h-4 me-1 md:me-2" />
+              {isMobile ? 'جديد' : 'كود جديد'}
+            </Button>
+          </CardHeader>
+          <CardContent className="px-3 md:px-6">
+            <div className="space-y-2 md:space-y-3">
+              {filteredCodes.length === 0 ? (
+                <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا توجد أكواد</p>
+              ) : (
+                filteredCodes.map((code) => (
+                  <div key={code.id} className="p-2 md:p-3 bg-muted/50 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => copyToClipboard(code.code)}
+                        className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
+                      >
+                        {isMobile ? code.code.slice(0, 12) + '...' : code.code}
+                        <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
+                      </button>
+                      <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                          setEditCodeDialog(code);
+                          setEditCodeForm({ duration_days: code.duration_days, max_uses: code.max_uses, max_cashiers: code.max_cashiers, license_tier: code.license_tier, note: code.note || '' });
+                        }}>
+                          <Pencil className="w-4 h-4 text-primary" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleCode(code.id, code.is_active)}>
+                          {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                      <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">{code.is_active ? 'نشط' : 'معطل'}</Badge>
+                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.duration_days}ي</Badge>
+                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses}</Badge>
+                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers}ك</Badge>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </CardContent>
@@ -1348,7 +1487,42 @@ export default function BossPanel() {
           </CardContent>
         </Card>
 
-        {/* New Code Dialog */}
+        {/* Contact Links Settings */}
+        <Card>
+          <CardHeader className="pb-2 px-3 md:px-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+              إعدادات التواصل
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 md:px-6">
+            <p className="text-sm text-muted-foreground mb-3">
+              إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {Object.entries(contactLinks).filter(([, v]) => v?.trim()).map(([key]) => (
+                <Badge key={key} variant="secondary" className="text-xs">
+                  {key === 'whatsapp' ? '💬 واتساب' :
+                   key === 'facebook' ? '📘 فيسبوك' :
+                   key === 'tiktok' ? '🎵 تيك توك' :
+                   key === 'telegram' ? '✈️ تليجرام' :
+                   key === 'youtube' ? '▶️ يوتيوب' :
+                   key === 'twitter' ? '𝕏 تويتر' :
+                   key === 'email' ? '📧 بريد' :
+                   key === 'olx' ? '🛒 OLX' : key}
+                </Badge>
+              ))}
+              {!Object.values(contactLinks).some(v => v?.trim()) && (
+                <span className="text-xs text-muted-foreground">لم يتم إضافة أي قناة بعد</span>
+              )}
+            </div>
+            <Button onClick={() => setShowContactLinksDialog(true)} variant="outline" className="gap-2">
+              <MessageCircle className="w-4 h-4" />
+              تعديل قنوات التواصل
+            </Button>
+          </CardContent>
+        </Card>
+
         <Dialog open={showNewCodeDialog} onOpenChange={setShowNewCodeDialog}>
           <DialogContent>
             <DialogHeader>
@@ -2135,6 +2309,78 @@ export default function BossPanel() {
               <Button variant="outline" onClick={() => setShowContactLinksDialog(false)}>إلغاء</Button>
               <Button onClick={handleSaveContactLinks} disabled={isSavingContactLinks}>
                 {isSavingContactLinks && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                حفظ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cashier Password Change Dialog */}
+        <Dialog open={!!cashierPasswordDialog} onOpenChange={() => { setCashierPasswordDialog(null); setCashierNewPassword(''); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-primary" />
+                تغيير كلمة المرور
+              </DialogTitle>
+              <DialogDescription>
+                تغيير كلمة مرور الحساب التابع: {cashierPasswordDialog?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>كلمة المرور الجديدة</Label>
+                <div className="relative">
+                  <Input
+                    type={showCashierNewPassword ? 'text' : 'password'}
+                    value={cashierNewPassword}
+                    onChange={(e) => setCashierNewPassword(e.target.value)}
+                    placeholder="أدخل كلمة المرور الجديدة (6 أحرف على الأقل)"
+                    className="pe-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCashierNewPassword(!showCashierNewPassword)}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                  >
+                    {showCashierNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setCashierPasswordDialog(null); setCashierNewPassword(''); }}>إلغاء</Button>
+              <Button onClick={handleChangeCashierPassword} disabled={isChangingCashierPassword || cashierNewPassword.length < 6}>
+                {isChangingCashierPassword ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <KeyRound className="w-4 h-4 me-2" />}
+                تغيير كلمة المرور
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cashier Edit Name Dialog */}
+        <Dialog open={!!editCashierNameDialog} onOpenChange={() => setEditCashierNameDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Pencil className="w-5 h-5" />
+                تعديل اسم الحساب التابع
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>الاسم الكامل</Label>
+                <Input
+                  value={cashierNewName}
+                  onChange={(e) => setCashierNewName(e.target.value)}
+                  placeholder="أدخل الاسم الجديد..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditCashierNameDialog(null)}>إلغاء</Button>
+              <Button onClick={handleSaveCashierName} disabled={isSavingCashierName || !cashierNewName.trim()}>
+                {isSavingCashierName && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
                 حفظ
               </Button>
             </DialogFooter>
