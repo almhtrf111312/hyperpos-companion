@@ -5103,12 +5103,6 @@ export const translations = {
     'help.cantFindAnswer': 'Sorunuza cevap bulamadınız mı? Yapay Zeka Asistanına doğrudan sorun!',
     'help.available247': 'Tüm sorularınızı yanıtlamak için 7/24 hizmetinizde',
     'help.typeQuestion': 'Sorunuzu buraya yazın...',
-
-    // Privacy Policy
-    'privacy.title': 'Gizlilik Politikası ve Yasal Uyarı',
-    'privacy.privacyTab': 'Gizlilik Politikası',
-    'privacy.disclaimerTab': 'Yasal Uyarı',
-    'privacy.accept': 'Gizlilik Politikası ve Yasal Uyarıyı Kabul Ediyorum',
   },
   fa: {
     // Navigation
