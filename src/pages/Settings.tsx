@@ -43,7 +43,7 @@ import {
   Wrench,
   Archive
 } from 'lucide-react';
-import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile } from '@/lib/file-download';
+import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile, DownloadResult } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
 // ThemeSection تم نقله لصفحة مستقلة /appearance
@@ -170,12 +170,12 @@ export default function Settings() {
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'currencies', label: t('settings.currencies'), icon: DollarSign },
-    { id: 'sync', label: t('settings.sync'), icon: RefreshCw },
+    { id: 'backup', label: isRTL ? 'النسخ الاحتياطي والمزامنة' : 'Backup & Sync', icon: Database, adminOnly: true },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'printing', label: t('settings.printing'), icon: Printer },
     { id: 'users', label: t('settings.users'), icon: User, adminOnly: true },
     { id: 'activity', label: t('settings.activityLog'), icon: Activity, bossOnly: true },
-    { id: 'backup', label: t('settings.backup'), icon: Database, adminOnly: true },
+    
     { id: 'license', label: t('settings.license'), icon: Key },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true },
     { id: 'diagnostics', label: t('settings.diagnostics'), icon: Wrench, bossOnly: true },
@@ -321,6 +321,7 @@ export default function Settings() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [lastBackupResult, setLastBackupResult] = useState<DownloadResult | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -611,7 +612,7 @@ export default function Settings() {
 
       // Use cross-platform download utility
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const success = await downloadJSON(filename, backupData as any);
+      const result = await downloadJSON(filename, backupData as any);
 
       const newBackup: BackupData = {
         id: Date.now().toString(),
@@ -621,11 +622,12 @@ export default function Settings() {
       };
       setBackups([newBackup, ...backups]);
 
-      if (success) {
+      if (result.success) {
+        setLastBackupResult({ ...result, filename });
         toast({
           title: t('settings.backupComplete'),
           description: isNativePlatform()
-            ? t('settings.backupSavedDevice')
+            ? `${t('settings.backupSavedDevice')} - ${result.path}/${filename}`
             : t('settings.backupDownloaded'),
         });
       } else {
@@ -787,9 +789,9 @@ export default function Settings() {
 
       // Use cross-platform download utility
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const success = await downloadJSON(filename, backupData as any);
+      const result = await downloadJSON(filename, backupData as any);
 
-      if (success) {
+      if (result.success) {
         toast({
           title: t('settings.exportComplete'),
           description: isNativePlatform()
@@ -1047,30 +1049,7 @@ export default function Settings() {
           </div>
         );
 
-      case 'sync':
-        return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            {/* Local Auto-Backup Section */}
-            <LocalBackupSection />
-            <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-4">{t('settings.localSync')}</h3>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                <div>
-                  <p className="font-medium text-foreground">{t('settings.lastSync')}</p>
-                  <p className="text-sm text-muted-foreground">{syncSettings.lastSync}</p>
-                </div>
-                <Button onClick={handleSync} disabled={isSyncing}>
-                  {isSyncing ? (
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 ml-2" />
-                  )}
-                  {t('settings.syncNow')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        );
+      // sync tab merged into backup below
 
       case 'notifications':
         return (
@@ -1247,7 +1226,9 @@ export default function Settings() {
       case 'backup':
         return (
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.backup')}</h2>
+            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">
+              {isRTL ? 'النسخ الاحتياطي والمزامنة' : 'Backup & Sync'}
+            </h2>
 
             {/* Backup Section */}
             <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 space-y-4">
@@ -1290,6 +1271,20 @@ export default function Settings() {
                   </label>
                 </div>
               </div>
+
+              {/* Show last backup path */}
+              {lastBackupResult?.success && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-border text-xs space-y-1">
+                  <div className="flex items-center gap-2 text-success">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span className="font-medium">{isRTL ? 'تم الحفظ بنجاح' : 'Saved successfully'}</span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    <span className="font-medium">{isRTL ? 'المسار:' : 'Path:'}</span>{' '}
+                    {lastBackupResult.path}/{lastBackupResult.filename}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Auto Backup Settings */}
@@ -1338,6 +1333,30 @@ export default function Settings() {
                 <Download className="w-4 h-4 ml-2" />
                 {t('settings.exportJson')}
               </Button>
+            </div>
+
+            {/* Local Auto-Backup Section (merged from sync) */}
+            <div className="pt-4 border-t border-border">
+              <LocalBackupSection />
+            </div>
+
+            {/* Sync Section (merged from sync tab) */}
+            <div className="pt-4 border-t border-border">
+              <h3 className="text-base font-semibold text-foreground mb-4">{t('settings.localSync')}</h3>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                <div>
+                  <p className="font-medium text-foreground">{t('settings.lastSync')}</p>
+                  <p className="text-sm text-muted-foreground">{syncSettings.lastSync}</p>
+                </div>
+                <Button onClick={handleSync} disabled={isSyncing}>
+                  {isSyncing ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 ml-2" />
+                  )}
+                  {t('settings.syncNow')}
+                </Button>
+              </div>
             </div>
 
             {/* Recent Backups */}

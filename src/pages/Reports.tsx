@@ -765,9 +765,9 @@ ${partnerExpenses.map(exp => {
     };
 
     const filename = `hyperpos_backup_${new Date().toISOString().split('T')[0]}.json`;
-    const success = await downloadJSON(filename, backupData);
+    const result = await downloadJSON(filename, backupData);
 
-    if (success) {
+    if (result.success) {
       toast.success(t('reports.backupSuccess'));
     } else {
       toast.error(t('reports.backupError'));
