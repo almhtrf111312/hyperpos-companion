@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useLanguage } from '@/hooks/use-language';
+import { useUserRole } from '@/hooks/use-user-role';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ interface Message {
 interface FAQItem {
   question: string;
   answer: string;
+  adminOnly?: boolean;
 }
 
 interface FeatureItem {
@@ -29,27 +31,28 @@ interface FeatureItem {
   titleEn: string;
   descAr: string;
   descEn: string;
+  adminOnly?: boolean;
 }
 
 const features: FeatureItem[] = [
   { icon: Barcode, titleAr: 'باركود متعدد', titleEn: 'Multi-Barcode', descAr: 'دعم حتى 3 باركودات لكل منتج لتسهيل الجرد والبيع', descEn: 'Support up to 3 barcodes per product for easy inventory and sales' },
   { icon: Package, titleAr: 'نظام الأصناف المرن', titleEn: 'Flexible Variants', descAr: 'إضافة خيارات متعددة (حجم، لون، نوع) بأسعار وكميات مختلفة', descEn: 'Add multiple options (size, color, type) with different prices and quantities' },
-  { icon: Warehouse, titleAr: 'مستودعات متعددة', titleEn: 'Multi-Warehouse', descAr: 'إدارة مخازن رئيسية ومخازن موزعين مع تحويل العهدة', descEn: 'Manage main warehouses and distributor stores with stock transfers' },
-  { icon: BarChart3, titleAr: 'تقارير ذكية', titleEn: 'Smart Reports', descAr: 'تقارير جرد ومبيعات وأرباح تفصيلية مع فلترة متقدمة', descEn: 'Detailed inventory, sales, and profit reports with advanced filtering' },
+  { icon: Warehouse, titleAr: 'مستودعات متعددة', titleEn: 'Multi-Warehouse', descAr: 'إدارة مخازن رئيسية ومخازن موزعين مع تحويل العهدة', descEn: 'Manage main warehouses and distributor stores with stock transfers', adminOnly: true },
+  { icon: BarChart3, titleAr: 'تقارير ذكية', titleEn: 'Smart Reports', descAr: 'تقارير جرد ومبيعات وأرباح تفصيلية مع فلترة متقدمة', descEn: 'Detailed inventory, sales, and profit reports with advanced filtering', adminOnly: true },
   { icon: Shield, titleAr: 'أمان البيانات', titleEn: 'Data Security', descAr: 'نسخ احتياطي محلي وسحابي مع تشفير وربط بالجهاز', descEn: 'Local and cloud backup with encryption and device binding' },
   { icon: Users, titleAr: 'إدارة العملاء', titleEn: 'Customer Management', descAr: 'سجل عملاء متكامل مع تتبع المشتريات والديون', descEn: 'Complete customer records with purchase and debt tracking' },
   { icon: CreditCard, titleAr: 'نظام الديون', titleEn: 'Debt System', descAr: 'تسجيل ديون نقدية وآجلة مع تتبع الأقساط والتنبيهات', descEn: 'Cash and credit debts with installment tracking and alerts' },
   { icon: Receipt, titleAr: 'الفوترة', titleEn: 'Invoicing', descAr: 'فواتير بيع وشراء مع طباعة ومشاركة عبر واتساب', descEn: 'Sales and purchase invoices with print and WhatsApp sharing' },
-  { icon: Wrench, titleAr: 'خدمات الصيانة', titleEn: 'Maintenance', descAr: 'تسجيل ومتابعة أوامر الصيانة وحساب الأرباح', descEn: 'Track maintenance orders and calculate profits' },
+  { icon: Wrench, titleAr: 'خدمات الصيانة', titleEn: 'Maintenance', descAr: 'تسجيل ومتابعة أوامر الصيانة وحساب الأرباح', descEn: 'Track maintenance orders and calculate profits', adminOnly: true },
   { icon: FileText, titleAr: 'وحدات مزدوجة', titleEn: 'Dual Units', descAr: 'دعم وحدات القياس المتعددة (قطعة، كرتونة، كيلو، متر)', descEn: 'Support multiple units (piece, carton, kilo, meter)' },
 ];
 
 const faqsAr: FAQItem[] = [
   { question: 'كيف أضيف منتج بباركودات متعددة؟', answer: 'من صفحة المنتجات، أضف منتج جديد واملأ حقل الباركود الأساسي، ثم أضف باركود 2 و3 في الحقول الإضافية. يمكن البحث بأي منها في نقطة البيع.' },
   { question: 'كيف أفرّق بين أصناف نفس المنتج؟', answer: 'استخدم حقل "المتغير/الوصف" لتمييز كل صنف (مثل: حجم كبير، لون أحمر). عند مسح باركود مشترك، ستظهر نافذة اختيار الصنف مع السعر والكمية.' },
-  { question: 'كيف أصدّر تقارير المبيعات؟', answer: 'من صفحة التقارير، اختر نوع التقرير وحدد الفترة الزمنية، ثم اضغط "تصدير" لتحميل التقرير بصيغة Excel أو PDF.' },
+  { question: 'كيف أصدّر تقارير المبيعات؟', answer: 'من صفحة التقارير، اختر نوع التقرير وحدد الفترة الزمنية، ثم اضغط "تصدير" لتحميل التقرير بصيغة Excel أو PDF.', adminOnly: true },
   { question: 'كيف أضمن سلامة النسخة الاحتياطية؟', answer: 'من الإعدادات > النسخ الاحتياطي، فعّل النسخ التلقائي السحابي. يتم تشفير البيانات قبل الرفع. يمكنك أيضاً عمل نسخة محلية.' },
-  { question: 'كيف أدير مستودعات متعددة؟', answer: 'من صفحة المستودعات، أضف مستودعات رئيسية ومخازن موزعين. استخدم "تحويل العهدة" لنقل البضاعة بين المخازن مع إيصال استلام.' },
+  { question: 'كيف أدير مستودعات متعددة؟', answer: 'من صفحة المستودعات، أضف مستودعات رئيسية ومخازن موزعين. استخدم "تحويل العهدة" لنقل البضاعة بين المخازن مع إيصال استلام.', adminOnly: true },
   { question: 'كيف أسجّل دين على عميل؟', answer: 'عند البيع في نقطة البيع، اختر "دفع آجل" وأدخل بيانات العميل. أو من صفحة الديون، أضف "دين نقدي" بدون فاتورة.' },
   { question: 'كيف أغيّر لغة التطبيق؟', answer: 'من الإعدادات > اللغة، اختر بين العربية والإنجليزية. سيتم تغيير اتجاه الواجهة تلقائياً.' },
   { question: 'ما الفرق بين المشرف والكاشير؟', answer: 'المشرف يملك صلاحيات كاملة (منتجات، تقارير، إعدادات). الكاشير يقتصر على نقطة البيع والفواتير والعملاء.' },
@@ -58,9 +61,9 @@ const faqsAr: FAQItem[] = [
 const faqsEn: FAQItem[] = [
   { question: 'How do I add a product with multiple barcodes?', answer: 'From Products page, add a new product and fill the main barcode field, then add barcode 2 and 3 in the additional fields. You can search by any of them in POS.' },
   { question: 'How do I differentiate variants of the same product?', answer: 'Use the "Variant/Description" field to distinguish each variant (e.g., large size, red color). When scanning a shared barcode, a variant picker will appear with price and quantity.' },
-  { question: 'How do I export sales reports?', answer: 'From Reports page, choose the report type and select the date range, then click "Export" to download as Excel or PDF.' },
+  { question: 'How do I export sales reports?', answer: 'From Reports page, choose the report type and select the date range, then click "Export" to download as Excel or PDF.', adminOnly: true },
   { question: 'How do I ensure backup safety?', answer: 'From Settings > Backup, enable automatic cloud backup. Data is encrypted before upload. You can also create a local backup.' },
-  { question: 'How do I manage multiple warehouses?', answer: 'From Warehouses page, add main warehouses and distributor stores. Use "Stock Transfer" to move goods between warehouses with a receipt.' },
+  { question: 'How do I manage multiple warehouses?', answer: 'From Warehouses page, add main warehouses and distributor stores. Use "Stock Transfer" to move goods between warehouses with a receipt.', adminOnly: true },
   { question: 'How do I record a customer debt?', answer: 'When selling in POS, choose "Credit" payment and enter customer details. Or from Debts page, add a "Cash Debt" without an invoice.' },
   { question: 'How do I change the app language?', answer: 'From Settings > Language, choose between Arabic and English. The interface direction will change automatically.' },
   { question: 'What\'s the difference between Admin and Cashier?', answer: 'Admin has full access (products, reports, settings). Cashier is limited to POS, invoices, and customers.' },
@@ -68,8 +71,11 @@ const faqsEn: FAQItem[] = [
 
 export default function HelpPage() {
   const { t, language, isRTL } = useLanguage();
+  const { isOwner } = useUserRole();
   const isAr = language === 'ar';
-  const faqs = isAr ? faqsAr : faqsEn;
+  const allFaqs = isAr ? faqsAr : faqsEn;
+  const faqs = allFaqs.filter(f => !f.adminOnly || isOwner);
+  const displayFeatures = features.filter(f => !f.adminOnly || isOwner);
 
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -218,7 +224,7 @@ export default function HelpPage() {
             {isAr ? 'ميزات النظام' : 'System Features'}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {features.map((f, i) => (
+            {displayFeatures.map((f, i) => (
               <Card key={i} className="p-4 hover:border-primary/30 transition-colors">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
