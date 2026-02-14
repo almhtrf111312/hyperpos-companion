@@ -836,16 +836,17 @@ ${partnerExpenses.map(exp => {
             </div>
 
             {/* Date Range & Export - Compact Row */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-              <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 px-3 py-1.5">
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 px-3 py-1.5 w-full sm:w-auto sm:mx-auto">
                 <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground font-medium">من</span>
                 <Input
                   type="date"
                   value={dateRange.from}
                   onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
                   className="w-32 h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
                 />
-                <span className="text-xs text-muted-foreground">→</span>
+                <span className="text-xs text-muted-foreground font-medium">إلى</span>
                 <Input
                   type="date"
                   value={dateRange.to}
