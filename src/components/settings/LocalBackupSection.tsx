@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 
 export function LocalBackupSection() {
-  const { isRTL } = useLanguage();
+  const { t, language } = useLanguage();
   const [backups, setBackups] = useState<LocalBackup[]>(loadRecentBackups());
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -32,16 +32,16 @@ export function LocalBackupSection() {
   const handleRestore = (id: string) => {
     const success = restoreFromBackup(id);
     if (success) {
-      toast.success(isRTL ? 'تمت الاستعادة بنجاح - جاري إعادة التحميل...' : 'Restored successfully - reloading...');
+      toast.success(t('localBackup.restoreSuccess'));
       setTimeout(() => window.location.reload(), 1500);
     } else {
-      toast.error(isRTL ? 'فشل في الاستعادة' : 'Restore failed');
+      toast.error(t('localBackup.restoreFailed'));
     }
   };
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
-    return d.toLocaleString(isRTL ? 'ar' : 'en', {
+    return d.toLocaleString(language === 'ar' ? 'ar' : language === 'tr' ? 'tr' : 'en', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -54,22 +54,20 @@ export function LocalBackupSection() {
       <div className="flex items-center gap-2 mb-4">
         <Database className="w-5 h-5 text-primary" />
         <h3 className="text-base font-semibold text-foreground">
-          {isRTL ? 'النسخ الاحتياطية المحلية' : 'Local Backups'}
+          {t('localBackup.title')}
         </h3>
         <Badge variant="secondary" className="text-xs">
-          {isRTL ? 'تلقائي' : 'Auto'}
+          {t('localBackup.auto')}
         </Badge>
       </div>
 
       <p className="text-sm text-muted-foreground mb-4">
-        {isRTL
-          ? 'يتم إنشاء نسخة احتياطية تلقائياً بعد كل عملية (فاتورة، منتج، دين...)'
-          : 'A backup is automatically created after every operation (invoice, product, debt...)'}
+        {t('localBackup.description')}
       </p>
 
       {backups.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">
-          {isRTL ? 'لا توجد نسخ احتياطية بعد' : 'No backups yet'}
+          {t('localBackup.noBackups')}
         </div>
       ) : (
         <div className="space-y-2">
@@ -101,9 +99,9 @@ export function LocalBackupSection() {
               {expandedId === b.id && (
                 <div className="px-3 pb-3 border-t border-border pt-2">
                   <div className="text-xs text-muted-foreground space-y-1 mb-3">
-                    <p>{isRTL ? 'السبب:' : 'Reason:'} {b.reason}</p>
-                    <p>{isRTL ? 'التوقيت:' : 'Time:'} {new Date(b.timestamp).toLocaleString(isRTL ? 'ar' : 'en')}</p>
-                    <p>{isRTL ? 'الحجم:' : 'Size:'} {formatBackupSize(b.size)}</p>
+                    <p>{t('localBackup.reason')} {b.reason}</p>
+                    <p>{t('localBackup.time')} {new Date(b.timestamp).toLocaleString(language === 'ar' ? 'ar' : language === 'tr' ? 'tr' : 'en')}</p>
+                    <p>{t('localBackup.size')} {formatBackupSize(b.size)}</p>
                   </div>
                   <Button
                     size="sm"
@@ -112,7 +110,7 @@ export function LocalBackupSection() {
                     className="gap-2"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    {isRTL ? 'استعادة' : 'Restore'}
+                    {t('localBackup.restore')}
                   </Button>
                 </div>
               )}

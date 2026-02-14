@@ -16,8 +16,7 @@ interface ContactLinks {
 
 interface ChannelConfig {
   key: keyof ContactLinks;
-  label: string;
-  labelEn: string;
+  labelKey: string;
   color: string;
   hoverColor: string;
   icon: string;
@@ -25,90 +24,24 @@ interface ChannelConfig {
 }
 
 const CHANNELS: ChannelConfig[] = [
-  {
-    key: 'whatsapp',
-    label: 'واتساب',
-    labelEn: 'WhatsApp',
-    color: 'bg-green-500 hover:bg-green-600',
-    hoverColor: 'hover:shadow-green-500/30',
-    icon: '💬',
-    openUrl: (v) => `https://wa.me/${v.replace(/[^0-9+]/g, '')}`,
-  },
-  {
-    key: 'facebook',
-    label: 'فيسبوك',
-    labelEn: 'Facebook',
-    color: 'bg-blue-600 hover:bg-blue-700',
-    hoverColor: 'hover:shadow-blue-600/30',
-    icon: '📘',
-    openUrl: (v) => v.startsWith('http') ? v : `https://facebook.com/${v}`,
-  },
-  {
-    key: 'tiktok',
-    label: 'تيك توك',
-    labelEn: 'TikTok',
-    color: 'bg-gray-900 hover:bg-black dark:bg-gray-700 dark:hover:bg-gray-600',
-    hoverColor: 'hover:shadow-gray-900/30',
-    icon: '🎵',
-    openUrl: (v) => v.startsWith('http') ? v : `https://tiktok.com/@${v}`,
-  },
-  {
-    key: 'telegram',
-    label: 'تليجرام',
-    labelEn: 'Telegram',
-    color: 'bg-sky-500 hover:bg-sky-600',
-    hoverColor: 'hover:shadow-sky-500/30',
-    icon: '✈️',
-    openUrl: (v) => v.startsWith('http') ? v : `https://t.me/${v}`,
-  },
-  {
-    key: 'youtube',
-    label: 'يوتيوب',
-    labelEn: 'YouTube',
-    color: 'bg-red-600 hover:bg-red-700',
-    hoverColor: 'hover:shadow-red-600/30',
-    icon: '▶️',
-    openUrl: (v) => v.startsWith('http') ? v : `https://youtube.com/@${v}`,
-  },
-  {
-    key: 'twitter',
-    label: 'تويتر / X',
-    labelEn: 'X (Twitter)',
-    color: 'bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500',
-    hoverColor: 'hover:shadow-gray-700/30',
-    icon: '𝕏',
-    openUrl: (v) => v.startsWith('http') ? v : `https://x.com/${v}`,
-  },
-  {
-    key: 'email',
-    label: 'بريد إلكتروني',
-    labelEn: 'Email',
-    color: 'bg-orange-500 hover:bg-orange-600',
-    hoverColor: 'hover:shadow-orange-500/30',
-    icon: '📧',
-    openUrl: (v) => `mailto:${v}`,
-  },
-  {
-    key: 'olx',
-    label: 'OLX',
-    labelEn: 'OLX',
-    color: 'bg-amber-500 hover:bg-amber-600',
-    hoverColor: 'hover:shadow-amber-500/30',
-    icon: '🛒',
-    openUrl: (v) => v.startsWith('http') ? v : `https://olx.com/${v}`,
-  },
+  { key: 'whatsapp', labelKey: 'contact.whatsapp', color: 'bg-green-500 hover:bg-green-600', hoverColor: 'hover:shadow-green-500/30', icon: '💬', openUrl: (v) => `https://wa.me/${v.replace(/[^0-9+]/g, '')}` },
+  { key: 'facebook', labelKey: 'contact.facebook', color: 'bg-blue-600 hover:bg-blue-700', hoverColor: 'hover:shadow-blue-600/30', icon: '📘', openUrl: (v) => v.startsWith('http') ? v : `https://facebook.com/${v}` },
+  { key: 'tiktok', labelKey: 'contact.tiktok', color: 'bg-gray-900 hover:bg-black dark:bg-gray-700 dark:hover:bg-gray-600', hoverColor: 'hover:shadow-gray-900/30', icon: '🎵', openUrl: (v) => v.startsWith('http') ? v : `https://tiktok.com/@${v}` },
+  { key: 'telegram', labelKey: 'contact.telegram', color: 'bg-sky-500 hover:bg-sky-600', hoverColor: 'hover:shadow-sky-500/30', icon: '✈️', openUrl: (v) => v.startsWith('http') ? v : `https://t.me/${v}` },
+  { key: 'youtube', labelKey: 'contact.youtube', color: 'bg-red-600 hover:bg-red-700', hoverColor: 'hover:shadow-red-600/30', icon: '▶️', openUrl: (v) => v.startsWith('http') ? v : `https://youtube.com/@${v}` },
+  { key: 'twitter', labelKey: 'contact.twitter', color: 'bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500', hoverColor: 'hover:shadow-gray-700/30', icon: '𝕏', openUrl: (v) => v.startsWith('http') ? v : `https://x.com/${v}` },
+  { key: 'email', labelKey: 'contact.email', color: 'bg-orange-500 hover:bg-orange-600', hoverColor: 'hover:shadow-orange-500/30', icon: '📧', openUrl: (v) => `mailto:${v}` },
+  { key: 'olx', labelKey: 'contact.olx', color: 'bg-amber-500 hover:bg-amber-600', hoverColor: 'hover:shadow-amber-500/30', icon: '🛒', openUrl: (v) => v.startsWith('http') ? v : `https://olx.com/${v}` },
 ];
 
 export function ContactLinksSection() {
-  const { language } = useLanguage();
-  const isRTL = language === 'ar';
+  const { t } = useLanguage();
   const [links, setLinks] = useState<ContactLinks | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchLinks = async () => {
       try {
-        // Try new contact_links first
         const { data: linksData } = await supabase
           .from('app_settings')
           .select('value')
@@ -118,7 +51,6 @@ export function ContactLinksSection() {
         if (linksData?.value) {
           setLinks(JSON.parse(linksData.value));
         } else {
-          // Fallback to old developer_phone
           const { data: phoneData } = await supabase
             .from('app_settings')
             .select('value')
@@ -151,7 +83,7 @@ export function ContactLinksSection() {
   if (activeChannels.length === 0) return null;
 
   return (
-    <div className="space-y-4" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         {activeChannels.map((ch) => (
           <button
@@ -161,7 +93,7 @@ export function ContactLinksSection() {
           >
             <span className="text-xl">{ch.icon}</span>
             <span className="font-medium text-sm">
-              {isRTL ? ch.label : ch.labelEn}
+              {t(ch.labelKey as any)}
             </span>
           </button>
         ))}

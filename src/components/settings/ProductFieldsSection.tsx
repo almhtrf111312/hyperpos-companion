@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 import {
   ProductFieldsConfig,
   loadProductFieldsConfig,
@@ -22,6 +23,7 @@ interface ProductFieldsSectionProps {
 }
 
 export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig }: ProductFieldsSectionProps) {
+  const { t } = useLanguage();
   const [config, setConfig] = useState<ProductFieldsConfig>(() => {
     const userConfig = loadProductFieldsConfig();
     if (userConfig) return userConfig;
@@ -43,7 +45,6 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
     syncFromCloud();
   }, [storeType]);
 
-  // Sync with pending config from parent (for revert)
   useEffect(() => {
     if (pendingConfig) {
       setConfig(pendingConfig);
@@ -51,26 +52,17 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
   }, [pendingConfig]);
 
   const handleToggle = (field: keyof ProductFieldsConfig) => {
-    const newConfig = {
-      ...config,
-      [field]: !config[field],
-    };
+    const newConfig = { ...config, [field]: !config[field] };
     setConfig(newConfig);
-    // Notify parent instead of saving directly
-    if (onConfigChange) {
-      onConfigChange(newConfig);
-    }
+    if (onConfigChange) { onConfigChange(newConfig); }
   };
 
   const handleReset = async () => {
     const defaults = getDefaultFieldsByStoreType(storeType as StoreType);
     setConfig(defaults);
-    if (onConfigChange) {
-      onConfigChange(defaults);
-    } else {
-      await saveProductFieldsConfig(defaults);
-    }
-    toast.success('تم استعادة الإعدادات الافتراضية');
+    if (onConfigChange) { onConfigChange(defaults); }
+    else { await saveProductFieldsConfig(defaults); }
+    toast.success(t('productFields.resetSuccess'));
   };
 
   const fields = Object.keys(FIELD_LABELS) as Array<keyof ProductFieldsConfig>;
@@ -80,7 +72,7 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
       <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
         <Button variant="outline" size="sm" onClick={handleReset}>
           <RotateCcw className="w-4 h-4 ml-2" />
-          استعادة الافتراضي
+          {t('productFields.resetDefault')}
         </Button>
       </div>
 
@@ -89,10 +81,8 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
           <Package className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold">إدارة حقول المنتجات</h3>
-          <p className="text-sm text-muted-foreground">
-            تخصيص الحقول الظاهرة في نموذج إضافة/تعديل المنتج
-          </p>
+          <h3 className="font-semibold">{t('productFields.title')}</h3>
+          <p className="text-sm text-muted-foreground">{t('productFields.description')}</p>
         </div>
       </div>
 
@@ -100,52 +90,40 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
         <div className="flex items-center gap-2 mb-3">
           <Settings2 className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            يتم تحديد الحقول الافتراضية تلقائياً بناءً على نوع نشاطك ({getStoreTypeName(storeType)})
+            {t('productFields.autoNote')} ({getStoreTypeName(storeType, t)})
           </span>
         </div>
 
         <div className="space-y-1">
           {fields.map((field) => (
-            <div
-              key={field}
-              className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors"
-            >
+            <div key={field} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors">
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-foreground">
-                  {FIELD_LABELS[field].name}
-                </span>
-                <span className="text-xs text-muted-foreground mr-2">
-                  — {FIELD_LABELS[field].description}
-                </span>
+                <span className="text-sm font-medium text-foreground">{FIELD_LABELS[field].name}</span>
+                <span className="text-xs text-muted-foreground mr-2">— {FIELD_LABELS[field].description}</span>
               </div>
-              <Switch
-                checked={config[field]}
-                onCheckedChange={() => handleToggle(field)}
-                className="flex-shrink-0"
-              />
+              <Switch checked={config[field]} onCheckedChange={() => handleToggle(field)} className="flex-shrink-0" />
             </div>
           ))}
         </div>
       </div>
 
       <Separator className="my-6" />
-
       <CustomFieldsManager />
     </div>
   );
 }
 
-function getStoreTypeName(type: string): string {
+function getStoreTypeName(type: string, t: (key: any) => string): string {
   const names: Record<string, string> = {
-    phones: 'هواتف وإلكترونيات',
-    grocery: 'بقالة ومواد غذائية',
-    pharmacy: 'صيدلية',
-    clothing: 'ملابس وأزياء',
-    restaurant: 'مطعم',
-    repair: 'ورشة صيانة',
-    bookstore: 'مكتبة',
-    general: 'متجر عام',
-    custom: 'مخصص',
+    phones: t('productFields.storeType.phones'),
+    grocery: t('productFields.storeType.grocery'),
+    pharmacy: t('productFields.storeType.pharmacy'),
+    clothing: t('productFields.storeType.clothing'),
+    restaurant: t('productFields.storeType.restaurant'),
+    repair: t('productFields.storeType.repair'),
+    bookstore: t('productFields.storeType.bookstore'),
+    general: t('productFields.storeType.general'),
+    custom: t('productFields.storeType.custom'),
   };
-  return names[type] || 'متجر عام';
+  return names[type] || t('productFields.storeType.general');
 }
