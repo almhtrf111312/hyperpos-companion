@@ -46,7 +46,8 @@ import {
   exportExpensesToExcel,
   exportPartnersToExcel,
   exportCustomersToExcel,
-  exportSalesReportToExcel
+  exportSalesReportToExcel,
+  exportCustodyReportToExcel
 } from '@/lib/excel-export';
 import {
   exportInvoicesToPDF,
@@ -482,6 +483,7 @@ export default function Reports() {
               paymentType: inv.paymentType,
               type: inv.type,
               createdAt: inv.createdAt,
+              cashierName: inv.cashierName || '-',
             })),
             storeInfo,
             { start: dateRange.from, end: dateRange.to }
@@ -603,6 +605,7 @@ export default function Reports() {
               paymentType: inv.paymentType,
               type: inv.type,
               createdAt: inv.createdAt,
+              cashierName: inv.cashierName || '-',
             })),
             storeInfo,
             { start: dateRange.from, end: dateRange.to }
@@ -694,6 +697,7 @@ export default function Reports() {
               paymentType: inv.paymentType,
               type: inv.type,
               createdAt: inv.createdAt,
+              cashierName: inv.cashierName || '-',
             })),
             { start: dateRange.from, end: dateRange.to }
           );

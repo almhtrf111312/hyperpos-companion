@@ -229,6 +229,7 @@ export const exportInvoicesToExcel = async (
     paymentType: string;
     type: string;
     createdAt: string;
+    cashierName?: string;
   }>,
   dateRange?: { start: string; end: string }
 ): Promise<void> => {
@@ -239,7 +240,9 @@ export const exportInvoicesToExcel = async (
     { header: 'الإجمالي', key: 'total', width: 12 },
     { header: 'الخصم', key: 'discount', width: 10 },
     { header: 'صافي الربح', key: 'profit', width: 12 },
+    { header: 'نسبة الربح %', key: 'profitMargin', width: 12 },
     { header: 'نوع الدفع', key: 'paymentType', width: 10 },
+    { header: 'الكاشير', key: 'cashierName', width: 15 },
   ];
 
   const data = invoices.map(inv => ({
@@ -249,23 +252,28 @@ export const exportInvoicesToExcel = async (
     total: inv.total,
     discount: inv.discount || 0,
     profit: inv.profit || 0,
+    profitMargin: inv.total > 0 ? Math.round(((inv.profit || 0) / inv.total) * 100) : 0,
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
+    cashierName: inv.cashierName || '-',
   }));
 
   const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
   const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
   const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  const avgProfitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
 
   const totals: Record<string, number> = {
     total: totalSales,
     discount: totalDiscount,
     profit: totalProfit,
+    profitMargin: avgProfitMargin,
   };
 
   const summary = [
     { label: 'إجمالي المبيعات', value: totalSales },
     { label: 'إجمالي الخصومات', value: totalDiscount },
     { label: 'صافي الأرباح', value: totalProfit },
+    { label: 'نسبة الربح الإجمالية %', value: `${avgProfitMargin}%` },
     { label: 'عدد الفواتير', value: invoices.length },
   ];
 
@@ -273,9 +281,13 @@ export const exportInvoicesToExcel = async (
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${formatLocalDate()}`;
 
+  const fileDate = dateRange
+    ? `${dateRange.start}_${dateRange.end}`
+    : new Date().toISOString().split('T')[0];
+
   await exportToExcel({
     sheetName: 'الفواتير',
-    fileName: `فواتير_${new Date().toISOString().split('T')[0]}.xlsx`,
+    fileName: `فواتير_${fileDate}.xlsx`,
     columns,
     data,
     totals,
@@ -392,9 +404,13 @@ export const exportExpensesToExcel = async (
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${formatLocalDate()}`;
 
+  const fileDate = dateRange
+    ? `${dateRange.start}_${dateRange.end}`
+    : new Date().toISOString().split('T')[0];
+
   await exportToExcel({
     sheetName: 'المصاريف',
-    fileName: `مصاريف_${new Date().toISOString().split('T')[0]}.xlsx`,
+    fileName: `مصاريف_${fileDate}.xlsx`,
     columns,
     data: expenses,
     totals,
@@ -649,5 +665,79 @@ export const exportDailyReportToExcel = async (
     title: 'التقرير اليومي للصندوق',
     reportType: 'تقرير الصندوق',
     subtitle: `التاريخ: ${report.date}`,
+  });
+};
+
+// Export custody/distributor report to Excel with styled format
+export const exportCustodyReportToExcel = async (
+  distributors: Array<{
+    warehouseName: string;
+    totalProducts: number;
+    totalQuantity: number;
+    totalCostValue: number;
+    totalSaleValue: number;
+    potentialProfit: number;
+    products: Array<{
+      productName: string;
+      unit: string;
+      quantity: number;
+      costPrice: number;
+      salePrice: number;
+      costValue: number;
+      saleValue: number;
+    }>;
+  }>
+): Promise<void> => {
+  const columns: ExcelColumn[] = [
+    { header: 'الموزع', key: 'warehouseName', width: 20 },
+    { header: 'عدد المنتجات', key: 'totalProducts', width: 12 },
+    { header: 'إجمالي الكميات', key: 'totalQuantity', width: 12 },
+    { header: 'قيمة التكلفة', key: 'totalCostValue', width: 15 },
+    { header: 'قيمة البيع', key: 'totalSaleValue', width: 15 },
+    { header: 'الربح المتوقع', key: 'potentialProfit', width: 15 },
+  ];
+
+  const data = distributors.map(d => ({
+    warehouseName: d.warehouseName,
+    totalProducts: d.totalProducts,
+    totalQuantity: d.totalQuantity,
+    totalCostValue: d.totalCostValue,
+    totalSaleValue: d.totalSaleValue,
+    potentialProfit: d.potentialProfit,
+  }));
+
+  const totalProducts = distributors.reduce((sum, d) => sum + d.totalProducts, 0);
+  const totalQuantity = distributors.reduce((sum, d) => sum + d.totalQuantity, 0);
+  const totalCostValue = distributors.reduce((sum, d) => sum + d.totalCostValue, 0);
+  const totalSaleValue = distributors.reduce((sum, d) => sum + d.totalSaleValue, 0);
+  const totalProfit = distributors.reduce((sum, d) => sum + d.potentialProfit, 0);
+
+  const totals: Record<string, number> = {
+    totalProducts,
+    totalQuantity,
+    totalCostValue,
+    totalSaleValue,
+    potentialProfit: totalProfit,
+  };
+
+  const summary = [
+    { label: 'عدد الموزعين', value: distributors.length },
+    { label: 'إجمالي المنتجات', value: totalProducts },
+    { label: 'إجمالي الكميات', value: totalQuantity },
+    { label: 'قيمة التكلفة الإجمالية', value: totalCostValue },
+    { label: 'قيمة البيع الإجمالية', value: totalSaleValue },
+    { label: 'الربح المتوقع', value: totalProfit },
+  ];
+
+  await exportToExcel({
+    sheetName: 'ملخص العهد',
+    fileName: `تقرير_قيمة_العهد_${new Date().toISOString().split('T')[0]}.xlsx`,
+    columns,
+    data,
+    totals,
+    title: 'تقرير قيمة العهدة',
+    reportType: 'تقرير جرد الموزعين',
+    subtitle: `التاريخ: ${formatLocalDate()}`,
+    summary,
   });
 };

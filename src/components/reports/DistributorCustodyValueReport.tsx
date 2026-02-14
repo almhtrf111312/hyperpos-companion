@@ -145,70 +145,10 @@ export function DistributorCustodyValueReport() {
   }, [distributorData]);
 
   // Export to Excel
-  const exportToExcel = async () => {
+  const handleExportToExcel = async () => {
     try {
-      const { utils, writeFile } = await import('xlsx');
-
-      // Summary sheet
-      const summaryData = distributorData.map(d => ({
-        'الموزع': d.warehouseName,
-        'عدد المنتجات': d.totalProducts,
-        'إجمالي الكميات': d.totalQuantity,
-        'قيمة التكلفة ($)': d.totalCostValue.toFixed(2),
-        'قيمة البيع ($)': d.totalSaleValue.toFixed(2),
-        'الربح المتوقع ($)': d.potentialProfit.toFixed(2)
-      }));
-
-      // Add total row
-      summaryData.push({
-        'الموزع': '--- الإجمالي ---',
-        'عدد المنتجات': summary.totalProducts,
-        'إجمالي الكميات': summary.totalQuantity,
-        'قيمة التكلفة ($)': summary.totalCostValue.toFixed(2),
-        'قيمة البيع ($)': summary.totalSaleValue.toFixed(2),
-        'الربح المتوقع ($)': summary.totalPotentialProfit.toFixed(2)
-      });
-
-      const wb = utils.book_new();
-
-      // Summary sheet
-      const summaryWs = utils.json_to_sheet(summaryData);
-      utils.book_append_sheet(wb, summaryWs, 'ملخص العهد');
-
-      // Detail sheets for each distributor
-      for (const distributor of distributorData) {
-        if (distributor.products.length === 0) continue;
-
-        const detailData = distributor.products.map(p => ({
-          'المنتج': p.productName,
-          'الوحدة': p.unit,
-          'الكمية': p.quantity,
-          'سعر التكلفة ($)': p.costPrice.toFixed(2),
-          'سعر البيع ($)': p.salePrice.toFixed(2),
-          'قيمة التكلفة ($)': p.costValue.toFixed(2),
-          'قيمة البيع ($)': p.saleValue.toFixed(2)
-        }));
-
-        // Add total row
-        detailData.push({
-          'المنتج': '--- الإجمالي ---',
-          'الوحدة': '',
-          'الكمية': distributor.totalQuantity,
-          'سعر التكلفة ($)': '',
-          'سعر البيع ($)': '',
-          'قيمة التكلفة ($)': distributor.totalCostValue.toFixed(2),
-          'قيمة البيع ($)': distributor.totalSaleValue.toFixed(2)
-        });
-
-        const detailWs = utils.json_to_sheet(detailData);
-        // Truncate sheet name to 31 characters (Excel limit)
-        const sheetName = distributor.warehouseName.slice(0, 31);
-        utils.book_append_sheet(wb, detailWs, sheetName);
-      }
-
-      const fileName = `تقرير_قيمة_العهد_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      writeFile(wb, fileName);
-
+      const { exportCustodyReportToExcel } = await import('@/lib/excel-export');
+      await exportCustodyReportToExcel(distributorData);
       toast.success('تم تصدير التقرير بنجاح');
     } catch (error) {
       console.error('Export error:', error);
@@ -252,7 +192,7 @@ export function DistributorCustodyValueReport() {
         <Button
           variant="outline"
           size="sm"
-          onClick={exportToExcel}
+          onClick={handleExportToExcel}
           disabled={distributorData.length === 0}
         >
           <FileSpreadsheet className="w-4 h-4 ml-2" />
