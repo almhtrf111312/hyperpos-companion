@@ -335,7 +335,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               key !== 'hyperpos_language' && 
               key !== 'hyperpos_theme' &&
               key !== 'hyperpos_stay_logged_in' &&
-              key !== 'hyperpos_session_cache') {
+              key !== 'hyperpos_session_cache' &&
+              key !== 'hyperpos_privacy_accepted') {
             keysToRemove.push(key);
           }
         }
@@ -463,7 +464,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (key && key.startsWith('hyperpos_') && 
           key !== 'hyperpos_language' && 
           key !== 'hyperpos_theme' &&
-          key !== 'hyperpos_last_user_id') {
+          key !== 'hyperpos_last_user_id' &&
+          key !== 'hyperpos_privacy_accepted') {
         keysToRemove.push(key);
       }
     }
