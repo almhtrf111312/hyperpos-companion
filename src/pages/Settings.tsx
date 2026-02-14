@@ -499,7 +499,21 @@ export default function Settings() {
       hideMaintenanceSection,
     });
 
-    // Save to cloud
+    // Build merged sync_settings: keep productFieldsConfig alongside sync settings
+    const mergedSyncSettings: Record<string, unknown> = {
+      ...syncSettings,
+    };
+    if (productFieldsChanged && productFieldsConfig) {
+      mergedSyncSettings.productFieldsConfig = productFieldsConfig;
+    } else {
+      // Preserve existing productFieldsConfig from localStorage
+      const existingPFC = loadProductFieldsConfig();
+      if (existingPFC) {
+        mergedSyncSettings.productFieldsConfig = existingPFC;
+      }
+    }
+
+    // Save to cloud with merged sync_settings
     const cloudSuccess = await saveStoreSettings({
       name: storeSettings.name,
       store_type: storeSettings.type,
@@ -507,14 +521,15 @@ export default function Settings() {
       address: storeSettings.address,
       logo_url: storeSettings.logo,
       exchange_rates: { USD: 1, TRY: tryRate, SYP: sypRate },
-      sync_settings: syncSettings,
+      sync_settings: mergedSyncSettings,
       notification_settings: notificationSettings,
       print_settings: printSettings,
     });
 
-    // Save product fields config if changed
+    // Also save product fields to localStorage if changed
     if (productFieldsChanged && productFieldsConfig) {
-      await saveProductFieldsConfig(productFieldsConfig);
+      localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(productFieldsConfig));
+      emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, productFieldsConfig);
       setProductFieldsChanged(false);
     }
 
@@ -953,6 +968,9 @@ export default function Settings() {
                       const defaultFields = getDefaultFieldsByStoreType(newType as StoreType);
                       setProductFieldsConfig(defaultFields);
                       setProductFieldsChanged(true);
+                      // Save to localStorage immediately so product forms update right away
+                      localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(defaultFields));
+                      emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, defaultFields);
                       setPendingStoreType(newType);
                       setStoreTypeConfirmOpen(true);
                     }}
