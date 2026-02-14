@@ -378,6 +378,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           {}
         );
       });
+
+      // Reset device_id on sign out (except boss) so user can login on another device
+      try {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (roleData?.role !== 'boss') {
+          await supabase
+            .from('app_licenses')
+            .update({ device_id: null })
+            .eq('user_id', user.id)
+            .eq('is_revoked', false);
+          
+          // Clear local device binding cache
+          try {
+            localStorage.removeItem('hyperpos_device_binding_cache_v1');
+          } catch { /* */ }
+        }
+      } catch (err) {
+        console.error('Failed to reset device on sign out:', err);
+      }
     }
     
     // Clear auto-login attempt flag so next app open can try again

@@ -1225,166 +1225,117 @@ export default function Settings() {
 
       case 'backup':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
+            <h2 className="text-lg font-bold text-foreground">
               {isRTL ? 'النسخ الاحتياطي والمزامنة' : 'Backup & Sync'}
             </h2>
 
-            {/* Backup Section */}
-            <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 space-y-4">
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-foreground">{t('settings.backup')}</h3>
+            {/* Backup & Import - compact row */}
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleBackupNow} disabled={isBackingUp} className="flex-1">
+                {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                <span className="text-xs">{t('settings.downloadBackup')}</span>
+              </Button>
+              <div className="flex-1">
+                <input type="file" accept=".json,application/json,text/plain" onChange={handleImportBackup} className="hidden" id="import-backup" ref={importInputRef} />
+                <label htmlFor="import-backup" className="w-full">
+                  <Button variant="outline" size="sm" className="w-full" asChild disabled={isImporting}>
+                    <span className="cursor-pointer">
+                      {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
+                      <span className="text-xs">{t('settings.importBackup')}</span>
+                    </span>
+                  </Button>
+                </label>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.backupDescription')}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={handleBackupNow} disabled={isBackingUp} className="flex-1 min-w-[140px]">
-                  {isBackingUp ? (
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 ml-2" />
-                  )}
-                  {t('settings.downloadBackup')}
-                </Button>
-                <div className="flex-1 min-w-[140px]">
-                  <input
-                    type="file"
-                    accept=".json,application/json,text/plain"
-                    onChange={handleImportBackup}
-                    className="hidden"
-                    id="import-backup"
-                    ref={importInputRef}
-                  />
-                  <label htmlFor="import-backup" className="w-full">
-                    <Button variant="outline" className="w-full" asChild disabled={isImporting}>
-                      <span className="cursor-pointer">
-                        {isImporting ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        ) : (
-                          <FileUp className="w-4 h-4 ml-2" />
-                        )}
-                        {t('settings.importBackup')}
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-              </div>
-
-              {/* Show last backup path */}
-              {lastBackupResult?.success && (
-                <div className="p-3 bg-muted/50 rounded-lg border border-border text-xs space-y-1">
-                  <div className="flex items-center gap-2 text-success">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span className="font-medium">{isRTL ? 'تم الحفظ بنجاح' : 'Saved successfully'}</span>
-                  </div>
-                  <p className="text-muted-foreground">
-                    <span className="font-medium">{isRTL ? 'المسار:' : 'Path:'}</span>{' '}
-                    {lastBackupResult.path}/{lastBackupResult.filename}
-                  </p>
-                </div>
-              )}
+              <Button variant="outline" size="sm" onClick={handleExportData}>
+                <Download className="w-3.5 h-3.5" />
+                <span className="text-xs">JSON</span>
+              </Button>
             </div>
 
-            {/* Auto Backup Settings */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                <div>
-                  <p className="font-medium text-foreground">{t('settings.autoBackup')}</p>
-                  <p className="text-sm text-muted-foreground">{t('settings.autoBackupDesc')}</p>
+            {/* Last backup result */}
+            {lastBackupResult?.success && (
+              <div className="p-2 bg-muted/50 rounded-lg border border-border text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="text-muted-foreground truncate">
+                  {lastBackupResult.path}/{lastBackupResult.filename}
+                </span>
+              </div>
+            )}
+
+            {/* Auto backup + Sync - compact grid */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between p-2.5 bg-muted rounded-lg">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{t('settings.autoBackup')}</p>
                 </div>
                 <Switch
                   checked={backupSettings.autoBackup}
                   onCheckedChange={(checked) => setBackupSettings({ ...backupSettings, autoBackup: checked })}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.backupInterval')}</label>
-                  <select
-                    value={backupSettings.interval}
-                    onChange={(e) => setBackupSettings({ ...backupSettings, interval: e.target.value })}
-                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
-                  >
-                    <option value="daily">{t('settings.daily')}</option>
-                    <option value="weekly">{t('settings.weekly')}</option>
-                    <option value="monthly">{t('settings.monthly')}</option>
-                  </select>
+              <div className="flex items-center justify-between p-2.5 bg-muted rounded-lg">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{t('settings.lastSync')}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{syncSettings.lastSync}</p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.keepDays')}</label>
-                  <Input
-                    type="number"
-                    value={backupSettings.keepDays}
-                    onChange={(e) => setBackupSettings({ ...backupSettings, keepDays: e.target.value })}
-                    min="7"
-                    max="365"
-                    className="bg-muted border-0"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Export JSON */}
-            <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-3">{t('settings.exportDataJson')}</h3>
-              <Button variant="outline" onClick={handleExportData}>
-                <Download className="w-4 h-4 ml-2" />
-                {t('settings.exportJson')}
-              </Button>
-            </div>
-
-            {/* Local Auto-Backup Section (merged from sync) */}
-            <div className="pt-4 border-t border-border">
-              <LocalBackupSection />
-            </div>
-
-            {/* Sync Section (merged from sync tab) */}
-            <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-4">{t('settings.localSync')}</h3>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                <div>
-                  <p className="font-medium text-foreground">{t('settings.lastSync')}</p>
-                  <p className="text-sm text-muted-foreground">{syncSettings.lastSync}</p>
-                </div>
-                <Button onClick={handleSync} disabled={isSyncing}>
-                  {isSyncing ? (
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 ml-2" />
-                  )}
-                  {t('settings.syncNow')}
+                <Button size="sm" variant="ghost" onClick={handleSync} disabled={isSyncing} className="h-7 w-7 p-0 shrink-0">
+                  {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 </Button>
               </div>
             </div>
 
-            {/* Recent Backups */}
-            <div className="pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground mb-3">{t('settings.recentBackups')}</h3>
-              <div className="space-y-2">
-                {backups.map((backup) => (
-                  <div key={backup.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Database className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{backup.date}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {backup.size} • {backup.type === 'auto' ? t('settings.auto') : t('settings.manual')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleRestoreBackup(backup)}>
-                        <RefreshCw className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteBackup(backup)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+            {/* Settings row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">{t('settings.backupInterval')}</label>
+                <select
+                  value={backupSettings.interval}
+                  onChange={(e) => setBackupSettings({ ...backupSettings, interval: e.target.value })}
+                  className="w-full h-8 px-2 text-xs rounded-md bg-muted border-0 text-foreground"
+                >
+                  <option value="daily">{t('settings.daily')}</option>
+                  <option value="weekly">{t('settings.weekly')}</option>
+                  <option value="monthly">{t('settings.monthly')}</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">{t('settings.keepDays')}</label>
+                <Input
+                  type="number"
+                  value={backupSettings.keepDays}
+                  onChange={(e) => setBackupSettings({ ...backupSettings, keepDays: e.target.value })}
+                  min="7" max="365"
+                  className="h-8 text-xs bg-muted border-0"
+                />
+              </div>
+            </div>
+
+            {/* Local Auto-Backup */}
+            <LocalBackupSection />
+
+            {/* Recent Backups - compact */}
+            <div className="space-y-1.5">
+              <h3 className="text-xs font-semibold text-foreground">{t('settings.recentBackups')}</h3>
+              {backups.map((backup) => (
+                <div key={backup.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Database className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{backup.date}</p>
+                      <p className="text-[10px] text-muted-foreground">{backup.size} • {backup.type === 'auto' ? t('settings.auto') : t('settings.manual')}</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRestoreBackup(backup)}>
+                      <RefreshCw className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteBackup(backup)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         );
