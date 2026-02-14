@@ -1782,6 +1782,7 @@ export default function Settings() {
               onClick={() => {
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
+                emitEvent(EVENTS.STORE_TYPE_CHANGED);
                 toast({
                   title: t('settings.updated'),
                   description: t('settings.fieldsOnlyUpdated'),
@@ -1801,9 +1802,22 @@ export default function Settings() {
                     createdAt: new Date().toISOString(),
                   }));
                   saveCategories(newCategories);
+                  // Sync categories to cloud
+                  (async () => {
+                    try {
+                      const { loadCategoriesCloud, deleteCategoryCloud, addCategoryCloud, invalidateCategoriesCache } = await import('@/lib/cloud/categories-cloud');
+                      const existing = await loadCategoriesCloud();
+                      await Promise.allSettled(existing.map(c => deleteCategoryCloud(c.id)));
+                      invalidateCategoriesCache();
+                      await Promise.allSettled(defaultCats.map(name => addCategoryCloud(name)));
+                    } catch (e) {
+                      console.warn('[Settings] Cloud category sync failed:', e);
+                    }
+                  })();
                 }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
+                emitEvent(EVENTS.STORE_TYPE_CHANGED);
                 toast({
                   title: t('settings.updated'),
                   description: t('settings.fieldsAndCategoriesUpdated'),

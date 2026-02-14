@@ -11,6 +11,7 @@ import {
 } from '@/lib/i18n';
 import { getSystemLanguage, mapSystemLanguage, setupSystemLanguageListener } from '@/lib/system-language';
 import { getTerminology, getCurrentStoreType, TerminologyKey } from '@/lib/store-type-config';
+import { subscribeToEvent, EVENTS } from '@/lib/events';
 
 interface LanguageContextType {
   language: Language;
@@ -109,7 +110,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return translate(key, language);
   }, [language]);
 
-  const storeType = getCurrentStoreType();
+  const [storeType, setStoreType] = useState(getCurrentStoreType);
+
+  // Listen for store type changes
+  useEffect(() => {
+    const unsub = subscribeToEvent(EVENTS.STORE_TYPE_CHANGED, () => {
+      setStoreType(getCurrentStoreType());
+    });
+    return unsub;
+  }, []);
 
   const tDynamic = useCallback((key: TerminologyKey) => {
     return getTerminology(storeType, key, language);
