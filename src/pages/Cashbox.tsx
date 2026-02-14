@@ -24,6 +24,7 @@ import {
   openShift,
   closeShift,
   getShiftStats,
+  addShiftAdjustment,
   Shift,
 } from '@/lib/cashbox-store';
 import { EVENTS } from '@/lib/events';
@@ -476,6 +477,50 @@ export default function Cashbox() {
                     }
                   </span>
                 </div>
+
+                {/* أزرار التعديل السريع */}
+                {parseFloat(closingAmount) !== expectedClosing && activeShift && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    {parseFloat(closingAmount) < expectedClosing ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                        onClick={() => {
+                          const diff = expectedClosing - parseFloat(closingAmount);
+                          const success = addShiftAdjustment('expense_added', diff, 'عجز في الصندوق');
+                          if (success) {
+                            toast.success(`تم تسجيل ${formatCurrency(diff, '$')} كمصروف`);
+                            loadData();
+                          }
+                        }}
+                      >
+                        <ArrowDownRight className="w-4 h-4 ml-1" />
+                        تسجيل {formatCurrency(expectedClosing - parseFloat(closingAmount), '$')} كمصروف
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-green-600 border-green-300 hover:bg-green-50"
+                        onClick={() => {
+                          const diff = parseFloat(closingAmount) - expectedClosing;
+                          const success = addShiftAdjustment('income_added', diff, 'فائض في الصندوق');
+                          if (success) {
+                            toast.success(`تم تسجيل ${formatCurrency(diff, '$')} كإيراد إضافي`);
+                            loadData();
+                          }
+                        }}
+                      >
+                        <ArrowUpRight className="w-4 h-4 ml-1" />
+                        تسجيل {formatCurrency(parseFloat(closingAmount) - expectedClosing, '$')} كإيراد
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      سيتم تعديل المجاميع لمطابقة الرصيد الفعلي
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -534,7 +579,7 @@ export default function Cashbox() {
                     <span className="text-sm text-muted-foreground">{shift.userName}</span>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                     <div>
                       <span className="text-muted-foreground">الافتتاح:</span>
                       <span className="font-medium mr-1">{formatCurrency(shift.openingCash, '$')}</span>
@@ -543,8 +588,24 @@ export default function Cashbox() {
                       <span className="text-muted-foreground">المبيعات:</span>
                       <span className="font-medium text-green-600 mr-1">+{formatCurrency(shift.salesTotal, '$')}</span>
                     </div>
+                    <div>
+                      <span className="text-muted-foreground">المصاريف:</span>
+                      <span className="font-medium text-red-600 mr-1">-{formatCurrency(shift.expensesTotal, '$')}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">الإيداعات:</span>
+                      <span className="font-medium text-green-600 mr-1">+{formatCurrency(shift.depositsTotal, '$')}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">السحوبات:</span>
+                      <span className="font-medium text-red-600 mr-1">-{formatCurrency(shift.withdrawalsTotal, '$')}</span>
+                    </div>
                     {shift.status === 'closed' && (
                       <>
+                        <div>
+                          <span className="text-muted-foreground">المتوقع:</span>
+                          <span className="font-medium text-primary mr-1">{formatCurrency(shift.expectedCash || 0, '$')}</span>
+                        </div>
                         <div>
                           <span className="text-muted-foreground">الإغلاق:</span>
                           <span className="font-medium mr-1">{formatCurrency(shift.closingCash || 0, '$')}</span>
@@ -555,12 +616,32 @@ export default function Cashbox() {
                             "font-medium mr-1",
                             shift.discrepancy === 0 ? "" : shift.discrepancy! > 0 ? "text-green-600" : "text-red-600"
                           )}>
-                            {formatCurrency(shift.discrepancy || 0, '$')}
+                            {shift.discrepancy === 0 ? '0' : (shift.discrepancy! > 0 ? '+' : '') + formatCurrency(shift.discrepancy!, '$')}
                           </span>
                         </div>
                       </>
                     )}
                   </div>
+
+                  {/* التعديلات */}
+                  {shift.adjustments && shift.adjustments.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">التعديلات:</p>
+                      <div className="space-y-1">
+                        {shift.adjustments.map(adj => (
+                          <div key={adj.id} className={cn(
+                            "text-xs px-2 py-1 rounded flex items-center justify-between",
+                            adj.type === 'expense_added' ? "bg-red-500/10 text-red-700" : "bg-green-500/10 text-green-700"
+                          )}>
+                            <span>
+                              {adj.type === 'expense_added' ? '📉 مصروف' : '📈 إيراد'}: {adj.reason}
+                            </span>
+                            <span className="font-medium">{formatCurrency(adj.amount, '$')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-2 text-xs text-muted-foreground">
                     {formatDateTime(shift.openedAt)}
