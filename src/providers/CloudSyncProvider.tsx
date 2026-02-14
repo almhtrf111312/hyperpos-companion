@@ -13,6 +13,7 @@ import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
+const LAST_USER_KEY = 'hyperpos_last_user_id';
 
 interface CloudSyncContextType {
   isReady: boolean;
@@ -58,6 +59,24 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setWasOffline(!isOnline);
   }, [isOnline, wasOffline, user]);
 
+  // Clear user-specific localStorage when user changes
+  const clearUserLocalStorage = useCallback(() => {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('hyperpos_') && 
+          key !== 'hyperpos_language' && 
+          key !== LAST_USER_KEY &&
+          key !== 'hyperpos_stay_logged_in' &&
+          key !== 'hyperpos_session_cache' &&
+          key !== 'hyperpos_theme') {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log(`[CloudSync] Cleared ${keysToRemove.length} user-specific localStorage keys`);
+  }, []);
+
   // Initialize cloud sync when user is authenticated
   useEffect(() => {
     if (authLoading) return;
@@ -67,6 +86,14 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       setIsReady(true);
       return;
     }
+
+    // Check if user changed - clear old data
+    const lastUserId = localStorage.getItem(LAST_USER_KEY);
+    if (lastUserId && lastUserId !== user.id) {
+      console.log('[CloudSync] User changed, clearing old localStorage data');
+      clearUserLocalStorage();
+    }
+    localStorage.setItem(LAST_USER_KEY, user.id);
 
     setCurrentUserId(user.id);
     initializeCloudData();
@@ -82,63 +109,45 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       const cloudSettings = await fetchStoreSettings();
       
       if (cloudSettings) {
-        // Apply cloud settings to localStorage for local access
-        const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        const existing = existingRaw ? JSON.parse(existingRaw) : {};
-        
-        const merged = {
-          ...existing,
+        // Apply cloud settings to localStorage (cloud is source of truth)
+        const settings = {
           storeSettings: {
-            name: cloudSettings.name ?? existing.storeSettings?.name ?? '',
-            type: cloudSettings.store_type ?? existing.storeSettings?.type ?? 'general',
-            phone: cloudSettings.phone ?? existing.storeSettings?.phone ?? '',
-            address: cloudSettings.address ?? existing.storeSettings?.address ?? '',
-            logo: cloudSettings.logo_url ?? existing.storeSettings?.logo ?? '',
+            name: cloudSettings.name ?? '',
+            type: cloudSettings.store_type ?? 'general',
+            phone: cloudSettings.phone ?? '',
+            address: cloudSettings.address ?? '',
+            logo: cloudSettings.logo_url ?? '',
           },
-          exchangeRates: cloudSettings.exchange_rates || existing.exchangeRates || { TRY: '', SYP: '' },
-          language: cloudSettings.language || existing.language || 'ar',
-          theme: cloudSettings.theme || existing.theme || 'dark',
-          taxEnabled: cloudSettings.tax_enabled ?? existing.taxEnabled ?? false,
-          taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
-          printSettings: cloudSettings.print_settings || existing.printSettings || {},
-          notificationSettings: cloudSettings.notification_settings || existing.notificationSettings || {},
+          exchangeRates: cloudSettings.exchange_rates || { TRY: '', SYP: '' },
+          language: cloudSettings.language || 'ar',
+          theme: cloudSettings.theme || 'dark',
+          taxEnabled: cloudSettings.tax_enabled ?? false,
+          taxRate: cloudSettings.tax_rate ?? 0,
+          printSettings: cloudSettings.print_settings || {},
+          notificationSettings: cloudSettings.notification_settings || {},
         };
         
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
         emitEvent(EVENTS.SETTINGS_UPDATED);
       } else {
-        // First time user - migrate local settings to cloud
-        const localRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        if (localRaw) {
-          try {
-            const local = JSON.parse(localRaw);
-            await saveStoreSettings({
-              name: local.storeSettings?.name || '',
-              phone: local.storeSettings?.phone || '',
-              address: local.storeSettings?.address || '',
-              logo_url: local.storeSettings?.logo || '',
-              store_type: local.storeSettings?.type || local.storeType || 'general',
-              language: local.language || 'ar',
-              theme: local.theme || 'dark',
-              exchange_rates: local.exchangeRates || { TRY: 0, SYP: 0 },
-              tax_enabled: local.taxEnabled || false,
-              tax_rate: local.taxRate || 0,
-              print_settings: local.printSettings || {},
-              notification_settings: local.notificationSettings || {},
-            });
-          } catch (e) {
-            console.error('Failed to migrate local settings:', e);
-          }
-        } else {
-          // Create default store
-          await saveStoreSettings({
-            name: 'متجري',
-            store_type: 'phones',
-            language: 'ar',
-            theme: 'dark',
-            exchange_rates: { TRY: 33, SYP: 14000 },
-          });
-        }
+        // First time user - create empty default store (don't migrate old localStorage)
+        await saveStoreSettings({
+          name: '',
+          store_type: 'general',
+          language: 'ar',
+          theme: 'dark',
+          exchange_rates: { TRY: 0, SYP: 0, USD: 1 },
+        });
+        // Set empty settings in localStorage
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
+          storeSettings: { name: '', type: 'general', phone: '', address: '', logo: '' },
+          exchangeRates: { TRY: 0, SYP: 0 },
+          language: 'ar',
+          theme: 'dark',
+          taxEnabled: false,
+          taxRate: 0,
+        }));
+        emitEvent(EVENTS.SETTINGS_UPDATED);
       }
 
       setLastSyncTime(new Date().toISOString());
