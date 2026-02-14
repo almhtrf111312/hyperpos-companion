@@ -151,6 +151,12 @@ export default function Products() {
     size: '',
     color: '',
     minStockLevel: 1,
+    weight: '',
+    fabricType: '',
+    tableNumber: '',
+    orderNotes: '',
+    author: '',
+    publisher: '',
     // Unit settings
     bulkUnit: t('products.unitCarton'),
     smallUnit: t('products.unitPiece'),
@@ -398,7 +404,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -518,7 +524,7 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
       setCustomFieldValues({});
@@ -652,6 +658,12 @@ export default function Products() {
       size: product.size || '',
       color: product.color || '',
       minStockLevel: product.minStockLevel || 1,
+      weight: product.weight || '',
+      fabricType: product.fabricType || '',
+      tableNumber: product.tableNumber || '',
+      orderNotes: product.orderNotes || '',
+      author: product.author || '',
+      publisher: product.publisher || '',
       // Unit settings
       bulkUnit: product.bulkUnit || t('products.unitCarton'),
       smallUnit: product.smallUnit || t('products.unitPiece'),
@@ -701,7 +713,7 @@ export default function Products() {
               </Button>
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -725,7 +737,7 @@ export default function Products() {
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1531,6 +1543,66 @@ export default function Products() {
                     </div>
                   </>
                 )}
+                {fieldsConfig.weight && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.weight')}</label>
+                    <Input
+                      placeholder={t('products.weight')}
+                      value={formData.weight}
+                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.fabricType && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.fabricType')}</label>
+                    <Input
+                      placeholder={t('products.fabricType')}
+                      value={formData.fabricType}
+                      onChange={(e) => setFormData({ ...formData, fabricType: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.tableNumber && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.tableNumber')}</label>
+                    <Input
+                      placeholder={t('products.tableNumber')}
+                      value={formData.tableNumber}
+                      onChange={(e) => setFormData({ ...formData, tableNumber: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.orderNotes && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.orderNotes')}</label>
+                    <Input
+                      placeholder={t('products.orderNotes')}
+                      value={formData.orderNotes}
+                      onChange={(e) => setFormData({ ...formData, orderNotes: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.author && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.author')}</label>
+                    <Input
+                      placeholder={t('products.author')}
+                      value={formData.author}
+                      onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.publisher && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.publisher')}</label>
+                    <Input
+                      placeholder={t('products.publisher')}
+                      value={formData.publisher}
+                      onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
+                    />
+                  </div>
+                )}
                 {fieldsConfig.minStockLevel && (
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
@@ -1896,6 +1968,66 @@ export default function Products() {
                       />
                     </div>
                   </>
+                )}
+                {fieldsConfig.weight && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.weight')}</label>
+                    <Input
+                      placeholder={t('products.weight')}
+                      value={formData.weight}
+                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.fabricType && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.fabricType')}</label>
+                    <Input
+                      placeholder={t('products.fabricType')}
+                      value={formData.fabricType}
+                      onChange={(e) => setFormData({ ...formData, fabricType: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.tableNumber && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.tableNumber')}</label>
+                    <Input
+                      placeholder={t('products.tableNumber')}
+                      value={formData.tableNumber}
+                      onChange={(e) => setFormData({ ...formData, tableNumber: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.orderNotes && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.orderNotes')}</label>
+                    <Input
+                      placeholder={t('products.orderNotes')}
+                      value={formData.orderNotes}
+                      onChange={(e) => setFormData({ ...formData, orderNotes: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.author && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.author')}</label>
+                    <Input
+                      placeholder={t('products.author')}
+                      value={formData.author}
+                      onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.publisher && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.publisher')}</label>
+                    <Input
+                      placeholder={t('products.publisher')}
+                      value={formData.publisher}
+                      onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
+                    />
+                  </div>
                 )}
                 {fieldsConfig.minStockLevel && (
                   <div>

@@ -28,6 +28,12 @@ interface PurchaseInvoiceItemFormProps {
     warranty?: string;
     size?: string;
     color?: string;
+    weight?: string;
+    fabric_type?: string;
+    table_number?: string;
+    order_notes?: string;
+    author?: string;
+    publisher?: string;
     min_stock_level?: number;
     image_url?: string;
     // Dual unit fields
@@ -70,6 +76,12 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   const [warranty, setWarranty] = useState('');
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
+  const [weight, setWeight] = useState('');
+  const [fabricType, setFabricType] = useState('');
+  const [tableNumber, setTableNumber] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
+  const [author, setAuthor] = useState('');
+  const [publisher, setPublisher] = useState('');
   const [minStockLevel, setMinStockLevel] = useState('');
 
   // Dual unit fields
@@ -200,6 +212,12 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       warranty: warranty || undefined,
       size: size || undefined,
       color: color || undefined,
+      weight: weight || undefined,
+      fabric_type: fabricType || undefined,
+      table_number: tableNumber || undefined,
+      order_notes: orderNotes || undefined,
+      author: author || undefined,
+      publisher: publisher || undefined,
       min_stock_level: minStockLevel ? parseInt(minStockLevel) : undefined,
       image_url: imageUrl || undefined,
       track_by_unit: trackByUnit,
@@ -224,6 +242,12 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setWarranty('');
     setSize('');
     setColor('');
+    setWeight('');
+    setFabricType('');
+    setTableNumber('');
+    setOrderNotes('');
+    setAuthor('');
+    setPublisher('');
     setMinStockLevel('');
     setImageUrl('');
     setTrackByUnit('piece');
@@ -497,6 +521,72 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
               placeholder="أحمر، أزرق..."
             />
           </div>
+        </div>
+      )}
+
+      {fieldsConfig.weight && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.weight')}</Label>
+          <Input
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder={t('products.weight')}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.fabricType && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.fabricType')}</Label>
+          <Input
+            value={fabricType}
+            onChange={(e) => setFabricType(e.target.value)}
+            placeholder={t('products.fabricType')}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.tableNumber && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.tableNumber')}</Label>
+          <Input
+            value={tableNumber}
+            onChange={(e) => setTableNumber(e.target.value)}
+            placeholder={t('products.tableNumber')}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.orderNotes && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.orderNotes')}</Label>
+          <Input
+            value={orderNotes}
+            onChange={(e) => setOrderNotes(e.target.value)}
+            placeholder={t('products.orderNotes')}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.author && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.author')}</Label>
+          <Input
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder={t('products.author')}
+          />
+        </div>
+      )}
+
+      {fieldsConfig.publisher && (
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t('products.publisher')}</Label>
+          <Input
+            value={publisher}
+            onChange={(e) => setPublisher(e.target.value)}
+            placeholder={t('products.publisher')}
+          />
         </div>
       )}
 
