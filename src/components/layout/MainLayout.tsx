@@ -38,8 +38,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Main content - margin based on RTL/LTR */}
       <main className={`min-h-screen transition-all duration-300 pt-4 ${
         isRTL 
-          ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-64') 
-          : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-64')
+          ? (isMobile ? 'mr-0' : isTablet ? 'mr-20' : 'mr-52') 
+          : (isMobile ? 'ml-0' : isTablet ? 'ml-20' : 'ml-52')
       }`}>
         {children}
       </main>

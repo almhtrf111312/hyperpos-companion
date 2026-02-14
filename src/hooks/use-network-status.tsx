@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
 import { showToast } from '@/lib/toast-config';
+import { toast } from 'sonner';
 
 interface NetworkStatus {
   isOnline: boolean;
@@ -45,7 +46,11 @@ export function useNetworkStatus(onReconnect?: () => void) {
     });
     
     if (wasOffline) {
-      showToast.success('عادت الاتصال بالإنترنت ✓');
+      // Dismiss all existing toasts first to prevent stale "disconnected" showing
+      toast.dismiss();
+      setTimeout(() => {
+        showToast.success('عادت الاتصال بالإنترنت ✓');
+      }, 100);
       // Trigger reconnect callback
       setTimeout(() => {
         onReconnectRef.current?.();

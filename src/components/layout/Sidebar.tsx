@@ -163,8 +163,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
           // RTL: sidebar on right, LTR: sidebar on left
           isRTL ? "right-0 border-l border-sidebar-border" : "left-0 border-r border-sidebar-border",
           isMobile 
-            ? cn("w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
-            : cn(effectiveCollapsed ? "w-20" : "w-64")
+            ? cn("w-52", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
+            : cn(effectiveCollapsed ? "w-20" : "w-52")
         )}
       >
         {/* Logo */}
