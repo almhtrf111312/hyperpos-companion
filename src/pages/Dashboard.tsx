@@ -213,7 +213,7 @@ export default function Dashboard() {
       {/* Section: المبيعات */}
       <SectionDivider title="المبيعات" />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
@@ -241,13 +241,13 @@ export default function Dashboard() {
       {/* Section: الأداء المالي */}
       <SectionDivider title="الأداء المالي" />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <StatCard
           title={t('dashboard.netProfit')}
           value={formatCurrency(stats.netProfit)}
           subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
           icon={<TrendingUp />}
-          variant={stats.netProfit >= 0 ? "success" : "warning"}
+          variant="primary"
           linkTo="/reports"
         />
         <StatCard
@@ -255,7 +255,7 @@ export default function Dashboard() {
           value={formatCurrency(stats.totalDebtAmount)}
           subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
           icon={<CreditCard />}
-          variant="warning"
+          variant="primary"
           linkTo="/debts"
         />
         <StatCard
@@ -263,7 +263,7 @@ export default function Dashboard() {
           value={stats.uniqueCustomers.toString()}
           subtitle={t('dashboard.uniqueCustomers')}
           icon={<Users />}
-          variant="default"
+          variant="primary"
           linkTo="/customers"
         />
       </div>
@@ -271,33 +271,33 @@ export default function Dashboard() {
       {/* Section: تقارير رأس المال */}
       <SectionDivider title="تقارير رأس المال" />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
         <StatCard
           title={t('dashboard.inventoryValue')}
           value={formatCurrency(stats.inventoryValue)}
           icon={<Package />}
-          variant="default"
+          variant="primary"
           linkTo="/products"
         />
         <StatCard
           title={t('dashboard.totalCapital')}
           value={formatCurrency(stats.totalCapital)}
           icon={<Wallet />}
-          variant="default"
+          variant="primary"
           linkTo="/partners"
         />
         <StatCard
           title={t('dashboard.cashboxBalance')}
           value={formatCurrency(stats.cashboxBalance)}
           icon={<Banknote />}
-          variant="success"
+          variant="primary"
           linkTo="/cashbox"
         />
         <StatCard
           title={t('dashboard.liquidCapital')}
           value={formatCurrency(stats.liquidCapital)}
           icon={<DollarSign />}
-          variant={stats.liquidCapital >= 0 ? "default" : "danger"}
+          variant="primary"
           linkTo="/reports"
         />
       </div>
