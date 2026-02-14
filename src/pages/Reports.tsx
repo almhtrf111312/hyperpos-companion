@@ -816,7 +816,7 @@ ${partnerExpenses.map(exp => {
           <div className="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-24 h-24 bg-primary/5 rounded-full translate-x-1/3 translate-y-1/3" />
           
-          <div className="relative flex flex-col gap-4 pr-14 md:pr-0">
+          <div className="relative flex flex-col gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">

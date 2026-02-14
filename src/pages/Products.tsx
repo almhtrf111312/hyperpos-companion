@@ -682,7 +682,7 @@ export default function Products() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-3 md:p-6 pb-2 md:pb-3 pr-14 md:pr-6">
+      <div className="flex-shrink-0 p-3 md:p-6 pb-2 md:pb-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-6 md:ltr:pl-6">
         {/* Show restoring indicator if needed? Maybe just toasts are enough */}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
