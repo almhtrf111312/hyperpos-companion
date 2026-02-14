@@ -1072,97 +1072,91 @@ export default function Settings() {
 
       case 'notifications':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.notifications')}</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                <div className="flex items-center gap-3">
-                  {notificationSettings.sound ? <Volume2 className="w-5 h-5 text-primary" /> : <VolumeX className="w-5 h-5 text-muted-foreground" />}
-                  <div>
-                    <p className="font-medium text-foreground">{t('settings.sound')}</p>
-                    <p className="text-sm text-muted-foreground">{t('settings.soundDesc')}</p>
-                  </div>
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-2">
+            <h2 className="text-lg font-bold text-foreground mb-2">{t('settings.notifications')}</h2>
+            {/* الصوت */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-2">
+                {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+                <span className="text-sm font-medium">{t('settings.sound')}</span>
+              </div>
+              <Switch
+                checked={notificationSettings.sound}
+                onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, sound: checked })}
+              />
+            </div>
+            {[
+              { key: 'newSale', label: t('settings.newSale'), icon: CheckCircle2 },
+              { key: 'lowStock', label: t('settings.lowStock'), icon: AlertCircle },
+              { key: 'newDebt', label: t('settings.newDebt'), icon: FileText },
+              { key: 'paymentReceived', label: t('settings.paymentReceived'), icon: DollarSign },
+              { key: 'dailyReport', label: t('settings.dailyReport'), icon: Clock },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between py-2 border-t border-border/50">
+                <div className="flex items-center gap-2">
+                  <item.icon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">{item.label}</span>
                 </div>
                 <Switch
-                  checked={notificationSettings.sound}
-                  onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, sound: checked })}
+                  checked={notificationSettings[item.key as keyof NotificationSettingsType] as boolean}
+                  onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
                 />
               </div>
-              {[
-                { key: 'newSale', label: t('settings.newSale'), icon: CheckCircle2 },
-                { key: 'lowStock', label: t('settings.lowStock'), icon: AlertCircle },
-                { key: 'newDebt', label: t('settings.newDebt'), icon: FileText },
-                { key: 'paymentReceived', label: t('settings.paymentReceived'), icon: DollarSign },
-                { key: 'dailyReport', label: t('settings.dailyReport'), icon: Clock },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <item.icon className="w-5 h-5 text-muted-foreground" />
-                    <p className="font-medium text-foreground">{item.label}</p>
-                  </div>
-                  <Switch
-                    checked={notificationSettings[item.key as keyof NotificationSettingsType] as boolean}
-                    onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
-                  />
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         );
 
       case 'printing':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-4">{t('settings.printing')}</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                <div>
-                  <p className="font-medium text-foreground">{t('settings.autoPrint')}</p>
-                  <p className="text-sm text-muted-foreground">{t('settings.autoPrintDesc')}</p>
-                </div>
-                <Switch
-                  checked={printSettings.autoPrint}
-                  onCheckedChange={(checked) => setPrintSettings({ ...printSettings, autoPrint: checked })}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.paperSize')}</label>
-                  <select
-                    value={printSettings.paperSize}
-                    onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
-                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
-                  >
-                    <option value="58mm">58mm</option>
-                    <option value="80mm">80mm</option>
-                    <option value="A4">A4</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">{t('settings.copies')}</label>
-                  <Input
-                    type="number"
-                    value={printSettings.copies}
-                    onChange={(e) => setPrintSettings({ ...printSettings, copies: e.target.value })}
-                    min="1"
-                    max="5"
-                    className="bg-muted border-0"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">{t('settings.receiptFooter')}</label>
-                <Input
-                  value={printSettings.footer}
-                  onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
-                  className="bg-muted border-0"
-                />
-              </div>
-              <Button variant="outline" onClick={handleTestPrint}>
-                <Printer className="w-4 h-4 ml-2" />
-                {t('settings.testPrint')}
-              </Button>
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-3">
+            <h2 className="text-lg font-bold text-foreground mb-2">{t('settings.printing')}</h2>
+            {/* الطباعة التلقائية */}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm font-medium">{t('settings.autoPrint')}</span>
+              <Switch
+                checked={printSettings.autoPrint}
+                onCheckedChange={(checked) => setPrintSettings({ ...printSettings, autoPrint: checked })}
+              />
             </div>
+            {/* حجم الورق + النسخ */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-sm font-medium text-foreground w-20 shrink-0">{t('settings.paperSize')}</label>
+                <select
+                  value={printSettings.paperSize}
+                  onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
+                  className="flex-1 h-9 px-3 rounded-md bg-muted border-0 text-foreground text-sm"
+                >
+                  <option value="58mm">58mm</option>
+                  <option value="80mm">80mm</option>
+                  <option value="A4">A4</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-sm font-medium text-foreground w-16 shrink-0">{t('settings.copies')}</label>
+                <Input
+                  type="number"
+                  value={printSettings.copies}
+                  onChange={(e) => setPrintSettings({ ...printSettings, copies: e.target.value })}
+                  min="1"
+                  max="5"
+                  className="bg-muted border-0 h-9"
+                />
+              </div>
+            </div>
+            {/* تذييل الإيصال */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-foreground w-20 shrink-0">{t('settings.receiptFooter')}</label>
+              <Input
+                value={printSettings.footer}
+                onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
+                className="bg-muted border-0 h-9 flex-1"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={handleTestPrint}>
+              <Printer className="w-4 h-4 ml-2" />
+              {t('settings.testPrint')}
+            </Button>
           </div>
         );
 
