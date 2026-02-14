@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Crown,
   Users,
@@ -43,6 +44,7 @@ import {
   ChevronDown,
   ChevronRight,
   KeyRound,
+  Wrench,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1042,6 +1044,23 @@ export default function BossPanel() {
 
   const availableCodes = codes.filter(c => c.is_active && c.current_uses < c.max_uses);
 
+  // Build a map of activation_code_id -> owner email for codes section
+  const codeToOwnerMap = new Map<string, { email: string | null; name: string | null }>();
+  for (const owner of owners) {
+    if (owner.activation_code) {
+      const matchedCode = codes.find(c => c.code === owner.activation_code);
+      if (matchedCode) {
+        codeToOwnerMap.set(matchedCode.id, { email: owner.email, name: owner.full_name });
+      }
+    }
+  }
+
+  // License issues: owners with expired, revoked, or no license
+  const licenseIssueOwners = owners.filter(o => {
+    if (o.role === 'boss') return false;
+    return !o.license_expires || new Date(o.license_expires) <= new Date() || o.license_revoked;
+  });
+
   if (roleLoading || !isBoss) {
     return (
       <MainLayout>
@@ -1071,458 +1090,610 @@ export default function BossPanel() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
-          <Card className="overflow-hidden">
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center gap-2 md:gap-3">
-                <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-lg md:text-2xl font-bold">{owners.length}</p>
-                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">إجمالي الملاك</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="overflow-hidden">
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center gap-2 md:gap-3">
-                <Key className="w-6 h-6 md:w-8 md:h-8 text-green-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-lg md:text-2xl font-bold">{codes.filter(c => c.is_active).length}</p>
-                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">أكواد نشطة</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="overflow-hidden">
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center gap-2 md:gap-3">
-                <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-lg md:text-2xl font-bold">{owners.filter(o => o.license_expires && new Date(o.license_expires) > new Date() && !o.license_revoked).length}</p>
-                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص فعالة</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="overflow-hidden">
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center gap-2 md:gap-3">
-                <XCircle className="w-6 h-6 md:w-8 md:h-8 text-red-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-lg md:text-2xl font-bold">{owners.filter(o => !o.license_expires || new Date(o.license_expires) <= new Date() || o.license_revoked).length}</p>
-                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص منتهية</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Tabs */}
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4 h-auto">
+            <TabsTrigger value="users" className="text-xs md:text-sm py-2 gap-1">
+              <Users className="w-3.5 h-3.5 hidden md:inline" />
+              المستخدمين
+            </TabsTrigger>
+            <TabsTrigger value="codes" className="text-xs md:text-sm py-2 gap-1">
+              <Key className="w-3.5 h-3.5 hidden md:inline" />
+              أكواد التفعيل
+            </TabsTrigger>
+            <TabsTrigger value="issues" className="text-xs md:text-sm py-2 gap-1 relative">
+              <AlertTriangle className="w-3.5 h-3.5 hidden md:inline" />
+              مشاكل التراخيص
+              {licenseIssueOwners.length > 0 && (
+                <span className="absolute -top-1 -end-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
+                  {licenseIssueOwners.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="system" className="text-xs md:text-sm py-2 gap-1">
+              <Wrench className="w-3.5 h-3.5 hidden md:inline" />
+              النظام
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="بحث بالاسم أو الإيميل..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="ps-10"
-          />
-        </div>
-
-        {/* Owners Section */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <Shield className="w-4 h-4 md:w-5 md:h-5" />
-              المستخدمين المسجلين
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button onClick={() => setShowCreateOwnerDialog(true)} size="sm" variant="outline" className="text-xs md:text-sm">
-                <UserPlus className="w-3 h-3 md:w-4 md:h-4 me-1" />
-                {isMobile ? 'مالك' : 'إضافة مالك'}
-              </Button>
-              <Button onClick={() => setShowCreateBossDialog(true)} size="sm" className="text-xs md:text-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
-                <Crown className="w-3 h-3 md:w-4 md:h-4 me-1" />
-                {isMobile ? 'Boss' : 'إضافة Boss'}
-              </Button>
+          {/* Tab 1: Users */}
+          <TabsContent value="users" className="space-y-4">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
+              <Card className="overflow-hidden">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-lg md:text-2xl font-bold">{owners.length}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">إجمالي الملاك</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <Key className="w-6 h-6 md:w-8 md:h-8 text-green-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-lg md:text-2xl font-bold">{codes.filter(c => c.is_active).length}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">أكواد نشطة</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-lg md:text-2xl font-bold">{owners.filter(o => o.license_expires && new Date(o.license_expires) > new Date() && !o.license_revoked).length}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص فعالة</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <XCircle className="w-6 h-6 md:w-8 md:h-8 text-red-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-lg md:text-2xl font-bold">{licenseIssueOwners.length}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص بها مشاكل</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardHeader>
-          <CardContent className="px-3 md:px-6">
-            <div className="space-y-3 md:space-y-4">
-              {filteredOwners.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا يوجد مستخدمين مسجلين</p>
-              ) : (
-                filteredOwners.map((owner) => {
-                  const isLicenseValid = owner.license_expires && new Date(owner.license_expires) > new Date() && !owner.license_revoked;
-                  const daysRemaining = owner.license_expires
-                    ? Math.ceil((new Date(owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                    : 0;
-                  const isBossUser = owner.role === 'boss';
 
-                  return (
-                    <div key={owner.user_id} className={`relative p-3 md:p-4 rounded-lg space-y-2 md:space-y-3 border-s-4 ${
-                      isBossUser ? 'border-s-amber-500 bg-amber-500/5' :
-                      owner.license_revoked ? 'border-s-destructive bg-destructive/5' :
-                      !isLicenseValid ? 'border-s-destructive bg-destructive/5' :
-                      owner.is_trial ? 'border-s-orange-400 bg-orange-400/5' :
-                      'border-s-emerald-500 bg-emerald-500/5'
-                    }`}>
-                      {/* User Header with Action Menu */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 min-w-0 flex-1">
-                          <div className="flex items-center flex-wrap gap-1 md:gap-2">
-                            <span className="font-medium text-sm md:text-lg">{owner.full_name || 'بدون اسم'}</span>
-                            {isBossUser && (
-                              <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-[10px] md:text-xs">
-                                <Crown className="w-2.5 h-2.5 md:w-3 md:h-3 me-1" />
-                                Boss
-                              </Badge>
-                            )}
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث بالاسم أو الإيميل..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="ps-10"
+              />
+            </div>
+
+            {/* Owners List */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <Shield className="w-4 h-4 md:w-5 md:h-5" />
+                  المستخدمين المسجلين
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => setShowCreateOwnerDialog(true)} size="sm" variant="outline" className="text-xs md:text-sm">
+                    <UserPlus className="w-3 h-3 md:w-4 md:h-4 me-1" />
+                    {isMobile ? 'مالك' : 'إضافة مالك'}
+                  </Button>
+                  <Button onClick={() => setShowCreateBossDialog(true)} size="sm" className="text-xs md:text-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
+                    <Crown className="w-3 h-3 md:w-4 md:h-4 me-1" />
+                    {isMobile ? 'Boss' : 'إضافة Boss'}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-3 md:px-6">
+                <div className="space-y-3 md:space-y-4">
+                  {filteredOwners.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا يوجد مستخدمين مسجلين</p>
+                  ) : (
+                    filteredOwners.map((owner) => {
+                      const isLicenseValid = owner.license_expires && new Date(owner.license_expires) > new Date() && !owner.license_revoked;
+                      const daysRemaining = owner.license_expires
+                        ? Math.ceil((new Date(owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                        : 0;
+                      const isBossUser = owner.role === 'boss';
+
+                      return (
+                        <div key={owner.user_id} className={`relative p-3 md:p-4 rounded-lg space-y-2 md:space-y-3 border-s-4 ${
+                          isBossUser ? 'border-s-amber-500 bg-amber-500/5' :
+                          owner.license_revoked ? 'border-s-destructive bg-destructive/5' :
+                          !isLicenseValid ? 'border-s-destructive bg-destructive/5' :
+                          owner.is_trial ? 'border-s-orange-400 bg-orange-400/5' :
+                          'border-s-emerald-500 bg-emerald-500/5'
+                        }`}>
+                          {/* User Header with Action Menu */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center flex-wrap gap-1 md:gap-2">
+                                <span className="font-medium text-sm md:text-lg">{owner.full_name || 'بدون اسم'}</span>
+                                {isBossUser && (
+                                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-[10px] md:text-xs">
+                                    <Crown className="w-2.5 h-2.5 md:w-3 md:h-3 me-1" />
+                                    Boss
+                                  </Badge>
+                                )}
+                                {isBossUser ? (
+                                  <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-[10px] md:text-xs">
+                                    ترخيص دائم ∞
+                                  </Badge>
+                                ) : (
+                                  <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
+                                    {isLicenseValid
+                                      ? (owner.is_trial ? 'تجريبي' : 'فعال')
+                                      : owner.license_revoked ? 'ملغى' : 'منتهي'
+                                    }
+                                  </Badge>
+                                )}
+                                {owner.license_tier && !isBossUser && (
+                                  <Badge variant="outline" className="text-[10px] md:text-xs">{owner.license_tier}</Badge>
+                                )}
+                              </div>
+
+                              {/* Email */}
+                              {owner.email && (
+                                <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
+                                  <Mail className="w-3 h-3 flex-shrink-0" />
+                                  <span className="font-mono break-all">{owner.email}</span>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => copyToClipboard(owner.email!)}>
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Activation Code */}
+                              {owner.activation_code && !isBossUser && (
+                                <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
+                                  <Key className="w-3 h-3 flex-shrink-0" />
+                                  <span className="font-mono break-all">{owner.activation_code}</span>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => copyToClipboard(owner.activation_code!)}>
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Menu */}
                             {isBossUser ? (
-                              <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-[10px] md:text-xs">
-                                ترخيص دائم ∞
-                              </Badge>
+                              owner.user_id !== user?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => setDeleteBossConfirm({ user_id: owner.user_id, name: owner.full_name || 'هذا البوس' })}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )
                             ) : (
-                              <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
-                                {isLicenseValid
-                                  ? (owner.is_trial ? 'تجريبي' : 'فعال')
-                                  : owner.license_revoked ? 'ملغى' : 'منتهي'
-                                }
-                              </Badge>
-                            )}
-                            {owner.license_tier && !isBossUser && (
-                              <Badge variant="outline" className="text-[10px] md:text-xs">{owner.license_tier}</Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuLabel>إدارة الحساب</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => { setEditNameDialog({ owner }); setNewName(owner.full_name || ''); }}>
+                                    <Pencil className="w-4 h-4 me-2" />
+                                    تعديل الاسم
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuLabel>إدارة الترخيص</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => {
+                                    setEditLicenseDialog({ owner });
+                                    setEditLicenseSettings({
+                                      duration_days: 180,
+                                      max_cashiers: owner.max_cashiers || 1,
+                                      license_tier: owner.license_tier || 'basic',
+                                      generated_code: '',
+                                    });
+                                  }}>
+                                    <Pencil className="w-4 h-4 me-2" />
+                                    تعديل التفعيل
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setActivationDialog({ owner })}>
+                                    <Ticket className="w-4 h-4 me-2" />
+                                    تفعيل عن بعد
+                                  </DropdownMenuItem>
+                                  {isLicenseValid && (
+                                    <DropdownMenuItem onClick={() => handleRevokeLicense(owner.user_id)} className="text-orange-600">
+                                      <Ban className="w-4 h-4 me-2" />
+                                      إلغاء الترخيص
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuLabel>إدارة الجهاز</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}>
+                                    <Smartphone className="w-4 h-4 me-2" />
+                                    {owner.allow_multi_device ? 'إلغاء تعدد الأجهزة ✓' : 'تفعيل تعدد الأجهزة'}
+                                  </DropdownMenuItem>
+                                  {!owner.allow_multi_device && (
+                                    <DropdownMenuItem onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المستخدم')}>
+                                      <RotateCcw className="w-4 h-4 me-2" />
+                                      إعادة تعيين الجهاز
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setDeleteConfirm({ type: 'owner', id: owner.user_id, name: owner.full_name || 'هذا المستخدم' })}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 me-2" />
+                                    حذف الحساب
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
                           </div>
 
-                          {/* Email */}
-                          {owner.email && (
-                            <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
-                              <Mail className="w-3 h-3 flex-shrink-0" />
-                              <span className="font-mono break-all">{owner.email}</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => copyToClipboard(owner.email!)}>
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-
-                          {/* Activation Code */}
-                          {owner.activation_code && !isBossUser && (
-                            <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
-                              <Key className="w-3 h-3 flex-shrink-0" />
-                              <span className="font-mono break-all">{owner.activation_code}</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => copyToClipboard(owner.activation_code!)}>
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Action Menu */}
-                        {isBossUser ? (
-                          // Boss user: only show delete if not self
-                          owner.user_id !== user?.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => setDeleteBossConfirm({ user_id: owner.user_id, name: owner.full_name || 'هذا البوس' })}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )
-                        ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuLabel>إدارة الحساب</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => { setEditNameDialog({ owner }); setNewName(owner.full_name || ''); }}>
-                                <Pencil className="w-4 h-4 me-2" />
-                                تعديل الاسم
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-                              <DropdownMenuLabel>إدارة الترخيص</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => {
-                                setEditLicenseDialog({ owner });
-                                setEditLicenseSettings({
-                                  duration_days: 180,
-                                  max_cashiers: owner.max_cashiers || 1,
-                                  license_tier: owner.license_tier || 'basic',
-                                  generated_code: '',
-                                });
-                              }}>
-                                <Pencil className="w-4 h-4 me-2" />
-                                تعديل التفعيل
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setActivationDialog({ owner })}>
-                                <Ticket className="w-4 h-4 me-2" />
-                                تفعيل عن بعد
-                              </DropdownMenuItem>
-                              {isLicenseValid && (
-                                <DropdownMenuItem onClick={() => handleRevokeLicense(owner.user_id)} className="text-orange-600">
-                                  <Ban className="w-4 h-4 me-2" />
-                                  إلغاء الترخيص
-                                </DropdownMenuItem>
-                              )}
-
-                              <DropdownMenuSeparator />
-                              <DropdownMenuLabel>إدارة الجهاز</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}>
-                                <Smartphone className="w-4 h-4 me-2" />
-                                {owner.allow_multi_device ? 'إلغاء تعدد الأجهزة ✓' : 'تفعيل تعدد الأجهزة'}
-                              </DropdownMenuItem>
-                              {!owner.allow_multi_device && (
-                                <DropdownMenuItem onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المستخدم')}>
-                                  <RotateCcw className="w-4 h-4 me-2" />
-                                  إعادة تعيين الجهاز
-                                </DropdownMenuItem>
-                              )}
-
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setDeleteConfirm({ type: 'owner', id: owner.user_id, name: owner.full_name || 'هذا المستخدم' })}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="w-4 h-4 me-2" />
-                                حذف الحساب
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-
-                      {/* User Details */}
-                      <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
-                        {!isBossUser && (
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {owner.cashier_count}/{owner.max_cashiers || 1} كاشير
-                          </span>
-                        )}
-                        {!isBossUser && owner.license_expires && (
-                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded ${
-                            daysRemaining <= 7 ? 'bg-destructive/10 text-destructive font-medium' :
-                            daysRemaining <= 30 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                            'bg-muted'
-                          }`}>
-                            <Calendar className="w-3 h-3" />
-                            {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
-                          </span>
-                        )}
-                        {isBossUser && (
-                          <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
-                            <Calendar className="w-3 h-3" />
-                            ترخيص لا ينتهي
-                          </span>
-                        )}
-                        {owner.device_id ? (
-                          <span className="flex items-center gap-1 font-mono text-[10px] md:text-xs bg-background px-1.5 md:px-2 py-0.5 rounded">
-                            <Smartphone className="w-3 h-3 flex-shrink-0" />
-                            {owner.device_id.substring(0, 8)}...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-muted-foreground/60 text-[10px] md:text-xs">
-                            <Smartphone className="w-3 h-3" />
-                            لا جهاز
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Cashiers Tree View */}
-                      {!isBossUser && owner.cashiers && owner.cashiers.length > 0 && (
-                        <div className="mt-2 border-t pt-2">
-                          <button
-                            onClick={() => toggleOwnerExpanded(owner.user_id)}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {expandedOwners.has(owner.user_id) ? (
-                              <ChevronDown className="w-3 h-3" />
-                            ) : (
-                              <ChevronRight className="w-3 h-3" />
+                          {/* User Details */}
+                          <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
+                            {!isBossUser && (
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {owner.cashier_count}/{owner.max_cashiers || 1} كاشير
+                              </span>
                             )}
-                            <Users className="w-3 h-3" />
-                            <span>{owner.cashiers.length} حساب تابع</span>
-                          </button>
+                            {!isBossUser && owner.license_expires && (
+                              <span className={`flex items-center gap-1 px-2 py-0.5 rounded ${
+                                daysRemaining <= 7 ? 'bg-destructive/10 text-destructive font-medium' :
+                                daysRemaining <= 30 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                'bg-muted'
+                              }`}>
+                                <Calendar className="w-3 h-3" />
+                                {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
+                              </span>
+                            )}
+                            {isBossUser && (
+                              <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
+                                <Calendar className="w-3 h-3" />
+                                ترخيص لا ينتهي
+                              </span>
+                            )}
+                            {owner.device_id ? (
+                              <span className="flex items-center gap-1 font-mono text-[10px] md:text-xs bg-background px-1.5 md:px-2 py-0.5 rounded">
+                                <Smartphone className="w-3 h-3 flex-shrink-0" />
+                                {owner.device_id.substring(0, 8)}...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-muted-foreground/60 text-[10px] md:text-xs">
+                                <Smartphone className="w-3 h-3" />
+                                لا جهاز
+                              </span>
+                            )}
+                          </div>
 
-                          {expandedOwners.has(owner.user_id) && (
-                            <div className="mt-2 space-y-1.5 ms-4 border-s-2 border-muted ps-3">
-                              {owner.cashiers.map((cashier) => {
-                                const typeLabel = cashier.user_type === 'distributor' ? 'موزع' :
-                                  cashier.user_type === 'pos' ? 'نقطة بيع' : 'كاشير';
-                                const typeColor = cashier.user_type === 'distributor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                  cashier.user_type === 'pos' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                                  'bg-muted text-muted-foreground';
+                          {/* Cashiers Tree View */}
+                          {!isBossUser && owner.cashiers && owner.cashiers.length > 0 && (
+                            <div className="mt-2 border-t pt-2">
+                              <button
+                                onClick={() => toggleOwnerExpanded(owner.user_id)}
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                {expandedOwners.has(owner.user_id) ? (
+                                  <ChevronDown className="w-3 h-3" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3" />
+                                )}
+                                <Users className="w-3 h-3" />
+                                <span>{owner.cashiers.length} حساب تابع</span>
+                              </button>
 
-                                return (
-                                  <div key={cashier.user_id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
-                                      <Badge variant="outline" className={`text-[10px] ${typeColor}`}>{typeLabel}</Badge>
-                                      {!cashier.is_active && (
-                                        <Badge variant="destructive" className="text-[10px]">معطل</Badge>
-                                      )}
-                                    </div>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
-                                          <MoreVertical className="w-3.5 h-3.5" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-48">
-                                        <DropdownMenuLabel>إدارة الحساب التابع</DropdownMenuLabel>
-                                        {cashier.email && (
-                                          <DropdownMenuItem onClick={() => copyToClipboard(cashier.email!)}>
-                                            <Mail className="w-4 h-4 me-2" />
-                                            نسخ الإيميل
-                                          </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuItem onClick={() => {
-                                          setEditCashierNameDialog({ userId: cashier.user_id, name: cashier.full_name || '' });
-                                          setCashierNewName(cashier.full_name || '');
-                                        }}>
-                                          <Pencil className="w-4 h-4 me-2" />
-                                          تعديل الاسم
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => {
-                                          setCashierPasswordDialog({ userId: cashier.user_id, name: cashier.full_name || cashier.email || '' });
-                                          setCashierNewPassword('');
-                                        }}>
-                                          <KeyRound className="w-4 h-4 me-2" />
-                                          تغيير كلمة المرور
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleResetCashierDevice(cashier.user_id, cashier.full_name || 'هذا الحساب')}>
-                                          <RotateCcw className="w-4 h-4 me-2" />
-                                          إعادة تعيين الجهاز
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() => setDeleteConfirm({ type: 'owner', id: cashier.user_id, name: cashier.full_name || 'هذا الحساب' })}
-                                          className="text-destructive focus:text-destructive"
-                                        >
-                                          <Trash2 className="w-4 h-4 me-2" />
-                                          حذف الحساب
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                );
-                              })}
+                              {expandedOwners.has(owner.user_id) && (
+                                <div className="mt-2 space-y-1.5 ms-4 border-s-2 border-muted ps-3">
+                                  {owner.cashiers.map((cashier) => {
+                                    const typeLabel = cashier.user_type === 'distributor' ? 'موزع' :
+                                      cashier.user_type === 'pos' ? 'نقطة بيع' : 'كاشير';
+                                    const typeColor = cashier.user_type === 'distributor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                      cashier.user_type === 'pos' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                      'bg-muted text-muted-foreground';
+
+                                    return (
+                                      <div key={cashier.user_id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                          <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
+                                          <Badge variant="outline" className={`text-[10px] ${typeColor}`}>{typeLabel}</Badge>
+                                          {!cashier.is_active && (
+                                            <Badge variant="destructive" className="text-[10px]">معطل</Badge>
+                                          )}
+                                        </div>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                                              <MoreVertical className="w-3.5 h-3.5" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="w-48">
+                                            <DropdownMenuLabel>إدارة الحساب التابع</DropdownMenuLabel>
+                                            {cashier.email && (
+                                              <DropdownMenuItem onClick={() => copyToClipboard(cashier.email!)}>
+                                                <Mail className="w-4 h-4 me-2" />
+                                                نسخ الإيميل
+                                              </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuItem onClick={() => {
+                                              setEditCashierNameDialog({ userId: cashier.user_id, name: cashier.full_name || '' });
+                                              setCashierNewName(cashier.full_name || '');
+                                            }}>
+                                              <Pencil className="w-4 h-4 me-2" />
+                                              تعديل الاسم
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => {
+                                              setCashierPasswordDialog({ userId: cashier.user_id, name: cashier.full_name || cashier.email || '' });
+                                              setCashierNewPassword('');
+                                            }}>
+                                              <KeyRound className="w-4 h-4 me-2" />
+                                              تغيير كلمة المرور
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleResetCashierDevice(cashier.user_id, cashier.full_name || 'هذا الحساب')}>
+                                              <RotateCcw className="w-4 h-4 me-2" />
+                                              إعادة تعيين الجهاز
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                              onClick={() => setDeleteConfirm({ type: 'owner', id: cashier.user_id, name: cashier.full_name || 'هذا الحساب' })}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="w-4 h-4 me-2" />
+                                              حذف الحساب
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                      );
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Activation Codes Section */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <Key className="w-4 h-4 md:w-5 md:h-5" />
-              أكواد التفعيل
-            </CardTitle>
-            <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
-              <Plus className="w-3 h-3 md:w-4 md:h-4 me-1 md:me-2" />
-              {isMobile ? 'جديد' : 'كود جديد'}
-            </Button>
-          </CardHeader>
-          <CardContent className="px-3 md:px-6">
-            <div className="space-y-2 md:space-y-3">
-              {filteredCodes.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا توجد أكواد</p>
-              ) : (
-                filteredCodes.map((code) => (
-                  <div key={code.id} className="p-2 md:p-3 bg-muted/50 rounded-lg space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => copyToClipboard(code.code)}
-                        className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
-                      >
-                        {isMobile ? code.code.slice(0, 12) + '...' : code.code}
-                        <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
-                      </button>
-                      <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                          setEditCodeDialog(code);
-                          setEditCodeForm({ duration_days: code.duration_days, max_uses: code.max_uses, max_cashiers: code.max_cashiers, license_tier: code.license_tier, note: code.note || '' });
-                        }}>
-                          <Pencil className="w-4 h-4 text-primary" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleCode(code.id, code.is_active)}>
-                          {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                      <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">{code.is_active ? 'نشط' : 'معطل'}</Badge>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.duration_days}ي</Badge>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses}</Badge>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers}ك</Badge>
-                    </div>
+          {/* Tab 2: Activation Codes */}
+          <TabsContent value="codes" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <Key className="w-4 h-4 md:w-5 md:h-5" />
+                  أكواد التفعيل ({codes.length})
+                </CardTitle>
+                <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
+                  <Plus className="w-3 h-3 md:w-4 md:h-4 me-1 md:me-2" />
+                  {isMobile ? 'جديد' : 'كود جديد'}
+                </Button>
+              </CardHeader>
+              <CardContent className="px-3 md:px-6">
+                <div className="space-y-2 md:space-y-3">
+                  {filteredCodes.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا توجد أكواد</p>
+                  ) : (
+                    filteredCodes.map((code) => {
+                      const linkedOwner = codeToOwnerMap.get(code.id);
+                      const createdDate = new Date(code.created_at);
+                      const remainingDays = code.expires_at
+                        ? Math.ceil((new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                        : null;
+
+                      return (
+                        <div key={code.id} className={`p-2 md:p-3 rounded-lg space-y-2 border-s-4 ${
+                          !code.is_active ? 'border-s-muted bg-muted/30' :
+                          code.current_uses >= code.max_uses ? 'border-s-orange-400 bg-orange-400/5' :
+                          'border-s-emerald-500 bg-emerald-500/5'
+                        }`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              onClick={() => copyToClipboard(code.code)}
+                              className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
+                            >
+                              {isMobile ? code.code.slice(0, 12) + '...' : code.code}
+                              <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
+                            </button>
+                            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                                setEditCodeDialog(code);
+                                setEditCodeForm({ duration_days: code.duration_days, max_uses: code.max_uses, max_cashiers: code.max_cashiers, license_tier: code.license_tier, note: code.note || '' });
+                              }}>
+                                <Pencil className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleCode(code.id, code.is_active)}>
+                                {code.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                            <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">{code.is_active ? 'نشط' : 'معطل'}</Badge>
+                            <Badge variant="outline" className="text-[10px] md:text-xs">{code.duration_days} يوم</Badge>
+                            <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses} استخدام</Badge>
+                            <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers} كاشير</Badge>
+                            <Badge variant="outline" className="text-[10px] md:text-xs">{code.license_tier}</Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              أُنشئ: {createdDate.toLocaleDateString('ar-EG')}
+                            </span>
+                            {remainingDays !== null && (
+                              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                                remainingDays <= 0 ? 'bg-destructive/10 text-destructive' :
+                                remainingDays <= 7 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                'bg-muted'
+                              }`}>
+                                <Calendar className="w-3 h-3" />
+                                {remainingDays > 0 ? `${remainingDays} يوم متبقي` : 'منتهي الصلاحية'}
+                              </span>
+                            )}
+                            {linkedOwner && (
+                              <span className="flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                <Mail className="w-3 h-3" />
+                                مرتبط بـ: {linkedOwner.name || linkedOwner.email || 'غير معروف'}
+                              </span>
+                            )}
+                          </div>
+                          {code.note && (
+                            <p className="text-[10px] md:text-xs text-muted-foreground italic">📝 {code.note}</p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 3: License Issues */}
+          <TabsContent value="issues" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2 px-3 md:px-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
+                  مشاكل التراخيص ({licenseIssueOwners.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 md:px-6">
+                {licenseIssueOwners.length === 0 ? (
+                  <div className="text-center py-8 space-y-2">
+                    <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
+                    <p className="text-muted-foreground">لا توجد مشاكل في التراخيص حالياً</p>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {licenseIssueOwners.map((owner) => {
+                      const isRevoked = owner.license_revoked;
+                      const isExpired = owner.license_expires && new Date(owner.license_expires) <= new Date();
+                      const noLicense = !owner.license_expires;
 
-        {/* System Diagnostics Section */}
-        <Card>
-          <CardContent className="p-4 md:p-6">
-            <SystemDiagnostics />
-          </CardContent>
-        </Card>
+                      return (
+                        <div key={owner.user_id} className="p-3 rounded-lg border-s-4 border-s-destructive bg-destructive/5 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm">{owner.full_name || 'بدون اسم'}</span>
+                                <Badge variant="destructive" className="text-[10px]">
+                                  {isRevoked ? 'ملغى' : isExpired ? 'منتهي' : 'بدون ترخيص'}
+                                </Badge>
+                              </div>
+                              {owner.email && (
+                                <p className="text-xs text-muted-foreground font-mono mt-1">{owner.email}</p>
+                              )}
+                              {owner.license_expires && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  انتهى في: {new Date(owner.license_expires).toLocaleDateString('ar-EG')}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                onClick={() => setActivationDialog({ owner })}
+                              >
+                                <Ticket className="w-3 h-3 me-1" />
+                                تفعيل
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                onClick={() => {
+                                  setEditLicenseDialog({ owner });
+                                  setEditLicenseSettings({
+                                    duration_days: 180,
+                                    max_cashiers: owner.max_cashiers || 1,
+                                    license_tier: owner.license_tier || 'basic',
+                                    generated_code: '',
+                                  });
+                                }}
+                              >
+                                <Pencil className="w-3 h-3 me-1" />
+                                تعديل
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Contact Links Settings */}
-        <Card>
-          <CardHeader className="pb-2 px-3 md:px-6">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
-              إعدادات التواصل
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 md:px-6">
-            <p className="text-sm text-muted-foreground mb-3">
-              إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {Object.entries(contactLinks).filter(([, v]) => v?.trim()).map(([key]) => (
-                <Badge key={key} variant="secondary" className="text-xs">
-                  {key === 'whatsapp' ? '💬 واتساب' :
-                   key === 'facebook' ? '📘 فيسبوك' :
-                   key === 'tiktok' ? '🎵 تيك توك' :
-                   key === 'telegram' ? '✈️ تليجرام' :
-                   key === 'youtube' ? '▶️ يوتيوب' :
-                   key === 'twitter' ? '𝕏 تويتر' :
-                   key === 'email' ? '📧 بريد' :
-                   key === 'olx' ? '🛒 OLX' : key}
-                </Badge>
-              ))}
-              {!Object.values(contactLinks).some(v => v?.trim()) && (
-                <span className="text-xs text-muted-foreground">لم يتم إضافة أي قناة بعد</span>
-              )}
-            </div>
-            <Button onClick={() => setShowContactLinksDialog(true)} variant="outline" className="gap-2">
-              <MessageCircle className="w-4 h-4" />
-              تعديل قنوات التواصل
-            </Button>
-          </CardContent>
-        </Card>
+          {/* Tab 4: System */}
+          <TabsContent value="system" className="space-y-4">
+            {/* System Diagnostics */}
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <SystemDiagnostics />
+              </CardContent>
+            </Card>
 
+            {/* Contact Links Settings */}
+            <Card>
+              <CardHeader className="pb-2 px-3 md:px-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                  إعدادات التواصل
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 md:px-6">
+                <p className="text-sm text-muted-foreground mb-3">
+                  إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
+                </p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {Object.entries(contactLinks).filter(([, v]) => v?.trim()).map(([key]) => (
+                    <Badge key={key} variant="secondary" className="text-xs">
+                      {key === 'whatsapp' ? '💬 واتساب' :
+                       key === 'facebook' ? '📘 فيسبوك' :
+                       key === 'tiktok' ? '🎵 تيك توك' :
+                       key === 'telegram' ? '✈️ تليجرام' :
+                       key === 'youtube' ? '▶️ يوتيوب' :
+                       key === 'twitter' ? '𝕏 تويتر' :
+                       key === 'email' ? '📧 بريد' :
+                       key === 'olx' ? '🛒 OLX' : key}
+                    </Badge>
+                  ))}
+                  {!Object.values(contactLinks).some(v => v?.trim()) && (
+                    <span className="text-xs text-muted-foreground">لم يتم إضافة أي قناة بعد</span>
+                  )}
+                </div>
+                <Button onClick={() => setShowContactLinksDialog(true)} variant="outline" className="gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  تعديل قنوات التواصل
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* All Dialogs remain the same */}
         <Dialog open={showNewCodeDialog} onOpenChange={setShowNewCodeDialog}>
           <DialogContent>
             <DialogHeader>
