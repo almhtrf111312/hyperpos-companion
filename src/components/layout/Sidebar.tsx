@@ -11,12 +11,12 @@ import {
   UserCheck, 
   BarChart3, 
   Settings, 
+  ChevronLeft,
   ChevronRight,
   LogOut,
   Zap,
   Menu,
-  
-  User,
+  X,
   Palette,
   FileText,
   Receipt,
@@ -36,12 +36,12 @@ import { getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
 interface NavItem {
   icon: React.ElementType;
   translationKey: TranslationKey;
-  dynamicKey?: string; // If set, use tDynamic instead of t
+  dynamicKey?: string;
   path: string;
   badge?: number;
   adminOnly?: boolean;
-  requiresMaintenance?: boolean; // Only show if maintenance is visible for store type
-  hideInNoInventory?: boolean; // Hide when store operates without inventory (e.g., bakery)
+  requiresMaintenance?: boolean;
+  hideInNoInventory?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -79,66 +79,41 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const { t, tDynamic, storeType, isRTL } = useLanguage();
   const { isBoss, isAdmin } = useUserRole();
 
-  // Close sidebar on mobile, collapse on tablet when navigating
   useEffect(() => {
-    // تأخير بسيط لضمان انسيابية الحركة على جميع الصفحات
     const timer = setTimeout(() => {
-      // على iPad: طي القائمة (العودة للأيقونات فقط)
-      if (isTablet && !collapsed) {
-        setCollapsed(true);
-      }
-      // على الموبايل: إغلاق القائمة بالكامل
-      if (isMobile && isOpen) {
-        onToggle();
-      }
-    }, 250); // 250ms delay for smooth transition
-    
+      if (isTablet && !collapsed) setCollapsed(true);
+      if (isMobile && isOpen) onToggle();
+    }, 250);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
-  // Close sidebar on orientation change to prevent stuck overlay
   useEffect(() => {
     const handleOrientationChange = () => {
-      // Close sidebar when orientation changes to prevent UI blocking
-      if (isMobile && isOpen) {
-        onToggle();
-      }
+      if (isMobile && isOpen) onToggle();
     };
-
-    // Support both old and new orientation APIs
     window.addEventListener('orientationchange', handleOrientationChange);
-    
-    // Also listen to resize as fallback for orientation detection
     let lastWidth = window.innerWidth;
     const handleResize = () => {
       const currentWidth = window.innerWidth;
-      // Detect significant width change (likely rotation)
-      if (Math.abs(currentWidth - lastWidth) > 100 && isMobile && isOpen) {
-        onToggle();
-      }
+      if (Math.abs(currentWidth - lastWidth) > 100 && isMobile && isOpen) onToggle();
       lastWidth = currentWidth;
     };
     window.addEventListener('resize', handleResize);
-
     return () => {
       window.removeEventListener('orientationchange', handleOrientationChange);
       window.removeEventListener('resize', handleResize);
     };
   }, [isMobile, isOpen, onToggle]);
 
-  // On mobile, always show full sidebar (not collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
 
   const visibleSections = getVisibleSections(storeType);
   const noInventory = isNoInventoryMode(storeType);
-  
-  // Get allowed pages for cashier users
   const allowedPages = profile?.allowed_pages as string[] | null;
-  
+
   const filteredNavItems = navItems.filter(item => {
     if (item.adminOnly && !(isBoss || isAdmin)) {
-      // If cashier has explicit permission for this page, show it
       if (allowedPages && allowedPages.length > 0) {
         const pageKey = item.path.replace('/', '') || 'pos';
         if (allowedPages.includes(pageKey)) return true;
@@ -156,7 +131,6 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     navigate('/login');
   };
 
-  // Get user display info
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const displayEmail = user?.email || '';
   const userInitial = displayName.charAt(0).toUpperCase();
@@ -166,83 +140,80 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
       {/* Mobile overlay */}
       {isMobile && isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
           onClick={onToggle}
         />
       )}
 
       <aside 
         className={cn(
-          "fixed top-0 h-screen bg-sidebar z-50 transition-all duration-300 flex flex-col pt-[env(safe-area-inset-top)]",
-          // RTL: sidebar on right, LTR: sidebar on left
-          isRTL ? "right-0 border-l border-sidebar-border" : "left-0 border-r border-sidebar-border",
+          "fixed top-0 h-screen z-50 transition-all duration-300 ease-in-out flex flex-col",
+          "bg-sidebar border-sidebar-border pt-[env(safe-area-inset-top)]",
+          isRTL ? "right-0 border-l" : "left-0 border-r",
           isMobile 
-            ? cn("w-52", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
-            : cn(effectiveCollapsed ? "w-20" : "w-52")
+            ? cn("w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
+            : cn(effectiveCollapsed ? "w-[72px]" : "w-56")
         )}
       >
-        {/* Logo */}
+        {/* Brand Header */}
         <div className={cn(
-          "border-b border-sidebar-border px-3 py-2",
-          isMobile ? "flex flex-col gap-1" : "min-h-16 flex items-center justify-between px-4"
+          "flex-shrink-0 border-b border-sidebar-border",
+          effectiveCollapsed && !isMobile ? "px-2 py-3" : "px-4 py-3"
         )}>
-          {isMobile ? (
-            <>
-              {/* Mobile: Row 1 - Logo + Title + Icons */}
+          {effectiveCollapsed && !isMobile ? (
+            /* Collapsed: icon only */
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
+                <Zap className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div className="flex flex-col items-center gap-1.5">
+                <SyncStatusMenu />
+                <NotificationBell compact={true} />
+              </div>
+            </div>
+          ) : (
+            /* Expanded */
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center glow flex-shrink-0">
-                    <Zap className="w-4 h-4 text-primary-foreground" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md flex-shrink-0">
+                    <Zap className="w-4.5 h-4.5 text-primary-foreground" />
                   </div>
-                  <h1 className="font-bold text-base text-foreground whitespace-nowrap">FlowPOS Pro</h1>
+                  <div className="min-w-0">
+                    <h1 className="font-bold text-sm text-foreground leading-tight tracking-tight">FlowPOS Pro</h1>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{t('sidebar.systemDesc')}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 flex-shrink-0">
                   <SyncStatusMenu />
                   <NotificationBell compact={true} />
                 </div>
               </div>
-              {/* Mobile: Row 2 - Description */}
-              <p className="text-xs text-muted-foreground px-1">{t('sidebar.systemDesc')}</p>
-            </>
-          ) : (
-            <>
-              <div className={cn("flex items-center gap-3", effectiveCollapsed && "justify-center w-full")}>
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center glow">
-                  <Zap className="w-6 h-6 text-primary-foreground" />
-                </div>
-                {!effectiveCollapsed && (
-                  <div>
-                    <h1 className="font-bold text-lg text-foreground">FlowPOS Pro</h1>
-                    <p className="text-xs text-muted-foreground">{t('sidebar.systemDesc')}</p>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <SyncStatusMenu />
-                <NotificationBell compact={true} />
-                <button
-                  onClick={() => setCollapsed(!collapsed)}
-                  className={cn(
-                    "w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center hover:bg-sidebar-accent/80 transition-colors",
-                    effectiveCollapsed && (isRTL ? "absolute -left-4 top-6" : "absolute -right-4 top-6"),
-                    effectiveCollapsed && "bg-primary hover:bg-primary/90"
-                  )}
-                >
-                  <ChevronRight className={cn(
-                    "w-4 h-4 transition-transform duration-300",
-                    effectiveCollapsed 
-                      ? isRTL ? "rotate-180 text-primary-foreground" : "text-primary-foreground"
-                      : isRTL ? "text-sidebar-foreground" : "rotate-180 text-sidebar-foreground"
-                  )} />
-                </button>
-              </div>
-            </>
+            </div>
           )}
         </div>
 
+        {/* Collapse toggle - desktop only */}
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={cn(
+              "absolute top-16 z-10 w-6 h-6 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center",
+              "hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 shadow-sm",
+              "text-muted-foreground",
+              isRTL ? "-left-3" : "-right-3"
+            )}
+          >
+            {effectiveCollapsed 
+              ? (isRTL ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />)
+              : (isRTL ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)
+            }
+          </button>
+        )}
+
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 overflow-y-auto">
-          <ul className="space-y-1">
+        <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
+          <ul className="space-y-0.5">
             {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -250,28 +221,43 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                   <NavLink
                     to={item.path}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                      "flex items-center gap-3 rounded-lg transition-all duration-200 group relative",
+                      effectiveCollapsed && !isMobile ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
                       isActive 
-                        ? "bg-primary text-primary-foreground shadow-lg glow" 
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                      effectiveCollapsed && !isMobile && "justify-center px-0"
+                        ? "bg-primary/10 text-primary font-semibold" 
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
                     )}
                   >
-                    <item.icon className={cn("w-5 h-5 flex-shrink-0", isActive && "animate-pulse")} />
+                    {/* Active indicator bar */}
+                    {isActive && (
+                      <div className={cn(
+                        "absolute top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary transition-all",
+                        isRTL ? "-right-0.5" : "-left-0.5"
+                      )} />
+                    )}
+                    
+                    <item.icon className={cn(
+                      "w-[18px] h-[18px] flex-shrink-0 transition-colors",
+                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-accent-foreground"
+                    )} />
+                    
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="font-medium">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
+                        <span className="text-[13px] truncate">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
                         {item.badge && (
-                          <span className="mr-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                          <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                             {item.badge}
                           </span>
                         )}
                       </>
                     )}
+
+                    {/* Collapsed tooltip */}
                     {effectiveCollapsed && !isMobile && (
                       <div className={cn(
-                        "absolute px-3 py-2 bg-popover text-popover-foreground rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50",
-                        // Position tooltip on opposite side based on RTL
+                        "absolute px-2.5 py-1.5 bg-popover text-popover-foreground rounded-lg shadow-lg text-xs font-medium",
+                        "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50",
+                        "border border-border",
                         isRTL ? "right-full mr-2" : "left-full ml-2"
                       )}>
                         {t(item.translationKey)}
@@ -286,51 +272,64 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
         {/* User section */}
         <div className={cn(
-          "p-3 border-t border-sidebar-border",
-          effectiveCollapsed && !isMobile && "flex justify-center"
+          "flex-shrink-0 border-t border-sidebar-border p-2",
+          effectiveCollapsed && !isMobile && "flex flex-col items-center"
         )}>
-          <div className={cn(
-            "flex items-center gap-3 p-3 rounded-xl bg-sidebar-accent",
-            effectiveCollapsed && !isMobile && "p-2"
-          )}>
-            <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground font-bold">{userInitial}</span>
-            </div>
-            {(!effectiveCollapsed || isMobile) && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate text-sidebar-foreground">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+          {effectiveCollapsed && !isMobile ? (
+            /* Collapsed user */
+            <div className="flex flex-col items-center gap-2 py-1">
+              <div className="w-9 h-9 rounded-full bg-gradient-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xs">{userInitial}</span>
               </div>
-            )}
-            {(!effectiveCollapsed || isMobile) && (
               <button 
                 onClick={handleLogout}
-                className="p-2 rounded-lg hover:bg-sidebar-border transition-colors text-muted-foreground hover:text-destructive"
+                className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
                 title={t('auth.logout')}
               >
                 <LogOut className="w-4 h-4" />
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            /* Expanded user */
+            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-sidebar-accent/50">
+              <div className="w-9 h-9 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
+                <span className="text-primary-foreground font-bold text-xs">{userInitial}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-[13px] truncate text-sidebar-foreground">{displayName}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{displayEmail}</p>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive flex-shrink-0"
+                title={t('auth.logout')}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>
   );
 }
 
-// Mobile menu trigger button component
+// Mobile menu trigger button - unified across all pages
 export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
-  // Get RTL state from document direction
   const isRTL = document.documentElement.dir === 'rtl';
   
   return (
     <button
       onClick={onClick}
-      className={`fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-30 w-9 h-9 rounded-lg bg-primary/80 backdrop-blur-sm text-primary-foreground flex items-center justify-center shadow-md md:hidden ${
+      className={cn(
+        "fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-30 md:hidden",
+        "w-9 h-9 rounded-xl bg-card/90 backdrop-blur-md border border-border",
+        "text-foreground flex items-center justify-center shadow-sm",
+        "hover:bg-card active:scale-95 transition-all duration-200",
         isRTL ? 'right-3' : 'left-3'
-      }`}
+      )}
     >
-      <Menu className="w-4.5 h-4.5" />
+      <Menu className="w-4 h-4" />
     </button>
   );
 }
