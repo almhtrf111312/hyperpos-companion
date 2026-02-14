@@ -242,8 +242,8 @@ export default function Settings() {
 
   // Exchange rates (string to avoid mobile keyboard/focus issues)
   const [exchangeRates, setExchangeRates] = useState({
-    TRY: persisted?.exchangeRates?.TRY ?? '32',
-    SYP: persisted?.exchangeRates?.SYP ?? '14500',
+    TRY: persisted?.exchangeRates?.TRY ?? '',
+    SYP: persisted?.exchangeRates?.SYP ?? '',
   });
 
   // Custom currency names
@@ -448,7 +448,16 @@ export default function Settings() {
     const copies = Number(printSettings.copies);
     const keepDays = Number(backupSettings.keepDays);
 
-    if (!Number.isFinite(tryRate) || tryRate <= 0 || !Number.isFinite(sypRate) || sypRate <= 0) {
+    // Allow 0 or empty exchange rates (new accounts), but reject negative
+    if (exchangeRates.TRY !== '' && (!Number.isFinite(tryRate) || tryRate < 0)) {
+      toast({
+        title: t('common.error'),
+        description: t('settings.invalidExchangeRates'),
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (exchangeRates.SYP !== '' && (!Number.isFinite(sypRate) || sypRate < 0)) {
       toast({
         title: t('common.error'),
         description: t('settings.invalidExchangeRates'),
@@ -1289,30 +1298,32 @@ export default function Settings() {
 
       case 'backup':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4">
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4 overflow-hidden">
             <h2 className="text-lg font-bold text-foreground">
               {t('settings.backupSync')}
             </h2>
 
-            {/* Backup & Import - compact row */}
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleBackupNow} disabled={isBackingUp} className="flex-1">
-                {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                <span className="text-xs">{t('settings.downloadBackup')}</span>
-              </Button>
-              <div className="flex-1">
-                <input type="file" accept=".json,application/json,text/plain" onChange={handleImportBackup} className="hidden" id="import-backup" ref={importInputRef} />
-                <label htmlFor="import-backup" className="w-full">
-                  <Button variant="outline" size="sm" className="w-full" asChild disabled={isImporting}>
-                    <span className="cursor-pointer">
-                      {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
-                      <span className="text-xs">{t('settings.importBackup')}</span>
-                    </span>
-                  </Button>
-                </label>
+            {/* Backup & Import - compact stacked for mobile */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={handleBackupNow} disabled={isBackingUp} className="flex-1 min-w-0">
+                  {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Download className="w-3.5 h-3.5 shrink-0" />}
+                  <span className="text-xs truncate">{t('settings.downloadBackup')}</span>
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <input type="file" accept=".json,application/json,text/plain" onChange={handleImportBackup} className="hidden" id="import-backup" ref={importInputRef} />
+                  <label htmlFor="import-backup" className="w-full block">
+                    <Button variant="outline" size="sm" className="w-full" asChild disabled={isImporting}>
+                      <span className="cursor-pointer">
+                        {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FileUp className="w-3.5 h-3.5 shrink-0" />}
+                        <span className="text-xs truncate">{t('settings.importBackup')}</span>
+                      </span>
+                    </Button>
+                  </label>
+                </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleExportData}>
-                <Download className="w-3.5 h-3.5" />
+              <Button variant="outline" size="sm" onClick={handleExportData} className="w-full">
+                <Download className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-xs">JSON</span>
               </Button>
             </div>
