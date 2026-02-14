@@ -53,7 +53,9 @@ import { PasswordChangeDialog } from '@/components/settings/PasswordChangeDialog
 import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
-import { ProductFieldsConfig, loadProductFieldsConfig, saveProductFieldsConfig } from '@/lib/product-fields-config';
+import { ProductFieldsConfig, loadProductFieldsConfig, saveProductFieldsConfig, getDefaultFieldsByStoreType, StoreType } from '@/lib/product-fields-config';
+import { getDefaultCategories } from '@/lib/store-type-config';
+import { saveCategories, Category } from '@/lib/categories-store';
 import DataResetSection from '@/components/settings/DataResetSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { cn, formatDateTime } from '@/lib/utils';
@@ -885,6 +887,24 @@ export default function Settings() {
                       } else {
                         setHideMaintenanceSection(false);
                       }
+                      // تفعيل الحقول المناسبة تلقائياً حسب نوع النشاط
+                      const defaultFields = getDefaultFieldsByStoreType(newType as StoreType);
+                      setProductFieldsConfig(defaultFields);
+                      setProductFieldsChanged(true);
+                      // تحديث التصنيفات الافتراضية حسب نوع النشاط
+                      const defaultCats = getDefaultCategories(newType);
+                      const newCategories: Category[] = defaultCats.map((name, i) => ({
+                        id: `auto_${Date.now()}_${i}`,
+                        name,
+                        createdAt: new Date().toISOString(),
+                      }));
+                      saveCategories(newCategories);
+                      toast({
+                        title: isRTL ? 'تم التحديث' : 'Updated',
+                        description: isRTL
+                          ? 'تم تحديث الحقول والتصنيفات تلقائياً حسب نوع النشاط الجديد'
+                          : 'Fields and categories updated automatically for the new business type',
+                      });
                     }}
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   >
@@ -892,6 +912,9 @@ export default function Settings() {
                     <option value="grocery">{t('settings.storeTypes.grocery')}</option>
                     <option value="pharmacy">{t('settings.storeTypes.pharmacy')}</option>
                     <option value="clothing">{t('settings.storeTypes.clothing')}</option>
+                    <option value="restaurant">{isRTL ? 'مطعم' : 'Restaurant'}</option>
+                    <option value="repair">{isRTL ? 'ورشة صيانة' : 'Repair Shop'}</option>
+                    <option value="bookstore">{isRTL ? 'مكتبة' : 'Bookstore'}</option>
                     <option value="general">{t('settings.storeTypes.general')}</option>
                   </select>
                 </div>

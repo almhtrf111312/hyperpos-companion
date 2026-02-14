@@ -17,29 +17,81 @@ export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restau
 
 // Default fields based on store type
 export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFieldsConfig => {
-  // All fields disabled by default as requested for clean interface
-  // User can enable them manually in settings
-  const allDisabled: ProductFieldsConfig = {
-    expiryDate: false,
-    serialNumber: false,
-    warranty: false,
-    wholesalePrice: false,
-    sizeColor: false,
-    minStockLevel: false,
-  };
-
   switch (storeType) {
     case 'phones':
+      return {
+        expiryDate: false,
+        serialNumber: true,
+        warranty: true,
+        wholesalePrice: true,
+        sizeColor: false,
+        minStockLevel: true,
+      };
     case 'repair':
+      return {
+        expiryDate: false,
+        serialNumber: true,
+        warranty: true,
+        wholesalePrice: false,
+        sizeColor: false,
+        minStockLevel: true,
+      };
     case 'grocery':
+      return {
+        expiryDate: true,
+        serialNumber: false,
+        warranty: false,
+        wholesalePrice: true,
+        sizeColor: false,
+        minStockLevel: true,
+      };
     case 'pharmacy':
+      return {
+        expiryDate: true,
+        serialNumber: false,
+        warranty: false,
+        wholesalePrice: true,
+        sizeColor: false,
+        minStockLevel: true,
+      };
     case 'clothing':
+      return {
+        expiryDate: false,
+        serialNumber: false,
+        warranty: false,
+        wholesalePrice: true,
+        sizeColor: true,
+        minStockLevel: true,
+      };
     case 'restaurant':
+      return {
+        expiryDate: true,
+        serialNumber: false,
+        warranty: false,
+        wholesalePrice: false,
+        sizeColor: false,
+        minStockLevel: true,
+      };
     case 'bookstore':
+      return {
+        expiryDate: false,
+        serialNumber: true,
+        warranty: false,
+        wholesalePrice: true,
+        sizeColor: false,
+        minStockLevel: true,
+      };
     case 'general':
     case 'custom':
     default:
-      return allDisabled;
+      return {
+        expiryDate: false,
+        serialNumber: false,
+        warranty: false,
+        wholesalePrice: false,
+        sizeColor: false,
+        minStockLevel: false,
+      };
   }
 };
 
