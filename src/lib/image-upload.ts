@@ -111,12 +111,20 @@ export async function uploadProductImage(base64Image: string): Promise<string | 
       throw error;
     }
 
-    // الحصول على URL العام
-    const { data } = supabase.storage
+    // الحصول على signed URL (لأن الـ bucket خاص)
+    const { data: signedData, error: signedError } = await supabase.storage
       .from('product-images')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 60 * 60 * 24 * 365); // صالح لسنة
 
-    return data.publicUrl;
+    if (signedError || !signedData?.signedUrl) {
+      // fallback to public URL
+      const { data } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      return data.publicUrl;
+    }
+
+    return signedData.signedUrl;
   } catch (error) {
     console.error('فشل رفع الصورة:', error);
     return null;
