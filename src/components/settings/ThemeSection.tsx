@@ -46,7 +46,14 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
 
   const handleModeChange = (newMode: ThemeMode) => {
     setPendingMode(newMode);
-    notifyChange(newMode, pendingColor, pendingBlur, pendingTransparency);
+    // Auto-disable transparency in dark mode
+    if (newMode === 'dark' && pendingBlur) {
+      setPendingBlur(false);
+      setPendingTransparency(0);
+      notifyChange(newMode, pendingColor, false, 0);
+    } else {
+      notifyChange(newMode, pendingColor, pendingBlur, pendingTransparency);
+    }
   };
 
   const handleColorChange = (newColor: ThemeColor) => {
@@ -163,52 +170,54 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
       </div>
 
       {/* Transparency Feature */}
-      <div className="pt-4 border-t border-border space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center",
-              pendingBlur ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-            )}>
-              <Blend className="w-5 h-5" />
+      {pendingMode !== 'dark' && (
+        <div className="pt-4 border-t border-border space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center",
+                pendingBlur ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              )}>
+                <Blend className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">
+                  {t('settings.transparency')}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.transparencyDesc')}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium text-foreground">
-                {t('settings.transparency')}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.transparencyDesc')}
-              </p>
-            </div>
-          </div>
-          <Switch
-            checked={pendingBlur}
-            onCheckedChange={handleBlurChange}
-          />
-        </div>
-
-        {pendingBlur && (
-          <div className="space-y-3 pr-13">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{t('settings.transparencyLevel')}</span>
-              <span className="font-medium text-foreground">{pendingTransparency}%</span>
-            </div>
-            <Slider
-              value={[pendingTransparency]}
-              onValueChange={handleTransparencyChange}
-              min={10}
-              max={90}
-              step={10}
-              className="w-full"
+            <Switch
+              checked={pendingBlur}
+              onCheckedChange={handleBlurChange}
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>10%</span>
-              <span>50%</span>
-              <span>90%</span>
-            </div>
           </div>
-        )}
-      </div>
+
+          {pendingBlur && (
+            <div className="space-y-3 pr-13">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{t('settings.transparencyLevel')}</span>
+                <span className="font-medium text-foreground">{pendingTransparency}%</span>
+              </div>
+              <Slider
+                value={[pendingTransparency]}
+                onValueChange={handleTransparencyChange}
+                min={10}
+                max={90}
+                step={10}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>10%</span>
+                <span>50%</span>
+                <span>90%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
