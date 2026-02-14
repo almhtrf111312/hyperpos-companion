@@ -395,6 +395,7 @@ export const exportInvoicesToPDF = async (
     paymentType: string;
     type: string;
     createdAt: string;
+    cashierName?: string;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string },
   dateRange?: { start: string; end: string }
@@ -406,7 +407,9 @@ export const exportInvoicesToPDF = async (
     { header: 'الإجمالي', key: 'total' },
     { header: 'الخصم', key: 'discount' },
     { header: 'صافي الربح', key: 'profit' },
+    { header: 'نسبة الربح %', key: 'profitMargin' },
     { header: 'نوع الدفع', key: 'paymentType' },
+    { header: 'الكاشير', key: 'cashierName' },
   ];
 
   const data = invoices.map(inv => ({
@@ -416,29 +419,38 @@ export const exportInvoicesToPDF = async (
     total: inv.total,
     discount: inv.discount || 0,
     profit: inv.profit || 0,
+    profitMargin: inv.total > 0 ? `${Math.round(((inv.profit || 0) / inv.total) * 100)}%` : '0%',
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
+    cashierName: inv.cashierName || '-',
   }));
 
   const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
   const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
   const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  const avgProfitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
 
   const totals: Record<string, number | string> = {
     total: totalSales,
     discount: totalDiscount,
     profit: totalProfit,
+    profitMargin: `${avgProfitMargin}%`,
   };
 
   const summary = [
     { label: 'إجمالي المبيعات', value: totalSales },
     { label: 'إجمالي الخصومات', value: totalDiscount },
     { label: 'صافي الأرباح', value: totalProfit },
+    { label: 'نسبة الربح الإجمالية %', value: `${avgProfitMargin}%` },
     { label: 'عدد الفواتير', value: invoices.length },
   ];
 
   const subtitle = dateRange
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${formatLocalDate()}`;
+
+  const fileDate = dateRange
+    ? `${dateRange.start}_${dateRange.end}`
+    : new Date().toISOString().split('T')[0];
 
   await exportToPDF({
     title: 'تقرير الفواتير',
@@ -451,7 +463,8 @@ export const exportInvoicesToPDF = async (
     data,
     totals,
     summary,
-    fileName: `فواتير_${new Date().toISOString().split('T')[0]}.pdf`,
+    fileName: `فواتير_${fileDate}.pdf`,
+    orientation: 'landscape',
   });
 };
 
@@ -692,6 +705,10 @@ export const exportExpensesToPDF = async (
     ? `من ${dateRange.start} إلى ${dateRange.end}`
     : `التاريخ: ${formatLocalDate()}`;
 
+  const fileDate = dateRange
+    ? `${dateRange.start}_${dateRange.end}`
+    : new Date().toISOString().split('T')[0];
+
   await exportToPDF({
     title: 'تقرير المصاريف',
     reportType: 'تقرير المصروفات',
@@ -703,7 +720,7 @@ export const exportExpensesToPDF = async (
     data: expenses.map(e => ({ ...e, notes: e.notes || '' })),
     totals,
     summary,
-    fileName: `مصاريف_${new Date().toISOString().split('T')[0]}.pdf`,
+    fileName: `مصاريف_${fileDate}.pdf`,
   });
 };
 
