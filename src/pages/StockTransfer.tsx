@@ -55,6 +55,13 @@ interface TransferItem {
   quantityInPieces: number;
 }
 
+interface ReturnSearchItem {
+  productId: string;
+  productName: string;
+  barcode?: string;
+  available: number;
+}
+
 export default function StockTransfer() {
   const { t } = useLanguage();
   const { warehouses, mainWarehouse, refreshWarehouses } = useWarehouse();
@@ -74,6 +81,16 @@ export default function StockTransfer() {
   const [returnItems, setReturnItems] = useState<{ productId: string; productName: string; quantity: number; available: number }[]>([]);
   const [distributorStock, setDistributorStock] = useState<WarehouseStock[]>([]);
   const [isLoadingStock, setIsLoadingStock] = useState(false);
+
+  // Return search state
+  const [returnSearchQuery, setReturnSearchQuery] = useState('');
+  const [returnSearchSuggestions, setReturnSearchSuggestions] = useState<ReturnSearchItem[]>([]);
+  const [showReturnSuggestions, setShowReturnSuggestions] = useState(false);
+  const [returnHighlightedIndex, setReturnHighlightedIndex] = useState(-1);
+  const [returnSelectedProductId, setReturnSelectedProductId] = useState('');
+  const [returnSelectedQuantity, setReturnSelectedQuantity] = useState(1);
+  const [isReturnScannerOpen, setIsReturnScannerOpen] = useState(false);
+  const returnSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [toWarehouseId, setToWarehouseId] = useState('');
@@ -357,6 +374,112 @@ export default function StockTransfer() {
     }]);
   };
 
+  const addReturnItemFromSearch = () => {
+    if (!returnSelectedProductId || returnSelectedQuantity <= 0) {
+      toast.error(t('stockTransfer.selectProductQuantity'));
+      return;
+    }
+    if (returnItems.some(i => i.productId === returnSelectedProductId)) {
+      toast.error(t('stockTransfer.productAlreadyAdded'));
+      return;
+    }
+    const stockItem = distributorStock.find(s => s.product_id === returnSelectedProductId);
+    if (!stockItem) return;
+    const available = stockItem.quantity || 0;
+    const qty = Math.min(returnSelectedQuantity, available);
+    const product = products.find(p => p.id === returnSelectedProductId);
+    setReturnItems(prev => [...prev, {
+      productId: returnSelectedProductId,
+      productName: product?.name || 'منتج',
+      quantity: qty,
+      available
+    }]);
+    setReturnSelectedProductId('');
+    setReturnSearchQuery('');
+    setShowReturnSuggestions(false);
+    setReturnSelectedQuantity(1);
+  };
+
+  const handleReturnSearch = (value: string) => {
+    setReturnSearchQuery(value);
+    setReturnHighlightedIndex(-1);
+    if (value.length >= 1 && distributorStock.length > 0) {
+      const matches = distributorStock
+        .filter(s => !returnItems.some(ri => ri.productId === s.product_id))
+        .map(s => {
+          const product = products.find(p => p.id === s.product_id);
+          return { productId: s.product_id, productName: product?.name || '', barcode: product?.barcode || undefined, available: s.quantity || 0 };
+        })
+        .filter(item => 
+          item.productName.toLowerCase().includes(value.toLowerCase()) ||
+          (item.barcode && item.barcode.includes(value))
+        )
+        .slice(0, 8);
+      setReturnSearchSuggestions(matches);
+      setShowReturnSuggestions(matches.length > 0);
+    } else {
+      setShowReturnSuggestions(false);
+      setReturnSearchSuggestions([]);
+    }
+  };
+
+  const selectReturnProduct = (item: ReturnSearchItem) => {
+    setReturnSelectedProductId(item.productId);
+    setReturnSearchQuery(item.productName);
+    setShowReturnSuggestions(false);
+    setReturnHighlightedIndex(-1);
+    setReturnSelectedQuantity(Math.min(1, item.available));
+  };
+
+  const handleReturnSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showReturnSuggestions || returnSearchSuggestions.length === 0) return;
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setReturnHighlightedIndex(prev => prev < returnSearchSuggestions.length - 1 ? prev + 1 : 0);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setReturnHighlightedIndex(prev => prev > 0 ? prev - 1 : returnSearchSuggestions.length - 1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (returnHighlightedIndex >= 0 && returnHighlightedIndex < returnSearchSuggestions.length) {
+          selectReturnProduct(returnSearchSuggestions[returnHighlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowReturnSuggestions(false);
+        setReturnHighlightedIndex(-1);
+        break;
+    }
+  };
+
+  const handleReturnBarcodeScan = (barcode: string) => {
+    const stockItem = distributorStock.find(s => {
+      const product = products.find(p => p.id === s.product_id);
+      return product?.barcode === barcode;
+    });
+    if (stockItem) {
+      if (returnItems.some(i => i.productId === stockItem.product_id)) {
+        // Increment quantity
+        updateReturnItemQuantity(stockItem.product_id, 
+          (returnItems.find(i => i.productId === stockItem.product_id)?.quantity || 0) + 1);
+        const product = products.find(p => p.id === stockItem.product_id);
+        toast.success(t('stockTransfer.quantityIncreased').replace('{name}', product?.name || ''));
+      } else {
+        addReturnItem(stockItem);
+        // Set quantity to 1 for the newly added item
+        updateReturnItemQuantity(stockItem.product_id, 1);
+        const product = products.find(p => p.id === stockItem.product_id);
+        toast.success(t('stockTransfer.productAdded').replace('{name}', product?.name || ''));
+      }
+    } else {
+      toast.error(t('stockTransfer.barcodeNotFound'));
+    }
+    setIsReturnScannerOpen(false);
+  };
+
   const updateReturnItemQuantity = (productId: string, quantity: number) => {
     setReturnItems(prev => prev.map(item => {
       if (item.productId === productId) {
@@ -458,6 +581,11 @@ export default function StockTransfer() {
     setReturnNotes('');
     setReturnItems([]);
     setDistributorStock([]);
+    setReturnSearchQuery('');
+    setReturnSearchSuggestions([]);
+    setShowReturnSuggestions(false);
+    setReturnSelectedProductId('');
+    setReturnSelectedQuantity(1);
   };
 
 
@@ -583,7 +711,7 @@ export default function StockTransfer() {
     <MainLayout>
       <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
           <div>
             <h1 className="text-2xl font-bold">{t('stockTransfer.title')}</h1>
             <p className="text-muted-foreground">{t('stockTransfer.subtitle')}</p>
@@ -620,7 +748,7 @@ export default function StockTransfer() {
               
               <div className="space-y-4">
                 {/* From/To */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>{t('stockTransfer.fromWarehouse')}</Label>
                     <Input value={mainWarehouse?.name || t('stockTransfer.mainWarehouse')} disabled />
@@ -747,73 +875,41 @@ export default function StockTransfer() {
                   onScan={handleBarcodeScan}
                 />
 
-                {/* Items List */}
+                {/* Items List - Cards on mobile */}
                 {transferItems.length > 0 && (
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t('stockTransfer.product')}</TableHead>
-                          <TableHead>{t('stockTransfer.quantity')}</TableHead>
-                          <TableHead>{t('stockTransfer.unit')}</TableHead>
-                          <TableHead>{t('stockTransfer.totalPieces')}</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {transferItems.map(item => (
-                          <TableRow key={item.productId}>
-                            <TableCell className="font-medium">{item.productName}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Button 
-                                  variant="outline" 
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => updateItemQuantity(item.productId, -1)}
-                                  disabled={item.quantity <= 1}
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </Button>
-                                <span className="w-8 text-center font-medium">{item.quantity}</span>
-                                <Button 
-                                  variant="outline" 
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={() => updateItemQuantity(item.productId, 1)}
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Select 
-                                value={item.unit} 
-                                onValueChange={(v: 'piece' | 'bulk') => updateItemUnit(item.productId, v)}
-                              >
-                                <SelectTrigger className="h-8 w-24">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="piece">{t('stockTransfer.piece')}</SelectItem>
-                                  <SelectItem value="bulk">{t('stockTransfer.carton')}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell className="font-medium">{item.quantityInPieces}</TableCell>
-                            <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => removeItemFromTransfer(item.productId)}
-                              >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">{t('stockTransfer.product')} ({transferItems.length})</Label>
+                    {transferItems.map(item => (
+                      <div key={item.productId} className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{item.productName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.quantityInPieces} {t('stockTransfer.piece')}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(item.productId, -1)} disabled={item.quantity <= 1}>
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(item.productId, 1)}>
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        <Select value={item.unit} onValueChange={(v: 'piece' | 'bulk') => updateItemUnit(item.productId, v)}>
+                          <SelectTrigger className="h-8 w-20 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="piece">{t('stockTransfer.piece')}</SelectItem>
+                            <SelectItem value="bulk">{t('stockTransfer.carton')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => removeItemFromTransfer(item.productId)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -877,99 +973,120 @@ export default function StockTransfer() {
                 </Select>
               </div>
 
-              {/* Available products */}
+              {/* Search & Add Product */}
               {returnFromWarehouseId && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">{t('stockTransfer.availableForReturn')}</CardTitle>
+                    <CardTitle className="text-sm">{t('stockTransfer.addProduct')}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     {isLoadingStock ? (
                       <div className="text-center py-4 text-muted-foreground">{t('stockTransfer.loading')}</div>
                     ) : distributorStock.length === 0 ? (
                       <div className="text-center py-4 text-muted-foreground">{t('stockTransfer.noStockToReturn')}</div>
                     ) : (
-                      <div className="space-y-2">
-                        {distributorStock
-                          .filter(s => !returnItems.some(ri => ri.productId === s.product_id))
-                          .map(stockItem => {
-                            const product = products.find(p => p.id === stockItem.product_id);
-                            return (
-                              <div
-                                key={stockItem.id}
-                                className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors"
-                                onClick={() => addReturnItem(stockItem)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Package className="w-4 h-4 text-muted-foreground" />
-                                  <span>{product?.name || stockItem.product_id}</span>
-                                </div>
-                                <Badge variant="secondary">{t('stockTransfer.availableQuantity')}: {stockItem.quantity}</Badge>
+                      <>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                            <Input
+                              ref={returnSearchInputRef}
+                              type="text"
+                              placeholder={t('stockTransfer.searchProduct')}
+                              value={returnSearchQuery}
+                              onChange={(e) => handleReturnSearch(e.target.value)}
+                              onKeyDown={handleReturnSearchKeyDown}
+                              onFocus={() => { if (returnSearchQuery.length >= 1) setShowReturnSuggestions(true); }}
+                              onBlur={() => setTimeout(() => setShowReturnSuggestions(false), 200)}
+                              className="pr-9 h-11"
+                            />
+                            {showReturnSuggestions && returnSearchSuggestions.length > 0 && (
+                              <div className="absolute top-full z-50 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto" onMouseDown={(e) => e.preventDefault()}>
+                                {returnSearchSuggestions.map((item, index) => (
+                                  <div
+                                    key={item.productId}
+                                    onClick={() => selectReturnProduct(item)}
+                                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
+                                      index === returnHighlightedIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+                                    }`}
+                                  >
+                                    <Package className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                                    <span className="flex-1 truncate">{item.productName}</span>
+                                    <Badge variant="secondary" className="text-xs">{item.available}</Badge>
+                                  </div>
+                                ))}
                               </div>
-                            );
-                          })}
-                      </div>
+                            )}
+                          </div>
+                          <Button variant="outline" size="icon" onClick={() => setIsReturnScannerOpen(true)} className="h-11 w-11 flex-shrink-0">
+                            <ScanLine className="w-5 h-5" />
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex items-center gap-1 flex-1">
+                            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setReturnSelectedQuantity(q => Math.max(1, q - 1))} disabled={returnSelectedQuantity <= 1}>
+                              <Minus className="w-4 h-4" />
+                            </Button>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={returnSelectedQuantity}
+                              onChange={(e) => setReturnSelectedQuantity(parseInt(e.target.value) || 1)}
+                              className="h-10 text-center"
+                            />
+                            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setReturnSelectedQuantity(q => q + 1)}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <Button onClick={addReturnItemFromSearch} disabled={!returnSelectedProductId} className="gap-2">
+                            <Plus className="w-4 h-4" />
+                            {t('stockTransfer.add')}
+                          </Button>
+                        </div>
+                      </>
                     )}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Selected return items */}
+              <BarcodeScanner
+                isOpen={isReturnScannerOpen}
+                onClose={() => setIsReturnScannerOpen(false)}
+                onScan={handleReturnBarcodeScan}
+              />
+
               {returnItems.length > 0 && (
-                <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('stockTransfer.product')}</TableHead>
-                        <TableHead>{t('stockTransfer.availableQuantity')}</TableHead>
-                        <TableHead>{t('stockTransfer.returnQuantity')}</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {returnItems.map(item => (
-                        <TableRow key={item.productId}>
-                          <TableCell className="font-medium">{item.productName}</TableCell>
-                          <TableCell>{item.available}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => updateReturnItemQuantity(item.productId, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={item.available}
-                                value={item.quantity}
-                                onChange={(e) => updateReturnItemQuantity(item.productId, parseInt(e.target.value) || 1)}
-                                className="w-16 h-7 text-center"
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => updateReturnItemQuantity(item.productId, item.quantity + 1)}
-                                disabled={item.quantity >= item.available}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => removeReturnItem(item.productId)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">{t('stockTransfer.product')} ({returnItems.length})</Label>
+                  {returnItems.map(item => (
+                    <div key={item.productId} className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t('stockTransfer.availableQuantity')}: {item.available}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateReturnItemQuantity(item.productId, item.quantity - 1)} disabled={item.quantity <= 1}>
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={item.available}
+                          value={item.quantity}
+                          onChange={(e) => updateReturnItemQuantity(item.productId, parseInt(e.target.value) || 1)}
+                          className="w-16 h-7 text-center"
+                        />
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateReturnItemQuantity(item.productId, item.quantity + 1)} disabled={item.quantity >= item.available}>
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => removeReturnItem(item.productId)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
 
