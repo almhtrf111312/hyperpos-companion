@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ interface CashierUser {
 }
 
 export default function Warehouses() {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const { warehouses, refreshWarehouses, isLoading, ensureMainWarehouse } = useWarehouse();
   
@@ -334,7 +336,7 @@ export default function Warehouses() {
     <MainLayout>
       <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
           <div>
             <h1 className="text-2xl font-bold">{t('warehouses.title')}</h1>
             <p className="text-muted-foreground">{t('warehouses.subtitle')}</p>
@@ -362,7 +364,7 @@ export default function Warehouses() {
                       <Button 
                         variant="link" 
                         size="sm"
-                        onClick={() => window.location.href = '/settings?tab=users'}
+                        onClick={() => navigate('/settings?tab=users')}
                       >
                         {t('warehouses.addDistributorFromSettings')}
                       </Button>
