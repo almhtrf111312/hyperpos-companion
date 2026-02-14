@@ -20,12 +20,15 @@ export async function getSystemLanguage(): Promise<string> {
  * @param systemLang - System language code
  * @returns Mapped language code ('ar' or 'en')
  */
-export function mapSystemLanguage(systemLang: string): 'ar' | 'en' {
+export function mapSystemLanguage(systemLang: string): 'ar' | 'en' | 'tr' | 'fa' | 'ku' {
   // Handle language codes with region (e.g., 'en-US', 'ar-SA')
   const baseLang = systemLang.split('-')[0].toLowerCase();
   
   // Map to supported languages
   if (baseLang === 'ar') return 'ar';
+  if (baseLang === 'tr') return 'tr';
+  if (baseLang === 'fa') return 'fa';
+  if (baseLang === 'ku' || baseLang === 'ckb') return 'ku';
   return 'en'; // Default to English for all other languages
 }
 
@@ -50,7 +53,7 @@ export function setupSystemLanguageListener(callback: (lang: string) => void) {
  * @param userPreference - User's saved preference ('auto', 'ar', 'en')
  * @returns Language to use
  */
-export async function initializeLanguage(userPreference: string | null): Promise<'ar' | 'en'> {
+export async function initializeLanguage(userPreference: string | null): Promise<'ar' | 'en' | 'tr' | 'fa' | 'ku'> {
   // If user wants auto-detection or has no preference
   if (!userPreference || userPreference === 'auto') {
     const systemLang = await getSystemLanguage();
@@ -58,5 +61,7 @@ export async function initializeLanguage(userPreference: string | null): Promise
   }
   
   // Use user's explicit preference
-  return userPreference === 'en' ? 'en' : 'ar';
+  const validLangs = ['ar', 'en', 'tr', 'fa', 'ku'] as const;
+  if (validLangs.includes(userPreference as any)) return userPreference as any;
+  return 'ar';
 }
