@@ -168,8 +168,6 @@ export default function Settings() {
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'store', label: t('settings.store'), icon: Store },
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
-    { id: 'language', label: t('settings.language'), icon: Globe },
-    { id: 'currencies', label: t('settings.currencies'), icon: DollarSign },
     { id: 'backup', label: isRTL ? 'النسخ الاحتياطي والمزامنة' : 'Backup & Sync', icon: Database, adminOnly: true },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'printing', label: t('settings.printing'), icon: Printer },
@@ -878,7 +876,16 @@ export default function Settings() {
                   <label className="text-sm font-medium text-foreground">{t('settings.storeType')}</label>
                   <select
                     value={storeSettings.type}
-                    onChange={(e) => setStoreSettings({ ...storeSettings, type: e.target.value })}
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      setStoreSettings({ ...storeSettings, type: newType });
+                      // إخفاء الصيانة تلقائياً لغير محلات الهواتف والصيانة
+                      if (newType !== 'phones' && newType !== 'repair') {
+                        setHideMaintenanceSection(true);
+                      } else {
+                        setHideMaintenanceSection(false);
+                      }
+                    }}
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                   >
                     <option value="phones">{t('settings.storeTypes.phones')}</option>
@@ -894,7 +901,11 @@ export default function Settings() {
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={storeSettings.phone}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, phone: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^\d+\-\s]/g, '');
+                        setStoreSettings({ ...storeSettings, phone: val });
+                      }}
+                      inputMode="tel"
                       className="pr-10 bg-muted border-0"
                     />
                   </div>
@@ -970,84 +981,91 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* POS Options */}
-            <div className="space-y-4 pt-4 border-t border-border">
-              <h3 className="text-base font-semibold text-foreground">خيارات نقطة البيع</h3>
-              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Wrench className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">إخفاء قسم الصيانة</p>
-                    <p className="text-sm text-muted-foreground">إخفاء تبويب الصيانة من شاشة نقطة البيع</p>
+            {/* POS Options - إخفاء الصيانة تلقائياً لغير محلات الهواتف والصيانة */}
+            {(storeSettings.type === 'phones' || storeSettings.type === 'repair') && (
+              <div className="space-y-4 pt-4 border-t border-border">
+                <h3 className="text-base font-semibold text-foreground">خيارات نقطة البيع</h3>
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Wrench className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">إخفاء قسم الصيانة</p>
+                      <p className="text-sm text-muted-foreground">إخفاء تبويب الصيانة من شاشة نقطة البيع</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={hideMaintenanceSection}
+                    onCheckedChange={setHideMaintenanceSection}
+                  />
                 </div>
-                <Switch
-                  checked={hideMaintenanceSection}
-                  onCheckedChange={setHideMaintenanceSection}
-                />
+              </div>
+            )}
+
+            {/* Language Section */}
+            <div className="pt-4 border-t border-border">
+              <LanguageSection />
+            </div>
+
+            {/* Currencies Section */}
+            <div className="pt-4 border-t border-border space-y-6">
+              <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
+
+              {/* العملة الأولى */}
+              <div className="bg-muted/50 rounded-xl p-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">اسم العملة الأولى</label>
+                  <Input
+                    value={currencyNames.TRY}
+                    onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
+                    className="bg-background border-border"
+                    placeholder={t('settings.currencyTryPlaceholder')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">سعر الصرف</label>
+                  <div className="relative">
+                    <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={exchangeRates.TRY}
+                      onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
+                      className="pr-10 bg-background border-border"
+                      placeholder="32"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
+                </div>
+              </div>
+
+              {/* العملة الثانية */}
+              <div className="bg-muted/50 rounded-xl p-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">اسم العملة الثانية</label>
+                  <Input
+                    value={currencyNames.SYP}
+                    onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
+                    className="bg-background border-border"
+                    placeholder={t('settings.currencySypPlaceholder')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">سعر الصرف</label>
+                  <div className="relative">
+                    <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={exchangeRates.SYP}
+                      onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
+                      className="pr-10 bg-background border-border"
+                      placeholder="14500"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.SYP} {currencyNames.SYP}</p>
+                </div>
               </div>
             </div>
           </div>
         );
 
-      case 'currencies':
-        return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.exchangeRates')}</h2>
-
-            {/* العملة الأولى */}
-            <div className="bg-muted/50 rounded-xl p-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">اسم العملة الأولى</label>
-                <Input
-                  value={currencyNames.TRY}
-                  onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
-                  className="bg-background border-border"
-                  placeholder={t('settings.currencyTryPlaceholder')}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">سعر الصرف</label>
-                <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    value={exchangeRates.TRY}
-                    onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
-                    className="pr-10 bg-background border-border"
-                    placeholder="32"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
-              </div>
-            </div>
-
-            {/* العملة الثانية */}
-            <div className="bg-muted/50 rounded-xl p-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">اسم العملة الثانية</label>
-                <Input
-                  value={currencyNames.SYP}
-                  onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
-                  className="bg-background border-border"
-                  placeholder={t('settings.currencySypPlaceholder')}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">سعر الصرف</label>
-                <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    value={exchangeRates.SYP}
-                    onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
-                    className="pr-10 bg-background border-border"
-                    placeholder="14500"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">1 {t('settings.dollar')} = {exchangeRates.SYP} {currencyNames.SYP}</p>
-              </div>
-            </div>
-          </div>
-        );
+      // currencies tab removed - now inside store tab
 
       // sync tab merged into backup below
 
