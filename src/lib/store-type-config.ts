@@ -556,7 +556,7 @@ export const getVisibleSections = (storeType: string): VisibleSections => {
     case 'clothing':
       return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: true };
     case 'restaurant':
-      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
     case 'bakery':
       return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
     case 'bookstore':

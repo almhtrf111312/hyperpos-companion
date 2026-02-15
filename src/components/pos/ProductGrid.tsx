@@ -8,6 +8,7 @@ import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
+import { getCurrentStoreType } from '@/lib/store-type-config';
 
 interface Product {
   id: string;
@@ -50,6 +51,7 @@ export function ProductGrid({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { t, tDynamic } = useLanguage();
+  const isRestaurant = getCurrentStoreType() === 'restaurant';
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem('pos_view_mode') as ViewMode) || 'grid';
@@ -163,14 +165,16 @@ export function ProductGrid({
             />
           </div>
 
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0"
-            onClick={() => setScannerOpen(true)}
-          >
-            <Barcode className="w-4 h-4 md:w-5 md:h-5" />
-          </Button>
+          {!isRestaurant && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0"
+              onClick={() => setScannerOpen(true)}
+            >
+              <Barcode className="w-4 h-4 md:w-5 md:h-5" />
+            </Button>
+          )}
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 md:mx-0 md:px-0">
