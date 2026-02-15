@@ -19,6 +19,7 @@ import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 // SetupWizard removed - users go directly to login
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
+import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 // Demo data loading removed - app uses cloud sync for data persistence
@@ -212,6 +213,7 @@ const App = () => (
                       <NotificationsProvider>
                         {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
                         <LicenseWarningBadge />
+                        <OfflineProtectionBanner />
                         <LicenseGuard>
                           <AppContent />
                         </LicenseGuard>

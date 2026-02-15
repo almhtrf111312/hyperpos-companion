@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
+import { recordServerContact, getOfflineStatus, isDataEncrypted, decryptLocalData, checkAndEnforceProtection } from '@/lib/offline-protection';
 
 interface LicenseState {
   isLoading: boolean;
@@ -18,6 +19,9 @@ interface LicenseState {
   maxCashiers: number | null;
   licenseTier: string | null;
   expiringWarning: boolean;
+  offlineDays: number;
+  offlineWarning: boolean;
+  dataEncrypted: boolean;
 }
 
 interface LicenseContextType extends LicenseState {
@@ -68,6 +72,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     maxCashiers: initialCache?.maxCashiers ?? null,
     licenseTier: initialCache?.licenseTier ?? null,
     expiringWarning: initialCache?.expiringWarning ?? false,
+    offlineDays: getOfflineStatus().daysOffline,
+    offlineWarning: getOfflineStatus().shouldWarn,
+    dataEncrypted: isDataEncrypted(),
   });
 
   const backgroundCheckRef = useRef(false);
@@ -144,14 +151,38 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         maxCashiers: data.maxCashiers || null,
         licenseTier: data.licenseTier || null,
         expiringWarning: data.expiringWarning || false,
+        offlineDays: 0,
+        offlineWarning: false,
+        dataEncrypted: false,
       };
 
-      setState(newState);
+      // Record successful server contact
+      recordServerContact();
+
+      // If data was encrypted, decrypt it now
+      if (isDataEncrypted()) {
+        console.log('[License] Data was encrypted, decrypting...');
+        await decryptLocalData();
+      }
+
+      // Update offline status after successful contact
+      const offlineStatus = getOfflineStatus();
+
+      setState({
+        ...newState,
+        offlineDays: offlineStatus.daysOffline,
+        offlineWarning: offlineStatus.shouldWarn,
+        dataEncrypted: isDataEncrypted(),
+      });
       // Save successful result to cache
       const { isLoading: _, error: _e, ...cacheData } = newState;
       saveLicenseCache(cacheData);
     } catch (error) {
       console.error('Error checking license:', error);
+      // Check if offline protection should encrypt data
+      await checkAndEnforceProtection();
+      const offlineStatus = getOfflineStatus();
+
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -159,6 +190,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         hasLicense: true,
         needsActivation: false,
         error: 'فشل في التحقق من الترخيص - وضع غير متصل',
+        offlineDays: offlineStatus.daysOffline,
+        offlineWarning: offlineStatus.shouldWarn,
+        dataEncrypted: isDataEncrypted(),
       }));
     }
   }, [user]);

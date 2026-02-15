@@ -1756,6 +1756,13 @@ export const translations = {
     'license.remainingDays': 'الأيام المتبقية',
     'license.enterCodeLabel': 'أدخل كود التفعيل',
 
+    // Offline Protection
+    'offlineProtection.warning': 'لم يتم التحقق من الترخيص منذ {days} يوم. يرجى الاتصال بالإنترنت خلال {remaining} يوم لتجنب تشفير البيانات.',
+    'offlineProtection.encryptedTitle': 'بياناتك مشفرة مؤقتاً',
+    'offlineProtection.encryptedDesc': 'تم تشفير بياناتك المحلية بسبب عدم الاتصال بالسيرفر لمدة 30 يوم. اتصل بالإنترنت لفك التشفير تلقائياً.',
+    'offlineProtection.connectHint': 'تأكد من اتصالك بالإنترنت ثم اضغط إعادة المحاولة',
+    'offlineProtection.retryBtn': 'إعادة المحاولة',
+
     // Privacy Policy
     'privacy.title': 'شروط الاستخدام والخصوصية',
     'privacy.privacyTab': 'سياسة الخصوصية',
@@ -3531,6 +3538,13 @@ export const translations = {
     'licenseManagement.deleteFailed': 'Failed to delete code',
     'licenseManagement.days': 'd',
 
+    // Offline Protection
+    'offlineProtection.warning': 'License not verified for {days} days. Please connect to the internet within {remaining} days to avoid data encryption.',
+    'offlineProtection.encryptedTitle': 'Your data is temporarily encrypted',
+    'offlineProtection.encryptedDesc': 'Your local data has been encrypted due to no server connection for 30 days. Connect to the internet to decrypt automatically.',
+    'offlineProtection.connectHint': 'Make sure you are connected to the internet, then press retry',
+    'offlineProtection.retryBtn': 'Retry',
+
     // Privacy Policy
     'privacy.title': 'Terms of Use & Privacy',
     'privacy.privacyTab': 'Privacy Policy',
@@ -5254,6 +5268,13 @@ export const translations = {
     'license.daysPlural': 'gün',
     'license.signOut': 'Çıkış Yap',
 
+    // Offline Protection
+    'offlineProtection.warning': 'Lisans {days} gündür doğrulanmadı. Veri şifrelemesini önlemek için {remaining} gün içinde internete bağlanın.',
+    'offlineProtection.encryptedTitle': 'Verileriniz geçici olarak şifrelendi',
+    'offlineProtection.encryptedDesc': '30 gün sunucuya bağlanılmadığı için yerel verileriniz şifrelendi. Otomatik şifre çözme için internete bağlanın.',
+    'offlineProtection.connectHint': 'İnternete bağlı olduğunuzdan emin olun, ardından tekrar deneyin',
+    'offlineProtection.retryBtn': 'Tekrar Dene',
+
     // Privacy Policy
     'privacy.title': 'Kullanım Şartları ve Gizlilik',
     'privacy.privacyTab': 'Gizlilik Politikası',
@@ -6412,6 +6433,13 @@ export const translations = {
     'stockTransfer.returnStock': 'بازگشت موجودی',
     'stockTransfer.typeOutgoing': 'خروجی',
     'stockTransfer.typeReturn': 'بازگشتی',
+
+    // Offline Protection
+    'offlineProtection.warning': 'مجوز از {days} روز پیش تأیید نشده است. لطفاً ظرف {remaining} روز به اینترنت متصل شوید تا از رمزگذاری داده‌ها جلوگیری شود.',
+    'offlineProtection.encryptedTitle': 'داده‌های شما موقتاً رمزگذاری شده‌اند',
+    'offlineProtection.encryptedDesc': 'داده‌های محلی شما به دلیل عدم اتصال به سرور به مدت ۳۰ روز رمزگذاری شده‌اند. برای رمزگشایی خودکار به اینترنت متصل شوید.',
+    'offlineProtection.connectHint': 'مطمئن شوید که به اینترنت متصل هستید، سپس دوباره تلاش کنید',
+    'offlineProtection.retryBtn': 'تلاش مجدد',
   },
   ku: {
     // Navigation
@@ -7334,6 +7362,13 @@ export const translations = {
     'stockTransfer.returnStock': 'گەڕاندنەوەی کاڵا',
     'stockTransfer.typeOutgoing': 'دەرچوون',
     'stockTransfer.typeReturn': 'گەڕانەوە',
+
+    // Offline Protection
+    'offlineProtection.warning': 'مۆڵەت لە {days} ڕۆژ پێشەوە پشتڕاست نەکراوەتەوە. تکایە لەماوەی {remaining} ڕۆژدا پەیوەست ببە بە ئینتەرنێت بۆ ڕێگری لە شفرەکردنی داتا.',
+    'offlineProtection.encryptedTitle': 'داتاکانت بە کاتی شفرەکراون',
+    'offlineProtection.encryptedDesc': 'داتا ناوخۆییەکانت شفرەکراون بەهۆی نەبوونی پەیوەندی بە سێرڤەرەوە بۆ ماوەی ٣٠ ڕۆژ. بۆ شفرەلابردنی خۆکار پەیوەست ببە بە ئینتەرنێت.',
+    'offlineProtection.connectHint': 'دڵنیا بە لەوەی پەیوەستیت بە ئینتەرنێت، پاشان دوبارە هەوڵ بدەوە',
+    'offlineProtection.retryBtn': 'دوبارە هەوڵدان',
   },
   en_backup: {
     // Navigation
