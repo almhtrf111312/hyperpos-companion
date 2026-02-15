@@ -65,10 +65,15 @@ import {
 import { useLanguage } from '@/hooks/use-language';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { EVENTS } from '@/lib/events';
+import { getCurrentStoreType, getVisibleSections } from '@/lib/store-type-config';
+import { isNoInventoryMode } from '@/lib/store-type-config';
 
 export default function Reports() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
+  const storeType = getCurrentStoreType();
+  const noInventory = isNoInventoryMode();
+  const visibleSections = getVisibleSections(storeType);
   const [dateRange, setDateRange] = useState({
     from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0]
@@ -149,23 +154,31 @@ export default function Reports() {
 
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
 
-  const reports = [
+  const allReports = [
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
     { id: 'products', label: t('reports.products'), icon: BarChart3 },
-    { id: 'inventory', label: t('reports.inventoryReport'), icon: Package },
+    // inventory report only for stores with inventory tracking
+    ...(!noInventory ? [{ id: 'inventory', label: t('reports.inventoryReport'), icon: Package }] : []),
     { id: 'customers', label: t('reports.customers'), icon: Users },
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
-    { id: 'purchases', label: 'فواتير المشتريات', icon: FileText },
+    // purchases report only for stores with inventory
+    ...(!noInventory ? [{ id: 'purchases', label: 'فواتير المشتريات', icon: FileText }] : []),
     { id: 'debts', label: 'تقرير الديون', icon: Banknote },
     { id: 'cashier-performance', label: 'أداء الكاشير', icon: Users },
-    { id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList },
+    // maintenance only for phones/repair store types
+    ...(visibleSections.maintenance ? [{ id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
     { id: 'daily-closing', label: 'الإغلاق اليومي', icon: Calendar },
-    { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
-    { id: 'custody-value', label: t('reports.custodyValue'), icon: Wallet },
+    // distributor/custody reports only for stores with inventory
+    ...(!noInventory ? [
+      { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
+      { id: 'custody-value', label: t('reports.custodyValue'), icon: Wallet },
+    ] : []),
   ];
+
+  const reports = allReports;
 
   // Calculate real data from stores
   // Helper function to get local date string from a date
