@@ -1,20 +1,23 @@
 // Cloud Sync Provider - Wraps the app and ensures cloud sync is properly initialized
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/supabase-store';
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
-import { processQueue } from '@/lib/sync-queue';
+import { processQueue, hasPendingOperations } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
 import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '@/lib/cloud/purchase-queue-processor';
 import { showToast } from '@/lib/toast-config';
-import { useNetworkStatus } from '@/hooks/use-network-status';
+import { useNetworkStatus, checkRealInternetAccess } from '@/hooks/use-network-status';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
+
+// فترة إعادة المحاولة الدورية: 30 دقيقة
+const PERIODIC_RETRY_INTERVAL_MS = 30 * 60 * 1000;
 
 interface CloudSyncContextType {
   isReady: boolean;
@@ -45,20 +48,55 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const { isOnline } = useNetworkStatus();
   const [wasOffline, setWasOffline] = useState(false);
+  const periodicRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Enable realtime sync for instant updates across devices
   useRealtimeSync();
   
   // مراقبة عودة الاتصال بالإنترنت لتشغيل المزامنة التلقائية
+  // مع فحص فعلي للإنترنت (وليس فقط الشبكة)
   useEffect(() => {
     if (isOnline && wasOffline && user) {
-      // الاتصال عاد - بدء المزامنة التلقائية
-      console.log('[CloudSync] Internet restored, starting auto-sync...');
-      showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
-      syncNow();
+      // الشبكة عادت - لكن نفحص الإنترنت الفعلي أولاً
+      console.log('[CloudSync] Network restored, checking real internet access...');
+      checkRealInternetAccess(15000).then(hasInternet => {
+        if (hasInternet) {
+          console.log('[CloudSync] Real internet confirmed, starting sync...');
+          showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
+          syncNow();
+        } else {
+          console.log('[CloudSync] Network connected but no real internet access, will retry later');
+          showToast.error('متصل بالشبكة لكن لا يوجد إنترنت', { description: 'سيتم إعادة المحاولة كل 30 دقيقة' });
+        }
+      });
     }
     setWasOffline(!isOnline);
   }, [isOnline, wasOffline, user]);
+
+  // مؤقت دوري لإعادة محاولة المزامنة كل 30 دقيقة
+  useEffect(() => {
+    if (!user) return;
+
+    periodicRetryRef.current = setInterval(async () => {
+      if (!hasPendingOperations()) return;
+      
+      console.log('[CloudSync] Periodic retry: checking for pending operations...');
+      const hasInternet = await checkRealInternetAccess(15000);
+      
+      if (hasInternet) {
+        console.log('[CloudSync] Periodic retry: internet available, syncing...');
+        syncNow();
+      } else {
+        console.log('[CloudSync] Periodic retry: still no internet, will try again in 30 min');
+      }
+    }, PERIODIC_RETRY_INTERVAL_MS);
+
+    return () => {
+      if (periodicRetryRef.current) {
+        clearInterval(periodicRetryRef.current);
+      }
+    };
+  }, [user]);
 
   // Clear user-specific localStorage when user changes
   const clearUserLocalStorage = useCallback(() => {

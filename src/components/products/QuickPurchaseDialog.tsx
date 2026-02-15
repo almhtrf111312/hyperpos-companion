@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadProductImage } from '@/lib/image-upload';
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
+import { checkRealInternetAccess } from '@/hooks/use-network-status';
 
 interface QuickPurchaseDialogProps {
   open: boolean;
@@ -84,8 +85,10 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     const totalCost = parseFloat(costPrice) * parseInt(quantity || '1');
     const qtyNum = parseInt(quantity || '1');
 
-    // If offline, queue the operation
-    if (!navigator.onLine) {
+    // فحص الاتصال الفعلي بالإنترنت (وليس فقط الشبكة)
+    const hasInternet = await checkRealInternetAccess(15000);
+    
+    if (!hasInternet) {
       addToQueue('quick_purchase', {
         productName,
         quantity: qtyNum,
