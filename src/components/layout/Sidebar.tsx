@@ -50,6 +50,7 @@ interface NavItem {
   requiresMaintenance?: boolean;
   hideInNoInventory?: boolean;
   requiresBakeryMode?: boolean;
+  requiresBookstore?: boolean;
   tourId?: string;
   tooltipKey?: TranslationKey;
 }
@@ -61,6 +62,7 @@ const navItems: NavItem[] = [
   { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true, dynamicKey: 'products', tourId: 'products', tooltipKey: 'tooltip.products' as TranslationKey },
   { icon: Truck, translationKey: 'nav.purchases' as TranslationKey, path: '/purchases', adminOnly: true, tooltipKey: 'tooltip.purchases' as TranslationKey },
   { icon: Users, translationKey: 'nav.customersAndDebts' as TranslationKey, path: '/customers', tourId: 'customers', tooltipKey: 'tooltip.customers' as TranslationKey },
+  { icon: BookOpen, translationKey: 'nav.library' as TranslationKey, path: '/library', requiresBookstore: true, tooltipKey: 'tooltip.library' as TranslationKey },
   { icon: Wrench, translationKey: 'nav.services', path: '/services', requiresMaintenance: true, tooltipKey: 'tooltip.services' as TranslationKey },
   { icon: Receipt, translationKey: 'nav.expenses', path: '/expenses', tourId: 'expenses', tooltipKey: 'tooltip.expenses' as TranslationKey },
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts', tooltipKey: 'tooltip.cashShifts' as TranslationKey },
@@ -168,6 +170,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     if (item.requiresMaintenance && !visibleSections.maintenance) return false;
     if (item.hideInNoInventory && noInventory) return false;
     if (item.requiresBakeryMode && !noInventory) return false;
+    if (item.requiresBookstore && storeType !== 'bookstore') return false;
     return true;
   });
 

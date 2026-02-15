@@ -584,7 +584,7 @@ export const getDefaultCategories = (storeType: string): string[] => {
     case 'repair':
       return ['كهرباء', 'ميكانيكا', 'إلكترونيات', 'أدوات', 'قطع غيار عامة'];
     case 'bookstore':
-      return ['قرطاسية', 'كتب', 'أدوات رسم', 'هدايا', 'خدمات طباعة'];
+      return ['روايات', 'علمي', 'ديني', 'أدب', 'تعليمي', 'أطفال', 'قرطاسية'];
     default:
       return ['عام', 'إلكترونيات', 'ملابس', 'أغذية', 'أخرى'];
   }

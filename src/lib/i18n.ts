@@ -1523,6 +1523,8 @@ export const translations = {
 
     // Help
     'nav.help': 'التعليمات',
+    'nav.library': 'المكتبة',
+    'tooltip.library': 'إدارة الأعضاء والإعارات',
 
     // Purchases
     'nav.purchases': 'المشتريات',
@@ -3726,6 +3728,8 @@ export const translations = {
     'nav.reports': 'Raporlar',
     'nav.settings': 'Ayarlar',
     'nav.help': 'Yardım',
+    'nav.library': 'Kütüphane',
+    'tooltip.library': 'Üye ve ödünç yönetimi',
     'nav.purchases': 'Satın Almalar',
     'purchases.title': 'Satın Alma Yönetimi',
     'purchases.subtitle': 'Hammadde ve üretim malzemeleri kaydı',
@@ -5733,6 +5737,8 @@ export const translations = {
     'nav.reports': 'گزارش‌ها',
     'nav.settings': 'تنظیمات',
     'nav.help': 'راهنما',
+    'nav.library': 'کتابخانه',
+    'tooltip.library': 'مدیریت اعضا و امانت‌ها',
     'nav.purchases': 'خریدها',
     'purchases.title': 'مدیریت خرید',
     'purchases.subtitle': 'ثبت مواد اولیه و ملزومات تولید',
@@ -6727,6 +6733,8 @@ export const translations = {
     'nav.reports': 'ڕاپۆرتەکان',
     'nav.settings': 'ڕێکخستنەکان',
     'nav.help': 'یارمەتی',
+    'nav.library': 'کتێبخانە',
+    'tooltip.library': 'بەڕێوەبردنی ئەندام و قەرزدان',
     'nav.purchases': 'کڕینەکان',
     'purchases.title': 'بەڕێوەبردنی کڕین',
     'purchases.subtitle': 'تۆمارکردنی مادەی خاو و پێداویستییەکانی بەرهەمهێنان',
@@ -8497,6 +8505,8 @@ export const translations = {
 
     // Help
     'nav.help': 'Help',
+    'nav.library': 'Library',
+    'tooltip.library': 'Manage members and loans',
     'nav.purchases': 'Purchases',
     'purchases.title': 'Purchases Management',
     'purchases.subtitle': 'Record raw materials and production supplies',

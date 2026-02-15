@@ -145,6 +145,66 @@ export type Database = {
         }
         Relationships: []
       }
+      book_loans: {
+        Row: {
+          created_at: string | null
+          due_date: string
+          id: string
+          late_fee: number | null
+          loan_date: string | null
+          member_id: string
+          notes: string | null
+          product_id: string
+          return_date: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          due_date: string
+          id?: string
+          late_fee?: number | null
+          loan_date?: string | null
+          member_id: string
+          notes?: string | null
+          product_id: string
+          return_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          late_fee?: number | null
+          loan_date?: string | null
+          member_id?: string
+          notes?: string | null
+          product_id?: string
+          return_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_loans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "library_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_loans_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -466,6 +526,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      library_members: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          late_fees: number | null
+          membership_status: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          registration_date: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          late_fees?: number | null
+          membership_status?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          registration_date?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          late_fees?: number | null
+          membership_status?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          registration_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       maintenance_services: {
         Row: {
