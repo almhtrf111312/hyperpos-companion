@@ -42,7 +42,8 @@ import {
   AlertTriangle,
   ExternalLink,
   Wrench,
-  Archive
+  Archive,
+  Percent
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile, DownloadResult } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
@@ -122,6 +123,10 @@ type PersistedSettings = {
   backupSettings?: Partial<BackupSettingsType>;
   currencySymbol?: string;
   hideMaintenanceSection?: boolean;
+  taxEnabled?: boolean;
+  taxRate?: number;
+  discountPercentEnabled?: boolean;
+  discountFixedEnabled?: boolean;
 };
 
 const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
@@ -230,6 +235,14 @@ export default function Settings() {
     address: persisted?.storeSettings?.address ?? '',
     logo: persisted?.storeSettings?.logo ?? '',
   });
+
+  // Tax settings
+  const [taxEnabled, setTaxEnabled] = useState(persisted?.taxEnabled ?? false);
+  const [taxRate, setTaxRate] = useState(persisted?.taxRate ?? 0);
+
+  // Discount control settings
+  const [discountPercentEnabled, setDiscountPercentEnabled] = useState(persisted?.discountPercentEnabled ?? true);
+  const [discountFixedEnabled, setDiscountFixedEnabled] = useState(persisted?.discountFixedEnabled ?? true);
 
   // Logo upload handler
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -421,6 +434,10 @@ export default function Settings() {
     backupSettings: typeof backupSettings;
     hideMaintenanceSection: boolean;
     productFieldsConfig: ProductFieldsConfig | null;
+    taxEnabled: boolean;
+    taxRate: number;
+    discountPercentEnabled: boolean;
+    discountFixedEnabled: boolean;
   } | null>(null);
 
   // Capture snapshot on first render only
@@ -435,6 +452,10 @@ export default function Settings() {
         backupSettings: { ...backupSettings },
         hideMaintenanceSection,
         productFieldsConfig: loadProductFieldsConfig(),
+        taxEnabled,
+        taxRate,
+        discountPercentEnabled,
+        discountFixedEnabled,
       };
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -451,6 +472,10 @@ export default function Settings() {
       JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings) ||
       JSON.stringify(backupSettings) !== JSON.stringify(snap.backupSettings) ||
       hideMaintenanceSection !== snap.hideMaintenanceSection ||
+      taxEnabled !== snap.taxEnabled ||
+      taxRate !== snap.taxRate ||
+      discountPercentEnabled !== snap.discountPercentEnabled ||
+      discountFixedEnabled !== snap.discountFixedEnabled ||
       productFieldsChanged
     );
   })();
@@ -468,6 +493,10 @@ export default function Settings() {
     setHideMaintenanceSection(snap.hideMaintenanceSection);
     setProductFieldsConfig(snap.productFieldsConfig);
     setProductFieldsChanged(false);
+    setTaxEnabled(snap.taxEnabled);
+    setTaxRate(snap.taxRate);
+    setDiscountPercentEnabled(snap.discountPercentEnabled);
+    setDiscountFixedEnabled(snap.discountFixedEnabled);
     toast({
       title: t('common.success'),
       description: t('settings.changesReverted'),
@@ -529,6 +558,10 @@ export default function Settings() {
       printSettings,
       backupSettings,
       hideMaintenanceSection,
+      taxEnabled,
+      taxRate,
+      discountPercentEnabled,
+      discountFixedEnabled,
     });
 
     // Build merged sync_settings: keep productFieldsConfig alongside sync settings
@@ -545,6 +578,10 @@ export default function Settings() {
       }
     }
 
+    // Add discount settings to merged sync_settings
+    mergedSyncSettings.discountPercentEnabled = discountPercentEnabled;
+    mergedSyncSettings.discountFixedEnabled = discountFixedEnabled;
+
     // Save to cloud with merged sync_settings
     const cloudSuccess = await saveStoreSettings({
       name: storeSettings.name,
@@ -553,6 +590,8 @@ export default function Settings() {
       address: storeSettings.address,
       logo_url: storeSettings.logo,
       exchange_rates: { USD: 1, TRY: tryRate, SYP: sypRate },
+      tax_enabled: taxEnabled,
+      tax_rate: taxRate,
       sync_settings: mergedSyncSettings,
       notification_settings: notificationSettings,
       print_settings: printSettings,
@@ -577,6 +616,10 @@ export default function Settings() {
       backupSettings: { ...backupSettings },
       hideMaintenanceSection,
       productFieldsConfig: productFieldsConfig || loadProductFieldsConfig(),
+      taxEnabled,
+      taxRate,
+      discountPercentEnabled,
+      discountFixedEnabled,
     };
 
     if (cloudSuccess) {
@@ -1115,6 +1158,63 @@ export default function Settings() {
                 />
               </div>
             )}
+
+            {/* Tax Settings */}
+            <div className="pt-2 border-t border-border space-y-3">
+              <h3 className="text-base font-semibold text-foreground">{t('settings.tax') || 'الضريبة'}</h3>
+              <div className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <Percent className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t('settings.enableTax') || 'تفعيل الضريبة'}</span>
+                </div>
+                <Switch
+                  checked={taxEnabled}
+                  onCheckedChange={setTaxEnabled}
+                />
+              </div>
+              {taxEnabled && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('settings.taxRate') || 'نسبة الضريبة'}</label>
+                  <div className="relative flex-1">
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      value={taxRate || ''}
+                      onChange={(e) => setTaxRate(Number(e.target.value))}
+                      className="pr-10 bg-muted border-0 h-9 text-sm"
+                      placeholder="15"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Discount Control Settings */}
+            <div className="pt-2 border-t border-border space-y-3">
+              <h3 className="text-base font-semibold text-foreground">{t('settings.discountControl') || 'التحكم بالخصومات'}</h3>
+              <div className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <Percent className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t('settings.enablePercentDiscount') || 'خصم النسبة المئوية'}</span>
+                </div>
+                <Switch
+                  checked={discountPercentEnabled}
+                  onCheckedChange={setDiscountPercentEnabled}
+                />
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t('settings.enableFixedDiscount') || 'خصم المبلغ الثابت'}</span>
+                </div>
+                <Switch
+                  checked={discountFixedEnabled}
+                  onCheckedChange={setDiscountFixedEnabled}
+                />
+              </div>
+            </div>
 
             {/* Language Section */}
             <div className="border-t border-border pt-2">

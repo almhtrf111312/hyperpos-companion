@@ -241,6 +241,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
         const existing = existingRaw ? JSON.parse(existingRaw) : {};
         
+        const syncSettingsObj = cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object' ? cloudSettings.sync_settings as Record<string, unknown> : {};
+
         const merged = {
           ...existing,
           storeSettings: {
@@ -250,6 +252,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
             logo: cloudSettings.logo_url || existing.storeSettings?.logo,
           },
           exchangeRates: cloudSettings.exchange_rates || existing.exchangeRates,
+          taxEnabled: cloudSettings.tax_enabled ?? existing.taxEnabled ?? false,
+          taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
+          discountPercentEnabled: syncSettingsObj.discountPercentEnabled ?? existing.discountPercentEnabled ?? true,
+          discountFixedEnabled: syncSettingsObj.discountFixedEnabled ?? existing.discountFixedEnabled ?? true,
         };
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
