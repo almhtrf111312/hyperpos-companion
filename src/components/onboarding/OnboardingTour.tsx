@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '@/hooks/use-language';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/use-auth';
@@ -10,7 +11,6 @@ import { TranslationKey } from '@/lib/i18n';
 
 const ONBOARDING_KEY = 'hp_onboarding_complete';
 
-// Fixed card dimensions for stable positioning
 const CARD_WIDTH = 320;
 const CARD_HEIGHT_ESTIMATE = 200;
 
@@ -18,20 +18,32 @@ interface TourStep {
   selector: string;
   titleKey: TranslationKey;
   descKey: TranslationKey;
-  position?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
+  /** Which route must be active for this step */
+  route?: string;
+  /** Should the sidebar be forced open (on desktop) for this step? */
+  requireSidebar?: boolean;
   mobileOnly?: boolean;
   desktopOnly?: boolean;
+  /** Preferred placement relative to the target element */
+  prefer?: 'top' | 'bottom' | 'left' | 'right';
 }
 
 const tourSteps: TourStep[] = [
-  { selector: '[data-tour="sidebar"]', titleKey: 'onboarding.step1Title' as TranslationKey, descKey: 'onboarding.step1Desc' as TranslationKey, desktopOnly: true },
-  { selector: '[data-tour="pos"]', titleKey: 'onboarding.step2Title' as TranslationKey, descKey: 'onboarding.step2Desc' as TranslationKey },
-  { selector: '[data-tour="product-grid"]', titleKey: 'onboarding.step3Title' as TranslationKey, descKey: 'onboarding.step3Desc' as TranslationKey },
-  { selector: '[data-tour="search-bar"]', titleKey: 'onboarding.step4Title' as TranslationKey, descKey: 'onboarding.step4Desc' as TranslationKey },
-  { selector: '[data-tour="cart-panel"]', titleKey: 'onboarding.step5Title' as TranslationKey, descKey: 'onboarding.step5Desc' as TranslationKey, desktopOnly: true },
-  { selector: '[data-tour="cart-fab"]', titleKey: 'onboarding.step6Title' as TranslationKey, descKey: 'onboarding.step6Desc' as TranslationKey, mobileOnly: true },
-  { selector: '[data-tour="dashboard"]', titleKey: 'onboarding.step7Title' as TranslationKey, descKey: 'onboarding.step7Desc' as TranslationKey },
-  { selector: '[data-tour="settings"]', titleKey: 'onboarding.step8Title' as TranslationKey, descKey: 'onboarding.step8Desc' as TranslationKey },
+  // Step 1: Sidebar (must be visible)
+  { selector: '[data-tour="sidebar"]', titleKey: 'onboarding.step1Title' as TranslationKey, descKey: 'onboarding.step1Desc' as TranslationKey, desktopOnly: true, requireSidebar: true, prefer: 'right' },
+  // Step 2: POS nav link in sidebar
+  { selector: '[data-tour="pos"]', titleKey: 'onboarding.step2Title' as TranslationKey, descKey: 'onboarding.step2Desc' as TranslationKey, requireSidebar: true, prefer: 'right' },
+  // Step 3: Dashboard nav link
+  { selector: '[data-tour="dashboard"]', titleKey: 'onboarding.step7Title' as TranslationKey, descKey: 'onboarding.step7Desc' as TranslationKey, requireSidebar: true, prefer: 'right' },
+  // Step 4: Settings nav link
+  { selector: '[data-tour="settings"]', titleKey: 'onboarding.step8Title' as TranslationKey, descKey: 'onboarding.step8Desc' as TranslationKey, requireSidebar: true, prefer: 'right' },
+  // Step 5: Navigate to POS - product grid
+  { selector: '[data-tour="product-grid"]', titleKey: 'onboarding.step3Title' as TranslationKey, descKey: 'onboarding.step3Desc' as TranslationKey, route: '/' },
+  // Step 6: Search bar
+  { selector: '[data-tour="search-bar"]', titleKey: 'onboarding.step4Title' as TranslationKey, descKey: 'onboarding.step4Desc' as TranslationKey, route: '/' },
+  // Step 7: Cart panel (desktop) or cart FAB (mobile)
+  { selector: '[data-tour="cart-panel"]', titleKey: 'onboarding.step5Title' as TranslationKey, descKey: 'onboarding.step5Desc' as TranslationKey, desktopOnly: true, route: '/' },
+  { selector: '[data-tour="cart-fab"]', titleKey: 'onboarding.step6Title' as TranslationKey, descKey: 'onboarding.step6Desc' as TranslationKey, mobileOnly: true, route: '/' },
 ];
 
 export function OnboardingTour() {
@@ -39,6 +51,8 @@ export function OnboardingTour() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { role } = useUserRole();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -57,7 +71,6 @@ export function OnboardingTour() {
 
   useEffect(() => {
     if (!user || !role) return;
-    
     const completed = localStorage.getItem(ONBOARDING_KEY);
     if (!completed) {
       const timer = setTimeout(() => setIsActive(true), 1500);
@@ -70,37 +83,50 @@ export function OnboardingTour() {
     setIsActive(false);
   }, []);
 
-  // Calculate position without depending on card ref (use fixed estimates first, then refine)
-  const calculatePosition = useCallback((rect: DOMRect) => {
-    const padding = 14;
+  // Smart positioning: place card where it doesn't cover the target
+  const calculatePosition = useCallback((rect: DOMRect, prefer?: string) => {
+    const padding = 16;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const cardW = Math.min(CARD_WIDTH, vw * 0.9);
-    
-    // Use actual card height if available, else estimate
     const cardH = cardRef.current?.offsetHeight || CARD_HEIGHT_ESTIMATE;
 
     let top: number;
     let left: number;
 
-    // Try bottom
+    // For sidebar steps, place to the right (or left in RTL)
+    if (prefer === 'right' || prefer === 'left') {
+      const side = prefer === 'right' ? (isRTL ? 'left' : 'right') : (isRTL ? 'right' : 'left');
+      top = Math.max(padding, Math.min(rect.top + rect.height / 2 - cardH / 2, vh - cardH - padding));
+      if (side === 'right') {
+        left = rect.right + padding;
+        if (left + cardW > vw - padding) {
+          left = rect.left - cardW - padding;
+        }
+      } else {
+        left = rect.left - cardW - padding;
+        if (left < padding) {
+          left = rect.right + padding;
+        }
+      }
+      left = Math.max(padding, Math.min(left, vw - cardW - padding));
+      return { top, left };
+    }
+
+    // Default: try bottom, then top, then center
     if (rect.bottom + padding + cardH < vh) {
       top = rect.bottom + padding;
       left = Math.max(padding, Math.min(rect.left + rect.width / 2 - cardW / 2, vw - cardW - padding));
-    }
-    // Try top
-    else if (rect.top - padding - cardH > 0) {
+    } else if (rect.top - padding - cardH > 0) {
       top = rect.top - padding - cardH;
       left = Math.max(padding, Math.min(rect.left + rect.width / 2 - cardW / 2, vw - cardW - padding));
-    }
-    // Fallback: center
-    else {
+    } else {
       top = vh / 2 - cardH / 2;
       left = vw / 2 - cardW / 2;
     }
 
     return { top, left };
-  }, []);
+  }, [isRTL]);
 
   const updatePosition = useCallback(() => {
     const steps = activeStepsRef.current;
@@ -116,34 +142,62 @@ export function OnboardingTour() {
 
     const rect = el.getBoundingClientRect();
     setTargetRect(rect);
-    setCardPosition(calculatePosition(rect));
+    setCardPosition(calculatePosition(rect, step.prefer));
   }, [currentStep, calculatePosition]);
 
-  // On step change: hide briefly, reposition, then show
+  // Prepare the environment for the current step (navigation, sidebar)
   useEffect(() => {
     if (!isActive) return;
-    
+
     setIsVisible(false);
-    
+
     const steps = activeStepsRef.current;
     const step = steps[currentStep];
     if (!step) return;
-    
-    const el = document.querySelector(step.selector);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Navigate if needed
+    if (step.route && location.pathname !== step.route) {
+      navigate(step.route);
     }
 
+    // Open sidebar for sidebar-related steps (on mobile)
+    if (step.requireSidebar && isMobile) {
+      // Trigger mobile sidebar open via the menu button
+      const menuBtn = document.querySelector('[data-tour="mobile-menu-trigger"]') as HTMLButtonElement;
+      if (menuBtn) menuBtn.click();
+    }
+
+    // Wait for navigation + layout to settle, then position
     const timer = setTimeout(() => {
-      updatePosition();
-      requestAnimationFrame(() => {
-        updatePosition();
-        setIsVisible(true);
-      });
-    }, 350);
+      // Retry finding element a few times (for navigation transitions)
+      let attempts = 0;
+      const tryPosition = () => {
+        const el = document.querySelector(step.selector);
+        if (el) {
+          if (el.scrollIntoView) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          setTimeout(() => {
+            updatePosition();
+            requestAnimationFrame(() => {
+              updatePosition();
+              setIsVisible(true);
+            });
+          }, 100);
+        } else if (attempts < 5) {
+          attempts++;
+          setTimeout(tryPosition, 200);
+        } else {
+          // Element not found, show card centered
+          updatePosition();
+          setIsVisible(true);
+        }
+      };
+      tryPosition();
+    }, 400);
 
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, isActive]);
 
   // Listen for resize/scroll
@@ -209,22 +263,23 @@ export function OnboardingTour() {
       {/* Spotlight ring glow */}
       {targetRect && (
         <div
-          className="absolute rounded-xl ring-2 ring-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.3)] pointer-events-none transition-all duration-400 ease-out"
+          className="absolute rounded-xl ring-2 ring-primary/60 pointer-events-none transition-all duration-500 ease-out"
           style={{
             left: targetRect.left - 6,
             top: targetRect.top - 6,
             width: targetRect.width + 12,
             height: targetRect.height + 12,
+            boxShadow: '0 0 20px hsl(var(--primary) / 0.3)',
           }}
         />
       )}
 
-      {/* Tour Card - uses opacity for smooth show/hide instead of position jumping */}
+      {/* Tour Card */}
       <div
         ref={cardRef}
         className={cn(
           "absolute z-[10000] w-[320px] max-w-[90vw] bg-card border border-border rounded-2xl shadow-2xl",
-          "transition-[opacity,transform] duration-300 ease-out",
+          "transition-all duration-400 ease-out",
           isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
         )}
         style={{ top: cardPosition.top, left: cardPosition.left }}
