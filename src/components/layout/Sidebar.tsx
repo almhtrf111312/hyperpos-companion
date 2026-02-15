@@ -93,10 +93,15 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     }
   };
 
+  // Force collapsed on tablet and close mobile overlay when switching to tablet
   useEffect(() => {
-    if (isTablet && !collapsed) setCollapsed(true);
+    if (isTablet) {
+      if (!collapsed) setCollapsed(true);
+      // If sidebar was open in mobile mode and device switched to tablet, close overlay
+      if (isOpen) onToggle();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [isTablet, location.pathname]);
 
   useEffect(() => {
     const handleOrientationChange = () => {
@@ -148,7 +153,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
   return (
     <>
-      {isMobile && (
+      {/* Mobile overlay backdrop - ONLY on true mobile, never tablet */}
+      {isMobile && !isTablet && (
         <div 
           className={cn(
             "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300",
