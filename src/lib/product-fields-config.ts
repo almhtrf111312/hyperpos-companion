@@ -67,12 +67,6 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
         wholesalePrice: false, sizeColor: false, minStockLevel: true,
         weight: false, fabricType: false, tableNumber: true, orderNotes: true, author: false, publisher: false,
       };
-    case 'bakery':
-      return {
-        expiryDate: false, batchNumber: false, serialNumber: false, warranty: false,
-        wholesalePrice: true, sizeColor: false, minStockLevel: false,
-        weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
-      };
     case 'bookstore':
       return {
         expiryDate: false, batchNumber: false, serialNumber: true, warranty: false,

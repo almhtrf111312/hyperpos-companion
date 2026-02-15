@@ -196,6 +196,17 @@ export const addLoanCloud = async (loan: {
     return null;
   }
 
+  // Deduct 1 from product stock
+  try {
+    await supabase.rpc('deduct_product_quantity', {
+      _product_id: loan.productId,
+      _amount: 1,
+    });
+    console.log('[Library] Deducted 1 from product stock for loan');
+  } catch (e) {
+    console.error('[Library] Failed to deduct stock:', e);
+  }
+
   return {
     id: data.id,
     productId: data.product_id,
@@ -213,6 +224,14 @@ export const addLoanCloud = async (loan: {
 };
 
 export const returnLoanCloud = async (id: string, lateFee: number = 0): Promise<boolean> => {
+  // First get the loan to know the product_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: loanData } = await (supabase as any)
+    .from('book_loans')
+    .select('product_id')
+    .eq('id', id)
+    .single();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('book_loans')
@@ -227,6 +246,20 @@ export const returnLoanCloud = async (id: string, lateFee: number = 0): Promise<
     console.error('Failed to return loan:', error);
     return false;
   }
+
+  // Add 1 back to product stock
+  if (loanData?.product_id) {
+    try {
+      await supabase.rpc('add_product_quantity', {
+        _product_id: loanData.product_id,
+        _amount: 1,
+      });
+      console.log('[Library] Added 1 back to product stock on return');
+    } catch (e) {
+      console.error('[Library] Failed to add stock back:', e);
+    }
+  }
+
   return true;
 };
 

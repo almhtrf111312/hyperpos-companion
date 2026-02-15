@@ -6,6 +6,7 @@ import { CartPanel } from '@/components/pos/CartPanel';
 import { MaintenancePanel } from '@/components/pos/MaintenancePanel';
 import { ScannedProductDialog } from '@/components/pos/ScannedProductDialog';
 import { VariantPickerDialog } from '@/components/pos/VariantPickerDialog';
+import { LoanQuickDialog } from '@/components/pos/LoanQuickDialog';
 import { Sidebar, MobileMenuTrigger } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +18,7 @@ import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { getCurrentStoreType } from '@/lib/store-type-config';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
@@ -106,6 +108,7 @@ interface CartItem {
   bulkSalePrice?: number;
   costPrice?: number;
   bulkCostPrice?: number;
+  laborCost?: number;
 }
 
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
@@ -201,6 +204,9 @@ export default function POS() {
   // Variant picker dialog (multiple products with same barcode)
   const [variantMatches, setVariantMatches] = useState<POSProduct[]>([]);
   const [showVariantPicker, setShowVariantPicker] = useState(false);
+  // Loan dialog for bookstore mode
+  const [showLoanDialog, setShowLoanDialog] = useState(false);
+  const [loanProduct, setLoanProduct] = useState<POSProduct | null>(null);
 
   // Load products and categories from cloud with retry logic
   // ✅ تحميل فوري من IndexedDB ثم تحديث من السحابة في الخلفية
@@ -379,6 +385,7 @@ export default function POS() {
         costPrice: product.costPrice,
         bulkCostPrice: product.bulkCostPrice,
         wholesalePrice: product.wholesalePrice,
+        laborCost: product.laborCost,
         expiryDate: product.expiryDate,
         batchNumber: product.batchNumber,
       }];
@@ -470,6 +477,13 @@ export default function POS() {
 
   const handleAddScannedProduct = (product: POSProduct) => {
     addToCart(product, 'piece');
+    setShowScannedDialog(false);
+    setScannedProduct(null);
+  };
+
+  const handleLoanProduct = (product: POSProduct) => {
+    setLoanProduct(product);
+    setShowLoanDialog(true);
     setShowScannedDialog(false);
     setScannedProduct(null);
   };
@@ -663,7 +677,25 @@ export default function POS() {
           setScannedProduct(null);
         }}
         onAddToCart={handleAddScannedProduct}
+        onLoan={getCurrentStoreType() === 'bookstore' ? handleLoanProduct : undefined}
       />
+
+      {/* Loan Quick Dialog for bookstore mode */}
+      {loanProduct && (
+        <LoanQuickDialog
+          isOpen={showLoanDialog}
+          onClose={() => {
+            setShowLoanDialog(false);
+            setLoanProduct(null);
+          }}
+          productId={loanProduct.id}
+          productName={loanProduct.name}
+          onLoanComplete={() => {
+            loadData(0, true);
+            setLoanProduct(null);
+          }}
+        />
+      )}
 
       {/* Variant Picker Dialog */}
       <VariantPickerDialog

@@ -1,4 +1,4 @@
-import { Package, Plus, X } from 'lucide-react';
+import { Package, Plus, X, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLanguage } from '@/hooks/use-language';
+import { getCurrentStoreType } from '@/lib/store-type-config';
 
 // POS Product type matching the one used in POS.tsx (not from localStorage)
 interface POSProduct {
@@ -30,6 +31,7 @@ interface ScannedProductDialogProps {
   onClose: () => void;
   product: POSProduct | null;
   onAddToCart: (product: POSProduct) => void;
+  onLoan?: (product: POSProduct) => void;
 }
 
 export function ScannedProductDialog({
@@ -37,14 +39,23 @@ export function ScannedProductDialog({
   onClose,
   product,
   onAddToCart,
+  onLoan,
 }: ScannedProductDialogProps) {
   const { t } = useLanguage();
+  const isBookstore = getCurrentStoreType() === 'bookstore';
   
   if (!product) return null;
 
   const handleAdd = () => {
     onAddToCart(product);
     onClose();
+  };
+
+  const handleLoan = () => {
+    if (onLoan) {
+      onLoan(product);
+      onClose();
+    }
   };
 
   return (
@@ -95,6 +106,17 @@ export function ScannedProductDialog({
               <X className="w-4 h-4 ml-2" />
               {t('scannedProduct.close')}
             </Button>
+            {isBookstore && onLoan && (
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={handleLoan}
+                disabled={product.quantity === 0}
+              >
+                <BookOpen className="w-4 h-4 ml-2" />
+                إعارة
+              </Button>
+            )}
             <Button 
               className="flex-1 bg-primary hover:bg-primary/90" 
               onClick={handleAdd}

@@ -81,6 +81,7 @@ interface CartItem {
   costPrice?: number;
   bulkCostPrice?: number;
   wholesalePrice?: number;
+  laborCost?: number;
   // Pharmacy fields
   expiryDate?: string;
   batchNumber?: string;
@@ -1276,7 +1277,7 @@ export function CartPanel({
                   <div className="text-[10px] text-muted-foreground mb-1 flex gap-2">
                     <span>تكلفة القطعة: ${formatNumber(item.costPrice || 0)}</span>
                     <span>•</span>
-                    <span>المرجع: ${formatNumber((item.costPrice || 0) + ((item as any).laborCost || 0))}</span>
+                    <span>المرجع: ${formatNumber((item.costPrice || 0) + (item.laborCost || 0))}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
