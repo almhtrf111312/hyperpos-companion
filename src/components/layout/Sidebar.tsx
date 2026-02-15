@@ -22,7 +22,15 @@ import {
   Receipt,
   Wallet,
   HelpCircle,
-  Truck
+  Truck,
+  Smartphone,
+  ShoppingBasket,
+  Pill,
+  Shirt,
+  UtensilsCrossed,
+  BookOpen,
+  CookingPot,
+  Store
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -70,6 +78,30 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   defaultCollapsed?: boolean;
+}
+
+const storeTypeIcons: Record<string, React.ElementType> = {
+  phones: Smartphone,
+  grocery: ShoppingBasket,
+  pharmacy: Pill,
+  clothing: Shirt,
+  restaurant: UtensilsCrossed,
+  repair: Wrench,
+  bookstore: BookOpen,
+  bakery: CookingPot,
+  general: Store,
+  custom: Store,
+};
+
+function StoreTypeBadge({ storeType, t }: { storeType: string; t: (key: any) => string }) {
+  const Icon = storeTypeIcons[storeType] || Store;
+  const label = t(`settings.storeTypes.${storeType}` as any) || storeType;
+  return (
+    <div className="flex items-center gap-1 mb-0.5">
+      <Icon className="w-3 h-3 text-primary" />
+      <span className="text-[10px] font-medium text-primary leading-tight truncate">{label}</span>
+    </div>
+  );
 }
 
 export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarProps) {
@@ -199,8 +231,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     <Zap className="w-4.5 h-4.5 text-primary-foreground" />
                   </div>
                   <div className="min-w-0">
+                    <StoreTypeBadge storeType={storeType} t={t} />
                     <h1 className="font-bold text-sm text-foreground leading-tight tracking-tight">FlowPOS Pro</h1>
-                    <p className="text-[10px] text-muted-foreground leading-tight">{t('sidebar.systemDesc')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-0.5 flex-shrink-0">
