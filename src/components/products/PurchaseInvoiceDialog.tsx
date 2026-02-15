@@ -34,6 +34,7 @@ import { uploadProductImage } from '@/lib/image-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
+import { checkRealInternetAccess } from '@/hooks/use-network-status';
 
 interface PurchaseInvoiceDialogProps {
   open: boolean;
@@ -86,8 +87,9 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       return;
     }
 
-    // If offline, go to items step with a local-only invoice object
-    if (!navigator.onLine) {
+    // فحص الاتصال الفعلي بالإنترنت (وليس فقط الشبكة)
+    const hasInternet = await checkRealInternetAccess(15000);
+    if (!hasInternet) {
       const localInvoice: PurchaseInvoice = {
         id: `local_${Date.now()}`,
         user_id: 'offline',
@@ -150,7 +152,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     if (!currentInvoice) return;
 
     // If offline invoice, store items locally
-    if (isOfflineInvoice || !navigator.onLine) {
+    if (isOfflineInvoice) {
       const localItem: PurchaseInvoiceItem = {
         id: `local_item_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         invoice_id: currentInvoice.id,
@@ -201,7 +203,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     if (!currentInvoice) return;
 
     // If offline, just remove locally
-    if (isOfflineInvoice || !navigator.onLine || itemId.startsWith('local_item_')) {
+    if (isOfflineInvoice || itemId.startsWith('local_item_')) {
       setInvoiceItems(prev => {
         const filtered = prev.filter(i => i.id !== itemId);
         setCurrentInvoice(inv => {
@@ -234,7 +236,8 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     setLoading(true);
 
     // If offline or local invoice, queue the entire invoice for later sync
-    if (isOfflineInvoice || !navigator.onLine) {
+    const hasInternetForFinalize = isOfflineInvoice ? false : await checkRealInternetAccess(15000);
+    if (isOfflineInvoice || !hasInternetForFinalize) {
       addToQueue('purchase_invoice', {
         invoiceNumber: currentInvoice.invoice_number,
         supplierName: currentInvoice.supplier_name,

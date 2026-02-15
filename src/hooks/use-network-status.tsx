@@ -146,3 +146,48 @@ export async function getNetworkStatus(): Promise<boolean> {
   }
   return navigator.onLine;
 }
+
+/**
+ * فحص فعلي للاتصال بالإنترنت (وليس فقط الشبكة المحلية)
+ * يحاول الاتصال بخادم حقيقي للتأكد من وجود إنترنت فعلي
+ * @param timeoutMs مهلة الفحص بالمللي ثانية (افتراضي 10 ثواني)
+ */
+export async function checkRealInternetAccess(timeoutMs: number = 10000): Promise<boolean> {
+  // أولاً: تحقق سريع من حالة الشبكة
+  const networkOnline = await getNetworkStatus();
+  if (!networkOnline) return false;
+
+  // ثانياً: فحص فعلي عبر fetch مع timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch('https://www.gstatic.com/generate_204', {
+      method: 'HEAD',
+      mode: 'no-cors',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return true; // إذا وصلنا هنا، الإنترنت يعمل
+  } catch {
+    clearTimeout(timeoutId);
+    // محاولة ثانية مع سيرفر آخر
+    const controller2 = new AbortController();
+    const timeoutId2 = setTimeout(() => controller2.abort(), timeoutMs);
+    try {
+      await fetch('https://connectivitycheck.gstatic.com/generate_204', {
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller2.signal,
+      });
+      clearTimeout(timeoutId2);
+      return true;
+    } catch {
+      clearTimeout(timeoutId2);
+      console.log('[Network] Real internet check failed - no actual internet access');
+      return false;
+    }
+  }
+}
