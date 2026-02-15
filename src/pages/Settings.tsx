@@ -1597,7 +1597,7 @@ export default function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200",
+                "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 group relative",
                 (tab as any).danger
                   ? activeTab === tab.id
                     ? "border-destructive bg-destructive/10 shadow-lg scale-[1.02]"
@@ -1627,6 +1627,19 @@ export default function Settings() {
               )}>
                 {tab.label}
               </span>
+              {/* Tooltip on hover */}
+              {(t(`tooltip.settings.${tab.id}` as any) !== `tooltip.settings.${tab.id}`) && (
+                <div className={cn(
+                  "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
+                  "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
+                  "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
+                  "border border-border min-w-[160px] max-w-[220px] pointer-events-none"
+                )}>
+                  <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                    {t(`tooltip.settings.${tab.id}` as any)}
+                  </p>
+                </div>
+              )}
             </button>
           ))}
       </div>
