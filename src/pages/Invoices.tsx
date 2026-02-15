@@ -404,6 +404,7 @@ export default function Invoices() {
             <tbody>${itemsHtml}</tbody>
           </table>
           ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount)}</div>` : ''}
+          ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount)}</div>` : ''}
           <div class="total">
             الإجمالي: ${formatCurrency(invoice.totalInCurrency)}
           </div>
@@ -455,6 +456,8 @@ export default function Invoices() {
       paymentType: invoice.paymentType,
       serviceDescription: invoice.serviceDescription,
       type: invoice.type,
+      taxAmount: invoice.taxAmount,
+      taxRate: invoice.taxRate,
     };
 
     const success = await shareInvoice(shareData);
