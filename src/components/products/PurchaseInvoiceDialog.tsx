@@ -32,6 +32,8 @@ import {
 import { PurchaseInvoiceItemForm } from './PurchaseInvoiceItemForm';
 import { uploadProductImage } from '@/lib/image-upload';
 import { supabase } from '@/integrations/supabase/client';
+import { addToQueue } from '@/lib/sync-queue';
+import { emitEvent, EVENTS } from '@/lib/events';
 
 interface PurchaseInvoiceDialogProps {
   open: boolean;
@@ -84,6 +86,33 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       return;
     }
 
+    // If offline, go to items step with a local-only invoice object
+    if (!navigator.onLine) {
+      const localInvoice: PurchaseInvoice = {
+        id: `local_${Date.now()}`,
+        user_id: 'offline',
+        invoice_number: invoiceNumber,
+        supplier_name: supplierName,
+        supplier_company: supplierCompany,
+        invoice_date: invoiceDate,
+        expected_items_count: 0,
+        expected_total_quantity: 0,
+        expected_grand_total: 0,
+        actual_items_count: 0,
+        actual_total_quantity: 0,
+        actual_grand_total: 0,
+        status: 'draft',
+        notes: notes || undefined,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setCurrentInvoice(localInvoice);
+      setStep('items');
+      setShowItemForm(true);
+      toast.success(t('purchaseInvoice.invoiceCreated') + ' (offline)', { icon: '📴' });
+      return;
+    }
+
     setLoading(true);
     const invoice = await addPurchaseInvoiceCloud({
       invoice_number: invoiceNumber,
@@ -107,6 +136,8 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     }
   };
 
+  const isOfflineInvoice = currentInvoice?.id?.startsWith('local_');
+
   const handleAddItem = async (item: {
     product_name: string;
     barcode?: string;
@@ -118,6 +149,37 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   }) => {
     if (!currentInvoice) return;
 
+    // If offline invoice, store items locally
+    if (isOfflineInvoice || !navigator.onLine) {
+      const localItem: PurchaseInvoiceItem = {
+        id: `local_item_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        invoice_id: currentInvoice.id,
+        product_name: item.product_name,
+        barcode: item.barcode,
+        category: item.category,
+        quantity: item.quantity,
+        cost_price: item.cost_price,
+        sale_price: item.sale_price,
+        total_cost: item.quantity * item.cost_price,
+        created_at: new Date().toISOString(),
+        product_id: item.product_id,
+      };
+      setInvoiceItems(prev => [...prev, localItem]);
+      // Update local invoice totals
+      setCurrentInvoice(prev => {
+        if (!prev) return prev;
+        const allItems = [...invoiceItems, localItem];
+        return {
+          ...prev,
+          actual_items_count: allItems.length,
+          actual_total_quantity: allItems.reduce((s, i) => s + i.quantity, 0),
+          actual_grand_total: allItems.reduce((s, i) => s + i.total_cost, 0),
+        };
+      });
+      toast.success(t('purchaseInvoice.itemAdded'));
+      return;
+    }
+
     setLoading(true);
     const newItem = await addPurchaseInvoiceItemCloud({
       invoice_id: currentInvoice.id,
@@ -127,7 +189,6 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
 
     if (newItem) {
       setInvoiceItems(prev => [...prev, newItem]);
-      // Refresh invoice data
       const { invoice } = await loadPurchaseInvoiceWithItems(currentInvoice.id);
       if (invoice) setCurrentInvoice(invoice);
       toast.success(t('purchaseInvoice.itemAdded'));
@@ -138,6 +199,25 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
 
   const handleDeleteItem = async (itemId: string) => {
     if (!currentInvoice) return;
+
+    // If offline, just remove locally
+    if (isOfflineInvoice || !navigator.onLine || itemId.startsWith('local_item_')) {
+      setInvoiceItems(prev => {
+        const filtered = prev.filter(i => i.id !== itemId);
+        setCurrentInvoice(inv => {
+          if (!inv) return inv;
+          return {
+            ...inv,
+            actual_items_count: filtered.length,
+            actual_total_quantity: filtered.reduce((s, i) => s + i.quantity, 0),
+            actual_grand_total: filtered.reduce((s, i) => s + i.total_cost, 0),
+          };
+        });
+        return filtered;
+      });
+      toast.success(t('common.success'));
+      return;
+    }
 
     const success = await deletePurchaseInvoiceItemCloud(itemId, currentInvoice.id);
     if (success) {
@@ -152,23 +232,79 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     if (!currentInvoice) return;
 
     setLoading(true);
-    // Save image URL if present
-    if (invoiceImageUrl) {
-      await supabase
-        .from('purchase_invoices')
-        .update({ image_url: invoiceImageUrl })
-        .eq('id', currentInvoice.id);
-    }
 
-    const success = await finalizePurchaseInvoiceCloud(currentInvoice.id);
-    setLoading(false);
-
-    if (success) {
-      toast.success(t('purchaseInvoice.finalized'));
+    // If offline or local invoice, queue the entire invoice for later sync
+    if (isOfflineInvoice || !navigator.onLine) {
+      addToQueue('purchase_invoice', {
+        invoiceNumber: currentInvoice.invoice_number,
+        supplierName: currentInvoice.supplier_name,
+        supplierCompany: currentInvoice.supplier_company || undefined,
+        invoiceDate: currentInvoice.invoice_date,
+        notes: currentInvoice.notes || undefined,
+        imageUrl: invoiceImageUrl || undefined,
+        items: invoiceItems.map(item => ({
+          product_name: item.product_name,
+          barcode: item.barcode,
+          category: item.category,
+          quantity: item.quantity,
+          cost_price: item.cost_price,
+          sale_price: item.sale_price,
+          product_id: item.product_id,
+        })),
+      });
+      setLoading(false);
+      toast.success(t('purchaseInvoice.finalized') + ' (offline)', { icon: '📴' });
+      emitEvent(EVENTS.PURCHASES_UPDATED);
       onSuccess?.();
       onOpenChange(false);
-    } else {
-      toast.error(t('common.error'));
+      return;
+    }
+
+    try {
+      // Save image URL if present
+      if (invoiceImageUrl) {
+        await supabase
+          .from('purchase_invoices')
+          .update({ image_url: invoiceImageUrl })
+          .eq('id', currentInvoice.id);
+      }
+
+      const success = await finalizePurchaseInvoiceCloud(currentInvoice.id);
+      setLoading(false);
+
+      if (success) {
+        toast.success(t('purchaseInvoice.finalized'));
+        emitEvent(EVENTS.PURCHASES_UPDATED);
+        onSuccess?.();
+        onOpenChange(false);
+      } else {
+        toast.error(t('common.error'));
+      }
+    } catch (error) {
+      console.error('Finalize error, queueing:', error);
+      // Fallback: queue on network error
+      addToQueue('purchase_invoice', {
+        invoiceNumber: currentInvoice.invoice_number,
+        supplierName: currentInvoice.supplier_name,
+        supplierCompany: currentInvoice.supplier_company || undefined,
+        invoiceDate: currentInvoice.invoice_date,
+        notes: currentInvoice.notes || undefined,
+        imageUrl: invoiceImageUrl || undefined,
+        items: invoiceItems.map(item => ({
+          product_name: item.product_name,
+          barcode: item.barcode,
+          category: item.category,
+          quantity: item.quantity,
+          cost_price: item.cost_price,
+          sale_price: item.sale_price,
+          product_id: item.product_id,
+        })),
+      });
+      setLoading(false);
+      toast.success(t('purchaseInvoice.finalized') + ' (queued)', { icon: '📴' });
+      emitEvent(EVENTS.PURCHASES_UPDATED);
+      onSuccess?.();
+      onOpenChange(false);
     }
   };
 

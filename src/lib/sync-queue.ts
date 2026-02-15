@@ -24,7 +24,9 @@ export type OperationType =
   | 'stock_update' 
   | 'customer_update'
   | 'invoice_create'
-  | 'profit_record';
+  | 'profit_record'
+  | 'quick_purchase'    // Quick single-item purchase (bakery mode)
+  | 'purchase_invoice'; // Full purchase invoice with items
 
 export interface QueuedOperation {
   id: string;
