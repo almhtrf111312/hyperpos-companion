@@ -42,6 +42,9 @@ interface POSProduct {
   costPrice?: number;
   bulkCostPrice?: number;
   wholesalePrice?: number;
+  // Pharmacy fields
+  expiryDate?: string;
+  batchNumber?: string;
 }
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -246,6 +249,9 @@ export default function POS() {
         costPrice: p.costPrice,
         bulkCostPrice: p.bulkCostPrice || 0,
         wholesalePrice: p.wholesalePrice,
+        // Pharmacy fields
+        expiryDate: p.expiryDate,
+        batchNumber: p.batchNumber,
       }));
 
       // ✅ تحديد نوع المستخدم من الـ profile - الافتراضي هو كاشير (يرى كل شيء)
@@ -336,6 +342,20 @@ export default function POS() {
       showToast.info(t('pos.lowStockWarning').replace('{name}', product.name).replace('{qty}', String(product.quantity)));
     }
 
+    // Pharmacy: warn about expiry date
+    if (product.expiryDate) {
+      const expiry = new Date(product.expiryDate);
+      const now = new Date();
+      const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilExpiry <= 0) {
+        showToast.error(`⚠️ ${product.name} - منتهي الصلاحية!`);
+      } else if (daysUntilExpiry <= 30) {
+        showToast.warning(`⚠️ ${product.name} - ينتهي خلال ${daysUntilExpiry} يوم`);
+      } else if (daysUntilExpiry <= 90) {
+        showToast.info(`${product.name} - الصلاحية تنتهي خلال ${daysUntilExpiry} يوم`);
+      }
+    }
+
     const priceForUnit = unit === 'bulk' && product.bulkSalePrice ? product.bulkSalePrice : product.price;
 
     setCart(prev => {
@@ -361,6 +381,9 @@ export default function POS() {
         costPrice: product.costPrice,
         bulkCostPrice: product.bulkCostPrice,
         wholesalePrice: product.wholesalePrice,
+        // Pharmacy fields
+        expiryDate: product.expiryDate,
+        batchNumber: product.batchNumber,
       }];
     });
 

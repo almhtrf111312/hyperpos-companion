@@ -154,6 +154,10 @@ export default function Reports() {
 
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
 
+  // Determine which reports are relevant for the current store type
+  const isPharmacy = storeType === 'pharmacy';
+  const isDistributorStore = storeType === 'phones' || storeType === 'repair';
+  
   const allReports = [
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
@@ -171,8 +175,8 @@ export default function Reports() {
     // maintenance only for phones/repair store types
     ...(visibleSections.maintenance ? [{ id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
     { id: 'daily-closing', label: 'الإغلاق اليومي', icon: Calendar },
-    // distributor/custody reports only for stores with inventory
-    ...(!noInventory ? [
+    // distributor/custody reports only for distributor-based stores (phones, repair) - not pharmacy, clothing, etc.
+    ...(isDistributorStore ? [
       { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
       { id: 'custody-value', label: t('reports.custodyValue'), icon: Wallet },
     ] : []),

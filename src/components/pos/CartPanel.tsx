@@ -79,6 +79,9 @@ interface CartItem {
   costPrice?: number;
   bulkCostPrice?: number;
   wholesalePrice?: number;
+  // Pharmacy fields
+  expiryDate?: string;
+  batchNumber?: string;
 }
 
 interface Currency {
@@ -977,9 +980,16 @@ export function CartPanel({
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
 
+    const storeType = getCurrentStoreType();
+    const isPharmacy = storeType === 'pharmacy';
+
     const itemsHtml = cart.map(item => `
       <tr>
-        <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee;">
+          ${item.name}
+          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">الصلاحية: ${item.expiryDate}</small>` : ''}
+          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">الدفعة: ${item.batchNumber}</small>` : ''}
+        </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(item.price * item.quantity * selectedCurrency.rate)}</td>
       </tr>
