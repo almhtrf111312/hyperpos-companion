@@ -983,6 +983,8 @@ export default function Products() {
                         {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
                         {!noInventory && <span>{product.quantity} {product.smallUnit || t('products.unitPiece')}</span>}
                         {noInventory && product.wholesalePrice > 0 && <span>{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
+                        {fieldsConfig.sizeColor && product.size && <span className="text-primary">{product.size}</span>}
+                        {fieldsConfig.sizeColor && product.color && <span>{product.color}</span>}
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
@@ -1019,7 +1021,7 @@ export default function Products() {
                           {status.label}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs mt-1">
+                      <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
                         {!noInventory && <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>}
                         <span className="font-semibold text-primary">${formatNumber(product.salePrice, 2)}</span>
                         {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
@@ -1034,6 +1036,8 @@ export default function Products() {
                           size="sm"
                         />
                         )}
+                        {fieldsConfig.sizeColor && product.size && <span className="text-primary text-[10px] bg-primary/10 px-1.5 py-0.5 rounded">{product.size}</span>}
+                        {fieldsConfig.sizeColor && product.color && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{product.color}</span>}
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
@@ -1100,6 +1104,14 @@ export default function Products() {
                       <p className="font-semibold text-sm text-success">${formatNumber(profit, 2)}</p>
                     </div>
                   </div>
+                  )}
+
+                  {/* Size/Color badges for clothing mode */}
+                  {fieldsConfig.sizeColor && (product.size || product.color) && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {product.size && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">{product.size}</span>}
+                      {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-md">{product.color}</span>}
+                    </div>
                   )}
 
                   <div className="flex items-center justify-between pt-3 border-t border-border">
@@ -1600,20 +1612,69 @@ export default function Products() {
                 )}
                 {fieldsConfig.sizeColor && (
                   <>
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', '44', '46'].map(s => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
+                              const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
+                              setFormData({ ...formData, size: updated.join(', ') });
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-all",
+                              formData.size?.split(',').map(x => x.trim()).includes(s)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                       <Input
                         placeholder={t('products.exampleSize')}
                         value={formData.size}
                         onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                        className="text-xs"
                       />
                     </div>
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {[
+                          { name: 'أسود', hex: '#000' }, { name: 'أبيض', hex: '#fff' }, { name: 'أحمر', hex: '#ef4444' },
+                          { name: 'أزرق', hex: '#3b82f6' }, { name: 'أخضر', hex: '#22c55e' }, { name: 'رمادي', hex: '#6b7280' },
+                          { name: 'بني', hex: '#92400e' }, { name: 'بيج', hex: '#d4a76a' }, { name: 'كحلي', hex: '#1e3a5f' },
+                        ].map(c => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
+                              const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
+                              setFormData({ ...formData, color: updated.join(', ') });
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-all",
+                              formData.color?.split(',').map(x => x.trim()).includes(c.name)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            <span className="w-3 h-3 rounded-full border border-border/50 flex-shrink-0" style={{ backgroundColor: c.hex }} />
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
                       <Input
                         placeholder={t('products.exampleColor')}
                         value={formData.color}
                         onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                        className="text-xs"
                       />
                     </div>
                   </>
@@ -2046,20 +2107,69 @@ export default function Products() {
                 )}
                 {fieldsConfig.sizeColor && (
                   <>
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', '44', '46'].map(s => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
+                              const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
+                              setFormData({ ...formData, size: updated.join(', ') });
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-all",
+                              formData.size?.split(',').map(x => x.trim()).includes(s)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                       <Input
                         placeholder={t('products.exampleSize')}
                         value={formData.size}
                         onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                        className="text-xs"
                       />
                     </div>
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {[
+                          { name: 'أسود', hex: '#000' }, { name: 'أبيض', hex: '#fff' }, { name: 'أحمر', hex: '#ef4444' },
+                          { name: 'أزرق', hex: '#3b82f6' }, { name: 'أخضر', hex: '#22c55e' }, { name: 'رمادي', hex: '#6b7280' },
+                          { name: 'بني', hex: '#92400e' }, { name: 'بيج', hex: '#d4a76a' }, { name: 'كحلي', hex: '#1e3a5f' },
+                        ].map(c => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
+                              const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
+                              setFormData({ ...formData, color: updated.join(', ') });
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-all",
+                              formData.color?.split(',').map(x => x.trim()).includes(c.name)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            <span className="w-3 h-3 rounded-full border border-border/50 flex-shrink-0" style={{ backgroundColor: c.hex }} />
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
                       <Input
                         placeholder={t('products.exampleColor')}
                         value={formData.color}
                         onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                        className="text-xs"
                       />
                     </div>
                   </>
