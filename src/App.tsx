@@ -48,6 +48,7 @@ import Appearance from "./pages/Appearance";
 import NotFound from "./pages/NotFound";
 import Help from "./pages/Help";
 import BossPanel from "./pages/BossPanel";
+import LibraryMembers from "./pages/LibraryMembers";
 import { WarehouseProvider } from "./hooks/use-warehouse";
 
 const queryClient = new QueryClient();
@@ -190,6 +191,7 @@ const AppContent = () => {
         <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
         <Route path="/appearance" element={<ProtectedRoute><MainLayout><Appearance /></MainLayout></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+        <Route path="/library" element={<ProtectedRoute><MainLayout><LibraryMembers /></MainLayout></ProtectedRoute>} />
 
         {/* Protected routes - Admin/Boss only */}
         <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />

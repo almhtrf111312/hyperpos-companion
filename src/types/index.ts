@@ -190,7 +190,7 @@ export interface User {
 }
 
 // Store settings
-export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restaurant' | 'repair' | 'bookstore' | 'custom';
+export type StoreType = 'phones' | 'grocery' | 'pharmacy' | 'clothing' | 'restaurant' | 'repair' | 'bookstore' | 'bakery' | 'general' | 'custom';
 
 export interface StoreSettings {
   name: string;
