@@ -21,7 +21,8 @@ import {
   FileText,
   Receipt,
   Wallet,
-  HelpCircle
+  HelpCircle,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -42,6 +43,7 @@ interface NavItem {
   adminOnly?: boolean;
   requiresMaintenance?: boolean;
   hideInNoInventory?: boolean;
+  requiresBakeryMode?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -49,6 +51,7 @@ const navItems: NavItem[] = [
   { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard', adminOnly: true },
   { icon: FileText, translationKey: 'nav.invoices', path: '/invoices' },
   { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true, dynamicKey: 'products' },
+  { icon: Truck, translationKey: 'nav.purchases' as TranslationKey, path: '/purchases', adminOnly: true, requiresBakeryMode: true },
   { icon: Users, translationKey: 'nav.customers', path: '/customers' },
   { icon: CreditCard, translationKey: 'nav.debts', path: '/debts' },
   { icon: Wrench, translationKey: 'nav.services', path: '/services', requiresMaintenance: true },
@@ -129,6 +132,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     }
     if (item.requiresMaintenance && !visibleSections.maintenance) return false;
     if (item.hideInNoInventory && noInventory) return false;
+    if (item.requiresBakeryMode && !noInventory) return false;
     return true;
   });
 

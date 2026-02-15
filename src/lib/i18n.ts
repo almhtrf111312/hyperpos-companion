@@ -1521,6 +1521,17 @@ export const translations = {
     // Help
     'nav.help': 'التعليمات',
 
+    // Purchases
+    'nav.purchases': 'المشتريات',
+    'purchases.title': 'إدارة المشتريات',
+    'purchases.subtitle': 'تسجيل المواد الخام ومستلزمات الإنتاج',
+    'purchases.addNew': 'إضافة فاتورة شراء',
+    'purchases.totalInvoices': 'إجمالي الفواتير',
+    'purchases.totalAmount': 'إجمالي المشتريات',
+    'purchases.noInvoices': 'لا توجد فواتير شراء',
+    'purchases.noInvoicesDesc': 'ابدأ بتسجيل مشترياتك من المواد الخام',
+    'purchases.items': 'صنف',
+
     // Profile Management
     'profile.title': 'الملف الشخصي',
     'profile.description': 'إدارة معلومات حسابك',
@@ -3540,6 +3551,15 @@ export const translations = {
     'nav.reports': 'Raporlar',
     'nav.settings': 'Ayarlar',
     'nav.help': 'Yardım',
+    'nav.purchases': 'Satın Almalar',
+    'purchases.title': 'Satın Alma Yönetimi',
+    'purchases.subtitle': 'Hammadde ve üretim malzemeleri kaydı',
+    'purchases.addNew': 'Satın Alma Faturası Ekle',
+    'purchases.totalInvoices': 'Toplam Fatura',
+    'purchases.totalAmount': 'Toplam Tutar',
+    'purchases.noInvoices': 'Satın alma faturası yok',
+    'purchases.noInvoicesDesc': 'Hammadde alımlarınızı kaydetmeye başlayın',
+    'purchases.items': 'kalem',
 
     // Sidebar
     'sidebar.systemDesc': 'Entegre Yönetim Sistemi',
@@ -5464,6 +5484,15 @@ export const translations = {
     'nav.reports': 'گزارش‌ها',
     'nav.settings': 'تنظیمات',
     'nav.help': 'راهنما',
+    'nav.purchases': 'خریدها',
+    'purchases.title': 'مدیریت خرید',
+    'purchases.subtitle': 'ثبت مواد اولیه و ملزومات تولید',
+    'purchases.addNew': 'افزودن فاکتور خرید',
+    'purchases.totalInvoices': 'کل فاکتورها',
+    'purchases.totalAmount': 'مبلغ کل',
+    'purchases.noInvoices': 'فاکتور خریدی وجود ندارد',
+    'purchases.noInvoicesDesc': 'ثبت خریدهای مواد اولیه را شروع کنید',
+    'purchases.items': 'قلم',
 
     // Sidebar
     'sidebar.systemDesc': 'سیستم مدیریت یکپارچه',
@@ -6375,6 +6404,15 @@ export const translations = {
     'nav.reports': 'ڕاپۆرتەکان',
     'nav.settings': 'ڕێکخستنەکان',
     'nav.help': 'یارمەتی',
+    'nav.purchases': 'کڕینەکان',
+    'purchases.title': 'بەڕێوەبردنی کڕین',
+    'purchases.subtitle': 'تۆمارکردنی مادەی خاو و پێداویستییەکانی بەرهەمهێنان',
+    'purchases.addNew': 'زیادکردنی پسوولەی کڕین',
+    'purchases.totalInvoices': 'کۆی پسوولەکان',
+    'purchases.totalAmount': 'کۆی بڕ',
+    'purchases.noInvoices': 'هیچ پسوولەی کڕینێک نییە',
+    'purchases.noInvoicesDesc': 'دەستبکە بە تۆمارکردنی کڕینەکانی مادەی خاو',
+    'purchases.items': 'بڕگە',
 
     // Sidebar
     'sidebar.systemDesc': 'سیستەمی بەڕێوەبردنی یەکگرتوو',
@@ -8117,6 +8155,15 @@ export const translations = {
 
     // Help
     'nav.help': 'Help',
+    'nav.purchases': 'Purchases',
+    'purchases.title': 'Purchases Management',
+    'purchases.subtitle': 'Record raw materials and production supplies',
+    'purchases.addNew': 'Add Purchase Invoice',
+    'purchases.totalInvoices': 'Total Invoices',
+    'purchases.totalAmount': 'Total Amount',
+    'purchases.noInvoices': 'No purchase invoices',
+    'purchases.noInvoicesDesc': 'Start recording your raw material purchases',
+    'purchases.items': 'items',
   },
 };
 

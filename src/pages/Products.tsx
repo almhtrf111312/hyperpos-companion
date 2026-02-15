@@ -482,7 +482,9 @@ export default function Products() {
   };
 
   const handleAddProduct = async () => {
-    if (!formData.name || !formData.barcode) {
+    // In bakery mode, barcode is auto-generated; otherwise required
+    const effectiveBarcode = noInventory ? (formData.barcode || `BK${Date.now()}`) : formData.barcode;
+    if (!formData.name || (!noInventory && !effectiveBarcode)) {
       toast.error(t('products.fillRequired'));
       return;
     }
@@ -509,8 +511,10 @@ export default function Products() {
 
     const productData = {
       ...formData,
+      barcode: effectiveBarcode,
+      costPrice: noInventory ? 0 : formData.costPrice,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
-      bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
+      bulkCostPrice: noInventory ? 0 : calculatedBulkCostPrice,
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
@@ -713,10 +717,12 @@ export default function Products() {
           {/* Mobile: Grid layout for buttons */}
           <div className="sm:hidden flex flex-col gap-2">
             <div className="flex gap-2">
+              {!noInventory && (
               <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
                 <FileText className="w-4 h-4 ml-1" />
                 {t('purchaseInvoice.addPurchaseInvoice')}
               </Button>
+              )}
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
                 setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
@@ -733,10 +739,12 @@ export default function Products() {
           </div>
           {/* Desktop: Original layout */}
           <div className="hidden sm:flex gap-2">
+            {!noInventory && (
             <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
               <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {t('purchaseInvoice.addPurchaseInvoice')}
             </Button>
+            )}
             <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
               <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {t('products.categories')}
@@ -972,8 +980,9 @@ export default function Products() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                         <span>${formatNumber(product.salePrice, 2)}</span>
-                        <span className="text-success">${formatNumber(profit, 2)}</span>
-                        <span>{product.quantity} {product.smallUnit || t('products.unitPiece')}</span>
+                        {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
+                        {!noInventory && <span>{product.quantity} {product.smallUnit || t('products.unitPiece')}</span>}
+                        {noInventory && product.wholesalePrice > 0 && <span>{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
@@ -1011,9 +1020,11 @@ export default function Products() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs mt-1">
-                        <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>
+                        {!noInventory && <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>}
                         <span className="font-semibold text-primary">${formatNumber(product.salePrice, 2)}</span>
-                        <span className="text-success">${formatNumber(profit, 2)}</span>
+                        {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
+                        {noInventory && product.wholesalePrice > 0 && <span className="text-muted-foreground">{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
+                        {!noInventory && (
                         <DualUnitDisplay
                           totalPieces={product.quantity}
                           conversionFactor={product.conversionFactor || 1}
@@ -1022,6 +1033,7 @@ export default function Products() {
                           showTotal={false}
                           size="sm"
                         />
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
@@ -1053,13 +1065,27 @@ export default function Products() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground text-sm line-clamp-2 leading-tight" title={product.name}>{product.name}</h3>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5" title={product.barcode}>{product.barcode || product.category}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5" title={product.barcode}>{noInventory ? product.category : (product.barcode || product.category)}</p>
                     </div>
+                    {!noInventory && (
                     <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap", status.color)}>
                       {status.label}
                     </span>
+                    )}
                   </div>
 
+                  {noInventory ? (
+                  <div className="grid grid-cols-2 gap-2 text-center mb-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">البيع</p>
+                      <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{t('products.wholesalePrice')}</p>
+                      <p className="font-semibold text-sm">${formatNumber(product.wholesalePrice || 0, 2)}</p>
+                    </div>
+                  </div>
+                  ) : (
                   <div className="grid grid-cols-3 gap-2 text-center mb-3">
                     <div>
                       <p className="text-xs text-muted-foreground">الشراء</p>
@@ -1074,9 +1100,12 @@ export default function Products() {
                       <p className="font-semibold text-sm text-success">${formatNumber(profit, 2)}</p>
                     </div>
                   </div>
+                  )}
 
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="flex items-center gap-3">
+                      {!noInventory && (
+                      <>
                       <div className="text-sm">
                         <DualUnitDisplay
                           totalPieces={product.quantity}
@@ -1100,6 +1129,11 @@ export default function Products() {
                         }
                         return null;
                       })()}
+                      </>
+                      )}
+                      {noInventory && (
+                        <span className="text-xs text-muted-foreground">{product.category}</span>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
@@ -1125,6 +1159,11 @@ export default function Products() {
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.name')}</th>
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.category')}</th>
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
+                  {noInventory && (
+                    <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.wholesalePrice')}</th>
+                  )}
+                  {!noInventory && (
+                  <>
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('invoices.profit')}</th>
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-1">
@@ -1138,6 +1177,8 @@ export default function Products() {
                       العهدة
                     </div>
                   </th>
+                  </>
+                  )}
                   <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">{t('common.actions')}</th>
                 </tr>
               </thead>
@@ -1165,10 +1206,12 @@ export default function Products() {
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="font-medium text-foreground text-sm truncate">{product.name}</span>
+                            {!noInventory && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Barcode className="w-3 h-3 flex-shrink-0" />
                               <span className="font-mono truncate">{product.barcode}</span>
                             </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -1182,6 +1225,9 @@ export default function Products() {
 
                       {/* الأسعار (شراء + بيع) فوق بعض */}
                       <td className="py-3 px-3">
+                        {noInventory ? (
+                          <span className="font-semibold text-foreground text-sm">${formatNumber(product.salePrice, 2)}</span>
+                        ) : (
                         <div className="flex flex-col text-sm">
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
@@ -1192,8 +1238,17 @@ export default function Products() {
                             <span className="font-semibold text-foreground">${formatNumber(product.salePrice, 2)}</span>
                           </div>
                         </div>
+                        )}
                       </td>
 
+                      {noInventory && (
+                      <td className="py-3 px-3">
+                        <span className="text-sm text-muted-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</span>
+                      </td>
+                      )}
+
+                      {!noInventory && (
+                      <>
                       {/* الربح */}
                       <td className="py-3 px-3">
                         <div className="flex flex-col">
@@ -1263,6 +1318,8 @@ export default function Products() {
                           );
                         })()}
                       </td>
+                      </>
+                      )}
 
                       {/* الإجراءات (فوق بعض) */}
                       <td className="py-3 px-3">
@@ -1311,6 +1368,8 @@ export default function Products() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
+                {!noInventory && (
+                <>
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
                   <div className="flex gap-2">
@@ -1397,6 +1456,8 @@ export default function Products() {
                   />
                   <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
                 </div>
+                </>
+                )}
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
                   <select
@@ -1422,6 +1483,7 @@ export default function Products() {
                   />
                 </div>
                 )}
+                {!noInventory && (
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
                   <Input
@@ -1433,6 +1495,7 @@ export default function Products() {
                     onChange={(e) => handleNumericChange('costPrice', e.target.value)}
                   />
                 </div>
+                )}
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
                   <Input
@@ -1446,6 +1509,7 @@ export default function Products() {
                 </div>
 
                 {/* Unit Settings Collapsible */}
+                {!noInventory && (
                 <div className="sm:col-span-2">
                   <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
                     <CollapsibleTrigger asChild>
@@ -1478,6 +1542,7 @@ export default function Products() {
                     </CollapsibleContent>
                   </Collapsible>
                 </div>
+                )}
 
                 {/* Dynamic Fields based on store type (Fix #16) */}
                 {fieldsConfig.expiryDate && (

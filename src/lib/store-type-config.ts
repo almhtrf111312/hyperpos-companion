@@ -558,7 +558,7 @@ export const getVisibleSections = (storeType: string): VisibleSections => {
     case 'restaurant':
       return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
     case 'bakery':
-      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
     case 'bookstore':
       return { maintenance: false, warranty: false, expiry: false, serialNumber: true, sizeColor: false };
     default:
@@ -580,7 +580,7 @@ export const getDefaultCategories = (storeType: string): string[] => {
     case 'restaurant':
       return ['وجبات رئيسية', 'مقبلات', 'مشروبات', 'حلويات', 'وجبات سريعة'];
     case 'bakery':
-      return ['خبز', 'معجنات', 'كيك وحلويات', 'كعك', 'نواشف'];
+      return ['جاتو', 'بانكيك', 'بيتي فور', 'شعبيات', 'كعك', 'خبز', 'معجنات'];
     case 'repair':
       return ['قطع غيار', 'زيوت', 'فلاتر', 'إطارات', 'أدوات صيانة'];
     case 'bookstore':
