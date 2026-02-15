@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/hooks/use-language';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -46,12 +46,14 @@ export function OnboardingTour() {
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Filter steps based on device
-  const activeSteps = tourSteps.filter(step => {
+  const activeSteps = useMemo(() => tourSteps.filter(step => {
     if (step.mobileOnly && !isMobile) return false;
     if (step.desktopOnly && isMobile) return false;
     return true;
-  });
+  }), [isMobile]);
+
+  const activeStepsRef = useRef(activeSteps);
+  activeStepsRef.current = activeSteps;
 
   useEffect(() => {
     if (!user || !role) return;
@@ -101,7 +103,8 @@ export function OnboardingTour() {
   }, []);
 
   const updatePosition = useCallback(() => {
-    const step = activeSteps[currentStep];
+    const steps = activeStepsRef.current;
+    const step = steps[currentStep];
     if (!step) return;
 
     const el = document.querySelector(step.selector);
@@ -114,7 +117,7 @@ export function OnboardingTour() {
     const rect = el.getBoundingClientRect();
     setTargetRect(rect);
     setCardPosition(calculatePosition(rect));
-  }, [currentStep, activeSteps, calculatePosition]);
+  }, [currentStep, calculatePosition]);
 
   // On step change: hide briefly, reposition, then show
   useEffect(() => {
@@ -122,7 +125,8 @@ export function OnboardingTour() {
     
     setIsVisible(false);
     
-    const step = activeSteps[currentStep];
+    const steps = activeStepsRef.current;
+    const step = steps[currentStep];
     if (!step) return;
     
     const el = document.querySelector(step.selector);
@@ -130,10 +134,8 @@ export function OnboardingTour() {
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Wait for scroll + layout, then position and reveal
     const timer = setTimeout(() => {
       updatePosition();
-      // Refine with actual card height after render
       requestAnimationFrame(() => {
         updatePosition();
         setIsVisible(true);
@@ -141,7 +143,8 @@ export function OnboardingTour() {
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [currentStep, isActive, activeSteps, updatePosition]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, isActive]);
 
   // Listen for resize/scroll
   useEffect(() => {
