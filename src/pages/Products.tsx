@@ -86,13 +86,14 @@ import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
-import { isNoInventoryMode } from '@/lib/store-type-config';
+import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { t, tDynamic } = useLanguage();
   const noInventory = isNoInventoryMode();
+  const isRestaurant = getCurrentStoreType() === 'restaurant';
 
   const statusConfig = {
     in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
@@ -482,9 +483,10 @@ export default function Products() {
   };
 
   const handleAddProduct = async () => {
-    // In bakery mode, barcode is auto-generated; otherwise required
-    const effectiveBarcode = noInventory ? (formData.barcode || `BK${Date.now()}`) : formData.barcode;
-    if (!formData.name || (!noInventory && !effectiveBarcode)) {
+    // In bakery/restaurant mode, barcode is auto-generated; otherwise required
+    const shouldAutoBarcode = noInventory || isRestaurant;
+    const effectiveBarcode = shouldAutoBarcode ? (formData.barcode || `AUTO${Date.now()}`) : formData.barcode;
+    if (!formData.name || (!shouldAutoBarcode && !effectiveBarcode)) {
       toast.error(t('products.fillRequired'));
       return;
     }
@@ -851,17 +853,19 @@ export default function Products() {
                 className="pr-9 md:pr-10 bg-muted border-0"
               />
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 flex-shrink-0"
-              onClick={() => {
-                setScanTarget('search');
-                setScannerOpen(true);
-              }}
-            >
-              <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
-            </Button>
+            {!isRestaurant && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 flex-shrink-0"
+                onClick={() => {
+                  setScanTarget('search');
+                  setScannerOpen(true);
+                }}
+              >
+                <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
+              </Button>
+            )}
             {/* View Mode Buttons */}
             <div className="flex bg-muted rounded-lg p-0.5 lg:hidden">
               <Button
@@ -1380,7 +1384,7 @@ export default function Products() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
-                {!noInventory && (
+                {!noInventory && !isRestaurant && (
                 <>
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
@@ -1889,6 +1893,8 @@ export default function Products() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
+                {!isRestaurant && (
+                <>
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
                   <div className="flex gap-2">
@@ -1963,6 +1969,8 @@ export default function Products() {
                       </Button>
                     </div>
                   </div>
+                )}
+                </>
                 )}
                 {/* Variant Label */}
                 <div className="sm:col-span-2">

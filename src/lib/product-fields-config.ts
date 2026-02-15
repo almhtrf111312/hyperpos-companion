@@ -63,7 +63,7 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
       };
     case 'restaurant':
       return {
-        expiryDate: true, batchNumber: false, serialNumber: false, warranty: false,
+        expiryDate: false, batchNumber: false, serialNumber: false, warranty: false,
         wholesalePrice: false, sizeColor: false, minStockLevel: true,
         weight: false, fabricType: false, tableNumber: true, orderNotes: true, author: false, publisher: false,
       };
