@@ -339,28 +339,23 @@ export default function POS() {
   const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
     if (product.quantity === 0) {
       showToast.warning(t('pos.outOfStock').replace('{name}', product.name));
-    } else if (product.quantity <= 5) {
-      showToast.info(t('pos.lowStockWarning').replace('{name}', product.name).replace('{qty}', String(product.quantity)));
+      return; // Don't add out-of-stock items
     }
 
-    // Pharmacy: warn about expiry date
+    // Pharmacy: warn about expired products (block add)
     if (product.expiryDate) {
       const expiry = new Date(product.expiryDate);
       const now = new Date();
       const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       if (daysUntilExpiry <= 0) {
         showToast.error(`⚠️ ${product.name} - منتهي الصلاحية!`);
-      } else if (daysUntilExpiry <= 30) {
-        showToast.warning(`⚠️ ${product.name} - ينتهي خلال ${daysUntilExpiry} يوم`);
-      } else if (daysUntilExpiry <= 90) {
-        showToast.info(`${product.name} - الصلاحية تنتهي خلال ${daysUntilExpiry} يوم`);
+        return;
       }
     }
 
     const priceForUnit = unit === 'bulk' && product.bulkSalePrice ? product.bulkSalePrice : product.price;
 
     setCart(prev => {
-      // Check for existing item with same unit
       const existing = prev.find(item => item.id === product.id && item.unit === unit);
       if (existing) {
         return prev.map(item =>
@@ -382,7 +377,6 @@ export default function POS() {
         costPrice: product.costPrice,
         bulkCostPrice: product.bulkCostPrice,
         wholesalePrice: product.wholesalePrice,
-        // Pharmacy fields
         expiryDate: product.expiryDate,
         batchNumber: product.batchNumber,
       }];
@@ -390,6 +384,7 @@ export default function POS() {
 
     // Play sound effect
     playAddToCart();
+    // Show only ONE toast per add action
     const unitLabel = unit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
     showToast.success(t('pos.addedToCart').replace('{name}', `${product.name} (${unitLabel})`));
   };
