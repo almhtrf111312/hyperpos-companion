@@ -33,8 +33,8 @@ export const getDefaultFieldsByStoreType = (storeType: StoreType): ProductFields
       };
     case 'repair':
       return {
-        expiryDate: false, batchNumber: false, serialNumber: true, warranty: true,
-        wholesalePrice: false, sizeColor: false, minStockLevel: true,
+        expiryDate: false, batchNumber: false, serialNumber: false, warranty: false,
+        wholesalePrice: false, sizeColor: false, minStockLevel: false,
         weight: false, fabricType: false, tableNumber: false, orderNotes: false, author: false, publisher: false,
       };
     case 'grocery':

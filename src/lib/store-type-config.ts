@@ -366,58 +366,58 @@ const terminologyMap: Record<string, TerminologySet> = {
   },
   repair: {
     ar: {
-      product: 'قطعة غيار',
-      products: 'قطع الغيار',
-      addProduct: 'إضافة قطعة غيار',
-      editProduct: 'تعديل قطعة الغيار',
+      product: 'عنصر',
+      products: 'العناصر',
+      addProduct: 'إضافة عنصر',
+      editProduct: 'تعديل العنصر',
       category: 'التصنيف',
       categories: 'التصنيفات',
       barcode: 'الباركود',
       maintenance: 'الصيانة',
-      productSearch: 'بحث عن قطعة غيار أو باركود...',
-      productCount: 'إجمالي قطع الغيار',
-      lowStockAlert: 'تنبيهات المخزون',
-      topProducts: 'القطع الأكثر مبيعاً',
-      newProduct: 'قطعة غيار جديدة',
-      newProductDesc: 'إضافة قطعة غيار للمخزن',
-      pageTitle: 'إدارة قطع الغيار',
-      pageSubtitle: 'إدارة مخزون قطع الغيار والأسعار',
+      productSearch: 'بحث عن عنصر...',
+      productCount: 'إجمالي العناصر',
+      lowStockAlert: 'تنبيهات',
+      topProducts: 'العناصر الأكثر استخداماً',
+      newProduct: 'عنصر جديد',
+      newProductDesc: 'إضافة عنصر صيانة',
+      pageTitle: 'ورشة الصيانة',
+      pageSubtitle: 'إدارة عناصر الصيانة والتكاليف',
     },
     en: {
-      product: 'Spare Part',
-      products: 'Spare Parts',
-      addProduct: 'Add Spare Part',
-      editProduct: 'Edit Spare Part',
+      product: 'Item',
+      products: 'Items',
+      addProduct: 'Add Item',
+      editProduct: 'Edit Item',
       category: 'Category',
       categories: 'Categories',
       barcode: 'Barcode',
       maintenance: 'Maintenance',
-      productSearch: 'Search spare part or barcode...',
-      productCount: 'Total Spare Parts',
-      lowStockAlert: 'Stock Alerts',
-      topProducts: 'Top Selling Parts',
-      newProduct: 'New Spare Part',
-      newProductDesc: 'Add spare part to inventory',
-      pageTitle: 'Spare Parts Management',
-      pageSubtitle: 'Manage spare parts inventory and prices',
+      productSearch: 'Search item...',
+      productCount: 'Total Items',
+      lowStockAlert: 'Alerts',
+      topProducts: 'Most Used Items',
+      newProduct: 'New Item',
+      newProductDesc: 'Add maintenance item',
+      pageTitle: 'Maintenance Workshop',
+      pageSubtitle: 'Manage maintenance items and costs',
     },
     tr: {
-      product: 'Yedek Parça',
-      products: 'Yedek Parçalar',
-      addProduct: 'Parça Ekle',
-      editProduct: 'Parçayı Düzenle',
+      product: 'Öğe',
+      products: 'Öğeler',
+      addProduct: 'Öğe Ekle',
+      editProduct: 'Öğeyi Düzenle',
       category: 'Kategori',
       categories: 'Kategoriler',
       barcode: 'Barkod',
       maintenance: 'Bakım',
-      productSearch: 'Parça veya barkod ara...',
-      productCount: 'Toplam Parça',
-      lowStockAlert: 'Stok Uyarıları',
-      topProducts: 'En Çok Satan Parçalar',
-      newProduct: 'Yeni Parça',
-      newProductDesc: 'Stoğa parça ekle',
-      pageTitle: 'Yedek Parça Yönetimi',
-      pageSubtitle: 'Parça stok ve fiyat yönetimi',
+      productSearch: 'Öğe ara...',
+      productCount: 'Toplam Öğe',
+      lowStockAlert: 'Uyarılar',
+      topProducts: 'En Çok Kullanılanlar',
+      newProduct: 'Yeni Öğe',
+      newProductDesc: 'Bakım öğesi ekle',
+      pageTitle: 'Bakım Atölyesi',
+      pageSubtitle: 'Bakım öğeleri ve maliyet yönetimi',
     },
   },
   bookstore: {
@@ -548,7 +548,7 @@ export const getVisibleSections = (storeType: string): VisibleSections => {
     case 'phones':
       return { maintenance: true, warranty: true, expiry: false, serialNumber: true, sizeColor: false };
     case 'repair':
-      return { maintenance: true, warranty: true, expiry: false, serialNumber: true, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
     case 'grocery':
       return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
     case 'pharmacy':
@@ -582,7 +582,7 @@ export const getDefaultCategories = (storeType: string): string[] => {
     case 'bakery':
       return ['جاتو', 'بانكيك', 'بيتي فور', 'شعبيات', 'كعك', 'خبز', 'معجنات'];
     case 'repair':
-      return ['قطع غيار', 'زيوت', 'فلاتر', 'إطارات', 'أدوات صيانة'];
+      return ['كهرباء', 'ميكانيكا', 'إلكترونيات', 'أدوات', 'قطع غيار عامة'];
     case 'bookstore':
       return ['قرطاسية', 'كتب', 'أدوات رسم', 'هدايا', 'خدمات طباعة'];
     default:
@@ -597,10 +597,10 @@ export const getTerminology = (storeType: string, key: TerminologyKey, language:
   return langTerms[key] || terminologyMap.general[language === 'ar' ? 'ar' : (language === 'tr' ? 'tr' : 'en')][key];
 };
 
-// Check if the store type operates without inventory tracking (e.g., bakery)
+// Check if the store type operates without inventory tracking (e.g., bakery, repair/workshop)
 export const isNoInventoryMode = (storeType?: string): boolean => {
   const type = storeType || getCurrentStoreType();
-  return type === 'bakery';
+  return type === 'bakery' || type === 'repair';
 };
 
 // Get current store type from localStorage

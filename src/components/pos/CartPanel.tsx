@@ -65,6 +65,8 @@ import { useNetworkStatus } from '@/hooks/use-network-status';
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 
+const isRepairStoreType = () => getCurrentStoreType() === 'repair';
+
 interface CartItem {
   id: string;
   name: string;
@@ -1267,6 +1269,14 @@ export function CartPanel({
                 {wholesaleMode && (
                   <div className="text-[10px] text-orange-500 mb-1">
                     سعر الوحدة: ${formatNumber(getItemPrice(item))} × {item.quantity}
+                  </div>
+                )}
+                {/* Repair mode: show cost reference */}
+                {isRepairStoreType() && item.costPrice != null && (
+                  <div className="text-[10px] text-muted-foreground mb-1 flex gap-2">
+                    <span>تكلفة القطعة: ${formatNumber(item.costPrice || 0)}</span>
+                    <span>•</span>
+                    <span>المرجع: ${formatNumber((item.costPrice || 0) + ((item as any).laborCost || 0))}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">

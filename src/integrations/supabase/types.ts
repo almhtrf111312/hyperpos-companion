@@ -608,6 +608,7 @@ export type Database = {
           expiry_date: string | null
           id: string
           image_url: string | null
+          labor_cost: number | null
           location: string | null
           min_stock_level: number | null
           name: string
@@ -640,6 +641,7 @@ export type Database = {
           expiry_date?: string | null
           id?: string
           image_url?: string | null
+          labor_cost?: number | null
           location?: string | null
           min_stock_level?: number | null
           name: string
@@ -672,6 +674,7 @@ export type Database = {
           expiry_date?: string | null
           id?: string
           image_url?: string | null
+          labor_cost?: number | null
           location?: string | null
           min_stock_level?: number | null
           name?: string

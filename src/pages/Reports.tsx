@@ -156,7 +156,7 @@ export default function Reports() {
 
   // Determine which reports are relevant for the current store type
   const isPharmacy = storeType === 'pharmacy';
-  const isDistributorStore = storeType === 'phones' || storeType === 'repair';
+  const isDistributorStore = storeType === 'phones';
   
   const allReports = [
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
@@ -168,8 +168,8 @@ export default function Reports() {
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
-    // purchases report only for stores with inventory
-    ...(!noInventory ? [{ id: 'purchases', label: 'فواتير المشتريات', icon: FileText }] : []),
+    // purchases report for stores with noInventory mode (bakery/repair) or with inventory
+    ...(noInventory ? [{ id: 'purchases', label: 'فواتير المشتريات', icon: FileText }] : []),
     { id: 'debts', label: 'تقرير الديون', icon: Banknote },
     { id: 'cashier-performance', label: 'أداء الكاشير', icon: Users },
     // maintenance only for phones/repair store types

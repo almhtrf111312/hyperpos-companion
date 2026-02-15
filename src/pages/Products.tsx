@@ -94,6 +94,7 @@ export default function Products() {
   const { t, tDynamic } = useLanguage();
   const noInventory = isNoInventoryMode();
   const isRestaurant = getCurrentStoreType() === 'restaurant';
+  const isRepairMode = getCurrentStoreType() === 'repair';
 
   const statusConfig = {
     in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
@@ -145,6 +146,7 @@ export default function Products() {
     category: t('products.defaultCategory'),
     costPrice: 0,
     salePrice: 0,
+    laborCost: 0,  // تكلفة العمالة (وضع ورشة الصيانة)
     quantity: 0,
     expiryDate: '',
     image: '',
@@ -409,7 +411,7 @@ export default function Products() {
   // Auto-open add dialog from URL params
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowAddDialog(true);
       // إزالة الـ param بعد فتح الـ dialog
       searchParams.delete('action');
@@ -514,7 +516,8 @@ export default function Products() {
     const productData = {
       ...formData,
       barcode: effectiveBarcode,
-      costPrice: noInventory ? 0 : formData.costPrice,
+      costPrice: noInventory && !isRepairMode ? 0 : formData.costPrice,
+      laborCost: isRepairMode ? formData.laborCost : 0,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
       bulkCostPrice: noInventory ? 0 : calculatedBulkCostPrice,
       expiryDate: formData.expiryDate || undefined,
@@ -536,7 +539,7 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
       setCustomFieldValues({});
@@ -660,6 +663,7 @@ export default function Products() {
       category: product.category,
       costPrice: product.costPrice,
       salePrice: product.salePrice,
+      laborCost: product.laborCost || 0,
       quantity: quantityForDisplay,
       expiryDate: product.expiryDate || '',
       image: product.image || '',
@@ -727,7 +731,7 @@ export default function Products() {
               )}
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -753,7 +757,7 @@ export default function Products() {
             </Button>
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1083,7 +1087,24 @@ export default function Products() {
                   </div>
 
                   {noInventory ? (
-                  <div className="grid grid-cols-2 gap-2 text-center mb-3">
+                  <div className={cn("grid gap-2 text-center mb-3", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
+                    {isRepairMode ? (
+                      <>
+                        <div>
+                          <p className="text-xs text-muted-foreground">تكلفة القطعة</p>
+                          <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">تكلفة العمالة</p>
+                          <p className="font-semibold text-sm">${formatNumber(product.laborCost || 0, 2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">المجموع</p>
+                          <p className="font-semibold text-sm text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
                     <div>
                       <p className="text-xs text-muted-foreground">البيع</p>
                       <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
@@ -1092,6 +1113,8 @@ export default function Products() {
                       <p className="text-xs text-muted-foreground">{t('products.wholesalePrice')}</p>
                       <p className="font-semibold text-sm">${formatNumber(product.wholesalePrice || 0, 2)}</p>
                     </div>
+                      </>
+                    )}
                   </div>
                   ) : (
                   <div className="grid grid-cols-3 gap-2 text-center mb-3">
@@ -1174,9 +1197,19 @@ export default function Products() {
                 <tr className="border-b border-border bg-muted/30">
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.name')}</th>
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.category')}</th>
+                  {isRepairMode ? (
+                    <>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">تكلفة القطعة</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">تكلفة العمالة</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">المجموع</th>
+                    </>
+                  ) : (
+                    <>
                   <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
                   {noInventory && (
                     <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.wholesalePrice')}</th>
+                  )}
+                    </>
                   )}
                   {!noInventory && (
                   <>
@@ -1239,7 +1272,20 @@ export default function Products() {
                         </span>
                       </td>
 
-                      {/* الأسعار (شراء + بيع) فوق بعض */}
+                      {/* الأسعار */}
+                      {isRepairMode ? (
+                        <>
+                          <td className="py-3 px-3">
+                            <span className="text-sm text-foreground">${formatNumber(product.costPrice, 2)}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="text-sm text-foreground">${formatNumber(product.laborCost || 0, 2)}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-semibold text-primary text-sm">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</span>
+                          </td>
+                        </>
+                      ) : (
                       <td className="py-3 px-3">
                         {noInventory ? (
                           <span className="font-semibold text-foreground text-sm">${formatNumber(product.salePrice, 2)}</span>
@@ -1256,8 +1302,9 @@ export default function Products() {
                         </div>
                         )}
                       </td>
+                      )}
 
-                      {noInventory && (
+                      {noInventory && !isRepairMode && (
                       <td className="py-3 px-3">
                         <span className="text-sm text-muted-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</span>
                       </td>
@@ -1499,9 +1546,9 @@ export default function Products() {
                   />
                 </div>
                 )}
-                {!noInventory && (
+                {(!noInventory || isRepairMode) && (
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">سعر الشراء ($)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? 'تكلفة القطعة ($)' : 'سعر الشراء ($)'}</label>
                   <Input
                     type="number"
                     dir="ltr"
@@ -1512,6 +1559,21 @@ export default function Products() {
                   />
                 </div>
                 )}
+                {isRepairMode && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ($)</label>
+                  <Input
+                    type="number"
+                    dir="ltr"
+                    className="text-right"
+                    placeholder="0"
+                    value={formData.laborCost || ''}
+                    onChange={(e) => handleNumericChange('laborCost', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">تكلفة ساعة العمل أو الخدمة</p>
+                </div>
+                )}
+                {!isRepairMode && (
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
                   <Input
@@ -1523,6 +1585,7 @@ export default function Products() {
                     onChange={(e) => handleNumericChange('salePrice', e.target.value)}
                   />
                 </div>
+                )}
 
                 {/* Unit Settings Collapsible */}
                 {!noInventory && (
