@@ -795,6 +795,7 @@ export type Database = {
           expected_items_count: number
           expected_total_quantity: number
           id: string
+          image_url: string | null
           invoice_date: string
           invoice_number: string
           notes: string | null
@@ -813,6 +814,7 @@ export type Database = {
           expected_items_count?: number
           expected_total_quantity?: number
           id?: string
+          image_url?: string | null
           invoice_date?: string
           invoice_number: string
           notes?: string | null
@@ -831,6 +833,7 @@ export type Database = {
           expected_items_count?: number
           expected_total_quantity?: number
           id?: string
+          image_url?: string | null
           invoice_date?: string
           invoice_number?: string
           notes?: string | null
