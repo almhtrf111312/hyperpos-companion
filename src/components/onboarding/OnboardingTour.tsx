@@ -10,6 +10,10 @@ import { TranslationKey } from '@/lib/i18n';
 
 const ONBOARDING_KEY = 'hp_onboarding_complete';
 
+// Fixed card dimensions for stable positioning
+const CARD_WIDTH = 320;
+const CARD_HEIGHT_ESTIMATE = 200;
+
 interface TourStep {
   selector: string;
   titleKey: TranslationKey;
@@ -38,7 +42,8 @@ export function OnboardingTour() {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const [cardPosition, setCardPosition] = useState<{ top: number; left: number; placement: string }>({ top: 0, left: 0, placement: 'bottom' });
+  const [cardPosition, setCardPosition] = useState<{ top: number; left: number }>({ top: -9999, left: -9999 });
+  const [isVisible, setIsVisible] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Filter steps based on device
@@ -49,12 +54,10 @@ export function OnboardingTour() {
   });
 
   useEffect(() => {
-    // Only show tour for authenticated users with a valid role
     if (!user || !role) return;
     
     const completed = localStorage.getItem(ONBOARDING_KEY);
     if (!completed) {
-      // Delay to let POS page render
       const timer = setTimeout(() => setIsActive(true), 1500);
       return () => clearTimeout(timer);
     }
@@ -65,7 +68,38 @@ export function OnboardingTour() {
     setIsActive(false);
   }, []);
 
-  // Position the card next to the target element
+  // Calculate position without depending on card ref (use fixed estimates first, then refine)
+  const calculatePosition = useCallback((rect: DOMRect) => {
+    const padding = 14;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const cardW = Math.min(CARD_WIDTH, vw * 0.9);
+    
+    // Use actual card height if available, else estimate
+    const cardH = cardRef.current?.offsetHeight || CARD_HEIGHT_ESTIMATE;
+
+    let top: number;
+    let left: number;
+
+    // Try bottom
+    if (rect.bottom + padding + cardH < vh) {
+      top = rect.bottom + padding;
+      left = Math.max(padding, Math.min(rect.left + rect.width / 2 - cardW / 2, vw - cardW - padding));
+    }
+    // Try top
+    else if (rect.top - padding - cardH > 0) {
+      top = rect.top - padding - cardH;
+      left = Math.max(padding, Math.min(rect.left + rect.width / 2 - cardW / 2, vw - cardW - padding));
+    }
+    // Fallback: center
+    else {
+      top = vh / 2 - cardH / 2;
+      left = vw / 2 - cardW / 2;
+    }
+
+    return { top, left };
+  }, []);
+
   const updatePosition = useCallback(() => {
     const step = activeSteps[currentStep];
     if (!step) return;
@@ -73,50 +107,45 @@ export function OnboardingTour() {
     const el = document.querySelector(step.selector);
     if (!el) {
       setTargetRect(null);
+      setCardPosition({ top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - 160 });
       return;
     }
 
     const rect = el.getBoundingClientRect();
     setTargetRect(rect);
+    setCardPosition(calculatePosition(rect));
+  }, [currentStep, activeSteps, calculatePosition]);
 
-    // Calculate card position
-    requestAnimationFrame(() => {
-      if (!cardRef.current) return;
-      const cardRect = cardRef.current.getBoundingClientRect();
-      const padding = 12;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-
-      let top = 0;
-      let left = 0;
-      let placement = 'bottom';
-
-      // Try bottom first
-      if (rect.bottom + padding + cardRect.height < vh) {
-        top = rect.bottom + padding;
-        left = Math.max(padding, Math.min(rect.left + rect.width / 2 - cardRect.width / 2, vw - cardRect.width - padding));
-        placement = 'bottom';
-      }
-      // Try top
-      else if (rect.top - padding - cardRect.height > 0) {
-        top = rect.top - padding - cardRect.height;
-        left = Math.max(padding, Math.min(rect.left + rect.width / 2 - cardRect.width / 2, vw - cardRect.width - padding));
-        placement = 'top';
-      }
-      // Fallback: center
-      else {
-        top = vh / 2 - cardRect.height / 2;
-        left = vw / 2 - cardRect.width / 2;
-        placement = 'center';
-      }
-
-      setCardPosition({ top, left, placement });
-    });
-  }, [currentStep, activeSteps]);
-
+  // On step change: hide briefly, reposition, then show
   useEffect(() => {
     if (!isActive) return;
-    updatePosition();
+    
+    setIsVisible(false);
+    
+    const step = activeSteps[currentStep];
+    if (!step) return;
+    
+    const el = document.querySelector(step.selector);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Wait for scroll + layout, then position and reveal
+    const timer = setTimeout(() => {
+      updatePosition();
+      // Refine with actual card height after render
+      requestAnimationFrame(() => {
+        updatePosition();
+        setIsVisible(true);
+      });
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [currentStep, isActive, activeSteps, updatePosition]);
+
+  // Listen for resize/scroll
+  useEffect(() => {
+    if (!isActive) return;
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
@@ -124,18 +153,6 @@ export function OnboardingTour() {
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isActive, updatePosition]);
-
-  // Scroll target into view
-  useEffect(() => {
-    if (!isActive) return;
-    const step = activeSteps[currentStep];
-    if (!step) return;
-    const el = document.querySelector(step.selector);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      setTimeout(updatePosition, 400);
-    }
-  }, [currentStep, isActive, activeSteps, updatePosition]);
 
   const handleNext = () => {
     if (currentStep < activeSteps.length - 1) {
@@ -189,7 +206,7 @@ export function OnboardingTour() {
       {/* Spotlight ring glow */}
       {targetRect && (
         <div
-          className="absolute rounded-xl ring-2 ring-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.3)] pointer-events-none transition-all duration-500 ease-out"
+          className="absolute rounded-xl ring-2 ring-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.3)] pointer-events-none transition-all duration-400 ease-out"
           style={{
             left: targetRect.left - 6,
             top: targetRect.top - 6,
@@ -199,13 +216,13 @@ export function OnboardingTour() {
         />
       )}
 
-      {/* Tour Card */}
+      {/* Tour Card - uses opacity for smooth show/hide instead of position jumping */}
       <div
         ref={cardRef}
         className={cn(
           "absolute z-[10000] w-[320px] max-w-[90vw] bg-card border border-border rounded-2xl shadow-2xl",
-          "transition-all duration-500 ease-out",
-          "animate-in fade-in-0 zoom-in-95"
+          "transition-[opacity,transform] duration-300 ease-out",
+          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
         )}
         style={{ top: cardPosition.top, left: cardPosition.left }}
       >
