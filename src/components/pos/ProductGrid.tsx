@@ -118,7 +118,7 @@ export function ProductGrid({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Search, View Toggle, and Categories */}
-      <div className="p-3 md:p-4 border-b border-border space-y-3">
+      <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border space-y-3">
         <div className="flex gap-2">
           {/* View Mode Buttons - moved to left */}
           <div className="flex border rounded-lg overflow-hidden flex-shrink-0">

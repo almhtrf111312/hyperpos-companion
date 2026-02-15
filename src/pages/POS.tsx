@@ -22,6 +22,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
 import { App } from '@capacitor/app';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
 // POS Product type for display
 interface POSProduct {
   id: string;
@@ -586,7 +587,7 @@ export default function POS() {
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Products/Maintenance Area */}
-          <div className={cn(
+          <div data-tour="product-grid" className={cn(
             "flex-1 flex flex-col h-full overflow-hidden",
             !isMobile && "border-l border-border"
           )}>
@@ -612,7 +613,7 @@ export default function POS() {
 
           {/* Cart Panel - Desktop Only (not tablet) */}
           {!isMobile && !isTablet && (
-            <div className="w-80 flex-shrink-0">
+            <div className="w-80 flex-shrink-0" data-tour="cart-panel">
               <CartPanel
                 cart={cart}
                 currencies={currencies}
@@ -685,6 +686,7 @@ export default function POS() {
       {/* Floating Cart Button - Mobile & Tablet */}
       {(isMobile || isTablet) && (
         <Button
+          data-tour="cart-fab"
           onClick={() => setCartOpen(true)}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 
                      w-16 h-16 rounded-full 
@@ -708,6 +710,9 @@ export default function POS() {
           )}
         </Button>
       )}
+
+      {/* Onboarding Tour */}
+      <OnboardingTour />
     </div>
   );
 }
