@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   BarChart3,
+  BookOpen,
   TrendingUp,
   DollarSign,
   ShoppingCart,
@@ -45,6 +46,7 @@ import { DebtsReport } from '@/components/reports/DebtsReport';
 import { CashierPerformanceReport } from '@/components/reports/CashierPerformanceReport';
 import { MaintenanceReport } from '@/components/reports/MaintenanceReport';
 import { DailyClosingReport } from '@/components/reports/DailyClosingReport';
+import { LibraryReport } from '@/components/reports/LibraryReport';
 import { downloadJSON, isNativePlatform } from '@/lib/file-download';
 import {
   exportInvoicesToExcel,
@@ -147,7 +149,7 @@ export default function Reports() {
   // Auto-open tab from URL params
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing'].includes(tab)) {
+    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -168,13 +170,15 @@ export default function Reports() {
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
-    // purchases report for stores with noInventory mode (bakery/repair) or with inventory
-    ...(noInventory ? [{ id: 'purchases', label: 'فواتير المشتريات', icon: FileText }] : []),
+    // purchases report available for all store types
+    { id: 'purchases', label: 'فواتير المشتريات', icon: FileText },
     { id: 'debts', label: 'تقرير الديون', icon: Banknote },
     { id: 'cashier-performance', label: 'أداء الكاشير', icon: Users },
     // maintenance only for phones/repair store types
     ...(visibleSections.maintenance ? [{ id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
     { id: 'daily-closing', label: 'الإغلاق اليومي', icon: Calendar },
+    // library report only for bookstore
+    ...(storeType === 'bookstore' ? [{ id: 'library', label: 'تقرير المكتبة', icon: BookOpen }] : []),
     // distributor/custody reports only for distributor-based stores (phones, repair) - not pharmacy, clothing, etc.
     ...(isDistributorStore ? [
       { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
@@ -1177,6 +1181,10 @@ ${partnerExpenses.map(exp => {
         {/* Daily Closing Report */}
         {activeReport === 'daily-closing' && (
           <DailyClosingReport invoices={cloudInvoices} expenses={cloudExpenses} debts={cloudDebts} isLoading={isLoading} />
+        )}
+        {/* Library Report */}
+        {activeReport === 'library' && (
+          <LibraryReport dateRange={dateRange} />
         )}
         {reportData.hasData && activeReport === 'customers' && (
           <div className="bg-card rounded-2xl border border-border overflow-hidden">
