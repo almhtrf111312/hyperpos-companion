@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/hooks/use-language';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
 import { cn } from '@/lib/utils';
 import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { TranslationKey } from '@/lib/i18n';
@@ -31,6 +33,8 @@ const tourSteps: TourStep[] = [
 export function OnboardingTour() {
   const { t, isRTL } = useLanguage();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const { role } = useUserRole();
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -45,13 +49,16 @@ export function OnboardingTour() {
   });
 
   useEffect(() => {
+    // Only show tour for authenticated users with a valid role
+    if (!user || !role) return;
+    
     const completed = localStorage.getItem(ONBOARDING_KEY);
     if (!completed) {
       // Delay to let POS page render
       const timer = setTimeout(() => setIsActive(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [user, role]);
 
   const completeTour = useCallback(() => {
     localStorage.setItem(ONBOARDING_KEY, 'true');

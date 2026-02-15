@@ -83,6 +83,7 @@ export default function Customers() {
     email: '',
     address: '',
   });
+  const [showEmbeddedAddDebt, setShowEmbeddedAddDebt] = useState(false);
 
   const { role } = useUserRole();
   const isOwner = role === 'admin' || role === 'boss';
@@ -252,13 +253,18 @@ export default function Customers() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('nav.customersAndDebts' as any)}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>
         </div>
-        {activeTab === 'customers' && (
+        {activeTab === 'customers' ? (
           <Button className="bg-primary hover:bg-primary/90" onClick={() => {
             setFormData({ name: '', phone: '', email: '', address: '' });
             setShowAddDialog(true);
           }}>
             <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
             {t('customers.addCustomer')}
+          </Button>
+        ) : (
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowEmbeddedAddDebt(true)}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('debts.addCashDebt')}
           </Button>
         )}
       </div>
@@ -432,7 +438,7 @@ export default function Customers() {
         </TabsContent>
 
         <TabsContent value="debts">
-          <Debts />
+          <Debts embedded onAddDebt={showEmbeddedAddDebt} onAddDebtChange={setShowEmbeddedAddDebt} />
         </TabsContent>
       </Tabs>
 

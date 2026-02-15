@@ -56,7 +56,13 @@ import { useLanguage } from '@/hooks/use-language';
 import { processDebtPayment } from '@/lib/unified-transactions';
 import { shareDebt, DebtShareData } from '@/lib/native-share';
 
-export default function Debts() {
+interface DebtsProps {
+  embedded?: boolean;
+  onAddDebt?: boolean;
+  onAddDebtChange?: (open: boolean) => void;
+}
+
+export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsProps) {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -116,6 +122,19 @@ export default function Debts() {
       window.removeEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
     };
   }, []);
+
+  // Sync embedded add debt dialog
+  useEffect(() => {
+    if (onAddDebt !== undefined) {
+      setShowAddDebtDialog(onAddDebt);
+    }
+  }, [onAddDebt]);
+
+  // Notify parent when dialog closes
+  const handleAddDebtDialogChange = (open: boolean) => {
+    setShowAddDebtDialog(open);
+    onAddDebtChange?.(open);
+  };
 
   // Fetch items for selected debt
   useEffect(() => {
@@ -305,7 +324,7 @@ export default function Debts() {
 
       const debtsData = await loadDebtsCloud();
       setDebts(debtsData);
-      setShowAddDebtDialog(false);
+      handleAddDebtDialogChange(false);
       setNewDebtForm({
         customerName: '',
         customerPhone: '',
@@ -320,18 +339,20 @@ export default function Debts() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('debts.title')}</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('debts.subtitle')}</p>
+    <div className={cn(!embedded && "p-3 md:p-6", "space-y-4 md:space-y-6")}>
+      {/* Header - hidden when embedded */}
+      {!embedded && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <div>
+            <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('debts.title')}</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">{t('debts.subtitle')}</p>
+          </div>
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => handleAddDebtDialogChange(true)}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('debts.addCashDebt')}
+          </Button>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowAddDebtDialog(true)}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          {t('debts.addCashDebt')}
-        </Button>
-      </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
@@ -532,7 +553,7 @@ export default function Debts() {
       </div>
 
       {/* Add Cash Debt Dialog */}
-      <Dialog open={showAddDebtDialog} onOpenChange={setShowAddDebtDialog}>
+      <Dialog open={showAddDebtDialog} onOpenChange={handleAddDebtDialogChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -598,7 +619,7 @@ export default function Debts() {
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setShowAddDebtDialog(false)}>
+              <Button variant="outline" className="flex-1" onClick={() => handleAddDebtDialogChange(false)}>
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddCashDebt}>
