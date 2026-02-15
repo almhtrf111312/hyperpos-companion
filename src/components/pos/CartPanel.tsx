@@ -191,11 +191,26 @@ export function CartPanel({
 
   const taxableAmount = Math.max(0, subtotal - discountAmount);
 
-  // ✅ Tax Calculation (Placeholder for future settings)
-  const taxRate = 0;
-  const taxAmount = (taxableAmount * taxRate) / 100;
+  // ✅ Tax Calculation - read from store settings
+  const [taxMode, setTaxMode] = useState<'net' | 'gross'>('net');
+  const storeSettingsRaw = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
+    } catch { return {}; }
+  }, []);
+  const storeTaxEnabled = storeSettingsRaw.taxEnabled ?? false;
+  const storeTaxRate = storeSettingsRaw.taxRate ?? 0;
+  const settingsDiscountPercentEnabled = storeSettingsRaw.discountPercentEnabled ?? true;
+  const settingsDiscountFixedEnabled = storeSettingsRaw.discountFixedEnabled ?? true;
 
-  const total = taxableAmount + taxAmount;
+  const effectiveTaxRate = storeTaxEnabled ? storeTaxRate : 0;
+  const taxAmount = taxMode === 'gross'
+    ? (taxableAmount * effectiveTaxRate) / (100 + effectiveTaxRate)
+    : (taxableAmount * effectiveTaxRate) / 100;
+
+  const total = taxMode === 'gross'
+    ? taxableAmount // price already includes tax
+    : taxableAmount + taxAmount;
   const totalInCurrency = total * selectedCurrency.rate;
 
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
@@ -280,7 +295,7 @@ export function CartPanel({
             subtotal,
             discount,
             discountPercentage: discountType === 'percent' ? discount : 0,
-            taxRate,
+            taxRate: effectiveTaxRate,
             taxAmount,
             total: totalSnapshot,
             totalInCurrency,
@@ -422,7 +437,7 @@ export function CartPanel({
         subtotal,
         discount,
         discountPercentage: discountType === 'percent' ? discount : 0,
-        taxRate,
+        taxRate: effectiveTaxRate,
         taxAmount,
         total: totalSnapshot,
         totalInCurrency,
@@ -529,7 +544,7 @@ export function CartPanel({
           subtotal,
           discount,
           discountPercentage: discountType === 'percent' ? discount : 0,
-          taxRate,
+          taxRate: effectiveTaxRate,
           taxAmount,
           total: totalSnapshot,
           totalInCurrency,
@@ -730,7 +745,7 @@ export function CartPanel({
         subtotal,
         discount,
         discountPercentage: discountType === 'percent' ? discount : 0,
-        taxRate,
+        taxRate: effectiveTaxRate,
         taxAmount,
         total: totalSnapshot,
         totalInCurrency,
@@ -1338,52 +1353,90 @@ export function CartPanel({
             ))}
           </div>
 
+          {/* Tax Mode Selector - only show when tax is enabled */}
+          {storeTaxEnabled && storeTaxRate > 0 && (
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
+              <Percent className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs text-muted-foreground flex-shrink-0">{t('pos.tax') || 'الضريبة'} ({storeTaxRate}%):</span>
+              <div className="flex gap-1 flex-1">
+                <button
+                  onClick={() => setTaxMode('net')}
+                  className={cn(
+                    "flex-1 py-1 px-2 rounded text-xs font-medium transition-all",
+                    taxMode === 'net' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+                  )}
+                >
+                  {t('pos.taxExclusive') || 'بدون ضريبة'}
+                </button>
+                <button
+                  onClick={() => setTaxMode('gross')}
+                  className={cn(
+                    "flex-1 py-1 px-2 rounded text-xs font-medium transition-all",
+                    taxMode === 'gross' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+                  )}
+                >
+                  {t('pos.taxInclusive') || 'شامل الضريبة'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Discount - Two Rows */}
-          <div className="space-y-2">
-            {/* Percentage Discount Row */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
-                <Percent className="w-4 h-4" />
-              </div>
-              <Input
-                type="number"
-                placeholder="خصم %"
-                value={discountType === 'percent' ? (discount || '') : ''}
-                onChange={(e) => {
-                  setDiscountType('percent');
-                  onDiscountChange(Number(e.target.value));
-                }}
-                onFocus={() => setDiscountType('percent')}
-                className={cn(
-                  "bg-muted border-0 h-9 text-sm",
-                  discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
-                )}
-                min="0"
-                max="100"
-              />
+          {!settingsDiscountPercentEnabled && !settingsDiscountFixedEnabled ? (
+            <div className="text-xs text-muted-foreground text-center py-2 bg-muted/50 rounded-lg">
+              {t('pos.discountsDisabled') || 'الخصومات معطلة من الإعدادات'}
             </div>
-            {/* Fixed Amount Discount Row */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
-                <DollarSign className="w-4 h-4" />
-              </div>
-              <Input
-                type="number"
-                placeholder="خصم $"
-                value={discountType === 'fixed' ? (discount || '') : ''}
-                onChange={(e) => {
-                  setDiscountType('fixed');
-                  onDiscountChange(Number(e.target.value));
-                }}
-                onFocus={() => setDiscountType('fixed')}
-                className={cn(
-                  "bg-muted border-0 h-9 text-sm",
-                  discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
-                )}
-                min="0"
-              />
+          ) : (
+            <div className="space-y-2">
+              {/* Percentage Discount Row */}
+              {settingsDiscountPercentEnabled && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
+                    <Percent className="w-4 h-4" />
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="خصم %"
+                    value={discountType === 'percent' ? (discount || '') : ''}
+                    onChange={(e) => {
+                      setDiscountType('percent');
+                      onDiscountChange(Number(e.target.value));
+                    }}
+                    onFocus={() => setDiscountType('percent')}
+                    className={cn(
+                      "bg-muted border-0 h-9 text-sm",
+                      discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
+                    )}
+                    min="0"
+                    max="100"
+                  />
+                </div>
+              )}
+              {/* Fixed Amount Discount Row */}
+              {settingsDiscountFixedEnabled && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="خصم $"
+                    value={discountType === 'fixed' ? (discount || '') : ''}
+                    onChange={(e) => {
+                      setDiscountType('fixed');
+                      onDiscountChange(Number(e.target.value));
+                    }}
+                    onFocus={() => setDiscountType('fixed')}
+                    className={cn(
+                      "bg-muted border-0 h-9 text-sm",
+                      discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
+                    )}
+                    min="0"
+                  />
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Wholesale: Received Amount Input */}
           {wholesaleMode && (
@@ -1421,6 +1474,12 @@ export function CartPanel({
               <div className="flex justify-between text-success">
                 <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
                 <span>-${formatNumber(discountAmount)}</span>
+              </div>
+            )}
+            {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
+              <div className="flex justify-between text-warning">
+                <span>{t('pos.tax') || 'الضريبة'} ({effectiveTaxRate}%) {taxMode === 'gross' ? `(${t('pos.taxInclusive') || 'شامل'})` : ''}</span>
+                <span>{taxMode === 'gross' ? '' : '+'}{formatNumber(taxAmount)}</span>
               </div>
             )}
             {wholesaleMode && receivedAmount > 0 && (
