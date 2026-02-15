@@ -1737,10 +1737,14 @@ export const translations = {
     'license.enterCodeLabel': 'أدخل كود التفعيل',
 
     // Privacy Policy
-    'privacy.title': 'سياسة الخصوصية وإخلاء المسؤولية',
+    'privacy.title': 'شروط الاستخدام والخصوصية',
     'privacy.privacyTab': 'سياسة الخصوصية',
     'privacy.disclaimerTab': 'إخلاء المسؤولية',
     'privacy.accept': 'أوافق على سياسة الخصوصية وإخلاء المسؤولية',
+    'privacy.termsButton': 'شروط الاستخدام وإخلاء المسؤولية',
+    'privacy.termsDialogTitle': 'شروط الاستخدام وإخلاء المسؤولية لبرنامج Flow POS Pro',
+    'privacy.agreeCheckbox': 'الموافقة على الشروط والأحكام',
+    'privacy.continue': 'متابعة',
 
     // Distributor Reports
     'distributor.noDistributors': 'لا يوجد موزعين',
@@ -3507,6 +3511,16 @@ export const translations = {
     'licenseManagement.deleteFailed': 'Failed to delete code',
     'licenseManagement.days': 'd',
 
+    // Privacy Policy
+    'privacy.title': 'Terms of Use & Privacy',
+    'privacy.privacyTab': 'Privacy Policy',
+    'privacy.disclaimerTab': 'Disclaimer',
+    'privacy.accept': 'I agree to the Privacy Policy and Disclaimer',
+    'privacy.termsButton': 'Terms of Use & Disclaimer',
+    'privacy.termsDialogTitle': 'Terms of Use and Disclaimer for Flow POS Pro',
+    'privacy.agreeCheckbox': 'I agree to the Terms and Conditions',
+    'privacy.continue': 'Continue',
+
   },
   tr: {
     // Navigation
@@ -5203,10 +5217,14 @@ export const translations = {
     'license.signOut': 'Çıkış Yap',
 
     // Privacy Policy
-    'privacy.title': 'Gizlilik Politikası ve Sorumluluk Reddi',
+    'privacy.title': 'Kullanım Şartları ve Gizlilik',
     'privacy.privacyTab': 'Gizlilik Politikası',
     'privacy.disclaimerTab': 'Sorumluluk Reddi',
     'privacy.accept': 'Gizlilik Politikasını ve Sorumluluk Reddini Kabul Ediyorum',
+    'privacy.termsButton': 'Kullanım Şartları ve Sorumluluk Reddi',
+    'privacy.termsDialogTitle': 'Flow POS Pro Kullanım Şartları ve Sorumluluk Reddi',
+    'privacy.agreeCheckbox': 'Şartları ve Koşulları Kabul Ediyorum',
+    'privacy.continue': 'Devam Et',
 
     // Distributor Reports
     'distributor.noDistributors': 'Dağıtıcı yok',
