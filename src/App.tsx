@@ -41,6 +41,7 @@ import CashShifts from "./pages/CashShifts";
 import Warehouses from "./pages/Warehouses";
 import StockTransfer from "./pages/StockTransfer";
 import Login from "./pages/Login";
+import Purchases from "./pages/Purchases";
 import Signup from "./pages/Signup";
 import Appearance from "./pages/Appearance";
 import NotFound from "./pages/NotFound";
@@ -180,6 +181,7 @@ const AppContent = () => {
         {/* Protected routes - Admin/Boss only */}
         <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/purchases" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Purchases /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
