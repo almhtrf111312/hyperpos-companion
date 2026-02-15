@@ -434,11 +434,9 @@ export default function POS() {
           bulkCostPrice: cloudProduct.bulkCostPrice || 0,
           wholesalePrice: cloudProduct.wholesalePrice,
         };
-        // Add directly or show dialog? Logic was show dialog.
-        // User wants "Add to Cart / Fill Input". 
-        // Let's stick to existing logic but ensure it runs.
-        setScannedProduct(posProduct);
-        setShowScannedDialog(true);
+        // Always put barcode in search field instead of showing dialog
+        setSearchQuery(barcode);
+        showToast.success(t('pos.productFound').replace('{name}', posProduct.name) || `Found: ${posProduct.name}`);
       } else {
         setSearchQuery(barcode);
         showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));
