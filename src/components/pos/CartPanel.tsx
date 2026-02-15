@@ -1444,6 +1444,7 @@ export function CartPanel({
 
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             <Button
+              data-tour="cash-btn"
               className="h-10 md:h-12 bg-success hover:bg-success/90 text-sm md:text-base font-bold shadow-sm shadow-success/20 transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleCashSale}
@@ -1452,6 +1453,7 @@ export function CartPanel({
               {t('pos.cash')}
             </Button>
             <Button
+              data-tour="debt-btn"
               variant="outline"
               className="h-10 md:h-12 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-base font-bold transition-all active:scale-95"
               disabled={cart.length === 0}
@@ -1463,7 +1465,7 @@ export function CartPanel({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
+          <div data-tour="action-btns" className="flex gap-2">
             <Button
               variant="outline"
               className="flex-1 h-8 md:h-9 text-xs"
