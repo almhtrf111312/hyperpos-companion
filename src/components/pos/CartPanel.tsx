@@ -1308,7 +1308,7 @@ export function CartPanel({
         </div>
 
         {/* Cart Footer */}
-        <div className="border-t border-border p-3 md:p-4 space-y-3 md:space-y-4">
+        <div className="border-t border-border p-2.5 md:p-3 space-y-2 md:space-y-2.5">
           {/* Currency Selector */}
           <div className="flex gap-1.5 md:gap-2">
             {currencies.map((currency) => (
@@ -1401,7 +1401,7 @@ export function CartPanel({
           )}
 
           {/* Summary */}
-          <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
+          <div className="space-y-1 md:space-y-1.5 text-xs md:text-sm bg-muted/50 rounded-lg p-2 md:p-2.5">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{wholesaleMode ? 'إجمالي الجملة' : t('pos.subtotal')}</span>
               <span>${formatNumber(subtotal)}</span>
@@ -1444,7 +1444,7 @@ export function CartPanel({
 
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             <Button
-              className="h-12 md:h-16 bg-success hover:bg-success/90 text-sm md:text-lg font-bold shadow-lg shadow-success/25 transition-all active:scale-95"
+              className="h-10 md:h-12 bg-success hover:bg-success/90 text-sm md:text-base font-bold shadow-sm shadow-success/20 transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
@@ -1453,7 +1453,7 @@ export function CartPanel({
             </Button>
             <Button
               variant="outline"
-              className="h-12 md:h-16 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-lg font-bold transition-all active:scale-95"
+              className="h-10 md:h-12 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-base font-bold transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleDebtSale}
             >
@@ -1466,20 +1466,20 @@ export function CartPanel({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
+              className="flex-1 h-8 md:h-9 text-xs"
               disabled={cart.length === 0}
               onClick={handlePrint}
             >
-              <Printer className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
+              <Printer className="w-3.5 h-3.5 ml-1" />
               {t('pos.print')}
             </Button>
             <Button
               variant="outline"
-              className="flex-1 h-9 md:h-10 text-xs md:text-sm"
+              className="flex-1 h-8 md:h-9 text-xs"
               disabled={cart.length === 0}
               onClick={handleWhatsApp}
             >
-              <Send className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1.5 md:ml-2" />
+              <Send className="w-3.5 h-3.5 ml-1" />
               {t('pos.whatsapp')}
             </Button>
           </div>
