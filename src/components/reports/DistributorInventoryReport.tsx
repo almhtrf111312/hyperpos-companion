@@ -198,7 +198,7 @@ export function DistributorInventoryReport() {
   // Export to Excel
   const exportToExcel = async () => {
     try {
-      const { utils, writeFile } = await import('xlsx');
+      const XLSX = (await import('xlsx-js-style')).default;
       const selectedWh = warehouses.find(w => w.id === selectedWarehouse);
 
       const exportData = stockData.map(item => ({
@@ -222,12 +222,12 @@ export function DistributorInventoryReport() {
         'الحالة': summary.totalVariance > 0 ? 'فائض' : summary.totalVariance < 0 ? 'عجز' : 'مطابق'
       });
 
-      const ws = utils.json_to_sheet(exportData);
-      const wb = utils.book_new();
-      utils.book_append_sheet(wb, ws, 'جرد العهدة');
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'جرد العهدة');
 
       const fileName = `جرد_العهدة_${selectedWh?.name || 'موزع'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      writeFile(wb, fileName);
+      XLSX.writeFile(wb, fileName);
 
       toast.success('تم تصدير التقرير بنجاح');
     } catch (error) {
