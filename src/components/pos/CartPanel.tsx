@@ -1438,31 +1438,35 @@ export function CartPanel({
             </div>
           )}
 
-          {/* Wholesale: Received Amount Input */}
-          {wholesaleMode && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white flex-shrink-0">
-                <Banknote className="w-4 h-4" />
-              </div>
-              <Input
-                type="number"
-                placeholder="المبلغ المقبوض"
-                value={receivedAmount || ''}
-                onChange={(e) => setReceivedAmount(Number(e.target.value))}
-                className="bg-muted border-0 h-9 text-sm ring-2 ring-orange-500/50"
-                min="0"
-                dir="ltr"
-              />
-              {/* زر الآلة الحاسبة */}
-              <button
-                onClick={() => setShowCalculator(true)}
-                className="w-9 h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center flex-shrink-0 transition-colors"
-                title="آلة حاسبة"
-              >
-                <span className="text-lg font-bold">⊞</span>
-              </button>
+          {/* Received Amount Input - always visible */}
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0",
+              wholesaleMode ? "bg-orange-500 text-white" : "bg-primary/20 text-primary"
+            )}>
+              <Banknote className="w-4 h-4" />
             </div>
-          )}
+            <Input
+              type="number"
+              placeholder={t('pos.receivedAmount') || 'المبلغ المقبوض'}
+              value={receivedAmount || ''}
+              onChange={(e) => setReceivedAmount(Number(e.target.value))}
+              className={cn(
+                "bg-muted border-0 h-9 text-sm",
+                wholesaleMode ? "ring-2 ring-orange-500/50" : receivedAmount > 0 ? "ring-2 ring-primary/50" : ""
+              )}
+              min="0"
+              dir="ltr"
+            />
+            {/* زر الآلة الحاسبة */}
+            <button
+              onClick={() => setShowCalculator(true)}
+              className="w-9 h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center flex-shrink-0 transition-colors"
+              title="آلة حاسبة"
+            >
+              <span className="text-lg font-bold">⊞</span>
+            </button>
+          </div>
 
           {/* Summary */}
           <div className="space-y-1 md:space-y-1.5 text-xs md:text-sm bg-muted/50 rounded-lg p-2 md:p-2.5">
@@ -1482,16 +1486,25 @@ export function CartPanel({
                 <span>{taxMode === 'gross' ? '' : '+'}{formatNumber(taxAmount)}</span>
               </div>
             )}
-            {wholesaleMode && receivedAmount > 0 && (
+            {receivedAmount > 0 && (
               <>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">المبلغ المقبوض</span>
+                  <span className="text-muted-foreground">{t('pos.receivedAmount') || 'المبلغ المقبوض'}</span>
                   <span className="font-semibold">${formatNumber(receivedAmount)}</span>
                 </div>
-                <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
-                  <span>الربح</span>
-                  <span>${formatNumber(wholesaleProfit || 0)}</span>
-                </div>
+                {wholesaleMode ? (
+                  <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
+                    <span>الربح</span>
+                    <span>${formatNumber(wholesaleProfit || 0)}</span>
+                  </div>
+                ) : (
+                  receivedAmount >= total && (
+                    <div className="flex justify-between font-bold text-success">
+                      <span>{t('pos.balance') || 'الباقي'}</span>
+                      <span>${formatNumber(receivedAmount - total)}</span>
+                    </div>
+                  )
+                )}
               </>
             )}
             <div className="flex justify-between items-center text-base md:text-lg font-bold pt-2 border-t border-border">
