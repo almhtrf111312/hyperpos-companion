@@ -5,6 +5,7 @@ import { useDeviceBinding } from '@/hooks/use-device-binding';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActivationScreen } from './ActivationScreen';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
+import { DataEncryptedScreen } from './DataEncryptedScreen';
 import { Loader2, MessageCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,7 +113,7 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
   const { user, isLoading: authLoading } = useAuth();
-  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role } = useLicense();
+  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role, dataEncrypted } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
   const { t, direction } = useLanguage();
@@ -179,6 +180,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   }
 
   if (!user) return <>{children}</>;
+  if (dataEncrypted) return <DataEncryptedScreen />;
   if (isDeviceBlocked) return <DeviceBlockedScreen />;
   if (isValid && hasLicense) return <>{children}</>;
 
