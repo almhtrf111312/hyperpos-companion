@@ -375,6 +375,7 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
   
   return (
     <button
+      data-tour="mobile-menu-trigger"
       onClick={onClick}
       className={cn(
         "fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-30 md:hidden",

@@ -172,53 +172,64 @@ export function OnboardingTour() {
 
     // Pre-step hooks: manage sidebar & cart state
     if (step.requireSidebar && isMobile) {
-      // Open sidebar on mobile
-      const sidebarEl = document.querySelector('[data-tour="sidebar"]');
-      if (!sidebarEl) {
+      // Open sidebar on mobile - check if target is already visible
+      const targetAlready = document.querySelector(step.selector);
+      if (!targetAlready) {
         const menuBtn = document.querySelector('[data-tour="mobile-menu-trigger"]') as HTMLButtonElement;
         if (menuBtn) menuBtn.click();
       }
     } else if (!step.requireSidebar && isMobile) {
-      // Close sidebar if open when moving to non-sidebar steps
-      const closeBtn = document.querySelector('[data-radix-dialog-close]') as HTMLButtonElement;
-      if (closeBtn) closeBtn.click();
+      // Close sidebar if it's currently open
+      const sidebarAside = document.querySelector('aside[data-tour="sidebar"]');
+      if (sidebarAside) {
+        const isTranslated = sidebarAside.classList.contains('translate-x-0');
+        if (isTranslated) {
+          // Click the overlay backdrop to close
+          const overlay = document.querySelector('.fixed.inset-0.bg-black\\/60') as HTMLElement;
+          if (overlay) overlay.click();
+        }
+      }
     }
 
     if (step.requireCart && isMobile) {
-      const cartFab = document.querySelector('[data-tour="cart-fab"]') as HTMLButtonElement;
-      if (cartFab) cartFab.click();
+      // Only click cart FAB if cart drawer isn't already open
+      const cartDrawer = document.querySelector('[data-tour="cart-panel"]');
+      if (!cartDrawer) {
+        const cartFab = document.querySelector('[data-tour="cart-fab"]') as HTMLButtonElement;
+        if (cartFab) cartFab.click();
+      }
     }
 
-    // Wait for layout to settle (500ms for sidebar/cart animations)
-    const settleDelay = (step.requireSidebar || step.requireCart) ? 500 : 350;
+    // Wait for layout to settle
+    const settleDelay = step.requireSidebar ? 700 : step.requireCart ? 500 : 300;
 
     const timer = setTimeout(() => {
+      // Polling: wait for target element to appear in DOM (max 2s)
       let attempts = 0;
+      const maxAttempts = 20;
+      const pollInterval = 100;
+
       const tryPosition = () => {
         const el = document.querySelector(step.selector);
         if (el) {
-          // Use block: 'center' for better visibility
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Scroll element into view - on mobile use 'start' to keep it above bottom-sheet
+          el.scrollIntoView({ behavior: 'smooth', block: isMobile ? 'start' : 'center' });
           setTimeout(() => {
+            const rect = el.getBoundingClientRect();
+            setTargetRect(rect);
             if (!isMobile) {
-              // Desktop: calculate floating position
-              const rect = el.getBoundingClientRect();
-              setTargetRect(rect);
               setCardPosition(calculatePosition(rect, step.prefer));
-            } else {
-              // Mobile: just update targetRect for spotlight
-              const rect = el.getBoundingClientRect();
-              setTargetRect(rect);
             }
             requestAnimationFrame(() => {
               if (!isMobile) updatePosition();
               setIsVisible(true);
             });
-          }, 150);
-        } else if (attempts < 6) {
+          }, 200);
+        } else if (attempts < maxAttempts) {
           attempts++;
-          setTimeout(tryPosition, 200);
+          setTimeout(tryPosition, pollInterval);
         } else {
+          // Element not found after polling - show card without spotlight
           if (!isMobile) updatePosition();
           setTargetRect(null);
           setIsVisible(true);
@@ -407,7 +418,7 @@ export function OnboardingTour() {
             "transition-all duration-400 ease-in-out",
             isVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
           )}
-          style={{ maxHeight: '35vh' }}
+          style={{ maxHeight: step.requireCart ? '22vh' : '28vh' }}
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-2 pb-1">
