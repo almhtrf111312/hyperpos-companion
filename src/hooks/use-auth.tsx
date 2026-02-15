@@ -484,6 +484,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[Auth] Invalidated cloud caches on sign-out');
     } catch (e) { console.warn('[Auth] Failed to invalidate caches:', e); }
 
+    // Reset onboarding tour so it shows again on next login
+    localStorage.removeItem('hp_onboarding_complete');
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
