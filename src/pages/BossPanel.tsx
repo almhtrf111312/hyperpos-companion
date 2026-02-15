@@ -1204,10 +1204,12 @@ export default function BossPanel() {
             </div>
 
             {/* Owners List */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
+            <Card className="overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
                 <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <Shield className="w-4 h-4 md:w-5 md:h-5" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                  </div>
                   المستخدمين المسجلين
                 </CardTitle>
                 <div className="flex items-center gap-2">
@@ -1505,10 +1507,12 @@ export default function BossPanel() {
 
           {/* Tab 2: Activation Codes */}
           <TabsContent value="codes" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6">
+            <Card className="overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
                 <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <Key className="w-4 h-4 md:w-5 md:h-5" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Key className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                  </div>
                   أكواد التفعيل ({codes.length})
                 </CardTitle>
                 <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
@@ -1603,10 +1607,12 @@ export default function BossPanel() {
 
           {/* Tab 3: License Issues */}
           <TabsContent value="issues" className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2 px-3 md:px-6">
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2 px-3 md:px-6 bg-gradient-to-br from-destructive/5 to-destructive/0">
                 <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
+                  </div>
                   مشاكل التراخيص ({licenseIssueOwners.length})
                 </CardTitle>
               </CardHeader>
@@ -1690,10 +1696,12 @@ export default function BossPanel() {
             </Card>
 
             {/* Contact Links Settings */}
-            <Card>
-              <CardHeader className="pb-2 px-3 md:px-6">
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
                 <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                  </div>
                   إعدادات التواصل
                 </CardTitle>
               </CardHeader>

@@ -16,9 +16,7 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { SectionDivider } from '@/components/dashboard/SectionDivider';
-import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { TopProducts } from '@/components/dashboard/TopProducts';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
 import { LowStockAlerts } from '@/components/dashboard/LowStockAlerts';
 import { getInvoiceStatsCloud, loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
@@ -207,10 +205,10 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
+        <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{today}</p>
+          <p className="text-sm md:text-base text-muted-foreground mt-2">{today}</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
@@ -323,21 +321,13 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Section: آخر الفواتير */}
-      <SectionDivider title="آخر الفواتير" />
+      {/* Section: التنبيهات */}
+      <SectionDivider title="التنبيهات" />
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentInvoices />
-        </div>
-        <div className="space-y-6">
-          {!noInventory && <LowStockAlerts />}
-          <DebtAlerts />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {!noInventory && <LowStockAlerts />}
+        <DebtAlerts />
       </div>
-
-      <TopProducts />
     </div>
   );
 }
