@@ -9,6 +9,7 @@ import { executePendingCloudClear } from '@/lib/clear-demo-data';
 import { processQueue } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
+import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '@/lib/cloud/purchase-queue-processor';
 import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 
@@ -180,6 +181,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         }
         if (operation.type === 'invoice_create') {
           return await processCashSaleBundleFromQueue(operation.data as { bundle: any });
+        }
+        if (operation.type === 'quick_purchase') {
+          return await processQuickPurchaseFromQueue(operation.data as any);
+        }
+        if (operation.type === 'purchase_invoice') {
+          return await processPurchaseInvoiceFromQueue(operation.data as any);
         }
         // أنواع أخرى يمكن إضافتها هنا
         console.log('[SyncQueue] Processing operation:', operation.type);

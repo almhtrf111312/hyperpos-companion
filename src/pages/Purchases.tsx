@@ -35,9 +35,11 @@ export default function Purchases() {
     loadData();
     const handler = () => loadData();
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handler);
+    window.addEventListener(EVENTS.PURCHASES_UPDATED, handler);
     window.addEventListener('focus', loadData);
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handler);
+      window.removeEventListener(EVENTS.PURCHASES_UPDATED, handler);
       window.removeEventListener('focus', loadData);
     };
   }, [loadData]);

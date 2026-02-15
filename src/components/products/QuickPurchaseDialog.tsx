@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
-import { ShoppingBag, Camera, Image as ImageIcon } from 'lucide-react';
+import { ShoppingBag, Camera, Image as ImageIcon, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadProductImage } from '@/lib/image-upload';
+import { addToQueue } from '@/lib/sync-queue';
+import { emitEvent, EVENTS } from '@/lib/events';
 
 interface QuickPurchaseDialogProps {
   open: boolean;
@@ -79,11 +81,30 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     }
 
     setLoading(true);
+    const totalCost = parseFloat(costPrice) * parseInt(quantity || '1');
+    const qtyNum = parseInt(quantity || '1');
+
+    // If offline, queue the operation
+    if (!navigator.onLine) {
+      addToQueue('quick_purchase', {
+        productName,
+        quantity: qtyNum,
+        costPrice: parseFloat(costPrice),
+        totalCost,
+        imageUrl: imageUrl || undefined,
+      });
+      toast.success(t('purchases.quickAdded') + ' (offline)', { icon: '📴' });
+      emitEvent(EVENTS.PURCHASES_UPDATED);
+      onSuccess?.();
+      onOpenChange(false);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const totalCost = parseFloat(costPrice) * parseInt(quantity || '1');
       const invoiceNumber = `QP-${Date.now()}`;
 
       // Create invoice
@@ -95,10 +116,10 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           supplier_name: productName,
           invoice_date: new Date().toISOString().split('T')[0],
           expected_items_count: 1,
-          expected_total_quantity: parseInt(quantity || '1'),
+          expected_total_quantity: qtyNum,
           expected_grand_total: totalCost,
           actual_items_count: 1,
-          actual_total_quantity: parseInt(quantity || '1'),
+          actual_total_quantity: qtyNum,
           actual_grand_total: totalCost,
           status: 'finalized',
           image_url: imageUrl || null,
@@ -114,17 +135,29 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
         .insert({
           invoice_id: invoice.id,
           product_name: productName,
-          quantity: parseInt(quantity || '1'),
+          quantity: qtyNum,
           cost_price: parseFloat(costPrice),
           total_cost: totalCost,
         });
 
       toast.success(t('purchases.quickAdded'));
+      emitEvent(EVENTS.PURCHASES_UPDATED);
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       console.error('Error adding quick purchase:', error);
-      toast.error(t('common.error'));
+      // Fallback to queue on network error
+      addToQueue('quick_purchase', {
+        productName,
+        quantity: qtyNum,
+        costPrice: parseFloat(costPrice),
+        totalCost,
+        imageUrl: imageUrl || undefined,
+      });
+      toast.success(t('purchases.quickAdded') + ' (queued)', { icon: '📴' });
+      emitEvent(EVENTS.PURCHASES_UPDATED);
+      onSuccess?.();
+      onOpenChange(false);
     } finally {
       setLoading(false);
     }
