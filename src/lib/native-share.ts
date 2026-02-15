@@ -125,6 +125,8 @@ export interface InvoiceShareData {
   paymentType: 'cash' | 'debt';
   serviceDescription?: string;
   type: 'sale' | 'maintenance';
+  taxAmount?: number;
+  taxRate?: number;
 }
 
 export function generateInvoiceShareText(data: InvoiceShareData): string {
@@ -169,7 +171,7 @@ ${type === 'sale' ? '🛒 المشتريات:' : '🔧 الخدمة:'}
 ${itemsList}
 
 ────────────────
-${type === 'sale' && items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
+${type === 'sale' && items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${currencySymbol}${formatNumber(data.taxAmount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
 💳 طريقة الدفع: ${paymentLabel}
 
 ────────────────
