@@ -1,113 +1,87 @@
 
 
-## خطة: تشفير البيانات المحلية بعد 30 يوم من عدم الاتصال بالسيرفر
+## خطة: إعادة هيكلة القائمة الجانبية ودمج الأقسام
 
-### الفكرة
+### ملخص التغييرات
 
-عند نجاح أي فحص ترخيص من السيرفر، يتم تسجيل الوقت محلياً. إذا مر 5 أيام بدون اتصال ناجح بالسيرفر، يظهر تنبيه تحذيري. إذا وصل عدم الاتصال إلى 30 يوم، يتم تشفير البيانات المحلية (localStorage + IndexedDB) ويُقفل التطبيق حتى يتصل بالإنترنت ويتحقق من الترخيص.
-
-### كيف لا تتأثر تجربة المستخدم العادي؟
-
-- المستخدم المتصل بالإنترنت: لن يرى أي شيء مختلف. كل اتصال ناجح يعيد ضبط العداد.
-- المستخدم بدون إنترنت لأقل من 5 أيام: لا يتأثر إطلاقاً.
-- بعد 5 أيام: يرى تنبيه أصفر بسيط "يرجى الاتصال بالإنترنت خلال X يوم لتجنب تشفير البيانات".
-- بعد 30 يوم: تُشفّر البيانات ويظهر شاشة قفل. عند عودة الإنترنت والتحقق الناجح من الترخيص، تُفك التشفير تلقائياً.
+1. **دمج الديون داخل صفحة العملاء** كتبويبين (العملاء | الديون)
+2. **نقل الشركاء إلى الإعدادات** كتبويب جديد
+3. **إزالة الشركاء والديون من القائمة الجانبية**
 
 ---
 
 ### التغييرات المطلوبة
 
-#### 1. ملف جديد: `src/lib/offline-protection.ts`
+#### 1. تعديل: `src/components/layout/Sidebar.tsx`
 
-المسؤول عن:
-- تسجيل آخر وقت اتصال ناجح بالسيرفر (`hp_last_server_contact`)
-- حساب عدد الأيام بدون اتصال
-- تشفير جميع بيانات localStorage الحساسة (المنتجات، الفواتير، العملاء، الديون) باستخدام دوال `backup-encryption.ts` الموجودة
-- تشفير بيانات IndexedDB (`hyperpos_cache`)
-- فك التشفير عند عودة الاتصال والتحقق الناجح
+- إزالة عنصرين من مصفوفة `navItems`:
+  - `{ icon: CreditCard, translationKey: 'nav.debts', path: '/debts' }` (سطر 55)
+  - `{ icon: UserCheck, translationKey: 'nav.partners', path: '/partners', adminOnly: true }` (سطر 57)
+- تغيير تسمية العملاء إلى "العملاء والديون" باستخدام مفتاح ترجمة جديد `nav.customersAndDebts`
 
-**الثوابت:**
-- `WARNING_DAYS = 5` -- بدء التحذير
-- `ENCRYPT_DAYS = 30` -- تشفير البيانات
-- `CONTACT_TIMESTAMP_KEY = 'hp_last_server_contact'`
-- `DATA_ENCRYPTED_KEY = 'hp_data_encrypted'`
-- `ENCRYPTED_BACKUP_KEY = 'hp_encrypted_backup'`
+#### 2. تعديل: `src/pages/Customers.tsx`
 
-**الدوال:**
-- `recordServerContact()` -- يُستدعى عند كل فحص ترخيص ناجح
-- `getDaysWithoutContact(): number` -- يحسب الأيام منذ آخر اتصال
-- `getOfflineStatus(): { daysOffline, shouldWarn, shouldEncrypt }`
-- `encryptLocalData(): Promise<boolean>` -- يجمع كل بيانات localStorage الحساسة + IndexedDB ويشفرها في كتلة واحدة
-- `decryptLocalData(): Promise<boolean>` -- يفك التشفير ويعيد البيانات
-- `isDataEncrypted(): boolean`
+- إضافة مكون `Tabs` من shadcn/ui في أعلى الصفحة
+- التبويب الأول: "العملاء" -- يحتوي على المحتوى الحالي لصفحة العملاء
+- التبويب الثاني: "الديون" -- يعرض مكون `Debts` (استيراده من `src/pages/Debts.tsx`)
+- دعم الانتقال المباشر للتبويب عبر URL parameter (مثلاً `?tab=debts`)
 
-#### 2. تعديل: `src/hooks/use-license.tsx`
+#### 3. تعديل: `src/pages/Settings.tsx`
 
-- عند نجاح فحص الترخيص (سطر 149-152)، استدعاء `recordServerContact()`
-- عند نجاح الفحص وكانت البيانات مشفرة (`isDataEncrypted()`)، استدعاء `decryptLocalData()` لفك التشفير تلقائياً
-- إضافة حقول جديدة للحالة:
-  - `offlineDays: number` -- عدد أيام عدم الاتصال
-  - `offlineWarning: boolean` -- هل يجب إظهار تحذير (5+ أيام)
-  - `dataEncrypted: boolean` -- هل البيانات مشفرة حالياً
+- إضافة تبويب جديد "الشركاء" في مصفوفة `settingsTabs` (سطر 200)
+  - `{ id: 'partners', label: t('nav.partners'), icon: UserCheck, adminOnly: true }`
+- إضافة عرض مكون `Partners` عند اختيار تبويب `partners`
+- استيراد مكون `Partners` من `src/pages/Partners.tsx`
 
-#### 3. مكون جديد: `src/components/license/OfflineProtectionBanner.tsx`
+#### 4. تعديل: `src/App.tsx`
 
-- بانر تحذيري يظهر بعد 5 أيام من عدم الاتصال
-- يعرض: "لم يتم التحقق من الترخيص منذ X يوم. يرجى الاتصال بالإنترنت خلال Y يوم لتجنب تشفير البيانات."
-- يظهر باللون الأصفر (5-20 يوم)، البرتقالي (20-25 يوم)، الأحمر (25-30 يوم)
+- إبقاء route `/debts` لكن توجيهه لصفحة العملاء مع تبويب الديون مفتوح
+- إبقاء route `/partners` لكن توجيهه للإعدادات مع تبويب الشركاء مفتوح
+- هذا يضمن عدم كسر أي روابط داخلية موجودة
 
-#### 4. مكون جديد: `src/components/license/DataEncryptedScreen.tsx`
+#### 5. تعديل: `src/lib/i18n.ts`
 
-- شاشة قفل كاملة تظهر عندما تكون البيانات مشفرة
-- تعرض: "بياناتك مشفرة مؤقتاً بسبب عدم الاتصال بالسيرفر لمدة 30 يوم"
-- زر "اتصل بالإنترنت وأعد المحاولة" يحاول فحص الترخيص وفك التشفير
-- رسالة "تأكد من اتصالك بالإنترنت ثم اضغط إعادة المحاولة"
-
-#### 5. تعديل: `src/components/license/LicenseGuard.tsx`
-
-- إضافة فحص `dataEncrypted` من `useLicense()`
-- إذا كانت البيانات مشفرة، عرض `DataEncryptedScreen` بدلاً من المحتوى
-- إضافة `OfflineProtectionBanner` فوق المحتوى عند وجود تحذير
-
-#### 6. تعديل: `src/App.tsx`
-
-- إضافة `OfflineProtectionBanner` بجانب `LicenseWarningBadge` (خارج LicenseGuard)
-
-#### 7. تعديل: `src/lib/i18n.ts`
-
-- إضافة نصوص الترجمة للتحذيرات وشاشة التشفير بالعربية والإنجليزية والتركية والفارسية والكردية
+- إضافة مفتاح ترجمة جديد `nav.customersAndDebts` بجميع اللغات:
+  - العربية: "العملاء والديون"
+  - الإنجليزية: "Customers & Debts"
+  - التركية: "Müşteriler ve Borçlar"
+  - الفارسية: "مشتریان و بدهی‌ها"
+  - الكردية: "کڕیارەکان و قەرزەکان"
+- إضافة مفاتيح للتبويبات:
+  - `customers.tabCustomers`: "العملاء" / "Customers" / ...
+  - `customers.tabDebts`: "الديون" / "Debts" / ...
 
 ---
 
 ### التفاصيل التقنية
 
-**آلية التشفير:**
-- عند الوصول لـ 30 يوم، يتم جمع مفاتيح localStorage التالية: `hyperpos_products`, `hyperpos_invoices`, `hyperpos_customers`, `hyperpos_debts`, `hyperpos_expenses`
-- يتم تشفيرها باستخدام `encryptBackup()` الموجودة في `backup-encryption.ts`
-- تُخزن النسخة المشفرة في `hp_encrypted_backup`
-- تُحذف المفاتيح الأصلية
-- يُعلّم `hp_data_encrypted = true`
-- بيانات IndexedDB (`hyperpos_cache`) تُقرأ وتُشفر أيضاً
+**هيكل صفحة العملاء الجديدة:**
 
-**آلية فك التشفير:**
-- عند نجاح فحص الترخيص + `isDataEncrypted() === true`:
-  - تُقرأ `hp_encrypted_backup` وتُفك باستخدام `decryptBackup()`
-  - تُعاد البيانات لأماكنها الأصلية
-  - يُزال علم التشفير
+```text
+صفحة العملاء
++----------------------------------+
+| العملاء والديون           [+ إضافة] |
+| وصف الصفحة                        |
++----------------------------------+
+| [العملاء]  [الديون]    <-- تبويبات |
++----------------------------------+
+| محتوى التبويب المحدد              |
++----------------------------------+
+```
 
-**لا تغييرات في قاعدة البيانات السحابية** -- هذه الميزة محلية بالكامل تحمي البيانات المخبأة على الجهاز فقط. بيانات السيرفر محمية بالفعل عبر RLS.
+**التوجيهات في App.tsx:**
+- `/customers` --> صفحة العملاء (تبويب العملاء)
+- `/customers?tab=debts` --> صفحة العملاء (تبويب الديون)
+- `/debts` --> إعادة توجيه إلى `/customers?tab=debts`
+- `/partners` --> إعادة توجيه إلى `/settings?tab=partners`
 
----
-
-### ملخص الملفات
+**الملفات المعدلة (5 ملفات):**
 
 | الملف | النوع |
 |-------|-------|
-| `src/lib/offline-protection.ts` | جديد |
-| `src/components/license/OfflineProtectionBanner.tsx` | جديد |
-| `src/components/license/DataEncryptedScreen.tsx` | جديد |
-| `src/hooks/use-license.tsx` | تعديل |
-| `src/components/license/LicenseGuard.tsx` | تعديل |
+| `src/components/layout/Sidebar.tsx` | تعديل |
+| `src/pages/Customers.tsx` | تعديل |
+| `src/pages/Settings.tsx` | تعديل |
 | `src/App.tsx` | تعديل |
 | `src/lib/i18n.ts` | تعديل |
 
