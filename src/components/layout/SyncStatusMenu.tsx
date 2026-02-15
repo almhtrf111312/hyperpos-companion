@@ -180,7 +180,7 @@ export function SyncStatusMenu() {
             <StatusIcon className={cn("h-4 w-4", config.color, config.animate)} />
             <span className="font-medium text-sm">{config.label}</span>
           </div>
-          {isOnline && pendingCount > 0 && (
+          {isOnline && (
             <Button
               size="sm"
               variant="outline"
