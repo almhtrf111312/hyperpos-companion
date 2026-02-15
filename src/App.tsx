@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { HashRouter, Routes, Route, useSearchParams, useNavigate } from "react-router-dom";
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
@@ -51,6 +51,18 @@ import BossPanel from "./pages/BossPanel";
 import { WarehouseProvider } from "./hooks/use-warehouse";
 
 const queryClient = new QueryClient();
+
+// Redirect components for merged routes
+const DebtsRedirect = () => {
+  const navigate = useNavigate();
+  useEffect(() => { navigate('/customers?tab=debts', { replace: true }); }, [navigate]);
+  return null;
+};
+const PartnersRedirect = () => {
+  const navigate = useNavigate();
+  useEffect(() => { navigate('/settings?tab=partners', { replace: true }); }, [navigate]);
+  return null;
+};
 
 const AppContent = () => {
   const [searchParams] = useSearchParams();
@@ -170,7 +182,7 @@ const AppContent = () => {
         <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
         <Route path="/customers/*" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
-        <Route path="/debts" element={<ProtectedRoute><MainLayout><Debts /></MainLayout></ProtectedRoute>} />
+        <Route path="/debts" element={<ProtectedRoute><MainLayout><DebtsRedirect /></MainLayout></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute><MainLayout><Invoices /></MainLayout></ProtectedRoute>} />
         <Route path="/services" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
         <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
@@ -184,7 +196,7 @@ const AppContent = () => {
         <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/purchases" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Purchases /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Partners /></MainLayout></RoleGuard></ProtectedRoute>} />
+        <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><PartnersRedirect /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
