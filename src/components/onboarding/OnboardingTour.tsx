@@ -21,6 +21,7 @@ interface TourStep {
   descKey: TranslationKey;
   route?: string;
   requireSidebar?: boolean;
+  requireCart?: boolean;
   mobileOnly?: boolean;
   desktopOnly?: boolean;
   prefer?: 'top' | 'bottom' | 'left' | 'right';
@@ -50,6 +51,10 @@ const tourSteps: TourStep[] = [
   { selector: '[data-tour="search-bar"]', titleKey: 'onboarding.step4Title' as TranslationKey, descKey: 'onboarding.step4Desc' as TranslationKey, route: '/' },
   { selector: '[data-tour="cart-panel"]', titleKey: 'onboarding.step5Title' as TranslationKey, descKey: 'onboarding.step5Desc' as TranslationKey, desktopOnly: true, route: '/' },
   { selector: '[data-tour="cart-fab"]', titleKey: 'onboarding.step6Title' as TranslationKey, descKey: 'onboarding.step6Desc' as TranslationKey, mobileOnly: true, route: '/' },
+  // Payment & action buttons inside cart
+  { selector: '[data-tour="cash-btn"]', titleKey: 'onboarding.step14Title' as TranslationKey, descKey: 'onboarding.step14Desc' as TranslationKey, route: '/', prefer: 'top', requireCart: true },
+  { selector: '[data-tour="debt-btn"]', titleKey: 'onboarding.step15Title' as TranslationKey, descKey: 'onboarding.step15Desc' as TranslationKey, route: '/', prefer: 'top', requireCart: true },
+  { selector: '[data-tour="action-btns"]', titleKey: 'onboarding.step16Title' as TranslationKey, descKey: 'onboarding.step16Desc' as TranslationKey, route: '/', prefer: 'top', requireCart: true },
 ];
 
 export function OnboardingTour() {
@@ -198,6 +203,12 @@ export function OnboardingTour() {
     if (step.requireSidebar && isMobile) {
       const menuBtn = document.querySelector('[data-tour="mobile-menu-trigger"]') as HTMLButtonElement;
       if (menuBtn) menuBtn.click();
+    }
+
+    // Open cart panel for cart-related steps (on mobile)
+    if (step.requireCart && isMobile) {
+      const cartFab = document.querySelector('[data-tour="cart-fab"]') as HTMLButtonElement;
+      if (cartFab) cartFab.click();
     }
 
     // Wait for layout to settle, then position
