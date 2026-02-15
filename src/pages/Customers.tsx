@@ -18,6 +18,7 @@ import {
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -47,10 +48,21 @@ import {
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
+import Debts from '@/pages/Debts';
 
 export default function Customers() {
   const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'debts' ? 'debts' : 'customers';
+
+  const handleTabChange = (value: string) => {
+    if (value === 'debts') {
+      setSearchParams({ tab: 'debts' }, { replace: true });
+    } else {
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -237,17 +249,29 @@ export default function Customers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('customers.pageTitle')}</h1>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('nav.customersAndDebts' as any)}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          setFormData({ name: '', phone: '', email: '', address: '' });
-          setShowAddDialog(true);
-        }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-          {t('customers.addCustomer')}
-        </Button>
+        {activeTab === 'customers' && (
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+            setFormData({ name: '', phone: '', email: '', address: '' });
+            setShowAddDialog(true);
+          }}>
+            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            {t('customers.addCustomer')}
+          </Button>
+        )}
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="w-full md:w-auto">
+          <TabsTrigger value="customers" className="flex-1 md:flex-none">{t('customers.tabCustomers' as any)}</TabsTrigger>
+          <TabsTrigger value="debts" className="flex-1 md:flex-none">{t('customers.tabDebts' as any)}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="customers">
+          <div className="space-y-4 md:space-y-6">
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
@@ -404,6 +428,13 @@ export default function Customers() {
           </div>
         ))}
       </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="debts">
+          <Debts />
+        </TabsContent>
+      </Tabs>
 
       {/* Add Customer Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

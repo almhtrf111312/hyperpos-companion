@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Undo2, Smartphone } from 'lucide-react';
+import { Undo2, Smartphone, UserCheck } from 'lucide-react';
+import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
   Store,
@@ -73,7 +74,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useUserRole } from '@/hooks/use-user-role';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { saveStoreSettings } from '@/lib/supabase-store';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -164,7 +165,8 @@ export default function Settings() {
   const { t, isRTL } = useLanguage();
   const { user: currentUser } = useAuth();
   const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
-  const [activeTab, setActiveTab] = useState('store');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'store');
   const [isSavingUser, setIsSavingUser] = useState(false);
   const navigate = useNavigate();
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
@@ -211,6 +213,7 @@ export default function Settings() {
     { id: 'contact', label: t('license.contactDeveloper'), icon: Phone, danger: true },
     { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true, danger: true },
     
+    { id: 'partners', label: t('nav.partners'), icon: UserCheck, adminOnly: true },
     { id: 'archive', label: t('archive.title'), icon: Archive },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true, danger: true },
     
@@ -1554,6 +1557,9 @@ export default function Settings() {
             <ContactLinksSection />
           </div>
         );
+
+      case 'partners':
+        return <Partners />;
 
       case 'archive':
         return <ArchiveSection />;
