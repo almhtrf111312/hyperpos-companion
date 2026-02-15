@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Truck, Calendar, User, DollarSign, Loader2 } from 'lucide-react';
+import { FileText, Plus, Truck, Calendar, DollarSign, Loader2, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 import { formatNumber } from '@/lib/utils';
 import { loadPurchaseInvoicesCloud, PurchaseInvoice } from '@/lib/cloud/purchase-invoices-cloud';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
+import { QuickPurchaseDialog } from '@/components/products/QuickPurchaseDialog';
 import { EVENTS } from '@/lib/events';
 import { format } from 'date-fns';
 import { ar, enUS, tr } from 'date-fns/locale';
@@ -14,6 +15,7 @@ export default function Purchases() {
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showQuickDialog, setShowQuickDialog] = useState(false);
 
   const dateLocale = language === 'ar' ? ar : language === 'tr' ? tr : enUS;
 
@@ -40,7 +42,7 @@ export default function Purchases() {
     };
   }, [loadData]);
 
-  const totalPurchases = invoices.reduce((sum, inv) => sum + (inv.expected_grand_total || 0), 0);
+  const totalPurchases = invoices.reduce((sum, inv) => sum + (inv.actual_grand_total || inv.expected_grand_total || 0), 0);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -51,10 +53,16 @@ export default function Purchases() {
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('purchases.title')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{t('purchases.subtitle')}</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowDialog(true)}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            {t('purchases.addNew')}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowQuickDialog(true)}>
+              <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+              {t('purchases.quickAdd')}
+            </Button>
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowDialog(true)}>
+              <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+              {t('purchases.addNew')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -89,10 +97,16 @@ export default function Purchases() {
             <Truck className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-1">{t('purchases.noInvoices')}</h3>
             <p className="text-sm text-muted-foreground mb-4">{t('purchases.noInvoicesDesc')}</p>
-            <Button onClick={() => setShowDialog(true)}>
-              <Plus className="w-4 h-4 ml-2" />
-              {t('purchases.addNew')}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowQuickDialog(true)}>
+                <ShoppingBag className="w-4 h-4 ml-2" />
+                {t('purchases.quickAdd')}
+              </Button>
+              <Button onClick={() => setShowDialog(true)}>
+                <Plus className="w-4 h-4 ml-2" />
+                {t('purchases.addNew')}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -116,10 +130,12 @@ export default function Purchases() {
                   </div>
                   <div className="flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5" />
-                    <span className="font-semibold text-foreground">${formatNumber(invoice.expected_grand_total, 2)}</span>
+                    <span className="font-semibold text-foreground">
+                      ${formatNumber(invoice.actual_grand_total || invoice.expected_grand_total, 2)}
+                    </span>
                   </div>
                   <span className="text-xs">
-                    {invoice.expected_items_count} {t('purchases.items')}
+                    {invoice.actual_items_count || invoice.expected_items_count} {t('purchases.items')}
                   </span>
                 </div>
               </div>
@@ -128,10 +144,15 @@ export default function Purchases() {
         )}
       </div>
 
-      {/* Purchase Invoice Dialog */}
+      {/* Dialogs */}
       <PurchaseInvoiceDialog
         open={showDialog}
         onOpenChange={setShowDialog}
+        onSuccess={loadData}
+      />
+      <QuickPurchaseDialog
+        open={showQuickDialog}
+        onOpenChange={setShowQuickDialog}
         onSuccess={loadData}
       />
     </div>

@@ -7,19 +7,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
 import {
-  Package,
   FileText,
   User,
   Building,
   Calendar,
   Hash,
-  DollarSign,
   ArrowRight,
   ArrowLeft,
   Check,
   X,
   Plus,
-  AlertTriangle
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import {
   addPurchaseInvoiceCloud,
@@ -31,7 +30,8 @@ import {
   PurchaseInvoiceItem
 } from '@/lib/cloud/purchase-invoices-cloud';
 import { PurchaseInvoiceItemForm } from './PurchaseInvoiceItemForm';
-import { PurchaseReconciliation } from './PurchaseReconciliation';
+import { uploadProductImage } from '@/lib/image-upload';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PurchaseInvoiceDialogProps {
   open: boolean;
@@ -39,7 +39,7 @@ interface PurchaseInvoiceDialogProps {
   onSuccess?: () => void;
 }
 
-type Step = 'header' | 'items' | 'reconciliation';
+type Step = 'header' | 'items' | 'finalize';
 
 export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: PurchaseInvoiceDialogProps) {
   const { t } = useLanguage();
@@ -51,17 +51,16 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   const [supplierName, setSupplierName] = useState('');
   const [supplierCompany, setSupplierCompany] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [expectedItemsCount, setExpectedItemsCount] = useState('');
-  const [expectedTotalQuantity, setExpectedTotalQuantity] = useState('');
-  const [expectedGrandTotal, setExpectedGrandTotal] = useState('');
   const [notes, setNotes] = useState('');
-  const [supplierNumber, setSupplierNumber] = useState('');
-  const [companyNumber, setCompanyNumber] = useState('');
 
   // Invoice state
   const [currentInvoice, setCurrentInvoice] = useState<PurchaseInvoice | null>(null);
   const [invoiceItems, setInvoiceItems] = useState<PurchaseInvoiceItem[]>([]);
   const [showItemForm, setShowItemForm] = useState(false);
+
+  // Invoice image
+  const [invoiceImageUrl, setInvoiceImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -71,20 +70,16 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setSupplierName('');
       setSupplierCompany('');
       setInvoiceDate(new Date().toISOString().split('T')[0]);
-      setExpectedItemsCount('');
-      setExpectedTotalQuantity('');
-      setExpectedGrandTotal('');
       setNotes('');
-      setSupplierNumber('');
-      setCompanyNumber('');
       setCurrentInvoice(null);
       setInvoiceItems([]);
       setShowItemForm(false);
+      setInvoiceImageUrl('');
     }
   }, [open]);
 
   const handleCreateInvoice = async () => {
-    if (!invoiceNumber || !supplierName || !expectedItemsCount || !expectedTotalQuantity || !expectedGrandTotal) {
+    if (!invoiceNumber || !supplierName) {
       toast.error(t('products.fillRequired'));
       return;
     }
@@ -95,10 +90,10 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       supplier_name: supplierName,
       supplier_company: supplierCompany,
       invoice_date: invoiceDate,
-      expected_items_count: parseInt(expectedItemsCount),
-      expected_total_quantity: parseInt(expectedTotalQuantity),
-      expected_grand_total: parseFloat(expectedGrandTotal),
-      notes: JSON.stringify({ text: notes, supplierNumber, companyNumber })
+      expected_items_count: 0,
+      expected_total_quantity: 0,
+      expected_grand_total: 0,
+      notes: notes || undefined
     });
     setLoading(false);
 
@@ -157,6 +152,14 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     if (!currentInvoice) return;
 
     setLoading(true);
+    // Save image URL if present
+    if (invoiceImageUrl) {
+      await supabase
+        .from('purchase_invoices')
+        .update({ image_url: invoiceImageUrl })
+        .eq('id', currentInvoice.id);
+    }
+
     const success = await finalizePurchaseInvoiceCloud(currentInvoice.id);
     setLoading(false);
 
@@ -169,14 +172,52 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     }
   };
 
-  const goToReconciliation = () => {
+  const goToFinalize = () => {
     setShowItemForm(false);
-    setStep('reconciliation');
+    setStep('finalize');
   };
 
   const backToItems = () => {
     setStep('items');
     setShowItemForm(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const url = await uploadProductImage(base64);
+        if (url) setInvoiceImageUrl(url);
+        setUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleCameraCapture = async () => {
+    try {
+      const { Camera: CapCamera } = await import('@capacitor/camera');
+      const photo = await (CapCamera as any).getPhoto({
+        quality: 70,
+        resultType: 'base64' as any,
+        source: 'CAMERA' as any,
+      });
+      if (photo?.base64String) {
+        setUploadingImage(true);
+        const base64 = `data:image/jpeg;base64,${photo.base64String}`;
+        const url = await uploadProductImage(base64);
+        if (url) setInvoiceImageUrl(url);
+        setUploadingImage(false);
+      }
+    } catch {
+      // Camera not available
+    }
   };
 
   return (
@@ -203,10 +244,10 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             <span>{t('purchaseInvoice.itemsStep')}</span>
           </div>
           <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${step === 'reconciliation' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${step === 'finalize' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
             <span>3</span>
-            <span>{t('purchaseInvoice.reconciliationStep')}</span>
+            <span>{t('purchases.finalize')}</span>
           </div>
         </div>
 
@@ -259,7 +300,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1 text-sm">
                 <Calendar className="w-4 h-4" />
-                تاريخ الفاتورة
+                {t('purchases.invoiceDate')}
               </Label>
               <Input
                 type="date"
@@ -267,76 +308,6 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                 onChange={(e) => setInvoiceDate(e.target.value)}
                 className="h-10"
               />
-            </div>
-
-            {/* Supplier Number (stored in notes as JSON) */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1 text-sm">
-                <Hash className="w-4 h-4" />
-                رقم المورد
-              </Label>
-              <Input
-                value={supplierNumber}
-                onChange={(e) => setSupplierNumber(e.target.value)}
-                placeholder="مثال: SUP-001"
-                className="h-10"
-              />
-            </div>
-
-            {/* Company Number */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1 text-sm">
-                <Building className="w-4 h-4" />
-                رقم الشركة
-              </Label>
-              <Input
-                value={companyNumber}
-                onChange={(e) => setCompanyNumber(e.target.value)}
-                placeholder="مثال: COM-001"
-                className="h-10"
-              />
-            </div>
-
-            {/* Expected Values - Separate Rows */}
-            <div className="p-4 bg-muted/50 rounded-xl border border-border space-y-3">
-              <h3 className="font-semibold text-sm flex items-center gap-2 text-foreground">
-                <Package className="w-4 h-4 text-primary" />
-                {t('purchaseInvoice.expectedValues')}
-              </h3>
-
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-3">
-                  <Label className="text-sm text-muted-foreground w-36 flex-shrink-0">{t('purchaseInvoice.expectedItemsCount')} *</Label>
-                  <Input
-                    type="number"
-                    value={expectedItemsCount}
-                    onChange={(e) => setExpectedItemsCount(e.target.value)}
-                    placeholder="10"
-                    className="h-9 flex-1"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <Label className="text-sm text-muted-foreground w-36 flex-shrink-0">{t('purchaseInvoice.expectedQuantity')} *</Label>
-                  <Input
-                    type="number"
-                    value={expectedTotalQuantity}
-                    onChange={(e) => setExpectedTotalQuantity(e.target.value)}
-                    placeholder="100"
-                    className="h-9 flex-1"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <Label className="text-sm text-muted-foreground w-36 flex-shrink-0">{t('purchaseInvoice.expectedTotal')} *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={expectedGrandTotal}
-                    onChange={(e) => setExpectedGrandTotal(e.target.value)}
-                    placeholder="1000.00"
-                    className="h-9 flex-1"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Notes */}
@@ -369,32 +340,19 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
           <div className="space-y-4">
             {/* Progress indicator */}
             <div className="p-3 bg-muted rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}:</span>
-                  <span className={`font-bold mx-1 ${invoiceItems.length === currentInvoice.expected_items_count
-                      ? 'text-success'
-                      : invoiceItems.length > currentInvoice.expected_items_count
-                        ? 'text-destructive'
-                        : 'text-foreground'
-                    }`}>
-                    {invoiceItems.length}
-                  </span>
-                  <span className="text-muted-foreground">/ {currentInvoice.expected_items_count}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-muted-foreground">{t('purchaseInvoice.totalQuantity')}:</span>
-                  <span className={`font-bold mx-1 ${currentInvoice.actual_total_quantity === currentInvoice.expected_total_quantity
-                      ? 'text-success'
-                      : 'text-foreground'
-                    }`}>
-                    {currentInvoice.actual_total_quantity}
-                  </span>
-                  <span className="text-muted-foreground">/ {currentInvoice.expected_total_quantity}</span>
-                </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}:</span>
+                <span className="font-bold mx-1 text-foreground">
+                  {invoiceItems.length}
+                </span>
+                <span className="text-muted-foreground mx-2">|</span>
+                <span className="text-muted-foreground">{t('common.total')}:</span>
+                <span className="font-bold mx-1 text-foreground">
+                  ${currentInvoice.actual_grand_total?.toFixed(2) || '0.00'}
+                </span>
               </div>
-              <Button size="sm" onClick={goToReconciliation}>
-                {t('purchaseInvoice.finishAndVerify')}
+              <Button size="sm" onClick={goToFinalize} disabled={invoiceItems.length === 0}>
+                {t('purchases.finalize')}
                 <ArrowLeft className="w-4 h-4 mr-2" />
               </Button>
             </div>
@@ -458,15 +416,108 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
           </div>
         )}
 
-        {/* Step 3: Reconciliation */}
-        {step === 'reconciliation' && currentInvoice && (
-          <PurchaseReconciliation
-            invoice={currentInvoice}
-            items={invoiceItems}
-            onBack={backToItems}
-            onFinalize={handleFinalize}
-            loading={loading}
-          />
+        {/* Step 3: Finalize with Image */}
+        {step === 'finalize' && currentInvoice && (
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="p-4 bg-muted/50 rounded-lg border space-y-2">
+              <h3 className="font-semibold text-sm">{t('purchases.invoiceSummary')}</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">{t('purchaseInvoice.supplierName')}: </span>
+                  <span className="font-medium">{currentInvoice.supplier_name}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t('purchaseInvoice.invoiceNumber')}: </span>
+                  <span className="font-medium">#{currentInvoice.invoice_number}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}: </span>
+                  <span className="font-medium">{invoiceItems.length}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t('common.total')}: </span>
+                  <span className="font-bold text-primary">${currentInvoice.actual_grand_total?.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Items list */}
+            <div className="border rounded-lg p-3 max-h-32 overflow-y-auto">
+              {invoiceItems.map((item, index) => (
+                <div key={item.id} className="flex justify-between text-xs py-1">
+                  <span>{index + 1}. {item.product_name}</span>
+                  <span className="text-muted-foreground">{item.quantity}×${item.cost_price.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Invoice Image Upload */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">{t('purchases.receiptPhoto')}</Label>
+              {invoiceImageUrl ? (
+                <div className="relative">
+                  <img src={invoiceImageUrl} alt="Invoice" className="w-full h-40 object-cover rounded-lg border" />
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="absolute top-2 right-2 h-7 text-xs px-2"
+                    onClick={() => setInvoiceImageUrl('')}
+                  >
+                    {t('common.delete')}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleCameraCapture}
+                    disabled={uploadingImage}
+                  >
+                    <Camera className="w-4 h-4 ml-1" />
+                    {t('purchases.camera')}
+                  </Button>
+                  <label className="flex-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={uploadingImage}
+                      asChild
+                    >
+                      <span>
+                        <ImageIcon className="w-4 h-4 ml-1" />
+                        {t('purchases.gallery')}
+                      </span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                </div>
+              )}
+              {uploadingImage && (
+                <p className="text-xs text-muted-foreground text-center">{t('common.loading')}...</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={backToItems} disabled={loading}>
+                <ArrowRight className="w-4 h-4 ml-1" />
+                {t('common.back')}
+              </Button>
+              <Button className="flex-1" onClick={handleFinalize} disabled={loading || uploadingImage}>
+                {loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}
+                <Check className="w-4 h-4 mr-1" />
+              </Button>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
