@@ -43,6 +43,7 @@ interface POSProduct {
   costPrice?: number;
   bulkCostPrice?: number;
   wholesalePrice?: number;
+  laborCost?: number;  // تكلفة العمالة (وضع ورشة الصيانة)
   // Pharmacy fields
   expiryDate?: string;
   batchNumber?: string;
@@ -250,6 +251,7 @@ export default function POS() {
         costPrice: p.costPrice,
         bulkCostPrice: p.bulkCostPrice || 0,
         wholesalePrice: p.wholesalePrice,
+        laborCost: p.laborCost || 0,
         // Pharmacy fields
         expiryDate: p.expiryDate,
         batchNumber: p.batchNumber,

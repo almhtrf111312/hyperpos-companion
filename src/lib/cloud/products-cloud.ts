@@ -49,6 +49,7 @@ export interface Product {
   category: string;
   costPrice: number;
   salePrice: number;
+  laborCost?: number;  // تكلفة العمالة (وضع ورشة الصيانة)
   quantity: number;
   minStockLevel?: number;
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -115,6 +116,7 @@ function toProduct(cloud: CloudProduct): Product {
       )
     ) : undefined,
     // Unit settings
+    laborCost: Number((cloud as any).labor_cost) || 0,
     bulkUnit: (cloud as any).bulk_unit || 'كرتونة',
     smallUnit: (cloud as any).small_unit || 'قطعة',
     conversionFactor: (cloud as any).conversion_factor || 1,
@@ -158,6 +160,8 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
     image_url: product.image || null,
     custom_fields: Object.keys(mergedCustomFields).length > 0 ? mergedCustomFields : null,
     archived: false,
+    // Labor cost (workshop mode)
+    labor_cost: product.laborCost || 0,
     // Unit settings
     bulk_unit: product.bulkUnit || 'كرتونة',
     small_unit: product.smallUnit || 'قطعة',
@@ -379,6 +383,8 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.minStockLevel !== undefined) updates.min_stock_level = data.minStockLevel;
   if (data.expiryDate !== undefined) updates.expiry_date = data.expiryDate || null;
   if (data.image !== undefined) updates.image_url = data.image || null;
+  // Labor cost (workshop mode)
+  if (data.laborCost !== undefined) updates.labor_cost = data.laborCost;
   // Unit settings
   if (data.bulkUnit !== undefined) updates.bulk_unit = data.bulkUnit;
   if (data.smallUnit !== undefined) updates.small_unit = data.smallUnit;
