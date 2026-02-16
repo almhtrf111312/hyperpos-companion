@@ -136,6 +136,7 @@ export default function Products() {
   const [showPurchaseInvoiceDialog, setShowPurchaseInvoiceDialog] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
+  const [imagePreviewBase64, setImagePreviewBase64] = useState<string>('');
 
   // Form state with dynamic fields
   const [formData, setFormData] = useState({
@@ -239,27 +240,17 @@ export default function Products() {
    * Handle Photo Restoration from Android Process Death
    */
   const handlePhotoRestored = useCallback(async (base64Image: string) => {
-    // DEBUG: Alert to confirm callback execution
-    // alert('DEBUG: handlePhotoRestored called'); 
+    // Show preview immediately
+    setImagePreviewBase64(base64Image);
 
     const toastId = toast.loading('جاري استعادة الصورة...');
-
-    // Automatically upload the restored image
     const imageUrl = await uploadProductImage(base64Image);
     toast.dismiss(toastId);
 
     if (imageUrl) {
-      // DEBUG: Alert to confirm image URL
-      // alert('DEBUG: Image URL: ' + imageUrl.substring(0, 50) + '...');
-
-      // Use functional update to avoid race conditions with initial restore
-      setFormData(prev => {
-        // alert(`DEBUG: Updating form. Old Image: ${prev.image ? 'Yes' : 'No'}, New Image: Yes`);
-        return { ...prev, image: imageUrl };
-      });
+      setFormData(prev => ({ ...prev, image: imageUrl }));
       toast.success(t('products.imageRestored'));
     } else {
-      // alert('DEBUG: Upload returned null');
       toast.error(t('products.imageRestoreFailed'));
     }
   }, []);
@@ -422,33 +413,47 @@ export default function Products() {
 
   // Handle gallery selection using Capacitor Camera plugin
   const handleGallerySelect = async () => {
-    const base64Image = await pickFromGallery();
-    if (base64Image) {
-      const toastId = toast.loading('جاري رفع الصورة...');
-      const imageUrl = await uploadProductImage(base64Image);
-      toast.dismiss(toastId);
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, image: imageUrl }));
-        toast.success(t('products.imageUploaded'));
-      } else {
-        toast.error(t('products.imageUploadFailed'));
+    try {
+      const base64Image = await pickFromGallery();
+      if (base64Image) {
+        // Show preview immediately
+        setImagePreviewBase64(base64Image);
+        const toastId = toast.loading('جاري رفع الصورة...');
+        const imageUrl = await uploadProductImage(base64Image);
+        toast.dismiss(toastId);
+        if (imageUrl) {
+          setFormData(prev => ({ ...prev, image: imageUrl }));
+          toast.success(t('products.imageUploaded'));
+        } else {
+          setImagePreviewBase64('');
+          toast.error(t('products.imageUploadFailed'));
+        }
       }
+    } catch (err) {
+      console.error('Gallery select error:', err);
     }
   };
 
   // Handle camera capture using Capacitor Camera plugin
   const handleCameraCapture = async () => {
-    const base64Image = await takePhoto();
-    if (base64Image) {
-      const toastId = toast.loading('جاري رفع الصورة...');
-      const imageUrl = await uploadProductImage(base64Image);
-      toast.dismiss(toastId);
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, image: imageUrl }));
-        toast.success(t('products.imageUploaded'));
-      } else {
-        toast.error(t('products.imageUploadFailed'));
+    try {
+      const base64Image = await takePhoto();
+      if (base64Image) {
+        // Show preview immediately
+        setImagePreviewBase64(base64Image);
+        const toastId = toast.loading('جاري رفع الصورة...');
+        const imageUrl = await uploadProductImage(base64Image);
+        toast.dismiss(toastId);
+        if (imageUrl) {
+          setFormData(prev => ({ ...prev, image: imageUrl }));
+          toast.success(t('products.imageUploaded'));
+        } else {
+          setImagePreviewBase64('');
+          toast.error(t('products.imageUploadFailed'));
+        }
       }
+    } catch (err) {
+      console.error('Camera capture error:', err);
     }
   };
 
@@ -540,6 +545,7 @@ export default function Products() {
       }
 
       setShowAddDialog(false);
+      setImagePreviewBase64('');
       setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
       setShowBarcode2(false);
       setShowBarcode3(false);
@@ -601,6 +607,7 @@ export default function Products() {
       }
 
       setShowEditDialog(false);
+      setImagePreviewBase64('');
       setSelectedProduct(null);
       setCustomFieldValues({});
       clearPersistedState(); // Clear persistence on success
@@ -733,6 +740,7 @@ export default function Products() {
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
                 setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setImagePreviewBase64('');
                 setShowAddDialog(true);
               }}>
                 <Plus className="w-4 h-4 ml-1" />
@@ -759,6 +767,7 @@ export default function Products() {
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
               setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+              setImagePreviewBase64('');
               setShowAddDialog(true);
             }}>
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1850,27 +1859,31 @@ export default function Products() {
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                   <div className="flex flex-col gap-3">
-                    {formData.image ? (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => setPreviewImageUrl(formData.image)}>
-                        <img
-                          src={formData.image}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; setImageLoadError(true); }}
-                          onLoad={() => setImageLoadError(false)}
-                        />
-                        {imageLoadError && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-                            <AlertTriangle className="w-5 h-5 text-destructive mb-1" />
-                            <span className="text-[10px] text-destructive">تالفة</span>
-                          </div>
+                    {(imagePreviewBase64 || formData.image) ? (
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
+                        if (imagePreviewBase64) setPreviewImageUrl(imagePreviewBase64);
+                        else if (formData.image) setPreviewImageUrl(formData.image);
+                      }}>
+                        {imagePreviewBase64 ? (
+                          <img
+                            src={imagePreviewBase64}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ProductImage
+                            imageUrl={formData.image}
+                            alt="Preview"
+                            className="w-24 h-24 rounded-lg"
+                            iconClassName="w-6 h-6"
+                          />
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Search className="w-5 h-5 text-white" />
                         </div>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImageLoadError(false); }}
+                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImagePreviewBase64(''); setImageLoadError(false); }}
                           className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
                         >
                           <X className="w-3 h-3" />
@@ -1880,11 +1893,6 @@ export default function Products() {
                       <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
-                    )}
-                    {imageLoadError && formData.image && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => { setFormData({ ...formData, image: '' }); setImageLoadError(false); }}>
-                        <X className="w-3 h-3 ml-1" /> إزالة الصورة التالفة
-                      </Button>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Button
@@ -1922,6 +1930,7 @@ export default function Products() {
               <div className="flex gap-2 sm:gap-3 pt-4 pb-safe">
                 <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
                   setShowAddDialog(false);
+                  setImagePreviewBase64('');
                   clearPersistedState();
                 }}>
                   إلغاء
@@ -2350,27 +2359,31 @@ export default function Products() {
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
                   <div className="flex flex-col gap-3">
-                    {formData.image ? (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => setPreviewImageUrl(formData.image)}>
-                        <img
-                          src={formData.image}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; setImageLoadError(true); }}
-                          onLoad={() => setImageLoadError(false)}
-                        />
-                        {imageLoadError && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-                            <AlertTriangle className="w-5 h-5 text-destructive mb-1" />
-                            <span className="text-[10px] text-destructive">تالفة</span>
-                          </div>
+                    {(imagePreviewBase64 || formData.image) ? (
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
+                        if (imagePreviewBase64) setPreviewImageUrl(imagePreviewBase64);
+                        else if (formData.image) setPreviewImageUrl(formData.image);
+                      }}>
+                        {imagePreviewBase64 ? (
+                          <img
+                            src={imagePreviewBase64}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ProductImage
+                            imageUrl={formData.image}
+                            alt="Preview"
+                            className="w-24 h-24 rounded-lg"
+                            iconClassName="w-6 h-6"
+                          />
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Search className="w-5 h-5 text-white" />
                         </div>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImageLoadError(false); }}
+                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImagePreviewBase64(''); setImageLoadError(false); }}
                           className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
                         >
                           <X className="w-3 h-3" />
@@ -2380,11 +2393,6 @@ export default function Products() {
                       <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
-                    )}
-                    {imageLoadError && formData.image && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => { setFormData({ ...formData, image: '' }); setImageLoadError(false); }}>
-                        <X className="w-3 h-3 ml-1" /> إزالة الصورة التالفة
-                      </Button>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Button
@@ -2422,6 +2430,7 @@ export default function Products() {
               <div className="flex gap-2 sm:gap-3 pt-4 pb-safe">
                 <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
                   setShowEditDialog(false);
+                  setImagePreviewBase64('');
                   clearPersistedState();
                 }}>
                   {t('common.cancel')}
