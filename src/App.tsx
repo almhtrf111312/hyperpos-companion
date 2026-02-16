@@ -42,6 +42,7 @@ import CashShifts from "./pages/CashShifts";
 import Warehouses from "./pages/Warehouses";
 import StockTransfer from "./pages/StockTransfer";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Purchases from "./pages/Purchases";
 import Signup from "./pages/Signup";
 import Appearance from "./pages/Appearance";
@@ -177,6 +178,7 @@ const AppContent = () => {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected routes - Cashier accessible */}
         <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
