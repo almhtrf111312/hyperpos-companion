@@ -20,19 +20,19 @@ interface StatCardProps {
 }
 
 const variantStyles = {
-  default: 'glass border-border/50',
-  primary: 'glass bg-primary/5 border-primary/20',
-  success: 'glass bg-success/5 border-success/20',
-  warning: 'glass bg-warning/5 border-warning/20',
-  danger: 'glass bg-destructive/5 border-destructive/20',
+  default: 'glass border-border/50 dark:border-border/40',
+  primary: 'glass bg-primary/5 border-primary/20 dark:bg-primary/8 dark:border-primary/25',
+  success: 'glass bg-success/5 border-success/20 dark:bg-success/8 dark:border-success/25',
+  warning: 'glass bg-warning/5 border-warning/20 dark:bg-warning/8 dark:border-warning/25',
+  danger: 'glass bg-destructive/5 border-destructive/20 dark:bg-destructive/8 dark:border-destructive/25',
 };
 
 const iconBgStyles = {
-  default: 'bg-muted/50 backdrop-blur-md',
-  primary: 'bg-primary/20 backdrop-blur-md',
-  success: 'bg-success/20 backdrop-blur-md',
-  warning: 'bg-warning/20 backdrop-blur-md',
-  danger: 'bg-destructive/20 backdrop-blur-md',
+  default: 'bg-muted/50 backdrop-blur-md dark:bg-muted/60',
+  primary: 'bg-primary/20 backdrop-blur-md dark:bg-primary/25',
+  success: 'bg-success/20 backdrop-blur-md dark:bg-success/25',
+  warning: 'bg-warning/20 backdrop-blur-md dark:bg-warning/25',
+  danger: 'bg-destructive/20 backdrop-blur-md dark:bg-destructive/25',
 };
 
 const iconColorStyles = {
@@ -87,7 +87,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
     <div
       className={cn(
         "group rounded-xl p-2.5 md:p-3 transition-all duration-300",
-        "hover:translate-y-[-2px] hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30",
+        "hover:translate-y-[-2px] hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-primary/10",
         variantStyles[variant],
         linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50 hover:bg-card/90"
       )}

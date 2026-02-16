@@ -131,7 +131,7 @@ export function DebtAlerts() {
               <div
                 key={debt.id}
                 className={cn(
-                  "p-4 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer fade-in",
+                  "p-4 rounded-xl border transition-all duration-200 hover:shadow-md dark:shadow-sm cursor-pointer fade-in",
                   config.bgColor,
                   config.borderColor
                 )}

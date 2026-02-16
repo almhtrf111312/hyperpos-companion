@@ -68,11 +68,11 @@ const actions: QuickAction[] = [
 ];
 
 const iconBgStyles = {
-  primary: 'bg-primary/15 text-primary',
-  success: 'bg-success/15 text-success',
-  warning: 'bg-warning/15 text-warning',
-  info: 'bg-info/15 text-info',
-  accent: 'bg-accent/15 text-accent',
+  primary: 'bg-primary/15 text-primary dark:bg-primary/20',
+  success: 'bg-success/15 text-success dark:bg-success/20',
+  warning: 'bg-warning/15 text-warning dark:bg-warning/20',
+  info: 'bg-info/15 text-info dark:bg-info/20',
+  accent: 'bg-accent/15 text-accent dark:bg-accent/20',
 };
 
 export function QuickActions() {
