@@ -111,22 +111,45 @@ export async function uploadProductImage(base64Image: string): Promise<string | 
       throw error;
     }
 
-    // الحصول على signed URL (لأن الـ bucket خاص)
-    const { data: signedData, error: signedError } = await supabase.storage
-      .from('product-images')
-      .createSignedUrl(filePath, 60 * 60 * 24 * 365); // صالح لسنة
-
-    if (signedError || !signedData?.signedUrl) {
-      // fallback to public URL
-      const { data } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-      return data.publicUrl;
-    }
-
-    return signedData.signedUrl;
+    // إعادة مسار الملف فقط (بدلاً من signed URL)
+    // سيتم توليد signed URL عند العرض فقط
+    return filePath;
   } catch (error) {
     console.error('فشل رفع الصورة:', error);
+    return null;
+  }
+}
+
+/**
+ * توليد signed URL من مسار ملف في Storage
+ * @param storagePath مسار الملف (مثل products/123.jpg)
+ * @returns signed URL صالح لساعة واحدة
+ */
+export async function getSignedImageUrl(storagePath: string): Promise<string | null> {
+  try {
+    // إذا كان المسار فارغاً
+    if (!storagePath) return null;
+
+    // إذا كان بالفعل رابط كامل (signed URL قديم أو رابط خارجي)
+    if (storagePath.startsWith('http') || storagePath.startsWith('data:')) {
+      return storagePath;
+    }
+
+    // إزالة أي بادئة زائدة
+    const cleanPath = storagePath.replace(/^\/+/, '');
+
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .createSignedUrl(cleanPath, 60 * 60); // صالح لساعة
+
+    if (error || !data?.signedUrl) {
+      console.warn('[Image] Failed to get signed URL for:', cleanPath, error);
+      return null;
+    }
+
+    return data.signedUrl;
+  } catch (error) {
+    console.error('[Image] getSignedImageUrl error:', error);
     return null;
   }
 }

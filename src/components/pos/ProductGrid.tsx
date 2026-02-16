@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Barcode, Package, LayoutGrid, List, AlignJustify } from 'lucide-react';
+import { ProductImage } from '@/components/products/ProductImage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -208,11 +209,12 @@ export function ProductGrid({
                 style={{ animationDelay: `${index * 30}ms` }}
               >
                 <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3 overflow-hidden">
-                  {product.image ? (
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Package className="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/50" />
-                  )}
+                  <ProductImage
+                    imageUrl={product.image}
+                    alt={product.name}
+                    className="w-full h-full"
+                    iconClassName="w-8 h-8 md:w-12 md:h-12"
+                  />
                 </div>
                 <h3 className="font-semibold text-foreground text-xs md:text-sm line-clamp-2 mb-1">{product.name}</h3>
                 <p className="text-primary font-bold text-sm md:text-base">${product.price}</p>
@@ -240,11 +242,12 @@ export function ProductGrid({
                 style={{ animationDelay: `${index * 20}ms` }}
               >
                 <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {product.image ? (
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Package className="w-6 h-6 text-muted-foreground/50" />
-                  )}
+                  <ProductImage
+                    imageUrl={product.image}
+                    alt={product.name}
+                    className="w-full h-full"
+                    iconClassName="w-6 h-6"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-foreground text-sm truncate">{product.name}</h3>

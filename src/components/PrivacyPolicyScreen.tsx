@@ -153,7 +153,12 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
 
         {/* Terms Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh]" dir={isRTL ? 'rtl' : 'ltr'}>
+          <DialogContent
+            className="max-w-2xl max-h-[85vh] z-[200]"
+            dir={isRTL ? 'rtl' : 'ltr'}
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle className="text-center">
                 {t('privacy.termsDialogTitle')}
