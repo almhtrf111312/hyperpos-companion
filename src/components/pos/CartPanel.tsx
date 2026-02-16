@@ -18,6 +18,7 @@ import {
   Package,
   Repeat
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, formatNumber, formatCurrency, roundCurrency } from '@/lib/utils';
@@ -1333,70 +1334,51 @@ export function CartPanel({
           )}
         </div>
 
-        {/* Cart Footer */}
-        <div className="border-t border-border p-2.5 md:p-3 space-y-2 md:space-y-2.5">
-          {/* Currency Selector */}
-          <div className="flex gap-1.5 md:gap-2">
-            {currencies.map((currency) => (
-              <button
-                key={currency.code}
-                onClick={() => onCurrencyChange(currency)}
-                className={cn(
-                  "flex-1 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all",
-                  selectedCurrency.code === currency.code
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {currency.code === 'USD' ? '$ USD' : currency.name}
-              </button>
-            ))}
+        {/* Cart Footer - Compact & Clean */}
+        <div className="border-t border-border bg-muted/30 rounded-t-xl p-2.5 md:p-3 space-y-2">
+          {/* Row 1: Currency Segmented Control + Tax Toggle */}
+          <div className="flex items-center gap-2">
+            {/* Segmented Currency Control */}
+            <div className="flex-1 flex bg-muted rounded-lg p-0.5">
+              {currencies.map((currency) => (
+                <button
+                  key={currency.code}
+                  onClick={() => onCurrencyChange(currency)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md text-xs font-medium transition-all",
+                    selectedCurrency.code === currency.code
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {currency.code === 'USD' ? '$ USD' : currency.name}
+                </button>
+              ))}
+            </div>
+            {/* Tax Toggle Switch - only show when tax is enabled */}
+            {storeTaxEnabled && storeTaxRate > 0 && (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Switch
+                  checked={taxMode === 'gross'}
+                  onCheckedChange={(checked) => setTaxMode(checked ? 'gross' : 'net')}
+                  className="scale-90"
+                />
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  {t('pos.tax') || 'ضريبة'} {storeTaxRate}%
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Tax Mode Selector - only show when tax is enabled */}
-          {storeTaxEnabled && storeTaxRate > 0 && (
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
-              <Percent className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-xs text-muted-foreground flex-shrink-0">{t('pos.tax') || 'الضريبة'} ({storeTaxRate}%):</span>
-              <div className="flex gap-1 flex-1">
-                <button
-                  onClick={() => setTaxMode('net')}
-                  className={cn(
-                    "flex-1 py-1 px-2 rounded text-xs font-medium transition-all",
-                    taxMode === 'net' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
-                  )}
-                >
-                  {t('pos.taxExclusive') || 'بدون ضريبة'}
-                </button>
-                <button
-                  onClick={() => setTaxMode('gross')}
-                  className={cn(
-                    "flex-1 py-1 px-2 rounded text-xs font-medium transition-all",
-                    taxMode === 'gross' ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
-                  )}
-                >
-                  {t('pos.taxInclusive') || 'شامل الضريبة'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Discount - Two Rows */}
-          {!settingsDiscountPercentEnabled && !settingsDiscountFixedEnabled ? (
-            <div className="text-xs text-muted-foreground text-center py-2 bg-muted/50 rounded-lg">
-              {t('pos.discountsDisabled') || 'الخصومات معطلة من الإعدادات'}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {/* Percentage Discount Row */}
+          {/* Row 2: Discount (only if enabled) - Compact single row */}
+          {(settingsDiscountPercentEnabled || settingsDiscountFixedEnabled) && (
+            <div className="flex gap-1.5">
               {settingsDiscountPercentEnabled && (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-primary-foreground flex-shrink-0">
-                    <Percent className="w-4 h-4" />
-                  </div>
+                <div className="flex items-center gap-1 flex-1">
+                  <Percent className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                   <Input
                     type="number"
-                    placeholder="خصم %"
+                    placeholder="% خصم"
                     value={discountType === 'percent' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('percent');
@@ -1404,7 +1386,7 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('percent')}
                     className={cn(
-                      "bg-muted border-0 h-9 text-sm",
+                      "bg-muted border-0 h-8 text-xs",
                       discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
                     )}
                     min="0"
@@ -1412,15 +1394,12 @@ export function CartPanel({
                   />
                 </div>
               )}
-              {/* Fixed Amount Discount Row */}
               {settingsDiscountFixedEnabled && (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground flex-shrink-0">
-                    <DollarSign className="w-4 h-4" />
-                  </div>
+                <div className="flex items-center gap-1 flex-1">
+                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                   <Input
                     type="number"
-                    placeholder="خصم $"
+                    placeholder="$ خصم"
                     value={discountType === 'fixed' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('fixed');
@@ -1428,7 +1407,7 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('fixed')}
                     className={cn(
-                      "bg-muted border-0 h-9 text-sm",
+                      "bg-muted border-0 h-8 text-xs",
                       discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
                     )}
                     min="0"
@@ -1438,126 +1417,116 @@ export function CartPanel({
             </div>
           )}
 
-          {/* Received Amount Input - always visible */}
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0",
-              wholesaleMode ? "bg-orange-500 text-white" : "bg-primary/20 text-primary"
-            )}>
-              <Banknote className="w-4 h-4" />
-            </div>
+          {/* Row 3: Received Amount */}
+          <div className="flex items-center gap-1.5">
+            <Banknote className={cn(
+              "w-4 h-4 flex-shrink-0",
+              wholesaleMode ? "text-warning" : "text-primary"
+            )} />
             <Input
               type="number"
               placeholder={t('pos.receivedAmount') || 'المبلغ المقبوض'}
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
-                "bg-muted border-0 h-9 text-sm",
-                wholesaleMode ? "ring-2 ring-orange-500/50" : receivedAmount > 0 ? "ring-2 ring-primary/50" : ""
+                "bg-muted border-0 h-8 text-xs",
+                wholesaleMode ? "ring-2 ring-warning/50" : receivedAmount > 0 ? "ring-2 ring-primary/50" : ""
               )}
               min="0"
               dir="ltr"
             />
           </div>
 
-          {/* Summary */}
-          <div className="space-y-1 md:space-y-1.5 text-xs md:text-sm bg-muted/50 rounded-lg p-2 md:p-2.5">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{wholesaleMode ? 'إجمالي الجملة' : t('pos.subtotal')}</span>
-              <span>${formatNumber(subtotal)}</span>
+          {/* Row 4: Compact Summary */}
+          <div className="space-y-0.5">
+            {/* Conditional small info lines */}
+            <div className="flex flex-wrap gap-x-3 gap-y-0 text-[10px]">
+              {subtotal !== total && (
+                <span className="text-muted-foreground">
+                  {wholesaleMode ? 'جملة' : t('pos.subtotal')}: ${formatNumber(subtotal)}
+                </span>
+              )}
+              {discount > 0 && (
+                <span className="text-success">
+                  {t('pos.discount')} {discountType === 'percent' ? `${discount}%` : ''}: -${formatNumber(discountAmount)}
+                </span>
+              )}
+              {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
+                <span className="text-warning">
+                  {t('pos.tax') || 'ضريبة'} ({effectiveTaxRate}%){taxMode === 'gross' ? ` (${t('pos.taxInclusive') || 'شامل'})` : ''}: {taxMode === 'gross' ? '' : '+'}${formatNumber(taxAmount)}
+                </span>
+              )}
+              {receivedAmount > 0 && !wholesaleMode && receivedAmount >= total && (
+                <span className="text-success font-semibold">
+                  {t('pos.balance') || 'الباقي'}: ${formatNumber(receivedAmount - total)}
+                </span>
+              )}
+              {receivedAmount > 0 && wholesaleMode && (
+                <span className={cn("font-semibold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
+                  الربح: ${formatNumber(wholesaleProfit || 0)}
+                </span>
+              )}
             </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-success">
-                <span>{t('pos.discount')} {discountType === 'percent' ? `(${discount}%)` : ''}</span>
-                <span>-${formatNumber(discountAmount)}</span>
-              </div>
-            )}
-            {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
-              <div className="flex justify-between text-warning">
-                <span>{t('pos.tax') || 'الضريبة'} ({effectiveTaxRate}%) {taxMode === 'gross' ? `(${t('pos.taxInclusive') || 'شامل'})` : ''}</span>
-                <span>{taxMode === 'gross' ? '' : '+'}{formatNumber(taxAmount)}</span>
-              </div>
-            )}
-            {receivedAmount > 0 && (
-              <>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('pos.receivedAmount') || 'المبلغ المقبوض'}</span>
-                  <span className="font-semibold">${formatNumber(receivedAmount)}</span>
-                </div>
-                {wholesaleMode ? (
-                  <div className={cn("flex justify-between font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
-                    <span>الربح</span>
-                    <span>${formatNumber(wholesaleProfit || 0)}</span>
-                  </div>
-                ) : (
-                  receivedAmount >= total && (
-                    <div className="flex justify-between font-bold text-success">
-                      <span>{t('pos.balance') || 'الباقي'}</span>
-                      <span>${formatNumber(receivedAmount - total)}</span>
-                    </div>
-                  )
-                )}
-              </>
-            )}
-            <div className="flex justify-between items-center text-base md:text-lg font-bold pt-2 border-t border-border">
-              <div className="flex items-center gap-2">
-                <span>{t('pos.total')}</span>
-                {/* زر الآلة الحاسبة */}
+            {/* Total - Large & Bold */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm md:text-base font-bold">{t('pos.total')}</span>
                 <button
                   onClick={() => setShowCalculator(true)}
-                  className="w-7 h-7 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-sm"
+                  className="w-6 h-6 rounded-md bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-xs"
                   title="آلة حاسبة"
                 >
                   ⊞
                 </button>
               </div>
-              <span className={wholesaleMode ? "text-orange-500" : "text-primary"}>
+              <span className={cn("text-lg md:text-xl font-bold", wholesaleMode ? "text-warning" : "text-primary")}>
                 {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 md:gap-3">
+          {/* Row 5: Pay Buttons + Action Icons */}
+          <div className="flex items-center gap-1.5">
             <Button
               data-tour="cash-btn"
-              className="h-10 md:h-12 bg-success hover:bg-success/90 text-sm md:text-base font-bold shadow-sm shadow-success/20 transition-all active:scale-95"
+              className="flex-1 h-10 md:h-11 bg-success hover:bg-success/90 text-sm font-bold shadow-sm shadow-success/20 transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
-              <Banknote className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+              <Banknote className="w-4 h-4 ml-1" />
               {t('pos.cash')}
             </Button>
             <Button
               data-tour="debt-btn"
               variant="outline"
-              className="h-10 md:h-12 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm md:text-base font-bold transition-all active:scale-95"
+              className="flex-1 h-10 md:h-11 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm font-bold transition-all active:scale-95"
               disabled={cart.length === 0}
               onClick={handleDebtSale}
             >
-              <CreditCard className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+              <CreditCard className="w-4 h-4 ml-1" />
               {t('pos.debt')}
             </Button>
-          </div>
-
-          {/* Action Buttons */}
-          <div data-tour="action-btns" className="flex gap-2">
+            {/* Compact Print & Share Icons */}
             <Button
-              variant="outline"
-              className="flex-1 h-8 md:h-9 text-xs"
+              data-tour="action-btns"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-9 flex-shrink-0"
               disabled={cart.length === 0}
               onClick={handlePrint}
+              title={t('pos.print')}
             >
-              <Printer className="w-3.5 h-3.5 ml-1" />
-              {t('pos.print')}
+              <Printer className="w-4 h-4" />
             </Button>
             <Button
-              variant="outline"
-              className="flex-1 h-8 md:h-9 text-xs"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-9 flex-shrink-0"
               disabled={cart.length === 0}
               onClick={handleWhatsApp}
+              title={t('pos.whatsapp')}
             >
-              <Send className="w-3.5 h-3.5 ml-1" />
-              {t('pos.whatsapp')}
+              <Send className="w-4 h-4" />
             </Button>
           </div>
         </div>
