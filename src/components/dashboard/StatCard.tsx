@@ -1,7 +1,9 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useCountUp } from '@/hooks/use-count-up';
+import { MiniSparkline } from './MiniSparkline';
 
 interface StatCardProps {
   title: string;
@@ -14,6 +16,7 @@ interface StatCardProps {
   };
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
   linkTo?: string;
+  sparklineData?: number[];
 }
 
 const variantStyles = {
@@ -32,8 +35,6 @@ const iconBgStyles = {
   danger: 'bg-destructive/20 backdrop-blur-md',
 };
 
-// ... (keep iconColorStyles)
-
 const iconColorStyles = {
   default: 'text-foreground',
   primary: 'text-primary',
@@ -42,10 +43,27 @@ const iconColorStyles = {
   danger: 'text-destructive',
 };
 
-export function StatCard({ title, value, subtitle, icon, trend, variant = 'default', linkTo }: StatCardProps) {
-  const navigate = useNavigate();
+function extractNumber(value: string | number): { num: number; prefix: string; suffix: string } {
+  if (typeof value === 'number') return { num: value, prefix: '', suffix: '' };
+  const match = value.match(/^([^\d-]*)([-\d,.]+)(.*)$/);
+  if (!match) return { num: 0, prefix: '', suffix: value };
+  const num = parseFloat(match[2].replace(/,/g, ''));
+  return { num: isNaN(num) ? 0 : num, prefix: match[1], suffix: match[3] };
+}
 
-  // ... (keep helper methods)
+function formatAnimatedNumber(num: number, original: string | number): string {
+  if (typeof original === 'number') return num.toLocaleString();
+  // Preserve the comma formatting from the original
+  const { prefix, suffix } = extractNumber(original);
+  return `${prefix}${num.toLocaleString()}${suffix}`;
+}
+
+export function StatCard({ title, value, subtitle, icon, trend, variant = 'default', linkTo, sparklineData }: StatCardProps) {
+  const navigate = useNavigate();
+  const { num } = useMemo(() => extractNumber(value), [value]);
+  const animatedNum = useCountUp(num);
+
+  const displayValue = formatAnimatedNumber(animatedNum, value);
 
   const getTrendIcon = () => {
     if (!trend) return null;
@@ -62,15 +80,14 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   };
 
   const handleClick = () => {
-    if (linkTo) {
-      navigate(linkTo);
-    }
+    if (linkTo) navigate(linkTo);
   };
 
   return (
     <div
       className={cn(
-        "rounded-xl p-2.5 md:p-3 card-hover transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
+        "group rounded-xl p-2.5 md:p-3 transition-all duration-300",
+        "hover:translate-y-[-2px] hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30",
         variantStyles[variant],
         linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50 hover:bg-card/90"
       )}
@@ -82,11 +99,14 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
         <div className="space-y-1.5 min-w-0 flex-1">
           <p className="text-[10px] md:text-xs font-medium text-muted-foreground line-clamp-2 leading-tight">{title}</p>
           <div className="space-y-0.5 min-w-0">
-            <p className="text-sm md:text-xl font-bold text-foreground count-up truncate">{value}</p>
+            <p className="text-sm md:text-xl font-bold text-foreground truncate">{displayValue}</p>
             {subtitle && (
               <p className="text-[10px] md:text-xs text-muted-foreground truncate">{subtitle}</p>
             )}
           </div>
+          {sparklineData && sparklineData.length > 1 && (
+            <MiniSparkline data={sparklineData} />
+          )}
           {trend && (
             <div className={cn("flex items-center gap-1 text-xs font-medium", getTrendColor())}>
               {getTrendIcon()}
