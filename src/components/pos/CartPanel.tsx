@@ -1241,8 +1241,8 @@ export function CartPanel({
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-card/80 rounded-xl p-2.5 md:p-3 shadow-sm border border-border/20 slide-in-right"
-                style={{ animationDelay: `${index * 50}ms` }}
+                className="bg-card/80 rounded-xl p-2.5 md:p-3 shadow-sm border border-border/20 cart-item-enter transition-all duration-200 hover:shadow-md hover:scale-[1.01]"
+                style={{ animationDelay: `${index * 40}ms` }}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
