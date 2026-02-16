@@ -65,7 +65,9 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
     toast.success(t('productFields.resetSuccess'));
   };
 
-  const fields = Object.keys(FIELD_LABELS) as Array<keyof ProductFieldsConfig>;
+  const defaults = getDefaultFieldsByStoreType(storeType as StoreType);
+  const fields = (Object.keys(FIELD_LABELS) as Array<keyof ProductFieldsConfig>)
+    .filter(field => defaults[field]);
 
   return (
     <div className="space-y-6">
@@ -94,17 +96,23 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
           </span>
         </div>
 
-        <div className="space-y-1">
-          {fields.map((field) => (
-            <div key={field} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors">
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-foreground">{FIELD_LABELS[field].name}</span>
-                <span className="text-xs text-muted-foreground mr-2">— {FIELD_LABELS[field].description}</span>
+        {fields.length > 0 ? (
+          <div className="space-y-1">
+            {fields.map((field) => (
+              <div key={field} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-foreground">{FIELD_LABELS[field].name}</span>
+                  <span className="text-xs text-muted-foreground mr-2">— {FIELD_LABELS[field].description}</span>
+                </div>
+                <Switch checked={config[field]} onCheckedChange={() => handleToggle(field)} className="flex-shrink-0" />
               </div>
-              <Switch checked={config[field]} onCheckedChange={() => handleToggle(field)} className="flex-shrink-0" />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            لا توجد حقول إضافية لهذا النوع من المتاجر
+          </p>
+        )}
       </div>
 
       <Separator className="my-6" />
