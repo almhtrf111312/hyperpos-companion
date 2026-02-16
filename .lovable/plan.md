@@ -1,96 +1,90 @@
 
 
-## خطة: تحسين وضع Dark Mode للوحة التحكم
+## خطة: إصلاح الألوان المكررة في قسم المظهر
 
 ---
 
-### ملخص
+### المشكلة
 
-تحسين ألوان الوضع الداكن لتكون أكثر تناسقاً واحترافية في لوحة التحكم، مع إضافة تدرجات لونية خفيفة وتباين أفضل للعناصر المختلفة.
+من أصل 10 ألوان، هناك 3 أزواج مكررة تقريباً:
+- **الزمردي** (160°) و **التركوازي** (173°) — فرق 13° فقط
+- **البرتقالي** (25°) و **الكهرماني** (38°) — لون accent البرتقالي = لون primary الكهرماني
+- **الوردي** (346°) و **القرمزي** (348°) — فرق 2° فقط!
 
----
+### الحل
 
-### التغييرات
+الإبقاء على 7 ألوان مميزة (emerald, blue, purple, rose, orange, cyan, indigo) واستبدال الـ 3 المكررة (amber, teal, crimson) بألوان جديدة ومميزة تماماً.
 
-#### 1. تحسين ألوان Dark Mode الأساسية (`src/hooks/use-theme.tsx`)
+### الألوان الجديدة
 
-**الحالي:** الألوان الداكنة موحدة بدرجات navy (`222 47%`) مما يجعل العناصر تبدو مسطحة.
+| المفتاح | الاسم | الدرجة | الوصف |
+|---------|-------|--------|-------|
+| `amber` -> `coral` | المرجاني | ~16° | برتقالي-وردي دافئ (Coral) - مختلف عن البرتقالي والوردي |
+| `teal` -> `lime` | الليموني | ~85° | أخضر فاتح نابض (Lime) - يملأ الفراغ بين الأصفر والأخضر |
+| `crimson` -> `magenta` | الأرجواني | ~310° | بنفسجي-وردي ساطع (Magenta) - بين البنفسجي والوردي |
 
-**الجديد:**
-- تحسين تباين البطاقات: `card` من `8%` إلى `9%` لفصل أوضح عن الخلفية
-- تحسين `muted`: من `14%` إلى `15%` لتباين أفضل في الأيقونات والخلفيات الثانوية
-- تحسين `mutedForeground`: من `55%` إلى `60%` لقراءة أفضل للنصوص الثانوية
-- إضافة لمعان خفيف للحدود: `border` من `17%` إلى `18%`
-- تحسين sidebar: رفع `sidebarForeground` من `90%` إلى `92%` لوضوح أكثر
+### توزيع الألوان على عجلة الألوان (بعد التعديل)
 
-#### 2. إضافة تأثيرات Dark Mode مخصصة للداشبورد (`src/index.css`)
+```text
+درجات الألوان العشرة على عجلة 360°:
 
-**إضافات جديدة:**
-- `.dark .glass`: تحسين خلفية الزجاج في الوضع الداكن مع `border-white/[0.06]` بدلاً من `border/50` العامة
-- `.dark .glass:hover`: إضافة `border-primary/20` عند التمرير لإحياء البطاقات
-- تحسين StatCard في الوضع الداكن: إضافة `hover:shadow-primary/10` بدلاً من `/5` لتوهج أقوى
-- تحسين QuickActions: إضافة `dark:bg-card/60` للأيقونات الدائرية لتباين أفضل
+  16° coral (جديد)
+  25° orange
+  85° lime (جديد)
+ 160° emerald
+ 186° cyan
+ 217° blue
+ 239° indigo
+ 271° purple
+ 310° magenta (جديد)
+ 346° rose
+```
 
-#### 3. تحسين StatCard للوضع الداكن (`src/components/dashboard/StatCard.tsx`)
-
-**التغييرات:**
-- تحسين variant styles لتكون أكثر حيوية في الوضع الداكن:
-  - `primary`: إضافة `dark:bg-primary/8 dark:border-primary/25`
-  - `success`: إضافة `dark:bg-success/8 dark:border-success/25`
-  - `warning`: إضافة `dark:bg-warning/8 dark:border-warning/25`
-  - `danger`: إضافة `dark:bg-destructive/8 dark:border-destructive/25`
-- تحسين خلفية الأيقونات: رفع شفافية الأيقونات في الداكن من `/20` إلى `/25`
-- إضافة `dark:hover:shadow-lg dark:hover:shadow-primary/10` لتوهج خفيف عند التمرير
-
-#### 4. تحسين QuickActions للوضع الداكن (`src/components/dashboard/QuickActions.tsx`)
-
-- تحسين ألوان الأيقونات الدائرية: رفع الشفافية في الداكن (`dark:bg-primary/20` بدلاً من `/15`)
-
-#### 5. تحسين RecentInvoices و DebtAlerts للوضع الداكن
-
-**RecentInvoices:**
-- تحسين صفوف الجدول: `dark:hover:bg-primary/5` بدلاً من `hover:bg-muted/30`
-- تحسين حدود الصفوف: `dark:border-white/[0.06]`
-
-**DebtAlerts:**
-- تحسين بطاقات التنبيهات: إضافة `dark:shadow-sm` لفصل أفضل
+كل لون يبعد عن أقرب جار بفرق 20°+ على الأقل — لا تكرار!
 
 ---
 
-### الملفات المعدلة
+### الملف المعدل
 
 | الملف | التعديل |
 |-------|---------|
-| `src/hooks/use-theme.tsx` | تحسين `darkModeColors` (تباين أفضل) |
-| `src/index.css` | إضافة قواعد `.dark` مخصصة للـ glass و hover |
-| `src/components/dashboard/StatCard.tsx` | إضافة dark mode variants محسنة |
-| `src/components/dashboard/QuickActions.tsx` | تحسين ألوان الأيقونات في الداكن |
-| `src/components/dashboard/RecentInvoices.tsx` | تحسين hover وحدود الجدول في الداكن |
-| `src/components/dashboard/DebtAlerts.tsx` | تحسين بطاقات التنبيهات في الداكن |
-
----
+| `src/hooks/use-theme.tsx` | استبدال `amber` بـ `coral`، `teal` بـ `lime`، `crimson` بـ `magenta` في `themeColors` و `ThemeColor` type |
 
 ### التفاصيل التقنية
 
-#### darkModeColors المحسنة
+#### ThemeColor type
 ```text
-background: '222 47% 6%'     (بدون تغيير - جيد)
-foreground: '210 40% 98%'    (بدون تغيير)
-card: '222 47% 9%'           (كان 8% - أوضح قليلاً)
-muted: '215 28% 15%'         (كان 14% - تباين أفضل)
-mutedForeground: '215 20% 60%' (كان 55% - قراءة أفضل)
-border: '215 28% 18%'        (كان 17% - حدود أوضح)
+// قبل:
+export type ThemeColor = '... | amber | teal | crimson';
+// بعد:
+export type ThemeColor = '... | coral | lime | magenta';
 ```
 
-#### CSS Dark Mode Rules الجديدة
+#### الألوان الجديدة في themeColors
+
 ```text
-.dark .glass {
-  border-color: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+coral: {
+  name: 'Coral',
+  nameAr: 'المرجاني',
+  primary: '16 85% 55%',    // برتقالي-وردي دافئ
+  accent: '8 78% 50%',
 }
 
-.dark .glass:hover {
-  border-color: hsl(var(--primary) / 0.2);
+lime: {
+  name: 'Lime',
+  nameAr: 'الليموني',
+  primary: '85 70% 45%',    // أخضر-أصفر نابض
+  accent: '95 65% 38%',
+}
+
+magenta: {
+  name: 'Magenta',
+  nameAr: 'الأرجواني',
+  primary: '310 75% 55%',   // بنفسجي-وردي
+  accent: '320 70% 48%',
 }
 ```
+
+#### التعامل مع البيانات المحفوظة (التوافق العكسي)
+- المستخدمون الذين اختاروا `amber` أو `teal` أو `crimson` سابقاً: عند تحميل الثيم من localStorage أو Cloud، إذا كان اللون غير موجود في القائمة الجديدة، سيتم استخدام اللون الافتراضي (`blue`) — وهذا السلوك موجود أصلاً في الكود الحالي عبر `|| DEFAULT_COLOR`
 
