@@ -1,48 +1,82 @@
 
 
-## خطة: إصلاح تنسيق الأرقام (إزالة الأصفار الزائدة)
+## خطة: تحسين المظهر الاحترافي للتطبيق (UI Polish)
 
 ---
 
-### المشكلة
+### ملخص
 
-حالياً دالة `formatNumber` تفرض دائماً 3 خانات عشرية، ودالة `formatCurrency` تفرض 2 خانة عشرية:
-- `10` يظهر كـ `10.000` او `$10.00`
-- `500` يظهر كـ `500.000` او `$500.00`
-
-### الحل
-
-تعديل `minimumFractionDigits` إلى `0` بدلاً من `decimals` في كلتا الدالتين، مع الإبقاء على `maximumFractionDigits` كما هو. هذا يعني:
-- `10` سيظهر كـ `10` او `$10`
-- `3.85` سيظهر كـ `3.85` او `$3.85`
-- `10.5` سيظهر كـ `10.5` او `$10.5`
+التطبيق يمتلك بالفعل بنية تصميمية قوية (ثيمات متعددة، نظام Glassmorphism، خطوط Cairo/Inter). التحسينات المطلوبة هي "لمسات نهائية" على 4 مكونات أساسية لرفع المستوى البصري.
 
 ---
 
-### التغييرات
+### التغييرات المطلوبة
 
-| الملف | التعديل |
+#### 1. القائمة الجانبية - Sidebar (`src/components/layout/Sidebar.tsx`)
+
+**الحالي:** القائمة ملتصقة بحافة الشاشة بتصميم مسطح.
+
+**الجديد:**
+- جعل القائمة "عائمة" بهامش داخلي (m-2 على Desktop) مع حواف دائرية (rounded-2xl)
+- تحسين العنصر النشط: خلفية primary/10 مع حواف rounded-xl وشريط جانبي أعرض
+- زيادة المسافة بين العناصر (space-y-1 بدلاً من space-y-0.5)
+- إضافة ظل خفيف على القائمة (shadow-xl)
+
+#### 2. النوافذ المنبثقة - Dialog (`src/components/ui/dialog.tsx`)
+
+**الحالي:** `bg-black/80` بدون blur، حواف `sm:rounded-lg`، ظل `shadow-lg`.
+
+**الجديد:**
+- Overlay: `bg-black/60 backdrop-blur-sm` لتأثير العمق
+- المحتوى: `rounded-2xl shadow-2xl` بدلاً من `sm:rounded-lg shadow-lg`
+- إضافة border خفيف `border-border/50`
+- أنيميشن أنعم: الإبقاء على zoom-in/zoom-out الحالي (يعمل جيداً)
+
+#### 3. حقول الإدخال - Input (`src/components/ui/input.tsx`)
+
+**الحالي:** `rounded-md border border-input bg-background` - تصميم قياسي.
+
+**الجديد:**
+- `rounded-xl` بدلاً من `rounded-md`
+- `bg-muted/30 border-border/50` خلفية رمادية فاتحة بدلاً من الحدود السوداء
+- Focus: `focus-visible:ring-primary/20 focus-visible:border-primary/50` حلقة ملونة ناعمة
+- ارتفاع أكبر قليلاً `h-11` بدلاً من `h-10`
+
+#### 4. بطاقات المنتجات في السلة (`src/components/pos/CartPanel.tsx`)
+
+**الحالي:** خطوط فاصلة (dividers) بين المنتجات.
+
+**الجديد:**
+- كل منتج داخل بطاقة مستقلة مع `bg-card/50 rounded-xl` وظل خفيف
+- خلفية السلة `bg-muted/20` لفصل بصري
+- إزالة الخطوط الفاصلة واستبدالها بالمسافات بين البطاقات (gap-2)
+
+#### 5. البطاقات العامة - Card (`src/components/ui/card.tsx`)
+
+**الحالي:** `rounded-2xl border-border/50` - جيد بالفعل.
+
+**الجديد:** تعديل طفيف فقط:
+- إضافة `hover:shadow-md` لتأثير تفاعلي
+- `border-border/30` حدود أخف قليلاً
+
+---
+
+### الملفات المعدلة
+
+| الملف | التغيير |
 |-------|---------|
-| `src/lib/utils.ts` | تعديل `formatNumber`: `minimumFractionDigits: 0` بدلاً من `decimals` |
-| `src/lib/utils.ts` | تعديل `formatCurrency`: `minimumFractionDigits: 0` بدلاً من `decimals` |
+| `src/components/layout/Sidebar.tsx` | قائمة عائمة + عنصر نشط محسن + مسافات أكبر |
+| `src/components/ui/dialog.tsx` | Backdrop blur + rounded-2xl + shadow-2xl |
+| `src/components/ui/input.tsx` | rounded-xl + خلفية ناعمة + focus محسن |
+| `src/components/pos/CartPanel.tsx` | بطاقات منتجات مستقلة بدلاً من خطوط فاصلة |
+| `src/components/ui/card.tsx` | hover effect + حدود أخف |
 
-### التفاصيل التقنية
+---
 
-في `formatNumber` (سطر 43):
-```text
-قبل: minimumFractionDigits: decimals
-بعد: minimumFractionDigits: 0
-```
+### ملاحظات تقنية
 
-في `formatCurrency` (سطر 53):
-```text
-قبل: minimumFractionDigits: decimals
-بعد: minimumFractionDigits: 0
-```
-
-### ملاحظة
-
-- التعديل على واجهة السلة (UI Redesign) تم تنفيذه بالفعل في الرسالة السابقة
-- هذه الخطة تركز فقط على الجزء الثاني: إصلاح تنسيق الأرقام
-- التغيير سيؤثر على جميع الشاشات تلقائياً (22+ ملف يستخدم `formatNumber` و17+ ملف يستخدم `formatCurrency`)
+- جميع التغييرات متوافقة مع نظام الثيمات الحالي (dark/light + blur-theme)
+- لا حاجة لإضافة مكتبات جديدة
+- التغييرات في dialog.tsx و input.tsx و card.tsx ستؤثر تلقائياً على كل الشاشات
+- نظام Glassmorphism الموجود في index.css سيعمل فوق هذه التحسينات بدون تعارض
 
