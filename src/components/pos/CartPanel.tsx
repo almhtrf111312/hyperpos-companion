@@ -1230,7 +1230,7 @@ export function CartPanel({
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 bg-muted/20">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
               <ShoppingCart className="w-12 h-12 md:w-16 md:h-16 mb-3 md:mb-4 opacity-50" />
@@ -1241,7 +1241,7 @@ export function CartPanel({
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-muted rounded-lg md:rounded-xl p-2.5 md:p-3 slide-in-right"
+                className="bg-card/80 rounded-xl p-2.5 md:p-3 shadow-sm border border-border/20 slide-in-right"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">

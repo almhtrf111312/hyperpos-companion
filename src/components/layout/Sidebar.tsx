@@ -200,12 +200,11 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
       <aside 
         data-tour="sidebar"
         className={cn(
-          "fixed top-0 h-screen z-50 transition-all duration-300 ease-in-out flex flex-col",
-          "bg-sidebar border-sidebar-border pt-[env(safe-area-inset-top)]",
-          isRTL ? "right-0 border-l" : "left-0 border-r",
+          "fixed z-50 transition-all duration-300 ease-in-out flex flex-col",
+          "bg-sidebar pt-[env(safe-area-inset-top)]",
           isMobile 
-            ? cn("w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
-            : cn(effectiveCollapsed ? "w-[72px]" : "w-56")
+            ? cn("top-0 h-screen border-sidebar-border", isRTL ? "right-0 border-l" : "left-0 border-r", "w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
+            : cn("top-2 rounded-2xl shadow-xl border border-sidebar-border/50", isRTL ? "right-2" : "left-2", effectiveCollapsed ? "w-[72px]" : "w-56", "h-[calc(100vh-16px)]")
         )}
       >
         {/* Brand Header */}
@@ -266,7 +265,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
-          <ul className="space-y-0.5">
+          <ul className="space-y-1">
             {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
