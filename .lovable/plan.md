@@ -1,82 +1,52 @@
 
 
-## خطة: استبدال النسخ الاحتياطي على Google Drive بنسخ احتياطي سحابي على قاعدة البيانات
+## خطة: إضافة خاصية "نسيت كلمة المرور"
 
-### المشكلة
-Google Drive لا يعمل بشكل صحيح بعد تثبيت التطبيق كـ APK لأن OAuth يحتاج متصفح خارجي.
+### كيف تعمل؟
+1. المستخدم يضغط "نسيت كلمة المرور؟" في صفحة تسجيل الدخول
+2. يدخل بريده الإلكتروني
+3. يصله رابط على بريده الإلكتروني
+4. يضغط الرابط ويفتح صفحة لإدخال كلمة مرور جديدة
+5. يتم تحديث كلمة المرور تلقائياً
 
-### البديل المقترح: النسخ الاحتياطي عبر Supabase Storage
-بما أن المستخدم مسجل دخول أصلاً بالبريد وكلمة المرور، يمكن حفظ النسخ الاحتياطية المشفرة مباشرة في **تخزين سحابي مدمج** بدون أي تسجيل دخول إضافي.
-
-**المميزات:**
-- لا يحتاج تسجيل دخول إضافي (يستخدم نفس حساب المستخدم)
-- يعمل على الهاتف والويب بدون مشاكل
-- مشفر (باستخدام نظام التشفير الموجود أصلاً)
-- نسخ احتياطي تلقائي كل 6 ساعات
-- مجاني ضمن حدود التخزين
-
-### الملفات المطلوب تعديلها/إنشاؤها
+### الملفات المطلوبة
 
 | الملف | النوع | الوصف |
 |-------|-------|-------|
-| SQL Migration | إنشاء | إنشاء Storage bucket باسم `backups` مع RLS policies |
-| `src/lib/cloud-backup.ts` | إنشاء | مكتبة النسخ الاحتياطي السحابي الجديدة (رفع، تنزيل، حذف، قائمة) |
-| `src/components/settings/CloudBackupSection.tsx` | إنشاء | واجهة النسخ الاحتياطي السحابي (بديل GoogleDriveSection) |
-| `src/lib/auto-backup.ts` | تعديل | استبدال Google Drive بالنسخ السحابي الجديد |
-| `src/pages/Settings.tsx` | تعديل | إضافة CloudBackupSection (إذا لزم) |
-| `src/components/settings/GoogleDriveSection.tsx` | حذف | لم يعد مطلوباً |
-| `src/lib/google-drive.ts` | حذف | لم يعد مطلوباً |
+| `src/pages/Login.tsx` | تعديل | إضافة رابط "نسيت كلمة المرور؟" ونافذة إدخال البريد |
+| `src/pages/ResetPassword.tsx` | إنشاء | صفحة إدخال كلمة المرور الجديدة |
+| `src/App.tsx` | تعديل | إضافة مسار `/reset-password` كمسار عام |
+| `src/lib/i18n.ts` | تعديل | إضافة ترجمات الرسائل الجديدة (عربي، إنجليزي، تركي، فارسي، كردي، فرنسي) |
 
 ### التفاصيل التقنية
 
-#### 1. إنشاء Storage Bucket
-```text
--- إنشاء bucket للنسخ الاحتياطية
-INSERT INTO storage.buckets (id, name, public) VALUES ('backups', 'backups', false);
+#### 1. تعديل Login.tsx
+- إضافة رابط "نسيت كلمة المرور؟" تحت حقل كلمة المرور
+- عند الضغط، تظهر نافذة Dialog لإدخال البريد الإلكتروني
+- يتم استدعاء `supabase.auth.resetPasswordForEmail(email, { redirectTo })` لإرسال رابط إعادة التعيين
+- عرض رسالة نجاح بعد الإرسال
 
--- RLS: المستخدم يرى فقط ملفاته
-CREATE POLICY "Users can upload own backups"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'backups' AND (storage.foldername(name))[1] = auth.uid()::text);
+#### 2. إنشاء ResetPassword.tsx
+- صفحة عامة (بدون حماية تسجيل دخول)
+- تتحقق من وجود `type=recovery` في رابط URL
+- تعرض نموذج لإدخال كلمة المرور الجديدة مع تأكيدها
+- تستدعي `supabase.auth.updateUser({ password })` لتحديث كلمة المرور
+- بعد النجاح، توجه المستخدم لصفحة تسجيل الدخول
 
-CREATE POLICY "Users can view own backups"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'backups' AND (storage.foldername(name))[1] = auth.uid()::text);
+#### 3. تعديل App.tsx
+- إضافة `<Route path="/reset-password" element={<ResetPassword />} />` ضمن المسارات العامة
 
-CREATE POLICY "Users can delete own backups"
-ON storage.objects FOR DELETE
-USING (bucket_id = 'backups' AND (storage.foldername(name))[1] = auth.uid()::text);
-```
-
-بنية الملفات: `backups/{user_id}/backup_2025-01-15.hpbk`
-
-#### 2. مكتبة cloud-backup.ts
-- `uploadCloudBackup(data)` — تشفير + رفع إلى Storage
-- `listCloudBackups()` — قائمة النسخ الاحتياطية
-- `downloadCloudBackup(path)` — تنزيل + فك تشفير
-- `deleteCloudBackup(path)` — حذف نسخة
-- الاحتفاظ بآخر 10 نسخ فقط (حذف الأقدم تلقائياً)
-
-#### 3. واجهة CloudBackupSection.tsx
-تصميم مشابه لـ GoogleDriveSection لكن أبسط:
-- لا يحتاج تسجيل دخول (متصل تلقائياً)
-- زر "نسخ احتياطي الآن"
-- تفعيل/تعطيل النسخ التلقائي
-- قائمة النسخ الاحتياطية مع أزرار استعادة وحذف
-
-#### 4. تعديل auto-backup.ts
-- إزالة استيرادات Google Drive
-- إزالة `autoGoogleDrive` من `BackupConfig`
-- استبدال `saveBackupToGoogleDrive` بـ `uploadCloudBackup`
-- إزالة `saveBackupToGoogleDrive` function
-
-#### 5. حذف ملفات Google Drive
-- `src/lib/google-drive.ts`
-- `src/components/settings/GoogleDriveSection.tsx`
+#### 4. ترجمات جديدة في i18n.ts
+- `auth.forgotPasswordTitle` — عنوان نافذة نسيت كلمة المرور
+- `auth.forgotPasswordDesc` — وصف النافذة
+- `auth.sendResetLink` — زر إرسال الرابط
+- `auth.resetSent` — رسالة نجاح الإرسال
+- `auth.resetPassword` — عنوان صفحة إعادة التعيين
+- `auth.newPassword` / `auth.confirmNewPassword` — حقول كلمة المرور الجديدة
+- `auth.passwordUpdated` — رسالة نجاح التحديث
+- `auth.passwordMismatch` — رسالة عدم تطابق كلمات المرور
 
 ### النتيجة
-- نسخ احتياطي سحابي يعمل بدون أي تسجيل دخول إضافي
-- يعمل على الهاتف (APK) والويب بدون مشاكل
-- مشفر بنظام التشفير الموجود (XOR + Base64)
-- نسخ تلقائي دوري كل 6 ساعات
-- واجهة بسيطة لإدارة النسخ الاحتياطية
+- المستخدم يستطيع إعادة تعيين كلمة مروره بنفسه عبر بريده الإلكتروني
+- لا يحتاج التواصل مع المبرمج
+- يعمل على الهاتف والويب
