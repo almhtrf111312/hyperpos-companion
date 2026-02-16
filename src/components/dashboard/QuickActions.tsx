@@ -67,12 +67,12 @@ const actions: QuickAction[] = [
   },
 ];
 
-const colorStyles = {
-  primary: 'border-primary/20 hover:border-primary/50 text-primary',
-  success: 'border-success/20 hover:border-success/50 text-success',
-  warning: 'border-warning/20 hover:border-warning/50 text-warning',
-  info: 'border-info/20 hover:border-info/50 text-info',
-  accent: 'border-accent/20 hover:border-accent/50 text-accent',
+const iconBgStyles = {
+  primary: 'bg-primary/15 text-primary',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  info: 'bg-info/15 text-info',
+  accent: 'bg-accent/15 text-accent',
 };
 
 export function QuickActions() {
@@ -81,39 +81,25 @@ export function QuickActions() {
   const filteredActions = actions.filter(a => !a.requiresMaintenance || visibleSections.maintenance);
 
   return (
-    <div className="glass rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-foreground">{t('quickActions.title')}</h3>
-      </div>
-      <div className="grid grid-cols-3 gap-2 md:gap-3">
-        {filteredActions.map((action, index) => (
-          <Link
-            key={action.path}
-            to={action.path}
-            className={cn(
-              "flex flex-col items-center justify-center gap-2 p-2 rounded-xl border transition-all duration-300 card-hover fade-in relative overflow-hidden group h-24 md:h-28",
-              "bg-card/30 backdrop-blur-sm hover:bg-card/50",
-              colorStyles[action.color]
-            )}
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="p-2 rounded-lg bg-background/50 backdrop-blur-md shadow-sm group-hover:scale-110 transition-transform duration-300">
-              <action.icon className="w-5 h-5" />
-            </div>
-            <div className="text-center z-10 w-full px-1">
-              <p className="font-semibold text-foreground text-xs md:text-sm whitespace-nowrap overflow-hidden text-ellipsis group-hover:text-primary transition-colors">{t(action.labelKey)}</p>
-            </div>
-          </Link>
-        ))}
-        {/* 2 Empty Placeholders for 3x3 Grid */}
-        <div className="h-24 md:h-28 rounded-xl border border-dashed border-border/30 bg-muted/5 backdrop-blur-sm flex items-center justify-center opacity-50">
-          <span className="sr-only">Empty Slot 1</span>
-        </div>
-        <div className="h-24 md:h-28 rounded-xl border border-dashed border-border/30 bg-muted/5 backdrop-blur-sm flex items-center justify-center opacity-50">
-          <span className="sr-only">Empty Slot 2</span>
-        </div>
-      </div>
+    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+      {filteredActions.map((action, index) => (
+        <Link
+          key={action.path}
+          to={action.path}
+          className="flex flex-col items-center gap-1.5 min-w-[60px] group fade-in"
+          style={{ animationDelay: `${index * 40}ms` }}
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-md",
+            iconBgStyles[action.color]
+          )}>
+            <action.icon className="w-4.5 h-4.5" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors whitespace-nowrap">
+            {t(action.labelKey)}
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }

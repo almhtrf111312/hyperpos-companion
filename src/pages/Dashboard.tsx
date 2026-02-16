@@ -15,18 +15,16 @@ import {
   BarChart3
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { SectionDivider } from '@/components/dashboard/SectionDivider';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
 import { LowStockAlerts } from '@/components/dashboard/LowStockAlerts';
-import { getInvoiceStatsCloud, loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
+import { RecentInvoices } from '@/components/dashboard/RecentInvoices';
+import { loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
 import { loadProductsCloud } from '@/lib/cloud/products-cloud';
 import { loadPartnersCloud } from '@/lib/cloud/partners-cloud';
 import { loadExpensesCloud } from '@/lib/cloud/expenses-cloud';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { loadPurchaseInvoicesCloud } from '@/lib/cloud/purchase-invoices-cloud';
-import { loadCashboxState } from '@/lib/cashbox-store';
-import { getTodayProfit } from '@/lib/profits-store';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import { isNoInventoryMode } from '@/lib/store-type-config';
@@ -203,26 +201,24 @@ export default function Dashboard() {
   }, [loadStats]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
       {/* Header */}
-        <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+      <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-2">{today}</p>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">{today}</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/10 border border-success/20">
           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span className="text-sm font-medium text-success">{t('dashboard.synced')}</span>
+          <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Compact Toolbar */}
       <QuickActions />
 
-      {/* Section: المبيعات */}
-      <SectionDivider title="المبيعات" />
-
-      <div className="grid grid-cols-3 gap-2 md:gap-4">
+      {/* Sales Row */}
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         <StatCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(stats.todaySales)}
@@ -247,10 +243,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Section: الأداء المالي */}
-      <SectionDivider title="الأداء المالي" />
-
-      <div className="grid grid-cols-3 gap-2 md:gap-4">
+      {/* Financial Performance Row */}
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         <StatCard
           title={t('dashboard.netProfit')}
           value={formatCurrency(stats.netProfit)}
@@ -277,10 +271,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Section: تقارير رأس المال */}
-      <SectionDivider title="تقارير رأس المال" />
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+      {/* Capital Row - 4 columns on desktop, 2x2 on mobile */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
         {noInventory ? (
           <StatCard
             title="إجمالي المشتريات"
@@ -321,10 +313,11 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Section: التنبيهات */}
-      <SectionDivider title="التنبيهات" />
+      {/* Recent Invoices */}
+      <RecentInvoices />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {!noInventory && <LowStockAlerts />}
         <DebtAlerts />
       </div>
