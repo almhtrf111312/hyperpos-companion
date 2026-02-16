@@ -1,107 +1,96 @@
 
 
-## خطة: تأثيرات حركية + عداد أرقام + رسم بياني مصغر
+## خطة: تحسين وضع Dark Mode للوحة التحكم
 
 ---
 
-### 1. عداد أرقام متحرك (Count-Up Animation)
+### ملخص
 
-**ملف جديد:** `src/hooks/use-count-up.tsx`
-
-هوك مخصص `useCountUp` يحرك الأرقام من 0 إلى القيمة الفعلية عند التحميل:
-- يستقبل `end` (القيمة النهائية) و `duration` (المدة، افتراضياً 800ms)
-- يستخدم `requestAnimationFrame` مع easing function (`easeOutExpo`)
-- يعيد القيمة الحالية المتحركة كرقم
-
-### 2. تحسين StatCard بالتأثيرات الحركية
-
-**ملف:** `src/components/dashboard/StatCard.tsx`
-
-التغييرات:
-- إضافة `useCountUp` لتحريك الأرقام: يتم استخراج الرقم من `value` (إذا كان نصاً مثل `$1,500`) وتحريكه، ثم إعادة تركيبه مع رمز العملة
-- إضافة `hover:translate-y-[-2px]` و `hover:shadow-xl` لتأثير رفع عند التمرير
-- إضافة `group` class للحاوية و `group-hover:scale-110` للأيقونة
-- دعم prop جديد `sparklineData?: number[]` لعرض رسم بياني مصغر
-
-### 3. مكون Sparkline مصغر (SVG)
-
-**ملف جديد:** `src/components/dashboard/MiniSparkline.tsx`
-
-مكون SVG خفيف (بدون مكتبات إضافية) يرسم خط اتجاه:
-- يستقبل `data: number[]` (مصفوفة أرقام)
-- يرسم polyline بسيط بعرض ~120px وارتفاع ~30px
-- لون الخط: `primary` مع تعبئة gradient خفيفة تحت الخط
-- يظهر أسفل القيمة في البطاقة
-
-### 4. تمرير بيانات Sparkline من Dashboard
-
-**ملف:** `src/pages/Dashboard.tsx`
-
-التغييرات:
-- حساب مبيعات آخر 7 أيام كمصفوفة `dailySales: number[]` من بيانات الفواتير الموجودة
-- تمرير `sparklineData={dailySales}` لبطاقة "مبيعات اليوم" فقط
-- إضافة state جديد `hourlySales` لبيانات الرسم البياني
+تحسين ألوان الوضع الداكن لتكون أكثر تناسقاً واحترافية في لوحة التحكم، مع إضافة تدرجات لونية خفيفة وتباين أفضل للعناصر المختلفة.
 
 ---
 
-### الملفات
+### التغييرات
+
+#### 1. تحسين ألوان Dark Mode الأساسية (`src/hooks/use-theme.tsx`)
+
+**الحالي:** الألوان الداكنة موحدة بدرجات navy (`222 47%`) مما يجعل العناصر تبدو مسطحة.
+
+**الجديد:**
+- تحسين تباين البطاقات: `card` من `8%` إلى `9%` لفصل أوضح عن الخلفية
+- تحسين `muted`: من `14%` إلى `15%` لتباين أفضل في الأيقونات والخلفيات الثانوية
+- تحسين `mutedForeground`: من `55%` إلى `60%` لقراءة أفضل للنصوص الثانوية
+- إضافة لمعان خفيف للحدود: `border` من `17%` إلى `18%`
+- تحسين sidebar: رفع `sidebarForeground` من `90%` إلى `92%` لوضوح أكثر
+
+#### 2. إضافة تأثيرات Dark Mode مخصصة للداشبورد (`src/index.css`)
+
+**إضافات جديدة:**
+- `.dark .glass`: تحسين خلفية الزجاج في الوضع الداكن مع `border-white/[0.06]` بدلاً من `border/50` العامة
+- `.dark .glass:hover`: إضافة `border-primary/20` عند التمرير لإحياء البطاقات
+- تحسين StatCard في الوضع الداكن: إضافة `hover:shadow-primary/10` بدلاً من `/5` لتوهج أقوى
+- تحسين QuickActions: إضافة `dark:bg-card/60` للأيقونات الدائرية لتباين أفضل
+
+#### 3. تحسين StatCard للوضع الداكن (`src/components/dashboard/StatCard.tsx`)
+
+**التغييرات:**
+- تحسين variant styles لتكون أكثر حيوية في الوضع الداكن:
+  - `primary`: إضافة `dark:bg-primary/8 dark:border-primary/25`
+  - `success`: إضافة `dark:bg-success/8 dark:border-success/25`
+  - `warning`: إضافة `dark:bg-warning/8 dark:border-warning/25`
+  - `danger`: إضافة `dark:bg-destructive/8 dark:border-destructive/25`
+- تحسين خلفية الأيقونات: رفع شفافية الأيقونات في الداكن من `/20` إلى `/25`
+- إضافة `dark:hover:shadow-lg dark:hover:shadow-primary/10` لتوهج خفيف عند التمرير
+
+#### 4. تحسين QuickActions للوضع الداكن (`src/components/dashboard/QuickActions.tsx`)
+
+- تحسين ألوان الأيقونات الدائرية: رفع الشفافية في الداكن (`dark:bg-primary/20` بدلاً من `/15`)
+
+#### 5. تحسين RecentInvoices و DebtAlerts للوضع الداكن
+
+**RecentInvoices:**
+- تحسين صفوف الجدول: `dark:hover:bg-primary/5` بدلاً من `hover:bg-muted/30`
+- تحسين حدود الصفوف: `dark:border-white/[0.06]`
+
+**DebtAlerts:**
+- تحسين بطاقات التنبيهات: إضافة `dark:shadow-sm` لفصل أفضل
+
+---
+
+### الملفات المعدلة
 
 | الملف | التعديل |
 |-------|---------|
-| `src/hooks/use-count-up.tsx` | **جديد** - هوك عداد الأرقام المتحرك |
-| `src/components/dashboard/MiniSparkline.tsx` | **جديد** - مكون SVG للرسم البياني المصغر |
-| `src/components/dashboard/StatCard.tsx` | إضافة count-up + hover effects + دعم sparkline |
-| `src/pages/Dashboard.tsx` | حساب بيانات المبيعات اليومية وتمريرها للبطاقة |
+| `src/hooks/use-theme.tsx` | تحسين `darkModeColors` (تباين أفضل) |
+| `src/index.css` | إضافة قواعد `.dark` مخصصة للـ glass و hover |
+| `src/components/dashboard/StatCard.tsx` | إضافة dark mode variants محسنة |
+| `src/components/dashboard/QuickActions.tsx` | تحسين ألوان الأيقونات في الداكن |
+| `src/components/dashboard/RecentInvoices.tsx` | تحسين hover وحدود الجدول في الداكن |
+| `src/components/dashboard/DebtAlerts.tsx` | تحسين بطاقات التنبيهات في الداكن |
 
 ---
 
 ### التفاصيل التقنية
 
-#### useCountUp Hook
+#### darkModeColors المحسنة
 ```text
-function useCountUp(end: number, duration = 800): number
-- يستخدم useRef للتتبع + useEffect للتشغيل
-- easing: t => 1 - Math.pow(2, -10 * t) (easeOutExpo)
-- يعيد تشغيل الأنيميشن عند تغير end
+background: '222 47% 6%'     (بدون تغيير - جيد)
+foreground: '210 40% 98%'    (بدون تغيير)
+card: '222 47% 9%'           (كان 8% - أوضح قليلاً)
+muted: '215 28% 15%'         (كان 14% - تباين أفضل)
+mutedForeground: '215 20% 60%' (كان 55% - قراءة أفضل)
+border: '215 28% 18%'        (كان 17% - حدود أوضح)
 ```
 
-#### MiniSparkline Component
+#### CSS Dark Mode Rules الجديدة
 ```text
-<svg width="100%" height="30" viewBox="0 0 120 30">
-  <defs>
-    <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
-      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-    </linearGradient>
-  </defs>
-  <polygon fill="url(#sparkGrad)" /> <!-- المساحة تحت الخط -->
-  <polyline stroke="hsl(var(--primary))" strokeWidth="1.5" fill="none" /> <!-- الخط -->
-</svg>
+.dark .glass {
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.dark .glass:hover {
+  border-color: hsl(var(--primary) / 0.2);
+}
 ```
-
-#### StatCard - التحسينات
-- الحاوية: إضافة `group hover:translate-y-[-2px] hover:shadow-xl`
-- القيمة: استخدام `useCountUp` لاستخراج الرقم وتحريكه
-- sparkline: إذا وُجد `sparklineData`، يظهر `MiniSparkline` أسفل القيمة مباشرة
-- الأيقونة: `group-hover:scale-110 transition-transform`
-
-#### Dashboard - حساب بيانات المبيعات
-```text
-// حساب مبيعات آخر 7 أيام
-const last7Days = Array.from({ length: 7 }, (_, i) => {
-  const date = new Date();
-  date.setDate(date.getDate() - (6 - i));
-  const dayStr = date.toDateString();
-  return invoices
-    .filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
-    .reduce((sum, inv) => sum + inv.total, 0);
-});
-```
-
----
-
-### ملاحظات
-- الرسم البياني SVG خفيف جداً (بدون recharts أو مكتبات إضافية) - مناسب للموبايل
-- عداد الأرقام يعمل مرة واحدة عند التحميل ويُعاد عند تحديث البيانات
-- جميع التأثيرات تستخدم CSS transitions بدون مكتبات إضافية
 
