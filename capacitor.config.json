@@ -3,7 +3,9 @@
   "appName": "FlowPOS Pro",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "url": "https://flowpospro.lovable.app",
+    "cleartext": false
   },
   "plugins": {
     "Camera": {
