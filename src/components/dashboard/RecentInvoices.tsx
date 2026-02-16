@@ -216,7 +216,7 @@ export function RecentInvoices() {
                   {invoices.map((invoice, index) => (
                     <tr
                       key={invoice.id}
-                      className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer fade-in"
+                      className="border-b border-border/30 dark:border-white/[0.06] hover:bg-muted/30 dark:hover:bg-primary/5 transition-colors cursor-pointer fade-in"
                       style={{ animationDelay: `${index * 50}ms` }}
                       onClick={() => handleViewInvoice(invoice)}
                     >
