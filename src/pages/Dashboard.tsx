@@ -54,6 +54,7 @@ export default function Dashboard() {
     deficit: 0,
     deficitPercentage: 0,
     totalPurchases: 0,
+    dailySales: [] as number[],
   });
 
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -126,6 +127,16 @@ export default function Dashboard() {
         .filter(pi => pi.status === 'finalized')
         .reduce((sum, pi) => sum + (pi.actual_grand_total || 0), 0);
 
+      // Daily sales for last 7 days (sparkline)
+      const dailySales = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        const dayStr = date.toDateString();
+        return invoices
+          .filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+          .reduce((sum, inv) => sum + inv.total, 0);
+      });
+
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
 
       const totalSalesCash = invoices
@@ -168,6 +179,7 @@ export default function Dashboard() {
         deficit,
         deficitPercentage,
         totalPurchases,
+        dailySales,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -226,6 +238,7 @@ export default function Dashboard() {
           icon={<DollarSign />}
           variant="primary"
           linkTo="/pos"
+          sparklineData={stats.dailySales}
         />
         <StatCard
           title="مبيعات الأسبوع"
