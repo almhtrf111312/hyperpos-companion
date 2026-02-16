@@ -266,10 +266,14 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
           <ul className="space-y-1">
-            {filteredNavItems.map((item) => {
+            {filteredNavItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
-                <li key={item.path}>
+                <li 
+                  key={item.path}
+                  className={cn(isMobile && isOpen && "animate-fade-in-up")}
+                  style={isMobile && isOpen ? { animationDelay: `${index * 30}ms`, animationFillMode: 'both' } : undefined}
+                >
                   <NavLink
                     {...(item.tourId ? { 'data-tour': item.tourId } : {})}
                     to={item.path}
@@ -279,7 +283,10 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                       effectiveCollapsed && !isMobile ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
                       isActive 
                         ? "bg-primary/10 text-primary font-semibold" 
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+                        : cn(
+                            "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+                            !effectiveCollapsed && (isRTL ? "hover:-translate-x-0.5" : "hover:translate-x-0.5")
+                          )
                     )}
                   >
                     {/* Active indicator bar */}
