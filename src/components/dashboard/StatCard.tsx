@@ -70,7 +70,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   return (
     <div
       className={cn(
-        "rounded-2xl p-3 md:p-4 card-hover transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
+        "rounded-xl p-2.5 md:p-3 card-hover transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
         variantStyles[variant],
         linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50 hover:bg-card/90"
       )}
@@ -80,7 +80,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
     >
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1.5 min-w-0 flex-1">
-          <p className="text-[10px] md:text-sm font-medium text-muted-foreground line-clamp-2 leading-tight">{title}</p>
+          <p className="text-[10px] md:text-xs font-medium text-muted-foreground line-clamp-2 leading-tight">{title}</p>
           <div className="space-y-0.5 min-w-0">
             <p className="text-sm md:text-xl font-bold text-foreground count-up truncate">{value}</p>
             {subtitle && (
