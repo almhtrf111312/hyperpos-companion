@@ -68,6 +68,52 @@ import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config'
 
 const isRepairStoreType = () => getCurrentStoreType() === 'repair';
 
+// EditablePrice: local string state during editing, commits on blur/Enter
+function EditablePrice({ value, onChange, className }: { value: number; className?: string; onChange: (v: number) => void }) {
+  const [localValue, setLocalValue] = useState(String(value));
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync from parent when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalValue(String(value));
+    }
+  }, [value, isEditing]);
+
+  const commit = () => {
+    setIsEditing(false);
+    const parsed = parseFloat(localValue);
+    if (!isNaN(parsed) && parsed >= 0) {
+      onChange(parsed);
+    } else {
+      setLocalValue(String(value)); // revert
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      value={isEditing ? localValue : String(value)}
+      onFocus={(e) => {
+        setIsEditing(true);
+        setLocalValue(String(value));
+        setTimeout(() => e.target.select(), 0);
+      }}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+      className={cn(
+        "flex rounded-xl border border-border/50 bg-muted/30 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all duration-200",
+        className
+      )}
+      dir="ltr"
+    />
+  );
+}
+
 interface CartItem {
   id: string;
   name: string;
@@ -1315,13 +1361,10 @@ export function CartPanel({
                   <div className="flex items-center gap-1.5">
                     {/* Editable unit price input for Boss/Admin */}
                     {onUpdateItemPrice && (
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <EditablePrice
                         value={getItemPrice(item)}
-                        onChange={(e) => onUpdateItemPrice(item.id, Number(e.target.value), item.unit)}
+                        onChange={(newPrice) => onUpdateItemPrice(item.id, newPrice, item.unit)}
                         className="w-16 h-7 text-xs text-center bg-background border p-1"
-                        dir="ltr"
                       />
                     )}
                     <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
