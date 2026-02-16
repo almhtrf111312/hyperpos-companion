@@ -4,6 +4,7 @@ import { useTheme, themeColors, ThemeColor, ThemeMode } from '@/hooks/use-theme'
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { ThemeLivePreview } from './ThemeLivePreview';
 import { Slider } from '@/components/ui/slider';
 
 export interface PendingTheme {
@@ -218,6 +219,16 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
           )}
         </div>
       )}
+
+      {/* Live Preview */}
+      <div className="pt-4 border-t border-border">
+        <ThemeLivePreview
+          mode={pendingMode}
+          color={pendingColor}
+          blur={pendingBlur}
+          transparency={pendingTransparency}
+        />
+      </div>
     </div>
   );
 }
