@@ -27,7 +27,6 @@ interface AuthContextType {
   stayLoggedIn: boolean;
   signIn: (email: string, password: string, stayLoggedIn?: boolean) => Promise<{ error: Error | null; data?: { user: User; session: Session } }>;
   signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setStayLoggedIn: (value: boolean) => void;
@@ -389,27 +388,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      const { lovable } = await import('@/integrations/lovable/index');
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: "https://flowpospro.lovable.app",
-      });
-
-      if ((result as any)?.redirected) {
-        return { error: null };
-      }
-      
-      if (result?.error) {
-        return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) };
-      }
-      
-      return { error: null };
-    } catch (err) {
-      return { error: err as Error };
-    }
-  };
-
   const signOut = async () => {
     // Log logout before signing out
     if (user) {
@@ -503,7 +481,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       stayLoggedIn,
       signIn,
       signUp,
-      signInWithGoogle,
       signOut,
       refreshProfile,
       setStayLoggedIn,
