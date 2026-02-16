@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
@@ -21,6 +21,9 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDeviceBlockedDialog, setShowDeviceBlockedDialog] = useState(false);
   const [isResettingDevice, setIsResettingDevice] = useState(false);
+  const [showForgotDialog, setShowForgotDialog] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
 
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
@@ -225,6 +228,15 @@ export default function Login() {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => { setResetEmail(email); setShowForgotDialog(true); }}
+                className="text-sm text-primary hover:underline"
+              >
+                {t('auth.forgotPassword')}
+              </button>
+            </div>
 
             <Button type="submit" className="w-full h-11" disabled={isLoading}>
               {isLoading ? (
@@ -303,6 +315,80 @@ export default function Login() {
                   <RefreshCw className="w-4 h-4 me-2" />
                   نقل الحساب لهذا الجهاز
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotDialog} onOpenChange={setShowForgotDialog}>
+        <DialogContent className="sm:max-w-md" dir={direction}>
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+              <Mail className="w-7 h-7 text-primary" />
+            </div>
+            <DialogTitle>{t('auth.forgotPasswordTitle')}</DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              {t('auth.forgotPasswordDesc')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            <div className="space-y-2">
+              <Label htmlFor="resetEmail">{t('auth.email')}</Label>
+              <Input
+                id="resetEmail"
+                type="email"
+                placeholder="name@example.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                disabled={isSendingReset}
+                className="h-11"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowForgotDialog(false)}
+              className="w-full sm:w-auto"
+              disabled={isSendingReset}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!resetEmail) return;
+                setIsSendingReset(true);
+                try {
+                  const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                    redirectTo: `${window.location.origin}/#/reset-password`,
+                  });
+                  if (error) {
+                    toast.error(error.message);
+                  } else {
+                    toast.success(t('auth.resetSent'));
+                    setShowForgotDialog(false);
+                  }
+                } catch (err) {
+                  console.error('Reset password error:', err);
+                  toast.error(t('common.error'));
+                } finally {
+                  setIsSendingReset(false);
+                }
+              }}
+              disabled={isSendingReset || !resetEmail}
+              className="w-full sm:w-auto"
+            >
+              {isSendingReset ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin me-2" />
+                  {t('auth.loading')}
+                </>
+              ) : (
+                t('auth.sendResetLink')
               )}
             </Button>
           </DialogFooter>
