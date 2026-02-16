@@ -133,6 +133,13 @@ const darkModeColors = {
   posCart: '222 47% 8%',
 };
 
+function triggerThemeTransition() {
+  const root = document.documentElement;
+  root.classList.add('theme-transitioning');
+  // Remove after transition completes
+  setTimeout(() => root.classList.remove('theme-transitioning'), 500);
+}
+
 function applyTheme(mode: ThemeMode, color: ThemeColor) {
   const root = document.documentElement;
   const colors = mode === 'light' ? lightModeColors : darkModeColors;
@@ -318,6 +325,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const setMode = (newMode: ThemeMode) => {
+    triggerThemeTransition();
     setModeState(newMode);
     applyTheme(newMode, color);
     applyBlurTheme(blurEnabled, newMode, transparencyLevel);
@@ -325,12 +333,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const setColor = (newColor: ThemeColor) => {
+    triggerThemeTransition();
     setColorState(newColor);
     applyTheme(mode, newColor);
     saveTheme(mode, newColor, blurEnabled, transparencyLevel);
   };
 
   const setBlurEnabled = (enabled: boolean) => {
+    triggerThemeTransition();
     setBlurEnabledState(enabled);
     applyBlurTheme(enabled, mode, transparencyLevel);
     saveTheme(mode, color, enabled, transparencyLevel);
@@ -343,6 +353,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
+    triggerThemeTransition();
     setModeState(newMode);
     setColorState(newColor);
     applyTheme(newMode, newColor);
@@ -351,6 +362,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean, transparency?: number) => {
+    triggerThemeTransition();
     const t = transparency ?? transparencyLevel;
     setModeState(newMode);
     setColorState(newColor);
