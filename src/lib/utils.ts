@@ -41,7 +41,7 @@ export function percentageOf(amount: number, percentage: number): number {
 // Format number with Western numerals (123) - uses Intl.NumberFormat for Android WebView compatibility
 export function formatNumber(num: number, decimals: number = 3): string {
   const formatter = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: decimals,
+    minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
     useGrouping: true,
   });
@@ -51,7 +51,7 @@ export function formatNumber(num: number, decimals: number = 3): string {
 // Format currency with Western numerals - uses Intl.NumberFormat for Android WebView compatibility
 export function formatCurrency(amount: number, symbol: string = '$', decimals: number = 2): string {
   const formatter = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: decimals,
+    minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
     useGrouping: true,
   });
