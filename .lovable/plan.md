@@ -1,53 +1,45 @@
 
 
-## خطة: تحسين أزرار التطبيق وإضافة تأثيرات حركية
+## خطة: إعادة تصميم لوحة التحكم (Dashboard Redesign)
 
 ---
 
-### ملخص
+### ملخص التغييرات
 
-تحسين مكون الأزرار العام مع إضافة تأثيرات حركية (animations) للقائمة الجانبية وسلة المنتجات. سنستخدم CSS animations الموجودة بدلاً من framer-motion لتجنب إضافة مكتبة ثقيلة (~30KB) بدون داع، خاصة أن المشروع يحتوي بالفعل على نظام animations متكامل في CSS.
+إعادة بناء صفحة الداشبورد بالكامل لتكون مضغوطة، غنية بالمعلومات، واحترافية. التركيز على 3 محاور: تقليص الإجراءات السريعة، تصغير بطاقات الإحصائيات، وإضافة جدول "آخر الفواتير" في الأسفل.
 
 ---
 
-### التغييرات
+### 1. الإجراءات السريعة - تحويل لشريط أفقي مضغوط (`QuickActions.tsx`)
 
-#### 1. تحسين مكون الأزرار (`src/components/ui/button.tsx`)
-
-**الحالي:** الأزرار تملك `rounded-xl` و `active:scale-95` و `transition-all duration-200` - جيد لكن يمكن تحسينه.
+**الحالي:** شبكة 3x3 بارتفاع h-24 لكل زر + فراغين، تأخذ ~250px رأسياً.
 
 **الجديد:**
-- إضافة `hover:translate-y-[-1px]` لتأثير "رفع" خفيف عند التمرير
-- تحسين الظلال: `hover:shadow-lg` للأزرار الرئيسية بدلاً من `hover:shadow-md`
-- إضافة `active:translate-y-0` للضغط الطبيعي
-- تحسين variant `outline`: إضافة `hover:shadow-sm` وحدود أنعم
-- تحسين variant `ghost`: إضافة `active:scale-95` بشكل منفصل
-- تحسين variant `secondary`: إضافة `hover:shadow-sm`
+- صف أفقي واحد قابل للتمرير (flex overflow-x-auto) بدلاً من الشبكة
+- كل عنصر: أيقونة دائرية صغيرة (w-10 h-10) + نص صغير تحتها (text-[10px])
+- إزالة الفراغات (Empty Slots)
+- إزالة عنوان "إجراءات سريعة" وحاوية glass - تصبح مباشرة في الصفحة
+- المساحة المتوقعة: ~70px فقط بدلاً من ~250px
 
-#### 2. أنيميشن القائمة الجانبية (`src/components/layout/Sidebar.tsx`)
+### 2. بطاقات الإحصائيات - تصغير ودمج (`Dashboard.tsx` + `StatCard.tsx`)
 
-**الحالي:** الأيقونات والنصوص تظهر بدون حركة عند فتح القائمة على الموبايل.
-
-**الجديد:**
-- إضافة `staggered animation` لعناصر القائمة: كل عنصر يظهر بتأخير تدريجي (`animationDelay`) عند فتح القائمة على الموبايل
-- تأثير `fade-in-up` لكل عنصر في القائمة
-- تأثير حركي عند التمرير على العناصر: `hover:translate-x-1` (أو `hover:-translate-x-1` في RTL)
-
-#### 3. أنيميشن سلة المنتجات (`src/components/pos/CartPanel.tsx`)
-
-**الحالي:** يوجد `slide-in-right` مع `animationDelay` - جيد لكن يمكن تحسينه.
+**الحالي:** 3 أقسام منفصلة بعناوين (المبيعات، الأداء المالي، رأس المال) مع SectionDividers بينها.
 
 **الجديد:**
-- استبدال `slide-in-right` بأنيميشن `fade-in-up` (أنسب لبطاقات السلة)
-- إضافة `transition-all duration-200 hover:shadow-md hover:scale-[1.01]` للبطاقات
-- تأثير حذف أنعم (يعتمد على CSS transition)
+- **إزالة SectionDividers** بين الأقسام لتوفير مساحة
+- **صف المبيعات**: 3 بطاقات في صف واحد (grid-cols-3) - يبقى كما هو لكن بدون SectionDivider
+- **صف الأداء المالي**: 3 بطاقات في صف واحد (grid-cols-3) - يبقى كما هو
+- **صف رأس المال**: دمج الأربع بطاقات في صف واحد (grid-cols-4 بدلاً من grid-cols-2 md:grid-cols-3) - على الموبايل تصبح 2x2
+- **StatCard**: تقليص الـ padding من `p-3 md:p-4` إلى `p-2.5 md:p-3` وتصغير الخط
 
-#### 4. إضافة keyframes جديدة (`src/index.css`)
+### 3. القسم السفلي - إضافة "آخر الفواتير" (`Dashboard.tsx`)
 
-إضافة `@keyframes cart-item-enter` مخصص لعناصر السلة:
-- يبدأ من `opacity: 0, translateY(8px), scale(0.97)`
-- ينتهي إلى `opacity: 1, translateY(0), scale(1)`
-- مدة: `0.25s ease-out`
+**الحالي:** قسم التنبيهات يحتوي على LowStockAlerts + DebtAlerts فقط.
+
+**الجديد:**
+- إضافة مكون `RecentInvoices` (موجود بالفعل في المشروع!) في القسم السفلي
+- الترتيب: RecentInvoices (عرض كامل) ثم LowStockAlerts + DebtAlerts جنباً لجنب
+- إزالة SectionDivider "التنبيهات" واستبدالها بعنوان مدمج
 
 ---
 
@@ -55,17 +47,37 @@
 
 | الملف | التعديل |
 |-------|---------|
-| `src/components/ui/button.tsx` | hover lift effect + ظلال محسنة + active states أنعم |
-| `src/components/layout/Sidebar.tsx` | staggered fade-in للعناصر + hover translate |
-| `src/components/pos/CartPanel.tsx` | cart-item-enter animation + hover effects على البطاقات |
-| `src/index.css` | إضافة `@keyframes cart-item-enter` |
+| `src/components/dashboard/QuickActions.tsx` | تحويل من شبكة 3x3 إلى شريط أفقي مضغوط من الأيقونات الدائرية |
+| `src/pages/Dashboard.tsx` | إعادة ترتيب الأقسام + إزالة SectionDividers + إضافة RecentInvoices + دمج بطاقات رأس المال في صف واحد |
+| `src/components/dashboard/StatCard.tsx` | تقليص padding والخطوط لبطاقات أصغر |
 
 ---
 
-### لماذا بدون framer-motion؟
+### التفاصيل التقنية
 
-- المشروع يحتوي على **11+ keyframes** مخصصة في CSS بالفعل
-- framer-motion تضيف ~30KB للحزمة وهو غير ضروري لهذه التأثيرات البسيطة
-- CSS animations أسرع في الأداء وأخف على الموبايل
-- جميع التأثيرات المطلوبة يمكن تنفيذها بـ CSS transitions + keyframes
+#### QuickActions - الشكل الجديد
+```text
+[أيقونة دائرية] [أيقونة دائرية] [أيقونة دائرية] [أيقونة دائرية] ...
+  فاتورة         منتج            عميل            دفعة
+```
+- حاوية: `flex gap-3 overflow-x-auto pb-2 scrollbar-hide`
+- كل عنصر: `flex flex-col items-center gap-1.5 min-w-[60px]`
+- الأيقونة: `w-10 h-10 rounded-full flex items-center justify-center` مع لون الخلفية حسب النوع
+- النص: `text-[10px] font-medium text-muted-foreground`
+
+#### Dashboard - الترتيب الجديد
+```text
+1. Header (الترحيب + التاريخ)
+2. Quick Actions (شريط أفقي مضغوط)
+3. بطاقات المبيعات (3 أعمدة - بدون عنوان قسم)
+4. بطاقات الأداء المالي (3 أعمدة)
+5. بطاقات رأس المال (4 أعمدة على Desktop، 2x2 على Mobile)
+6. آخر الفواتير (RecentInvoices - عرض كامل)
+7. التنبيهات (LowStockAlerts + DebtAlerts جنباً لجنب)
+```
+
+#### StatCard - التعديلات
+- padding: `p-2.5 md:p-3` بدلاً من `p-3 md:p-4`
+- عنوان: `text-[10px] md:text-xs` بدلاً من `text-[10px] md:text-sm`
+- قيمة: تبقى `text-sm md:text-xl` (حجم جيد حالياً)
 
