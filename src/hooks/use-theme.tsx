@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark';
-export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'amber' | 'teal' | 'crimson';
+export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta';
 
 interface ThemeContextType {
   mode: ThemeMode;
@@ -65,23 +65,23 @@ export const themeColors: Record<ThemeColor, { name: string; nameAr: string; pri
     primary: '239 84% 67%',
     accent: '224 76% 48%',
   },
-  amber: {
-    name: 'Amber',
-    nameAr: 'الكهرماني',
-    primary: '38 92% 50%',
-    accent: '45 93% 47%',
+  coral: {
+    name: 'Coral',
+    nameAr: 'المرجاني',
+    primary: '16 85% 55%',
+    accent: '8 78% 50%',
   },
-  teal: {
-    name: 'Teal',
-    nameAr: 'التركوازي',
-    primary: '173 80% 40%',
-    accent: '166 72% 28%',
+  lime: {
+    name: 'Lime',
+    nameAr: 'الليموني',
+    primary: '85 70% 45%',
+    accent: '95 65% 38%',
   },
-  crimson: {
-    name: 'Crimson',
-    nameAr: 'القرمزي',
-    primary: '348 83% 47%',
-    accent: '356 80% 45%',
+  magenta: {
+    name: 'Magenta',
+    nameAr: 'الأرجواني',
+    primary: '310 75% 55%',
+    accent: '320 70% 48%',
   },
 };
 
