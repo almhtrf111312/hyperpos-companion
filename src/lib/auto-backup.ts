@@ -1,12 +1,7 @@
 // Smart Auto-Backup System
-// Activity-based backup with Google Drive and local storage support
+// Activity-based backup with local and cloud storage support
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import {
-  getStoredTokens,
-  getStoredFolderId,
-  uploadBackup,
-  setLastSyncTimestamp
-} from './google-drive';
+import { uploadCloudBackup } from './cloud-backup';
 import { formatDateTime } from './utils';
 
 const BACKUP_CONFIG_KEY = 'hyperpos_backup_config_v1';
@@ -18,7 +13,7 @@ export interface BackupConfig {
   enabled: boolean;
   lastBackupTime?: string;
   lastActivityTime?: string;
-  autoGoogleDrive: boolean;
+  autoCloudBackup: boolean;
   autoLocalStorage: boolean;
   backupOnExit: boolean;
 }
@@ -35,7 +30,7 @@ export const loadBackupConfig = (): BackupConfig => {
   }
   return {
     enabled: true,
-    autoGoogleDrive: true,
+    autoCloudBackup: true,
     autoLocalStorage: true,
     backupOnExit: true,
   };
@@ -253,30 +248,12 @@ export const loadLocalBackups = (): Array<{ fileName: string; data: object; crea
   return [];
 };
 
-// Save backup to Google Drive
-export const saveBackupToGoogleDrive = async (): Promise<boolean> => {
+// Save backup to cloud storage
+export const saveBackupToCloud = async (): Promise<boolean> => {
   try {
-    const tokens = getStoredTokens();
-    const folderId = getStoredFolderId();
-
-    if (!tokens?.access_token || !folderId) {
-      console.log('Google Drive not connected');
-      return false;
-    }
-
-    const backupData = await generateBackupData();
-    const fileName = `hyperpos_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-
-    const result = await uploadBackup(tokens.access_token, folderId, fileName, backupData);
-
-    if (result) {
-      setLastSyncTimestamp();
-      return true;
-    }
-
-    return false;
+    return await uploadCloudBackup();
   } catch (error) {
-    console.error('Failed to save backup to Google Drive:', error);
+    console.error('Failed to save backup to cloud:', error);
     return false;
   }
 };
@@ -295,9 +272,9 @@ export const performAutoBackup = async (): Promise<{ local: boolean; cloud: bool
     results.local = await saveBackupLocally();
   }
 
-  // Save to Google Drive
-  if (config.autoGoogleDrive) {
-    results.cloud = await saveBackupToGoogleDrive();
+  // Save to cloud storage
+  if (config.autoCloudBackup) {
+    results.cloud = await saveBackupToCloud();
   }
 
   // Update last backup time
