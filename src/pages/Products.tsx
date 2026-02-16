@@ -87,6 +87,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
+import { ProductImage } from '@/components/products/ProductImage';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1015,13 +1016,12 @@ export default function Products() {
                     className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border fade-in"
                     style={{ animationDelay: `${index * 20}ms` }}
                   >
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {product.image ? (
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Package className="w-6 h-6 text-muted-foreground" />
-                      )}
-                    </div>
+                    <ProductImage
+                      imageUrl={product.image}
+                      alt={product.name}
+                      className="w-12 h-12 rounded-lg flex-shrink-0"
+                      iconClassName="w-6 h-6"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
@@ -1068,13 +1068,12 @@ export default function Products() {
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {product.image ? (
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Package className="w-7 h-7 text-muted-foreground" />
-                      )}
-                    </div>
+                    <ProductImage
+                      imageUrl={product.image}
+                      alt={product.name}
+                      className="w-14 h-14 rounded-xl flex-shrink-0"
+                      iconClassName="w-7 h-7"
+                    />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground text-sm line-clamp-2 leading-tight" title={product.name}>{product.name}</h3>
                       <p className="text-xs text-muted-foreground truncate mt-0.5" title={product.barcode}>{noInventory ? product.category : (product.barcode || product.category)}</p>
@@ -1246,13 +1245,12 @@ export default function Products() {
                       {/* المنتج + الباركود */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {product.image ? (
-                              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <Package className="w-5 h-5 text-muted-foreground" />
-                            )}
-                          </div>
+                          <ProductImage
+                            imageUrl={product.image}
+                            alt={product.name}
+                            className="w-10 h-10 rounded-lg flex-shrink-0"
+                            iconClassName="w-5 h-5"
+                          />
                           <div className="flex flex-col min-w-0">
                             <span className="font-medium text-foreground text-sm truncate">{product.name}</span>
                             {!noInventory && (
