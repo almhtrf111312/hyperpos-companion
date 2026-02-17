@@ -1,10 +1,10 @@
 /**
- * Privacy Policy & Disclaimer Screen - Shown once on first launch
+ * Privacy Policy & Disclaimer Screen - Full page, shown once on first launch
+ * User must scroll to bottom before checkbox is enabled, then check to enable button
  */
-import { useState } from 'react';
-import { Shield, Check, X } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Shield, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
@@ -117,69 +117,70 @@ function EnglishTerms() {
 }
 
 export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const { t, isRTL, language } = useLanguage();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const isRTLLang = language === 'ar' || language === 'fa' || language === 'ku';
 
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Check if scrolled near bottom (within 30px)
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+      setScrolledToBottom(true);
+    }
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg flex flex-col items-center gap-6">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <Shield className="w-7 h-7 text-primary" />
+    <div
+      className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-4"
+      style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}
+    >
+      <div className="w-full max-w-2xl flex flex-col items-center gap-4 h-full max-h-[100dvh] py-4">
+        {/* Header */}
+        <div className="flex-shrink-0 flex flex-col items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Shield className="w-7 h-7 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground text-center">
+            {t('privacy.title')}
+          </h1>
         </div>
 
-        <h1 className="text-xl font-bold text-foreground text-center">
-          {t('privacy.title')}
-        </h1>
-
-        {/* Big button to open terms dialog */}
-        <Button
-          variant="outline"
-          size="lg"
-          className="w-full h-14 text-base gap-2"
-          onClick={() => setDialogOpen(true)}
+        {/* Scrollable Terms Content */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 min-h-0 w-full overflow-y-auto border border-border rounded-xl p-4"
+          dir={isRTL ? 'rtl' : 'ltr'}
         >
-          <Shield className="w-5 h-5" />
-          {t('privacy.termsButton')}
-        </Button>
-
-        {/* Terms Inline Overlay - No Portal, renders in same stacking context */}
-        {dialogOpen && (
-          <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDialogOpen(false)}>
-            <div
-              className="bg-background border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col p-6 gap-4"
-              dir={isRTL ? 'rtl' : 'ltr'}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">{t('privacy.termsDialogTitle')}</h2>
-                <button
-                  type="button"
-                  onClick={() => setDialogOpen(false)}
-                  className="rounded-sm opacity-70 hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <ScrollArea className="flex-1 min-h-0 h-[60vh] w-full border border-border rounded-xl p-4">
-                <div className={`prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                  {isRTLLang ? <ArabicTerms /> : <EnglishTerms />}
-                </div>
-              </ScrollArea>
-            </div>
+          <div className={`prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`}>
+            {isRTLLang ? <ArabicTerms /> : <EnglishTerms />}
           </div>
+        </div>
+
+        {/* Scroll hint */}
+        {!scrolledToBottom && (
+          <p className="text-xs text-muted-foreground animate-pulse flex-shrink-0">
+            {isRTLLang ? '⬇ قم بالتمرير للأسفل لقراءة جميع الشروط' : '⬇ Scroll down to read all terms'}
+          </p>
         )}
 
-        {/* Checkbox for agreement */}
-        <div className="flex items-center gap-3 w-full" dir={isRTL ? 'rtl' : 'ltr'}>
+        {/* Checkbox */}
+        <div className="flex items-center gap-3 w-full flex-shrink-0" dir={isRTL ? 'rtl' : 'ltr'}>
           <Checkbox
             id="terms-agree"
             checked={agreed}
             onCheckedChange={(checked) => setAgreed(checked === true)}
+            disabled={!scrolledToBottom}
+            className={!scrolledToBottom ? 'opacity-40' : ''}
           />
-          <Label htmlFor="terms-agree" className="cursor-pointer text-sm">
+          <Label
+            htmlFor="terms-agree"
+            className={`cursor-pointer text-sm ${!scrolledToBottom ? 'opacity-40' : ''}`}
+          >
             {t('privacy.agreeCheckbox')}
           </Label>
         </div>
@@ -187,7 +188,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
         {/* Continue button */}
         <Button
           size="lg"
-          className="w-full gap-2"
+          className="w-full gap-2 flex-shrink-0 transition-all duration-300"
           disabled={!agreed}
           onClick={onAccept}
         >
