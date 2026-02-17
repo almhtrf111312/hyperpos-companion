@@ -85,6 +85,7 @@ import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config'
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
+import { InlineCamera } from '@/components/camera/InlineCamera';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
@@ -256,10 +257,11 @@ export default function Products() {
   }, []);
 
   // Use Capacitor Camera hook with restoration callback
-  const { takePhoto, pickFromGallery, isLoading: isCameraLoading } = useCamera({
+  const { takePhoto, pickFromGallery, isLoading: isCameraLoading, showInlineCamera, onInlineCaptured, closeInlineCamera } = useCamera({
     maxSize: 640,
     quality: 70,
-    onPhotoRestored: handlePhotoRestored
+    onPhotoRestored: handlePhotoRestored,
+    fallbackToInline: true,
   });
 
   /*
@@ -456,6 +458,22 @@ export default function Products() {
       console.error('Camera capture error:', err);
     }
   };
+
+  // Handle inline camera capture (fallback when native camera fails)
+  const handleInlineCaptured = useCallback(async (base64Image: string) => {
+    onInlineCaptured(base64Image);
+    setImagePreviewBase64(base64Image);
+    const toastId = toast.loading('جاري رفع الصورة...');
+    const imageUrl = await uploadProductImage(base64Image);
+    toast.dismiss(toastId);
+    if (imageUrl) {
+      setFormData(prev => ({ ...prev, image: imageUrl }));
+      toast.success(t('products.imageUploaded'));
+    } else {
+      setImagePreviewBase64('');
+      toast.error(t('products.imageUploadFailed'));
+    }
+  }, [onInlineCaptured, t]);
 
   // Reload categories from cloud
   const reloadCategories = useCallback(async () => {
@@ -2538,6 +2556,14 @@ export default function Products() {
             )}
           </DialogContent>
         </Dialog>
+      {/* Inline Camera Fallback */}
+      <InlineCamera
+        isOpen={showInlineCamera}
+        onClose={closeInlineCamera}
+        onCapture={handleInlineCaptured}
+        maxSize={640}
+        quality={70}
+      />
       </div>
     </div>
   );
