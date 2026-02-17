@@ -10,14 +10,21 @@ import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
 
 const PRIVACY_KEY = 'hyperpos_privacy_accepted';
+// Version 2: terms shown directly without button (v1 had a button)
+const PRIVACY_VERSION = '2';
+const PRIVACY_VERSION_KEY = 'hyperpos_privacy_version';
 
 export function usePrivacyAccepted() {
   const [accepted, setAccepted] = useState(() => {
-    return localStorage.getItem(PRIVACY_KEY) === 'true';
+    const wasAccepted = localStorage.getItem(PRIVACY_KEY) === 'true';
+    const savedVersion = localStorage.getItem(PRIVACY_VERSION_KEY) || '1';
+    // Force re-acceptance if privacy screen version changed
+    return wasAccepted && savedVersion === PRIVACY_VERSION;
   });
 
   const accept = () => {
     localStorage.setItem(PRIVACY_KEY, 'true');
+    localStorage.setItem(PRIVACY_VERSION_KEY, PRIVACY_VERSION);
     setAccepted(true);
   };
 
