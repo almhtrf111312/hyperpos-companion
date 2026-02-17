@@ -1552,9 +1552,9 @@ export function CartPanel({
             {/* Compact Print & Share Icons */}
             <Button
               data-tour="action-btns"
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-10 w-9 flex-shrink-0"
+              className="h-10 w-10 flex-shrink-0 border-border"
               disabled={cart.length === 0}
               onClick={handlePrint}
               title={t('pos.print')}
@@ -1562,9 +1562,9 @@ export function CartPanel({
               <Printer className="w-4 h-4" />
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-10 w-9 flex-shrink-0"
+              className="h-10 w-10 flex-shrink-0 border-border"
               disabled={cart.length === 0}
               onClick={handleWhatsApp}
               title={t('pos.whatsapp')}
