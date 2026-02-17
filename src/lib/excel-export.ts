@@ -1,5 +1,5 @@
-// Professional Excel Export using xlsx-js-style library for colors
-import XLSX from 'xlsx-js-style';
+// Professional Excel Export using ExcelJS library (secure, no SheetJS vulnerabilities)
+import ExcelJS from 'exceljs';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -54,20 +54,28 @@ const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
   return { name: 'FlowPOS Pro' };
 };
 
-// Save Excel file on native platforms using Filesystem and Share APIs
-const saveExcelNative = async (wb: any, fileName: string): Promise<void> => {
-  try {
-    // Convert workbook to base64
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+// Generate workbook buffer as base64
+const workbookToBase64 = async (wb: ExcelJS.Workbook): Promise<string> => {
+  const buffer = await wb.xlsx.writeBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
 
-    // Save file to cache directory
+// Save Excel file on native platforms using Filesystem and Share APIs
+const saveExcelNative = async (wb: ExcelJS.Workbook, fileName: string): Promise<void> => {
+  try {
+    const base64 = await workbookToBase64(wb);
+
     const result = await Filesystem.writeFile({
       path: fileName,
-      data: wbout,
+      data: base64,
       directory: Directory.Cache,
     });
 
-    // Share the file
     await Share.share({
       title: fileName,
       url: result.uri,
@@ -77,6 +85,28 @@ const saveExcelNative = async (wb: any, fileName: string): Promise<void> => {
     console.error('Error saving Excel on native:', error);
     throw error;
   }
+};
+
+// Download workbook in browser
+const downloadWorkbook = async (wb: ExcelJS.Workbook, fileName: string): Promise<void> => {
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// Thin border style
+const thinBorder: Partial<ExcelJS.Borders> = {
+  top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+  right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
 };
 
 // Create and download Excel file with enhanced header
@@ -96,77 +126,54 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
     summary,
   } = options;
 
-  // Get store info if not provided
   const store = storeName ? { name: storeName, phone: storePhone, address: storeAddress } : getStoreInfo();
 
-  // Create workbook
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(sheetName);
 
-  // Prepare data rows
+  // Build rows as array of arrays
   const rows: (string | number | undefined)[][] = [];
 
-  // Add store header
+  // Store header
   rows.push([store.name]);
-  if (store.phone) {
-    rows.push([`هاتف: ${store.phone}`]);
-  }
-  if (store.address) {
-    rows.push([`العنوان: ${store.address}`]);
-  }
-  rows.push([]); // Empty row
+  if (store.phone) rows.push([`هاتف: ${store.phone}`]);
+  if (store.address) rows.push([`العنوان: ${store.address}`]);
+  rows.push([]);
 
-  // Add report type and date
-  if (reportType) {
-    rows.push([`نوع التقرير: ${reportType}`]);
-  }
+  if (reportType) rows.push([`نوع التقرير: ${reportType}`]);
   rows.push([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
-  rows.push([]); // Empty row
+  rows.push([]);
 
-  // Add title if provided
-  if (title) {
-    rows.push([title]);
-    rows.push([]); // Empty row
-  }
+  if (title) { rows.push([title]); rows.push([]); }
+  if (subtitle) { rows.push([subtitle]); rows.push([]); }
 
-  // Add subtitle if provided
-  if (subtitle) {
-    rows.push([subtitle]);
-    rows.push([]); // Empty row
-  }
-
-  // Add header row
+  // Header row
   rows.push(columns.map(col => col.header));
 
-  // Add data rows
+  // Data rows
   data.forEach(item => {
     const row = columns.map(col => {
       const value = item[col.key];
-      if (typeof value === 'number') {
-        return value;
-      }
+      if (typeof value === 'number') return value;
       return String(value ?? '');
     });
     rows.push(row);
   });
 
-  // Add totals row if provided
+  // Totals row
   if (totals) {
-    rows.push([]); // Empty row before totals
+    rows.push([]);
     const totalsRow = columns.map(col => {
-      if (totals[col.key] !== undefined) {
-        return totals[col.key];
-      }
-      if (col.key === columns[0].key) {
-        return 'الإجمالي';
-      }
+      if (totals[col.key] !== undefined) return totals[col.key];
+      if (col.key === columns[0].key) return 'الإجمالي';
       return '';
     });
     rows.push(totalsRow);
   }
 
-  // Add summary section if provided
+  // Summary section
   if (summary && summary.length > 0) {
-    rows.push([]); // Empty row
+    rows.push([]);
     rows.push(['خلاصة حسابية']);
     rows.push(['البند', 'القيمة']);
     summary.forEach(item => {
@@ -174,47 +181,38 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
     });
   }
 
-  // Create worksheet
-  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Add all rows to worksheet
+  rows.forEach(row => ws.addRow(row));
+
+  // Set column widths
+  columns.forEach((col, i) => {
+    const wsCol = ws.getColumn(i + 1);
+    wsCol.width = col.width || 15;
+  });
 
   // Apply alternating column colors (Light Blue / Light Green)
-  if (ws['!ref']) {
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let c = range.s.c; c <= range.e.c; ++c) {
-      // Determined color for this column
-      const fillColor = c % 2 === 0 ? 'E6F3FF' : 'F0FFF0'; // Blue for A, C, E..., Green for B, D, F...
-
-      for (let r = range.s.r; r <= range.e.r; ++r) {
-        const cellAddress = XLSX.utils.encode_cell({ r, c });
-        if (ws[cellAddress]) {
-          // Apply style to existing cell
-          if (!ws[cellAddress].s) ws[cellAddress].s = {};
-          ws[cellAddress].s.fill = {
-            fgColor: { rgb: fillColor }
-          };
-          // Add border for cleaner look
-          ws[cellAddress].s.border = {
-            top: { style: 'thin', color: { rgb: "CCCCCC" } },
-            bottom: { style: 'thin', color: { rgb: "CCCCCC" } },
-            left: { style: 'thin', color: { rgb: "CCCCCC" } },
-            right: { style: 'thin', color: { rgb: "CCCCCC" } }
-          };
-        }
+  const totalRows = ws.rowCount;
+  const totalCols = columns.length;
+  for (let c = 1; c <= totalCols; c++) {
+    const fillColor = (c - 1) % 2 === 0 ? 'FFE6F3FF' : 'FFF0FFF0';
+    for (let r = 1; r <= totalRows; r++) {
+      const cell = ws.getCell(r, c);
+      if (cell.value !== undefined && cell.value !== null && cell.value !== '') {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: fillColor },
+        };
+        cell.border = thinBorder;
       }
     }
   }
-
-  // Set column widths
-  ws['!cols'] = columns.map(col => ({ wch: col.width || 15 }));
-
-  // Add worksheet to workbook
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
   // Generate and download/share file based on platform
   if (Capacitor.isNativePlatform()) {
     await saveExcelNative(wb, fileName);
   } else {
-    XLSX.writeFile(wb, fileName);
+    await downloadWorkbook(wb, fileName);
   }
 };
 
@@ -524,31 +522,6 @@ export const exportCustomersToExcel = async (
   });
 };
 
-// Save multi-sheet Excel file on native platforms
-const saveMultiSheetExcelNative = async (wb: any, fileName: string): Promise<void> => {
-  try {
-    // Convert workbook to base64
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-
-    // Save file to cache directory
-    const result = await Filesystem.writeFile({
-      path: fileName,
-      data: wbout,
-      directory: Directory.Cache,
-    });
-
-    // Share the file
-    await Share.share({
-      title: fileName,
-      url: result.uri,
-      dialogTitle: 'حفظ ملف Excel',
-    });
-  } catch (error) {
-    console.error('Error saving Excel on native:', error);
-    throw error;
-  }
-};
-
 // Export comprehensive sales report to Excel with multiple sheets
 export const exportSalesReportToExcel = async (
   data: {
@@ -559,11 +532,12 @@ export const exportSalesReportToExcel = async (
   },
   dateRange: { start: string; end: string }
 ): Promise<void> => {
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
   const store = getStoreInfo();
 
-  // Summary sheet with store header
-  const summaryData = [
+  // Summary sheet
+  const summarySheet = wb.addWorksheet('الملخص');
+  const summaryRows = [
     [store.name],
     store.phone ? [`هاتف: ${store.phone}`] : [],
     store.address ? [`العنوان: ${store.address}`] : [],
@@ -580,13 +554,13 @@ export const exportSalesReportToExcel = async (
     ['عدد الطلبات', data.summary.totalOrders],
     ['متوسط قيمة الطلب', Math.round(data.summary.avgOrderValue)],
   ].filter(row => row.length > 0);
-
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-  summarySheet['!cols'] = [{ wch: 25 }, { wch: 15 }];
-  XLSX.utils.book_append_sheet(wb, summarySheet, 'الملخص');
+  summaryRows.forEach(row => summarySheet.addRow(row));
+  summarySheet.getColumn(1).width = 25;
+  summarySheet.getColumn(2).width = 15;
 
   // Daily sales sheet
-  const dailyData = [
+  const dailySheet = wb.addWorksheet('المبيعات اليومية');
+  const dailyRows = [
     ['التاريخ', 'المبيعات', 'الأرباح', 'الطلبات'],
     ...data.dailySales.map(d => [d.date, d.sales, d.profit, d.orders]),
     [],
@@ -596,35 +570,33 @@ export const exportSalesReportToExcel = async (
       data.dailySales.reduce((s, d) => s + d.orders, 0)
     ]
   ];
-  const dailySheet = XLSX.utils.aoa_to_sheet(dailyData);
-  dailySheet['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
-  XLSX.utils.book_append_sheet(wb, dailySheet, 'المبيعات اليومية');
+  dailyRows.forEach(row => dailySheet.addRow(row));
+  [12, 12, 12, 10].forEach((w, i) => { dailySheet.getColumn(i + 1).width = w; });
 
   // Top products sheet
-  const productsData = [
+  const productsSheet = wb.addWorksheet('أفضل المنتجات');
+  const productsRows = [
     ['المنتج', 'الكمية المباعة', 'الإيرادات'],
     ...data.topProducts.map(p => [p.name, p.sales, p.revenue]),
   ];
-  const productsSheet = XLSX.utils.aoa_to_sheet(productsData);
-  productsSheet['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }];
-  XLSX.utils.book_append_sheet(wb, productsSheet, 'أفضل المنتجات');
+  productsRows.forEach(row => productsSheet.addRow(row));
+  [25, 15, 15].forEach((w, i) => { productsSheet.getColumn(i + 1).width = w; });
 
   // Top customers sheet
-  const customersData = [
+  const customersSheet = wb.addWorksheet('أفضل العملاء');
+  const customersRows = [
     ['العميل', 'عدد الطلبات', 'الإجمالي'],
     ...data.topCustomers.map(c => [c.name, c.orders, c.total]),
   ];
-  const customersSheet = XLSX.utils.aoa_to_sheet(customersData);
-  customersSheet['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }];
-  XLSX.utils.book_append_sheet(wb, customersSheet, 'أفضل العملاء');
+  customersRows.forEach(row => customersSheet.addRow(row));
+  [25, 15, 15].forEach((w, i) => { customersSheet.getColumn(i + 1).width = w; });
 
   const fileName = `تقرير_المبيعات_${dateRange.start}_${dateRange.end}.xlsx`;
 
-  // Generate and download/share file based on platform
   if (Capacitor.isNativePlatform()) {
-    await saveMultiSheetExcelNative(wb, fileName);
+    await saveExcelNative(wb, fileName);
   } else {
-    XLSX.writeFile(wb, fileName);
+    await downloadWorkbook(wb, fileName);
   }
 };
 

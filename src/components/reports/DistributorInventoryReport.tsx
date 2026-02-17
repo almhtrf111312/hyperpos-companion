@@ -196,38 +196,57 @@ export function DistributorInventoryReport() {
   }, [stockData]);
 
   // Export to Excel
-  const exportToExcel = async () => {
+  const handleExportToExcel = async () => {
     try {
-      const XLSX = (await import('xlsx-js-style')).default;
+      const ExcelJS = (await import('exceljs')).default;
       const selectedWh = warehouses.find(w => w.id === selectedWarehouse);
 
-      const exportData = stockData.map(item => ({
-        'المنتج': item.productName,
-        'الوحدة': item.unit,
-        'المستلم': item.receivedQuantity,
-        'المباع': item.soldQuantity,
-        'المتبقي': item.remainingQuantity,
-        'العجز/الفائض': item.variance,
-        'الحالة': item.variance > 0 ? 'فائض' : item.variance < 0 ? 'عجز' : 'مطابق'
-      }));
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('جرد العهدة');
 
-      // Add summary row
-      exportData.push({
-        'المنتج': '--- الإجمالي ---',
-        'الوحدة': '',
-        'المستلم': summary.totalReceived,
-        'المباع': summary.totalSold,
-        'المتبقي': summary.totalRemaining,
-        'العجز/الفائض': summary.totalVariance,
-        'الحالة': summary.totalVariance > 0 ? 'فائض' : summary.totalVariance < 0 ? 'عجز' : 'مطابق'
+      // Add header row
+      ws.addRow(['المنتج', 'الوحدة', 'المستلم', 'المباع', 'المتبقي', 'العجز/الفائض', 'الحالة']);
+
+      // Add data rows
+      stockData.forEach(item => {
+        ws.addRow([
+          item.productName,
+          item.unit,
+          item.receivedQuantity,
+          item.soldQuantity,
+          item.remainingQuantity,
+          item.variance,
+          item.variance > 0 ? 'فائض' : item.variance < 0 ? 'عجز' : 'مطابق'
+        ]);
       });
 
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'جرد العهدة');
+      // Add summary row
+      ws.addRow([
+        '--- الإجمالي ---',
+        '',
+        summary.totalReceived,
+        summary.totalSold,
+        summary.totalRemaining,
+        summary.totalVariance,
+        summary.totalVariance > 0 ? 'فائض' : summary.totalVariance < 0 ? 'عجز' : 'مطابق'
+      ]);
+
+      // Set column widths
+      [20, 10, 12, 12, 12, 15, 10].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
       const fileName = `جرد_العهدة_${selectedWh?.name || 'موزع'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+
+      // Download
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
       toast.success('تم تصدير التقرير بنجاح');
     } catch (error) {
@@ -289,7 +308,7 @@ export function DistributorInventoryReport() {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportToExcel}
+            onClick={handleExportToExcel}
             disabled={stockData.length === 0}
           >
             <FileSpreadsheet className="w-4 h-4 ml-2" />
