@@ -1,69 +1,49 @@
-// Network Status Indicator - shows offline/online icon in sidebar
+// Network Status Indicator - shows offline/online status
 import { forwardRef } from 'react';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { useLanguage } from '@/hooks/use-language';
 
 interface NetworkStatusIndicatorProps {
   compact?: boolean;
+  showLabel?: boolean;
   className?: string;
 }
 
 export const NetworkStatusIndicator = forwardRef<HTMLDivElement, NetworkStatusIndicatorProps>(
-  ({ compact = false, className }, ref) => {
+  ({ compact = false, showLabel = false, className }, ref) => {
     const { isSyncing, syncNow } = useCloudSyncContext();
+    const { t } = useLanguage();
     
-    // This hook handles toasts and auto-sync on reconnect
     const { isOnline } = useNetworkStatus(() => {
-      // Auto-sync when coming back online
       syncNow();
     });
 
-    if (isOnline && !isSyncing) {
-      // Online and not syncing - show green wifi or hide
-      if (compact) return null;
-      
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div ref={ref} className={cn("flex items-center gap-1 text-success", className)}>
-              <Wifi className="w-4 h-4" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>متصل بالإنترنت</TooltipContent>
-        </Tooltip>
-      );
-    }
-
     if (isSyncing) {
       return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div ref={ref} className={cn("flex items-center gap-1 text-primary", className)}>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>جاري المزامنة...</TooltipContent>
-        </Tooltip>
+        <div ref={ref} className={cn("flex items-center gap-2 text-primary", className)}>
+          <RefreshCw className="w-4 h-4 animate-spin flex-shrink-0" />
+          {showLabel && <span className="text-xs truncate">{t('sync.syncing' as any) || 'جاري المزامنة...'}</span>}
+        </div>
       );
     }
 
-    // Offline
+    if (isOnline) {
+      return (
+        <div ref={ref} className={cn("flex items-center gap-2 text-success", className)}>
+          <Wifi className="w-4 h-4 flex-shrink-0" />
+          {showLabel && <span className="text-xs truncate">{t('network.online' as any) || 'متصل بالإنترنت'}</span>}
+        </div>
+      );
+    }
+
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div ref={ref} className={cn("flex items-center gap-1 text-destructive animate-pulse", className)}>
-            <WifiOff className="w-4 h-4" />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>غير متصل بالإنترنت</TooltipContent>
-      </Tooltip>
+      <div ref={ref} className={cn("flex items-center gap-2 text-destructive", className)}>
+        <WifiOff className="w-4 h-4 flex-shrink-0 animate-pulse" />
+        {showLabel && <span className="text-xs truncate">{t('network.offline' as any) || 'غير متصل بالإنترنت'}</span>}
+      </div>
     );
   }
 );

@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { NotificationBell } from './NotificationBell';
 import { SyncStatusMenu } from './SyncStatusMenu';
+import { NetworkStatusIndicator } from './NetworkStatusIndicator';
 import { getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
 
 interface NavItem {
@@ -333,6 +334,14 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
             })}
           </ul>
         </nav>
+
+        {/* Network Status */}
+        <div className={cn(
+          "flex-shrink-0 px-3 py-2",
+          effectiveCollapsed && !isMobile ? "flex justify-center" : ""
+        )}>
+          <NetworkStatusIndicator showLabel={!effectiveCollapsed || isMobile} />
+        </div>
 
         {/* User section */}
         <div className={cn(
