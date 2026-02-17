@@ -154,7 +154,8 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
         {/* Terms Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent
-            className="max-w-2xl max-h-[85vh] z-[200]"
+            className="max-w-2xl max-h-[85vh] !z-[200] [&~*]:!z-[200]"
+            style={{ zIndex: 200 }}
             dir={isRTL ? 'rtl' : 'ltr'}
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
