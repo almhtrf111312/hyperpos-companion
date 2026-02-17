@@ -111,15 +111,17 @@ export default function Login() {
       const { blocked } = await checkDeviceBinding(data.user.id);
 
       if (blocked) {
-        // Sign out first, then show dialog
-        // Important: Don't navigate away, just show the dialog
+        // Sign out first, then show dialog after a delay to prevent touch event bubbling
         try {
           await supabase.auth.signOut();
         } catch (e) {
           console.log('Sign out during device block:', e);
         }
         setIsLoading(false);
-        setShowDeviceBlockedDialog(true);
+        // Delay showing dialog to avoid touch event from login button closing it
+        setTimeout(() => {
+          setShowDeviceBlockedDialog(true);
+        }, 300);
         return;
       }
     }
@@ -265,9 +267,16 @@ export default function Login() {
         <LanguageQuickSelector />
       </div>
 
-      {/* Device Blocked Dialog */}
-      <Dialog open={showDeviceBlockedDialog} onOpenChange={setShowDeviceBlockedDialog}>
-        <DialogContent className="sm:max-w-md" dir={direction}>
+      {/* Device Blocked Dialog - Protected from accidental closure on mobile */}
+      <Dialog open={showDeviceBlockedDialog} onOpenChange={(open) => { if (!open) return; }}>
+        <DialogContent
+          className="sm:max-w-md [&>button:last-child]:hidden"
+          dir={direction}
+          style={{ zIndex: 200 }}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader className="text-center sm:text-center">
             <div className="mx-auto w-14 h-14 bg-destructive/10 rounded-full flex items-center justify-center mb-3">
               <Smartphone className="w-7 h-7 text-destructive" />
