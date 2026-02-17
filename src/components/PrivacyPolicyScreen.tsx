@@ -2,17 +2,11 @@
  * Privacy Policy & Disclaimer Screen - Shown once on first launch
  */
 import { useState } from 'react';
-import { Shield, Check } from 'lucide-react';
+import { Shield, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useLanguage } from '@/hooks/use-language';
 
 const PRIVACY_KEY = 'hyperpos_privacy_accepted';
@@ -151,27 +145,32 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
           {t('privacy.termsButton')}
         </Button>
 
-        {/* Terms Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent
-            className="max-w-2xl max-h-[85vh] !z-[200] [&~*]:!z-[200]"
-            style={{ zIndex: 200 }}
-            dir={isRTL ? 'rtl' : 'ltr'}
-            onPointerDownOutside={(e) => e.preventDefault()}
-            onInteractOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle className="text-center">
-                {t('privacy.termsDialogTitle')}
-              </DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="h-[60vh] w-full border border-border rounded-xl p-4">
-              <div className={`prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                {isRTLLang ? <ArabicTerms /> : <EnglishTerms />}
+        {/* Terms Inline Overlay - No Portal, renders in same stacking context */}
+        {dialogOpen && (
+          <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDialogOpen(false)}>
+            <div
+              className="bg-background border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col p-6 gap-4"
+              dir={isRTL ? 'rtl' : 'ltr'}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{t('privacy.termsDialogTitle')}</h2>
+                <button
+                  type="button"
+                  onClick={() => setDialogOpen(false)}
+                  className="rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+              <ScrollArea className="flex-1 min-h-0 h-[60vh] w-full border border-border rounded-xl p-4">
+                <div className={`prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                  {isRTLLang ? <ArabicTerms /> : <EnglishTerms />}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        )}
 
         {/* Checkbox for agreement */}
         <div className="flex items-center gap-3 w-full" dir={isRTL ? 'rtl' : 'ltr'}>
