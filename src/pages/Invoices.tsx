@@ -525,7 +525,7 @@ export default function Invoices() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-accent/10">
-                <Banknote className="w-5 h-5 text-accent-foreground" />
+                <Banknote className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{t('invoices.totalProfit')}</p>
