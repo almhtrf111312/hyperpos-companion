@@ -5,7 +5,7 @@
  * Increment SETTINGS_VERSION whenever you change default settings that must propagate.
  */
 
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 const VERSION_KEY = 'hyperpos_settings_version';
 
 // Keys to clear on version mismatch (stale config that should be refreshed)
