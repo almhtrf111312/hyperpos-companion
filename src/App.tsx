@@ -22,6 +22,7 @@ import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
+import { checkSettingsVersion } from "./lib/settings-version";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
@@ -106,11 +107,10 @@ const AppContent = () => {
   useEffect(() => {
     if (isSafeMode) return;
     try {
-      // Only clear demo data, don't load new ones
-      // Demo data should not be loaded for production apps with cloud sync
+      checkSettingsVersion();
       clearDemoDataOnce();
     } catch (error) {
-      console.error('[App] Failed to clear demo data:', error);
+      console.error('[App] Failed to initialize:', error);
     }
   }, [isSafeMode]);
 

@@ -7,6 +7,7 @@ interface UseCameraOptions {
   maxSize?: number;
   quality?: number;
   onPhotoRestored?: (base64: string) => void;
+  fallbackToInline?: boolean;
 }
 
 interface UseCameraResult {
@@ -15,6 +16,9 @@ interface UseCameraResult {
   isLoading: boolean;
   isNative: boolean;
   error: string | null;
+  showInlineCamera: boolean;
+  onInlineCaptured: (base64: string) => void;
+  closeInlineCamera: () => void;
 }
 
 /**
@@ -22,9 +26,11 @@ interface UseCameraResult {
  * Uses webPath + fetch(Blob) to avoid OOM on low-end Android devices.
  */
 export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
-  const { maxSize = 640, quality = 70 } = options;
+  const { maxSize = 640, quality = 70, fallbackToInline = true } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInlineCamera, setShowInlineCamera] = useState(false);
+  const inlineCaptureResolveRef = useRef<((value: string | null) => void) | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const resolveRef = useRef<((value: string | null) => void) | null>(null);
@@ -133,18 +139,32 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
       if (isNative) {
         await ensurePermissions();
 
-        const photo = await Camera.getPhoto({
-          resultType: CameraResultType.Uri,
-          source: CameraSource.Camera,
-          quality: 70,
-          width: 800,
-          correctOrientation: true,
-          saveToGallery: false,
-        });
+        try {
+          const photo = await Camera.getPhoto({
+            resultType: CameraResultType.Uri,
+            source: CameraSource.Camera,
+            quality: 70,
+            width: 800,
+            correctOrientation: true,
+            saveToGallery: false,
+          });
 
-        const result = await processNativePhoto(photo.webPath);
-        setIsLoading(false);
-        return result;
+          const result = await processNativePhoto(photo.webPath);
+          setIsLoading(false);
+          return result;
+        } catch (nativeErr) {
+          console.warn('[Camera] Native camera failed, checking inline fallback:', nativeErr);
+          
+          // If fallbackToInline is enabled, open inline camera instead of failing
+          if (fallbackToInline) {
+            setIsLoading(false);
+            return new Promise<string | null>((resolve) => {
+              inlineCaptureResolveRef.current = resolve;
+              setShowInlineCamera(true);
+            });
+          }
+          throw nativeErr;
+        }
       } else {
         // Web fallback
         return new Promise((resolve) => {
@@ -186,7 +206,7 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
       console.error('Camera error:', err);
       return null;
     }
-  }, [isNative, compressBase64, ensurePermissions, processNativePhoto]);
+  }, [isNative, compressBase64, ensurePermissions, processNativePhoto, fallbackToInline]);
 
   /**
    * Pick an image from the device gallery
@@ -286,5 +306,21 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
     };
   }, [isNative, processNativePhoto, options]);
 
-  return { takePhoto, pickFromGallery, isLoading, isNative, error };
+  const onInlineCaptured = useCallback((base64: string) => {
+    setShowInlineCamera(false);
+    if (inlineCaptureResolveRef.current) {
+      inlineCaptureResolveRef.current(base64);
+      inlineCaptureResolveRef.current = null;
+    }
+  }, []);
+
+  const closeInlineCamera = useCallback(() => {
+    setShowInlineCamera(false);
+    if (inlineCaptureResolveRef.current) {
+      inlineCaptureResolveRef.current(null);
+      inlineCaptureResolveRef.current = null;
+    }
+  }, []);
+
+  return { takePhoto, pickFromGallery, isLoading, isNative, error, showInlineCamera, onInlineCaptured, closeInlineCamera };
 }
