@@ -254,19 +254,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Verify the user still exists in the database
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      if (userError || !currentUser) {
-        // User doesn't exist anymore, clear session
-        console.log('User from session does not exist, signing out...');
-        await supabase.auth.signOut();
+      // Use a timeout to prevent hanging on slow mobile networks
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
         
-        // Try device auto-login as fallback
-        const autoLoginSuccess = await attemptDeviceAutoLogin();
-        if (!autoLoginSuccess) {
-          setIsLoading(false);
-          cacheSession(null);
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        clearTimeout(timeout);
+        
+        if (userError || !currentUser) {
+          // Only sign out if it's a definitive "user not found" error, not a network error
+          const isNetworkError = userError?.message?.includes('fetch') || 
+                                 userError?.message?.includes('network') ||
+                                 userError?.message?.includes('Failed') ||
+                                 userError?.message?.includes('abort');
+          
+          if (isNetworkError) {
+            // Network error - trust the existing session instead of signing out
+            console.log('[Auth] Network error verifying user, trusting existing session');
+            // onAuthStateChange will handle this
+            return;
+          }
+          
+          // User genuinely doesn't exist anymore, clear session
+          console.log('User from session does not exist, signing out...');
+          await supabase.auth.signOut();
+          
+          // Try device auto-login as fallback
+          const autoLoginSuccess = await attemptDeviceAutoLogin();
+          if (!autoLoginSuccess) {
+            setIsLoading(false);
+            cacheSession(null);
+          }
+          return;
         }
-        return;
+      } catch (verifyError) {
+        // Network failure - trust existing session
+        console.log('[Auth] Exception verifying user, trusting existing session:', verifyError);
       }
       // The onAuthStateChange will handle setting the session
     });
