@@ -80,6 +80,7 @@ import {
 import { useImageUpload } from '@/hooks/use-image-upload';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
 import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config';
 import { EVENTS } from '@/lib/events';
@@ -94,9 +95,14 @@ export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { t, tDynamic } = useLanguage();
+  const { isBoss, isAdmin, isCashier } = useUserRole();
   const noInventory = isNoInventoryMode();
   const isRestaurant = getCurrentStoreType() === 'restaurant';
   const isRepairMode = getCurrentStoreType() === 'repair';
+
+  // Whether this user can add/edit/delete products (owners always can; cashiers need explicit permission)
+  const allowedPages = profile?.allowed_pages as string[] | null;
+  const canAddProducts = isBoss || isAdmin || (isCashier && (allowedPages?.includes('products:add') ?? false));
 
   const statusConfig = {
     in_stock: { label: t('products.available'), color: 'badge-success', icon: CheckCircle },
@@ -820,6 +826,7 @@ export default function Products() {
                 {t('purchaseInvoice.addPurchaseInvoice')}
               </Button>
               )}
+              {canAddProducts && (
               <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
                 setFieldsConfig(getEffectiveFieldsConfig());
                 setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
@@ -829,6 +836,7 @@ export default function Products() {
                 <Plus className="w-4 h-4 ml-1" />
                 {tDynamic('addProduct')}
               </Button>
+              )}
             </div>
             <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
               <Tag className="w-4 h-4 ml-1" />
@@ -847,6 +855,7 @@ export default function Products() {
               <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {t('products.categories')}
             </Button>
+            {canAddProducts && (
             <Button className="bg-primary hover:bg-primary/90" onClick={() => {
               setFieldsConfig(getEffectiveFieldsConfig());
               setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
@@ -856,6 +865,7 @@ export default function Products() {
               <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {tDynamic('addProduct')}
             </Button>
+            )}
           </div>
         </div>
       </div>
@@ -1088,6 +1098,7 @@ export default function Products() {
                         {fieldsConfig.sizeColor && product.color && <span>{product.color}</span>}
                       </div>
                     </div>
+                    {canAddProducts && (
                     <div className="flex gap-0.5 flex-shrink-0">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
                         <Edit className="w-4 h-4" />
@@ -1096,6 +1107,7 @@ export default function Products() {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+                    )}
                   </div>
                 );
               }
@@ -1140,6 +1152,7 @@ export default function Products() {
                         {fieldsConfig.sizeColor && product.color && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{product.color}</span>}
                       </div>
                     </div>
+                    {canAddProducts && (
                     <div className="flex gap-0.5 flex-shrink-0">
                       <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditDialog(product)}>
                         <Edit className="w-4 h-4" />
@@ -1148,6 +1161,7 @@ export default function Products() {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+                    )}
                   </div>
                 );
               }
@@ -1265,6 +1279,7 @@ export default function Products() {
                         <span className="text-xs text-muted-foreground">{product.category}</span>
                       )}
                     </div>
+                    {canAddProducts && (
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
                         <Edit className="w-5 h-5" />
@@ -1273,6 +1288,7 @@ export default function Products() {
                         <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
+                    )}
                   </div>
                 </div>
               );
@@ -1477,6 +1493,7 @@ export default function Products() {
                       {/* الإجراءات (فوق بعض) */}
                       <td className="py-3 px-3">
                         <div className="flex flex-col items-center gap-1">
+                        {canAddProducts && (<>
                           <button
                             className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                             onClick={() => openEditDialog(product)}
@@ -1491,6 +1508,7 @@ export default function Products() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                        </>)}
                         </div>
                       </td>
                     </tr>
@@ -1977,21 +1995,7 @@ export default function Products() {
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full min-h-[48px]"
-                        onClick={handleCameraCapture}
-                        disabled={isCameraLoading}
-                      >
-                        {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        ) : (
-                          <Camera className="w-4 h-4 ml-2" />
-                        )}
-                        التقاط صورة
-                      </Button>
+                    <div className="grid grid-cols-1 gap-2">
                       <Button
                         type="button"
                         variant="outline"
@@ -2477,21 +2481,7 @@ export default function Products() {
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full min-h-[48px]"
-                        onClick={handleCameraCapture}
-                        disabled={isCameraLoading}
-                      >
-                        {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        ) : (
-                          <Camera className="w-4 h-4 ml-2" />
-                        )}
-                        التقاط صورة
-                      </Button>
+                    <div className="grid grid-cols-1 gap-2">
                       <Button
                         type="button"
                         variant="outline"

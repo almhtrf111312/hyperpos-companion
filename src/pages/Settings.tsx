@@ -2032,7 +2032,7 @@ export default function Settings() {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 {[
                   { key: 'dashboard', label: t('nav.dashboard') },
-                  { key: 'products', label: isRTL ? 'المنتجات' : 'Products' },
+                  { key: 'products', label: isRTL ? 'المنتجات (عرض فقط)' : 'Products (view only)' },
                   { key: 'partners', label: t('nav.partners') },
                   { key: 'reports', label: t('nav.reports') },
                   { key: 'warehouses', label: t('nav.warehouses') },
@@ -2056,6 +2056,37 @@ export default function Settings() {
                   </label>
                 ))}
               </div>
+              {/* Special permission: can add products */}
+              {(userForm.allowedPages.includes('products') || userForm.role === 'cashier') && (
+                <div className="mt-2 p-2.5 bg-muted/60 rounded-lg border border-border/50">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={userForm.allowedPages.includes('products:add')}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          // Make sure 'products' is also enabled
+                          setUserForm(prev => ({
+                            ...prev,
+                            allowedPages: [...prev.allowedPages.filter(p => p !== 'products:add'), 'products:add',
+                              ...(!prev.allowedPages.includes('products') ? ['products'] : [])
+                            ]
+                          }));
+                        } else {
+                          setUserForm(prev => ({ ...prev, allowedPages: prev.allowedPages.filter(p => p !== 'products:add') }));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-primary text-primary accent-primary"
+                    />
+                    <div>
+                      <span className="font-medium">{isRTL ? 'إمكانية إضافة المنتجات' : 'Can Add Products'}</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {isRTL ? 'يسمح للكاشير بإضافة منتجات جديدة وتعديلها' : 'Allows cashier to add and edit products'}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
