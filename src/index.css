@@ -481,7 +481,16 @@
   نضمن هنا أن جميع الأزرار والنوافذ والعناصر تستخدم ألواناً واضحة
 */
 
-/* ── النصوص العامة ── */
+/* ── إصلاح شامل للنصوص في الوضع الفاتح ── */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+  color: hsl(var(--foreground)) !important;
+}
+.light .text-foreground {
+  color: hsl(var(--foreground)) !important;
+}
+.light .text-foreground\/80 { color: hsl(var(--foreground) / 0.85) !important; }
+.light .text-foreground\/60 { color: hsl(var(--foreground) / 0.72) !important; }
+.light .bg-card > *, .light [data-slot="card"] { color: hsl(var(--card-foreground)); }
 .light,
 .light * {
   color: inherit;

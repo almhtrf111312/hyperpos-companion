@@ -1000,152 +1000,143 @@ export function CartPanel({
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 bg-muted/20">
+        <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-1.5 bg-muted/10">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
-              <ShoppingCart className="w-12 h-12 md:w-16 md:h-16 mb-3 md:mb-4 opacity-50" />
-              <p className="text-sm md:text-base">{t('pos.emptyCart')}</p>
-              <p className="text-xs md:text-sm">{t('pos.clickToAdd')}</p>
+              <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
+              <p className="text-sm font-medium">{t('pos.emptyCart')}</p>
+              <p className="text-xs opacity-70 mt-1">{t('pos.clickToAdd')}</p>
             </div>
           ) : (
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-card/80 rounded-xl p-2.5 md:p-3 shadow-sm border border-border/20 cart-item-enter transition-all duration-200 hover:shadow-md hover:scale-[1.01]"
-                style={{ animationDelay: `${index * 40}ms` }}
+                className="bg-card rounded-lg px-2.5 py-2 border border-border/30 cart-item-enter transition-all duration-150 hover:border-primary/30 hover:bg-card/90"
+                style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-xs md:text-sm line-clamp-2">{item.name}</h4>
-                    {/* Unit Badge with Toggle - only show for bulk items */}
+                {/* Product name row */}
+                <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                    <h4 className="font-semibold text-xs leading-tight line-clamp-1 text-foreground">{item.name}</h4>
                     {item.bulkSalePrice && item.bulkSalePrice > 0 && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.unit === 'bulk'
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${item.unit === 'bulk'
                           ? 'bg-primary/20 text-primary'
                           : 'bg-muted-foreground/20 text-muted-foreground'
                           }`}>
                           {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
                         </span>
-                        {/* Toggle Unit Button */}
                         {onToggleUnit && (
                           <button
                             onClick={() => onToggleUnit(item.id, item.unit)}
                             className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                            title={item.unit === 'bulk' ? 'تحويل إلى قطعة' : 'تحويل إلى كرتونة'}
                           >
-                            <Repeat className="w-3 h-3" />
+                            <Repeat className="w-2.5 h-2.5" />
                           </button>
-                        )}
-                        {/* Show conversion info */}
-                        {item.unit === 'bulk' && item.conversionFactor && item.conversionFactor > 1 && (
-                          <span className="text-[9px] text-muted-foreground">
-                            ({item.conversionFactor} {item.smallUnit || 'قطعة'})
-                          </span>
                         )}
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => onRemoveItem(item.id, item.unit)}
-                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    className="p-0.5 text-muted-foreground/50 hover:text-destructive transition-colors flex-shrink-0"
                   >
-                    <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
-                {/* Wholesale unit price display */}
-                {wholesaleMode && (
-                  <div className="text-[10px] text-orange-500 mb-1">
-                    سعر الوحدة: ${formatNumber(getItemPrice(item))} × {item.quantity}
-                  </div>
-                )}
-                {/* Repair mode: show cost reference */}
-                {isRepairStoreType() && item.costPrice != null && (
-                  <div className="text-[10px] text-muted-foreground mb-1 flex gap-2">
-                    <span>تكلفة القطعة: ${formatNumber(item.costPrice || 0)}</span>
-                    <span>•</span>
-                    <span>المرجع: ${formatNumber((item.costPrice || 0) + (item.laborCost || 0))}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 md:gap-2">
+                {/* Price + qty row */}
+                <div className="flex items-center justify-between gap-2">
+                  {/* Qty controls */}
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
-                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-muted border border-border/40 text-foreground flex items-center justify-center hover:bg-muted/80"
+                      className="w-6 h-6 rounded-md bg-muted/80 border border-border/40 text-foreground flex items-center justify-center hover:bg-muted active:scale-90 transition-all"
                     >
-                      <Minus className="w-3 h-3 md:w-4 md:h-4" />
+                      <Minus className="w-2.5 h-2.5" />
                     </button>
-                    <span className="w-6 md:w-8 text-center font-semibold text-sm">{item.quantity}</span>
+                    <span className="w-5 text-center font-bold text-xs text-foreground">{item.quantity}</span>
                     <button
                       onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
-                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-muted border border-border/40 text-foreground flex items-center justify-center hover:bg-muted/80"
+                      className="w-6 h-6 rounded-md bg-muted/80 border border-border/40 text-foreground flex items-center justify-center hover:bg-muted active:scale-90 transition-all"
                     >
-                      <Plus className="w-3 h-3 md:w-4 md:h-4" />
+                      <Plus className="w-2.5 h-2.5" />
                     </button>
                   </div>
+                  {/* Price */}
                   <div className="flex items-center gap-1.5">
-                    {/* Editable unit price input for Boss/Admin */}
                     {onUpdateItemPrice && (
                       <EditablePrice
                         value={getItemPrice(item)}
                         onChange={(newPrice) => onUpdateItemPrice(item.id, newPrice, item.unit)}
-                        className="w-16 h-7 text-xs text-center bg-muted/30 border border-border p-1"
+                        className="w-14 h-6 text-[10px] text-center bg-muted/30 border border-border p-1"
                       />
                     )}
-                    <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
+                    <span className={cn("font-bold text-sm tabular-nums", wholesaleMode ? "text-orange-500" : "text-primary")}>
                       ${formatNumber(getItemPrice(item) * item.quantity)}
-                    </p>
+                    </span>
                   </div>
                 </div>
+                {/* Wholesale / Repair extra info */}
+                {wholesaleMode && (
+                  <div className="text-[9px] text-orange-400 mt-1 opacity-80">
+                    {formatNumber(getItemPrice(item))} × {item.quantity}
+                  </div>
+                )}
+                {isRepairStoreType() && item.costPrice != null && (
+                  <div className="text-[9px] text-muted-foreground mt-1">
+                    تكلفة: ${formatNumber(item.costPrice || 0)} · مرجع: ${formatNumber((item.costPrice || 0) + (item.laborCost || 0))}
+                  </div>
+                )}
               </div>
             ))
           )}
         </div>
 
-        {/* Cart Footer - Compact & Clean */}
-        <div className="border-t border-border bg-muted/30 rounded-t-xl p-2.5 md:p-3 space-y-2">
-          {/* Row 1: Currency Segmented Control + Tax Toggle */}
-          <div className="flex items-center gap-2">
-            {/* Segmented Currency Control */}
-            <div className="flex-1 flex bg-muted rounded-lg p-0.5">
+        {/* Cart Footer - Modern & Compact */}
+        <div className="border-t border-border/60 bg-card/95 backdrop-blur-sm p-2.5 space-y-2">
+          {/* Row 1: Currency Pills (compact) + Tax Toggle */}
+          <div className="flex items-center gap-1.5">
+            {/* Currency pills - compact */}
+            <div className="flex gap-1 bg-muted/60 rounded-lg p-0.5 flex-1">
               {currencies.map((currency) => (
                 <button
                   key={currency.code}
                   onClick={() => onCurrencyChange(currency)}
                   className={cn(
-                    "flex-1 py-1.5 rounded-md text-xs font-medium transition-all",
+                    "flex-1 py-1 rounded-md text-[10px] font-semibold transition-all leading-none",
                     selectedCurrency.code === currency.code
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-foreground/70 hover:text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {currency.code === 'USD' ? '$ USD' : currency.name}
+                  {currency.code === 'USD' ? '$USD' : currency.code === 'TRY' ? '₺TRY' : 'SYP'}
                 </button>
               ))}
             </div>
             {/* Tax Toggle Switch - only show when tax is enabled */}
             {storeTaxEnabled && storeTaxRate > 0 && (
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-shrink-0 bg-muted/60 rounded-lg px-1.5 py-0.5">
                 <Switch
                   checked={taxMode === 'gross'}
                   onCheckedChange={(checked) => setTaxMode(checked ? 'gross' : 'net')}
-                  className="scale-90"
+                  className="scale-75"
                 />
-                <span className="text-[10px] text-muted-foreground leading-tight">
-                  {t('pos.tax') || 'ضريبة'} {storeTaxRate}%
+                <span className="text-[9px] text-muted-foreground leading-tight font-medium">
+                  {storeTaxRate}%
                 </span>
               </div>
             )}
           </div>
 
-          {/* Row 2: Discount (only if enabled) - Compact single row */}
+          {/* Row 2: Discount (only if enabled) */}
           {(settingsDiscountPercentEnabled || settingsDiscountFixedEnabled) && (
-            <div className="flex gap-1.5">
+            <div className="flex gap-1">
               {settingsDiscountPercentEnabled && (
-                <div className="flex items-center gap-1 flex-1">
-                  <Percent className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-0.5 flex-1 bg-muted/50 rounded-lg px-2 h-7 border border-border/30">
+                  <Percent className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                   <Input
                     type="number"
-                    placeholder="% خصم"
+                    placeholder="خصم %"
                     value={discountType === 'percent' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('percent');
@@ -1153,8 +1144,8 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('percent')}
                     className={cn(
-                      "bg-muted border-0 h-8 text-xs",
-                      discountType === 'percent' && discount > 0 && "ring-2 ring-primary/50"
+                      "border-0 h-6 text-[10px] bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground",
+                      discountType === 'percent' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
                     max="100"
@@ -1162,11 +1153,11 @@ export function CartPanel({
                 </div>
               )}
               {settingsDiscountFixedEnabled && (
-                <div className="flex items-center gap-1 flex-1">
-                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-0.5 flex-1 bg-muted/50 rounded-lg px-2 h-7 border border-border/30">
+                  <DollarSign className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                   <Input
                     type="number"
-                    placeholder="$ خصم"
+                    placeholder="خصم $"
                     value={discountType === 'fixed' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('fixed');
@@ -1174,8 +1165,8 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('fixed')}
                     className={cn(
-                      "bg-muted border-0 h-8 text-xs",
-                      discountType === 'fixed' && discount > 0 && "ring-2 ring-primary/50"
+                      "border-0 h-6 text-[10px] bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground",
+                      discountType === 'fixed' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
                   />
@@ -1185,10 +1176,10 @@ export function CartPanel({
           )}
 
           {/* Row 3: Received Amount */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg px-2 h-7 border border-border/30">
             <Banknote className={cn(
-              "w-4 h-4 flex-shrink-0",
-              wholesaleMode ? "text-warning" : "text-primary"
+              "w-3 h-3 flex-shrink-0",
+              wholesaleMode ? "text-warning" : "text-muted-foreground"
             )} />
             <Input
               type="number"
@@ -1196,57 +1187,59 @@ export function CartPanel({
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
-                "bg-muted border-0 h-8 text-xs",
-                wholesaleMode ? "ring-2 ring-warning/50" : receivedAmount > 0 ? "ring-2 ring-primary/50" : ""
+                "border-0 h-6 text-[10px] bg-transparent p-0 focus-visible:ring-0 shadow-none flex-1 text-foreground placeholder:text-muted-foreground",
+                wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
               )}
               min="0"
               dir="ltr"
             />
           </div>
 
-          {/* Row 4: Compact Summary */}
-          <div className="space-y-0.5">
-            {/* Conditional small info lines */}
-            <div className="flex flex-wrap gap-x-3 gap-y-0 text-[10px]">
-              {subtotal !== total && (
-                <span className="text-muted-foreground">
-                  {wholesaleMode ? 'جملة' : t('pos.subtotal')}: ${formatNumber(subtotal)}
-                </span>
-              )}
-              {discount > 0 && (
-                <span className="text-success">
-                  {t('pos.discount')} {discountType === 'percent' ? `${discount}%` : ''}: -${formatNumber(discountAmount)}
-                </span>
-              )}
-              {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
-                <span className="text-warning">
-                  {t('pos.tax') || 'ضريبة'} ({effectiveTaxRate}%){taxMode === 'gross' ? ` (${t('pos.taxInclusive') || 'شامل'})` : ''}: {taxMode === 'gross' ? '' : '+'}${formatNumber(taxAmount)}
-                </span>
-              )}
-              {receivedAmount > 0 && !wholesaleMode && receivedAmount >= total && (
-                <span className="text-success font-semibold">
-                  {t('pos.balance') || 'الباقي'}: ${formatNumber(receivedAmount - total)}
-                </span>
-              )}
-              {receivedAmount > 0 && wholesaleMode && (
-                <span className={cn("font-semibold", wholesaleProfit && wholesaleProfit >= 0 ? "text-success" : "text-destructive")}>
-                  الربح: ${formatNumber(wholesaleProfit || 0)}
-                </span>
-              )}
-            </div>
-            {/* Total - Large & Bold */}
-            <div className="flex justify-between items-center">
+          {/* Row 4: Info summary + Total */}
+          <div className="space-y-1">
+            {/* Info chips */}
+            {(subtotal !== total || discount > 0 || (storeTaxEnabled && taxAmount > 0) || receivedAmount > 0) && (
+              <div className="flex flex-wrap gap-1 text-[9px]">
+                {subtotal !== total && (
+                  <span className="bg-muted/70 text-muted-foreground px-1.5 py-0.5 rounded">
+                    {wholesaleMode ? 'جملة' : 'المجموع'}: ${formatNumber(subtotal)}
+                  </span>
+                )}
+                {discount > 0 && (
+                  <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-medium">
+                    خصم: -${formatNumber(discountAmount)}
+                  </span>
+                )}
+                {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
+                  <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded">
+                    ض. {effectiveTaxRate}%: ${formatNumber(taxAmount)}
+                  </span>
+                )}
+                {receivedAmount > 0 && !wholesaleMode && receivedAmount >= total && (
+                  <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
+                    باقي: ${formatNumber(receivedAmount - total)}
+                  </span>
+                )}
+                {receivedAmount > 0 && wholesaleMode && (
+                  <span className={cn("px-1.5 py-0.5 rounded font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
+                    ربح: ${formatNumber(wholesaleProfit || 0)}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Total row */}
+            <div className="flex justify-between items-center bg-primary/5 rounded-lg px-2.5 py-1.5 border border-primary/10">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm md:text-base font-bold">{t('pos.total')}</span>
+                <span className="text-xs font-bold text-foreground">{t('pos.total')}</span>
                 <button
                   onClick={() => setShowCalculator(true)}
-                  className="w-6 h-6 rounded-md bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-xs"
+                  className="w-5 h-5 rounded bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-[10px]"
                   title="آلة حاسبة"
                 >
                   ⊞
                 </button>
               </div>
-              <span className={cn("text-lg md:text-xl font-bold", wholesaleMode ? "text-warning" : "text-primary")}>
+              <span className={cn("text-xl font-bold tabular-nums", wholesaleMode ? "text-warning" : "text-primary")}>
                 {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
               </span>
             </div>
@@ -1256,29 +1249,29 @@ export function CartPanel({
           <div className="flex items-center gap-1.5">
             <Button
               data-tour="cash-btn"
-              className="flex-1 h-10 md:h-11 bg-success hover:bg-success/90 text-sm font-bold shadow-sm shadow-success/20 transition-all active:scale-95"
+              className="flex-1 h-11 bg-success hover:bg-success/90 text-sm font-bold shadow-md shadow-success/25 transition-all active:scale-95 rounded-xl"
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
-              <Banknote className="w-4 h-4 ml-1" />
+              <Banknote className="w-4 h-4 ml-1.5" />
               {t('pos.cash')}
             </Button>
             <Button
               data-tour="debt-btn"
               variant="outline"
-              className="flex-1 h-10 md:h-11 border-2 border-warning text-warning hover:bg-warning hover:text-warning-foreground text-sm font-bold transition-all active:scale-95"
+              className="flex-1 h-11 border-2 border-warning/70 text-warning hover:bg-warning/10 text-sm font-bold transition-all active:scale-95 rounded-xl"
               disabled={cart.length === 0}
               onClick={handleDebtSale}
             >
-              <CreditCard className="w-4 h-4 ml-1" />
+              <CreditCard className="w-4 h-4 ml-1.5" />
               {t('pos.debt')}
             </Button>
-            {/* Compact Print & Share Icons */}
+            {/* Print & Share Icon Buttons */}
             <Button
               data-tour="action-btns"
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-10 w-10 flex-shrink-0 border-border text-foreground"
+              className="h-11 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
               disabled={cart.length === 0 && !lastSale}
               onClick={() => handlePrint()}
               title={t('pos.print')}
@@ -1286,9 +1279,9 @@ export function CartPanel({
               <Printer className="w-4 h-4" />
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-10 w-10 flex-shrink-0 border-border text-foreground"
+              className="h-11 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
               disabled={cart.length === 0 && !lastSale}
               onClick={() => handleWhatsApp()}
               title={t('pos.whatsapp')}
