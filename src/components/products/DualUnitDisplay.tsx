@@ -110,6 +110,7 @@ export function DualUnitDisplayCompact({
   bulkUnit = 'كرتونة',
   smallUnit = 'قطعة',
 }: Pick<DualUnitDisplayProps, 'totalPieces' | 'conversionFactor' | 'bulkUnit' | 'smallUnit'>) {
+  // No conversion factor or factor=1: show pieces directly
   if (!conversionFactor || conversionFactor <= 1) {
     return (
       <span className="text-[10px] md:text-xs text-muted-foreground">
@@ -120,6 +121,15 @@ export function DualUnitDisplayCompact({
 
   const fullBulkUnits = Math.floor(totalPieces / conversionFactor);
   const remainingPieces = totalPieces % conversionFactor;
+
+  // If less than one full bulk unit, show pieces directly (avoid showing "0 كرتونة")
+  if (fullBulkUnits === 0) {
+    return (
+      <span className="text-[10px] md:text-xs text-muted-foreground">
+        {totalPieces} {smallUnit}
+      </span>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-1 text-[10px] md:text-xs">

@@ -247,9 +247,13 @@ export function CartPanel({
   );
 
   // Calculate discount based on type
+  // For fixed discounts in foreign currencies, convert to USD first
+  const fixedDiscountInUSD = discountType === 'fixed' && selectedCurrency.rate > 1
+    ? discount / selectedCurrency.rate
+    : discount;
   const discountAmount = discountType === 'percent'
     ? (subtotal * discount) / 100
-    : Math.min(discount, subtotal); // Fixed amount should not exceed subtotal
+    : Math.min(fixedDiscountInUSD, subtotal); // Fixed amount converted to USD, must not exceed subtotal
 
   const taxableAmount = Math.max(0, subtotal - discountAmount);
 
@@ -1157,7 +1161,7 @@ export function CartPanel({
                   <DollarSign className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                   <Input
                     type="number"
-                    placeholder="خصم $"
+                    placeholder={`خصم ${selectedCurrency.symbol}`}
                     value={discountType === 'fixed' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('fixed');
@@ -1207,7 +1211,7 @@ export function CartPanel({
                 )}
                 {discount > 0 && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-medium">
-                    خصم: -${formatNumber(discountAmount)}
+                    خصم: -{discountType === 'fixed' ? `${selectedCurrency.symbol}${formatNumber(discount)}` : `$${formatNumber(discountAmount)}`}
                   </span>
                 )}
                 {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
