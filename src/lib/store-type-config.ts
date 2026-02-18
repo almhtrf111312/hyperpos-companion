@@ -541,28 +541,29 @@ export interface VisibleSections {
   expiry: boolean;
   serialNumber: boolean;
   sizeColor: boolean;
+  purchases: boolean;
 }
 
 export const getVisibleSections = (storeType: string): VisibleSections => {
   switch (storeType) {
     case 'phones':
-      return { maintenance: true, warranty: true, expiry: false, serialNumber: true, sizeColor: false };
+      return { maintenance: true, warranty: true, expiry: false, serialNumber: true, sizeColor: false, purchases: false };
     case 'repair':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: false };
     case 'grocery':
-      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false, purchases: true };
     case 'pharmacy':
-      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false, purchases: true };
     case 'clothing':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: true };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: true, purchases: true };
     case 'restaurant':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: false };
     case 'bakery':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: false };
     case 'bookstore':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: true, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: true, sizeColor: false, purchases: true };
     default:
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: true };
   }
 };
 
