@@ -1766,7 +1766,7 @@ export default function Settings() {
         // Read version injected at build time by vite.config.ts from version.json
         const versionInfo = typeof __APP_VERSION__ !== 'undefined'
           ? __APP_VERSION__
-          : { versionName: '1.0.0', versionCode: 221, lastUpdated: '2026-02-18T00:00:00.000Z' };
+          : { versionName: '1.0.1', versionCode: 230, lastUpdated: '2026-02-18T00:00:00.000Z' };
 
         const releaseDate = new Date(versionInfo.lastUpdated);
         const releaseDateStr = releaseDate.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
@@ -1774,11 +1774,12 @@ export default function Settings() {
         });
 
         const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = [
-          { type: 'new', ar: 'نظام البيع الفوري: عمليات البيع الآن تكتمل بأقل من 200ms بدلاً من 3-4 ثواني', en: 'Instant Sale: Operations now complete in <200ms instead of 3-4 seconds' },
-          { type: 'new', ar: 'مزامنة ذكية في الخلفية: الفواتير تُرفع للسحابة دون تعطيل سير العمل', en: 'Smart Background Sync: Invoices upload to cloud without blocking workflow' },
-          { type: 'new', ar: 'تبويب "حول البرنامج" الجديد في الإعدادات مع معلومات الإصدار وسجل التحديثات', en: 'New "About" tab in Settings with version info and changelog' },
-          { type: 'improved', ar: 'تجميل سلة المبيعات: تصميم أحدث وعرض منتجات أكثر مع تقليص حجم أزرار العملات', en: 'Cart redesign: Modern look, more products visible, smaller currency buttons' },
-          { type: 'improved', ar: 'تحسين ثبات الإعدادات: يتم تحميلها من السحابة عند كل تشغيل لمنع فقدانها', en: 'Settings persistence: Now loaded from cloud on startup to prevent data loss' },
+          { type: 'new', ar: 'نظام صور المنتجات بدون انتظار (Offline-First): الصورة تظهر فوراً ثم تُرفع في الخلفية', en: 'Offline-First product images: Photo appears instantly, uploaded in background' },
+          { type: 'new', ar: 'حفظ بيانات النموذج تلقائياً قبل فتح الكاميرا على Android لمنع فقدان البيانات', en: 'Auto-save form data before camera opens on Android to prevent data loss' },
+          { type: 'improved', ar: 'القائمة الجانبية: إخفاء "المشتريات" تلقائياً حسب نوع المحل (لا تظهر في الهواتف والإلكترونيات)', en: 'Sidebar: "Purchases" hidden automatically per store type (hidden for phones/electronics)' },
+          { type: 'improved', ar: 'شاشة الخصوصية والشروط: تظهر دائماً بثيم أبيض وأزرق بغض النظر عن إعدادات المظهر', en: 'Privacy screen: Always shown in white/blue theme regardless of app theme settings' },
+          { type: 'improved', ar: 'تبويبات الإعدادات: تحسين وضوح النصوص والمحاذاة في التبويبات الخطرة (حمراء)', en: 'Settings tabs: Improved text clarity and alignment for danger (red) tabs' },
+          { type: 'fixed', ar: 'إصلاح إعادة تشغيل التطبيق (Activity Recreation) عند العودة من كاميرا Android', en: 'Fixed app reload (Activity Recreation) when returning from Android camera' },
           { type: 'fixed', ar: 'إصلاح تباين النصوص في الوضع الفاتح عبر جميع الشاشات والإعدادات', en: 'Fixed text contrast in light mode across all screens and settings' },
           { type: 'fixed', ar: 'إصلاح مشكلة عودة الإعدادات (ضريبة، خصم، نوع المتجر) لقيمها الافتراضية بعد التحديث', en: 'Fixed settings (tax, discount, store type) resetting to defaults after updates' },
         ];
@@ -1893,33 +1894,33 @@ export default function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 group relative",
+                "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[80px]",
                 (tab as any).danger
                   ? activeTab === tab.id
-                    ? "border-destructive bg-destructive/10 shadow-lg scale-[1.02]"
-                    : "border-destructive/20 bg-destructive/5 hover:bg-destructive/10 hover:border-destructive/40 hover:scale-[1.01]"
+                    ? "border-red-600 bg-red-600 shadow-lg scale-[1.02]"
+                    : "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 hover:scale-[1.01]"
                   : activeTab === tab.id
-                    ? "border-primary bg-primary/10 shadow-lg scale-[1.02]"
+                    ? "border-primary bg-primary shadow-lg scale-[1.02]"
                     : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
               )}
             >
               <div className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
+                "w-10 h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
                 (tab as any).danger
                   ? activeTab === tab.id
-                    ? "bg-destructive text-destructive-foreground"
-                    : "bg-destructive/15 text-destructive"
+                    ? "bg-white/20 text-white"
+                    : "bg-red-100 text-red-600"
                   : activeTab === tab.id
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-white/20 text-white"
                     : "bg-muted text-muted-foreground"
               )}>
                 <tab.icon className="w-5 h-5" />
               </div>
               <span className={cn(
-                "font-medium text-xs text-center leading-tight",
+                "font-medium text-[11px] text-center leading-tight w-full break-words",
                 (tab as any).danger
-                  ? activeTab === tab.id ? "text-destructive" : "text-destructive/80"
-                  : activeTab === tab.id ? "text-primary" : "text-foreground"
+                  ? activeTab === tab.id ? "text-white" : "text-red-700"
+                  : activeTab === tab.id ? "text-white" : "text-foreground"
               )}>
                 {tab.label}
               </span>

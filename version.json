@@ -1,7 +1,7 @@
 {
-  "versionCode": 221,
-  "versionName": "1.0.0",
-  "lastUpdated": "2026-02-05T23:20:31.391Z",
+  "versionCode": 230,
+  "versionName": "1.0.1",
+  "lastUpdated": "2026-02-18T00:00:00.000Z",
   "buildHistory": [
     {
       "versionCode": 200,
@@ -9,19 +9,14 @@
       "description": "Initial version code setup"
     },
     {
-      "versionCode": 201,
-      "date": "2026-02-05T23:11:16.267Z",
-      "description": "Bumped from 200 to 201"
-    },
-    {
-      "versionCode": 211,
-      "date": "2026-02-05T23:18:02.439Z",
-      "description": "Bumped from 201 to 211"
-    },
-    {
       "versionCode": 221,
       "date": "2026-02-05T23:20:31.391Z",
       "description": "Bumped from 211 to 221"
+    },
+    {
+      "versionCode": 230,
+      "date": "2026-02-18T00:00:00.000Z",
+      "description": "v1.0.1 - Offline-First images, sidebar fixes, privacy screen white theme, settings tab clarity"
     }
   ]
 }
