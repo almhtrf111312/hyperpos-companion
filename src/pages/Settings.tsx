@@ -75,7 +75,7 @@ import { useUsersManagement, UserData } from '@/hooks/use-users-management';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserRole } from '@/hooks/use-user-role';
 import { emitEvent, EVENTS } from '@/lib/events';
-import { saveStoreSettings } from '@/lib/supabase-store';
+import { saveStoreSettings, fetchStoreSettings } from '@/lib/supabase-store';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -441,6 +441,87 @@ export default function Settings() {
     discountPercentEnabled: boolean;
     discountFixedEnabled: boolean;
   } | null>(null);
+
+  // ✅ Load settings from cloud on mount to ensure persistence across reinstalls/updates
+  useEffect(() => {
+    const loadFromCloud = async () => {
+      try {
+        const cloudData = await fetchStoreSettings();
+        if (!cloudData) return;
+
+        // Apply cloud store settings
+        setStoreSettings(prev => ({
+          name: cloudData.name ?? prev.name,
+          type: cloudData.store_type ?? prev.type,
+          phone: cloudData.phone ?? prev.phone,
+          email: prev.email,
+          address: cloudData.address ?? prev.address,
+          logo: cloudData.logo_url ?? prev.logo,
+        }));
+
+        // Apply tax settings from cloud
+        if (typeof cloudData.tax_enabled === 'boolean') {
+          setTaxEnabled(cloudData.tax_enabled);
+        }
+        if (typeof cloudData.tax_rate === 'number') {
+          setTaxRate(cloudData.tax_rate);
+        }
+
+        // Apply notification settings from cloud
+        if (cloudData.notification_settings && typeof cloudData.notification_settings === 'object') {
+          setNotificationSettings(prev => ({ ...prev, ...cloudData.notification_settings }));
+        }
+
+        // Apply print settings from cloud
+        if (cloudData.print_settings && typeof cloudData.print_settings === 'object') {
+          setPrintSettings(prev => ({ ...prev, ...cloudData.print_settings }));
+        }
+
+        // Apply exchange rates from cloud
+        if (cloudData.exchange_rates && typeof cloudData.exchange_rates === 'object') {
+          const rates = cloudData.exchange_rates as Record<string, number>;
+          setExchangeRates(prev => ({
+            TRY: rates.TRY !== undefined ? String(rates.TRY) : prev.TRY,
+            SYP: rates.SYP !== undefined ? String(rates.SYP) : prev.SYP,
+          }));
+        }
+
+        // Apply discount settings from sync_settings
+        if (cloudData.sync_settings && typeof cloudData.sync_settings === 'object') {
+          const sync = cloudData.sync_settings as Record<string, unknown>;
+          if (typeof sync.discountPercentEnabled === 'boolean') {
+            setDiscountPercentEnabled(sync.discountPercentEnabled);
+          }
+          if (typeof sync.discountFixedEnabled === 'boolean') {
+            setDiscountFixedEnabled(sync.discountFixedEnabled);
+          }
+        }
+
+        // Persist to localStorage so offline reads stay in sync
+        savePersistedSettings({
+          storeSettings: {
+            name: cloudData.name ?? '',
+            type: cloudData.store_type ?? 'phones',
+            phone: cloudData.phone ?? '',
+            address: cloudData.address ?? '',
+            logo: cloudData.logo_url ?? '',
+          },
+          taxEnabled: cloudData.tax_enabled ?? false,
+          taxRate: cloudData.tax_rate ?? 0,
+          notificationSettings: cloudData.notification_settings ?? undefined,
+          printSettings: cloudData.print_settings ?? undefined,
+          discountPercentEnabled: (cloudData.sync_settings as Record<string, unknown>)?.discountPercentEnabled !== false,
+          discountFixedEnabled: (cloudData.sync_settings as Record<string, unknown>)?.discountFixedEnabled !== false,
+        });
+
+        console.log('[Settings] Loaded and synced from cloud successfully');
+      } catch (err) {
+        console.warn('[Settings] Could not load from cloud, using local cache:', err);
+      }
+    };
+
+    loadFromCloud();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Capture snapshot on first render only
   useEffect(() => {
@@ -1681,7 +1762,27 @@ export default function Settings() {
       case 'reset':
         return <DataResetSection />;
 
-      case 'about':
+      case 'about': {
+        // Read version injected at build time by vite.config.ts from version.json
+        const versionInfo = typeof __APP_VERSION__ !== 'undefined'
+          ? __APP_VERSION__
+          : { versionName: '1.0.0', versionCode: 221, lastUpdated: '2026-02-18T00:00:00.000Z' };
+
+        const releaseDate = new Date(versionInfo.lastUpdated);
+        const releaseDateStr = releaseDate.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+          year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = [
+          { type: 'new', ar: 'نظام البيع الفوري: عمليات البيع الآن تكتمل بأقل من 200ms بدلاً من 3-4 ثواني', en: 'Instant Sale: Operations now complete in <200ms instead of 3-4 seconds' },
+          { type: 'new', ar: 'مزامنة ذكية في الخلفية: الفواتير تُرفع للسحابة دون تعطيل سير العمل', en: 'Smart Background Sync: Invoices upload to cloud without blocking workflow' },
+          { type: 'new', ar: 'تبويب "حول البرنامج" الجديد في الإعدادات مع معلومات الإصدار وسجل التحديثات', en: 'New "About" tab in Settings with version info and changelog' },
+          { type: 'improved', ar: 'تجميل سلة المبيعات: تصميم أحدث وعرض منتجات أكثر مع تقليص حجم أزرار العملات', en: 'Cart redesign: Modern look, more products visible, smaller currency buttons' },
+          { type: 'improved', ar: 'تحسين ثبات الإعدادات: يتم تحميلها من السحابة عند كل تشغيل لمنع فقدانها', en: 'Settings persistence: Now loaded from cloud on startup to prevent data loss' },
+          { type: 'fixed', ar: 'إصلاح تباين النصوص في الوضع الفاتح عبر جميع الشاشات والإعدادات', en: 'Fixed text contrast in light mode across all screens and settings' },
+          { type: 'fixed', ar: 'إصلاح مشكلة عودة الإعدادات (ضريبة، خصم، نوع المتجر) لقيمها الافتراضية بعد التحديث', en: 'Fixed settings (tax, discount, store type) resetting to defaults after updates' },
+        ];
+
         return (
           <div className="space-y-5">
             {/* App Identity */}
@@ -1704,9 +1805,9 @@ export default function Settings() {
               </div>
               <div className="divide-y divide-border">
                 {[
-                  { label: isRTL ? 'الإصدار الحالي' : 'Current Version', value: '1.0.0', icon: '🏷️' },
-                  { label: isRTL ? 'رقم البناء' : 'Build Number', value: '221', icon: '🔢' },
-                  { label: isRTL ? 'تاريخ الإصدار' : 'Release Date', value: isRTL ? '٥ فبراير ٢٠٢٦' : 'Feb 5, 2026', icon: '📅' },
+                  { label: isRTL ? 'الإصدار الحالي' : 'Current Version', value: `v${versionInfo.versionName}`, icon: '🏷️' },
+                  { label: isRTL ? 'رقم البناء' : 'Build Number', value: String(versionInfo.versionCode), icon: '🔢' },
+                  { label: isRTL ? 'تاريخ آخر تحديث' : 'Last Updated', value: releaseDateStr, icon: '📅' },
                   { label: isRTL ? 'المنصة' : 'Platform', value: 'Android / Web / Windows', icon: '📱' },
                   { label: isRTL ? 'المطور' : 'Developer', value: 'FlowPOS Team', icon: '👨‍💻' },
                 ].map((item) => (
@@ -1725,40 +1826,13 @@ export default function Settings() {
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {isRTL ? 'آخر التحديثات — الإصدار 1.0.0' : 'Latest Updates — Version 1.0.0'}
+                  {isRTL
+                    ? `آخر التحديثات — الإصدار ${versionInfo.versionName} (بناء ${versionInfo.versionCode})`
+                    : `Latest Updates — v${versionInfo.versionName} (Build ${versionInfo.versionCode})`}
                 </p>
               </div>
               <div className="divide-y divide-border">
-                {[
-                  {
-                    type: 'new' as const,
-                    text: isRTL ? 'نظام البيع الفوري: عمليات البيع الآن فورية بدون انتظار' : 'Instant Sale System: Sales now complete instantly without waiting',
-                  },
-                  {
-                    type: 'new' as const,
-                    text: isRTL ? 'مزامنة ذكية في الخلفية: تُرسل البيانات للسحابة دون تعطيل العمل' : 'Smart Background Sync: Data syncs to cloud without interruption',
-                  },
-                  {
-                    type: 'improved' as const,
-                    text: isRTL ? 'تحسين شكل سلة المبيعات: تصميم أكثر حداثة وعرض منتجات أكثر' : 'Improved cart design: More modern look with better product display',
-                  },
-                  {
-                    type: 'improved' as const,
-                    text: isRTL ? 'تحسين تباين النصوص في الوضع الفاتح لكافة الشاشات' : 'Improved text contrast in light mode across all screens',
-                  },
-                  {
-                    type: 'fixed' as const,
-                    text: isRTL ? 'إصلاح مشكلة بطء إنشاء الفواتير (3-4 ثواني → أقل من 200ms)' : 'Fixed slow invoice creation (3-4 seconds → under 200ms)',
-                  },
-                  {
-                    type: 'fixed' as const,
-                    text: isRTL ? 'إصلاح مشكلة عدم ظهور الكتابة بوضوح في بعض الشاشات' : 'Fixed text visibility issues on some screens',
-                  },
-                  {
-                    type: 'new' as const,
-                    text: isRTL ? 'دعم تشغيل التطبيق في وضع عدم الاتصال للبيانات المحفوظة' : 'Offline mode support for cached data access',
-                  },
-                ].map((item, idx) => {
+                {changelog.map((item, idx) => {
                   const colors = {
                     new: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                     improved: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
@@ -1774,7 +1848,7 @@ export default function Settings() {
                       <span className={`mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0 ${colors[item.type]}`}>
                         {labels[item.type]}
                       </span>
-                      <p className="text-sm text-foreground leading-relaxed">{item.text}</p>
+                      <p className="text-sm text-foreground leading-relaxed">{isRTL ? item.ar : item.en}</p>
                     </div>
                   );
                 })}
@@ -1787,6 +1861,7 @@ export default function Settings() {
             </p>
           </div>
         );
+      }
 
       default:
         return null;

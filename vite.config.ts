@@ -3,11 +3,21 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import fs from "fs";
+
+// Load version info from version.json
+let appVersion = { versionName: '1.0.0', versionCode: 221, lastUpdated: new Date().toISOString() };
+try {
+  const versionFile = fs.readFileSync(path.resolve(__dirname, 'version.json'), 'utf-8');
+  appVersion = JSON.parse(versionFile);
+} catch { /* use defaults */ }
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // مسارات نسبية لتطبيق Windows EXE
-  base: './',
+  // Inject app version at build time
+  define: {
+    '__APP_VERSION__': JSON.stringify(appVersion),
+  },
   server: {
     host: "::",
     port: 8080,
