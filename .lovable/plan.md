@@ -1,170 +1,99 @@
 
-# إصلاح مشكلة Android Process Death عند التقاط الصور
+# تسريع عملية البيع: تطبيق نموذج "محلي أولاً" (Local-First Sale)
 
-## تشخيص المشكلة الجذرية
+## تقييم الوضع الحالي
 
-بعد مراجعة شاملة للكود، وجدت **ثلاث مشاكل متداخلة** تسبب المشكلة معاً:
+التطبيق يمتلك بنية تحتية للعمل أوفلاين موجودة بالفعل (sync-queue، IndexedDB للمنتجات، مزامنة خلفية)، لكن مشكلة البطء تأتي من مسار **عملية البيع عند توفر الإنترنت**.
 
----
+### سبب البطء الحالي (3-4 ثوانٍ)
 
-### المشكلة الأولى: إعادة تسجيل الـ Listener في كل render
-
-في `src/hooks/use-camera.tsx` السطر 307:
+عند الضغط على "بيع نقدي" مع وجود اتصال، يتم تنفيذ الخطوات التالية **بالتسلسل** وينتظر المستخدم اكتمالها كلها:
 
 ```text
-}, [isNative, processNativePhoto, options]);
+1. checkStockAvailabilityCloud()   ← طلب للسيرفر
+2. findOrCreateCustomerCloud()     ← طلب للسيرفر
+3. loadProductsCloud()             ← طلب للسيرفر (لحساب الأرباح)
+4. addInvoiceCloud()               ← طلب للسيرفر
+5. distributeDetailedProfitCloud() ← طلب للسيرفر
+6. deductStockBatchCloud()         ← طلب للسيرفر
+7. updateCustomerStatsCloud()      ← طلب للسيرفر
 ```
 
-المتغير `options` هو كائن (object) جديد يُنشأ في كل render لأنه يُمرَّر هكذا من `Products.tsx`:
+المستخدم ينتظر **جميع هذه الطلبات** قبل أن يرى أي نتيجة.
+
+بالمقابل، في وضع الأوفلاين، تتم العملية **فوراً** لأن الكود يحفظ في الطابور محلياً مباشرة.
+
+## الحل: توحيد مسار البيع ليكون "محلي أولاً" دائماً
+
+### المبدأ الجديد
 
 ```text
-useCamera({
-  maxSize: 640,
-  quality: 70,
-  onPhotoRestored: handlePhotoRestored,
-  fallbackToInline: true,
-});
+الوضع الحالي:
+[إنترنت] ← انتظر السيرفر (3-4 ثواني) ← أكمل
+[أوفلاين] ← أضف للطابور فوراً ← أكمل
+
+الوضع الجديد:
+[إنترنت + أوفلاين] ← أضف للطابور فوراً + أغلق الواجهة
+                    ← ارفع للسيرفر في الخلفية فوراً
 ```
 
-هذا يجعل الـ `useEffect` يُعيد التشغيل في كل render، مما يُزيل الـ listener القديم ويسجل جديداً. عند إعادة تشغيل التطبيق بعد Process Death، قد لا يكون هناك listener مسجل في اللحظة التي يُطلق فيها Capacitor حدث `appRestoredResult`.
+### التغييرات المطلوبة
 
----
+**الملف الرئيسي: `src/components/pos/CartPanel.tsx`**
 
-### المشكلة الثانية: ترتيب useEffect غير مضمون
+تعديل دالتي `confirmCashSale` و `confirmDebtSale` لاتباع نموذج واحد موحد:
 
-في `src/pages/Products.tsx`، يوجد:
-- `useEffect` لاستعادة النموذج من localStorage (السطر 298)
-- `useEffect` لتسجيل listener الكاميرا عبر `useCamera` (يُشغَّل في hook منفصل)
+1. **حساب الأرباح محلياً:** المنتجات موجودة بالفعل في الكاش المحلي (IndexedDB)، نستخدمها بدلاً من طلب السيرفر
+2. **فحص المخزون محلياً:** نستخدم بيانات المنتجات من الكاش بدلاً من `checkStockAvailabilityCloud`
+3. **إضافة الفاتورة للطابور فوراً:** حفظ البيانات في sync-queue محلياً وإغلاق الواجهة في أجزاء من الثانية
+4. **مزامنة فورية في الخلفية:** إذا كان الإنترنت متاحاً، استدعاء `syncNow()` مباشرة بعد الحفظ المحلي
 
-عند Android Process Death وإعادة التشغيل:
-1. التطبيق يُحمَّل من الصفر
-2. `handlePhotoRestored` يُستدعى **قبل** أن يُفعَّل `useEffect` الخاص باستعادة النموذج من localStorage
-3. النتيجة: الصورة تُستعاد لكن النموذج يظهر فارغاً
+**الملف الداعم: `src/lib/cloud/cash-sale-handler.ts`**
 
----
+لا يحتاج تعديلاً - هو الذي يعالج الطابور عند المزامنة.
 
-### المشكلة الثالثة: `imagePreviewBase64` لا يُحفظ في localStorage
-
-الكود الحالي يحفظ `formData` و `customFieldValues` في localStorage، لكن **لا يحفظ** `imagePreviewBase64` (وهي الصورة المؤقتة للعرض قبل الرفع).
-
-عند Process Death وإعادة التشغيل، يُعاد `formData.image` من localStorage، لكن `imagePreviewBase64` يبقى فارغاً، فتظهر الصورة بشكل خاطئ.
-
----
-
-## الحل المقترح (ثلاثة تعديلات)
-
-### التعديل 1 - إصلاح `use-camera.tsx`: استخدام useRef بدلاً من options مباشرة
-
-استخدام `useRef` لحفظ دالة `onPhotoRestored` بدلاً من تمريرها في dependency array. هذا يحل مشكلة إعادة تسجيل الـ listener في كل render:
+### تدفق العملية الجديدة
 
 ```text
-// قبل:
-}, [isNative, processNativePhoto, options]);
-
-// بعد:
-const onPhotoRestoredRef = useRef(options.onPhotoRestored);
-useEffect(() => {
-  onPhotoRestoredRef.current = options.onPhotoRestored;
-}, [options.onPhotoRestored]);
-
-// وفي الـ listener:
-if (compressed && onPhotoRestoredRef.current) {
-  onPhotoRestoredRef.current(compressed);
-}
-
-// وفي dependency array:
-}, [isNative, processNativePhoto]); // بدون options
+المستخدم يضغط "بيع"
+        ↓
+حساب الأرباح من كاش IndexedDB المحلي (0ms)
+        ↓
+فحص المخزون من كاش IndexedDB (0ms)
+        ↓
+إضافة الفاتورة لـ sync-queue محلياً (0ms)
+        ↓
+إغلاق الواجهة + عرض "تم الحفظ" (< 100ms)
+        ↓ (في الخلفية بدون انتظار المستخدم)
+syncNow() → ترفع الفاتورة للسيرفر في الخلفية
 ```
 
----
+### ملاحظة حول فحص المخزون
 
-### التعديل 2 - إصلاح `handlePhotoRestored` في `Products.tsx`: حفظ الصورة في localStorage فوراً
+فحص المخزون الحالي مهم لضمان عدم بيع كمية أكثر مما هو متاح. الحل:
+- استخدام بيانات المنتجات من IndexedDB لفحص المخزون محلياً (سريع)
+- بعد المزامنة، السيرفر هو المرجع النهائي (يمنع البيع الزائد عند وجود متعدد أجهزة)
+- في حالة تعارض المخزون عند المزامنة، يظهر تنبيه للمستخدم
 
-إضافة حفظ الصورة مؤقتاً في localStorage عند استعادتها، حتى إذا جاءت قبل استعادة النموذج. ثم عند استعادة النموذج، التحقق من وجود صورة مؤقتة لدمجها:
+## الملفات التي ستتغير
 
-```text
-const RESTORED_IMAGE_KEY = 'hyperpos_restored_image_temp';
-
-const handlePhotoRestored = useCallback(async (base64Image: string) => {
-  // 1. حفظ الصورة في localStorage فوراً (يضمن بقاءها حتى لو جاءت قبل استعادة النموذج)
-  localStorage.setItem(RESTORED_IMAGE_KEY, base64Image);
-
-  // 2. عرض الصورة للمستخدم فوراً
-  setImagePreviewBase64(base64Image);
-
-  // 3. حفظ base64 في formData مؤقتاً (يحفظها localStorage تلقائياً)
-  setFormData(prev => ({ ...prev, image: base64Image }));
-
-  // 4. رفع الصورة للسحابة في الخلفية
-  const toastId = toast.loading('جاري استعادة الصورة...');
-  try {
-    const imageUrl = await uploadProductImage(base64Image);
-    toast.dismiss(toastId);
-    if (imageUrl) {
-      setFormData(prev => ({ ...prev, image: imageUrl }));
-      localStorage.removeItem(RESTORED_IMAGE_KEY); // تنظيف
-      toast.success(t('products.imageRestored'));
-    } else {
-      toast.error(t('products.imageRestoreFailed'));
-    }
-  } catch (e) {
-    toast.dismiss(toastId);
-    toast.error(t('products.imageRestoreFailed'));
-  }
-}, [t]);
-```
-
----
-
-### التعديل 3 - إصلاح استعادة النموذج في `Products.tsx`: التحقق من وجود صورة مؤقتة
-
-في `useEffect` الخاص باستعادة النموذج (السطر 298)، إضافة تحقق من وجود صورة مؤقتة مستعادة لدمجها مع بيانات النموذج:
-
-```text
-useEffect(() => {
-  try {
-    const savedState = localStorage.getItem(FORM_STORAGE_KEY);
-    if (savedState) {
-      const parsed = JSON.parse(savedState);
-      const hour = 60 * 60 * 1000;
-      if (Date.now() - parsed.timestamp < hour) {
-        
-        // التحقق من وجود صورة مؤقتة مستعادة من الكاميرا
-        const restoredImage = localStorage.getItem(RESTORED_IMAGE_KEY);
-        const formDataToRestore = restoredImage
-          ? { ...parsed.formData, image: restoredImage }
-          : parsed.formData;
-
-        setFormData(formDataToRestore);
-
-        // إذا كان هناك صورة مؤقتة، اعرضها أيضاً كـ preview
-        if (restoredImage) {
-          setImagePreviewBase64(restoredImage);
-        }
-
-        // ... باقي استعادة الحالة
-      }
-    }
-  } catch (e) { ... }
-}, []);
-```
-
----
-
-## ملخص الملفات التي ستتغير
-
-| الملف | نوع التغيير |
+| الملف | التغيير |
 |---|---|
-| `src/hooks/use-camera.tsx` | استخدام `useRef` لحفظ `onPhotoRestored` لمنع إعادة تسجيل Listener |
-| `src/pages/Products.tsx` | إصلاح `handlePhotoRestored` + استعادة الصورة عند تحميل النموذج |
-
----
+| `src/components/pos/CartPanel.tsx` | إعادة كتابة `confirmCashSale` و`confirmDebtSale` لاستخدام النموذج المحلي أولاً دائماً |
+| `src/lib/cloud/cash-sale-handler.ts` | إضافة منطق لحساب الأرباح بدقة من الكاش عند المزامنة (لأن الكاش يحتوي سعر التكلفة) |
+| `src/providers/CloudSyncProvider.tsx` | إضافة دالة `syncImmediately()` تُشغَّل بعد كل عملية بيع مباشرة (دون انتظار 30 دقيقة) |
 
 ## النتيجة المتوقعة
 
-بعد هذه التعديلات:
-1. عند التقاط صورة وحدوث Process Death، سيُستعاد النموذج كاملاً عند فتح التطبيق
-2. الصورة الملتقطة ستظهر كـ preview فوراً دون الحاجة لإعادة التقاط
-3. سيتم رفع الصورة تلقائياً في الخلفية
-4. حتى لو فشل الرفع، ستبقى الصورة محفوظة مؤقتاً في النموذج
-5. الـ Listener لن يُعاد تسجيله في كل render، مما يُقلل من احتمال فقدان الأحداث
+- **قبل:** 3-4 ثوانٍ لإتمام كل عملية بيع
+- **بعد:** أقل من 200 ميلي ثانية (وميض لحظي)
+- لا تغيير في سلوك المزامنة أو دقة البيانات
+- الثيم الداكن والفاتح لا يتأثران
+
+## ملاحظة مهمة حول تعدد الأجهزة
+
+إذا كان نفس المتجر يستخدم جهازين في نفس الوقت، فإن فحص المخزون المحلي قد يسمح ببيع كمية تجاوزت ما هو متاح (race condition). لحل هذا:
+- الكاش يُحدَّث بعد كل مزامنة ناجحة
+- يمكن إضافة تحذير إذا كان الكاش قديماً أكثر من 5 دقائق (وقت قابل للتكوين)
+
+هذا التحسين متقدم ويمكن تنفيذه في مرحلة لاحقة إذا كان المستخدم يستخدم أجهزة متعددة بشكل متزامن.
