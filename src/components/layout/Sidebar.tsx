@@ -49,6 +49,7 @@ interface NavItem {
   badge?: number;
   adminOnly?: boolean;
   requiresMaintenance?: boolean;
+  requiresPurchases?: boolean;
   hideInNoInventory?: boolean;
   requiresBakeryMode?: boolean;
   requiresBookstore?: boolean;
@@ -61,7 +62,7 @@ const navItems: NavItem[] = [
   { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard', adminOnly: true, tourId: 'dashboard', tooltipKey: 'tooltip.dashboard' as TranslationKey },
   { icon: FileText, translationKey: 'nav.invoices', path: '/invoices', tourId: 'invoices', tooltipKey: 'tooltip.invoices' as TranslationKey },
   { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true, dynamicKey: 'products', tourId: 'products', tooltipKey: 'tooltip.products' as TranslationKey },
-  { icon: Truck, translationKey: 'nav.purchases' as TranslationKey, path: '/purchases', adminOnly: true, tooltipKey: 'tooltip.purchases' as TranslationKey },
+  { icon: Truck, translationKey: 'nav.purchases' as TranslationKey, path: '/purchases', adminOnly: true, requiresPurchases: true, tooltipKey: 'tooltip.purchases' as TranslationKey },
   { icon: Users, translationKey: 'nav.customersAndDebts' as TranslationKey, path: '/customers', tourId: 'customers', tooltipKey: 'tooltip.customers' as TranslationKey },
   { icon: BookOpen, translationKey: 'nav.library' as TranslationKey, path: '/library', requiresBookstore: true, tooltipKey: 'tooltip.library' as TranslationKey },
   { icon: Wrench, translationKey: 'nav.services', path: '/services', requiresMaintenance: true, tooltipKey: 'tooltip.services' as TranslationKey },
@@ -169,6 +170,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
       return false;
     }
     if (item.requiresMaintenance && !visibleSections.maintenance) return false;
+    if (item.requiresPurchases && !visibleSections.purchases) return false;
     if (item.hideInNoInventory && noInventory) return false;
     if (item.requiresBakeryMode && !noInventory) return false;
     if (item.requiresBookstore && storeType !== 'bookstore') return false;
