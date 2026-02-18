@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
-import { ShoppingBag, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { ShoppingBag, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
@@ -37,21 +37,8 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     }
   }, [open]);
 
-  const handleCameraCapture = async () => {
-    try {
-      const { Camera: CapCamera } = await import('@capacitor/camera');
-      const photo = await (CapCamera as any).getPhoto({
-        quality: 70,
-        resultType: 'base64' as any,
-        source: 'CAMERA' as any,
-      });
-      if (photo?.base64String) {
-        handleBase64Image(`data:image/jpeg;base64,${photo.base64String}`);
-      }
-    } catch {
-      // Camera not available
-    }
-  };
+
+
 
   const handleSubmit = async () => {
     if (!productName || !costPrice) {
@@ -217,38 +204,26 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <label className="flex-1">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="flex-1"
-                  onClick={handleCameraCapture}
+                  className="w-full"
+                  asChild
                 >
-                  <Camera className="w-4 h-4 ml-1" />
-                  {t('purchases.camera')}
+                  <span>
+                    <ImageIcon className="w-4 h-4 ml-1" />
+                    {t('purchases.gallery')}
+                  </span>
                 </Button>
-                <label className="flex-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    asChild
-                  >
-                    <span>
-                      <ImageIcon className="w-4 h-4 ml-1" />
-                      {t('purchases.gallery')}
-                    </span>
-                  </Button>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileInput}
-                  />
-                </label>
-              </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileInput}
+                />
+              </label>
             )}
           </div>
 
