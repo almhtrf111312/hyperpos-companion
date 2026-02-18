@@ -475,17 +475,39 @@ export default function Products() {
       if (base64Image) {
         // Show preview immediately — Offline-First
         setImagePreviewBase64(base64Image);
+        // Store base64 temporarily — will be replaced with cloud path before save
         setFormData(prev => ({ ...prev, image: base64Image }));
-        // Upload in background silently — do NOT await here
-        import('@/lib/image-upload').then(({ uploadProductImage }) => {
-          uploadProductImage(base64Image).then(imageUrl => {
-            if (imageUrl) setFormData(prev => ({ ...prev, image: imageUrl }));
-          }).catch(console.error);
-        });
+        // Also store in localStorage so it survives APK reload
+        localStorage.setItem(RESTORED_IMAGE_KEY, base64Image);
       }
     } catch (err) {
       console.error('Camera capture error:', err);
     }
+  };
+
+  /**
+   * If the current image is still a base64 string (not yet uploaded),
+   * upload it now and return the cloud path.
+   * This handles the APK case where background upload may not have finished.
+   */
+  const ensureImageUploaded = async (imageValue: string): Promise<string> => {
+    if (!imageValue) return '';
+    // Already uploaded — return as-is
+    if (!imageValue.startsWith('data:')) return imageValue;
+    // Still base64 — upload now before saving
+    try {
+      const { uploadProductImage } = await import('@/lib/image-upload');
+      const cloudPath = await uploadProductImage(imageValue);
+      if (cloudPath) {
+        setFormData(prev => ({ ...prev, image: cloudPath }));
+        localStorage.removeItem(RESTORED_IMAGE_KEY);
+        return cloudPath;
+      }
+    } catch (e) {
+      console.error('[ensureImageUploaded] Upload failed, saving without image:', e);
+    }
+    // If upload fails, save the product without image (don't send huge base64 to DB)
+    return '';
   };
 
   // Handle inline camera capture (fallback when native camera fails)
@@ -554,6 +576,9 @@ export default function Products() {
 
     setIsSaving(true);
 
+    // ✅ تأكد من رفع الصورة أولاً إذا كانت لا تزال base64 (مشكلة APK الكاميرا)
+    const finalImage = await ensureImageUploaded(formData.image);
+
     // تحويل الكمية إلى قطع قبل الحفظ - في وضع الفرن، استخدم كمية كبيرة
     const quantityInPieces = noInventory
       ? 99999
@@ -566,6 +591,7 @@ export default function Products() {
 
     const productData = {
       ...formData,
+      image: finalImage, // ✅ استخدم مسار السحابة أو فارغ (ليس base64 ضخم)
       barcode: effectiveBarcode,
       costPrice: noInventory && !isRepairMode ? 0 : formData.costPrice,
       laborCost: isRepairMode ? formData.laborCost : 0,
@@ -621,6 +647,9 @@ export default function Products() {
 
     setIsSaving(true);
 
+    // ✅ تأكد من رفع الصورة أولاً إذا كانت لا تزال base64 (مشكلة APK الكاميرا)
+    const finalImage = await ensureImageUploaded(formData.image);
+
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
     const quantityInPieces = formData.trackByUnit === 'bulk'
       ? formData.quantity * formData.conversionFactor
@@ -631,6 +660,7 @@ export default function Products() {
 
     const productData = {
       ...formData,
+      image: finalImage, // ✅ استخدم مسار السحابة أو فارغ (ليس base64 ضخم)
       quantity: quantityInPieces, // الكمية دائماً بالقطع
       bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
       expiryDate: formData.expiryDate || undefined,
