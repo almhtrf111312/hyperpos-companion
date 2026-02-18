@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { useAuth } from './use-auth';
+import { secureSet, secureGet, secureRemove } from '@/lib/secure-storage';
 
-const DEVICE_CACHE_KEY = 'hyperpos_device_binding_cache_v1';
+// Encrypted storage key — data is XOR-encrypted with device key via secure-storage
+const DEVICE_CACHE_KEY = 'device_binding_cache';
+const DEVICE_NS = 'hp_db'; // short namespace
 
 interface DeviceBindingState {
   isChecking: boolean;
@@ -12,23 +15,39 @@ interface DeviceBindingState {
   registeredDeviceId: string | null;
 }
 
+interface DeviceCacheData {
+  isDeviceBlocked: boolean;
+  deviceId: string | null;
+  registeredDeviceId: string | null;
+  _ts: number;
+}
+
 function saveDeviceCache(data: { isDeviceBlocked: boolean; deviceId: string | null; registeredDeviceId: string | null }) {
   try {
-    // Use sessionStorage - device binding info should not persist between sessions
-    sessionStorage.setItem(DEVICE_CACHE_KEY, JSON.stringify({ ...data, _ts: Date.now() }));
-    // Clean up any old localStorage entry
-    localStorage.removeItem(DEVICE_CACHE_KEY);
+    // Remove any legacy plain-text entry
+    localStorage.removeItem('hyperpos_device_binding_cache_v1');
+    sessionStorage.removeItem('hyperpos_device_binding_cache_v1');
+
+    secureSet(
+      DEVICE_CACHE_KEY,
+      { ...data, _ts: Date.now() } as DeviceCacheData,
+      {
+        namespace: DEVICE_NS,
+        expiresIn: 7 * 24 * 60 * 60 * 1000, // 7 days
+      }
+    );
   } catch { /* */ }
 }
 
 function loadDeviceCache(): { isDeviceBlocked: boolean; deviceId: string | null; registeredDeviceId: string | null } | null {
   try {
-    // Check sessionStorage first
-    const raw = sessionStorage.getItem(DEVICE_CACHE_KEY) || localStorage.getItem(DEVICE_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed._ts && Date.now() - parsed._ts > 7 * 24 * 60 * 60 * 1000) return null;
-    return parsed;
+    const parsed = secureGet<DeviceCacheData>(DEVICE_CACHE_KEY, { namespace: DEVICE_NS });
+    if (!parsed) return null;
+    return {
+      isDeviceBlocked: parsed.isDeviceBlocked,
+      deviceId: parsed.deviceId,
+      registeredDeviceId: parsed.registeredDeviceId,
+    };
   } catch { return null; }
 }
 
@@ -121,4 +140,13 @@ export function useDeviceBinding() {
     ...state,
     refreshDeviceBinding: checkDeviceBinding,
   };
+}
+
+// Cleanup helper for logout
+export function clearDeviceBindingCache() {
+  try {
+    secureRemove(DEVICE_CACHE_KEY, { namespace: DEVICE_NS });
+    localStorage.removeItem('hyperpos_device_binding_cache_v1');
+    sessionStorage.removeItem('hyperpos_device_binding_cache_v1');
+  } catch { /* */ }
 }

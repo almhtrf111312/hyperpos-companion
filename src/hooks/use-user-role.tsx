@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
+import { secureSet, secureGet, secureRemove } from '@/lib/secure-storage';
 
 export type AppRole = 'boss' | 'admin' | 'cashier';
 
@@ -26,7 +27,9 @@ interface UserRoleContextType extends UserRoleState {
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
 
-const ROLE_CACHE_KEY = 'hyperpos_user_role_cache';
+// Encrypted storage key — data is XOR-encrypted with device key via secure-storage
+const ROLE_CACHE_KEY = 'user_role_cache';
+const ROLE_NS = 'hp_rc'; // short namespace to avoid plain-text key exposure
 
 function buildStateFromRole(role: AppRole, ownerId: string): UserRoleState {
   const isBoss = role === 'boss';
@@ -51,11 +54,14 @@ function buildStateFromRole(role: AppRole, ownerId: string): UserRoleState {
 
 function getCachedRole(userId: string): { role: AppRole; ownerId: string } | null {
   try {
-    // Use sessionStorage so role info is not persisted across browser sessions
-    const cached = sessionStorage.getItem(ROLE_CACHE_KEY);
-    if (!cached) return null;
-    const parsed = JSON.parse(cached);
-    if (parsed.userId === userId && parsed.role) {
+    // Remove any legacy plain-text entry
+    localStorage.removeItem('hyperpos_user_role_cache');
+
+    const parsed = secureGet<{ userId: string; role: AppRole; ownerId: string }>(
+      ROLE_CACHE_KEY,
+      { namespace: ROLE_NS }
+    );
+    if (parsed && parsed.userId === userId && parsed.role) {
       return { role: parsed.role, ownerId: parsed.ownerId || userId };
     }
   } catch { /* ignore */ }
@@ -64,25 +70,22 @@ function getCachedRole(userId: string): { role: AppRole; ownerId: string } | nul
 
 function setCachedRole(userId: string, role: AppRole, ownerId: string) {
   try {
-    // Use sessionStorage - role info should not persist between sessions
-    sessionStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ userId, role, ownerId }));
-    // Clean up any old localStorage entry
-    localStorage.removeItem(ROLE_CACHE_KEY);
+    secureSet(ROLE_CACHE_KEY, { userId, role, ownerId }, { namespace: ROLE_NS });
   } catch { /* ignore */ }
 }
 
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const [state, setState] = useState<UserRoleState>(() => {
-    // Try to load cached role immediately for instant UI (sessionStorage only - not persisted)
+    // Try to load encrypted cached role immediately for instant offline UI
     if (typeof window !== 'undefined') {
       try {
-        const cached = sessionStorage.getItem(ROLE_CACHE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed.role) {
-            return { ...buildStateFromRole(parsed.role, parsed.ownerId || ''), isLoading: true };
-          }
+        const parsed = secureGet<{ userId: string; role: AppRole; ownerId: string }>(
+          ROLE_CACHE_KEY,
+          { namespace: ROLE_NS }
+        );
+        if (parsed?.role) {
+          return { ...buildStateFromRole(parsed.role, parsed.ownerId || ''), isLoading: true };
         }
       } catch { /* ignore */ }
     }
@@ -120,12 +123,11 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         canManageUsers: false,
         canEditPrice: false,
       });
-      try { sessionStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
-      try { localStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
+      try { secureRemove(ROLE_CACHE_KEY, { namespace: ROLE_NS }); } catch { /* ignore */ }
       return;
     }
 
-    // Load from cache first for instant UI
+    // Load from encrypted cache first for instant UI
     const cached = getCachedRole(user.id);
     if (cached) {
       setState(buildStateFromRole(cached.role, cached.ownerId));
@@ -154,12 +156,11 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
       const role = data.role as AppRole;
       const ownerId = data.owner_id || user.id;
 
-      // Update cache
+      // Update encrypted cache
       setCachedRole(user.id, role, ownerId);
       setState(buildStateFromRole(role, ownerId));
     } catch (err) {
       console.error('Error in fetchRole:', err);
-      // Keep cached state if available
       if (!cached) {
         setState(prev => ({ ...prev, isLoading: false }));
       } else {

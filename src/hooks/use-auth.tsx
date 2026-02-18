@@ -441,11 +441,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('user_id', user.id)
             .eq('is_revoked', false);
           
-          // Clear local device binding cache (both storage types)
+          // Clear local device binding cache (encrypted + legacy plain-text)
           try {
-            localStorage.removeItem('hyperpos_device_binding_cache_v1');
-            sessionStorage.removeItem('hyperpos_device_binding_cache_v1');
-            sessionStorage.removeItem('hyperpos_user_role_cache');
+            const { clearDeviceBindingCache } = await import('./use-device-binding');
+            clearDeviceBindingCache();
           } catch { /* */ }
         }
       } catch (err) {
