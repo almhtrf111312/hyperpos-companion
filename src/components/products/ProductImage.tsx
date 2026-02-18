@@ -25,8 +25,8 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       return;
     }
 
-    // إذا كانت base64 أو رابط كامل (signed URL قديم أو رابط خارجي)
-    if (imageUrl.startsWith('data:') || imageUrl.startsWith('http')) {
+    // إذا كانت data URL (base64 مضغوطة أو خارجية) — عرضها مباشرة بدون signed URL
+    if (imageUrl.startsWith('data:') || imageUrl.startsWith('http') || imageUrl.startsWith('blob:')) {
       setResolvedUrl(imageUrl);
       setError(false);
       return;

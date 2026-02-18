@@ -2,11 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * ضغط الصورة تلقائياً
- * @param base64Image صورة بصيغة base64
- * @param maxSizeKB الحجم الأقصى بالكيلوبايت (افتراضي: 30)
- * @param maxWidth العرض الأقصى بالبكسل (افتراضي: 400)
- * @param maxHeight الارتفاع الأقصى بالبكسل (افتراضي: 400)
- * @returns صورة مضغوطة بصيغة base64
  */
 async function compressImage(
   base64Image: string,
@@ -14,11 +9,10 @@ async function compressImage(
   maxWidth: number = 400,
   maxHeight: number = 400
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
 
     img.onload = () => {
-      // حساب الأبعاد الجديدة مع الحفاظ على النسبة
       let width = img.width;
       let height = img.height;
 
@@ -34,43 +28,40 @@ async function compressImage(
         }
       }
 
-      // إنشاء canvas للضغط
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = Math.round(width);
+      canvas.height = Math.round(height);
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        reject(new Error('فشل إنشاء canvas context'));
+        // fallback: return original if canvas not available
+        resolve(base64Image);
         return;
       }
 
-      // رسم الصورة بالأبعاد الجديدة
-      ctx.drawImage(img, 0, 0, width, height);
+      ctx.drawImage(img, 0, 0, Math.round(width), Math.round(height));
 
-      // ضغط الصورة بجودة متغيرة حتى نصل للحجم المطلوب
+      const getImageSizeKB = (b64: string) => {
+        const data = b64.includes(',') ? b64.split(',')[1] : b64;
+        return (data.length * 0.75) / 1024;
+      };
+
       let quality = 0.8;
       let compressedBase64 = canvas.toDataURL('image/jpeg', quality);
 
-      // حساب حجم الصورة بالكيلوبايت
-      const getImageSizeKB = (base64: string) => {
-        const base64Length = base64.split(',')[1].length;
-        return (base64Length * 0.75) / 1024;
-      };
-
-      // تقليل الجودة تدريجياً حتى نصل للحجم المطلوب
       while (getImageSizeKB(compressedBase64) > maxSizeKB && quality > 0.1) {
         quality -= 0.05;
         compressedBase64 = canvas.toDataURL('image/jpeg', quality);
       }
 
-      console.log(`[Image Compression] Original: ${getImageSizeKB(base64Image).toFixed(2)}KB → Compressed: ${getImageSizeKB(compressedBase64).toFixed(2)}KB (Quality: ${(quality * 100).toFixed(0)}%)`);
-
+      console.log(`[Image Compression] ${getImageSizeKB(base64Image).toFixed(1)}KB → ${getImageSizeKB(compressedBase64).toFixed(1)}KB (q=${(quality * 100).toFixed(0)}%)`);
       resolve(compressedBase64);
     };
 
     img.onerror = () => {
-      reject(new Error('فشل تحميل الصورة'));
+      // If image fails to load, return original as-is
+      console.warn('[Image Compression] Failed to load image, returning original');
+      resolve(base64Image);
     };
 
     img.src = base64Image;
@@ -78,64 +69,94 @@ async function compressImage(
 }
 
 /**
- * رفع صورة منتج إلى Supabase Storage
- * @param base64Image صورة بصيغة base64
- * @returns URL العام للصورة أو null في حالة الفشل
+ * تحويل base64 إلى Blob بطريقة آمنة تعمل على Android Capacitor WebView
+ * 
+ * ⚠️ CRITICAL: fetch(dataUrl) يفشل في Capacitor Android WebView!
+ * يجب استخدام atob() + ArrayBuffer بدلاً من fetch()
+ */
+function base64ToBlob(base64: string, mimeType: string = 'image/jpeg'): Blob {
+  const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+  const byteString = atob(base64Data);
+  const arrayBuffer = new ArrayBuffer(byteString.length);
+  const uint8Array = new Uint8Array(arrayBuffer);
+  for (let i = 0; i < byteString.length; i++) {
+    uint8Array[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([arrayBuffer], { type: mimeType });
+}
+
+/**
+ * رفع صورة منتج إلى Cloud Storage
+ * 
+ * الاستراتيجية الثلاثية:
+ * 1. ضغط الصورة أولاً (≤30KB)
+ * 2. رفع للسحابة باستخدام base64ToBlob الآمن (بدلاً من fetch)
+ * 3. إذا فشل الرفع: إرجاع data URL المضغوطة (≤30KB) لحفظها محلياً
+ * 
+ * @returns مسار الملف في السحابة، أو data URL مضغوطة إذا فشل الرفع، أو null
  */
 export async function uploadProductImage(base64Image: string): Promise<string | null> {
   try {
-    // ضغط الصورة تلقائياً قبل الرفع
+    // الخطوة 1: ضغط الصورة
     console.log('[Image Upload] Compressing image...');
     const compressedImage = await compressImage(base64Image, 30, 400, 400);
 
-    // تحويل base64 إلى Blob
-    const response = await fetch(compressedImage);
-    const blob = await response.blob();
+    // الخطوة 2: تحويل base64 → Blob بطريقة آمنة تعمل على Android APK
+    let blob: Blob;
+    try {
+      // نحاول fetch أولاً (أسرع على الويب)
+      const response = await fetch(compressedImage);
+      if (!response.ok) throw new Error('fetch failed');
+      blob = await response.blob();
+      console.log('[Image Upload] Blob via fetch()');
+    } catch {
+      // Fallback آمن يعمل دائماً في Capacitor Android
+      console.warn('[Image Upload] fetch() failed on data URL — using atob() fallback (Android safe)');
+      blob = base64ToBlob(compressedImage, 'image/jpeg');
+    }
 
-    console.log(`[Image Upload] Final size: ${(blob.size / 1024).toFixed(2)}KB`);
+    console.log(`[Image Upload] Blob size: ${(blob.size / 1024).toFixed(1)}KB`);
 
-    // إنشاء اسم فريد للملف
+    // الخطوة 3: رفع للسحابة
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
     const filePath = `products/${fileName}`;
 
-    // رفع الصورة
     const { error } = await supabase.storage
       .from('product-images')
       .upload(filePath, blob, {
         contentType: 'image/jpeg',
-        cacheControl: '3600'
+        cacheControl: '3600',
+        upsert: false,
       });
 
     if (error) {
-      console.error('خطأ في رفع الصورة:', error);
-      throw error;
+      console.error('[Image Upload] Storage upload failed:', error);
+      // الخطوة 4 (fallback): إرجاع data URL مضغوطة بدلاً من فشل كامل
+      // هذا يضمن حفظ الصورة محلياً مع المنتج حتى لو فشل الرفع
+      console.warn('[Image Upload] Falling back to compressed data URL for local save');
+      return compressedImage;
     }
 
-    // إعادة مسار الملف فقط (بدلاً من signed URL)
-    // سيتم توليد signed URL عند العرض فقط
+    console.log('[Image Upload] ✅ Uploaded to cloud:', filePath);
     return filePath;
   } catch (error) {
-    console.error('فشل رفع الصورة:', error);
+    console.error('[Image Upload] Fatal error:', error);
     return null;
   }
 }
 
 /**
  * توليد signed URL من مسار ملف في Storage
- * @param storagePath مسار الملف (مثل products/123.jpg)
- * @returns signed URL صالح لساعة واحدة
  */
 export async function getSignedImageUrl(storagePath: string): Promise<string | null> {
   try {
-    // إذا كان المسار فارغاً
     if (!storagePath) return null;
 
-    // إذا كان بالفعل رابط كامل (signed URL قديم أو رابط خارجي)
+    // إذا كانت data URL أو رابط خارجي — إرجاعه مباشرة
     if (storagePath.startsWith('http') || storagePath.startsWith('data:')) {
       return storagePath;
     }
 
-    // إزالة أي بادئة زائدة
     const cleanPath = storagePath.replace(/^\/+/, '');
 
     const { data, error } = await supabase.storage
@@ -155,35 +176,28 @@ export async function getSignedImageUrl(storagePath: string): Promise<string | n
 }
 
 /**
- * حذف صورة منتج من Supabase Storage
- * @param imageUrl URL الصورة المراد حذفها
- * @returns true في حالة النجاح
+ * حذف صورة منتج من Cloud Storage
  */
 export async function deleteProductImage(imageUrl: string): Promise<boolean> {
   try {
-    // تجاهل الصور القديمة المخزنة كـ base64
-    if (imageUrl.startsWith('data:')) {
-      return true;
+    if (!imageUrl || imageUrl.startsWith('data:')) {
+      return true; // data URLs لا تحتاج حذفاً من السحابة
     }
 
-    // استخراج مسار الملف من URL
-    const urlParts = imageUrl.split('/product-images/');
-    if (urlParts.length < 2) return false;
-
-    const filePath = urlParts[1];
-
-    const { error } = await supabase.storage
-      .from('product-images')
-      .remove([filePath]);
-
-    if (error) {
-      console.error('خطأ في حذف الصورة:', error);
-      return false;
+    if (imageUrl.startsWith('http')) {
+      // استخراج المسار من URL
+      const urlParts = imageUrl.split('/product-images/');
+      if (urlParts.length < 2) return false;
+      const filePath = urlParts[1].split('?')[0]; // إزالة query params
+      const { error } = await supabase.storage.from('product-images').remove([filePath]);
+      return !error;
     }
 
-    return true;
+    // مسار مباشر
+    const { error } = await supabase.storage.from('product-images').remove([imageUrl]);
+    return !error;
   } catch (error) {
-    console.error('فشل حذف الصورة:', error);
+    console.error('[Image] deleteProductImage error:', error);
     return false;
   }
 }
@@ -193,5 +207,6 @@ export async function deleteProductImage(imageUrl: string): Promise<boolean> {
  */
 export function isCloudImage(imageUrl: string | undefined): boolean {
   if (!imageUrl) return false;
-  return imageUrl.includes('supabase') && imageUrl.includes('product-images');
+  if (imageUrl.startsWith('data:')) return false;
+  return imageUrl.includes('supabase') || imageUrl.startsWith('products/');
 }
