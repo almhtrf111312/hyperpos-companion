@@ -18,7 +18,8 @@ import {
   X,
   Plus,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import {
   addPurchaseInvoiceCloud,
@@ -30,7 +31,7 @@ import {
   PurchaseInvoiceItem
 } from '@/lib/cloud/purchase-invoices-cloud';
 import { PurchaseInvoiceItemForm } from './PurchaseInvoiceItemForm';
-import { uploadProductImage } from '@/lib/image-upload';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
@@ -61,9 +62,8 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   const [invoiceItems, setInvoiceItems] = useState<PurchaseInvoiceItem[]>([]);
   const [showItemForm, setShowItemForm] = useState(false);
 
-  // Invoice image
-  const [invoiceImageUrl, setInvoiceImageUrl] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
+  // Invoice image — Offline-First
+  const { imageValue: invoiceImageUrl, imagePreview: invoiceImagePreview, uploadStatus: invoiceImgStatus, handleBase64Image: handleInvoiceBase64, handleFileInput: handleImageUpload, clearImage: clearInvoiceImage } = useImageUpload();
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -77,7 +77,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setCurrentInvoice(null);
       setInvoiceItems([]);
       setShowItemForm(false);
-      setInvoiceImageUrl('');
+      clearInvoiceImage();
     }
   }, [open]);
 
@@ -321,24 +321,6 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     setShowItemForm(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingImage(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const url = await uploadProductImage(base64);
-        if (url) setInvoiceImageUrl(url);
-        setUploadingImage(false);
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      setUploadingImage(false);
-    }
-  };
-
   const handleCameraCapture = async () => {
     try {
       const { Camera: CapCamera } = await import('@capacitor/camera');
@@ -348,11 +330,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         source: 'CAMERA' as any,
       });
       if (photo?.base64String) {
-        setUploadingImage(true);
-        const base64 = `data:image/jpeg;base64,${photo.base64String}`;
-        const url = await uploadProductImage(base64);
-        if (url) setInvoiceImageUrl(url);
-        setUploadingImage(false);
+        handleInvoiceBase64(`data:image/jpeg;base64,${photo.base64String}`);
       }
     } catch {
       // Camera not available
@@ -594,14 +572,19 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             {/* Invoice Image Upload */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t('purchases.receiptPhoto')}</Label>
-              {invoiceImageUrl ? (
+              {invoiceImagePreview ? (
                 <div className="relative">
-                  <img src={invoiceImageUrl} alt="Invoice" className="w-full h-40 object-cover rounded-lg border" />
+                  <img src={invoiceImagePreview} alt="Invoice" className="w-full h-40 object-cover rounded-lg border" />
+                  {invoiceImgStatus === 'syncing' && (
+                    <div className="absolute top-2 left-2 bg-black/60 rounded-full p-1">
+                      <Loader2 className="w-3 h-3 text-white animate-spin" />
+                    </div>
+                  )}
                   <Button
                     size="sm"
                     variant="destructive"
                     className="absolute top-2 right-2 h-7 text-xs px-2"
-                    onClick={() => setInvoiceImageUrl('')}
+                    onClick={clearInvoiceImage}
                   >
                     {t('common.delete')}
                   </Button>
@@ -613,7 +596,6 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                     variant="outline"
                     className="flex-1"
                     onClick={handleCameraCapture}
-                    disabled={uploadingImage}
                   >
                     <Camera className="w-4 h-4 ml-1" />
                     {t('purchases.camera')}
@@ -623,7 +605,6 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                       type="button"
                       variant="outline"
                       className="w-full"
-                      disabled={uploadingImage}
                       asChild
                     >
                       <span>
@@ -640,9 +621,6 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                   </label>
                 </div>
               )}
-              {uploadingImage && (
-                <p className="text-xs text-muted-foreground text-center">{t('common.loading')}...</p>
-              )}
             </div>
 
             {/* Actions */}
@@ -651,7 +629,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                 <ArrowRight className="w-4 h-4 ml-1" />
                 {t('common.back')}
               </Button>
-              <Button className="flex-1" onClick={handleFinalize} disabled={loading || uploadingImage}>
+              <Button className="flex-1" onClick={handleFinalize} disabled={loading}>
                 {loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}
                 <Check className="w-4 h-4 mr-1" />
               </Button>
