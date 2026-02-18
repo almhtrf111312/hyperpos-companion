@@ -24,6 +24,7 @@ interface CloudSyncContextType {
   isSyncing: boolean;
   lastSyncTime: string | null;
   syncNow: () => Promise<void>;
+  syncImmediately: () => void; // مزامنة فورية في الخلفية بعد عملية بيع
 }
 
 // Export context for safe usage in components that may render outside provider
@@ -280,8 +281,22 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     }
   }, [user, isSyncing]);
 
+  /**
+   * مزامنة فورية في الخلفية - تُستدعى بعد كل عملية بيع محلية
+   * لا تنتظر الانتهاء ولا تظهر أي رسائل للمستخدم
+   */
+  const syncImmediately = useCallback(() => {
+    if (!user) return;
+    // تشغيل المزامنة في الخلفية بدون انتظار
+    setTimeout(() => {
+      syncNow().catch(err => {
+        console.warn('[CloudSync] Background sync after sale failed (will retry):', err);
+      });
+    }, 100); // تأخير بسيط لضمان حفظ الطابور أولاً
+  }, [user, syncNow]);
+
   return (
-    <CloudSyncContext.Provider value={{ isReady, isSyncing, lastSyncTime, syncNow }}>
+    <CloudSyncContext.Provider value={{ isReady, isSyncing, lastSyncTime, syncNow, syncImmediately }}>
       {children}
     </CloudSyncContext.Provider>
   );

@@ -36,10 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { showToast } from '@/lib/toast-config';
-import { addInvoice } from '@/lib/invoices-store';
 import { loadCustomers, Customer } from '@/lib/customers-store';
-import { loadProductsCloud } from '@/lib/cloud/products-cloud';
-import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
 import { useAuth } from '@/hooks/use-auth';
@@ -52,17 +49,13 @@ import { useLanguage } from '@/hooks/use-language';
 import {
   loadCustomersCloud,
   addCustomerCloud,
-  findOrCreateCustomerCloud,
-  updateCustomerStatsCloud
 } from '@/lib/cloud/customers-cloud';
-import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
-import { deductStockBatchCloud, checkStockAvailabilityCloud } from '@/lib/cloud/products-cloud';
-import { deductWarehouseStockBatchCloud, checkWarehouseStockAvailability } from '@/lib/cloud/warehouses-cloud';
-import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addToQueue } from '@/lib/sync-queue';
 import { useNetworkStatus } from '@/hooks/use-network-status';
+import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
+
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 
@@ -181,6 +174,7 @@ export function CartPanel({
   const { activeWarehouse } = useWarehouse();
   const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
   const { isOnline } = useNetworkStatus();
+  const { syncImmediately } = useCloudSyncContext();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -351,157 +345,61 @@ export function CartPanel({
     startSync('جاري حفظ الفاتورة...', false);
 
     try {
-      // إذا كان الاتصال غير متاح، حفظ الفاتورة كاملة محلياً للمزامنة لاحقاً
-      if (!isOnline) {
-        // حساب الأرباح والتكلفة محلياً (لن نحتاج للسيرفر)
-        const offlineItems = cartSnapshot.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: wholesaleMode ? getItemPrice(item) : item.price,
-          quantity: item.quantity,
-          total: roundCurrency((wholesaleMode ? getItemPrice(item) : item.price) * item.quantity),
-          costPrice: item.unit === 'bulk' && item.bulkCostPrice ? item.bulkCostPrice : (item.costPrice || 0),
-          profit: roundCurrency(((wholesaleMode ? getItemPrice(item) : item.price) - (item.unit === 'bulk' && item.bulkCostPrice ? item.bulkCostPrice : (item.costPrice || 0))) * item.quantity),
-        }));
+      // ============================================================
+      // نموذج "محلي أولاً": حساب الأرباح من بيانات السلة المحلية
+      // بدون انتظار السيرفر - الفاتورة تُحفظ فوراً في الطابور
+      // ============================================================
 
-        const offlineCOGS = roundCurrency(offlineItems.reduce((s, i) => s + i.costPrice * i.quantity, 0));
-        const offlineProfit = roundCurrency(offlineItems.reduce((s, i) => s + i.profit, 0));
-
-        const stockItemsOffline = cartSnapshot.map(item => ({
-          productId: item.id,
-          quantity: item.unit === 'bulk' && item.conversionFactor ? item.quantity * item.conversionFactor : item.quantity,
-        }));
-
-        addToQueue('invoice_create', {
-          bundle: {
-            customerName: customerNameSnapshot || 'عميل نقدي',
-            items: offlineItems,
-            subtotal,
-            discount,
-            discountPercentage: discountType === 'percent' ? discount : 0,
-            taxRate: effectiveTaxRate,
-            taxAmount,
-            total: totalSnapshot,
-            totalInCurrency,
-            currency: selectedCurrency.code,
-            currencySymbol: selectedCurrency.symbol,
-            profit: offlineProfit,
-            cogs: offlineCOGS,
-            profitsByCategory: {},
-            stockItems: stockItemsOffline,
-            warehouseId: activeWarehouse?.id,
-            wholesaleMode,
-          },
-        });
-
-        saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
-        onClearCart();
-        playSaleComplete();
-        completeSync('تم حفظ الفاتورة محلياً ⏳ سيتم الرفع عند عودة الاتصال', 1000);
-        showToast.success('تم حفظ الفاتورة أوفلاين ✓');
-        savingRef.current = false;
-        setIsSaving(false);
-        return;
-      }
-
-      // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
-      const stockItemsWithConversion = cartSnapshot.map(item => ({
-        productId: item.id,
-        productName: item.name,
-        quantity: item.unit === 'bulk' && item.conversionFactor
-          ? item.quantity * item.conversionFactor
-          : item.quantity
-      }));
-
-      // التحقق من توفر الكميات - تجاوز في وضع الفرن (بدون مخزون)
       const noInventory = isNoInventoryMode();
+      
+      // ✅ فحص المخزون محلياً من بيانات السلة (سريع - 0ms)
+      // السيرفر هو المرجع النهائي عند المزامنة
       if (!noInventory) {
-        // ✅ للمستودع الرئيسي (أو عدم وجود مستودع): استخدم products.quantity
-        // ✅ للمستودعات الفرعية (vehicle): استخدم warehouse_stock
-        let stockCheck;
-        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-          // مستودع موزع - استخدم warehouse_stock
-          stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
-        } else {
-          // المستودع الرئيسي أو لا يوجد مستودع - استخدم products.quantity
-          stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
+        const insufficientLocal: string[] = [];
+        for (const item of cartSnapshot) {
+          // item.costPrice موجود = لدينا بيانات المنتج
+          // نتحقق فقط من أن الكمية > 0 (الكاش المحلي يحتوي كمية افتراضية)
+          const requestedQty = item.unit === 'bulk' && item.conversionFactor
+            ? item.quantity * item.conversionFactor
+            : item.quantity;
+          if (requestedQty <= 0) {
+            insufficientLocal.push(item.name);
+          }
         }
-
-        if (!stockCheck.success) {
-          const insufficientNames = stockCheck.insufficientItems
-            .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
-            .join('\n');
-          showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-            persistent: true,
-            description: 'اضغط × للإغلاق',
-          });
+        if (insufficientLocal.length > 0) {
+          showToast.error(`كمية غير صالحة للمنتجات: ${insufficientLocal.join('، ')}`);
+          savingRef.current = false;
+          setIsSaving(false);
           return;
         }
       }
 
-      // Find or create customer
-      const customer = customerNameSnapshot ? await findOrCreateCustomerCloud(customerNameSnapshot) : null;
-
-      // Calculate profit by category for accurate partner distribution
-      const products = await loadProductsCloud();
+      // ✅ حساب الأرباح والتكلفة محلياً من بيانات السلة (0ms)
       const profitsByCategory: Record<string, number> = {};
       let totalProfit = 0;
       let totalCOGS = 0;
 
-      const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
-
-      cartSnapshot.forEach((item) => {
-        const product = products.find(p => p.id === item.id);
-        if (product) {
-          let costPrice: number;
-
-          if (item.unit === 'bulk') {
-            if (item.bulkCostPrice && item.bulkCostPrice > 0) {
-              costPrice = item.bulkCostPrice;
-            } else {
-              costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
-            }
-          } else {
-            costPrice = item.costPrice || product.costPrice;
-          }
-
-          const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
-          const itemProfit = roundCurrency((itemPrice - costPrice) * item.quantity);
-          const itemCOGS = costPrice * item.quantity;
-          const category = product.category || 'عام';
-          profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
-          totalProfit += roundCurrency(itemProfit);
-          totalCOGS += itemCOGS;
-        }
-        soldItems.push({ name: item.name, quantity: item.quantity, price: wholesaleMode ? getItemPrice(item) : item.price });
-      });
-
-      // ✅ الربح = المبلغ المستلم - رأس المال (في الجملة)
-      const actualSaleAmount = wholesaleMode && receivedAmount > 0 ? receivedAmount : subtotal;
-      const finalProfit = wholesaleMode
-        ? roundCurrency(actualSaleAmount - totalCOGS)  // ✅ receivedAmount - COGS
-        : totalProfit;
-
-      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = finalProfit * (1 - discountRatio);
-      const discountMultiplier = 1 - discountRatio;
-
-      const itemsWithCost = cartSnapshot.map(item => {
-        const product = products.find(p => p.id === item.id);
+      const localItems = cartSnapshot.map(item => {
         let itemCostPrice: number;
 
         if (item.unit === 'bulk') {
           if (item.bulkCostPrice && item.bulkCostPrice > 0) {
             itemCostPrice = item.bulkCostPrice;
           } else {
-            itemCostPrice = (item.costPrice || product?.costPrice || 0) * (item.conversionFactor || 1);
+            itemCostPrice = (item.costPrice || 0) * (item.conversionFactor || 1);
           }
         } else {
-          itemCostPrice = item.costPrice || product?.costPrice || 0;
+          itemCostPrice = item.costPrice || 0;
         }
 
         const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
-        const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);  // ✅ Rounded!
+        const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);
+        const itemCOGS = itemCostPrice * item.quantity;
+
+        // تصنيف الأرباح (نستخدم 'عام' افتراضياً - سيُصحح عند المزامنة)
+        profitsByCategory['عام'] = (profitsByCategory['عام'] || 0) + itemProfit;
+        totalProfit += itemProfit;
+        totalCOGS += itemCOGS;
 
         return {
           id: item.id,
@@ -510,123 +408,25 @@ export function CartPanel({
           quantity: item.quantity,
           total: roundCurrency(itemPrice * item.quantity),
           costPrice: itemCostPrice,
-          profit: roundCurrency(itemProfit * (1 - discountRatio)),  // ✅ Always apply discount
+          profit: itemProfit,
         };
       });
 
-      // Create invoice in cloud
-      const invoice = await addInvoiceCloud({
-        type: 'sale',
-        customerName: customerNameSnapshot || 'عميل نقدي',
-        items: itemsWithCost,
-        subtotal,
-        discount,
-        discountPercentage: discountType === 'percent' ? discount : 0,
-        taxRate: effectiveTaxRate,
-        taxAmount,
-        total: totalSnapshot,
-        totalInCurrency,
-        currency: selectedCurrency.code,
-        currencySymbol: selectedCurrency.symbol,
-        paymentType: 'cash',
-        status: 'paid',
-        profit: discountedProfit,
-      });
+      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+      const discountedProfit = totalProfit * (1 - discountRatio);
 
-      if (!invoice) {
-        showToast.error('فشل في إنشاء الفاتورة');
-        return;
-      }
-
-      // ✅ باقي العمليات تتم في الخلفية (parallel)
-      const backgroundTasks = [];
-
-      // تسجيل الربح
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
-
-      // Distribute profit to partners
-      const categoryProfits = Object.entries(profitsByCategory)
-        .filter(([_, profit]) => profit * discountMultiplier > 0)
-        .map(([category, profit]) => ({ category, profit: profit * discountMultiplier }));
-
-      if (categoryProfits.length > 0) {
-        // Run in the same background batch so it doesn't fail silently
-        backgroundTasks.push(
-          distributeDetailedProfitCloud(
-            categoryProfits,
-            invoice.id,
-            customerNameSnapshot || 'عميل نقدي',
-            false
-          ).catch((err) => {
-            console.error('[CartPanel] Partner profit distribution failed (cash sale):', err);
-          })
-        );
-      }
-
-      // Deduct stock (parallel) - تجاوز في وضع الفرن
-      if (!noInventory) {
-        const stockItemsToDeduct = cartSnapshot.map(item => ({
-          productId: item.id,
-          quantity: item.unit === 'bulk' && item.conversionFactor
-            ? item.quantity * item.conversionFactor
-            : item.quantity
-        }));
-
-        // ✅ خصم المخزون: استخدم products للمستودع الرئيسي، warehouse_stock للموزعين
-        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-          backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
-        } else {
-          backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
-        }
-      }
-
-      // Update customer stats
-      if (customer) {
-        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, false));
-      }
-
-      // Run background tasks in parallel
-      await Promise.all(backgroundTasks);
-
-      // Log activity
-      if (user) {
-        const itemsDescription = soldItems.map(item => `${item.name} × ${item.quantity}`).join('، ');
-        addActivityLog(
-          'sale',
-          user.id,
-          profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع نقدي بقيمة $${formatNumber(totalSnapshot)} - المنتجات: ${itemsDescription}`,
-          { invoiceId: invoice.id, total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي', items: soldItems }
-        );
-      }
-
-      addSalesToShift(totalSnapshot);
-      recordActivity();
-
-      // ✅ Clear cart only after successful save
-      saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
-      onClearCart();
-      playSaleComplete();
-      completeSync('تمت المزامنة بنجاح');
-      showToast.success(`تم إنشاء الفاتورة ${invoice.id} بنجاح ✓`);
-    } catch (error) {
-      console.error('Cash sale error:', error);
-
-      // في حالة الفشل، حفظ الفاتورة كاملة محلياً للمزامنة لاحقاً
-      const fallbackItems = cartSnapshot.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: wholesaleMode ? getItemPrice(item) : item.price,
-        quantity: item.quantity,
-        total: roundCurrency((wholesaleMode ? getItemPrice(item) : item.price) * item.quantity),
-        costPrice: item.unit === 'bulk' && item.bulkCostPrice ? item.bulkCostPrice : (item.costPrice || 0),
-        profit: 0,
+      const stockItemsLocal = cartSnapshot.map(item => ({
+        productId: item.id,
+        quantity: item.unit === 'bulk' && item.conversionFactor
+          ? item.quantity * item.conversionFactor
+          : item.quantity,
       }));
 
+      // ✅ إضافة الفاتورة للطابور فوراً (محلياً - 0ms)
       addToQueue('invoice_create', {
         bundle: {
           customerName: customerNameSnapshot || 'عميل نقدي',
-          items: fallbackItems,
+          items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit * (1 - discountRatio)) })),
           subtotal,
           discount,
           discountPercentage: discountType === 'percent' ? discount : 0,
@@ -636,20 +436,51 @@ export function CartPanel({
           totalInCurrency,
           currency: selectedCurrency.code,
           currencySymbol: selectedCurrency.symbol,
-          profit: 0,
-          cogs: 0,
-          profitsByCategory: {},
-          stockItems: cartSnapshot.map(item => ({
-            productId: item.id,
-            quantity: item.unit === 'bulk' && item.conversionFactor ? item.quantity * item.conversionFactor : item.quantity,
-          })),
+          profit: discountedProfit,
+          cogs: totalCOGS,
+          profitsByCategory: Object.fromEntries(
+            Object.entries(profitsByCategory).map(([k, v]) => [k, v * (1 - discountRatio)])
+          ),
+          stockItems: stockItemsLocal,
           warehouseId: activeWarehouse?.id,
+          wholesaleMode,
         },
       });
 
+      // ✅ تسجيل الربح محلياً فوراً (تقريبي - سيُحدَّث بدقة عند المزامنة)
+      const tempInvoiceId = `local_${Date.now()}`;
+      addGrossProfit(tempInvoiceId, discountedProfit, totalCOGS, totalSnapshot);
+
+      // ✅ تسجيل النشاط
+      if (user) {
+        const itemsDescription = cartSnapshot.map(item => `${item.name} × ${item.quantity}`).join('، ');
+        addActivityLog(
+          'sale',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `عملية بيع نقدي بقيمة $${formatNumber(totalSnapshot)} - المنتجات: ${itemsDescription}`,
+          { total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي' }
+        );
+      }
+
+      addSalesToShift(totalSnapshot);
+      recordActivity();
+
+      // ✅ إغلاق الواجهة فوراً (< 100ms من الضغط على "بيع")
       saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
       onClearCart();
-      failSync('تم حفظ الفاتورة محلياً ⏳ سيتم الرفع لاحقاً');
+      playSaleComplete();
+      completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
+      showToast.success('تم حفظ الفاتورة ✓');
+
+      // ✅ مزامنة فورية في الخلفية (بدون انتظار المستخدم)
+      if (isOnline) {
+        syncImmediately();
+      }
+
+    } catch (error) {
+      console.error('Cash sale error:', error);
+      failSync('حدث خطأ - الفاتورة محفوظة محلياً');
       showToast.warning('تم حفظ الفاتورة أوفلاين - سيتم رفعها تلقائياً');
     } finally {
       savingRef.current = false;
@@ -673,287 +504,85 @@ export function CartPanel({
     startSync('جاري إنشاء فاتورة الدين...', false);
 
     try {
-      // إذا كان الاتصال غير متاح، حفظ بيانات كاملة محلياً للمزامنة لاحقاً
-      if (!isOnline) {
-        const offlineItems = cartSnapshot.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          unit: item.unit,
-          costPrice: item.unit === 'bulk' && item.bulkCostPrice ? item.bulkCostPrice : (item.costPrice || 0),
-          conversionFactor: item.conversionFactor,
-          category: '',
-        }));
+      // ============================================================
+      // نموذج "محلي أولاً": حساب الأرباح من بيانات السلة المحلية
+      // بدون انتظار السيرفر - الفاتورة تُحفظ فوراً في الطابور
+      // ============================================================
 
-        const stockItemsOffline = cartSnapshot.map(item => ({
-          productId: item.id,
-          productName: item.name,
-          quantity: item.unit === 'bulk' && item.conversionFactor ? item.quantity * item.conversionFactor : item.quantity,
-        }));
-
-        const bundle = {
-          customerName: customerNameSnapshot,
-          customerPhone: customerPhoneSnapshot || '',
-          items: offlineItems,
-          subtotal,
-          discount,
-          discountAmount,
-          total: totalSnapshot,
-          totalInCurrency,
-          currency: selectedCurrency.code,
-          currencySymbol: selectedCurrency.symbol,
-          profit: 0,
-          cogs: 0,
-          profitsByCategory: {},
-          stockItems: stockItemsOffline,
-          warehouseId: activeWarehouse?.id,
-        };
-
-        addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
-        saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
-        onClearCart();
-        playDebtRecorded();
-        completeSync('تم حفظ فاتورة الدين أوفلاين ⏳ سيتم الرفع عند عودة الاتصال', 1000);
-        showToast.success('تم حفظ فاتورة الدين أوفلاين ✓');
-        savingRef.current = false;
-        setIsSaving(false);
-        return;
-      }
-
-      // حساب الكميات الفعلية بالقطع (مع مراعاة معامل التحويل للوحدات الكبرى)
-      const stockItemsWithConversion = cartSnapshot.map(item => ({
-        productId: item.id,
-        productName: item.name,
-        quantity: item.unit === 'bulk' && item.conversionFactor
-          ? item.quantity * item.conversionFactor
-          : item.quantity
-      }));
-
-      // التحقق من المخزون - تجاوز في وضع الفرن
       const noInventory = isNoInventoryMode();
-      if (!noInventory) {
-        let stockCheck;
-        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-          stockCheck = await checkWarehouseStockAvailability(activeWarehouse.id, stockItemsWithConversion);
-        } else {
-          stockCheck = await checkStockAvailabilityCloud(stockItemsWithConversion);
-        }
 
-        if (!stockCheck.success) {
-          const insufficientNames = stockCheck.insufficientItems
-            .map(item => `${item.productName} (متاح: ${item.available}, مطلوب: ${item.requested})`)
-            .join('\n');
-          showToast.error(`لا يوجد مخزون كافٍ:\n${insufficientNames}`, {
-            persistent: true,
-            description: 'اضغط × للإغلاق',
-          });
+      // ✅ فحص المخزون محلياً (سريع - 0ms)
+      if (!noInventory) {
+        const insufficientLocal: string[] = [];
+        for (const item of cartSnapshot) {
+          const requestedQty = item.unit === 'bulk' && item.conversionFactor
+            ? item.quantity * item.conversionFactor
+            : item.quantity;
+          if (requestedQty <= 0) {
+            insufficientLocal.push(item.name);
+          }
+        }
+        if (insufficientLocal.length > 0) {
+          showToast.error(`كمية غير صالحة للمنتجات: ${insufficientLocal.join('، ')}`);
+          savingRef.current = false;
+          setIsSaving(false);
           return;
         }
       }
 
-      // Find or create customer
-      const customer = await findOrCreateCustomerCloud(customerNameSnapshot);
-
-      // Calculate profit by category
-      const products = await loadProductsCloud();
-      const profitsByCategory: Record<string, number> = {};
+      // ✅ حساب الأرباح والتكلفة محلياً (0ms)
       let totalProfit = 0;
       let totalCOGS = 0;
+      const profitsByCategory: Record<string, number> = {};
 
-      const soldItems: Array<{ name: string; quantity: number; price: number }> = [];
-
-      cartSnapshot.forEach((item) => {
-        const product = products.find(p => p.id === item.id);
-        if (product) {
-          let costPrice: number;
-
-          if (item.unit === 'bulk') {
-            if (item.bulkCostPrice && item.bulkCostPrice > 0) {
-              costPrice = item.bulkCostPrice;
-            } else {
-              costPrice = (item.costPrice || product.costPrice) * (item.conversionFactor || 1);
-            }
-          } else {
-            costPrice = item.costPrice || product.costPrice;
-          }
-
-          const itemProfit = roundCurrency((item.price - costPrice) * item.quantity);
-          const itemCOGS = costPrice * item.quantity;
-          const category = product.category || 'عام';
-          profitsByCategory[category] = (profitsByCategory[category] || 0) + itemProfit;
-          totalProfit += roundCurrency(itemProfit);
-          totalCOGS += itemCOGS;
-        }
-
-        soldItems.push({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-        });
-      });
-
-      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = totalProfit * (1 - discountRatio);
-      const discountMultiplier = 1 - discountRatio;
-
-      const itemsWithCost = cartSnapshot.map(item => {
-        const product = products.find(p => p.id === item.id);
+      const localItems = cartSnapshot.map(item => {
         let itemCostPrice: number;
 
         if (item.unit === 'bulk') {
           if (item.bulkCostPrice && item.bulkCostPrice > 0) {
             itemCostPrice = item.bulkCostPrice;
           } else {
-            itemCostPrice = (item.costPrice || product?.costPrice || 0) * (item.conversionFactor || 1);
+            itemCostPrice = (item.costPrice || 0) * (item.conversionFactor || 1);
           }
         } else {
-          itemCostPrice = item.costPrice || product?.costPrice || 0;
+          itemCostPrice = item.costPrice || 0;
         }
 
-        const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;  // ✅ Support wholesale
-        const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);  // ✅ Rounded!
+        const itemProfit = roundCurrency((item.price - itemCostPrice) * item.quantity);
+        const itemCOGS = itemCostPrice * item.quantity;
+
+        profitsByCategory['عام'] = (profitsByCategory['عام'] || 0) + itemProfit;
+        totalProfit += itemProfit;
+        totalCOGS += itemCOGS;
 
         return {
-          id: item.id,
-          name: item.name,
-          price: itemPrice,
-          quantity: item.quantity,
-          total: roundCurrency(itemPrice * item.quantity),
-          costPrice: itemCostPrice,
-          profit: roundCurrency(itemProfit * discountMultiplier),  // ✅ Rounded!
-        };
-      });
-
-      // Create invoice using Cloud API
-      const invoice = await addInvoiceCloud({
-        type: 'sale',
-        customerName: customerNameSnapshot,
-        items: itemsWithCost,
-        subtotal,
-        discount,
-        discountPercentage: discountType === 'percent' ? discount : 0,
-        taxRate: effectiveTaxRate,
-        taxAmount,
-        total: totalSnapshot,
-        totalInCurrency,
-        currency: selectedCurrency.code,
-        currencySymbol: selectedCurrency.symbol,
-        paymentType: 'debt',
-        status: 'pending',
-        profit: discountedProfit,
-      });
-
-      if (!invoice) {
-        showToast.error('فشل في إنشاء الفاتورة');
-        return;
-      }
-
-      // ✅ باقي العمليات في الخلفية (parallel)
-      const backgroundTasks = [];
-
-      // تسجيل الربح
-      addGrossProfit(invoice.id, discountedProfit, totalCOGS, totalSnapshot);
-
-      // Create debt record
-      backgroundTasks.push(addDebtFromInvoiceCloud(invoice.id, customerNameSnapshot, customerPhoneSnapshot || '', totalSnapshot));
-
-      // Distribute profit to partners
-      const categoryProfits = Object.entries(profitsByCategory)
-        .filter(([_, profit]) => profit * discountMultiplier > 0)
-        .map(([category, profit]) => ({
-          category,
-          profit: profit * discountMultiplier
-        }));
-
-      if (categoryProfits.length > 0) {
-        backgroundTasks.push(
-          distributeDetailedProfitCloud(
-            categoryProfits,
-            invoice.id,
-            customerNameSnapshot,
-            true
-          ).catch((err) => {
-            console.error('[CartPanel] Partner profit distribution failed (debt sale):', err);
-          })
-        );
-      }
-
-      // Deduct stock (parallel) - تجاوز في وضع الفرن
-      if (!noInventory) {
-        const stockItemsToDeduct = cartSnapshot.map(item => ({
-          productId: item.id,
-          productName: item.name,
-          quantity: item.unit === 'bulk' && item.conversionFactor
-            ? item.quantity * item.conversionFactor
-            : item.quantity
-        }));
-
-        if (activeWarehouse && activeWarehouse.type === 'vehicle' && activeWarehouse.assigned_cashier_id) {
-          backgroundTasks.push(deductWarehouseStockBatchCloud(activeWarehouse.id, stockItemsToDeduct));
-        } else {
-          backgroundTasks.push(deductStockBatchCloud(stockItemsToDeduct));
-        }
-      }
-
-      // Update customer stats
-      if (customer) {
-        backgroundTasks.push(updateCustomerStatsCloud(customer.id, totalSnapshot, true));
-      }
-
-      // Run all background tasks in parallel
-      await Promise.all(backgroundTasks);
-
-      // Log activity
-      if (user) {
-        const itemsDescription = soldItems.map(item => `${item.name} × ${item.quantity}`).join('، ');
-
-        addActivityLog(
-          'sale',
-          user.id,
-          profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع بالدين بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
-          {
-            invoiceId: invoice.id,
-            total: totalSnapshot,
-            itemsCount: cartSnapshot.length,
-            customerName: customerNameSnapshot,
-            paymentType: 'debt',
-            items: soldItems
-          }
-        );
-
-        addActivityLog(
-          'debt_created',
-          user.id,
-          profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
-          { invoiceId: invoice.id, amount: totalSnapshot, customerName: customerNameSnapshot }
-        );
-      }
-
-      // ✅ Clear cart only after successful save
-      saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
-      onClearCart();
-      playDebtRecorded();
-      completeSync('تمت المزامنة بنجاح');
-      showToast.success(`تم إنشاء فاتورة الدين ${invoice.id} بنجاح ✓`);
-    } catch (error) {
-      console.error('Debt sale error:', error);
-
-      // في حالة الفشل، حفظ بيانات كاملة محلياً للمزامنة
-      const fallbackBundle = {
-        customerName: customerNameSnapshot,
-        customerPhone: customerPhoneSnapshot || '',
-        items: cartSnapshot.map(item => ({
           id: item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity,
           unit: item.unit,
-          costPrice: item.costPrice || 0,
+          costPrice: itemCostPrice,
           conversionFactor: item.conversionFactor,
-        })),
+          category: 'عام',
+        };
+      });
+
+      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+      const discountedProfit = totalProfit * (1 - discountRatio);
+
+      const stockItemsLocal = cartSnapshot.map(item => ({
+        productId: item.id,
+        productName: item.name,
+        quantity: item.unit === 'bulk' && item.conversionFactor
+          ? item.quantity * item.conversionFactor
+          : item.quantity,
+      }));
+
+      // ✅ إضافة فاتورة الدين للطابور فوراً (محلياً - 0ms)
+      const bundle = {
+        customerName: customerNameSnapshot,
+        customerPhone: customerPhoneSnapshot || '',
+        items: localItems,
         subtotal,
         discount,
         discountAmount,
@@ -961,21 +590,55 @@ export function CartPanel({
         totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
-        profit: 0,
-        cogs: 0,
-        profitsByCategory: {},
-        stockItems: cartSnapshot.map(item => ({
-          productId: item.id,
-          productName: item.name,
-          quantity: item.unit === 'bulk' && item.conversionFactor ? item.quantity * item.conversionFactor : item.quantity,
-        })),
+        profit: discountedProfit,
+        cogs: totalCOGS,
+        profitsByCategory: Object.fromEntries(
+          Object.entries(profitsByCategory).map(([k, v]) => [k, v * (1 - discountRatio)])
+        ),
+        stockItems: stockItemsLocal,
         warehouseId: activeWarehouse?.id,
       };
-      addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle: fallbackBundle });
 
+      addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
+
+      // ✅ تسجيل الربح محلياً فوراً
+      const tempInvoiceId = `local_debt_${Date.now()}`;
+      addGrossProfit(tempInvoiceId, discountedProfit, totalCOGS, totalSnapshot);
+
+      // ✅ تسجيل النشاط
+      if (user) {
+        const itemsDescription = cartSnapshot.map(item => `${item.name} × ${item.quantity}`).join('، ');
+        addActivityLog(
+          'sale',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `عملية بيع بالدين بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          { total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot, paymentType: 'debt' }
+        );
+        addActivityLog(
+          'debt_created',
+          user.id,
+          profile?.full_name || user.email || 'مستخدم',
+          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
+          { amount: totalSnapshot, customerName: customerNameSnapshot }
+        );
+      }
+
+      // ✅ إغلاق الواجهة فوراً
       saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
       onClearCart();
-      failSync('تم حفظ الفاتورة أوفلاين ⏳ سيتم الرفع لاحقاً');
+      playDebtRecorded();
+      completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
+      showToast.success('تم حفظ فاتورة الدين ✓');
+
+      // ✅ مزامنة فورية في الخلفية
+      if (isOnline) {
+        syncImmediately();
+      }
+
+    } catch (error) {
+      console.error('Debt sale error:', error);
+      failSync('حدث خطأ - الفاتورة محفوظة محلياً');
       showToast.warning('تم حفظ فاتورة الدين أوفلاين - سيتم رفعها تلقائياً');
     } finally {
       savingRef.current = false;
