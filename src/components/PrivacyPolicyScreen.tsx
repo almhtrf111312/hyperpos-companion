@@ -140,18 +140,19 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
     }
   }, []);
 
+  // Always use white/blue theme regardless of user's dark/light preference
   return (
     <div
-      className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-4"
-      style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4"
+      style={{ backgroundColor: '#ffffff', color: '#1a1a2e' }}
     >
       <div className="w-full max-w-2xl flex flex-col items-center gap-4 h-full max-h-[100dvh] py-4">
         {/* Header */}
         <div className="flex-shrink-0 flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Shield className="w-7 h-7 text-primary" />
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#2563eb1a' }}>
+            <Shield className="w-7 h-7" style={{ color: '#2563eb' }} />
           </div>
-          <h1 className="text-xl font-bold text-foreground text-center">
+          <h1 className="text-xl font-bold text-center" style={{ color: '#1e3a8a' }}>
             {t('privacy.title')}
           </h1>
         </div>
@@ -160,17 +161,21 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 w-full overflow-y-auto border border-border rounded-xl p-4"
+          className="flex-1 min-h-0 w-full overflow-y-auto rounded-xl p-4"
           dir={isRTL ? 'rtl' : 'ltr'}
+          style={{ border: '1px solid #bfdbfe', backgroundColor: '#f8faff' }}
         >
-          <div className={`prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`}>
+          <div
+            className={`prose prose-sm max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`}
+            style={{ color: '#1e3a8a' }}
+          >
             {isRTLLang ? <ArabicTerms /> : <EnglishTerms />}
           </div>
         </div>
 
         {/* Scroll hint */}
         {!scrolledToBottom && (
-          <p className="text-xs text-muted-foreground animate-pulse flex-shrink-0">
+          <p className="text-xs animate-pulse flex-shrink-0" style={{ color: '#3b82f6' }}>
             {isRTLLang ? '⬇ قم بالتمرير للأسفل لقراءة جميع الشروط' : '⬇ Scroll down to read all terms'}
           </p>
         )}
@@ -183,25 +188,27 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
             onCheckedChange={(checked) => setAgreed(checked === true)}
             disabled={!scrolledToBottom}
             className={!scrolledToBottom ? 'opacity-40' : ''}
+            style={{ accentColor: '#2563eb' }}
           />
           <Label
             htmlFor="terms-agree"
-            className={`cursor-pointer text-sm ${!scrolledToBottom ? 'opacity-40' : ''}`}
+            className={`cursor-pointer text-sm font-medium ${!scrolledToBottom ? 'opacity-40' : ''}`}
+            style={{ color: '#1e3a8a' }}
           >
             {t('privacy.agreeCheckbox')}
           </Label>
         </div>
 
         {/* Continue button */}
-        <Button
-          size="lg"
-          className="w-full gap-2 flex-shrink-0 transition-all duration-300"
+        <button
+          className="w-full gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-6 rounded-xl font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ backgroundColor: agreed ? '#2563eb' : '#93c5fd', fontSize: '1rem' }}
           disabled={!agreed}
           onClick={onAccept}
         >
           <Check className="w-5 h-5" />
           {t('privacy.continue')}
-        </Button>
+        </button>
       </div>
     </div>
   );
