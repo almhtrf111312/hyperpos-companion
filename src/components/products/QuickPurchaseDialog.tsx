@@ -5,12 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from 'sonner';
-import { ShoppingBag, Camera, Image as ImageIcon, WifiOff } from 'lucide-react';
+import { ShoppingBag, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { uploadProductImage } from '@/lib/image-upload';
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { checkRealInternetAccess } from '@/hooks/use-network-status';
+import { useImageUpload } from '@/hooks/use-image-upload';
 
 interface QuickPurchaseDialogProps {
   open: boolean;
@@ -25,35 +25,17 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [costPrice, setCostPrice] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const { imageValue: imageUrl, imagePreview, uploadStatus: imgStatus, handleBase64Image, handleFileInput, clearImage } = useImageUpload();
 
   useEffect(() => {
     if (!open) {
       setProductName('');
       setQuantity('1');
       setCostPrice('');
-      setImageUrl('');
+      clearImage();
     }
   }, [open]);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingImage(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const url = await uploadProductImage(base64);
-        if (url) setImageUrl(url);
-        setUploadingImage(false);
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      setUploadingImage(false);
-    }
-  };
 
   const handleCameraCapture = async () => {
     try {
@@ -64,11 +46,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
         source: 'CAMERA' as any,
       });
       if (photo?.base64String) {
-        setUploadingImage(true);
-        const base64 = `data:image/jpeg;base64,${photo.base64String}`;
-        const url = await uploadProductImage(base64);
-        if (url) setImageUrl(url);
-        setUploadingImage(false);
+        handleBase64Image(`data:image/jpeg;base64,${photo.base64String}`);
       }
     } catch {
       // Camera not available
@@ -221,14 +199,19 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           {/* Image Upload */}
           <div className="space-y-1.5">
             <Label className="text-sm">{t('purchases.receiptPhoto')}</Label>
-            {imageUrl ? (
+            {imagePreview ? (
               <div className="relative">
-                <img src={imageUrl} alt="Receipt" className="w-full h-32 object-cover rounded-lg border" />
+                <img src={imagePreview} alt="Receipt" className="w-full h-32 object-cover rounded-lg border" />
+                {imgStatus === 'syncing' && (
+                  <div className="absolute top-1 left-1 bg-black/60 rounded-full p-1">
+                    <Loader2 className="w-3 h-3 text-white animate-spin" />
+                  </div>
+                )}
                 <Button
                   size="sm"
                   variant="destructive"
                   className="absolute top-1 right-1 h-6 text-xs px-2"
-                  onClick={() => setImageUrl('')}
+                  onClick={clearImage}
                 >
                   {t('common.delete')}
                 </Button>
@@ -241,7 +224,6 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                   size="sm"
                   className="flex-1"
                   onClick={handleCameraCapture}
-                  disabled={uploadingImage}
                 >
                   <Camera className="w-4 h-4 ml-1" />
                   {t('purchases.camera')}
@@ -252,7 +234,6 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    disabled={uploadingImage}
                     asChild
                   >
                     <span>
@@ -264,13 +245,10 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handleImageUpload}
+                    onChange={handleFileInput}
                   />
                 </label>
               </div>
-            )}
-            {uploadingImage && (
-              <p className="text-xs text-muted-foreground text-center">{t('common.loading')}...</p>
             )}
           </div>
 
@@ -278,7 +256,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button className="flex-1" onClick={handleSubmit} disabled={loading || uploadingImage}>
+            <Button className="flex-1" onClick={handleSubmit} disabled={loading}>
               {loading ? t('common.loading') : t('common.save')}
             </Button>
           </div>

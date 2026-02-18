@@ -4,12 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/hooks/use-language';
-import { Plus, Camera, ScanLine, Image as ImageIcon } from 'lucide-react';
+import { Plus, Camera, ScanLine, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getEffectiveFieldsConfig } from '@/lib/product-fields-config';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
-import { uploadProductImage } from '@/lib/image-upload';
+import { useImageUpload } from '@/hooks/use-image-upload';
 
 interface PurchaseInvoiceItemFormProps {
   onAdd: (item: {
@@ -92,9 +92,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   const [bulkCostPrice, setBulkCostPrice] = useState('');
   const [bulkSalePrice, setBulkSalePrice] = useState('');
 
-  // Image
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
+  // Image — Offline-First: show immediately, upload in background
+  const { imageValue: imageUrl, imagePreview, uploadStatus: imgStatus, handleBase64Image, handleFileInput, clearImage } = useImageUpload();
 
   // Barcode scanner
   const [showScanner, setShowScanner] = useState(false);
@@ -155,25 +154,6 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setShowScanner(false);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingImage(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const url = await uploadProductImage(base64);
-        if (url) setImageUrl(url);
-        setUploadingImage(false);
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      setUploadingImage(false);
-    }
-  };
-
   const handleCameraCapture = async () => {
     try {
       const { Camera: CapCamera } = await import('@capacitor/camera');
@@ -183,11 +163,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         source: 'CAMERA' as any,
       });
       if (photo?.base64String) {
-        setUploadingImage(true);
-        const base64 = `data:image/jpeg;base64,${photo.base64String}`;
-        const url = await uploadProductImage(base64);
-        if (url) setImageUrl(url);
-        setUploadingImage(false);
+        handleBase64Image(`data:image/jpeg;base64,${photo.base64String}`);
       }
     } catch {
       // Camera not available or cancelled
@@ -249,7 +225,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setAuthor('');
     setPublisher('');
     setMinStockLevel('');
-    setImageUrl('');
+    clearImage();
     setTrackByUnit('piece');
     setBulkUnit('كرتونة');
     setSmallUnit('قطعة');
@@ -607,15 +583,22 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       <div className="space-y-1.5">
         <Label className="text-sm">صورة المنتج</Label>
         <div className="flex gap-2">
-          {imageUrl && (
-            <img src={imageUrl} alt="Product" className="w-12 h-12 rounded-lg object-cover border" />
+          {imagePreview && (
+            <div className="relative">
+              <img src={imagePreview} alt="Product" className="w-12 h-12 rounded-lg object-cover border" />
+              {imgStatus === 'syncing' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
+                  <Loader2 className="w-3 h-3 text-white animate-spin" />
+                </div>
+              )}
+            </div>
           )}
           <label className="flex-1">
             <div className="flex items-center gap-2 px-3 py-2 border border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors text-sm text-muted-foreground">
               <ImageIcon className="w-4 h-4" />
-              <span>{uploadingImage ? 'جاري الرفع...' : 'اختر صورة'}</span>
+              <span>{imgStatus === 'syncing' ? 'جاري المزامنة...' : 'اختر صورة'}</span>
             </div>
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
           </label>
           <Button
             type="button"
@@ -623,7 +606,6 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
             size="icon"
             className="h-9 w-9 flex-shrink-0"
             onClick={handleCameraCapture}
-            disabled={uploadingImage}
             title="التقاط صورة"
           >
             <Camera className="w-4 h-4" />

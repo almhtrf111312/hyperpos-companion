@@ -77,7 +77,7 @@ import {
   loadWarehousesCloud,
   Warehouse
 } from '@/lib/cloud/warehouses-cloud';
-import { uploadProductImage } from '@/lib/image-upload';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
@@ -249,30 +249,23 @@ export default function Products() {
    * Handle Photo Restoration from Android Process Death
    */
   const handlePhotoRestored = useCallback(async (base64Image: string) => {
-    // 1. Persist image immediately so form-restore useEffect can pick it up even if it runs later
+    // 1. Persist image immediately
     localStorage.setItem(RESTORED_IMAGE_KEY, base64Image);
-
-    // 2. Show preview and update formData right away
+    // 2. Show preview right away — Offline-First
     setImagePreviewBase64(base64Image);
     setFormData(prev => ({ ...prev, image: base64Image }));
-
-    // 3. Upload in background
-    const toastId = toast.loading('جاري استعادة الصورة...');
+    // 3. Upload silently in background
     try {
+      const { uploadProductImage } = await import('@/lib/image-upload');
       const imageUrl = await uploadProductImage(base64Image);
-      toast.dismiss(toastId);
       if (imageUrl) {
         setFormData(prev => ({ ...prev, image: imageUrl }));
-        localStorage.removeItem(RESTORED_IMAGE_KEY); // clean up
-        toast.success(t('products.imageRestored'));
-      } else {
-        toast.error(t('products.imageRestoreFailed'));
+        localStorage.removeItem(RESTORED_IMAGE_KEY);
       }
-    } catch (e) {
-      toast.dismiss(toastId);
-      toast.error(t('products.imageRestoreFailed'));
+    } catch {
+      // keep base64 as fallback
     }
-  }, [t]);
+  }, []);
 
   // Use Capacitor Camera hook with restoration callback
   const { takePhoto, pickFromGallery, isLoading: isCameraLoading, showInlineCamera, onInlineCaptured, closeInlineCamera } = useCamera({
@@ -444,17 +437,14 @@ export default function Products() {
     try {
       const base64Image = await pickFromGallery();
       if (base64Image) {
-        // Show preview immediately
+        // Show preview immediately — Offline-First
         setImagePreviewBase64(base64Image);
-        const toastId = toast.loading('جاري رفع الصورة...');
+        setFormData(prev => ({ ...prev, image: base64Image }));
+        // Upload in background silently
+        const { uploadProductImage } = await import('@/lib/image-upload');
         const imageUrl = await uploadProductImage(base64Image);
-        toast.dismiss(toastId);
         if (imageUrl) {
           setFormData(prev => ({ ...prev, image: imageUrl }));
-          toast.success(t('products.imageUploaded'));
-        } else {
-          setImagePreviewBase64('');
-          toast.error(t('products.imageUploadFailed'));
         }
       }
     } catch (err) {
@@ -467,17 +457,14 @@ export default function Products() {
     try {
       const base64Image = await takePhoto();
       if (base64Image) {
-        // Show preview immediately
+        // Show preview immediately — Offline-First
         setImagePreviewBase64(base64Image);
-        const toastId = toast.loading('جاري رفع الصورة...');
+        setFormData(prev => ({ ...prev, image: base64Image }));
+        // Upload in background silently
+        const { uploadProductImage } = await import('@/lib/image-upload');
         const imageUrl = await uploadProductImage(base64Image);
-        toast.dismiss(toastId);
         if (imageUrl) {
           setFormData(prev => ({ ...prev, image: imageUrl }));
-          toast.success(t('products.imageUploaded'));
-        } else {
-          setImagePreviewBase64('');
-          toast.error(t('products.imageUploadFailed'));
         }
       }
     } catch (err) {
@@ -488,18 +475,16 @@ export default function Products() {
   // Handle inline camera capture (fallback when native camera fails)
   const handleInlineCaptured = useCallback(async (base64Image: string) => {
     onInlineCaptured(base64Image);
+    // Show preview immediately — Offline-First
     setImagePreviewBase64(base64Image);
-    const toastId = toast.loading('جاري رفع الصورة...');
+    setFormData(prev => ({ ...prev, image: base64Image }));
+    // Upload in background silently
+    const { uploadProductImage } = await import('@/lib/image-upload');
     const imageUrl = await uploadProductImage(base64Image);
-    toast.dismiss(toastId);
     if (imageUrl) {
       setFormData(prev => ({ ...prev, image: imageUrl }));
-      toast.success(t('products.imageUploaded'));
-    } else {
-      setImagePreviewBase64('');
-      toast.error(t('products.imageUploadFailed'));
     }
-  }, [onInlineCaptured, t]);
+  }, [onInlineCaptured]);
 
   // Reload categories from cloud
   const reloadCategories = useCallback(async () => {
