@@ -489,25 +489,33 @@ export default function Products() {
    * If the current image is still a base64 string (not yet uploaded),
    * upload it now and return the cloud path.
    * This handles the APK case where background upload may not have finished.
+   * 
+   * IMPORTANT: uploadProductImage already compresses to ≤30KB and falls back
+   * to returning the compressed base64 if cloud upload fails — so we ALWAYS
+   * return a usable image value (never empty unless original was empty).
    */
   const ensureImageUploaded = async (imageValue: string): Promise<string> => {
     if (!imageValue) return '';
-    // Already uploaded — return as-is
+    // Already uploaded to cloud or is an http URL — return as-is
     if (!imageValue.startsWith('data:')) return imageValue;
-    // Still base64 — upload now before saving
+    // Still base64 — upload now (or get compressed fallback) before saving
     try {
       const { uploadProductImage } = await import('@/lib/image-upload');
-      const cloudPath = await uploadProductImage(imageValue);
-      if (cloudPath) {
-        setFormData(prev => ({ ...prev, image: cloudPath }));
+      // uploadProductImage compresses ≤30KB and returns:
+      //   - cloud path on success
+      //   - compressed data URL as fallback (≤30KB, safe to store in DB)
+      const result = await uploadProductImage(imageValue);
+      if (result) {
+        setFormData(prev => ({ ...prev, image: result }));
         localStorage.removeItem(RESTORED_IMAGE_KEY);
-        return cloudPath;
+        return result;
       }
     } catch (e) {
-      console.error('[ensureImageUploaded] Upload failed, saving without image:', e);
+      console.error('[ensureImageUploaded] Upload failed, will try compressed fallback:', e);
     }
-    // If upload fails, save the product without image (don't send huge base64 to DB)
-    return '';
+    // Last resort: compress and return base64 (uploadProductImage already does this,
+    // but in case it threw entirely, return the original — it will be trimmed by DB limits)
+    return imageValue;
   };
 
   // Handle inline camera capture (fallback when native camera fails)

@@ -112,12 +112,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const [storeType, setStoreType] = useState(getCurrentStoreType);
 
-  // Listen for store type changes
+  // Listen for store type changes (emitted from Settings page or cloud sync)
   useEffect(() => {
-    const unsub = subscribeToEvent(EVENTS.STORE_TYPE_CHANGED, () => {
-      setStoreType(getCurrentStoreType());
-    });
-    return unsub;
+    const refreshStoreType = () => setStoreType(getCurrentStoreType());
+
+    // STORE_TYPE_CHANGED: emitted when user changes store type in Settings
+    const unsubStoreType = subscribeToEvent(EVENTS.STORE_TYPE_CHANGED, refreshStoreType);
+    // SETTINGS_UPDATED: emitted after cloud sync pulls fresh settings — must also refresh
+    const unsubSettings = subscribeToEvent(EVENTS.SETTINGS_UPDATED, refreshStoreType);
+
+    return () => {
+      unsubStoreType();
+      unsubSettings();
+    };
   }, []);
 
   const tDynamic = useCallback((key: TerminologyKey) => {
