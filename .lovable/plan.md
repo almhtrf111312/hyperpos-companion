@@ -1,96 +1,170 @@
 
-# تشخيص وإصلاح جذري لمشكلة التباين في الثيم الفاتح
+# إصلاح مشكلة Android Process Death عند التقاط الصور
 
-## السبب الجذري المكتشف
+## تشخيص المشكلة الجذرية
 
-بعد تحليل شامل للكود، تم اكتشاف ان المشكلة ليست في قواعد CSS، بل في طريقة تطبيق الثيم في `src/hooks/use-theme.tsx`.
+بعد مراجعة شاملة للكود، وجدت **ثلاث مشاكل متداخلة** تسبب المشكلة معاً:
 
-### المشكلة الحقيقية:
+---
 
-في الدالة `applyTheme()` (السطر 189-194):
+### المشكلة الأولى: إعادة تسجيل الـ Listener في كل render
+
+في `src/hooks/use-camera.tsx` السطر 307:
+
 ```text
-if (mode === 'dark') {
-  root.classList.add('dark');
-} else {
-  root.classList.remove('dark');  // يحذف فقط dark دون إضافة light !
-}
+}, [isNative, processNativePhoto, options]);
 ```
 
-عند تفعيل الثيم الفاتح:
-- يُحذف `class="dark"` من عنصر `<html>`
-- لكن **لا يُضاف** `class="light"`
+المتغير `options` هو كائن (object) جديد يُنشأ في كل render لأنه يُمرَّر هكذا من `Products.tsx`:
 
-هذا يعني ان جميع قواعد CSS التي كتبناها سابقاً بـ `.light button`, `.light input`, `.light [role="dialog"]` لا تُطبَّق أبداً لان `<html>` لا يحمل هذه الكلاس في أي وقت.
+```text
+useCamera({
+  maxSize: 640,
+  quality: 70,
+  onPhotoRestored: handlePhotoRestored,
+  fallbackToInline: true,
+});
+```
 
-النتيجة: المتغيرات اللونية CSS (مثل `--foreground` و `--border`) تتغير بشكل صحيح عبر JavaScript، لكن قواعد CSS التي تستهدف `.light` لا تعمل.
+هذا يجعل الـ `useEffect` يُعيد التشغيل في كل render، مما يُزيل الـ listener القديم ويسجل جديداً. عند إعادة تشغيل التطبيق بعد Process Death، قد لا يكون هناك listener مسجل في اللحظة التي يُطلق فيها Capacitor حدث `appRestoredResult`.
 
-## خطة الإصلاح الشاملة
+---
 
-### التعديل الأول - الجوهري: إضافة `.light` class (ملف `use-theme.tsx`)
+### المشكلة الثانية: ترتيب useEffect غير مضمون
 
-تعديل دالة `applyTheme` لتضيف الكلاس المناسب في كلا الحالتين:
+في `src/pages/Products.tsx`، يوجد:
+- `useEffect` لاستعادة النموذج من localStorage (السطر 298)
+- `useEffect` لتسجيل listener الكاميرا عبر `useCamera` (يُشغَّل في hook منفصل)
+
+عند Android Process Death وإعادة التشغيل:
+1. التطبيق يُحمَّل من الصفر
+2. `handlePhotoRestored` يُستدعى **قبل** أن يُفعَّل `useEffect` الخاص باستعادة النموذج من localStorage
+3. النتيجة: الصورة تُستعاد لكن النموذج يظهر فارغاً
+
+---
+
+### المشكلة الثالثة: `imagePreviewBase64` لا يُحفظ في localStorage
+
+الكود الحالي يحفظ `formData` و `customFieldValues` في localStorage، لكن **لا يحفظ** `imagePreviewBase64` (وهي الصورة المؤقتة للعرض قبل الرفع).
+
+عند Process Death وإعادة التشغيل، يُعاد `formData.image` من localStorage، لكن `imagePreviewBase64` يبقى فارغاً، فتظهر الصورة بشكل خاطئ.
+
+---
+
+## الحل المقترح (ثلاثة تعديلات)
+
+### التعديل 1 - إصلاح `use-camera.tsx`: استخدام useRef بدلاً من options مباشرة
+
+استخدام `useRef` لحفظ دالة `onPhotoRestored` بدلاً من تمريرها في dependency array. هذا يحل مشكلة إعادة تسجيل الـ listener في كل render:
 
 ```text
 // قبل:
-if (mode === 'dark') {
-  root.classList.add('dark');
-} else {
-  root.classList.remove('dark');
-}
+}, [isNative, processNativePhoto, options]);
 
 // بعد:
-if (mode === 'dark') {
-  root.classList.add('dark');
-  root.classList.remove('light');
-} else {
-  root.classList.remove('dark');
-  root.classList.add('light');  // إضافة المفقودة
+const onPhotoRestoredRef = useRef(options.onPhotoRestored);
+useEffect(() => {
+  onPhotoRestoredRef.current = options.onPhotoRestored;
+}, [options.onPhotoRestored]);
+
+// وفي الـ listener:
+if (compressed && onPhotoRestoredRef.current) {
+  onPhotoRestoredRef.current(compressed);
 }
+
+// وفي dependency array:
+}, [isNative, processNativePhoto]); // بدون options
 ```
 
-هذا التعديل الوحيد سيجعل جميع قواعد `.light ...` الموجودة في CSS تعمل فوراً.
+---
 
-### التعديل الثاني: تعزيز قواعد CSS في الثيم الفاتح (ملف `index.css`)
+### التعديل 2 - إصلاح `handlePhotoRestored` في `Products.tsx`: حفظ الصورة في localStorage فوراً
 
-بعد إصلاح المشكلة الجذرية، سنعزز قواعد CSS لتشمل حالات أكثر:
+إضافة حفظ الصورة مؤقتاً في localStorage عند استعادتها، حتى إذا جاءت قبل استعادة النموذج. ثم عند استعادة النموذج، التحقق من وجود صورة مؤقتة لدمجها:
 
-1. **جميع عناصر النص**: إضافة قاعدة شاملة تضمن ان جميع النصوص تستخدم `--foreground` في الثيم الفاتح
-2. **أزرار `outline` و `ghost`**: ضمان ان تكون الحدود والنصوص واضحة
-3. **حقول الإدخال**: ضمان خلفية بيضاء وحدود داكنة كافية
-4. **النوافذ والحوارات**: ضمان خلفية بيضاء ونصوص داكنة
-5. **القوائم المنسدلة والـ Popovers**: نفس الضمان
-6. **جداول البيانات**: ضمان تباين الخلايا والرؤوس
-7. **عناصر التبويب (Tabs)**: ضمان وضوح التبويبات النشطة وغير النشطة
+```text
+const RESTORED_IMAGE_KEY = 'hyperpos_restored_image_temp';
 
-### التعديل الثالث: تصحيح القيم اللونية في `use-theme.tsx`
+const handlePhotoRestored = useCallback(async (base64Image: string) => {
+  // 1. حفظ الصورة في localStorage فوراً (يضمن بقاءها حتى لو جاءت قبل استعادة النموذج)
+  localStorage.setItem(RESTORED_IMAGE_KEY, base64Image);
 
-في `lightModeColors` الحالية:
-- `border: '214 32% 91%'` — فاتح جداً، يجعل الحدود شبه مخفية على خلفية بيضاء
-- `input: '214 32% 91%'` — نفس المشكلة
-- `muted: '210 40% 96%'` — قريب جداً من الأبيض `background: 0 0% 100%`
-- `mutedForeground: '215 16% 47%'` — قد يكون خافتاً في بعض الحالات
+  // 2. عرض الصورة للمستخدم فوراً
+  setImagePreviewBase64(base64Image);
 
-التصحيح المقترح:
-- `border`: من `91%` إلى `75%` (حدود أوضح)
-- `input`: من `91%` إلى `75%` (حقول إدخال أوضح)
-- `muted`: من `96%` إلى `92%` (خلفيات ثانوية أكثر تمييزاً)
-- `mutedForeground`: من `47%` إلى `40%` (نصوص ثانوية أكثر قتامة)
+  // 3. حفظ base64 في formData مؤقتاً (يحفظها localStorage تلقائياً)
+  setFormData(prev => ({ ...prev, image: base64Image }));
+
+  // 4. رفع الصورة للسحابة في الخلفية
+  const toastId = toast.loading('جاري استعادة الصورة...');
+  try {
+    const imageUrl = await uploadProductImage(base64Image);
+    toast.dismiss(toastId);
+    if (imageUrl) {
+      setFormData(prev => ({ ...prev, image: imageUrl }));
+      localStorage.removeItem(RESTORED_IMAGE_KEY); // تنظيف
+      toast.success(t('products.imageRestored'));
+    } else {
+      toast.error(t('products.imageRestoreFailed'));
+    }
+  } catch (e) {
+    toast.dismiss(toastId);
+    toast.error(t('products.imageRestoreFailed'));
+  }
+}, [t]);
+```
+
+---
+
+### التعديل 3 - إصلاح استعادة النموذج في `Products.tsx`: التحقق من وجود صورة مؤقتة
+
+في `useEffect` الخاص باستعادة النموذج (السطر 298)، إضافة تحقق من وجود صورة مؤقتة مستعادة لدمجها مع بيانات النموذج:
+
+```text
+useEffect(() => {
+  try {
+    const savedState = localStorage.getItem(FORM_STORAGE_KEY);
+    if (savedState) {
+      const parsed = JSON.parse(savedState);
+      const hour = 60 * 60 * 1000;
+      if (Date.now() - parsed.timestamp < hour) {
+        
+        // التحقق من وجود صورة مؤقتة مستعادة من الكاميرا
+        const restoredImage = localStorage.getItem(RESTORED_IMAGE_KEY);
+        const formDataToRestore = restoredImage
+          ? { ...parsed.formData, image: restoredImage }
+          : parsed.formData;
+
+        setFormData(formDataToRestore);
+
+        // إذا كان هناك صورة مؤقتة، اعرضها أيضاً كـ preview
+        if (restoredImage) {
+          setImagePreviewBase64(restoredImage);
+        }
+
+        // ... باقي استعادة الحالة
+      }
+    }
+  } catch (e) { ... }
+}, []);
+```
+
+---
 
 ## ملخص الملفات التي ستتغير
 
-- `src/hooks/use-theme.tsx`: إضافة `root.classList.add('light')` (الإصلاح الجذري)
-- `src/index.css`: تعزيز قواعد `.light ...` وتقوية تباين العناصر
+| الملف | نوع التغيير |
+|---|---|
+| `src/hooks/use-camera.tsx` | استخدام `useRef` لحفظ `onPhotoRestored` لمنع إعادة تسجيل Listener |
+| `src/pages/Products.tsx` | إصلاح `handlePhotoRestored` + استعادة الصورة عند تحميل النموذج |
 
-## التأثير المتوقع
+---
 
-بعد هذا الإصلاح:
-- جميع الأزرار (outline, ghost, secondary) ستظهر نصوصها بوضوح
-- جميع النوافذ والقوائم المنسدلة ستكون ذات خلفية بيضاء ونصوص داكنة
-- جميع حقول الإدخال ستمتلك حدوداً مرئية
-- جداول البيانات وقوائم المنتجات ستكون قابلة للقراءة بوضوح
-- لن تتأثر أزرار `bg-primary` (الزر الرئيسي بالأخضر/الأزرق) لأنها تمتلك `primary-foreground: white` بالفعل
-- الثيم الداكن لن يتأثر نهائياً بهذا التعديل
+## النتيجة المتوقعة
 
-## ملاحظة مهمة
-
-هذا الإصلاح يحل المشكلة من جذورها ويجعل جميع الإصلاحات السابقة (التي كانت بلا فائدة) تعمل فوراً. لن تحتاج إلى تعديل أي مكونات فردية بعد ذلك.
+بعد هذه التعديلات:
+1. عند التقاط صورة وحدوث Process Death، سيُستعاد النموذج كاملاً عند فتح التطبيق
+2. الصورة الملتقطة ستظهر كـ preview فوراً دون الحاجة لإعادة التقاط
+3. سيتم رفع الصورة تلقائياً في الخلفية
+4. حتى لو فشل الرفع، ستبقى الصورة محفوظة مؤقتاً في النموذج
+5. الـ Listener لن يُعاد تسجيله في كل render، مما يُقلل من احتمال فقدان الأحداث
