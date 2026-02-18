@@ -222,6 +222,7 @@ export default function Settings() {
     { id: 'partners', label: t('nav.partners'), icon: UserCheck, adminOnly: true },
     { id: 'archive', label: t('archive.title'), icon: Archive },
     { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true, danger: true },
+    { id: 'about', label: isRTL ? 'حول البرنامج' : 'About', icon: FileText },
     
   ];
 
@@ -1679,6 +1680,113 @@ export default function Settings() {
 
       case 'reset':
         return <DataResetSection />;
+
+      case 'about':
+        return (
+          <div className="space-y-5">
+            {/* App Identity */}
+            <div className="flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+              <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
+                <span className="text-2xl font-black text-primary-foreground">F</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">FlowPOS Pro</h2>
+                <p className="text-sm text-muted-foreground">{isRTL ? 'نظام نقطة البيع المتكامل' : 'Integrated Point of Sale System'}</p>
+              </div>
+            </div>
+
+            {/* Version Info */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {isRTL ? 'معلومات الإصدار' : 'Version Info'}
+                </p>
+              </div>
+              <div className="divide-y divide-border">
+                {[
+                  { label: isRTL ? 'الإصدار الحالي' : 'Current Version', value: '1.0.0', icon: '🏷️' },
+                  { label: isRTL ? 'رقم البناء' : 'Build Number', value: '221', icon: '🔢' },
+                  { label: isRTL ? 'تاريخ الإصدار' : 'Release Date', value: isRTL ? '٥ فبراير ٢٠٢٦' : 'Feb 5, 2026', icon: '📅' },
+                  { label: isRTL ? 'المنصة' : 'Platform', value: 'Android / Web / Windows', icon: '📱' },
+                  { label: isRTL ? 'المطور' : 'Developer', value: 'FlowPOS Team', icon: '👨‍💻' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{item.icon}</span>
+                      <span className="text-sm text-muted-foreground">{item.label}</span>
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Changelog */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {isRTL ? 'آخر التحديثات — الإصدار 1.0.0' : 'Latest Updates — Version 1.0.0'}
+                </p>
+              </div>
+              <div className="divide-y divide-border">
+                {[
+                  {
+                    type: 'new' as const,
+                    text: isRTL ? 'نظام البيع الفوري: عمليات البيع الآن فورية بدون انتظار' : 'Instant Sale System: Sales now complete instantly without waiting',
+                  },
+                  {
+                    type: 'new' as const,
+                    text: isRTL ? 'مزامنة ذكية في الخلفية: تُرسل البيانات للسحابة دون تعطيل العمل' : 'Smart Background Sync: Data syncs to cloud without interruption',
+                  },
+                  {
+                    type: 'improved' as const,
+                    text: isRTL ? 'تحسين شكل سلة المبيعات: تصميم أكثر حداثة وعرض منتجات أكثر' : 'Improved cart design: More modern look with better product display',
+                  },
+                  {
+                    type: 'improved' as const,
+                    text: isRTL ? 'تحسين تباين النصوص في الوضع الفاتح لكافة الشاشات' : 'Improved text contrast in light mode across all screens',
+                  },
+                  {
+                    type: 'fixed' as const,
+                    text: isRTL ? 'إصلاح مشكلة بطء إنشاء الفواتير (3-4 ثواني → أقل من 200ms)' : 'Fixed slow invoice creation (3-4 seconds → under 200ms)',
+                  },
+                  {
+                    type: 'fixed' as const,
+                    text: isRTL ? 'إصلاح مشكلة عدم ظهور الكتابة بوضوح في بعض الشاشات' : 'Fixed text visibility issues on some screens',
+                  },
+                  {
+                    type: 'new' as const,
+                    text: isRTL ? 'دعم تشغيل التطبيق في وضع عدم الاتصال للبيانات المحفوظة' : 'Offline mode support for cached data access',
+                  },
+                ].map((item, idx) => {
+                  const colors = {
+                    new: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                    improved: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                    fixed: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+                  };
+                  const labels = {
+                    new: isRTL ? 'جديد' : 'NEW',
+                    improved: isRTL ? 'تحسين' : 'IMPROVED',
+                    fixed: isRTL ? 'إصلاح' : 'FIXED',
+                  };
+                  return (
+                    <div key={idx} className="flex items-start gap-3 px-4 py-3">
+                      <span className={`mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0 ${colors[item.type]}`}>
+                        {labels[item.type]}
+                      </span>
+                      <p className="text-sm text-foreground leading-relaxed">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <p className="text-center text-xs text-muted-foreground pb-2">
+              {isRTL ? 'جميع الحقوق محفوظة © ٢٠٢٦ FlowPOS Pro' : '© 2026 FlowPOS Pro. All rights reserved.'}
+            </p>
+          </div>
+        );
 
       default:
         return null;
