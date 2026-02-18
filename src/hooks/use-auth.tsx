@@ -441,9 +441,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('user_id', user.id)
             .eq('is_revoked', false);
           
-          // Clear local device binding cache
+          // Clear local device binding cache (both storage types)
           try {
             localStorage.removeItem('hyperpos_device_binding_cache_v1');
+            sessionStorage.removeItem('hyperpos_device_binding_cache_v1');
+            sessionStorage.removeItem('hyperpos_user_role_cache');
           } catch { /* */ }
         }
       } catch (err) {
