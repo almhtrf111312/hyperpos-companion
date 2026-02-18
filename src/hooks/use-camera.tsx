@@ -130,6 +130,11 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
 
   /**
    * Take a photo using the device camera
+   *
+   * On Android, launching the native camera can cause the WebView Activity to be
+   * killed (Memory Pressure / Process Death). The result is delivered later via
+   * the `appRestoredResult` event (handled below).  Any persistent form state
+   * should be saved BEFORE calling this method — Products.tsx does this synchronously.
    */
   const takePhoto = useCallback(async (): Promise<string | null> => {
     setIsLoading(true);
@@ -141,29 +146,37 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
 
         try {
           const photo = await Camera.getPhoto({
-            resultType: CameraResultType.Uri,
+            resultType: CameraResultType.Uri,  // Uri → Blob avoids OOM on low-end devices
             source: CameraSource.Camera,
             quality: 70,
             width: 800,
             correctOrientation: true,
             saveToGallery: false,
+            // allowEditing: false ensures we return directly after capture
           });
 
           const result = await processNativePhoto(photo.webPath);
           setIsLoading(false);
           return result;
-        } catch (nativeErr) {
-          console.warn('[Camera] Native camera failed, checking inline fallback:', nativeErr);
-          
+        } catch (nativeErr: unknown) {
+          const errMsg = nativeErr instanceof Error ? nativeErr.message : String(nativeErr);
+          // User cancelled — not a real error
+          const cancelled = errMsg.includes('cancelled') || errMsg.includes('User cancelled') ||
+            errMsg.includes('No image picked') || errMsg.includes('dismissed');
+          if (!cancelled) {
+            console.warn('[Camera] Native camera failed, checking inline fallback:', nativeErr);
+          }
+
           // If fallbackToInline is enabled, open inline camera instead of failing
-          if (fallbackToInline) {
+          if (fallbackToInline && !cancelled) {
             setIsLoading(false);
             return new Promise<string | null>((resolve) => {
               inlineCaptureResolveRef.current = resolve;
               setShowInlineCamera(true);
             });
           }
-          throw nativeErr;
+          setIsLoading(false);
+          return null;
         }
       } else {
         // Web fallback

@@ -441,11 +441,11 @@ export default function Products() {
         setImagePreviewBase64(base64Image);
         setFormData(prev => ({ ...prev, image: base64Image }));
         // Upload in background silently
-        const { uploadProductImage } = await import('@/lib/image-upload');
-        const imageUrl = await uploadProductImage(base64Image);
-        if (imageUrl) {
-          setFormData(prev => ({ ...prev, image: imageUrl }));
-        }
+        import('@/lib/image-upload').then(({ uploadProductImage }) => {
+          uploadProductImage(base64Image).then(imageUrl => {
+            if (imageUrl) setFormData(prev => ({ ...prev, image: imageUrl }));
+          }).catch(console.error);
+        });
       }
     } catch (err) {
       console.error('Gallery select error:', err);
@@ -453,19 +453,35 @@ export default function Products() {
   };
 
   // Handle camera capture using Capacitor Camera plugin
+  // CRITICAL: Save form state to localStorage BEFORE opening native camera
+  // Android may kill and recreate the Activity when camera app runs (memory pressure).
+  // The persisted state is already being saved reactively via useEffect above,
+  // but we force-save synchronously here to guarantee it's written before the OS
+  // suspends our process.
   const handleCameraCapture = async () => {
     try {
+      // Force-persist current form state synchronously before launching camera
+      const stateToSave = {
+        formData,
+        customFieldValues,
+        isAdd: showAddDialog,
+        isEdit: showEditDialog,
+        selectedProductId: selectedProduct?.id,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
+
       const base64Image = await takePhoto();
       if (base64Image) {
         // Show preview immediately — Offline-First
         setImagePreviewBase64(base64Image);
         setFormData(prev => ({ ...prev, image: base64Image }));
-        // Upload in background silently
-        const { uploadProductImage } = await import('@/lib/image-upload');
-        const imageUrl = await uploadProductImage(base64Image);
-        if (imageUrl) {
-          setFormData(prev => ({ ...prev, image: imageUrl }));
-        }
+        // Upload in background silently — do NOT await here
+        import('@/lib/image-upload').then(({ uploadProductImage }) => {
+          uploadProductImage(base64Image).then(imageUrl => {
+            if (imageUrl) setFormData(prev => ({ ...prev, image: imageUrl }));
+          }).catch(console.error);
+        });
       }
     } catch (err) {
       console.error('Camera capture error:', err);
