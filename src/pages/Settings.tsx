@@ -2183,8 +2183,8 @@ export default function Settings() {
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
-              onClick={() => {
-                // Save store type to localStorage immediately so getCurrentStoreType() reads the new value
+              onClick={async () => {
+                // ✅ حفظ في localStorage أولاً
                 try {
                   const raw = localStorage.getItem('hyperpos_settings_v1');
                   if (raw) {
@@ -2193,6 +2193,10 @@ export default function Settings() {
                     localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
                   }
                 } catch (e) { console.warn('Failed to persist store type:', e); }
+                // ✅ رفع نوع المتجر للسحابة فوراً
+                try {
+                  await saveStoreSettings({ store_type: storeSettings.type });
+                } catch (e) { console.warn('[Settings] Cloud store_type save failed:', e); }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 emitEvent(EVENTS.STORE_TYPE_CHANGED);
@@ -2206,7 +2210,7 @@ export default function Settings() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
+              onClick={async () => {
                 if (pendingStoreType) {
                   const defaultCats = getDefaultCategories(pendingStoreType);
                   const newCategories: Category[] = defaultCats.map((name, i) => ({
@@ -2228,7 +2232,7 @@ export default function Settings() {
                     }
                   })();
                 }
-                // Save store type to localStorage immediately so getCurrentStoreType() reads the new value
+                // ✅ حفظ في localStorage أولاً
                 try {
                   const raw = localStorage.getItem('hyperpos_settings_v1');
                   if (raw) {
@@ -2237,6 +2241,10 @@ export default function Settings() {
                     localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
                   }
                 } catch (e) { console.warn('Failed to persist store type:', e); }
+                // ✅ رفع نوع المتجر للسحابة فوراً
+                try {
+                  await saveStoreSettings({ store_type: storeSettings.type });
+                } catch (e) { console.warn('[Settings] Cloud store_type save failed:', e); }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 emitEvent(EVENTS.STORE_TYPE_CHANGED);

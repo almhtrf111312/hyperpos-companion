@@ -248,6 +248,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           ...existing,
           storeSettings: {
             name: cloudSettings.name || existing.storeSettings?.name,
+            type: cloudSettings.store_type || existing.storeSettings?.type || 'general', // ✅ حفظ نوع المتجر
             phone: cloudSettings.phone || existing.storeSettings?.phone,
             address: cloudSettings.address || existing.storeSettings?.address,
             logo: cloudSettings.logo_url || existing.storeSettings?.logo,
