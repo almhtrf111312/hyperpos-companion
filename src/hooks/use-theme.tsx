@@ -239,6 +239,13 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number 
     root.style.setProperty('--blur-intensity', `${blurPx}px`);
   } else {
     root.classList.remove('blur-theme');
+    // Reset all glass CSS variables so they don't linger as inline styles
+    root.style.removeProperty('--glass-bg');
+    root.style.removeProperty('--glass-border');
+    root.style.removeProperty('--glass-highlight');
+    root.style.removeProperty('--glass-shadow');
+    root.style.removeProperty('--glass-inset-shadow');
+    root.style.removeProperty('--blur-intensity');
   }
 }
 
