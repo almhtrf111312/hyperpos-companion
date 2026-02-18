@@ -95,14 +95,14 @@ const lightModeColors = {
   popoverForeground: '222 47% 11%',
   secondary: '210 40% 96%',
   secondaryForeground: '222 47% 11%',
-  muted: '210 40% 96%',
-  mutedForeground: '215 16% 47%',
-  border: '214 32% 91%',
-  input: '214 32% 91%',
+  muted: '210 40% 92%',
+  mutedForeground: '215 20% 38%',
+  border: '214 32% 72%',
+  input: '214 32% 72%',
   sidebar: '0 0% 98%',
   sidebarForeground: '222 47% 11%',
   sidebarAccent: '210 40% 96%',
-  sidebarBorder: '214 32% 91%',
+  sidebarBorder: '214 32% 72%',
   posGrid: '210 40% 98%',
   posItem: '0 0% 100%',
   posItemHover: '210 40% 96%',
@@ -186,11 +186,13 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   root.style.setProperty('--gradient-primary', `linear-gradient(135deg, hsl(${colorTheme.primary}), hsl(${colorTheme.accent}))`);
   root.style.setProperty('--shadow-glow', `0 0 40px -10px hsl(${colorTheme.primary} / 0.3)`);
 
-  // Add or remove dark class for any other styles
+  // Add or remove dark/light class
   if (mode === 'dark') {
     root.classList.add('dark');
+    root.classList.remove('light');
   } else {
     root.classList.remove('dark');
+    root.classList.add('light');
   }
 }
 
