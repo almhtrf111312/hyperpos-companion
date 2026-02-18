@@ -51,7 +51,8 @@ function buildStateFromRole(role: AppRole, ownerId: string): UserRoleState {
 
 function getCachedRole(userId: string): { role: AppRole; ownerId: string } | null {
   try {
-    const cached = localStorage.getItem(ROLE_CACHE_KEY);
+    // Use sessionStorage so role info is not persisted across browser sessions
+    const cached = sessionStorage.getItem(ROLE_CACHE_KEY);
     if (!cached) return null;
     const parsed = JSON.parse(cached);
     if (parsed.userId === userId && parsed.role) {
@@ -63,17 +64,20 @@ function getCachedRole(userId: string): { role: AppRole; ownerId: string } | nul
 
 function setCachedRole(userId: string, role: AppRole, ownerId: string) {
   try {
-    localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ userId, role, ownerId }));
+    // Use sessionStorage - role info should not persist between sessions
+    sessionStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ userId, role, ownerId }));
+    // Clean up any old localStorage entry
+    localStorage.removeItem(ROLE_CACHE_KEY);
   } catch { /* ignore */ }
 }
 
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const [state, setState] = useState<UserRoleState>(() => {
-    // Try to load cached role immediately for instant UI
+    // Try to load cached role immediately for instant UI (sessionStorage only - not persisted)
     if (typeof window !== 'undefined') {
       try {
-        const cached = localStorage.getItem(ROLE_CACHE_KEY);
+        const cached = sessionStorage.getItem(ROLE_CACHE_KEY);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed.role) {
@@ -116,6 +120,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         canManageUsers: false,
         canEditPrice: false,
       });
+      try { sessionStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
       try { localStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
       return;
     }

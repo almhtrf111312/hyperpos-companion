@@ -13,12 +13,18 @@ interface DeviceBindingState {
 }
 
 function saveDeviceCache(data: { isDeviceBlocked: boolean; deviceId: string | null; registeredDeviceId: string | null }) {
-  try { localStorage.setItem(DEVICE_CACHE_KEY, JSON.stringify({ ...data, _ts: Date.now() })); } catch { /* */ }
+  try {
+    // Use sessionStorage - device binding info should not persist between sessions
+    sessionStorage.setItem(DEVICE_CACHE_KEY, JSON.stringify({ ...data, _ts: Date.now() }));
+    // Clean up any old localStorage entry
+    localStorage.removeItem(DEVICE_CACHE_KEY);
+  } catch { /* */ }
 }
 
 function loadDeviceCache(): { isDeviceBlocked: boolean; deviceId: string | null; registeredDeviceId: string | null } | null {
   try {
-    const raw = localStorage.getItem(DEVICE_CACHE_KEY);
+    // Check sessionStorage first
+    const raw = sessionStorage.getItem(DEVICE_CACHE_KEY) || localStorage.getItem(DEVICE_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed._ts && Date.now() - parsed._ts > 7 * 24 * 60 * 60 * 1000) return null;
