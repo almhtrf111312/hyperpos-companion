@@ -238,23 +238,41 @@ export default function Products() {
   }, []);
 
   /*
+   * AUTOMATIC FORM PERSISTENCE
+   * Save form data to localStorage so it survives Android Process Death
+   */
+  const FORM_STORAGE_KEY = 'hyperpos_product_form_temp';
+  // Temporary key for image restored via appRestoredResult (may arrive before form restore)
+  const RESTORED_IMAGE_KEY = 'hyperpos_restored_image_temp';
+
+  /*
    * Handle Photo Restoration from Android Process Death
    */
   const handlePhotoRestored = useCallback(async (base64Image: string) => {
-    // Show preview immediately
+    // 1. Persist image immediately so form-restore useEffect can pick it up even if it runs later
+    localStorage.setItem(RESTORED_IMAGE_KEY, base64Image);
+
+    // 2. Show preview and update formData right away
     setImagePreviewBase64(base64Image);
+    setFormData(prev => ({ ...prev, image: base64Image }));
 
+    // 3. Upload in background
     const toastId = toast.loading('جاري استعادة الصورة...');
-    const imageUrl = await uploadProductImage(base64Image);
-    toast.dismiss(toastId);
-
-    if (imageUrl) {
-      setFormData(prev => ({ ...prev, image: imageUrl }));
-      toast.success(t('products.imageRestored'));
-    } else {
+    try {
+      const imageUrl = await uploadProductImage(base64Image);
+      toast.dismiss(toastId);
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+        localStorage.removeItem(RESTORED_IMAGE_KEY); // clean up
+        toast.success(t('products.imageRestored'));
+      } else {
+        toast.error(t('products.imageRestoreFailed'));
+      }
+    } catch (e) {
+      toast.dismiss(toastId);
       toast.error(t('products.imageRestoreFailed'));
     }
-  }, []);
+  }, [t]);
 
   // Use Capacitor Camera hook with restoration callback
   const { takePhoto, pickFromGallery, isLoading: isCameraLoading, showInlineCamera, onInlineCaptured, closeInlineCamera } = useCamera({
@@ -263,12 +281,6 @@ export default function Products() {
     onPhotoRestored: handlePhotoRestored,
     fallbackToInline: true,
   });
-
-  /*
-   * AUTOMATIC FORM PERSISTENCE
-   * Save form data to localStorage so it survives Android Process Death
-   */
-  const FORM_STORAGE_KEY = 'hyperpos_product_form_temp';
 
   // 1. Save state whenever important form values change
   useEffect(() => {
@@ -292,6 +304,7 @@ export default function Products() {
   // 2. Clear state when dialog is closed explicitly (Cancel/Success)
   const clearPersistedState = useCallback(() => {
     localStorage.removeItem(FORM_STORAGE_KEY);
+    localStorage.removeItem(RESTORED_IMAGE_KEY);
   }, []);
 
   // 3. Restore state on mount (if App was killed and restarted)
@@ -305,9 +318,21 @@ export default function Products() {
         if (Date.now() - parsed.timestamp < hour) {
           console.log('Restoring persisted form state...', parsed);
 
+          // Check if there is a temporarily-persisted restored image
+          // (may have arrived via appRestoredResult before this effect ran)
+          const restoredImage = localStorage.getItem(RESTORED_IMAGE_KEY);
+          const formDataToRestore = restoredImage
+            ? { ...parsed.formData, image: restoredImage }
+            : parsed.formData;
+
           // Restore Basic Data immediately
-          setFormData(parsed.formData);
+          setFormData(formDataToRestore);
           setCustomFieldValues(parsed.customFieldValues);
+
+          // Also restore the image preview if we have a restored image
+          if (restoredImage) {
+            setImagePreviewBase64(restoredImage);
+          }
 
           // Restore Dialog State
           if (parsed.isEdit && parsed.selectedProductId) {
@@ -319,6 +344,7 @@ export default function Products() {
           toast.info(t('products.dataRestored'), { duration: 3000 });
         } else {
           localStorage.removeItem(FORM_STORAGE_KEY);
+          localStorage.removeItem(RESTORED_IMAGE_KEY);
         }
       }
     } catch (e) {

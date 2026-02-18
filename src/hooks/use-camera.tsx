@@ -271,6 +271,15 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
   }, [isNative, compressBase64, processNativePhoto]);
 
   /**
+   * Keep a stable ref to onPhotoRestored so the listener is never re-registered
+   * on every render (avoids missing the event on Android Process Death).
+   */
+  const onPhotoRestoredRef = useRef(options.onPhotoRestored);
+  useEffect(() => {
+    onPhotoRestoredRef.current = options.onPhotoRestored;
+  }, [options.onPhotoRestored]);
+
+  /**
    * Handle Android Process Death / Activity Restoration
    */
   useEffect(() => {
@@ -287,8 +296,8 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
           if (webPath) {
             try {
               const compressed = await processNativePhoto(webPath);
-              if (compressed && options.onPhotoRestored) {
-                options.onPhotoRestored(compressed);
+              if (compressed && onPhotoRestoredRef.current) {
+                onPhotoRestoredRef.current(compressed);
               }
             } catch (e) {
               console.error('Failed to process restored photo', e);
@@ -304,7 +313,8 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
     return () => {
       if (listener) listener.remove();
     };
-  }, [isNative, processNativePhoto, options]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNative, processNativePhoto]); // intentionally omit options — using ref instead
 
   const onInlineCaptured = useCallback((base64: string) => {
     setShowInlineCamera(false);
