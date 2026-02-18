@@ -106,7 +106,7 @@ function EditablePrice({ value, onChange, className }: { value: number; classNam
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
       className={cn(
-        "flex rounded-xl border border-border/50 bg-muted/30 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all duration-200",
+        "flex rounded-xl border border-border bg-muted/30 text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all duration-200",
         className
       )}
       dir="ltr"
@@ -207,11 +207,32 @@ export function CartPanel({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);  // ✅ آلة حاسبة
 
+  // ✅ حفظ بيانات آخر عملية بيع لعرض أزرار الطباعة والمشاركة فوراً
+  const [lastSale, setLastSale] = useState<{
+    cart: CartItem[];
+    customerName: string;
+    totalInCurrency: number;
+    subtotal: number;
+    discount: number;
+    discountAmount: number;
+    discountType: 'percent' | 'fixed';
+    selectedCurrency: Currency;
+    taxAmount: number;
+    effectiveTaxRate: number;
+  } | null>(null);
+
 
   // Load customers on mount
   useEffect(() => {
     loadCustomersCloud().then(setAllCustomers);
   }, []);
+
+  // ✅ مسح بيانات آخر عملية بيع عند إضافة منتج جديد
+  useEffect(() => {
+    if (cart.length > 0 && lastSale) {
+      setLastSale(null);
+    }
+  }, [cart.length]);
 
   const getItemPrice = (item: CartItem) => {
     let price = item.price;
@@ -270,6 +291,22 @@ export function CartPanel({
   const wholesaleProfit = wholesaleMode
     ? roundCurrency((receivedAmount > 0 ? receivedAmount : subtotal) - wholesaleCOGS)
     : undefined;
+
+  // ✅ حفظ لقطة من البيع الحالي قبل تفريغ السلة
+  const saveSaleSnapshot = (cartData: CartItem[], custName: string) => {
+    setLastSale({
+      cart: [...cartData],
+      customerName: custName,
+      totalInCurrency,
+      subtotal,
+      discount,
+      discountAmount,
+      discountType,
+      selectedCurrency,
+      taxAmount,
+      effectiveTaxRate,
+    });
+  };
 
   const handleCashSale = () => {
     if (cart.length === 0) return;
@@ -357,6 +394,7 @@ export function CartPanel({
           },
         });
 
+        saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
         onClearCart();
         playSaleComplete();
         completeSync('تم حفظ الفاتورة محلياً ⏳ سيتم الرفع عند عودة الاتصال', 1000);
@@ -566,6 +604,7 @@ export function CartPanel({
       recordActivity();
 
       // ✅ Clear cart only after successful save
+      saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
       onClearCart();
       playSaleComplete();
       completeSync('تمت المزامنة بنجاح');
@@ -608,6 +647,7 @@ export function CartPanel({
         },
       });
 
+      saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
       onClearCart();
       failSync('تم حفظ الفاتورة محلياً ⏳ سيتم الرفع لاحقاً');
       showToast.warning('تم حفظ الفاتورة أوفلاين - سيتم رفعها تلقائياً');
@@ -671,6 +711,7 @@ export function CartPanel({
         };
 
         addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
+        saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
         onClearCart();
         playDebtRecorded();
         completeSync('تم حفظ فاتورة الدين أوفلاين ⏳ سيتم الرفع عند عودة الاتصال', 1000);
@@ -892,6 +933,7 @@ export function CartPanel({
       }
 
       // ✅ Clear cart only after successful save
+      saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
       onClearCart();
       playDebtRecorded();
       completeSync('تمت المزامنة بنجاح');
@@ -931,6 +973,7 @@ export function CartPanel({
       };
       addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle: fallbackBundle });
 
+      saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
       onClearCart();
       failSync('تم حفظ الفاتورة أوفلاين ⏳ سيتم الرفع لاحقاً');
       showToast.warning('تم حفظ فاتورة الدين أوفلاين - سيتم رفعها تلقائياً');
@@ -1020,8 +1063,16 @@ export function CartPanel({
     }
   };
 
-  const handlePrint = () => {
-    if (cart.length === 0) return;
+  const handlePrint = (saleData?: typeof lastSale) => {
+    const data = saleData || lastSale;
+    const printCart = data ? data.cart : cart;
+    const printCustomerName = data ? data.customerName : customerName;
+    const printCurrency = data ? data.selectedCurrency : selectedCurrency;
+    const printTotalInCurrency = data ? data.totalInCurrency : totalInCurrency;
+    const printDiscount = data ? data.discount : discount;
+    const printDiscountAmount = data ? data.discountAmount : discountAmount;
+
+    if (printCart.length === 0) return;
 
     // Load store settings
     let storeName = 'FlowPOS Pro';
@@ -1048,7 +1099,7 @@ export function CartPanel({
     const storeType = getCurrentStoreType();
     const isPharmacy = storeType === 'pharmacy';
 
-    const itemsHtml = cart.map(item => `
+    const itemsHtml = printCart.map(item => `
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">
           ${item.name}
@@ -1056,7 +1107,7 @@ export function CartPanel({
           ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">الدفعة: ${item.batchNumber}</small>` : ''}
         </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${selectedCurrency.symbol}${formatNumber(item.price * item.quantity * selectedCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${printCurrency.symbol}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
       </tr>
     `).join('');
 
@@ -1091,7 +1142,7 @@ export function CartPanel({
           </div>
           <div class="invoice-info">
             <div><strong>التاريخ:</strong> ${currentDate} - ${currentTime}</div>
-            <div><strong>العميل:</strong> ${customerName || 'عميل نقدي'}</div>
+            <div><strong>العميل:</strong> ${printCustomerName || 'عميل نقدي'}</div>
           </div>
           <table>
             <thead>
@@ -1103,9 +1154,9 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${discount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${discount}%: -${selectedCurrency.symbol}${formatNumber(discountAmount)}</div>` : ''}
+          ${printDiscount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${printDiscount}%: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${selectedCurrency.symbol}${formatNumber(totalInCurrency)}
+            الإجمالي: ${printCurrency.symbol}${formatNumber(printTotalInCurrency)}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -1114,10 +1165,19 @@ export function CartPanel({
 
     printHTML(printContent);
     showToast.success('جاري إرسال الفاتورة للطابعة...');
+    if (data) setLastSale(null); // مسح بعد الطباعة
   };
 
-  const handleWhatsApp = async () => {
-    if (cart.length === 0) return;
+  const handleWhatsApp = async (saleData?: typeof lastSale) => {
+    const data = saleData || lastSale;
+    const shareCart = data ? data.cart : cart;
+    const shareCustName = data ? data.customerName : customerName;
+    const shareCurrency = data ? data.selectedCurrency : selectedCurrency;
+    const shareTotalInCurrency = data ? data.totalInCurrency : totalInCurrency;
+    const shareSubtotal = data ? data.subtotal : subtotal;
+    const shareDiscountAmount = data ? data.discountAmount : discountAmount;
+
+    if (shareCart.length === 0) return;
 
     // تحميل إعدادات المتجر
     const store = getStoreSettings();
@@ -1128,18 +1188,18 @@ export function CartPanel({
       id: `POS-${Date.now()}`,
       storeName: store.name,
       storePhone: store.phone,
-      customerName: customerName || 'عميل نقدي',
+      customerName: shareCustName || 'عميل نقدي',
       date: currentDate,
-      items: cart.map(item => ({
+      items: shareCart.map(item => ({
         name: item.name,
         quantity: item.quantity,
         unitPrice: item.price,
         total: item.price * item.quantity,
       })),
-      subtotal,
-      discount: discountAmount,
-      total: totalInCurrency,
-      currencySymbol: selectedCurrency.symbol,
+      subtotal: shareSubtotal,
+      discount: shareDiscountAmount,
+      total: shareTotalInCurrency,
+      currencySymbol: shareCurrency.symbol,
       paymentType: 'cash',
       type: 'sale',
     };
@@ -1148,6 +1208,7 @@ export function CartPanel({
     if (success) {
       showToast.success('تم فتح المشاركة');
     }
+    if (data) setLastSale(null); // مسح بعد المشاركة
   };
 
   return (
@@ -1185,7 +1246,7 @@ export function CartPanel({
                   "text-xs font-bold px-2.5 py-1 rounded-lg transition-all",
                   wholesaleMode
                     ? "bg-orange-500 text-white shadow-md"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    : "bg-muted text-foreground hover:bg-muted/80"
                 )}
               >
                 <Package className="w-3.5 h-3.5 inline-block ml-1" />
@@ -1346,14 +1407,14 @@ export function CartPanel({
                   <div className="flex items-center gap-1.5 md:gap-2">
                     <button
                       onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
-                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-muted border border-border/40 text-foreground flex items-center justify-center hover:bg-muted/80"
                     >
                       <Minus className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
                     <span className="w-6 md:w-8 text-center font-semibold text-sm">{item.quantity}</span>
                     <button
                       onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
-                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-background flex items-center justify-center hover:bg-background/80"
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-md md:rounded-lg bg-muted border border-border/40 text-foreground flex items-center justify-center hover:bg-muted/80"
                     >
                       <Plus className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
@@ -1364,7 +1425,7 @@ export function CartPanel({
                       <EditablePrice
                         value={getItemPrice(item)}
                         onChange={(newPrice) => onUpdateItemPrice(item.id, newPrice, item.unit)}
-                        className="w-16 h-7 text-xs text-center bg-background border p-1"
+                        className="w-16 h-7 text-xs text-center bg-muted/30 border border-border p-1"
                       />
                     )}
                     <p className={cn("font-bold text-sm md:text-base", wholesaleMode ? "text-orange-500" : "text-primary")}>
@@ -1391,7 +1452,7 @@ export function CartPanel({
                     "flex-1 py-1.5 rounded-md text-xs font-medium transition-all",
                     selectedCurrency.code === currency.code
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-foreground/70 hover:text-foreground"
                   )}
                 >
                   {currency.code === 'USD' ? '$ USD' : currency.name}
@@ -1554,9 +1615,9 @@ export function CartPanel({
               data-tour="action-btns"
               variant="outline"
               size="icon"
-              className="h-10 w-10 flex-shrink-0 border-border"
-              disabled={cart.length === 0}
-              onClick={handlePrint}
+              className="h-10 w-10 flex-shrink-0 border-border text-foreground"
+              disabled={cart.length === 0 && !lastSale}
+              onClick={() => handlePrint()}
               title={t('pos.print')}
             >
               <Printer className="w-4 h-4" />
@@ -1564,9 +1625,9 @@ export function CartPanel({
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 flex-shrink-0 border-border"
-              disabled={cart.length === 0}
-              onClick={handleWhatsApp}
+              className="h-10 w-10 flex-shrink-0 border-border text-foreground"
+              disabled={cart.length === 0 && !lastSale}
+              onClick={() => handleWhatsApp()}
               title={t('pos.whatsapp')}
             >
               <Send className="w-4 h-4" />
@@ -1603,7 +1664,7 @@ export function CartPanel({
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowCashDialog(false)}>
+              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowCashDialog(false)}>
                 إلغاء
               </Button>
               <Button className="flex-1 bg-success hover:bg-success/90" onClick={confirmCashSale}>
@@ -1656,7 +1717,7 @@ export function CartPanel({
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowDebtDialog(false)}>
+              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowDebtDialog(false)}>
                 إلغاء
               </Button>
               <Button
@@ -1718,7 +1779,7 @@ export function CartPanel({
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowCustomerDialog(false)}>
+              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowCustomerDialog(false)}>
                 إلغاء
               </Button>
               <Button className="flex-1" onClick={handleAddCustomer} disabled={isAddingCustomer}>
