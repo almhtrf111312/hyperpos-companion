@@ -58,7 +58,8 @@ import {
   updateInvoiceCloud,
   getInvoiceStatsCloud,
   Invoice,
-  InvoiceType
+  InvoiceType,
+  RefundResult
 } from '@/lib/cloud/invoices-cloud';
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { printHTML } from '@/lib/native-print';
@@ -150,15 +151,35 @@ export default function Invoices() {
 
   const confirmRefund = async () => {
     if (invoiceToRefund) {
-      const success = await refundInvoiceCloud(invoiceToRefund.id);
-      if (success) {
+      const result = await refundInvoiceCloud(invoiceToRefund.id);
+      if (result && (result === true || (result as RefundResult).success)) {
         const [invoicesData, statsData] = await Promise.all([
           loadInvoicesCloud(),
           getInvoiceStatsCloud()
         ]);
         setInvoices(invoicesData);
         setStats(statsData);
-        toast.success('تم استرداد الفاتورة بنجاح وإعادة المخزون');
+
+        // ✅ إشعار تفصيلي
+        if (typeof result === 'object' && (result as RefundResult).success) {
+          const r = result as RefundResult;
+          const lines: string[] = [];
+          if (r.restoredItemsCount > 0) {
+            lines.push(`📦 ${r.restoredItemsCount} منتج أُعيد للمخزون`);
+          }
+          if (r.deletedDebtAmount > 0) {
+            lines.push(`🗑️ دين بمبلغ ${r.deletedDebtAmount.toFixed(2)}$ حُذف`);
+          }
+          if (r.customerName && r.customerBalanceBefore !== r.customerBalanceAfter) {
+            lines.push(`👤 رصيد ${r.customerName}: ${r.customerBalanceBefore.toFixed(2)}$ ← ${r.customerBalanceAfter.toFixed(2)}$`);
+          }
+          toast.success('✅ تم استرداد الفاتورة بنجاح', {
+            description: lines.length > 0 ? lines.join('\n') : 'تم تحديث جميع البيانات',
+            duration: 6000,
+          });
+        } else {
+          toast.success('تم استرداد الفاتورة بنجاح وإعادة المخزون');
+        }
       } else {
         toast.error('فشل في استرداد الفاتورة');
       }

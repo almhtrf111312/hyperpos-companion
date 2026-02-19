@@ -192,7 +192,23 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     getDebtsStatsCloud().then(setStats);
   }, [debts]);
 
-  const openPaymentDialog = (debt: Debt) => {
+  const openPaymentDialog = async (debt: Debt) => {
+    // ✅ منع تسديد دين مرتبط بفاتورة مستردة
+    if (debt.invoiceId && !debt.isCashDebt) {
+      try {
+        const { getInvoiceByIdCloud } = await import('@/lib/cloud/invoices-cloud');
+        const invoice = await getInvoiceByIdCloud(debt.invoiceId);
+        if (invoice && invoice.status === 'refunded') {
+          toast.warning('⚠️ هذا الدين مرتبط بفاتورة مستردة', {
+            description: `الفاتورة رقم ${debt.invoiceId} تم استردادها مسبقاً. لا يمكن تسديد هذا الدين.`,
+            duration: 5000,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('[openPaymentDialog] Could not verify invoice status:', err);
+      }
+    }
     setSelectedDebt(debt);
     setPaymentAmount(0);
     setShowPaymentDialog(true);
