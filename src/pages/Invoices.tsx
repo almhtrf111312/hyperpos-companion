@@ -139,6 +139,11 @@ export default function Invoices() {
   };
 
   const handleRefund = (invoice: Invoice) => {
+    // ✅ منع الاسترداد المزدوج من الواجهة
+    if (invoice.status === 'refunded') {
+      toast.warning('هذه الفاتورة مستردة بالفعل');
+      return;
+    }
     setInvoiceToRefund(invoice);
     setShowRefundDialog(true);
   };
