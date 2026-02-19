@@ -354,6 +354,42 @@ export const invalidateProductsCache = () => {
 // Add product to cloud
 export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): Promise<Product | null> => {
   const cloudData = toCloudProduct(product);
+
+  // === OFFLINE SUPPORT ===
+  if (!navigator.onLine) {
+    const tempId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const userId = getCurrentUserId() || 'offline';
+    const now = new Date().toISOString();
+
+    const offlineProduct: Product = {
+      ...product,
+      id: tempId,
+      status: getStatus(product.quantity || 0, product.minStockLevel),
+    };
+
+    // Add to local cache immediately
+    if (productsCache) {
+      productsCache.unshift(offlineProduct);
+    } else {
+      productsCache = [offlineProduct];
+    }
+    cacheTimestamp = Date.now();
+    saveToLocalCache(productsCache);
+
+    // Queue for sync when back online
+    const { addToQueue } = await import('../sync-queue');
+    addToQueue('sale', {
+      _operation: 'product_add',
+      product: { ...cloudData, user_id: userId },
+      tempId,
+    });
+
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    console.log('[addProductCloud] 📴 Saved offline, queued for sync:', tempId);
+    return offlineProduct;
+  }
+  // === END OFFLINE SUPPORT ===
+
   const inserted = await insertToSupabase<CloudProduct>('products', cloudData);
 
   if (inserted) {
@@ -417,6 +453,31 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   } else if (data.customFields !== undefined) {
     updates.custom_fields = data.customFields || null;
   }
+
+  // === OFFLINE SUPPORT ===
+  if (!navigator.onLine) {
+    // Update in local cache immediately
+    if (productsCache) {
+      productsCache = productsCache.map(p =>
+        p.id === id ? { ...p, ...data } : p
+      );
+      cacheTimestamp = Date.now();
+      saveToLocalCache(productsCache);
+    }
+
+    // Queue for sync when back online
+    const { addToQueue } = await import('../sync-queue');
+    addToQueue('sale', {
+      _operation: 'product_update',
+      id,
+      updates,
+    });
+
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    console.log('[updateProductCloud] 📴 Updated offline, queued for sync:', id);
+    return true;
+  }
+  // === END OFFLINE SUPPORT ===
 
   const success = await updateInSupabase('products', id, updates);
 
