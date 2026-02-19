@@ -12,7 +12,8 @@ import {
   Banknote,
   TrendingDown,
   Calendar,
-  BarChart3
+  BarChart3,
+  RotateCcw
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
@@ -55,6 +56,8 @@ export default function Dashboard() {
     deficitPercentage: 0,
     totalPurchases: 0,
     dailySales: [] as number[],
+    todayRefundedCount: 0,
+    monthRefundedAmount: 0,
   });
 
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -158,6 +161,19 @@ export default function Dashboard() {
       const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;
       const deficitPercentage = totalCapital > 0 ? (deficit / totalCapital) * 100 : 0;
 
+      // ✅ إحصائيات الفواتير المستردة
+      const todayRefundedInvoices = invoices.filter(inv =>
+        new Date(inv.createdAt).toDateString() === todayStr && inv.status === 'refunded'
+      );
+      const todayRefundedCount = todayRefundedInvoices.length;
+
+      const monthRefundedAmount = invoices
+        .filter(inv => {
+          const d = new Date(inv.createdAt);
+          return d.getMonth() === thisMonth && d.getFullYear() === thisYear && inv.status === 'refunded';
+        })
+        .reduce((sum, inv) => sum + inv.total, 0);
+
       setStats({
         todaySales,
         weekSales,
@@ -180,6 +196,8 @@ export default function Dashboard() {
         deficitPercentage,
         totalPurchases,
         dailySales,
+        todayRefundedCount,
+        monthRefundedAmount,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -323,6 +341,26 @@ export default function Dashboard() {
           icon={<DollarSign />}
           variant="primary"
           linkTo="/reports"
+        />
+      </div>
+
+      {/* Refund Stats Row */}
+      <div className="grid grid-cols-2 gap-2 md:gap-3">
+        <StatCard
+          title="مسترجعة اليوم"
+          value={stats.todayRefundedCount.toString()}
+          subtitle="فاتورة مستردة"
+          icon={<RotateCcw />}
+          variant="warning"
+          linkTo="/invoices"
+        />
+        <StatCard
+          title="إجمالي المسترجع (الشهر)"
+          value={formatCurrency(stats.monthRefundedAmount)}
+          subtitle="فواتير مستردة هذا الشهر"
+          icon={<TrendingDown />}
+          variant="warning"
+          linkTo="/invoices"
         />
       </div>
 

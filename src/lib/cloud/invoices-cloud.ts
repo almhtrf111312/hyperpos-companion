@@ -437,8 +437,17 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   return success;
 };
 
+export interface RefundResult {
+  success: boolean;
+  restoredItemsCount: number;
+  deletedDebtAmount: number;
+  customerBalanceBefore: number;
+  customerBalanceAfter: number;
+  customerName: string | null;
+}
+
 // Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
-export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
+export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boolean> => {
   // ✅ Reliable userId: always fallback to supabase.auth.getUser()
   let userId = getCurrentUserId();
   if (!userId) {
@@ -464,6 +473,12 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     return false;
   }
 
+  // ✅ جمع بيانات تفصيلية للإشعار
+  let restoredItemsCount = 0;
+  let deletedDebtAmount = 0;
+  let customerBalanceBefore = 0;
+  let customerBalanceAfter = 0;
+
   // 1. Restore stock for sale invoices
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -480,6 +495,8 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
           quantity: Number(item.quantity) || 0,
         }));
 
+      restoredItemsCount = itemsToRestore.length;
+
       if (itemsToRestore.length > 0) {
         const { restoreStockBatchCloud } = await import('./products-cloud');
         await restoreStockBatchCloud(itemsToRestore);
@@ -489,8 +506,20 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error restoring stock:', err);
   }
 
-  // 2. Delete associated debts - استخدام استعلامين منفصلين لضمان الحذف
-  // RLS تتولى التصفية تلقائياً بدون حاجة لـ user_id في الشرط
+  // 2. Get debt amount before deleting (for the notification)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: debtData } = await (supabase as any)
+      .from('debts')
+      .select('remaining_debt')
+      .eq('invoice_id', id)
+      .maybeSingle();
+    if (debtData) {
+      deletedDebtAmount = Number(debtData.remaining_debt) || 0;
+    }
+  } catch { /* silent */ }
+
+  // 2b. Delete associated debts
   try {
     // محاولة 1: حذف بـ invoice_number (الأكثر موثوقية)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -502,7 +531,6 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     if (!err1 && count1 && count1 > 0) {
       console.log('[refundInvoiceCloud] ✅ Deleted', count1, 'debts by invoice_number');
     } else {
-      // محاولة 2: حذف بـ UUID الفاتورة (fallback)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: err2, count: count2 } = await (supabase as any)
         .from('debts')
@@ -512,11 +540,10 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
       if (!err2 && count2 && count2 > 0) {
         console.log('[refundInvoiceCloud] ✅ Deleted', count2, 'debts by invoice UUID');
       } else {
-        console.warn('[refundInvoiceCloud] ⚠️ No debt deleted for invoice:', id, 'err1:', err1, 'err2:', err2);
+        console.warn('[refundInvoiceCloud] ⚠️ No debt deleted for invoice:', id);
       }
     }
 
-    // إعادة تهيئة كاش الديون
     const { invalidateDebtsCache } = await import('./debts-cloud');
     invalidateDebtsCache();
     emitEvent(EVENTS.DEBTS_UPDATED, null);
@@ -524,11 +551,19 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error deleting debt:', err);
   }
 
-  // 3. Reverse customer statistics - حساب حي من الفواتير الفعلية (أدق من الخصم اليدوي)
+  // 3. Reverse customer statistics
   const customerIdentifier = cloudInvoice.customer_id || cloudInvoice.customer_name;
   if (customerIdentifier) {
     try {
-      // ✅ حساب الإحصائيات الجديدة من الفواتير الحية (غير المستردة وغير هذه الفاتورة)
+      // جلب رصيد العميل قبل التحديث
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: custBefore } = await (supabase as any)
+        .from('customers')
+        .select('total_purchases')
+        .eq(cloudInvoice.customer_id ? 'id' : 'name', cloudInvoice.customer_id || cloudInvoice.customer_name)
+        .maybeSingle();
+      customerBalanceBefore = Number(custBefore?.total_purchases) || 0;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: activeInvoices } = await (supabase as any)
         .from('invoices')
@@ -536,41 +571,25 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
         .eq(cloudInvoice.customer_id ? 'customer_id' : 'customer_name',
             cloudInvoice.customer_id || cloudInvoice.customer_name)
         .neq('status', 'refunded')
-        .neq('id', cloudInvoice.id); // استثناء الفاتورة الحالية (سيتم تحديثها بعد ذلك)
+        .neq('id', cloudInvoice.id);
 
       const newTotalPurchases = (activeInvoices || []).reduce((s: number, i: { total: number }) => s + (Number(i.total) || 0), 0);
       const newTotalDebt = (activeInvoices || [])
         .filter((i: { payment_type: string; status: string }) => i.payment_type === 'debt' && i.status !== 'paid')
         .reduce((s: number, i: { total: number }) => s + (Number(i.total) || 0), 0);
       const newInvoiceCount = (activeInvoices || []).length;
+      customerBalanceAfter = newTotalPurchases;
 
-      // تحديث العميل بالإحصائيات الجديدة
       const filter = cloudInvoice.customer_id
         ? { column: 'id', value: cloudInvoice.customer_id }
         : { column: 'name', value: cloudInvoice.customer_name };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateErr } = await (supabase as any)
+      await (supabase as any)
         .from('customers')
-        .update({
-          total_purchases: newTotalPurchases,
-          total_debt: newTotalDebt,
-          invoice_count: newInvoiceCount,
-        })
+        .update({ total_purchases: newTotalPurchases, total_debt: newTotalDebt, invoice_count: newInvoiceCount })
         .eq(filter.column, filter.value);
 
-      if (!updateErr) {
-        console.log('[refundInvoiceCloud] ✅ Customer stats recalculated:', {
-          name: cloudInvoice.customer_name,
-          newTotalPurchases,
-          newTotalDebt,
-          newInvoiceCount,
-        });
-      } else {
-        console.error('[refundInvoiceCloud] ❌ Failed to update customer stats:', updateErr);
-      }
-
-      // إعادة تهيئة كاش العملاء
       const { invalidateCustomersCache } = await import('./customers-cloud');
       invalidateCustomersCache();
       emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
@@ -587,7 +606,7 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error reverting profit:', err);
   }
 
-  // 5. Mark invoice as refunded (keep for audit trail)
+  // 5. Mark invoice as refunded
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('invoices')
@@ -600,7 +619,14 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
   if (!error) {
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
-    return true;
+    return {
+      success: true,
+      restoredItemsCount,
+      deletedDebtAmount,
+      customerBalanceBefore,
+      customerBalanceAfter,
+      customerName: cloudInvoice.customer_name || null,
+    };
   }
 
   return false;
