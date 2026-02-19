@@ -437,16 +437,16 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   return success;
 };
 
-// Refund invoice - marks as refunded, restores stock, settles debts
+// Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
 export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
 
-  // Find by invoice_number
+  // Find by invoice_number - جلب بيانات الفاتورة الكاملة
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cloudInvoice } = await (supabase as any)
     .from('invoices')
-    .select('id, payment_type, invoice_type, total, profit')
+    .select('id, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone')
     .eq('invoice_number', id)
     .eq('user_id', userId)
     .maybeSingle();
@@ -478,17 +478,126 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error restoring stock:', err);
   }
 
-  // 2. Delete associated debt if payment was on credit
+  // 2. Delete associated debt - إصلاح: البحث بـ invoice_id مباشرة ثم الحذف بـ UUID
   if (cloudInvoice.payment_type === 'debt') {
     try {
-      const { deleteDebtByInvoiceIdCloud } = await import('./debts-cloud');
-      await deleteDebtByInvoiceIdCloud(id);
+      // البحث عن الديون المرتبطة بـ invoice_number أو invoice UUID
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: linkedDebts } = await (supabase as any)
+        .from('debts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('invoice_id', id); // البحث بـ invoice_number (الطريقة الأولى)
+
+      if (linkedDebts && linkedDebts.length > 0) {
+        // حذف كل دين بـ UUID الصحيح
+        for (const debt of linkedDebts) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).from('debts').delete().eq('id', debt.id);
+        }
+        console.log('[refundInvoiceCloud] ✅ Deleted', linkedDebts.length, 'debts by invoice_number');
+      } else {
+        // محاولة ثانية: البحث بـ UUID الفاتورة
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: linkedDebts2 } = await (supabase as any)
+          .from('debts')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('invoice_id', cloudInvoice.id);
+
+        if (linkedDebts2 && linkedDebts2.length > 0) {
+          for (const debt of linkedDebts2) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any).from('debts').delete().eq('id', debt.id);
+          }
+          console.log('[refundInvoiceCloud] ✅ Deleted', linkedDebts2.length, 'debts by invoice UUID');
+        } else {
+          // محاولة ثالثة: استخدام الدالة القديمة كـ fallback
+          const { deleteDebtByInvoiceIdCloud } = await import('./debts-cloud');
+          await deleteDebtByInvoiceIdCloud(id);
+        }
+      }
+
+      // إعادة تهيئة كاش الديون
+      const { invalidateDebtsCache } = await import('./debts-cloud');
+      invalidateDebtsCache();
+      emitEvent(EVENTS.DEBTS_UPDATED, null);
     } catch (err) {
       console.error('[refundInvoiceCloud] Error deleting debt:', err);
     }
   }
 
-  // 3. Revert profit distribution
+  // 3. Reverse customer statistics - عكس إحصائيات العميل
+  if (cloudInvoice.customer_id || cloudInvoice.customer_name) {
+    try {
+      const invoiceTotal = Number(cloudInvoice.total) || 0;
+      const isDebt = cloudInvoice.payment_type === 'debt';
+
+      if (cloudInvoice.customer_id) {
+        // تحديث بـ customer UUID
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: customer } = await (supabase as any)
+          .from('customers')
+          .select('total_purchases, total_debt, invoice_count')
+          .eq('id', cloudInvoice.customer_id)
+          .maybeSingle();
+
+        if (customer) {
+          const newTotalPurchases = Math.max(0, (Number(customer.total_purchases) || 0) - invoiceTotal);
+          const newTotalDebt = isDebt ? Math.max(0, (Number(customer.total_debt) || 0) - invoiceTotal) : (Number(customer.total_debt) || 0);
+          const newInvoiceCount = Math.max(0, (customer.invoice_count || 0) - 1);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from('customers')
+            .update({
+              total_purchases: newTotalPurchases,
+              total_debt: newTotalDebt,
+              invoice_count: newInvoiceCount,
+            })
+            .eq('id', cloudInvoice.customer_id);
+
+          console.log('[refundInvoiceCloud] ✅ Reversed customer stats for', cloudInvoice.customer_name);
+        }
+      } else if (cloudInvoice.customer_name) {
+        // البحث بالاسم إذا لم يكن هناك UUID
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: customer } = await (supabase as any)
+          .from('customers')
+          .select('id, total_purchases, total_debt, invoice_count')
+          .eq('user_id', userId)
+          .eq('name', cloudInvoice.customer_name)
+          .maybeSingle();
+
+        if (customer) {
+          const newTotalPurchases = Math.max(0, (Number(customer.total_purchases) || 0) - invoiceTotal);
+          const newTotalDebt = isDebt ? Math.max(0, (Number(customer.total_debt) || 0) - invoiceTotal) : (Number(customer.total_debt) || 0);
+          const newInvoiceCount = Math.max(0, (customer.invoice_count || 0) - 1);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from('customers')
+            .update({
+              total_purchases: newTotalPurchases,
+              total_debt: newTotalDebt,
+              invoice_count: newInvoiceCount,
+            })
+            .eq('id', customer.id);
+
+          console.log('[refundInvoiceCloud] ✅ Reversed customer stats by name for', cloudInvoice.customer_name);
+        }
+      }
+
+      // إعادة تهيئة كاش العملاء
+      const { invalidateCustomersCache } = await import('./customers-cloud');
+      invalidateCustomersCache();
+      emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+    } catch (err) {
+      console.error('[refundInvoiceCloud] Error reversing customer stats:', err);
+    }
+  }
+
+  // 4. Revert profit distribution
   try {
     const { revertProfitDistribution } = await import('../partners-store');
     revertProfitDistribution(id);
@@ -496,7 +605,7 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error reverting profit:', err);
   }
 
-  // 4. Mark invoice as refunded (keep for audit trail)
+  // 5. Mark invoice as refunded (keep for audit trail)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('invoices')

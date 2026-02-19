@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
@@ -12,6 +12,7 @@ import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
+import { CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -24,10 +25,46 @@ export default function Login() {
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isSendingReset, setIsSendingReset] = useState(false);
+  const [contactLinks, setContactLinks] = useState<ContactLinks | null>(null);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
 
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
+
+  // جلب بيانات التواصل عند فتح نافذة نسيت كلمة المرور
+  useEffect(() => {
+    if (!showForgotDialog) return;
+    const fetchContactLinks = async () => {
+      setIsLoadingContacts(true);
+      try {
+        const { data: linksData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'contact_links')
+          .maybeSingle();
+
+        if (linksData?.value) {
+          const parsed = JSON.parse(linksData.value);
+          const hasAnyLink = Object.values(parsed).some((v: unknown) => typeof v === 'string' && v.trim());
+          setContactLinks(hasAnyLink ? parsed : null);
+        } else {
+          const { data: phoneData } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'developer_phone')
+            .maybeSingle();
+          setContactLinks(phoneData?.value ? { whatsapp: phoneData.value } : null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch contact links:', err);
+        setContactLinks(null);
+      } finally {
+        setIsLoadingContacts(false);
+      }
+    };
+    fetchContactLinks();
+  }, [showForgotDialog]);
 
   // Check if device is blocked for a user
   const checkDeviceBinding = async (userId: string): Promise<{ blocked: boolean; allowMultiDevice: boolean }> => {
@@ -338,69 +375,152 @@ export default function Login() {
               <Mail className="w-7 h-7 text-primary" />
             </div>
             <DialogTitle>{t('auth.forgotPasswordTitle')}</DialogTitle>
-            <DialogDescription className="text-base mt-2">
-              {t('auth.forgotPasswordDesc')}
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 my-2">
-            <div className="space-y-2">
-              <Label htmlFor="resetEmail">{t('auth.email')}</Label>
-              <Input
-                id="resetEmail"
-                type="email"
-                placeholder="name@example.com"
-                value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
-                disabled={isSendingReset}
-                className="h-11"
-              />
+          {isLoadingContacts ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
-          </div>
-
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowForgotDialog(false)}
-              className="w-full sm:w-auto"
-              disabled={isSendingReset}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!resetEmail) return;
-                setIsSendingReset(true);
-                try {
-                  const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-                    redirectTo: `${window.location.origin}/#/reset-password`,
-                  });
-                  if (error) {
-                    toast.error(error.message);
-                  } else {
-                    toast.success(t('auth.resetSent'));
-                    setShowForgotDialog(false);
+          ) : contactLinks && Object.values(contactLinks).some((v) => typeof v === 'string' && v.trim()) ? (
+            // عرض بيانات التواصل عندما تكون محفوظة
+            <div className="space-y-4 my-2">
+              <DialogDescription className="text-center text-base">
+                تواصل مع مديرك لإعادة تعيين كلمة المرور
+              </DialogDescription>
+              <div className="grid grid-cols-2 gap-3">
+                {CHANNELS.filter(ch => contactLinks[ch.key]?.trim()).map((ch) => (
+                  <button
+                    key={ch.key}
+                    onClick={() => window.open(ch.openUrl(contactLinks[ch.key]!), '_blank')}
+                    className={`${ch.color} ${ch.hoverColor} text-white rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-200 hover:shadow-lg active:scale-95`}
+                  >
+                    <span className="text-xl">{ch.icon}</span>
+                    <span className="font-medium text-sm">{t(ch.labelKey as any)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">أو</span>
+                </div>
+              </div>
+              <p className="text-center text-sm text-muted-foreground">إذا كنت المالك يمكنك إعادة تعيين كلمة المرور بالبريد الإلكتروني</p>
+              <div className="space-y-2">
+                <Label htmlFor="resetEmail">{t('auth.email')}</Label>
+                <Input
+                  id="resetEmail"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  disabled={isSendingReset}
+                  className="h-11"
+                />
+              </div>
+              <Button
+                onClick={async () => {
+                  if (!resetEmail) return;
+                  setIsSendingReset(true);
+                  try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                      redirectTo: `${window.location.origin}/#/reset-password`,
+                    });
+                    if (error) {
+                      toast.error(error.message);
+                    } else {
+                      toast.success(t('auth.resetSent'));
+                      setShowForgotDialog(false);
+                    }
+                  } catch (err) {
+                    console.error('Reset password error:', err);
+                    toast.error(t('common.error'));
+                  } finally {
+                    setIsSendingReset(false);
                   }
-                } catch (err) {
-                  console.error('Reset password error:', err);
-                  toast.error(t('common.error'));
-                } finally {
-                  setIsSendingReset(false);
-                }
-              }}
-              disabled={isSendingReset || !resetEmail}
-              className="w-full sm:w-auto"
-            >
-              {isSendingReset ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin me-2" />
-                  {t('auth.loading')}
-                </>
-              ) : (
-                t('auth.sendResetLink')
-              )}
-            </Button>
-          </DialogFooter>
+                }}
+                disabled={isSendingReset || !resetEmail}
+                variant="outline"
+                className="w-full"
+              >
+                {isSendingReset ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin me-2" />
+                    {t('auth.loading')}
+                  </>
+                ) : (
+                  t('auth.sendResetLink')
+                )}
+              </Button>
+            </div>
+          ) : (
+            // عرض حقل البريد الإلكتروني فقط عندما لا توجد بيانات تواصل
+            <>
+              <DialogDescription className="text-center text-base mt-2">
+                {t('auth.forgotPasswordDesc')}
+              </DialogDescription>
+              <div className="space-y-4 my-2">
+                <div className="space-y-2">
+                  <Label htmlFor="resetEmail">{t('auth.email')}</Label>
+                  <Input
+                    id="resetEmail"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    disabled={isSendingReset}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowForgotDialog(false)}
+                  className="w-full sm:w-auto"
+                  disabled={isSendingReset}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!resetEmail) return;
+                    setIsSendingReset(true);
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                        redirectTo: `${window.location.origin}/#/reset-password`,
+                      });
+                      if (error) {
+                        toast.error(error.message);
+                      } else {
+                        toast.success(t('auth.resetSent'));
+                        setShowForgotDialog(false);
+                      }
+                    } catch (err) {
+                      console.error('Reset password error:', err);
+                      toast.error(t('common.error'));
+                    } finally {
+                      setIsSendingReset(false);
+                    }
+                  }}
+                  disabled={isSendingReset || !resetEmail}
+                  className="w-full sm:w-auto"
+                >
+                  {isSendingReset ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin me-2" />
+                      {t('auth.loading')}
+                    </>
+                  ) : (
+                    t('auth.sendResetLink')
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
