@@ -439,19 +439,30 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
 // Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
 export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
-  const userId = getCurrentUserId();
+  // ✅ Reliable userId: always fallback to supabase.auth.getUser()
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id || null;
+    if (userId) setCurrentUserId(userId);
+  }
   if (!userId) return false;
 
   // Find by invoice_number - جلب بيانات الفاتورة الكاملة
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cloudInvoice } = await (supabase as any)
     .from('invoices')
-    .select('id, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone')
+    .select('id, status, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone')
     .eq('invoice_number', id)
-    .eq('user_id', userId)
     .maybeSingle();
 
   if (!cloudInvoice) return false;
+
+  // ✅ منع الاسترداد المزدوج
+  if (cloudInvoice.status === 'refunded') {
+    console.warn('[refundInvoiceCloud] Invoice already refunded:', id);
+    return false;
+  }
 
   // 1. Restore stock for sale invoices
   try {
@@ -478,111 +489,85 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error restoring stock:', err);
   }
 
-  // 2. Delete associated debt - إصلاح: البحث بدون user_id فلتر وترك RLS يتولى التصفية
-  // (getCurrentUserId() قد يُرجع cashier_id لكن الديون محفوظة بـ owner_id عبر RLS)
-  if (cloudInvoice.payment_type === 'debt') {
-    try {
-      // محاولة 1: البحث بـ invoice_number (بدون user_id فلتر - RLS يتولى الأمر)
+  // 2. Delete associated debts - استخدام استعلامين منفصلين لضمان الحذف
+  // RLS تتولى التصفية تلقائياً بدون حاجة لـ user_id في الشرط
+  try {
+    // محاولة 1: حذف بـ invoice_number (الأكثر موثوقية)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: err1, count: count1 } = await (supabase as any)
+      .from('debts')
+      .delete({ count: 'exact' })
+      .eq('invoice_id', id);
+
+    if (!err1 && count1 && count1 > 0) {
+      console.log('[refundInvoiceCloud] ✅ Deleted', count1, 'debts by invoice_number');
+    } else {
+      // محاولة 2: حذف بـ UUID الفاتورة (fallback)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: linkedDebts } = await (supabase as any)
+      const { error: err2, count: count2 } = await (supabase as any)
         .from('debts')
-        .select('id')
-        .eq('invoice_id', id);
+        .delete({ count: 'exact' })
+        .eq('invoice_id', cloudInvoice.id);
 
-      if (linkedDebts && linkedDebts.length > 0) {
-        for (const debt of linkedDebts) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from('debts').delete().eq('id', debt.id);
-        }
-        console.log('[refundInvoiceCloud] ✅ Deleted', linkedDebts.length, 'debts by invoice_number');
+      if (!err2 && count2 && count2 > 0) {
+        console.log('[refundInvoiceCloud] ✅ Deleted', count2, 'debts by invoice UUID');
       } else {
-        // محاولة 2: البحث بـ UUID الفاتورة (بدون user_id فلتر)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: linkedDebts2 } = await (supabase as any)
-          .from('debts')
-          .select('id')
-          .eq('invoice_id', cloudInvoice.id);
-
-        if (linkedDebts2 && linkedDebts2.length > 0) {
-          for (const debt of linkedDebts2) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any).from('debts').delete().eq('id', debt.id);
-          }
-          console.log('[refundInvoiceCloud] ✅ Deleted', linkedDebts2.length, 'debts by invoice UUID');
-        } else {
-          console.warn('[refundInvoiceCloud] ⚠️ No debt found for invoice:', id);
-        }
+        console.warn('[refundInvoiceCloud] ⚠️ No debt deleted for invoice:', id, 'err1:', err1, 'err2:', err2);
       }
-
-      // إعادة تهيئة كاش الديون
-      const { invalidateDebtsCache } = await import('./debts-cloud');
-      invalidateDebtsCache();
-      emitEvent(EVENTS.DEBTS_UPDATED, null);
-    } catch (err) {
-      console.error('[refundInvoiceCloud] Error deleting debt:', err);
     }
+
+    // إعادة تهيئة كاش الديون
+    const { invalidateDebtsCache } = await import('./debts-cloud');
+    invalidateDebtsCache();
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+  } catch (err) {
+    console.error('[refundInvoiceCloud] Error deleting debt:', err);
   }
 
-  // 3. Reverse customer statistics - عكس إحصائيات العميل
-  if (cloudInvoice.customer_id || cloudInvoice.customer_name) {
+  // 3. Reverse customer statistics - حساب حي من الفواتير الفعلية (أدق من الخصم اليدوي)
+  const customerIdentifier = cloudInvoice.customer_id || cloudInvoice.customer_name;
+  if (customerIdentifier) {
     try {
-      const invoiceTotal = Number(cloudInvoice.total) || 0;
-      const isDebt = cloudInvoice.payment_type === 'debt';
+      // ✅ حساب الإحصائيات الجديدة من الفواتير الحية (غير المستردة وغير هذه الفاتورة)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: activeInvoices } = await (supabase as any)
+        .from('invoices')
+        .select('total, payment_type, status')
+        .eq(cloudInvoice.customer_id ? 'customer_id' : 'customer_name',
+            cloudInvoice.customer_id || cloudInvoice.customer_name)
+        .neq('status', 'refunded')
+        .neq('id', cloudInvoice.id); // استثناء الفاتورة الحالية (سيتم تحديثها بعد ذلك)
 
-      if (cloudInvoice.customer_id) {
-        // تحديث بـ customer UUID
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: customer } = await (supabase as any)
-          .from('customers')
-          .select('total_purchases, total_debt, invoice_count')
-          .eq('id', cloudInvoice.customer_id)
-          .maybeSingle();
+      const newTotalPurchases = (activeInvoices || []).reduce((s: number, i: { total: number }) => s + (Number(i.total) || 0), 0);
+      const newTotalDebt = (activeInvoices || [])
+        .filter((i: { payment_type: string; status: string }) => i.payment_type === 'debt' && i.status !== 'paid')
+        .reduce((s: number, i: { total: number }) => s + (Number(i.total) || 0), 0);
+      const newInvoiceCount = (activeInvoices || []).length;
 
-        if (customer) {
-          const newTotalPurchases = Math.max(0, (Number(customer.total_purchases) || 0) - invoiceTotal);
-          const newTotalDebt = isDebt ? Math.max(0, (Number(customer.total_debt) || 0) - invoiceTotal) : (Number(customer.total_debt) || 0);
-          const newInvoiceCount = Math.max(0, (customer.invoice_count || 0) - 1);
+      // تحديث العميل بالإحصائيات الجديدة
+      const filter = cloudInvoice.customer_id
+        ? { column: 'id', value: cloudInvoice.customer_id }
+        : { column: 'name', value: cloudInvoice.customer_name };
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from('customers')
-            .update({
-              total_purchases: newTotalPurchases,
-              total_debt: newTotalDebt,
-              invoice_count: newInvoiceCount,
-            })
-            .eq('id', cloudInvoice.customer_id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateErr } = await (supabase as any)
+        .from('customers')
+        .update({
+          total_purchases: newTotalPurchases,
+          total_debt: newTotalDebt,
+          invoice_count: newInvoiceCount,
+        })
+        .eq(filter.column, filter.value);
 
-          console.log('[refundInvoiceCloud] ✅ Reversed customer stats for', cloudInvoice.customer_name);
-        }
-      } else if (cloudInvoice.customer_name) {
-        // البحث بالاسم - بدون user_id فلتر (RLS يتولى التصفية تلقائياً)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: customer } = await (supabase as any)
-          .from('customers')
-          .select('id, total_purchases, total_debt, invoice_count')
-          .eq('name', cloudInvoice.customer_name)
-          .maybeSingle();
-
-        if (customer) {
-          const newTotalPurchases = Math.max(0, (Number(customer.total_purchases) || 0) - invoiceTotal);
-          const newTotalDebt = isDebt ? Math.max(0, (Number(customer.total_debt) || 0) - invoiceTotal) : (Number(customer.total_debt) || 0);
-          const newInvoiceCount = Math.max(0, (customer.invoice_count || 0) - 1);
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from('customers')
-            .update({
-              total_purchases: newTotalPurchases,
-              total_debt: newTotalDebt,
-              invoice_count: newInvoiceCount,
-            })
-            .eq('id', customer.id);
-
-          console.log('[refundInvoiceCloud] ✅ Reversed customer stats by name for', cloudInvoice.customer_name);
-        } else {
-          console.warn('[refundInvoiceCloud] ⚠️ Customer not found by name:', cloudInvoice.customer_name);
-        }
+      if (!updateErr) {
+        console.log('[refundInvoiceCloud] ✅ Customer stats recalculated:', {
+          name: cloudInvoice.customer_name,
+          newTotalPurchases,
+          newTotalDebt,
+          newInvoiceCount,
+        });
+      } else {
+        console.error('[refundInvoiceCloud] ❌ Failed to update customer stats:', updateErr);
       }
 
       // إعادة تهيئة كاش العملاء

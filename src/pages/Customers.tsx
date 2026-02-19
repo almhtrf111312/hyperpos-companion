@@ -13,12 +13,16 @@ import {
   CreditCard,
   X,
   Save,
-  Loader2
+  Loader2,
+  FileText,
+  ShoppingCart,
+  Wrench
 } from 'lucide-react';
-import { cn, formatNumber, formatCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +49,7 @@ import {
   getCustomersStatsCloud,
   Customer
 } from '@/lib/cloud/customers-cloud';
+import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
@@ -75,6 +80,8 @@ export default function Customers() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerInvoices, setCustomerInvoices] = useState<Invoice[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -235,9 +242,24 @@ export default function Customers() {
     setShowEditDialog(true);
   };
 
-  const openViewDialog = (customer: Customer) => {
+  const openViewDialog = async (customer: Customer) => {
     setSelectedCustomer(customer);
+    setCustomerInvoices([]);
     setShowViewDialog(true);
+
+    // ✅ تحميل فواتير العميل الحية (غير المستردة)
+    setLoadingInvoices(true);
+    try {
+      const allInvoices = await loadInvoicesCloud();
+      const active = allInvoices.filter(
+        inv => inv.customerName === customer.name && inv.status !== 'refunded'
+      );
+      setCustomerInvoices(active);
+    } catch (e) {
+      console.error('Error loading customer invoices:', e);
+    } finally {
+      setLoadingInvoices(false);
+    }
   };
 
   const openDeleteDialog = (customer: Customer) => {
@@ -551,7 +573,7 @@ export default function Customers() {
 
       {/* View Customer Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
@@ -559,52 +581,94 @@ export default function Customers() {
             </DialogTitle>
           </DialogHeader>
           {selectedCustomer && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-2">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center">
-                  <span className="text-2xl font-bold text-primary-foreground">
+                <div className="w-14 h-14 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl font-bold text-primary-foreground">
                     {selectedCustomer.name.charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">{selectedCustomer.name}</h3>
-                  <p className="text-muted-foreground">{selectedCustomer.invoiceCount} فاتورة</p>
+                  <h3 className="text-lg font-bold">{selectedCustomer.name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedCustomer.invoiceCount} فاتورة نشطة</p>
                 </div>
               </div>
 
-              <div className="space-y-2 bg-muted rounded-lg p-4">
-                <div className="flex items-center gap-2">
+              <div className="space-y-2 bg-muted rounded-lg p-3">
+                <div className="flex items-center gap-2 text-sm">
                   <Phone className="w-4 h-4 text-muted-foreground" />
                   <span>{selectedCustomer.phone}</span>
                 </div>
                 {selectedCustomer.email && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm">
                     <Mail className="w-4 h-4 text-muted-foreground" />
                     <span>{selectedCustomer.email}</span>
                   </div>
                 )}
                 {selectedCustomer.address && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
                     <span>{selectedCustomer.address}</span>
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-sm text-muted-foreground">إجمالي المشتريات</p>
-                  <p className="text-2xl font-bold text-primary">{formatCurrency(selectedCustomer.totalPurchases)}</p>
+              {/* ✅ إحصائيات حية محسوبة من الفواتير */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">إجمالي المشتريات</p>
+                  <p className="text-xl font-bold text-primary">
+                    {formatCurrency(customerInvoices.reduce((s, i) => s + i.total, 0))}
+                  </p>
                 </div>
-                <div className="bg-muted rounded-lg p-4 text-center">
-                  <p className="text-sm text-muted-foreground">الديون المستحقة</p>
-                  <p className={cn("text-2xl font-bold", selectedCustomer.totalDebt > 0 ? "text-destructive" : "text-success")}>
-                    {formatCurrency(selectedCustomer.totalDebt)}
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">الديون المستحقة</p>
+                  <p className={cn(
+                    "text-xl font-bold",
+                    customerInvoices.filter(i => i.paymentType === 'debt').reduce((s, i) => s + i.total, 0) > 0
+                      ? "text-destructive" : "text-success"
+                  )}>
+                    {formatCurrency(customerInvoices.filter(i => i.paymentType === 'debt').reduce((s, i) => s + i.total, 0))}
                   </p>
                 </div>
               </div>
 
-              <div className="text-sm text-muted-foreground text-center">
+              {/* ✅ قائمة الفواتير الحية */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  الفواتير النشطة
+                  {loadingInvoices && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                </h4>
+                {!loadingInvoices && customerInvoices.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4 bg-muted rounded-lg">لا توجد فواتير نشطة</p>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto">
+                    {customerInvoices.map(inv => (
+                      <div key={inv.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          {inv.type === 'sale'
+                            ? <ShoppingCart className="w-3.5 h-3.5 text-primary" />
+                            : <Wrench className="w-3.5 h-3.5 text-warning" />
+                          }
+                          <div>
+                            <p className="font-medium text-xs">{inv.id}</p>
+                            <p className="text-xs text-muted-foreground">{formatDateTime(new Date(inv.createdAt))}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-left">
+                          <Badge variant={inv.paymentType === 'cash' ? 'default' : 'destructive'} className="text-[10px] px-1.5 py-0">
+                            {inv.paymentType === 'cash' ? 'نقدي' : 'آجل'}
+                          </Badge>
+                          <span className="font-bold text-xs">{formatCurrency(inv.total)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-xs text-muted-foreground text-center">
                 آخر عملية شراء: {selectedCustomer.lastPurchase}
               </div>
             </div>
