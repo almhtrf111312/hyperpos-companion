@@ -348,27 +348,28 @@ export const recordPaymentWithInvoiceSyncCloud = async (
 };
 
 // Delete debt by invoice ID - يدعم البحث بـ invoice_number أو UUID
+// ⚠️ ملاحظة: لا نستخدم user_id فلتر هنا لأن getCurrentUserId() قد يُرجع cashier_id
+// لكن الديون محفوظة بـ owner_id - RLS يتولى التصفية تلقائياً
 export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boolean> => {
-  const userId = getCurrentUserId();
-  if (!userId) return false;
-
   try {
-    // حذف مباشر باستخدام OR condition للبحث بـ invoice_id أو id
+    // البحث أولاً بـ invoice_id ثم الحذف بـ UUID لضمان الدقة
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { data: foundDebts } = await (supabase as any)
       .from('debts')
-      .delete()
-      .or(`invoice_id.eq.${invoiceId},id.eq.${invoiceId}`)
-      .eq('user_id', userId);
+      .select('id')
+      .eq('invoice_id', invoiceId);
 
-    const success = !error;
-
-    if (success) {
+    if (foundDebts && foundDebts.length > 0) {
+      for (const debt of foundDebts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from('debts').delete().eq('id', debt.id);
+      }
       invalidateDebtsCache();
       emitEvent(EVENTS.DEBTS_UPDATED, null);
+      return true;
     }
 
-    return success;
+    return false;
   } catch (e) {
     console.error('[deleteDebtByInvoiceIdCloud] Error:', e);
     return false;

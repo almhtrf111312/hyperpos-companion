@@ -478,31 +478,29 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
     console.error('[refundInvoiceCloud] Error restoring stock:', err);
   }
 
-  // 2. Delete associated debt - إصلاح: البحث بـ invoice_id مباشرة ثم الحذف بـ UUID
+  // 2. Delete associated debt - إصلاح: البحث بدون user_id فلتر وترك RLS يتولى التصفية
+  // (getCurrentUserId() قد يُرجع cashier_id لكن الديون محفوظة بـ owner_id عبر RLS)
   if (cloudInvoice.payment_type === 'debt') {
     try {
-      // البحث عن الديون المرتبطة بـ invoice_number أو invoice UUID
+      // محاولة 1: البحث بـ invoice_number (بدون user_id فلتر - RLS يتولى الأمر)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: linkedDebts } = await (supabase as any)
         .from('debts')
         .select('id')
-        .eq('user_id', userId)
-        .eq('invoice_id', id); // البحث بـ invoice_number (الطريقة الأولى)
+        .eq('invoice_id', id);
 
       if (linkedDebts && linkedDebts.length > 0) {
-        // حذف كل دين بـ UUID الصحيح
         for (const debt of linkedDebts) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase as any).from('debts').delete().eq('id', debt.id);
         }
         console.log('[refundInvoiceCloud] ✅ Deleted', linkedDebts.length, 'debts by invoice_number');
       } else {
-        // محاولة ثانية: البحث بـ UUID الفاتورة
+        // محاولة 2: البحث بـ UUID الفاتورة (بدون user_id فلتر)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: linkedDebts2 } = await (supabase as any)
           .from('debts')
           .select('id')
-          .eq('user_id', userId)
           .eq('invoice_id', cloudInvoice.id);
 
         if (linkedDebts2 && linkedDebts2.length > 0) {
@@ -512,9 +510,7 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
           }
           console.log('[refundInvoiceCloud] ✅ Deleted', linkedDebts2.length, 'debts by invoice UUID');
         } else {
-          // محاولة ثالثة: استخدام الدالة القديمة كـ fallback
-          const { deleteDebtByInvoiceIdCloud } = await import('./debts-cloud');
-          await deleteDebtByInvoiceIdCloud(id);
+          console.warn('[refundInvoiceCloud] ⚠️ No debt found for invoice:', id);
         }
       }
 
@@ -560,12 +556,11 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
           console.log('[refundInvoiceCloud] ✅ Reversed customer stats for', cloudInvoice.customer_name);
         }
       } else if (cloudInvoice.customer_name) {
-        // البحث بالاسم إذا لم يكن هناك UUID
+        // البحث بالاسم - بدون user_id فلتر (RLS يتولى التصفية تلقائياً)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: customer } = await (supabase as any)
           .from('customers')
           .select('id, total_purchases, total_debt, invoice_count')
-          .eq('user_id', userId)
           .eq('name', cloudInvoice.customer_name)
           .maybeSingle();
 
@@ -585,6 +580,8 @@ export const refundInvoiceCloud = async (id: string): Promise<boolean> => {
             .eq('id', customer.id);
 
           console.log('[refundInvoiceCloud] ✅ Reversed customer stats by name for', cloudInvoice.customer_name);
+        } else {
+          console.warn('[refundInvoiceCloud] ⚠️ Customer not found by name:', cloudInvoice.customer_name);
         }
       }
 
