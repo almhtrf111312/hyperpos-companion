@@ -113,6 +113,11 @@ interface CartItem {
 
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
 
+// Keys for persistence across app background/foreground cycles
+const CART_STORAGE_KEY = 'hyperpos_temp_cart';
+const CART_OPEN_KEY = 'hyperpos_cart_open';
+const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
+
 export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
@@ -120,16 +125,29 @@ export default function POS() {
   const { profile } = useAuth();
   const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
+
+  // ✅ استعادة حالة السلة المفتوحة عند العودة للتطبيق
+  const [cartOpen, setCartOpen] = useState(() => {
+    try { return localStorage.getItem(CART_OPEN_KEY) === '1'; } catch { return false; }
+  });
+
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
   const hideMaintenanceSection = loadHideMaintenanceSetting();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // ✅ استعادة الباركود المعلق من الماسح الأصلي عند إعادة التشغيل
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      const pending = localStorage.getItem(PENDING_BARCODE_KEY);
+      if (pending) {
+        console.log('[POS] Restoring pending barcode on mount:', pending);
+        // سيُمسح بعد معالجته
+        return pending;
+      }
+    } catch {}
+    return '';
+  });
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
-
-  // ✅ حفظ واستعادة السلة عند الخروج/العودة للتطبيق
-  const CART_STORAGE_KEY = 'hyperpos_temp_cart';
 
   // حفظ السلة
   const saveCart = useCallback(() => {
@@ -147,7 +165,6 @@ export default function POS() {
         const items = JSON.parse(saved);
         if (Array.isArray(items) && items.length > 0) {
           setCart(prev => {
-            // لا تستعيد إذا السلة تحتوي بالفعل على نفس العناصر
             if (prev.length > 0) {
               console.log('[POS] Cart already has items, skipping restore');
               localStorage.removeItem(CART_STORAGE_KEY);
@@ -165,18 +182,58 @@ export default function POS() {
     }
   }, []);
 
+  // ✅ حفظ حالة فتح السلة في localStorage لاستعادتها عند العودة
+  const handleSetCartOpen = useCallback((open: boolean) => {
+    setCartOpen(open);
+    try { localStorage.setItem(CART_OPEN_KEY, open ? '1' : '0'); } catch {}
+  }, []);
+
+  // ✅ مسح الباركود المعلق بعد معالجته عند الـ mount
+  useEffect(() => {
+    try {
+      const pending = localStorage.getItem(PENDING_BARCODE_KEY);
+      if (pending) {
+        console.log('[POS] Clearing pending barcode from localStorage after mount restore');
+        // تأخير قصير لضمان أن searchQuery قد تم ضبطه
+        setTimeout(() => {
+          try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
+        }, 2000);
+      }
+    } catch {}
+  }, []);
+
   // مستمع حالة التطبيق (APK)
   useEffect(() => {
     let appListener: { remove: () => void } | null = null;
 
     App.addListener('appStateChange', ({ isActive }) => {
-      if (!isActive && cart.length > 0) {
-        // حفظ عند الخروج
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-        console.log('[POS] App going background, saved cart:', cart.length);
-      } else if (isActive) {
+      if (!isActive) {
+        // حفظ السلة عند الخروج
+        if (cart.length > 0) {
+          localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+          console.log('[POS] App going background, saved cart:', cart.length);
+        }
+        // ✅ حفظ حالة السلة المفتوحة عند الخروج
+        localStorage.setItem(CART_OPEN_KEY, cartOpen ? '1' : '0');
+      } else {
         // استعادة عند العودة
         restoreCart();
+        // ✅ استعادة الباركود المعلق عند العودة من ماسح الباركود
+        try {
+          const pending = localStorage.getItem(PENDING_BARCODE_KEY);
+          if (pending) {
+            console.log('[POS] Restoring pending barcode scan on resume:', pending);
+            setSearchQuery(pending);
+            localStorage.removeItem(PENDING_BARCODE_KEY);
+          }
+        } catch {}
+        // ✅ استعادة حالة السلة المفتوحة
+        try {
+          const wasOpen = localStorage.getItem(CART_OPEN_KEY) === '1';
+          if (wasOpen) {
+            setCartOpen(true);
+          }
+        } catch {}
       }
     }).then(listener => {
       appListener = listener;
@@ -189,7 +246,7 @@ export default function POS() {
       if (appListener) appListener.remove();
       window.removeEventListener('beforeunload', saveCart);
     };
-  }, [cart, saveCart, restoreCart]);
+  }, [cart, cartOpen, saveCart, restoreCart]);
 
   const [discount, setDiscount] = useState(0);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -567,9 +624,9 @@ export default function POS() {
       )}>
         {/* Header */}
         <POSHeader
-          onCartClick={() => setCartOpen(true)}
-          cartItemsCount={cartItemsCount}
-          showCartButton={false}
+        onCartClick={() => handleSetCartOpen(true)}
+        cartItemsCount={cartItemsCount}
+        showCartButton={false}
         />
 
         {/* Mobile menu trigger - same as MainLayout */}
@@ -646,7 +703,7 @@ export default function POS() {
       </div>
 
       {/* Cart Sheet - Mobile */}
-      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+      <Sheet open={cartOpen} onOpenChange={handleSetCartOpen}>
         <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden">
           <CartPanel
             cart={cart}
@@ -662,7 +719,7 @@ export default function POS() {
             onCustomerNameChange={setCustomerName}
             onToggleUnit={toggleCartItemUnit}
             onUpdateItemPrice={updateItemPrice}
-            onClose={() => setCartOpen(false)}
+            onClose={() => handleSetCartOpen(false)}
             isMobile
           />
         </SheetContent>
@@ -716,7 +773,7 @@ export default function POS() {
       {(isMobile || isTablet) && (
         <Button
           data-tour="cart-fab"
-          onClick={() => setCartOpen(true)}
+          onClick={() => handleSetCartOpen(true)}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 
                      w-16 h-16 rounded-full 
                      shadow-lg shadow-primary/30
