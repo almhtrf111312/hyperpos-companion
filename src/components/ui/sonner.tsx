@@ -16,19 +16,20 @@ const Toaster = ({ ...props }: ToasterProps) => {
       offset={60}
       swipeDirections={['left', 'right']}
       style={{
-        '--width': 'min(65vw, 280px)',
+        '--width': 'auto',
+        '--front-toast-width': 'auto'
       } as React.CSSProperties}
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:!bg-card group-[.toaster]:!opacity-100 group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-xl group-[.toaster]:rounded-xl group-[.toaster]:!backdrop-blur-none group-[.toaster]:border",
+            "group toast w-auto min-w-[300px] max-w-[90vw] group-[.toaster]:bg-background group-[.toaster]:opacity-100 group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-xl group-[.toaster]:rounded-xl group-[.toaster]:backdrop-blur-none group-[.toaster]:border",
           description: "group-[.toast]:text-muted-foreground group-[.toast]:text-sm",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-          success: "group-[.toaster]:!bg-[hsl(var(--success)/0.15)] group-[.toaster]:!text-[hsl(var(--success))] group-[.toaster]:!border-[hsl(var(--success)/0.3)]",
-          error: "group-[.toaster]:!bg-[hsl(var(--destructive)/0.15)] group-[.toaster]:!text-[hsl(var(--destructive))] group-[.toaster]:!border-[hsl(var(--destructive)/0.3)]",
-          warning: "group-[.toaster]:!bg-[hsl(var(--warning)/0.15)] group-[.toaster]:!text-[hsl(var(--warning))] group-[.toaster]:!border-[hsl(var(--warning)/0.3)]",
-          info: "group-[.toaster]:!bg-[hsl(var(--primary)/0.15)] group-[.toaster]:!text-[hsl(var(--primary))] group-[.toaster]:!border-[hsl(var(--primary)/0.3)]",
+          success: "group-[.toaster]:!bg-success/15 group-[.toaster]:!text-success-foreground group-[.toaster]:!border-success/30",
+          error: "group-[.toaster]:!bg-destructive/15 group-[.toaster]:!text-destructive-foreground group-[.toaster]:!border-destructive/30",
+          warning: "group-[.toaster]:!bg-warning/15 group-[.toaster]:!text-warning-foreground group-[.toaster]:!border-warning/30",
+          info: "group-[.toaster]:!bg-primary/15 group-[.toaster]:!text-primary-foreground group-[.toaster]:!border-primary/30",
         },
       }}
       {...props}

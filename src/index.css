@@ -116,17 +116,17 @@
   }
 
   .light {
-    --background: 0 0% 100%;
+    --background: 210 30% 98%;
     --foreground: 222 47% 11%;
-    --card: 0 0% 99%;
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 88%;
+    --secondary: 210 25% 91%;
     --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 91%;
+    --muted: 210 20% 93%;
     --muted-foreground: 215 25% 35%;
     --accent: 173 80% 40%;
     --accent-foreground: 0 0% 100%;
@@ -138,21 +138,21 @@
     --success-foreground: 0 0% 100%;
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
-    --border: 214 32% 78%;
-    --input: 214 32% 78%;
+    --border: 214 32% 85%;
+    --input: 214 32% 85%;
     --ring: 160 84% 39%;
-    --sidebar-background: 0 0% 97%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 160 84% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 91%;
+    --sidebar-accent: 210 20% 95%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 78%;
+    --sidebar-border: 214 32% 88%;
     --sidebar-ring: 160 84% 39%;
-    --pos-grid: 210 40% 96%;
+    --pos-grid: 210 30% 96%;
     --pos-item: 0 0% 100%;
-    --pos-item-hover: 210 40% 94%;
-    --pos-cart: 0 0% 98%;
+    --pos-item-hover: 210 20% 96%;
+    --pos-cart: 0 0% 100%;
     --pos-total: 160 84% 39%;
     --shadow-card-light: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
   }
@@ -426,12 +426,17 @@
 .dark.blur-theme [data-slot="card"] {
   backdrop-filter: blur(var(--blur-intensity)) saturate(1.8) !important;
   -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(1.8) !important;
+  background: rgba(14, 18, 25, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 .dark.blur-theme .bg-popover,
 .dark.blur-theme [class*="bg-popover"] {
   backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.8) !important;
   -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.8) !important;
+  background: rgba(10, 15, 22, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .dark.blur-theme [role="dialog"],
@@ -439,6 +444,9 @@
 .dark.blur-theme [data-radix-alert-dialog-content] {
   backdrop-filter: blur(calc(var(--blur-intensity) + 12px)) saturate(1.8) !important;
   -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 12px)) saturate(1.8) !important;
+  background: rgba(20, 25, 33, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 .dark.blur-theme [role="menu"],
@@ -447,22 +455,31 @@
 .dark.blur-theme [data-radix-select-content] {
   backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.8) !important;
   -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.8) !important;
+  background: rgba(10, 15, 22, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
 .dark.blur-theme .bg-muted,
 .dark.blur-theme [class*="bg-muted"]:not([class*="text-muted"]) {
-  background: hsl(var(--muted) / 0.7) !important;
+  background: rgba(30, 40, 50, 0.3) !important;
 }
 
 .dark.blur-theme .bg-secondary {
-  background: hsl(var(--secondary) / 0.7) !important;
+  background: rgba(20, 30, 45, 0.5) !important;
 }
 
 .dark.blur-theme input,
 .dark.blur-theme select,
 .dark.blur-theme textarea,
 .dark.blur-theme [data-slot="input"] {
-  background: hsl(var(--input) / 0.8) !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.dark.blur-theme input:focus,
+.dark.blur-theme select:focus,
+.dark.blur-theme textarea:focus {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border-color: hsl(var(--primary) / 0.6) !important;
 }
 
 /* ===== Dark Mode Dashboard Enhancements ===== */

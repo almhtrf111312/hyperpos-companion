@@ -137,7 +137,12 @@ export default function POS() {
   // ✅ استعادة الباركود المعلق من الماسح الأصلي عند إعادة التشغيل أو العودة
   const [pendingScan, setPendingScan] = useState<string | null>(() => {
     try {
-      return localStorage.getItem(PENDING_BARCODE_KEY);
+      const barcode = localStorage.getItem(PENDING_BARCODE_KEY);
+      if (barcode) {
+        console.log('[POS] Found pending barcode on mount (Activity Recreation):', barcode);
+        return barcode;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -183,7 +188,7 @@ export default function POS() {
   // ✅ حفظ حالة فتح السلة في localStorage لاستعادتها عند العودة
   const handleSetCartOpen = useCallback((open: boolean) => {
     setCartOpen(open);
-    try { localStorage.setItem(CART_OPEN_KEY, open ? '1' : '0'); } catch {}
+    try { localStorage.setItem(CART_OPEN_KEY, open ? '1' : '0'); } catch { }
   }, []);
 
   // تم إزالة useEffect القديم الذي كان يمسح الباركود المعلق فقط دون معالجته
@@ -212,14 +217,14 @@ export default function POS() {
             setPendingScan(pending);
             localStorage.removeItem(PENDING_BARCODE_KEY);
           }
-        } catch {}
+        } catch { }
         // ✅ استعادة حالة السلة المفتوحة
         try {
           const wasOpen = localStorage.getItem(CART_OPEN_KEY) === '1';
           if (wasOpen) {
             setCartOpen(true);
           }
-        } catch {}
+        } catch { }
       }
     }).then(listener => {
       appListener = listener;
@@ -520,11 +525,20 @@ export default function POS() {
 
   // ✅ Process pending scan once products are loaded
   useEffect(() => {
-    if (pendingScan && !isLoadingProducts && products.length > 0) {
-      console.log('[POS] Processing pending scan after load:', pendingScan);
-      handleBarcodeScan(pendingScan);
-      setPendingScan(null); // Clear from state
-      try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
+    // If we have a pending scan, wait for products to NOT be loading
+    if (pendingScan && !isLoadingProducts) {
+      if (products.length > 0) {
+        console.log('[POS] Processing pending scan after load:', pendingScan);
+        handleBarcodeScan(pendingScan);
+        setPendingScan(null); // Clear from state
+        try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch { }
+      } else {
+        // Edge case: no products loaded (empty db or offline). Try scanning anyway (it might look up in cloud)
+        console.log('[POS] Processing pending scan (no local products):', pendingScan);
+        handleBarcodeScan(pendingScan);
+        setPendingScan(null); // Clear from state
+        try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch { }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingScan, isLoadingProducts, products.length]);
@@ -621,9 +635,9 @@ export default function POS() {
       )}>
         {/* Header */}
         <POSHeader
-        onCartClick={() => handleSetCartOpen(true)}
-        cartItemsCount={cartItemsCount}
-        showCartButton={false}
+          onCartClick={() => handleSetCartOpen(true)}
+          cartItemsCount={cartItemsCount}
+          showCartButton={false}
         />
 
         {/* Mobile menu trigger - same as MainLayout */}
