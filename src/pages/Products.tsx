@@ -90,6 +90,7 @@ import { InlineCamera } from '@/components/camera/InlineCamera';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
+import { getSignedImageUrl } from '@/lib/image-upload';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -144,6 +145,36 @@ export default function Products() {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [imagePreviewBase64, setImagePreviewBase64] = useState<string>('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  /**
+   * ✅ فتح نافذة المعاينة بشكل آمن على APK و Web
+   * يحوّل المسار القصير (products/xxx.jpg) إلى signed URL قبل الفتح
+   * data URL وروابط http تُمرَّر مباشرة
+   */
+  const openImagePreview = useCallback(async (imageUrl: string) => {
+    if (!imageUrl) return;
+    // data URL أو base64: عرض مباشر
+    if (imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')) {
+      setPreviewImageUrl(imageUrl);
+      return;
+    }
+    // رابط http/https: عرض مباشر
+    if (imageUrl.startsWith('http')) {
+      setPreviewImageUrl(imageUrl);
+      return;
+    }
+    // مسار تخزين قصير: توليد signed URL أولاً
+    setPreviewLoading(true);
+    try {
+      const signedUrl = await getSignedImageUrl(imageUrl);
+      setPreviewImageUrl(signedUrl || imageUrl);
+    } catch {
+      setPreviewImageUrl(imageUrl);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
 
   // Form state with dynamic fields
   const [formData, setFormData] = useState({
@@ -1962,8 +1993,8 @@ export default function Products() {
                   <div className="flex flex-col gap-3">
                     {(imagePreviewBase64 || formData.image) ? (
                       <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
-                        if (imagePreviewBase64) setPreviewImageUrl(imagePreviewBase64);
-                        else if (formData.image) setPreviewImageUrl(formData.image);
+                        if (imagePreviewBase64) openImagePreview(imagePreviewBase64);
+                        else if (formData.image) openImagePreview(formData.image);
                       }}>
                         {imagePreviewBase64 ? (
                           <img
@@ -2448,8 +2479,8 @@ export default function Products() {
                   <div className="flex flex-col gap-3">
                     {(imagePreviewBase64 || formData.image) ? (
                       <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
-                        if (imagePreviewBase64) setPreviewImageUrl(imagePreviewBase64);
-                        else if (formData.image) setPreviewImageUrl(formData.image);
+                        if (imagePreviewBase64) openImagePreview(imagePreviewBase64);
+                        else if (formData.image) openImagePreview(formData.image);
                       }}>
                         {imagePreviewBase64 ? (
                           <img
@@ -2592,23 +2623,31 @@ export default function Products() {
           onSuccess={loadData}
         />
 
-        {/* Image Preview Dialog */}
-        <Dialog open={!!previewImageUrl} onOpenChange={(open) => !open && setPreviewImageUrl(null)}>
+        {/* Image Preview Dialog - previewImageUrl دائماً signed URL أو data URL */}
+        <Dialog open={!!previewImageUrl || previewLoading} onOpenChange={(open) => { if (!open) { setPreviewImageUrl(null); setPreviewLoading(false); } }}>
           <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:p-4 flex flex-col items-center justify-center">
             <DialogHeader className="sr-only">
               <DialogTitle>عرض صورة المنتج</DialogTitle>
             </DialogHeader>
-            {previewImageUrl && (
+            {previewLoading ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">جارٍ تحميل الصورة...</p>
+              </div>
+            ) : previewImageUrl ? (
               <img
                 src={previewImageUrl}
                 alt="صورة المنتج"
                 className="max-w-full max-h-[80vh] object-contain rounded-lg"
                 onError={(e) => {
-                  e.currentTarget.src = '';
-                  e.currentTarget.alt = 'الصورة تالفة أو غير متوفرة';
+                  e.currentTarget.style.display = 'none';
+                  const msg = document.createElement('p');
+                  msg.textContent = 'تعذّر تحميل الصورة';
+                  msg.className = 'text-muted-foreground text-sm py-8';
+                  e.currentTarget.parentNode?.appendChild(msg);
                 }}
               />
-            )}
+            ) : null}
           </DialogContent>
         </Dialog>
       {/* Inline Camera Fallback */}
