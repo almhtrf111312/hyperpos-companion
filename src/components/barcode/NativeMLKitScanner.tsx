@@ -4,6 +4,9 @@ import { useEffect, useRef, useCallback } from 'react';
 import { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } from '@capacitor/barcode-scanner';
 import { playBeep } from '@/lib/sound-utils';
 
+// Key used to persist the scanned barcode across potential app restarts
+export const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
+
 interface NativeMLKitScannerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,9 +31,20 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
       if (result.ScanResult && mountedRef.current) {
         console.log('[Scanner] Scanned:', result.ScanResult);
+        // ✅ حفظ الباركود في localStorage كنسخة احتياطية
+        // (في حال أعاد الأندرويد بناء WebView بعد إغلاق الماسح)
+        try {
+          localStorage.setItem(PENDING_BARCODE_KEY, result.ScanResult);
+        } catch (e) {
+          console.warn('[Scanner] Could not save pending barcode:', e);
+        }
         playBeep();
         if (navigator.vibrate) navigator.vibrate(200);
         onScan(result.ScanResult);
+        // مسح النسخة الاحتياطية بعد المعالجة الناجحة
+        setTimeout(() => {
+          try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
+        }, 3000);
       }
     } catch (err: any) {
       // User cancelled or error occurred
