@@ -546,26 +546,6 @@ export default function Reports() {
           break;
         }
         case 'inventory': {
-          if (products.length === 0) {
-            toast.error(t('reports.noStockToExport'));
-            return;
-          }
-
-          await exportProductsToPDF(
-            products.map(p => ({
-              name: p.name,
-              barcode: p.barcode || '',
-              category: p.category || 'بدون تصنيف',
-              costPrice: p.costPrice || 0,
-              salePrice: p.salePrice || 0,
-              quantity: p.quantity || 0,
-              minStockLevel: p.minStockLevel || 0,
-            })),
-            storeInfo
-          );
-          break;
-        }
-        case 'inventory': {
           if (cloudProducts.length === 0) {
             toast.error(t('reports.noStockToExport'));
             return;
@@ -586,17 +566,17 @@ export default function Reports() {
           break;
         }
         case 'customers': {
-          if (reportData.allCustomers.length === 0) {
+          if (customers.length === 0) {
             toast.error(t('reports.noCustomersToExport'));
             return;
           }
 
-          const customerData = reportData.allCustomers.map(c => ({
+          const customerData = customers.map(c => ({
             name: c.name,
-            phone: '',
-            totalPurchases: c.total,
-            ordersCount: c.orders,
-            balance: 0,
+            phone: c.phone || '',
+            totalPurchases: c.totalPurchases || 0,
+            ordersCount: c.invoiceCount || 0,
+            balance: c.totalDebt || 0,
           }));
           await exportCustomersToPDF(customerData, storeInfo);
           break;
@@ -684,29 +664,28 @@ export default function Reports() {
       switch (activeReport) {
         case 'products': {
           exportProductsToExcel(
-            reportData.allProducts.map(p => ({
+            products.map(p => ({
               name: p.name,
-              barcode: '',
-              barcode2: '',
-              barcode3: '',
-              variantLabel: '',
-              category: 'بدون تصنيف',
-              costPrice: 0,
-              salePrice: 0,
-              quantity: p.sales,
-              revenue: p.revenue
-            }) as any)
+              barcode: p.barcode || '',
+              barcode2: p.barcode2 || '',
+              barcode3: p.barcode3 || '',
+              variantLabel: p.variantLabel || '',
+              category: p.category || 'بدون تصنيف',
+              costPrice: p.costPrice,
+              salePrice: p.salePrice,
+              quantity: p.quantity,
+            }))
           );
           break;
         }
         case 'customers': {
-          const customerData = reportData.allCustomers.map(c => {
+          const customerData = customers.map(c => {
             return {
               name: c.name,
-              phone: '',
-              totalPurchases: c.total || 0,
-              ordersCount: c.orders || 0,
-              balance: 0,
+              phone: c.phone,
+              totalPurchases: c.totalPurchases || 0,
+              ordersCount: c.invoiceCount || 0,
+              balance: c.totalDebt || 0,
             };
           });
           exportCustomersToExcel(customerData);
