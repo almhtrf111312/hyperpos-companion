@@ -586,6 +586,21 @@ export default function Reports() {
           break;
         }
         case 'customers': {
+          if (reportData.allCustomers.length === 0) {
+            toast.error(t('reports.noCustomersToExport'));
+            return;
+          }
+
+          const customerData = reportData.allCustomers.map(c => ({
+            name: c.name,
+            phone: '',
+            totalPurchases: c.total,
+            ordersCount: c.orders,
+            balance: 0,
+          }));
+          await exportCustomersToPDF(customerData, storeInfo);
+          break;
+        }
         case 'partners': {
           if (partners.length === 0) {
             toast.error(t('reports.noPartnersToExport'));
