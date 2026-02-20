@@ -159,7 +159,7 @@ export default function Reports() {
   // Determine which reports are relevant for the current store type
   const isPharmacy = storeType === 'pharmacy';
   const isDistributorStore = storeType === 'phones';
-  
+
   const allReports = [
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
@@ -565,22 +565,27 @@ export default function Reports() {
           );
           break;
         }
-        case 'customers': {
-          if (customers.length === 0) {
-            toast.error(t('reports.noCustomersToExport'));
+        case 'inventory': {
+          if (cloudProducts.length === 0) {
+            toast.error(t('reports.noStockToExport'));
             return;
           }
 
-          const customerData = customers.map(c => ({
-            name: c.name,
-            phone: c.phone || '',
-            totalPurchases: c.totalPurchases || 0,
-            ordersCount: c.invoiceCount || 0,
-            balance: c.totalDebt || 0,
-          }));
-          await exportCustomersToPDF(customerData, storeInfo);
+          await exportProductsToPDF(
+            cloudProducts.map(p => ({
+              name: p.name,
+              barcode: p.barcode || '',
+              category: p.category || 'بدون تصنيف',
+              costPrice: p.costPrice || 0,
+              salePrice: p.salePrice || 0,
+              quantity: p.quantity || 0,
+              minStockLevel: p.minStockLevel || 0,
+            })),
+            storeInfo
+          );
           break;
         }
+        case 'customers': {
         case 'partners': {
           if (partners.length === 0) {
             toast.error(t('reports.noPartnersToExport'));
@@ -664,28 +669,29 @@ export default function Reports() {
       switch (activeReport) {
         case 'products': {
           exportProductsToExcel(
-            products.map(p => ({
+            reportData.allProducts.map(p => ({
               name: p.name,
-              barcode: p.barcode || '',
-              barcode2: p.barcode2 || '',
-              barcode3: p.barcode3 || '',
-              variantLabel: p.variantLabel || '',
-              category: p.category || 'بدون تصنيف',
-              costPrice: p.costPrice,
-              salePrice: p.salePrice,
-              quantity: p.quantity,
-            }))
+              barcode: '',
+              barcode2: '',
+              barcode3: '',
+              variantLabel: '',
+              category: 'بدون تصنيف',
+              costPrice: 0,
+              salePrice: 0,
+              quantity: p.sales,
+              revenue: p.revenue
+            }) as any)
           );
           break;
         }
         case 'customers': {
-          const customerData = customers.map(c => {
+          const customerData = reportData.allCustomers.map(c => {
             return {
               name: c.name,
-              phone: c.phone,
-              totalPurchases: c.totalPurchases || 0,
-              ordersCount: c.invoiceCount || 0,
-              balance: c.totalDebt || 0,
+              phone: '',
+              totalPurchases: c.total || 0,
+              ordersCount: c.orders || 0,
+              balance: 0,
             };
           });
           exportCustomersToExcel(customerData);
@@ -850,7 +856,7 @@ ${partnerExpenses.map(exp => {
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-border p-4 md:p-6">
           <div className="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-24 h-24 bg-primary/5 rounded-full translate-x-1/3 translate-y-1/3" />
-          
+
           <div className="relative flex flex-col gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -953,7 +959,7 @@ ${partnerExpenses.map(exp => {
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.totalSales')}</p>
             </div>
           </div>
-          
+
           <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-green-500/20">
             <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
             <div className="relative">
@@ -971,7 +977,7 @@ ${partnerExpenses.map(exp => {
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.totalProfit')}</p>
             </div>
           </div>
-          
+
           <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-blue-500/20">
             <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
             <div className="relative">
@@ -984,7 +990,7 @@ ${partnerExpenses.map(exp => {
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{t('reports.ordersCount')}</p>
             </div>
           </div>
-          
+
           <div className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md hover:border-amber-500/20">
             <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
             <div className="relative">
@@ -1030,26 +1036,26 @@ ${partnerExpenses.map(exp => {
               </h3>
             </div>
             <div className="p-4 sm:p-6">
-            {reportData.dailySales.length > 0 ? (
-              <div className="space-y-2.5">
-                {reportData.dailySales.map((day, idx) => (
-                  <div key={idx} className="flex items-center gap-3 group">
-                    <span className="text-xs text-muted-foreground w-20 font-mono">{day.date}</span>
-                    <div className="flex-1 h-7 bg-muted/60 rounded-lg overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-l from-primary to-primary/70 rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
-                        style={{ width: `${day.sales / maxSales * 100}%` }}
-                      />
+              {reportData.dailySales.length > 0 ? (
+                <div className="space-y-2.5">
+                  {reportData.dailySales.map((day, idx) => (
+                    <div key={idx} className="flex items-center gap-3 group">
+                      <span className="text-xs text-muted-foreground w-20 font-mono">{day.date}</span>
+                      <div className="flex-1 h-7 bg-muted/60 rounded-lg overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-l from-primary to-primary/70 rounded-lg transition-all duration-700 ease-out group-hover:brightness-110"
+                          style={{ width: `${day.sales / maxSales * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold w-20 text-left tabular-nums">
+                        {formatCurrency(day.sales)}
+                      </span>
                     </div>
-                    <span className="text-xs font-semibold w-20 text-left tabular-nums">
-                      {formatCurrency(day.sales)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
+              )}
             </div>
           </div>
         )}
@@ -1073,26 +1079,26 @@ ${partnerExpenses.map(exp => {
               </h3>
             </div>
             <div className="p-4 sm:p-6">
-            {reportData.topProducts.length > 0 ? (
-              <div className="space-y-2">
-                {reportData.topProducts.map((product, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
-                    <div className="flex items-center gap-3">
-                      <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        {idx + 1}
-                      </span>
-                      <span className="font-medium text-sm">{product.name}</span>
+              {reportData.topProducts.length > 0 ? (
+                <div className="space-y-2">
+                  {reportData.topProducts.map((product, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          {idx + 1}
+                        </span>
+                        <span className="font-medium text-sm">{product.name}</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
+                        <p className="text-[10px] text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
-                      <p className="text-[10px] text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">{t('reports.noProductsSold')}</p>
+              )}
             </div>
           </div>
         )}
@@ -1195,26 +1201,26 @@ ${partnerExpenses.map(exp => {
               </h3>
             </div>
             <div className="p-4 sm:p-6">
-            {reportData.topCustomers.length > 0 ? (
-              <div className="space-y-2">
-                {reportData.topCustomers.map((customer, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
-                    <div className="flex items-center gap-3">
-                      <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        {idx + 1}
-                      </span>
-                      <span className="font-medium text-sm">{customer.name}</span>
+              {reportData.topCustomers.length > 0 ? (
+                <div className="space-y-2">
+                  {reportData.topCustomers.map((customer, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          {idx + 1}
+                        </span>
+                        <span className="font-medium text-sm">{customer.name}</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-sm text-foreground">{formatCurrency(customer.total)}</p>
+                        <p className="text-[10px] text-muted-foreground">{customer.orders} {t('reports.order')}</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-bold text-sm text-foreground">{formatCurrency(customer.total)}</p>
-                      <p className="text-[10px] text-muted-foreground">{customer.orders} {t('reports.order')}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">{t('reports.noCustomers')}</p>
+              )}
             </div>
           </div>
         )}
