@@ -134,18 +134,16 @@ export default function POS() {
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
   const hideMaintenanceSection = loadHideMaintenanceSetting();
 
-  // ✅ استعادة الباركود المعلق من الماسح الأصلي عند إعادة التشغيل
-  const [searchQuery, setSearchQuery] = useState(() => {
+  // ✅ استعادة الباركود المعلق من الماسح الأصلي عند إعادة التشغيل أو العودة
+  const [pendingScan, setPendingScan] = useState<string | null>(() => {
     try {
-      const pending = localStorage.getItem(PENDING_BARCODE_KEY);
-      if (pending) {
-        console.log('[POS] Restoring pending barcode on mount:', pending);
-        // سيُمسح بعد معالجته
-        return pending;
-      }
-    } catch {}
-    return '';
+      return localStorage.getItem(PENDING_BARCODE_KEY);
+    } catch {
+      return null;
+    }
   });
+
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -188,19 +186,7 @@ export default function POS() {
     try { localStorage.setItem(CART_OPEN_KEY, open ? '1' : '0'); } catch {}
   }, []);
 
-  // ✅ مسح الباركود المعلق بعد معالجته عند الـ mount
-  useEffect(() => {
-    try {
-      const pending = localStorage.getItem(PENDING_BARCODE_KEY);
-      if (pending) {
-        console.log('[POS] Clearing pending barcode from localStorage after mount restore');
-        // تأخير قصير لضمان أن searchQuery قد تم ضبطه
-        setTimeout(() => {
-          try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
-        }, 2000);
-      }
-    } catch {}
-  }, []);
+  // تم إزالة useEffect القديم الذي كان يمسح الباركود المعلق فقط دون معالجته
 
   // مستمع حالة التطبيق (APK)
   useEffect(() => {
@@ -223,7 +209,7 @@ export default function POS() {
           const pending = localStorage.getItem(PENDING_BARCODE_KEY);
           if (pending) {
             console.log('[POS] Restoring pending barcode scan on resume:', pending);
-            setSearchQuery(pending);
+            setPendingScan(pending);
             localStorage.removeItem(PENDING_BARCODE_KEY);
           }
         } catch {}
@@ -531,6 +517,17 @@ export default function POS() {
       setSearchQuery(barcode);
     }
   };
+
+  // ✅ Process pending scan once products are loaded
+  useEffect(() => {
+    if (pendingScan && !isLoadingProducts && products.length > 0) {
+      console.log('[POS] Processing pending scan after load:', pendingScan);
+      handleBarcodeScan(pendingScan);
+      setPendingScan(null); // Clear from state
+      try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingScan, isLoadingProducts, products.length]);
 
   const handleAddScannedProduct = (product: POSProduct) => {
     addToCart(product, 'piece');
