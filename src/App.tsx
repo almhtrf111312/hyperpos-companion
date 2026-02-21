@@ -141,6 +141,24 @@ const AppContent = () => {
             console.error('[App Restored] Failed to save camera data:', e);
           }
         }
+
+        // Handle Barcode Scanner plugin data
+        if (data.pluginId === 'CapacitorBarcodeScanner' && data.data) {
+          try {
+            const scanResult = data.data?.ScanResult || data.data?.result || (typeof data.data === 'string' ? data.data : null);
+            if (scanResult) {
+              console.log('[App Restored] Barcode scan result:', scanResult);
+              localStorage.setItem('hyperpos_pending_scan', scanResult);
+
+              // Emit custom event for immediate handling
+              window.dispatchEvent(new CustomEvent('barcode-restored', {
+                detail: scanResult
+              }));
+            }
+          } catch (e) {
+            console.error('[App Restored] Failed to save barcode data:', e);
+          }
+        }
       });
     };
 

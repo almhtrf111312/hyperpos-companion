@@ -127,7 +127,7 @@
     --secondary: 210 25% 91%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 20% 93%;
-    --muted-foreground: 215 25% 35%;
+    --muted-foreground: 215 25% 30%;
     --accent: 173 80% 40%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
@@ -475,6 +475,7 @@
   background: rgba(0, 0, 0, 0.3) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
+
 .dark.blur-theme input:focus,
 .dark.blur-theme select:focus,
 .dark.blur-theme textarea:focus {
@@ -482,7 +483,70 @@
   border-color: hsl(var(--primary) / 0.6) !important;
 }
 
-/* ===== Dark Mode Dashboard Enhancements ===== */
+/* ===== Light Mode Blur Overrides - frosted glass for light backgrounds ===== */
+.light.blur-theme .bg-card,
+.light.blur-theme [class*="bg-card"],
+.light.blur-theme .card,
+.light.blur-theme [data-slot="card"] {
+  backdrop-filter: blur(var(--blur-intensity)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) saturate(1.4) !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.light.blur-theme .bg-popover,
+.light.blur-theme [class*="bg-popover"] {
+  backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 6px)) saturate(1.4) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.light.blur-theme [role="dialog"],
+.light.blur-theme [data-radix-dialog-content],
+.light.blur-theme [data-radix-alert-dialog-content] {
+  backdrop-filter: blur(calc(var(--blur-intensity) + 12px)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 12px)) saturate(1.4) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.light.blur-theme [role="menu"],
+.light.blur-theme [data-radix-menu-content],
+.light.blur-theme [data-radix-dropdown-menu-content],
+.light.blur-theme [data-radix-select-content] {
+  backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.4) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.light.blur-theme .bg-muted,
+.light.blur-theme [class*="bg-muted"]:not([class*="text-muted"]) {
+  background: rgba(210, 220, 230, 0.35) !important;
+}
+
+.light.blur-theme .bg-secondary {
+  background: rgba(200, 210, 225, 0.45) !important;
+}
+
+.light.blur-theme input,
+.light.blur-theme select,
+.light.blur-theme textarea,
+.light.blur-theme [data-slot="input"] {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.light.blur-theme input:focus,
+.light.blur-theme select:focus,
+.light.blur-theme textarea:focus {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: hsl(var(--primary) / 0.5) !important;
+}
+
 .dark .glass {
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -499,15 +563,32 @@
 */
 
 /* ── إصلاح شامل للنصوص في الوضع الفاتح ── */
-.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+.light h1,
+.light h2,
+.light h3,
+.light h4,
+.light h5,
+.light h6 {
   color: hsl(var(--foreground)) !important;
 }
+
 .light .text-foreground {
   color: hsl(var(--foreground)) !important;
 }
-.light .text-foreground\/80 { color: hsl(var(--foreground) / 0.85) !important; }
-.light .text-foreground\/60 { color: hsl(var(--foreground) / 0.72) !important; }
-.light .bg-card > *, .light [data-slot="card"] { color: hsl(var(--card-foreground)); }
+
+.light .text-foreground\/80 {
+  color: hsl(var(--foreground) / 0.85) !important;
+}
+
+.light .text-foreground\/60 {
+  color: hsl(var(--foreground) / 0.72) !important;
+}
+
+.light .bg-card>*,
+.light [data-slot="card"] {
+  color: hsl(var(--card-foreground));
+}
+
 .light,
 .light * {
   color: inherit;
@@ -594,7 +675,7 @@
 }
 
 /* ── القوائم المنسدلة والـ Popovers ── */
-.light [data-radix-popper-content-wrapper] > div,
+.light [data-radix-popper-content-wrapper]>div,
 .light [data-radix-select-content],
 .light [data-radix-dropdown-menu-content],
 .light [data-radix-menu-content],
