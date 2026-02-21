@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from 'sonner';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { PENDING_BARCODE_KEY } from '@/components/barcode/NativeMLKitScanner';
 import { CategoryManager } from '@/components/CategoryManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -122,13 +123,13 @@ export default function Products() {
   const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
-  
+
   // View mode state (grid = cards, list = rows with images, compact = text-only)
   type ViewMode = 'grid' | 'list' | 'compact';
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem('products_view_mode') as ViewMode) || 'grid';
   });
-  
+
   useEffect(() => {
     localStorage.setItem('products_view_mode', viewMode);
   }, [viewMode]);
@@ -468,6 +469,43 @@ export default function Products() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, categoryOptions, setSearchParams]);
+
+  // ✅ استعادة الباركود المعلق بعد إعادة بناء Activity على Android
+  useEffect(() => {
+    try {
+      const pendingBarcode = localStorage.getItem('hyperpos_pending_scan');
+      const pendingScanTarget = localStorage.getItem('hyperpos_scan_target') || 'form';
+      if (pendingBarcode) {
+        const cleanBarcode = pendingBarcode.trim();
+        console.log('[Products] Found pending barcode on mount:', cleanBarcode, 'target:', pendingScanTarget);
+
+        // وضع الباركود في الحقل المناسب حسب scanTarget المحفوظ
+        if (pendingScanTarget === 'barcode2') {
+          setFormData(prev => ({ ...prev, barcode2: cleanBarcode }));
+          setShowBarcode2(true);
+        } else if (pendingScanTarget === 'barcode3') {
+          setFormData(prev => ({ ...prev, barcode3: cleanBarcode }));
+          setShowBarcode3(true);
+        } else if (pendingScanTarget === 'search') {
+          setSearchQuery(cleanBarcode);
+        } else {
+          // form أو barcode1
+          setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
+          // فتح نافذة الإضافة إذا لم تكن مفتوحة
+          if (!showAddDialog && !showEditDialog) {
+            setShowAddDialog(true);
+          }
+        }
+
+        // مسح البيانات المعلقة
+        localStorage.removeItem('hyperpos_pending_scan');
+        localStorage.removeItem('hyperpos_scan_target');
+        toast.success('تم قراءة الباركود', { description: cleanBarcode });
+      }
+    } catch (e) {
+      console.warn('[Products] Error restoring pending barcode:', e);
+    }
+  }, []);
 
   // Handle gallery selection using Capacitor Camera plugin
   const handleGallerySelect = async () => {
@@ -832,9 +870,9 @@ export default function Products() {
 
   const openBarcodeScannerForForm = () => {
     setScanTarget('form');
+    // حفظ scanTarget في localStorage لاستعادته بعد Activity Recreation
+    try { localStorage.setItem('hyperpos_scan_target', 'form'); } catch { }
     setScannerOpen(true);
-
-
   };
 
   return (
@@ -852,21 +890,21 @@ export default function Products() {
           <div className="sm:hidden flex flex-col gap-2">
             <div className="flex gap-2">
               {!noInventory && (
-              <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                <FileText className="w-4 h-4 ml-1" />
-                {t('purchaseInvoice.addPurchaseInvoice')}
-              </Button>
+                <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                  <FileText className="w-4 h-4 ml-1" />
+                  {t('purchaseInvoice.addPurchaseInvoice')}
+                </Button>
               )}
               {canAddProducts && (
-              <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
-                setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-                setImagePreviewBase64('');
-                setShowAddDialog(true);
-              }}>
-                <Plus className="w-4 h-4 ml-1" />
-                {tDynamic('addProduct')}
-              </Button>
+                <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
+                  setFieldsConfig(getEffectiveFieldsConfig());
+                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                  setImagePreviewBase64('');
+                  setShowAddDialog(true);
+                }}>
+                  <Plus className="w-4 h-4 ml-1" />
+                  {tDynamic('addProduct')}
+                </Button>
               )}
             </div>
             <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
@@ -877,25 +915,25 @@ export default function Products() {
           {/* Desktop: Original layout */}
           <div className="hidden sm:flex gap-2">
             {!noInventory && (
-            <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-              <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('purchaseInvoice.addPurchaseInvoice')}
-            </Button>
+              <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                {t('purchaseInvoice.addPurchaseInvoice')}
+              </Button>
             )}
             <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
               <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
               {t('products.categories')}
             </Button>
             {canAddProducts && (
-            <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-              setFieldsConfig(getEffectiveFieldsConfig());
-              setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-              setImagePreviewBase64('');
-              setShowAddDialog(true);
-            }}>
-              <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {tDynamic('addProduct')}
-            </Button>
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+                setFieldsConfig(getEffectiveFieldsConfig());
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setImagePreviewBase64('');
+                setShowAddDialog(true);
+              }}>
+                <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                {tDynamic('addProduct')}
+              </Button>
             )}
           </div>
         </div>
@@ -903,78 +941,78 @@ export default function Products() {
 
       {/* Stats - Fixed */}
       {!noInventory && (
-      <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
-      <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
-          <button
-            onClick={() => setStatusFilter('all')}
-            className={cn(
-              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-              statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
-            )}
-          >
-            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-              <div className="p-1 md:p-2 rounded-lg bg-primary/10">
-                <Package className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
+        <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
+          <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={cn(
+                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+              )}
+            >
+              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                <div className="p-1 md:p-2 rounded-lg bg-primary/10">
+                  <Package className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.total}</p>
+                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.total')}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-base md:text-2xl font-bold text-foreground">{stats.total}</p>
-                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.total')}</p>
+            </button>
+            <button
+              onClick={() => setStatusFilter('in_stock')}
+              className={cn(
+                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
+              )}
+            >
+              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                <div className="p-1 md:p-2 rounded-lg bg-success/10">
+                  <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.inStock}</p>
+                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.available')}</p>
+                </div>
               </div>
-            </div>
-          </button>
-          <button
-            onClick={() => setStatusFilter('in_stock')}
-            className={cn(
-              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-              statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
-            )}
-          >
-            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-              <div className="p-1 md:p-2 rounded-lg bg-success/10">
-                <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
+            </button>
+            <button
+              onClick={() => setStatusFilter('low_stock')}
+              className={cn(
+                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
+              )}
+            >
+              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                <div className="p-1 md:p-2 rounded-lg bg-warning/10">
+                  <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
+                </div>
+                <div>
+                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
+                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.low')}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-base md:text-2xl font-bold text-foreground">{stats.inStock}</p>
-                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.available')}</p>
+            </button>
+            <button
+              onClick={() => setStatusFilter('out_of_stock')}
+              className={cn(
+                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+              )}
+            >
+              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
+                  <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
+                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
+                </div>
               </div>
-            </div>
-          </button>
-          <button
-            onClick={() => setStatusFilter('low_stock')}
-            className={cn(
-              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-              statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
-            )}
-          >
-            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-              <div className="p-1 md:p-2 rounded-lg bg-warning/10">
-                <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-base md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
-                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.low')}</p>
-              </div>
-            </div>
-          </button>
-          <button
-            onClick={() => setStatusFilter('out_of_stock')}
-            className={cn(
-              "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-              statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
-            )}
-          >
-            <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-              <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
-                <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-base md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
-                <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
-              </div>
-            </div>
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Filters - Fixed */}
@@ -998,6 +1036,7 @@ export default function Products() {
                 className="h-10 w-10 flex-shrink-0"
                 onClick={() => {
                   setScanTarget('search');
+                  try { localStorage.setItem('hyperpos_scan_target', 'search'); } catch { }
                   setScannerOpen(true);
                 }}
               >
@@ -1130,14 +1169,14 @@ export default function Products() {
                       </div>
                     </div>
                     {canAddProducts && (
-                    <div className="flex gap-0.5 flex-shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDeleteDialog(product)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDeleteDialog(product)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 );
@@ -1170,28 +1209,28 @@ export default function Products() {
                         {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
                         {noInventory && product.wholesalePrice > 0 && <span className="text-muted-foreground">{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
                         {!noInventory && (
-                        <DualUnitDisplay
-                          totalPieces={product.quantity}
-                          conversionFactor={product.conversionFactor || 1}
-                          bulkUnit={product.bulkUnit}
-                          smallUnit={product.smallUnit}
-                          showTotal={false}
-                          size="sm"
-                        />
+                          <DualUnitDisplay
+                            totalPieces={product.quantity}
+                            conversionFactor={product.conversionFactor || 1}
+                            bulkUnit={product.bulkUnit}
+                            smallUnit={product.smallUnit}
+                            showTotal={false}
+                            size="sm"
+                          />
                         )}
                         {fieldsConfig.sizeColor && product.size && <span className="text-primary text-[10px] bg-primary/10 px-1.5 py-0.5 rounded">{product.size}</span>}
                         {fieldsConfig.sizeColor && product.color && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{product.color}</span>}
                       </div>
                     </div>
                     {canAddProducts && (
-                    <div className="flex gap-0.5 flex-shrink-0">
-                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditDialog(product)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => openDeleteDialog(product)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditDialog(product)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => openDeleteDialog(product)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 );
@@ -1216,57 +1255,57 @@ export default function Products() {
                       <p className="text-xs text-muted-foreground truncate mt-0.5" title={product.barcode}>{noInventory ? product.category : (product.barcode || product.category)}</p>
                     </div>
                     {!noInventory && (
-                    <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap", status.color)}>
-                      {status.label}
-                    </span>
+                      <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap", status.color)}>
+                        {status.label}
+                      </span>
                     )}
                   </div>
 
                   {noInventory ? (
-                  <div className={cn("grid gap-2 text-center mb-3", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
-                    {isRepairMode ? (
-                      <>
-                        <div>
-                          <p className="text-xs text-muted-foreground">تكلفة القطعة</p>
-                          <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">تكلفة العمالة</p>
-                          <p className="font-semibold text-sm">${formatNumber(product.laborCost || 0, 2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">المجموع</p>
-                          <p className="font-semibold text-sm text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                    <div>
-                      <p className="text-xs text-muted-foreground">البيع</p>
-                      <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
+                    <div className={cn("grid gap-2 text-center mb-3", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
+                      {isRepairMode ? (
+                        <>
+                          <div>
+                            <p className="text-xs text-muted-foreground">تكلفة القطعة</p>
+                            <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">تكلفة العمالة</p>
+                            <p className="font-semibold text-sm">${formatNumber(product.laborCost || 0, 2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">المجموع</p>
+                            <p className="font-semibold text-sm text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-xs text-muted-foreground">البيع</p>
+                            <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{t('products.wholesalePrice')}</p>
+                            <p className="font-semibold text-sm">${formatNumber(product.wholesalePrice || 0, 2)}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t('products.wholesalePrice')}</p>
-                      <p className="font-semibold text-sm">${formatNumber(product.wholesalePrice || 0, 2)}</p>
-                    </div>
-                      </>
-                    )}
-                  </div>
                   ) : (
-                  <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">الشراء</p>
-                      <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
+                    <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">الشراء</p>
+                        <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">البيع</p>
+                        <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">الربح</p>
+                        <p className="font-semibold text-sm text-success">${formatNumber(profit, 2)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">البيع</p>
-                      <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">الربح</p>
-                      <p className="font-semibold text-sm text-success">${formatNumber(profit, 2)}</p>
-                    </div>
-                  </div>
                   )}
 
                   {/* Size/Color badges for clothing mode */}
@@ -1280,45 +1319,45 @@ export default function Products() {
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="flex items-center gap-3">
                       {!noInventory && (
-                      <>
-                      <div className="text-sm">
-                        <DualUnitDisplay
-                          totalPieces={product.quantity}
-                          conversionFactor={product.conversionFactor || 1}
-                          bulkUnit={product.bulkUnit}
-                          smallUnit={product.smallUnit}
-                          showTotal={false}
-                          size="sm"
-                        />
-                      </div>
-                      {(() => {
-                        const custodyQty = getCustodyQuantity(product.id);
-                        if (custodyQty > 0) {
-                          return (
-                            <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-1 rounded-full">
-                              <Truck className="w-3 h-3 text-primary" />
-                              <span className="text-primary font-medium">{custodyQty}</span>
-                              <span className="text-muted-foreground">عهدة</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                      </>
+                        <>
+                          <div className="text-sm">
+                            <DualUnitDisplay
+                              totalPieces={product.quantity}
+                              conversionFactor={product.conversionFactor || 1}
+                              bulkUnit={product.bulkUnit}
+                              smallUnit={product.smallUnit}
+                              showTotal={false}
+                              size="sm"
+                            />
+                          </div>
+                          {(() => {
+                            const custodyQty = getCustodyQuantity(product.id);
+                            if (custodyQty > 0) {
+                              return (
+                                <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-1 rounded-full">
+                                  <Truck className="w-3 h-3 text-primary" />
+                                  <span className="text-primary font-medium">{custodyQty}</span>
+                                  <span className="text-muted-foreground">عهدة</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </>
                       )}
                       {noInventory && (
                         <span className="text-xs text-muted-foreground">{product.category}</span>
                       )}
                     </div>
                     {canAddProducts && (
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
-                        <Edit className="w-5 h-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
-                    </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
+                          <Edit className="w-5 h-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1343,28 +1382,28 @@ export default function Products() {
                     </>
                   ) : (
                     <>
-                  <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
-                  {noInventory && (
-                    <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.wholesalePrice')}</th>
-                  )}
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
+                      {noInventory && (
+                        <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.wholesalePrice')}</th>
+                      )}
                     </>
                   )}
                   {!noInventory && (
-                  <>
-                  <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('invoices.profit')}</th>
-                  <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Boxes className="w-4 h-4" />
-                      {t('products.stock')}
-                    </div>
-                  </th>
-                  <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Truck className="w-4 h-4" />
-                      العهدة
-                    </div>
-                  </th>
-                  </>
+                    <>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('invoices.profit')}</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Boxes className="w-4 h-4" />
+                          {t('products.stock')}
+                        </div>
+                      </th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Truck className="w-4 h-4" />
+                          العهدة
+                        </div>
+                      </th>
+                    </>
                   )}
                   <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">{t('common.actions')}</th>
                 </tr>
@@ -1393,10 +1432,10 @@ export default function Products() {
                           <div className="flex flex-col min-w-0">
                             <span className="font-medium text-foreground text-sm truncate">{product.name}</span>
                             {!noInventory && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Barcode className="w-3 h-3 flex-shrink-0" />
-                              <span className="font-mono truncate">{product.barcode}</span>
-                            </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Barcode className="w-3 h-3 flex-shrink-0" />
+                                <span className="font-mono truncate">{product.barcode}</span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -1423,123 +1462,123 @@ export default function Products() {
                           </td>
                         </>
                       ) : (
-                      <td className="py-3 px-3">
-                        {noInventory ? (
-                          <span className="font-semibold text-foreground text-sm">${formatNumber(product.salePrice, 2)}</span>
-                        ) : (
-                        <div className="flex flex-col text-sm">
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
-                            <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
-                            <span className="font-semibold text-foreground">${formatNumber(product.salePrice, 2)}</span>
-                          </div>
-                        </div>
-                        )}
-                      </td>
+                        <td className="py-3 px-3">
+                          {noInventory ? (
+                            <span className="font-semibold text-foreground text-sm">${formatNumber(product.salePrice, 2)}</span>
+                          ) : (
+                            <div className="flex flex-col text-sm">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
+                                <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
+                                <span className="font-semibold text-foreground">${formatNumber(product.salePrice, 2)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </td>
                       )}
 
                       {noInventory && !isRepairMode && (
-                      <td className="py-3 px-3">
-                        <span className="text-sm text-muted-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</span>
-                      </td>
+                        <td className="py-3 px-3">
+                          <span className="text-sm text-muted-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</span>
+                        </td>
                       )}
 
                       {!noInventory && (
-                      <>
-                      {/* الربح */}
-                      <td className="py-3 px-3">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-success text-sm">${formatNumber(profit, 2)}</span>
-                          <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
-                        </div>
-                      </td>
+                        <>
+                          {/* الربح */}
+                          <td className="py-3 px-3">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-success text-sm">${formatNumber(profit, 2)}</span>
+                              <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
+                            </div>
+                          </td>
 
-                      {/* المخزون + الحالة */}
-                      <td className="py-3 px-3">
-                        <div className="flex flex-col gap-1.5">
-                          <DualUnitDisplay
-                            totalPieces={product.quantity}
-                            conversionFactor={product.conversionFactor || 1}
-                            bulkUnit={product.bulkUnit}
-                            smallUnit={product.smallUnit}
-                            showTotal={product.conversionFactor && product.conversionFactor > 1}
-                            size="sm"
-                          />
-                          <span className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit",
-                            status.color
-                          )}>
-                            <status.icon className="w-2.5 h-2.5" />
-                            {status.label}
-                          </span>
-                        </div>
-                      </td>
+                          {/* المخزون + الحالة */}
+                          <td className="py-3 px-3">
+                            <div className="flex flex-col gap-1.5">
+                              <DualUnitDisplay
+                                totalPieces={product.quantity}
+                                conversionFactor={product.conversionFactor || 1}
+                                bulkUnit={product.bulkUnit}
+                                smallUnit={product.smallUnit}
+                                showTotal={product.conversionFactor && product.conversionFactor > 1}
+                                size="sm"
+                              />
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit",
+                                status.color
+                              )}>
+                                <status.icon className="w-2.5 h-2.5" />
+                                {status.label}
+                              </span>
+                            </div>
+                          </td>
 
-                      {/* العهدة (كمية المستودعات الفرعية) */}
-                      <td className="py-3 px-3">
-                        {(() => {
-                          const custodyQty = getCustodyQuantity(product.id);
-                          const breakdown = getCustodyBreakdown(product.id);
+                          {/* العهدة (كمية المستودعات الفرعية) */}
+                          <td className="py-3 px-3">
+                            {(() => {
+                              const custodyQty = getCustodyQuantity(product.id);
+                              const breakdown = getCustodyBreakdown(product.id);
 
-                          if (custodyQty === 0) {
-                            return (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            );
-                          }
+                              if (custodyQty === 0) {
+                                return (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                );
+                              }
 
-                          return (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-1 cursor-help">
-                                    <Truck className="w-3.5 h-3.5 text-primary" />
-                                    <span className="font-medium text-sm text-primary">{custodyQty}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {product.smallUnit || t('products.unitPiece')}
-                                    </span>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <div className="text-xs space-y-1">
-                                    <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
-                                    {breakdown.map((item, idx) => (
-                                      <div key={idx} className="flex justify-between gap-3">
-                                        <span>{item.warehouseName}:</span>
-                                        <span className="font-medium">{item.quantity}</span>
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1 cursor-help">
+                                        <Truck className="w-3.5 h-3.5 text-primary" />
+                                        <span className="font-medium text-sm text-primary">{custodyQty}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {product.smallUnit || t('products.unitPiece')}
+                                        </span>
                                       </div>
-                                    ))}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          );
-                        })()}
-                      </td>
-                      </>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                      <div className="text-xs space-y-1">
+                                        <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                        {breakdown.map((item, idx) => (
+                                          <div key={idx} className="flex justify-between gap-3">
+                                            <span>{item.warehouseName}:</span>
+                                            <span className="font-medium">{item.quantity}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
+                          </td>
+                        </>
                       )}
 
                       {/* الإجراءات (فوق بعض) */}
                       <td className="py-3 px-3">
                         <div className="flex flex-col items-center gap-1">
-                        {canAddProducts && (<>
-                          <button
-                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={() => openEditDialog(product)}
-                            title={t('products.editTitle')}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
-                            onClick={() => openDeleteDialog(product)}
-                            title={t('products.deleteTitle')}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>)}
+                          {canAddProducts && (<>
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              onClick={() => openEditDialog(product)}
+                              title={t('products.editTitle')}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
+                              onClick={() => openDeleteDialog(product)}
+                              title={t('products.deleteTitle')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>)}
                         </div>
                       </td>
                     </tr>
@@ -1571,94 +1610,94 @@ export default function Products() {
                   />
                 </div>
                 {!noInventory && !isRestaurant && (
-                <>
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={t('products.exampleBarcode')}
-                      value={formData.barcode}
-                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    />
-                    <Button variant="outline" size="icon" onClick={() => {
-                      setScanTarget('barcode1');
-                      setScannerOpen(true);
-                    }}>
-                      <Barcode className="w-4 h-4" />
-                    </Button>
-                    {!showBarcode2 && (
-                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {/* Barcode 2 */}
-                {showBarcode2 && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t('products.exampleBarcode')}
-                        value={formData.barcode2}
-                        onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
-                      />
-                      <Button variant="outline" size="icon" onClick={() => {
-                        setScanTarget('barcode2');
-                        setScannerOpen(true);
-                      }}>
-                        <Barcode className="w-4 h-4" />
-                      </Button>
-                      {!showBarcode3 && (
-                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
-                          <Plus className="w-4 h-4" />
+                  <>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={t('products.exampleBarcode')}
+                          value={formData.barcode}
+                          onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                        />
+                        <Button variant="outline" size="icon" onClick={() => {
+                          setScanTarget('barcode1');
+                          setScannerOpen(true);
+                        }}>
+                          <Barcode className="w-4 h-4" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => {
-                        setFormData({ ...formData, barcode2: '' });
-                        setShowBarcode2(false);
-                      }} className="text-destructive">
-                        <X className="w-4 h-4" />
-                      </Button>
+                        {!showBarcode2 && (
+                          <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {/* Barcode 3 */}
-                {showBarcode3 && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
-                    <div className="flex gap-2">
+                    {/* Barcode 2 */}
+                    {showBarcode2 && (
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t('products.exampleBarcode')}
+                            value={formData.barcode2}
+                            onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setScanTarget('barcode2');
+                            setScannerOpen(true);
+                          }}>
+                            <Barcode className="w-4 h-4" />
+                          </Button>
+                          {!showBarcode3 && (
+                            <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setFormData({ ...formData, barcode2: '' });
+                            setShowBarcode2(false);
+                          }} className="text-destructive">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Barcode 3 */}
+                    {showBarcode3 && (
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t('products.exampleBarcode')}
+                            value={formData.barcode3}
+                            onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setScanTarget('barcode3');
+                            setScannerOpen(true);
+                          }}>
+                            <Barcode className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setFormData({ ...formData, barcode3: '' });
+                            setShowBarcode3(false);
+                          }} className="text-destructive">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Variant Label */}
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">المتغير / الوصف</label>
                       <Input
-                        placeholder={t('products.exampleBarcode')}
-                        value={formData.barcode3}
-                        onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                        placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
+                        value={formData.variantLabel}
+                        onChange={(e) => setFormData({ ...formData, variantLabel: e.target.value })}
                       />
-                      <Button variant="outline" size="icon" onClick={() => {
-                        setScanTarget('barcode3');
-                        setScannerOpen(true);
-                      }}>
-                        <Barcode className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => {
-                        setFormData({ ...formData, barcode3: '' });
-                        setShowBarcode3(false);
-                      }} className="text-destructive">
-                        <X className="w-4 h-4" />
-                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
                     </div>
-                  </div>
-                )}
-                {/* Variant Label */}
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">المتغير / الوصف</label>
-                  <Input
-                    placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
-                    value={formData.variantLabel}
-                    onChange={(e) => setFormData({ ...formData, variantLabel: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
-                </div>
-                </>
+                  </>
                 )}
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
@@ -1673,93 +1712,93 @@ export default function Products() {
                   </select>
                 </div>
                 {!noInventory && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">الكمية</label>
-                  <Input
-                    type="number"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.quantity || ''}
-                    onChange={(e) => handleNumericChange('quantity', e.target.value)}
-                  />
-                </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">الكمية</label>
+                    <Input
+                      type="number"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.quantity || ''}
+                      onChange={(e) => handleNumericChange('quantity', e.target.value)}
+                    />
+                  </div>
                 )}
                 {(!noInventory || isRepairMode) && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? 'تكلفة القطعة ($)' : 'سعر الشراء ($)'}</label>
-                  <Input
-                    type="number"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.costPrice || ''}
-                    onChange={(e) => handleNumericChange('costPrice', e.target.value)}
-                  />
-                </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? 'تكلفة القطعة ($)' : 'سعر الشراء ($)'}</label>
+                    <Input
+                      type="number"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.costPrice || ''}
+                      onChange={(e) => handleNumericChange('costPrice', e.target.value)}
+                    />
+                  </div>
                 )}
                 {isRepairMode && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ($)</label>
-                  <Input
-                    type="number"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.laborCost || ''}
-                    onChange={(e) => handleNumericChange('laborCost', e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">تكلفة ساعة العمل أو الخدمة</p>
-                </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ($)</label>
+                    <Input
+                      type="number"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.laborCost || ''}
+                      onChange={(e) => handleNumericChange('laborCost', e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">تكلفة ساعة العمل أو الخدمة</p>
+                  </div>
                 )}
                 {!isRepairMode && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
-                  <Input
-                    type="number"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.salePrice || ''}
-                    onChange={(e) => handleNumericChange('salePrice', e.target.value)}
-                  />
-                </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
+                    <Input
+                      type="number"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.salePrice || ''}
+                      onChange={(e) => handleNumericChange('salePrice', e.target.value)}
+                    />
+                  </div>
                 )}
 
                 {/* Unit Settings Collapsible */}
                 {!noInventory && (
-                <div className="sm:col-span-2">
-                  <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" type="button">
-                        <span className="flex items-center gap-2">
-                          <Boxes className="w-4 h-4" />
-                          إعدادات الوحدات (كرتونة / قطعة)
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
-                        </span>
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3">
-                      <UnitSettingsTab
-                        data={{
-                          bulkUnit: formData.bulkUnit,
-                          smallUnit: formData.smallUnit,
-                          conversionFactor: formData.conversionFactor,
-                          bulkCostPrice: formData.bulkCostPrice,
-                          bulkSalePrice: formData.bulkSalePrice,
-                          trackByUnit: formData.trackByUnit,
-                        }}
-                        onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                        quantityInPieces={formData.trackByUnit === 'bulk'
-                          ? formData.quantity * formData.conversionFactor
-                          : formData.quantity}
-                        pieceCostPrice={formData.costPrice}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
+                  <div className="sm:col-span-2">
+                    <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between" type="button">
+                          <span className="flex items-center gap-2">
+                            <Boxes className="w-4 h-4" />
+                            إعدادات الوحدات (كرتونة / قطعة)
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
+                          </span>
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3">
+                        <UnitSettingsTab
+                          data={{
+                            bulkUnit: formData.bulkUnit,
+                            smallUnit: formData.smallUnit,
+                            conversionFactor: formData.conversionFactor,
+                            bulkCostPrice: formData.bulkCostPrice,
+                            bulkSalePrice: formData.bulkSalePrice,
+                            trackByUnit: formData.trackByUnit,
+                          }}
+                          onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                          quantityInPieces={formData.trackByUnit === 'bulk'
+                            ? formData.quantity * formData.conversionFactor
+                            : formData.quantity}
+                          pieceCostPrice={formData.costPrice}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 )}
 
                 {/* Dynamic Fields based on store type (Fix #16) */}
@@ -2082,83 +2121,83 @@ export default function Products() {
                   />
                 </div>
                 {!isRestaurant && (
-                <>
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={formData.barcode}
-                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    />
-                    <Button variant="outline" size="icon" onClick={() => {
-                      setScanTarget('barcode1');
-                      setScannerOpen(true);
-                    }}>
-                      <Barcode className="w-4 h-4" />
-                    </Button>
-                    {!showBarcode2 && (
-                      <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {/* Barcode 2 */}
-                {showBarcode2 && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t('products.exampleBarcode')}
-                        value={formData.barcode2}
-                        onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
-                      />
-                      <Button variant="outline" size="icon" onClick={() => {
-                        setScanTarget('barcode2');
-                        setScannerOpen(true);
-                      }}>
-                        <Barcode className="w-4 h-4" />
-                      </Button>
-                      {!showBarcode3 && (
-                        <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
-                          <Plus className="w-4 h-4" />
+                  <>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={formData.barcode}
+                          onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                        />
+                        <Button variant="outline" size="icon" onClick={() => {
+                          setScanTarget('barcode1');
+                          setScannerOpen(true);
+                        }}>
+                          <Barcode className="w-4 h-4" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => {
-                        setFormData({ ...formData, barcode2: '' });
-                        setShowBarcode2(false);
-                      }} className="text-destructive">
-                        <X className="w-4 h-4" />
-                      </Button>
+                        {!showBarcode2 && (
+                          <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {/* Barcode 3 */}
-                {showBarcode3 && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t('products.exampleBarcode')}
-                        value={formData.barcode3}
-                        onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
-                      />
-                      <Button variant="outline" size="icon" onClick={() => {
-                        setScanTarget('barcode3');
-                        setScannerOpen(true);
-                      }}>
-                        <Barcode className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => {
-                        setFormData({ ...formData, barcode3: '' });
-                        setShowBarcode3(false);
-                      }} className="text-destructive">
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                </>
+                    {/* Barcode 2 */}
+                    {showBarcode2 && (
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t('products.exampleBarcode')}
+                            value={formData.barcode2}
+                            onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setScanTarget('barcode2');
+                            setScannerOpen(true);
+                          }}>
+                            <Barcode className="w-4 h-4" />
+                          </Button>
+                          {!showBarcode3 && (
+                            <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setFormData({ ...formData, barcode2: '' });
+                            setShowBarcode2(false);
+                          }} className="text-destructive">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Barcode 3 */}
+                    {showBarcode3 && (
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t('products.exampleBarcode')}
+                            value={formData.barcode3}
+                            onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setScanTarget('barcode3');
+                            setScannerOpen(true);
+                          }}>
+                            <Barcode className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setFormData({ ...formData, barcode3: '' });
+                            setShowBarcode3(false);
+                          }} className="text-destructive">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
                 {/* Variant Label */}
                 <div className="sm:col-span-2">
@@ -2650,14 +2689,14 @@ export default function Products() {
             ) : null}
           </DialogContent>
         </Dialog>
-      {/* Inline Camera Fallback */}
-      <InlineCamera
-        isOpen={showInlineCamera}
-        onClose={closeInlineCamera}
-        onCapture={handleInlineCaptured}
-        maxSize={640}
-        quality={70}
-      />
+        {/* Inline Camera Fallback */}
+        <InlineCamera
+          isOpen={showInlineCamera}
+          onClose={closeInlineCamera}
+          onCapture={handleInlineCaptured}
+          maxSize={640}
+          quality={70}
+        />
       </div>
     </div>
   );
