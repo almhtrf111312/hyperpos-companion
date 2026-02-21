@@ -43,7 +43,8 @@ export function RecentInvoices() {
   const loadData = useCallback(async () => {
     try {
       const data = await loadInvoicesCloud();
-      setInvoices(data.slice(0, 5));
+      // ✅ Hide refunded invoices from recent list
+      setInvoices(data.filter(inv => inv.status !== 'refunded').slice(0, 5));
     } catch (error) {
       console.error('Error loading invoices:', error);
     } finally {

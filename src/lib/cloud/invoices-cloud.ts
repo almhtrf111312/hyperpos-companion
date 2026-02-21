@@ -606,6 +606,26 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
     console.error('[refundInvoiceCloud] Error reverting profit:', err);
   }
 
+  // 4b. For maintenance invoices, delete associated parts cost expense
+  if (cloudInvoice.invoice_type === 'maintenance') {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: expErr } = await (supabase as any)
+        .from('expenses')
+        .delete()
+        .like('notes', `%الفاتورة: ${id}%`);
+      
+      if (!expErr) {
+        console.log('[refundInvoiceCloud] ✅ Deleted maintenance parts expense for invoice:', id);
+        const { invalidateExpensesCache } = await import('./expenses-cloud');
+        invalidateExpensesCache();
+        emitEvent(EVENTS.EXPENSES_UPDATED, null);
+      }
+    } catch (err) {
+      console.error('[refundInvoiceCloud] Error deleting maintenance expense:', err);
+    }
+  }
+
   // 5. Mark invoice as refunded
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
@@ -641,20 +661,22 @@ export const getInvoiceByIdCloud = async (id: string): Promise<Invoice | null> =
 // Get invoice stats
 export const getInvoiceStatsCloud = async () => {
   const invoices = await loadInvoicesCloud();
+  // ✅ Exclude refunded invoices from stats
+  const activeInvoices = invoices.filter(inv => inv.status !== 'refunded');
   const today = new Date().toDateString();
-  const todayInvoices = invoices.filter(inv =>
+  const todayInvoices = activeInvoices.filter(inv =>
     new Date(inv.createdAt).toDateString() === today
   );
 
   return {
-    total: invoices.length,
+    total: activeInvoices.length,
     todayCount: todayInvoices.length,
     todaySales: todayInvoices.reduce((sum, inv) => sum + inv.total, 0),
-    totalSales: invoices.reduce((sum, inv) => sum + inv.total, 0),
-    pendingDebts: invoices.filter(inv =>
+    totalSales: activeInvoices.reduce((sum, inv) => sum + inv.total, 0),
+    pendingDebts: activeInvoices.filter(inv =>
       inv.paymentType === 'debt' && inv.status === 'pending'
     ).length,
-    totalProfit: invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
+    totalProfit: activeInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0),
   };
 };
 
