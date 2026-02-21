@@ -130,15 +130,16 @@ export function MaintenancePanel({
   };
 
   const validateForm = () => {
-    if (!customerName.trim()) {
-      toast.error(t('maintenance.enterCustomerName'));
-      return false;
-    }
     if (servicePrice <= 0) {
       toast.error(t('maintenance.enterAmount'));
       return false;
     }
     return true;
+  };
+
+  // Get effective customer name - default to maintenance label if empty
+  const getEffectiveCustomerName = () => {
+    return customerName.trim() || 'فاتورة صيانة نقدي';
   };
 
   const handleCashSale = () => {
@@ -170,6 +171,7 @@ export function MaintenancePanel({
     setIsSaving(true);
 
     try {
+      const effectiveName = getEffectiveCustomerName();
       const fullDescription = [
         getServiceLabel(),
         getProductLabel(),
@@ -179,7 +181,7 @@ export function MaintenancePanel({
       // ✅ Add to invoices using Cloud API
       const invoice = await addInvoiceCloud({
         type: 'maintenance',
-        customerName,
+        customerName: effectiveName,
         customerPhone,
         items: [],
         subtotal: servicePrice,
@@ -208,7 +210,7 @@ export function MaintenancePanel({
           type: 'equipment',
           customType: 'قطع غيار صيانة',
           amount: partsCost,
-          notes: `قطع غيار لخدمة صيانة - العميل: ${customerName} - الفاتورة: ${invoice.id}`,
+          notes: `قطع غيار لخدمة صيانة - العميل: ${effectiveName} - الفاتورة: ${invoice.id}`,
           date: new Date().toISOString().split('T')[0],
         });
       }
@@ -225,7 +227,7 @@ export function MaintenancePanel({
 
       // ✅ Create debt record if payment is debt - Cloud API
       if (paymentType === 'debt') {
-        await addDebtFromInvoiceCloud(invoice.id, customerName, customerPhone, servicePrice);
+        await addDebtFromInvoiceCloud(invoice.id, effectiveName, customerPhone, servicePrice);
       }
 
       // Log activity with detailed information
@@ -234,11 +236,11 @@ export function MaintenancePanel({
           'maintenance',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${formatNumber(servicePrice)} للعميل ${customerName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
+          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${formatNumber(servicePrice)} للعميل ${effectiveName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
           {
             invoiceId: invoice.id,
             total: servicePrice,
-            customerName,
+            customerName: effectiveName,
             paymentType,
             serviceType: getServiceLabel(),
             productType: getProductLabel(),
@@ -253,8 +255,8 @@ export function MaintenancePanel({
             'debt_created',
             user.id,
             profile?.full_name || user.email || 'مستخدم',
-            `تم إنشاء دين صيانة للعميل ${customerName} بقيمة $${formatNumber(servicePrice)}`,
-            { invoiceId: invoice.id, amount: servicePrice, customerName }
+            `تم إنشاء دين صيانة للعميل ${effectiveName} بقيمة $${formatNumber(servicePrice)}`,
+            { invoiceId: invoice.id, amount: servicePrice, customerName: effectiveName }
           );
         }
       }
@@ -319,7 +321,7 @@ export function MaintenancePanel({
             ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
             <div class="date-time">${currentDate} - ${currentTime}</div>
           </div>
-          <div class="info"><span class="info-label">${t('maintenance.customer')}:</span> ${customerName}</div>
+          <div class="info"><span class="info-label">${t('maintenance.customer')}:</span> ${getEffectiveCustomerName()}</div>
           ${customerPhone ? `<div class="info"><span class="info-label">${t('maintenance.phoneNumber')}:</span> ${customerPhone}</div>` : ''}
           ${fullDescription ? `<div class="info"><span class="info-label">${t('maintenance.serviceType')}:</span> ${fullDescription}</div>` : ''}
           <div class="total">
@@ -367,7 +369,7 @@ ${storePhone ? `📞 ${storePhone}` : ''}
 📅 ${currentDate}
 
 ━━━━━━━━━━━━━━━━━━
-👤 *${t('maintenance.customer')}:* ${customerName}
+👤 *${t('maintenance.customer')}:* ${getEffectiveCustomerName()}
 ${customerPhone ? `📱 *${t('maintenance.phoneNumber')}:* ${customerPhone}` : ''}
 ${fullDescription ? `📝 *${t('maintenance.serviceType')}:* ${fullDescription}` : ''}
 ━━━━━━━━━━━━━━━━━━
@@ -421,7 +423,7 @@ ${footer}`;
               <div className="space-y-3">
                 <h3 className="font-medium text-sm text-muted-foreground">{t('maintenance.customerInfo')}</h3>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.customerNameRequired')}</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('maintenance.customerName')}</label>
                   <div className="relative">
                     <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input

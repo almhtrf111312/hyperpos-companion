@@ -111,8 +111,9 @@ export default function Invoices() {
   }, []);
 
   // Memoized filtered invoices for performance
+  // ✅ Hide refunded invoices - they only appear in archive
   const filteredInvoices = useMemo(() => {
-    let result = invoices;
+    let result = invoices.filter(inv => inv.status !== 'refunded');
 
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
