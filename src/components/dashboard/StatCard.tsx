@@ -14,17 +14,19 @@ interface StatCardProps {
     value: number;
     label: string;
   };
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
+  variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple';
   linkTo?: string;
   sparklineData?: number[];
 }
 
 const variantStyles = {
   default: 'glass border-border/50 dark:border-border/40',
-  primary: 'glass bg-primary/5 border-primary/20 dark:bg-primary/8 dark:border-primary/25',
-  success: 'glass bg-success/5 border-success/20 dark:bg-success/8 dark:border-success/25',
-  warning: 'glass bg-warning/5 border-warning/20 dark:bg-warning/8 dark:border-warning/25',
-  danger: 'glass bg-destructive/5 border-destructive/20 dark:bg-destructive/8 dark:border-destructive/25',
+  primary: 'bg-primary/10 border border-primary/20 dark:bg-primary/15 dark:border-primary/25',
+  success: 'bg-success/10 border border-success/20 dark:bg-success/15 dark:border-success/25',
+  warning: 'bg-warning/10 border border-warning/20 dark:bg-warning/15 dark:border-warning/25',
+  danger: 'bg-destructive/10 border border-destructive/20 dark:bg-destructive/15 dark:border-destructive/25',
+  info: 'bg-info/10 border border-info/20 dark:bg-info/15 dark:border-info/25',
+  purple: 'bg-[hsl(271,81%,56%)]/10 border border-[hsl(271,81%,56%)]/20 dark:bg-[hsl(271,81%,56%)]/15 dark:border-[hsl(271,81%,56%)]/25',
 };
 
 const iconBgStyles = {
@@ -33,6 +35,8 @@ const iconBgStyles = {
   success: 'bg-success/20 backdrop-blur-md dark:bg-success/25',
   warning: 'bg-warning/20 backdrop-blur-md dark:bg-warning/25',
   danger: 'bg-destructive/20 backdrop-blur-md dark:bg-destructive/25',
+  info: 'bg-info/20 backdrop-blur-md dark:bg-info/25',
+  purple: 'bg-[hsl(271,81%,56%)]/20 backdrop-blur-md dark:bg-[hsl(271,81%,56%)]/25',
 };
 
 const iconColorStyles = {
@@ -41,6 +45,8 @@ const iconColorStyles = {
   success: 'text-success',
   warning: 'text-warning',
   danger: 'text-destructive',
+  info: 'text-info',
+  purple: 'text-[hsl(271,81%,56%)]',
 };
 
 function extractNumber(value: string | number): { num: number; prefix: string; suffix: string } {

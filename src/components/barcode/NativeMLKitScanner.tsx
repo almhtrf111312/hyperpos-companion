@@ -76,7 +76,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             const barcode = result.content;
             console.log('[Scanner] Scanned via callback:', barcode);
 
-            // Save to localStorage as backup across potential WebView restarts
+            // ✅ Save to localStorage FIRST - this is the primary delivery mechanism
+            // The barcode will be picked up by ProductGrid on mount if WebView reloads
             try {
               localStorage.setItem(PENDING_BARCODE_KEY, barcode);
             } catch (e) {
@@ -91,10 +92,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
             if (mountedRef.current) {
               onScan(barcode);
               onClose();
-              // Clear backup after successful processing
-              setTimeout(() => {
-                try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch { }
-              }, 3000);
+              // Don't clear the backup immediately - let ProductGrid consume it
+              // ProductGrid will clear it after processing
             }
           }
         }

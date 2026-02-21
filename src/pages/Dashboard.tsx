@@ -262,14 +262,14 @@ export default function Dashboard() {
           title="مبيعات الأسبوع"
           value={formatCurrency(stats.weekSales)}
           icon={<Calendar />}
-          variant="primary"
+          variant="info"
           linkTo="/invoices"
         />
         <StatCard
           title="مبيعات الشهر"
           value={formatCurrency(stats.monthSales)}
           icon={<BarChart3 />}
-          variant="primary"
+          variant="purple"
           linkTo="/reports"
         />
       </div>
@@ -281,7 +281,7 @@ export default function Dashboard() {
           value={formatCurrency(stats.netProfit)}
           subtitle={`${t('dashboard.profitMargin')} ${stats.profitMargin}%`}
           icon={<TrendingUp />}
-          variant="primary"
+          variant="success"
           linkTo="/reports"
         />
         <StatCard
@@ -289,7 +289,7 @@ export default function Dashboard() {
           value={formatCurrency(stats.totalDebtAmount)}
           subtitle={`${stats.debtCustomers} ${t('dashboard.client')}`}
           icon={<CreditCard />}
-          variant="primary"
+          variant="danger"
           linkTo="/debts"
         />
         <StatCard
@@ -297,7 +297,7 @@ export default function Dashboard() {
           value={stats.uniqueCustomers.toString()}
           subtitle={t('dashboard.uniqueCustomers')}
           icon={<Users />}
-          variant="primary"
+          variant="info"
           linkTo="/customers"
         />
       </div>
@@ -309,7 +309,7 @@ export default function Dashboard() {
             title="إجمالي المشتريات"
             value={formatCurrency(stats.totalPurchases)}
             icon={<ShoppingCart />}
-            variant="primary"
+            variant="purple"
             linkTo="/products"
           />
         ) : (
@@ -317,7 +317,7 @@ export default function Dashboard() {
             title={t('dashboard.inventoryValue')}
             value={formatCurrency(stats.inventoryValue)}
             icon={<Package />}
-            variant="primary"
+            variant="purple"
             linkTo="/products"
           />
         )}
@@ -325,7 +325,7 @@ export default function Dashboard() {
           title={t('dashboard.totalCapital')}
           value={formatCurrency(stats.totalCapital)}
           icon={<Wallet />}
-          variant="primary"
+          variant="success"
           linkTo="/partners"
         />
         <StatCard
@@ -339,7 +339,7 @@ export default function Dashboard() {
           title={t('dashboard.liquidCapital')}
           value={formatCurrency(stats.liquidCapital)}
           icon={<DollarSign />}
-          variant="primary"
+          variant="info"
           linkTo="/reports"
         />
       </div>

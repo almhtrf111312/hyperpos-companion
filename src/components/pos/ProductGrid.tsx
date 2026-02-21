@@ -62,6 +62,23 @@ export function ProductGrid({
     localStorage.setItem('pos_view_mode', viewMode);
   }, [viewMode]);
 
+  // ✅ استعادة الباركود المعلق بعد إعادة تحميل WebView (Activity Recreation على Android)
+  useEffect(() => {
+    try {
+      const pending = localStorage.getItem('hyperpos_pending_scan');
+      if (pending) {
+        console.log('[ProductGrid] Found pending barcode on mount:', pending);
+        // تأخير بسيط لضمان جاهزية الواجهة
+        setTimeout(() => {
+          onSearchChange(pending);
+          toast.success(`${t('pos.barcode')}: ${pending}`);
+          localStorage.removeItem('hyperpos_pending_scan');
+        }, 300);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (product.barcode && product.barcode.includes(searchQuery));
@@ -73,6 +90,8 @@ export function ProductGrid({
     setScannerOpen(false);
     onSearchChange(barcode);
     toast.success(`${t('pos.barcode')}: ${barcode}`);
+    // ✅ Clear pending barcode since we handled it directly (no reload)
+    try { localStorage.removeItem('hyperpos_pending_scan'); } catch {}
   };
 
   const touchMovedRef = useRef(false);
