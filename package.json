@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@capacitor-community/barcode-scanner": "^4.0.1",
+    "@capacitor-mlkit/barcode-scanning": "^8.0.1",
     "@capacitor/app": "^8.0.1",
     "@capacitor/barcode-scanner": "^3.0.2",
     "@capacitor/camera": "^8.0.1",
