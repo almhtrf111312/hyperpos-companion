@@ -155,6 +155,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       
       if (cloudSettings) {
         // Apply cloud settings to localStorage (cloud is source of truth)
+        const syncObj = cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object' 
+          ? cloudSettings.sync_settings as Record<string, unknown> : {};
         const settings = {
           storeSettings: {
             name: cloudSettings.name ?? '',
@@ -170,6 +172,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           taxRate: cloudSettings.tax_rate ?? 0,
           printSettings: cloudSettings.print_settings || {},
           notificationSettings: cloudSettings.notification_settings || {},
+          // ✅ Restore all synced preferences from cloud
+          discountPercentEnabled: syncObj.discountPercentEnabled ?? true,
+          discountFixedEnabled: syncObj.discountFixedEnabled ?? true,
+          hideMaintenanceSection: syncObj.hideMaintenanceSection ?? false,
+          currencyNames: syncObj.currencyNames,
+          backupSettings: syncObj.backupSettings,
         };
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -248,7 +256,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           ...existing,
           storeSettings: {
             name: cloudSettings.name || existing.storeSettings?.name,
-            type: cloudSettings.store_type || existing.storeSettings?.type || 'general', // ✅ حفظ نوع المتجر
+            type: cloudSettings.store_type || existing.storeSettings?.type || 'general',
             phone: cloudSettings.phone || existing.storeSettings?.phone,
             address: cloudSettings.address || existing.storeSettings?.address,
             logo: cloudSettings.logo_url || existing.storeSettings?.logo,
@@ -258,6 +266,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
           discountPercentEnabled: syncSettingsObj.discountPercentEnabled ?? existing.discountPercentEnabled ?? true,
           discountFixedEnabled: syncSettingsObj.discountFixedEnabled ?? existing.discountFixedEnabled ?? true,
+          // ✅ Sync additional preferences from cloud
+          hideMaintenanceSection: syncSettingsObj.hideMaintenanceSection ?? existing.hideMaintenanceSection ?? false,
+          currencyNames: syncSettingsObj.currencyNames ?? existing.currencyNames,
+          backupSettings: syncSettingsObj.backupSettings ?? existing.backupSettings,
+          notificationSettings: cloudSettings.notification_settings ?? existing.notificationSettings,
+          printSettings: cloudSettings.print_settings ?? existing.printSettings,
         };
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));

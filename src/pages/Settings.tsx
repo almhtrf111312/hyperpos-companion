@@ -486,7 +486,7 @@ export default function Settings() {
           }));
         }
 
-        // Apply discount settings from sync_settings
+        // Apply discount settings and additional preferences from sync_settings
         if (cloudData.sync_settings && typeof cloudData.sync_settings === 'object') {
           const sync = cloudData.sync_settings as Record<string, unknown>;
           if (typeof sync.discountPercentEnabled === 'boolean') {
@@ -495,9 +495,32 @@ export default function Settings() {
           if (typeof sync.discountFixedEnabled === 'boolean') {
             setDiscountFixedEnabled(sync.discountFixedEnabled);
           }
+          // ✅ Restore hideMaintenanceSection from cloud
+          if (typeof sync.hideMaintenanceSection === 'boolean') {
+            setHideMaintenanceSection(sync.hideMaintenanceSection);
+          }
+          // ✅ Restore currency names from cloud
+          if (sync.currencyNames && typeof sync.currencyNames === 'object') {
+            const cn = sync.currencyNames as Record<string, string>;
+            setCurrencyNames(prev => ({
+              TRY: cn.TRY ?? prev.TRY,
+              SYP: cn.SYP ?? prev.SYP,
+            }));
+          }
+          // ✅ Restore backup settings from cloud
+          if (sync.backupSettings && typeof sync.backupSettings === 'object') {
+            const bs = sync.backupSettings as Record<string, unknown>;
+            setBackupSettings(prev => ({
+              autoBackup: typeof bs.autoBackup === 'boolean' ? bs.autoBackup : prev.autoBackup,
+              interval: typeof bs.interval === 'string' ? bs.interval : prev.interval,
+              keepDays: typeof bs.keepDays === 'string' ? bs.keepDays : String(bs.keepDays ?? prev.keepDays),
+            }));
+          }
         }
 
         // Persist to localStorage so offline reads stay in sync
+        const syncObj = cloudData.sync_settings && typeof cloudData.sync_settings === 'object' 
+          ? cloudData.sync_settings as Record<string, unknown> : {};
         savePersistedSettings({
           storeSettings: {
             name: cloudData.name ?? '',
@@ -506,12 +529,19 @@ export default function Settings() {
             address: cloudData.address ?? '',
             logo: cloudData.logo_url ?? '',
           },
+          exchangeRates: cloudData.exchange_rates ? {
+            TRY: String((cloudData.exchange_rates as Record<string, number>).TRY ?? ''),
+            SYP: String((cloudData.exchange_rates as Record<string, number>).SYP ?? ''),
+          } : undefined,
+          currencyNames: syncObj.currencyNames as Record<string, string> | undefined,
           taxEnabled: cloudData.tax_enabled ?? false,
           taxRate: cloudData.tax_rate ?? 0,
           notificationSettings: cloudData.notification_settings ?? undefined,
           printSettings: cloudData.print_settings ?? undefined,
-          discountPercentEnabled: (cloudData.sync_settings as Record<string, unknown>)?.discountPercentEnabled !== false,
-          discountFixedEnabled: (cloudData.sync_settings as Record<string, unknown>)?.discountFixedEnabled !== false,
+          backupSettings: syncObj.backupSettings as any,
+          hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : undefined,
+          discountPercentEnabled: syncObj.discountPercentEnabled !== false,
+          discountFixedEnabled: syncObj.discountFixedEnabled !== false,
         });
 
         console.log('[Settings] Loaded and synced from cloud successfully');
@@ -664,6 +694,11 @@ export default function Settings() {
     // Add discount settings to merged sync_settings
     mergedSyncSettings.discountPercentEnabled = discountPercentEnabled;
     mergedSyncSettings.discountFixedEnabled = discountFixedEnabled;
+
+    // ✅ Sync additional preferences to cloud
+    mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
+    mergedSyncSettings.currencyNames = currencyNames;
+    mergedSyncSettings.backupSettings = backupSettings;
 
     // Save to cloud with merged sync_settings
     const cloudSuccess = await saveStoreSettings({
