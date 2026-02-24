@@ -42,7 +42,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         listenerRef.current = null;
       }
       await BarcodeScanner.stopScan();
-      document.body.classList.remove('scanner-active');
+      document.querySelector('html')?.classList.remove('barcode-scanner-active');
+      document.body.classList.remove('barcode-scanner-active');
     } catch (e) {
       console.warn('[MLKit Scanner] Cleanup error:', e);
     }
@@ -108,7 +109,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       }
 
       // Fallback: use startScan + event listener (camera view in WebView)
-      document.body.classList.add('scanner-active');
+      document.querySelector('html')?.classList.add('barcode-scanner-active');
+      document.body.classList.add('barcode-scanner-active');
 
       // Listen for barcode events
       listenerRef.current = await BarcodeScanner.addListener('barcodesScanned', (event) => {
