@@ -21,28 +21,32 @@ export const NetworkStatusIndicator = forwardRef<HTMLDivElement, NetworkStatusIn
       syncNow();
     });
 
+    const onlineLabel = t('nav.pos' as any) ? 'متصل بالإنترنت' : 'Online';
+    const offlineLabel = t('nav.pos' as any) ? 'غير متصل بالإنترنت' : 'Offline';
+    const syncingLabel = t('nav.pos' as any) ? 'جاري المزامنة...' : 'Syncing...';
+
     if (isSyncing) {
       return (
-        <div ref={ref} className={cn("flex items-center gap-2 text-primary", className)}>
+        <div ref={ref} className={cn("flex items-center gap-2", className)} style={{ color: 'hsl(var(--primary))' }}>
           <RefreshCw className="w-4 h-4 animate-spin flex-shrink-0" />
-          {showLabel && <span className="text-xs truncate">{t('sync.syncing' as any) || 'جاري المزامنة...'}</span>}
+          {showLabel && <span className="text-xs truncate">{syncingLabel}</span>}
         </div>
       );
     }
 
     if (isOnline) {
       return (
-        <div ref={ref} className={cn("flex items-center gap-2 text-success", className)}>
+        <div ref={ref} className={cn("flex items-center gap-2", className)} style={{ color: 'hsl(var(--success))' }}>
           <Wifi className="w-4 h-4 flex-shrink-0" />
-          {showLabel && <span className="text-xs truncate">{t('network.online' as any) || 'متصل بالإنترنت'}</span>}
+          {showLabel && <span className="text-xs truncate">{onlineLabel}</span>}
         </div>
       );
     }
 
     return (
-      <div ref={ref} className={cn("flex items-center gap-2 text-destructive", className)}>
+      <div ref={ref} className={cn("flex items-center gap-2", className)} style={{ color: 'hsl(var(--destructive))' }}>
         <WifiOff className="w-4 h-4 flex-shrink-0 animate-pulse" />
-        {showLabel && <span className="text-xs truncate">{t('network.offline' as any) || 'غير متصل بالإنترنت'}</span>}
+        {showLabel && <span className="text-xs truncate">{offlineLabel}</span>}
       </div>
     );
   }

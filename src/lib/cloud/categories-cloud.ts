@@ -178,10 +178,35 @@ export const deleteCategoryCloud = async (id: string): Promise<boolean> => {
   return success;
 };
 
-// Get category names (deduplicated)
+// Get category names (deduplicated, including categories from products)
 export const getCategoryNamesCloud = async (): Promise<string[]> => {
   const categories = await loadCategoriesCloud();
-  // ✅ Remove duplicates using Set
-  const uniqueNames = [...new Set(categories.map(c => c.name))];
-  return uniqueNames;
+  const categoryNames = categories.map(c => c.name);
+
+  // ✅ Also include categories that exist on products but not in categories table
+  // This ensures products are always visible even if their category was deleted and re-created
+  try {
+    const userId = getCurrentUserId();
+    if (userId) {
+      const { data } = await (await import('@/integrations/supabase/client')).supabase
+        .from('products')
+        .select('category')
+        .eq('user_id', userId)
+        .not('category', 'is', null)
+        .not('archived', 'eq', true);
+      
+      if (data) {
+        const productCategories = [...new Set(data.map(p => p.category).filter(Boolean))] as string[];
+        for (const cat of productCategories) {
+          if (!categoryNames.includes(cat)) {
+            categoryNames.push(cat);
+            // Auto-create the missing category in the database
+            insertToSupabase('categories', { name: cat }, { silent: true }).catch(() => {});
+          }
+        }
+      }
+    }
+  } catch { /* ignore */ }
+
+  return [...new Set(categoryNames)];
 };
