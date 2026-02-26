@@ -35,6 +35,12 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const mountedRef = useRef(true);
   const listenerRef = useRef<PluginListenerHandle | null>(null);
 
+  const setScannerTransparency = useCallback((active: boolean) => {
+    document.documentElement.classList.toggle('barcode-scanner-active', active);
+    document.body.classList.toggle('barcode-scanner-active', active);
+    document.getElementById('root')?.classList.toggle('barcode-scanner-active', active);
+  }, []);
+
   const cleanup = useCallback(async () => {
     try {
       if (listenerRef.current) {
@@ -42,13 +48,12 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         listenerRef.current = null;
       }
       await BarcodeScanner.stopScan();
-      document.querySelector('html')?.classList.remove('barcode-scanner-active');
-      document.body.classList.remove('barcode-scanner-active');
+      setScannerTransparency(false);
     } catch (e) {
       console.warn('[MLKit Scanner] Cleanup error:', e);
     }
     scanningRef.current = false;
-  }, []);
+  }, [setScannerTransparency]);
 
   const handleBarcode = useCallback((barcode: string) => {
     console.log('[MLKit Scanner] Scanned:', barcode);
@@ -85,17 +90,26 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // Try Google Barcode Scanner (simple full-screen native UI, no camera permission needed)
+      // Try Google Barcode Scanner (simple full-screen native UI)
       let useGoogleScanner = false;
       try {
         const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
-        useGoogleScanner = available;
+        if (available) {
+          useGoogleScanner = true;
+        } else {
+          const scannerAny = BarcodeScanner as any;
+          if (typeof scannerAny.installGoogleBarcodeScannerModule === 'function') {
+            await scannerAny.installGoogleBarcodeScannerModule();
+            const recheck = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+            useGoogleScanner = recheck.available;
+          }
+        }
       } catch {
         useGoogleScanner = false;
       }
 
       if (useGoogleScanner) {
-        // scan() opens a native full-screen scanner, returns result directly
+        // scan() opens native full-screen scanner, returns result directly
         const { barcodes } = await BarcodeScanner.scan({ formats: SCAN_FORMATS });
 
         if (barcodes.length > 0 && barcodes[0].rawValue) {
@@ -109,8 +123,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       }
 
       // Fallback: use startScan + event listener (camera view in WebView)
-      document.querySelector('html')?.classList.add('barcode-scanner-active');
-      document.body.classList.add('barcode-scanner-active');
+      setScannerTransparency(true);
 
       // Listen for barcode events
       listenerRef.current = await BarcodeScanner.addListener('barcodesScanned', (event) => {
@@ -129,7 +142,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       await cleanup();
       if (mountedRef.current) onClose();
     }
-  }, [onClose, handleBarcode, cleanup]);
+  }, [onClose, handleBarcode, cleanup, setScannerTransparency]);
 
   useEffect(() => {
     mountedRef.current = true;

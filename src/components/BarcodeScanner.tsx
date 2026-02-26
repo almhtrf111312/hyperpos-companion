@@ -1,12 +1,6 @@
+import { Capacitor } from '@capacitor/core';
 import { NativeMLKitScanner } from './barcode/NativeMLKitScanner';
-
-/**
- * Barcode Scanner - Strictly Native ML Kit
- * =========================================================
- * 
- * As per strict audit requirements, purely using ML Kit.
- * No HTML5/Web fallback libraries allowed (Html5Qrcode/Zxing Removed).
- */
+import { WebBarcodeScanner } from './barcode/WebBarcodeScanner';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -15,17 +9,10 @@ interface BarcodeScannerProps {
 }
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
-  // Directly render NativeMLKitScanner
-  // It handles its own permissions and logic.
-  // If running on Web, this might error or do nothing depending on ML Kit web support (which is limited/none).
-  // But we removed the fallbacks as requested.
+  if (Capacitor.isNativePlatform()) {
+    return <NativeMLKitScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
+  }
 
-  return (
-    <NativeMLKitScanner
-      isOpen={isOpen}
-      onClose={onClose}
-      onScan={onScan}
-    // No fallback prop provided as we removed fallback libs
-    />
-  );
+  return <WebBarcodeScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
 }
+
