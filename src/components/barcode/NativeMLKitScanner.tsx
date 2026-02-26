@@ -58,21 +58,25 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const handleBarcode = useCallback((barcode: string) => {
     console.log('[MLKit Scanner] Scanned:', barcode);
 
-    // Save to localStorage for Activity Recreation recovery
+    // ✅ Save to localStorage FIRST — survives Activity Recreation
     try {
       localStorage.setItem(PENDING_BARCODE_KEY, barcode);
     } catch (e) {
       console.warn('[MLKit Scanner] Could not save pending barcode:', e);
     }
 
-    playBeep();
-    if (navigator.vibrate) navigator.vibrate(200);
+    try { playBeep(); } catch {}
+    try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
 
     cleanup();
 
     if (mountedRef.current) {
-      onScan(barcode);
-      onClose();
+      try {
+        onScan(barcode);
+        onClose();
+      } catch (e) {
+        console.warn('[MLKit Scanner] Error in onScan/onClose:', e);
+      }
     }
   }, [onScan, onClose, cleanup]);
 

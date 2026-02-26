@@ -62,22 +62,8 @@ export function ProductGrid({
     localStorage.setItem('pos_view_mode', viewMode);
   }, [viewMode]);
 
-  // ✅ استعادة الباركود المعلق بعد إعادة تحميل WebView (Activity Recreation على Android)
-  useEffect(() => {
-    try {
-      const pending = localStorage.getItem('hyperpos_pending_scan');
-      if (pending) {
-        console.log('[ProductGrid] Found pending barcode on mount:', pending);
-        // تأخير بسيط لضمان جاهزية الواجهة
-        setTimeout(() => {
-          onSearchChange(pending);
-          toast.success(`${t('pos.barcode')}: ${pending}`);
-          localStorage.removeItem('hyperpos_pending_scan');
-        }, 300);
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // ✅ استعادة الباركود المعلق — يتم التعامل معها في POS.tsx الآن
+  // ProductGrid لم يعد يعالج PENDING_BARCODE_KEY مباشرة لتجنب التكرار
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
