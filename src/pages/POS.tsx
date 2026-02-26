@@ -471,20 +471,21 @@ export default function POS() {
   const handleBarcodeScan = async (barcode: string) => {
     console.log('[POS] Scanned:', barcode);
 
+    // ✅ Clear pending barcode since we're handling it now
+    try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
+
     // 1. Try local products first (FAST) - search all 3 barcodes
     const matches = products.filter(p =>
       p.barcode === barcode || p.barcode2 === barcode || p.barcode3 === barcode
     );
 
     if (matches.length > 1) {
-      // Multiple products with same barcode - show variant picker
       setVariantMatches(matches);
       setShowVariantPicker(true);
       return;
     }
 
     if (matches.length === 1) {
-      // Single match - show in grid
       setSearchQuery(barcode);
       showToast.success(t('pos.productFound').replace('{name}', matches[0].name) || `Found: ${matches[0].name}`);
       return;
@@ -494,25 +495,8 @@ export default function POS() {
     try {
       const cloudProduct = await getProductByBarcodeCloud(barcode);
       if (cloudProduct) {
-        const posProduct: POSProduct = {
-          id: cloudProduct.id,
-          name: cloudProduct.name,
-          price: cloudProduct.salePrice,
-          category: cloudProduct.category,
-          quantity: cloudProduct.quantity,
-          image: cloudProduct.image,
-          barcode: cloudProduct.barcode,
-          bulkUnit: cloudProduct.bulkUnit || 'carton',
-          smallUnit: cloudProduct.smallUnit || 'piece',
-          conversionFactor: cloudProduct.conversionFactor || 1,
-          bulkSalePrice: cloudProduct.bulkSalePrice || 0,
-          costPrice: cloudProduct.costPrice,
-          bulkCostPrice: cloudProduct.bulkCostPrice || 0,
-          wholesalePrice: cloudProduct.wholesalePrice,
-        };
-        // Always put barcode in search field instead of showing dialog
         setSearchQuery(barcode);
-        showToast.success(t('pos.productFound').replace('{name}', posProduct.name) || `Found: ${posProduct.name}`);
+        showToast.success(t('pos.productFound').replace('{name}', cloudProduct.name) || `Found: ${cloudProduct.name}`);
       } else {
         setSearchQuery(barcode);
         showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));

@@ -79,7 +79,7 @@ export function useDeviceBinding() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (roleData?.role === 'boss') {
+      if (roleData?.role === 'boss' || roleData?.role === 'admin') {
         const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: null };
         setState({ isChecking: false, ...result });
         saveDeviceCache(result);
