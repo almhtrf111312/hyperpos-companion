@@ -1,5 +1,5 @@
 // Native Scanner using @capacitor-mlkit/barcode-scanning (Google ML Kit)
-// Best-in-class barcode scanning for POS applications
+// ALWAYS uses startScan() (in-app camera behind WebView) to avoid Activity Recreation on Android
 import { useEffect, useRef, useCallback } from 'react';
 import {
   BarcodeScanner,
@@ -34,6 +34,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const scanningRef = useRef(false);
   const mountedRef = useRef(true);
   const listenerRef = useRef<PluginListenerHandle | null>(null);
+  const lastScannedRef = useRef<string>(''); // dedupe guard
+  const lastScannedTimeRef = useRef<number>(0);
 
   const setScannerTransparency = useCallback((active: boolean) => {
     document.documentElement.classList.toggle('barcode-scanner-active', active);
@@ -56,6 +58,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   }, [setScannerTransparency]);
 
   const handleBarcode = useCallback((barcode: string) => {
+    // Dedupe: ignore same barcode within 2 seconds
+    const now = Date.now();
+    if (barcode === lastScannedRef.current && now - lastScannedTimeRef.current < 2000) {
+      console.log('[MLKit Scanner] Dedupe: ignoring repeat scan:', barcode);
+      return;
+    }
+    lastScannedRef.current = barcode;
+    lastScannedTimeRef.current = now;
+
     console.log('[MLKit Scanner] Scanned:', barcode);
 
     // ✅ Save to localStorage FIRST — survives Activity Recreation
@@ -94,42 +105,11 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // Try Google Barcode Scanner (simple full-screen native UI)
-      let useGoogleScanner = false;
-      try {
-        const { available } = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
-        if (available) {
-          useGoogleScanner = true;
-        } else {
-          const scannerAny = BarcodeScanner as any;
-          if (typeof scannerAny.installGoogleBarcodeScannerModule === 'function') {
-            await scannerAny.installGoogleBarcodeScannerModule();
-            const recheck = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
-            useGoogleScanner = recheck.available;
-          }
-        }
-      } catch {
-        useGoogleScanner = false;
-      }
-
-      if (useGoogleScanner) {
-        // scan() opens native full-screen scanner, returns result directly
-        const { barcodes } = await BarcodeScanner.scan({ formats: SCAN_FORMATS });
-
-        if (barcodes.length > 0 && barcodes[0].rawValue) {
-          handleBarcode(barcodes[0].rawValue);
-        } else {
-          // User cancelled
-          scanningRef.current = false;
-          if (mountedRef.current) onClose();
-        }
-        return;
-      }
-
-      // Fallback: use startScan + event listener (camera view in WebView)
+      // ✅ ALWAYS use startScan() (in-app camera behind WebView)
+      // This avoids launching an external Activity which causes WebView restart on Android
       setScannerTransparency(true);
 
-      // Listen for barcode events
+      // Listen for barcode events (both event names for compatibility)
       listenerRef.current = await BarcodeScanner.addListener('barcodesScanned', (event) => {
         if (event.barcodes?.length > 0 && event.barcodes[0].rawValue) {
           handleBarcode(event.barcodes[0].rawValue);
@@ -161,6 +141,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     };
   }, [isOpen, startScanning, cleanup]);
 
-  // The native plugin handles its own UI, so we render nothing
+  // The native plugin handles its own UI (camera behind WebView), so we render nothing
   return null;
 }

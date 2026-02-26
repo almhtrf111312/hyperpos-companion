@@ -142,10 +142,24 @@ const AppContent = () => {
           }
         }
 
-        // Handle Barcode Scanner plugin data
-        if (data.pluginId === 'CapacitorBarcodeScanner' && data.data) {
+        // Handle Barcode Scanner plugin data (ML Kit pluginId = 'BarcodeScanner')
+        if ((data.pluginId === 'BarcodeScanner' || data.pluginId === 'CapacitorBarcodeScanner') && data.data) {
           try {
-            const scanResult = data.data?.ScanResult || data.data?.result || (typeof data.data === 'string' ? data.data : null);
+            // Extract barcode from all possible result shapes
+            let scanResult: string | null = null;
+            const d = data.data as any;
+            if (d?.barcodes?.[0]?.rawValue) {
+              scanResult = d.barcodes[0].rawValue;
+            } else if (d?.rawValue) {
+              scanResult = d.rawValue;
+            } else if (d?.ScanResult) {
+              scanResult = d.ScanResult;
+            } else if (d?.result) {
+              scanResult = d.result;
+            } else if (typeof d === 'string') {
+              scanResult = d;
+            }
+
             if (scanResult) {
               console.log('[App Restored] Barcode scan result:', scanResult);
               localStorage.setItem('hyperpos_pending_scan', scanResult);

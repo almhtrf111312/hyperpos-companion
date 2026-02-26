@@ -472,39 +472,64 @@ export default function Products() {
 
   // ✅ استعادة الباركود المعلق بعد إعادة بناء Activity على Android
   useEffect(() => {
-    try {
-      const pendingBarcode = localStorage.getItem('hyperpos_pending_scan');
-      const pendingScanTarget = localStorage.getItem('hyperpos_scan_target') || 'form';
-      if (pendingBarcode) {
-        const cleanBarcode = pendingBarcode.trim();
-        console.log('[Products] Found pending barcode on mount:', cleanBarcode, 'target:', pendingScanTarget);
+    const processPendingBarcode = () => {
+      try {
+        const pendingBarcode = localStorage.getItem('hyperpos_pending_scan');
+        const pendingScanTarget = localStorage.getItem('hyperpos_scan_target') || 'form';
+        if (pendingBarcode) {
+          const cleanBarcode = pendingBarcode.trim();
+          console.log('[Products] Found pending barcode on mount:', cleanBarcode, 'target:', pendingScanTarget);
 
-        // وضع الباركود في الحقل المناسب حسب scanTarget المحفوظ
-        if (pendingScanTarget === 'barcode2') {
-          setFormData(prev => ({ ...prev, barcode2: cleanBarcode }));
-          setShowBarcode2(true);
-        } else if (pendingScanTarget === 'barcode3') {
-          setFormData(prev => ({ ...prev, barcode3: cleanBarcode }));
-          setShowBarcode3(true);
-        } else if (pendingScanTarget === 'search') {
-          setSearchQuery(cleanBarcode);
-        } else {
-          // form أو barcode1
-          setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
-          // فتح نافذة الإضافة إذا لم تكن مفتوحة
-          if (!showAddDialog && !showEditDialog) {
-            setShowAddDialog(true);
+          if (pendingScanTarget === 'barcode2') {
+            setFormData(prev => ({ ...prev, barcode2: cleanBarcode }));
+            setShowBarcode2(true);
+          } else if (pendingScanTarget === 'barcode3') {
+            setFormData(prev => ({ ...prev, barcode3: cleanBarcode }));
+            setShowBarcode3(true);
+          } else if (pendingScanTarget === 'search') {
+            setSearchQuery(cleanBarcode);
+          } else {
+            setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
+            if (!showAddDialog && !showEditDialog) {
+              setShowAddDialog(true);
+            }
           }
-        }
 
-        // مسح البيانات المعلقة
+          // مسح البيانات المعلقة فقط بعد المعالجة الناجحة
+          localStorage.removeItem('hyperpos_pending_scan');
+          localStorage.removeItem('hyperpos_scan_target');
+          toast.success('تم قراءة الباركود', { description: cleanBarcode });
+        }
+      } catch (e) {
+        console.warn('[Products] Error restoring pending barcode:', e);
+      }
+    };
+
+    // Delay slightly to ensure form state is ready
+    const timer = setTimeout(processPendingBarcode, 500);
+
+    // Also listen for barcode-restored events
+    const handleBarcodeRestored = (e: Event) => {
+      const barcode = (e as CustomEvent).detail;
+      if (barcode && typeof barcode === 'string') {
+        console.log('[Products] Received barcode-restored event:', barcode);
+        const target = localStorage.getItem('hyperpos_scan_target') || 'form';
+        if (target === 'search') {
+          setSearchQuery(barcode.trim());
+        } else {
+          setFormData(prev => ({ ...prev, barcode: barcode.trim() }));
+        }
         localStorage.removeItem('hyperpos_pending_scan');
         localStorage.removeItem('hyperpos_scan_target');
-        toast.success('تم قراءة الباركود', { description: cleanBarcode });
+        toast.success('تم قراءة الباركود', { description: barcode.trim() });
       }
-    } catch (e) {
-      console.warn('[Products] Error restoring pending barcode:', e);
-    }
+    };
+    window.addEventListener('barcode-restored', handleBarcodeRestored);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('barcode-restored', handleBarcodeRestored);
+    };
   }, []);
 
   // Handle gallery selection using Capacitor Camera plugin
