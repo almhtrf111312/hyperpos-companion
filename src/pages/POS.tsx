@@ -215,7 +215,7 @@ export default function POS() {
           if (pending) {
             console.log('[POS] Restoring pending barcode scan on resume:', pending);
             setPendingScan(pending);
-            localStorage.removeItem(PENDING_BARCODE_KEY);
+            // DON'T clear from localStorage here - let handleBarcodeScan clear it after successful processing
           }
         } catch { }
         // ✅ استعادة حالة السلة المفتوحة
@@ -233,9 +233,20 @@ export default function POS() {
       window.addEventListener('beforeunload', saveCart);
     });
 
+    // ✅ Listen for barcode-restored event (from App.tsx appRestoredResult)
+    const handleBarcodeRestored = (e: Event) => {
+      const barcode = (e as CustomEvent).detail;
+      if (barcode && typeof barcode === 'string') {
+        console.log('[POS] Received barcode-restored event:', barcode);
+        setPendingScan(barcode);
+      }
+    };
+    window.addEventListener('barcode-restored', handleBarcodeRestored);
+
     return () => {
       if (appListener) appListener.remove();
       window.removeEventListener('beforeunload', saveCart);
+      window.removeEventListener('barcode-restored', handleBarcodeRestored);
     };
   }, [cart, cartOpen, saveCart, restoreCart]);
 
