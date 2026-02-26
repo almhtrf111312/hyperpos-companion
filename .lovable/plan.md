@@ -1,52 +1,158 @@
 
+## ملخص سريع (غير تقني)
 
-# خطة إصلاح مشكلتي قارئ الباركود وحظر جهاز حساب البوس
+تم تحديد سبب مشكلة الـ Restart بعد قراءة الباركود في نسخة APK:  
+القارئ الحالي يدخل غالبًا في نمط يفتح شاشة مسح خارج التطبيق (External Activity)، وهذا على بعض الأجهزة يؤدي لإعادة إنشاء التطبيق (Reload/Restart).  
+كما أن آلية استعادة نتيجة المسح بعد الرجوع فيها ثغرة (اسم plugin غير مطابق)، لذلك أحيانًا الباركود لا يُستعاد بشكل موثوق.
 
-## تحليل المشاكل
+سأعالجها بحيث:
+1) نتجنب نمط المسح الذي يسبب Restart قدر الإمكان على Android.  
+2) حتى لو حصل Restart من النظام، يتم استرجاع الباركود وإدخاله مباشرة في خانة البحث بدون ضياع.  
+3) يتم تثبيت السلوك نفسه في POS وصفحة المنتجات.
 
-### المشكلة 1: قارئ الباركود يعيد تحميل الصفحة (APK)
+---
 
-**السبب الجذري:** عند استخدام `BarcodeScanner.scan()` من مكتبة ML Kit، يفتح نشاط (Activity) أصلي منفصل لقراءة الباركود. عندما يعود هذا النشاط، يقوم Android بإعادة إنشاء WebView (Activity Recreation)، مما يعيد تحميل الصفحة بالكامل.
+## ما تم تحليله بالفعل
 
-النظام الحالي يحفظ الباركود في `localStorage` عبر `PENDING_BARCODE_KEY`، ثم يقرأه `ProductGrid` عند التحميل. لكن المشكلة أن:
-1. بعد إعادة التحميل، يمر التطبيق بمراحل التحقق من الترخيص والجلسة قبل أن يصل لصفحة POS
-2. الباركود قد يُقرأ ويُعالج قبل أن تكون المنتجات جاهزة
-3. قد يحدث خطأ غير معالج (uncaught error) يمنع استعادة الباركود
+- راجعت ملفات الباركود الأساسية:
+  - `src/components/barcode/NativeMLKitScanner.tsx`
+  - `src/pages/POS.tsx`
+  - `src/pages/Products.tsx`
+  - `src/App.tsx`
+- راجعت إعدادات Android:
+  - `android/app/src/main/AndroidManifest.xml`
+  - `android/app/src/main/java/com/flowpos/pro/MainActivity.java`
+- راجعت توثيق مكتبة ML Kit المستخدمة حاليًا (وهي فعلاً مكتبة Google ML Kit).
+- راجعت كود المكتبة داخل `node_modules` وتأكدت أن `pluginId` الصحيح هو: `BarcodeScanner`.
 
-**الحل:**
-- إضافة معالجة الباركود المعلق في مكون `POS.tsx` (المستوى الأعلى) بدلاً من `ProductGrid` فقط
-- إضافة تأخير أطول وآلية إعادة محاولة لضمان جاهزية البيانات
-- إضافة `try/catch` شامل حول منطق المسح لمنع أي أخطاء غير معالجة
-- التأكد من أن `handleBarcodeScan` في POS.tsx يمسح `PENDING_BARCODE_KEY` بعد المعالجة الناجحة
+---
 
-### المشكلة 2: حساب البوس محظور بسبب تعدد الأجهزة
+## نتيجة فحص قاعدة البيانات (Lovable Cloud)
 
-**السبب الجذري:** في `use-device-binding.tsx` السطر 82، يتم التحقق من `roleData?.role === 'boss'`. إذا كان حساب البوس له `role = 'admin'` في قاعدة البيانات (وهو المحتمل بناءً على trigger `handle_new_user_role` الذي يعطي `admin` للمسجلين مباشرة)، فلن يتم استثناؤه.
+تم تنفيذ فحص مباشر على البيانات والسجلات للتحقق إن كانت المشكلة من الخلفية:
 
-كذلك، عند تسجيل الدخول من APK يتم تسجيل `device_id` في `app_licenses`. ثم عند تسجيل الدخول من المتصفح، يكون `device_id` مختلفاً فيظهر حظر الجهاز.
+1) لا توجد أخطاء قاعدة بيانات حديثة مرتبطة بموضوع الباركود/الجهاز في سجلات التحليلات.  
+2) لا يوجد في الجداول ما يشير إلى أن مشكلة Restart ناتجة عن DB؛ المشكلة جهة Android Activity + استعادة نتيجة plugin.  
+3) تم التأكد أن أدوار البوس/أدمن موجودة، وأن تقييد الجهاز ليس سبب مشكلة Restart الحالية.
 
-**الحل:**
-- توسيع شرط الاستثناء ليشمل `'admin'` بالإضافة لـ `'boss'` — أو الأفضل: التحقق أيضاً من `allow_multi_device` قبل فحص تطابق الجهاز (وهذا موجود فعلاً)
-- الأصح: التأكد من أن حساب البوس في قاعدة البيانات يحمل الصلاحية الصحيحة (`boss` أو `allow_multi_device = true`)
-- إضافة فحص إضافي: إذا لم يكن للمستخدم ترخيص أصلاً (حساب admin/owner بدون license)، لا يتم حظره
+الاستنتاج: **المشكلة ليست من قاعدة البيانات**، بل من تدفق المسح في تطبيق APK.
 
-## التغييرات المطلوبة
+---
 
-### 1. `src/hooks/use-device-binding.tsx`
-- تعديل شرط الاستثناء ليشمل `'admin'` و `'boss'` معاً (كلاهما مالك لا يجب حظره)
-- السطر 82: `if (roleData?.role === 'boss' || roleData?.role === 'admin')` بدلاً من `=== 'boss'` فقط
+## Do I know what the issue is?
 
-### 2. `src/pages/POS.tsx`
-- إضافة `useEffect` لمعالجة `PENDING_BARCODE_KEY` عند التحميل بتأخير مناسب (بعد تحميل المنتجات)
-- التأكد من أن `handleBarcodeScan` يمسح المفتاح من localStorage
+**نعم.**
 
-### 3. `src/components/barcode/NativeMLKitScanner.tsx`
-- إضافة `try/catch` أشمل حول كامل منطق `handleBarcode`
-- التأكد من حفظ الباركود في `localStorage` قبل أي عملية أخرى
+السبب التقني مركّب من 3 نقاط:
 
-### 4. `src/components/pos/ProductGrid.tsx`
-- تحسين منطق استعادة الباركود المعلق مع تأخير أطول وإعادة محاولة
+1) `NativeMLKitScanner` يستخدم مسار `scan()` عند توفر Google module، وهذا يفتح Activity خارجي قد يسبب إعادة إنشاء WebView على بعض أجهزة Android.  
+2) في `App.tsx` الاستماع لـ `appRestoredResult` يتحقق من `pluginId === 'CapacitorBarcodeScanner'` بينما المكتبة الحالية تعيد `pluginId === 'BarcodeScanner'`، فنتيجة المسح لا تُلتقط بعد Restart.  
+3) في `POS.tsx` يتم مسح `PENDING_BARCODE_KEY` مبكرًا في بعض المسارات، ما قد يؤدي لفقدان النتيجة عند سباق التحميل.
 
-## ملاحظة تقنية
-الإصلاح الأساسي لحساب البوس هو تغيير سطر واحد في `use-device-binding.tsx`. أما إصلاح الباركود فيتطلب تحسين آلية الاسترداد بعد إعادة التحميل عبر عدة ملفات.
+---
+
+## خطة التنفيذ (التطبيق الفعلي)
+
+### 1) تثبيت سلوك الماسح على Android لتقليل/منع Restart
+**ملف:** `src/components/barcode/NativeMLKitScanner.tsx`
+
+- إلغاء المسار الخارجي `scan()` على Android، والاعتماد على `startScan()` داخل نفس الـ Activity (camera behind WebView).
+- إضافة حماية ضد التكرار (dedupe) حتى لا يتكرر onScan عدة مرات لنفس القراءة.
+- الاستماع لـ `barcodeScanned` + `barcodesScanned` للتوافق.
+- جعل حفظ `PENDING_BARCODE_KEY` أول خطوة دائمًا قبل أي onClose/onScan.
+
+النتيجة: عدم الخروج إلى Activity خارجي = تقليل كبير جدًا لمشكلة Restart.
+
+---
+
+### 2) تصحيح استعادة نتيجة المسح بعد Activity Recreation
+**ملف:** `src/App.tsx`
+
+- تصحيح `appRestoredResult` ليتعامل مع:
+  - `pluginId === 'BarcodeScanner'` (الاسم الصحيح للمكتبة الحالية)
+  - مع الإبقاء على fallback لـ `CapacitorBarcodeScanner` للتوافق.
+- استخراج الباركود من كل الأشكال المحتملة للنتيجة:
+  - `data.data.barcodes[0].rawValue`
+  - `data.data.rawValue`
+  - fallback strings القديمة
+- تخزين القيمة مباشرة في `hyperpos_pending_scan` وإطلاق event داخلي `barcode-restored`.
+
+---
+
+### 3) تحسين استرجاع الباركود المعلق داخل POS (بدون فقدان)
+**ملف:** `src/pages/POS.tsx`
+
+- منع حذف `PENDING_BARCODE_KEY` بشكل مبكر عند `appStateChange`.
+- معالجة pending scan عبر وظيفة موحدة مع retry قصير حتى تصبح المنتجات/الحالة جاهزة.
+- حذف المفتاح فقط بعد نجاح إدخال الباركود فعليًا في البحث.
+- الاستماع لحدث `barcode-restored` بجانب الاسترجاع من localStorage.
+
+---
+
+### 4) توحيد نفس المنطق في صفحة المنتجات
+**ملف:** `src/pages/Products.tsx`
+
+- تطبيق نفس مبدأ الاسترجاع الموثوق (خصوصًا مع `scanTarget`).
+- ضمان أن إعادة التشغيل لا تضيع target (barcode1/barcode2/barcode3/search).
+
+---
+
+### 5) (اختياري لكن موصى به) تنظيف تضارب المكتبات
+**ملفات:** `package.json` (+ lockfile)
+
+- إزالة مكتبات باركود القديمة غير المستخدمة حاليًا:
+  - `@capacitor-community/barcode-scanner`
+  - `@capacitor/barcode-scanner`
+- الإبقاء على `@capacitor-mlkit/barcode-scanning` فقط.
+
+هذا يقلل الالتباس في plugin IDs ويمنع تعارضات مستقبلية.
+
+---
+
+## تفاصيل تقنية (مخصصة)
+
+```text
+الوضع الحالي:
+Scan (external Activity) --> Android قد يقتل/يعيد Activity --> App reload
+                                           |
+                                           +--> appRestoredResult arrives
+                                                لكن App.tsx لا يلتقطه بسبب pluginId خاطئ
+                                                => ضياع/تأخر إدخال الباركود
+
+الوضع بعد الإصلاح:
+startScan (same Activity) --> no external activity in normal flow --> no restart
+      |
+      +--> if OS still recreates activity:
+            appRestoredResult (BarcodeScanner) captured
+            --> save hyperpos_pending_scan
+            --> POS/Products consume + inject into search/form reliably
+```
+
+---
+
+## خطة التحقق (End-to-End على APK)
+
+1) فتح POS في APK ثم تشغيل القارئ ومسح 10 باركود متتالية:
+   - المطلوب: لا Restart أثناء المسح الطبيعي.
+   - المطلوب: كل قراءة تدخل مباشرة في خانة البحث.
+
+2) اختبار سيناريو ضغط (الخروج والعودة/تبديل تطبيق سريع أثناء المسح):
+   - المطلوب: حتى لو حصل Reload، الباركود يُستعاد ويُطبق تلقائيًا.
+
+3) اختبار من صفحات مختلفة:
+   - POS search
+   - Products search
+   - Products barcode1/barcode2/barcode3
+
+4) اختبار عدم التكرار:
+   - لا يتم إدخال نفس الباركود مرتين من نفس القراءة.
+
+---
+
+## خطة التحديث وGitHub
+
+بعد تنفيذ الخطوات أعلاه:
+- سيتم تحديث الكود بالكامل داخل المشروع.
+- التحديثات ستتزامن مع GitHub تلقائيًا عبر التكامل الحالي.
+- سأتحقق من نجاح البناء بعد التحديث (خصوصًا إذا تم تنظيف dependencies).
 
