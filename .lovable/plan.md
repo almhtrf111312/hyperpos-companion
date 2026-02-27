@@ -1,158 +1,127 @@
 
-## ملخص سريع (غير تقني)
 
-تم تحديد سبب مشكلة الـ Restart بعد قراءة الباركود في نسخة APK:  
-القارئ الحالي يدخل غالبًا في نمط يفتح شاشة مسح خارج التطبيق (External Activity)، وهذا على بعض الأجهزة يؤدي لإعادة إنشاء التطبيق (Reload/Restart).  
-كما أن آلية استعادة نتيجة المسح بعد الرجوع فيها ثغرة (اسم plugin غير مطابق)، لذلك أحيانًا الباركود لا يُستعاد بشكل موثوق.
+# خطة شاملة لإصلاح مشاكل APK: الباركود + عدم العمل بدون إنترنت
 
-سأعالجها بحيث:
-1) نتجنب نمط المسح الذي يسبب Restart قدر الإمكان على Android.  
-2) حتى لو حصل Restart من النظام، يتم استرجاع الباركود وإدخاله مباشرة في خانة البحث بدون ضياع.  
-3) يتم تثبيت السلوك نفسه في POS وصفحة المنتجات.
+## المشاكل المكتشفة من الفيديو والكود
 
----
+### المشكلة 1: قارئ الباركود يفتح مرتين ويفشل في المرة الثانية
+**السبب:** في `ProductGrid.tsx` سطر 307، عند الضغط على زر الباركود يتم `setScannerOpen(true)`. الماسح يفتح الكاميرا ثم عند القراءة ينادي `onScan` ثم `onClose`. لكن هناك مشكلة في تسلسل الأحداث:
+1. `handleDetected` في `OfflineBarcodeScanner` ينادي `onScan(barcode)` ثم `onClose()`
+2. `onScan` في `ProductGrid` (سطر 75) ينادي `setScannerOpen(false)` مجدداً
+3. و `onClose` أيضاً ينادي `setScannerOpen(false)`
+4. هذا التكرار + مشكلة `useCallback` dependencies تسبب إعادة إنشاء `startCamera` مما يفتح الكاميرا مرتين
 
-## ما تم تحليله بالفعل
+**المشكلة الأعمق:** `startCamera` و `handleDetected` يعتمدان على `onScan` و `onClose` كـ dependencies في `useCallback`، لكن هذه الدوال تتغير في كل render مما يسبب إعادة تشغيل `useEffect` الذي يفتح الكاميرا.
 
-- راجعت ملفات الباركود الأساسية:
-  - `src/components/barcode/NativeMLKitScanner.tsx`
-  - `src/pages/POS.tsx`
-  - `src/pages/Products.tsx`
-  - `src/App.tsx`
-- راجعت إعدادات Android:
-  - `android/app/src/main/AndroidManifest.xml`
-  - `android/app/src/main/java/com/flowpos/pro/MainActivity.java`
-- راجعت توثيق مكتبة ML Kit المستخدمة حاليًا (وهي فعلاً مكتبة Google ML Kit).
-- راجعت كود المكتبة داخل `node_modules` وتأكدت أن `pluginId` الصحيح هو: `BarcodeScanner`.
+### المشكلة 2: التطبيق لا يفتح بدون إنترنت
+**السبب:** `capacitor.config.json` يحتوي على:
+```json
+"server": {
+  "url": "https://flowpospro.lovable.app"
+}
+```
+هذا يعني أن APK يحمل الواجهة من الإنترنت. عند عدم وجود إنترنت، لا يمكن تحميل أي شيء. زر "تخطي" الذي يظهر هو من `LicenseGuard` (سطر 159) لكنه يظهر فقط بعد 6 ثوان وحتى لو ضغطه المستخدم، الصفحة نفسها لم تتحمل أصلاً.
 
----
-
-## نتيجة فحص قاعدة البيانات (Lovable Cloud)
-
-تم تنفيذ فحص مباشر على البيانات والسجلات للتحقق إن كانت المشكلة من الخلفية:
-
-1) لا توجد أخطاء قاعدة بيانات حديثة مرتبطة بموضوع الباركود/الجهاز في سجلات التحليلات.  
-2) لا يوجد في الجداول ما يشير إلى أن مشكلة Restart ناتجة عن DB؛ المشكلة جهة Android Activity + استعادة نتيجة plugin.  
-3) تم التأكد أن أدوار البوس/أدمن موجودة، وأن تقييد الجهاز ليس سبب مشكلة Restart الحالية.
-
-الاستنتاج: **المشكلة ليست من قاعدة البيانات**، بل من تدفق المسح في تطبيق APK.
+### المشكلة 3: Restart بعد قراءة الباركود
+على الرغم من استخدام `OfflineBarcodeScanner` (getUserMedia + BarcodeDetector)، المشكلة ليست من الماسح نفسه بل من **إعادة تشغيل الكاميرا المتكررة** بسبب React re-renders التي تغير dependencies الـ `useEffect`.
 
 ---
 
-## Do I know what the issue is?
+## خطة الإصلاح
 
-**نعم.**
+### الخطوة 1: إصلاح OfflineBarcodeScanner — منع فتح الكاميرا مرتين
 
-السبب التقني مركّب من 3 نقاط:
+**ملف:** `src/components/barcode/OfflineBarcodeScanner.tsx`
 
-1) `NativeMLKitScanner` يستخدم مسار `scan()` عند توفر Google module، وهذا يفتح Activity خارجي قد يسبب إعادة إنشاء WebView على بعض أجهزة Android.  
-2) في `App.tsx` الاستماع لـ `appRestoredResult` يتحقق من `pluginId === 'CapacitorBarcodeScanner'` بينما المكتبة الحالية تعيد `pluginId === 'BarcodeScanner'`، فنتيجة المسح لا تُلتقط بعد Restart.  
-3) في `POS.tsx` يتم مسح `PENDING_BARCODE_KEY` مبكرًا في بعض المسارات، ما قد يؤدي لفقدان النتيجة عند سباق التحميل.
+التغييرات:
+- إزالة `onScan` و `onClose` من dependencies الـ `useCallback` لـ `handleDetected` و `startCamera` باستخدام `useRef` بدلاً من ذلك
+- إضافة guard في `startCamera` لمنع التشغيل المتكرر (`isStartingRef`)
+- إضافة guard في `useEffect` لمنع إعادة التشغيل إذا الكاميرا تعمل فعلاً
+- تبسيط تدفق الإغلاق: `stopCamera()` أولاً، ثم `onScan`، ثم `onClose` — بتأخير بسيط لمنع التداخل
 
----
+### الخطوة 2: إصلاح ProductGrid — منع التكرار
 
-## خطة التنفيذ (التطبيق الفعلي)
+**ملف:** `src/components/pos/ProductGrid.tsx`
 
-### 1) تثبيت سلوك الماسح على Android لتقليل/منع Restart
-**ملف:** `src/components/barcode/NativeMLKitScanner.tsx`
+التغييرات:
+- جعل `handleBarcodeScan` يستخدم `useCallback` مع تثبيت المرجع
+- إضافة guard يمنع فتح الماسح إذا كان مفتوحاً أصلاً
+- عند `onScan`، لا نحتاج لنداء `setScannerOpen(false)` لأن `onClose` ستفعل ذلك
 
-- إلغاء المسار الخارجي `scan()` على Android، والاعتماد على `startScan()` داخل نفس الـ Activity (camera behind WebView).
-- إضافة حماية ضد التكرار (dedupe) حتى لا يتكرر onScan عدة مرات لنفس القراءة.
-- الاستماع لـ `barcodeScanned` + `barcodesScanned` للتوافق.
-- جعل حفظ `PENDING_BARCODE_KEY` أول خطوة دائمًا قبل أي onClose/onScan.
+### الخطوة 3: إصلاح مشكلة عدم العمل بدون إنترنت
 
-النتيجة: عدم الخروج إلى Activity خارجي = تقليل كبير جدًا لمشكلة Restart.
+**ملف:** `capacitor.config.json`
 
----
+هذه المشكلة الجوهرية: التطبيق يحمل من URL خارجي. الحل ليس إزالة URL (لأنه مطلوب للتحديث المباشر كما في الذاكرة `capacitor-mobile-live-update`)، بل:
 
-### 2) تصحيح استعادة نتيجة المسح بعد Activity Recreation
-**ملف:** `src/App.tsx`
+**الحل المقترح:** لا يمكن حل هذا بتغيير الكود فقط — عندما `server.url` موجود، Capacitor يحمّل من ذلك الرابط مباشرة. الـ PWA Service Worker يجب أن يكون قد خزّن الملفات مسبقاً.
 
-- تصحيح `appRestoredResult` ليتعامل مع:
-  - `pluginId === 'BarcodeScanner'` (الاسم الصحيح للمكتبة الحالية)
-  - مع الإبقاء على fallback لـ `CapacitorBarcodeScanner` للتوافق.
-- استخراج الباركود من كل الأشكال المحتملة للنتيجة:
-  - `data.data.barcodes[0].rawValue`
-  - `data.data.rawValue`
-  - fallback strings القديمة
-- تخزين القيمة مباشرة في `hyperpos_pending_scan` وإطلاق event داخلي `barcode-restored`.
+التغييرات المطلوبة:
+1. **في `vite.config.ts`**: تحسين إعدادات PWA لتخزين جميع ملفات التطبيق (navigation + assets) بشكل أعمق
+2. **في `index.html`**: إضافة صفحة offline fallback بسيطة
+3. **إنشاء `public/offline.html`**: صفحة بسيطة تظهر عند عدم الاتصال مع زر إعادة المحاولة
+4. **في `src/main.tsx`**: تسجيل Service Worker مبكراً وإضافة معالج للحالات الـ offline
 
----
+### الخطوة 4: تحسين WebBarcodeScanner بنفس إصلاحات الاستقرار
 
-### 3) تحسين استرجاع الباركود المعلق داخل POS (بدون فقدان)
-**ملف:** `src/pages/POS.tsx`
+**ملف:** `src/components/barcode/WebBarcodeScanner.tsx`
 
-- منع حذف `PENDING_BARCODE_KEY` بشكل مبكر عند `appStateChange`.
-- معالجة pending scan عبر وظيفة موحدة مع retry قصير حتى تصبح المنتجات/الحالة جاهزة.
-- حذف المفتاح فقط بعد نجاح إدخال الباركود فعليًا في البحث.
-- الاستماع لحدث `barcode-restored` بجانب الاسترجاع من localStorage.
+- نفس إصلاحات useRef للـ callbacks
+- منع إعادة تشغيل الكاميرا المتكررة
 
 ---
 
-### 4) توحيد نفس المنطق في صفحة المنتجات
-**ملف:** `src/pages/Products.tsx`
-
-- تطبيق نفس مبدأ الاسترجاع الموثوق (خصوصًا مع `scanTarget`).
-- ضمان أن إعادة التشغيل لا تضيع target (barcode1/barcode2/barcode3/search).
-
----
-
-### 5) (اختياري لكن موصى به) تنظيف تضارب المكتبات
-**ملفات:** `package.json` (+ lockfile)
-
-- إزالة مكتبات باركود القديمة غير المستخدمة حاليًا:
-  - `@capacitor-community/barcode-scanner`
-  - `@capacitor/barcode-scanner`
-- الإبقاء على `@capacitor-mlkit/barcode-scanning` فقط.
-
-هذا يقلل الالتباس في plugin IDs ويمنع تعارضات مستقبلية.
-
----
-
-## تفاصيل تقنية (مخصصة)
+## التفاصيل التقنية
 
 ```text
-الوضع الحالي:
-Scan (external Activity) --> Android قد يقتل/يعيد Activity --> App reload
-                                           |
-                                           +--> appRestoredResult arrives
-                                                لكن App.tsx لا يلتقطه بسبب pluginId خاطئ
-                                                => ضياع/تأخر إدخال الباركود
+المشكلة الحالية (الباركود):
+زر مسح → setScannerOpen(true) → useEffect يشغل startCamera
+                                      ↓
+                              barcode detected → onScan(barcode) [يسبب re-render]
+                                      ↓
+                              React re-render → useEffect يرى dependencies تغيرت
+                                      ↓
+                              cleanup يوقف الكاميرا → useEffect يشغلها مجدداً!
+                                      ↓
+                              الكاميرا تفتح مرة ثانية → المستخدم يرى الماسح مرتين
 
-الوضع بعد الإصلاح:
-startScan (same Activity) --> no external activity in normal flow --> no restart
-      |
-      +--> if OS still recreates activity:
-            appRestoredResult (BarcodeScanner) captured
-            --> save hyperpos_pending_scan
-            --> POS/Products consume + inject into search/form reliably
+بعد الإصلاح:
+زر مسح → setScannerOpen(true) → useEffect يشغل startCamera (مع guard)
+                                      ↓
+                              barcode detected → ref.current.onScan(barcode) [بدون re-render]
+                                      ↓
+                              stopCamera() → onClose() → setScannerOpen(false)
+                                      ↓
+                              useEffect cleanup فقط (لا إعادة تشغيل)
+
+المشكلة الحالية (offline):
+APK يحمل من https://flowpospro.lovable.app
+    ↓ لا إنترنت
+صفحة بيضاء / خطأ اتصال ← لا يوجد fallback
+
+بعد الإصلاح:
+APK يحمل من https://flowpospro.lovable.app
+    ↓ لا إنترنت
+Service Worker يقدم النسخة المخزنة ← التطبيق يعمل
+    ↓ إذا لم يكن مخزناً
+offline.html يظهر مع رسالة واضحة + زر إعادة المحاولة
 ```
 
----
+### الخطوة 5: إضافة صفحة offline fallback
 
-## خطة التحقق (End-to-End على APK)
+**ملف جديد:** `public/offline.html`
 
-1) فتح POS في APK ثم تشغيل القارئ ومسح 10 باركود متتالية:
-   - المطلوب: لا Restart أثناء المسح الطبيعي.
-   - المطلوب: كل قراءة تدخل مباشرة في خانة البحث.
+صفحة HTML بسيطة تظهر رسالة "لا يوجد اتصال بالإنترنت" مع:
+- تصميم متوافق مع ثيم التطبيق
+- زر إعادة المحاولة
+- رسالة تخبر المستخدم بفتح التطبيق مع إنترنت أولاً ليتم تخزين الملفات
 
-2) اختبار سيناريو ضغط (الخروج والعودة/تبديل تطبيق سريع أثناء المسح):
-   - المطلوب: حتى لو حصل Reload، الباركود يُستعاد ويُطبق تلقائيًا.
+### الملخص
 
-3) اختبار من صفحات مختلفة:
-   - POS search
-   - Products search
-   - Products barcode1/barcode2/barcode3
-
-4) اختبار عدم التكرار:
-   - لا يتم إدخال نفس الباركود مرتين من نفس القراءة.
-
----
-
-## خطة التحديث وGitHub
-
-بعد تنفيذ الخطوات أعلاه:
-- سيتم تحديث الكود بالكامل داخل المشروع.
-- التحديثات ستتزامن مع GitHub تلقائيًا عبر التكامل الحالي.
-- سأتحقق من نجاح البناء بعد التحديث (خصوصًا إذا تم تنظيف dependencies).
+| المشكلة | الملف | الإصلاح |
+|---------|-------|---------|
+| الكاميرا تفتح مرتين | OfflineBarcodeScanner.tsx | useRef للـ callbacks + guard ضد التكرار |
+| الكاميرا تفتح مرتين | ProductGrid.tsx | إزالة setScannerOpen(false) من onScan |
+| لا يعمل بدون إنترنت | vite.config.ts + offline.html | تحسين PWA caching + صفحة fallback |
+| استقرار عام | WebBarcodeScanner.tsx | نفس إصلاحات useRef |
 
