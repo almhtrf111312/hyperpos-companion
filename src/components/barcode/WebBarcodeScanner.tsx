@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, ScanLine, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
-import { PENDING_BARCODE_KEY } from './NativeMLKitScanner';
+import { PENDING_BARCODE_KEY } from './OfflineBarcodeScanner';
 
 interface WebBarcodeScannerProps {
   isOpen: boolean;
