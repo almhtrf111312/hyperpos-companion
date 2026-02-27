@@ -117,6 +117,7 @@ type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rat
 const CART_STORAGE_KEY = 'hyperpos_temp_cart';
 const CART_OPEN_KEY = 'hyperpos_cart_open';
 const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
+// Note: PENDING_BARCODE_KEY is also exported from OfflineBarcodeScanner for consistency
 
 export default function POS() {
   const isMobile = useIsMobile();
