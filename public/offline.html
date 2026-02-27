@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowPOS Pro - لا يوجد اتصال</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      opacity: 0.6;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+      color: #fafafa;
+    }
+    p {
+      font-size: 0.95rem;
+      color: #a0a0a0;
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #222;
+      border-radius: 12px;
+      background: #111;
+    }
+    button {
+      margin-top: 24px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: #6d28d9;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:active { background: #5b21b6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>لا يوجد اتصال بالإنترنت</h1>
+    <p>يتعذر تحميل التطبيق بدون اتصال بالإنترنت.</p>
+    <p>تأكد من اتصالك بالشبكة ثم أعد المحاولة.</p>
+    <div class="hint">
+      💡 افتح التطبيق مرة واحدة مع اتصال بالإنترنت ليتم تخزين الملفات تلقائياً، وبعدها سيعمل بدون إنترنت.
+    </div>
+    <button onclick="location.reload()">إعادة المحاولة</button>
+  </div>
+</body>
+</html>
