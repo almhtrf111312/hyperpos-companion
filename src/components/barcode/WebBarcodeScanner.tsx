@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+/**
+ * WebBarcodeScanner – Browser-based barcode scanner for non-native platforms.
+ * Same useRef pattern as OfflineBarcodeScanner to prevent re-render loops.
+ */
+import { useEffect, useRef, useState } from 'react';
 import { Camera, ScanLine, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
@@ -11,14 +15,8 @@ interface WebBarcodeScannerProps {
 }
 
 const WEB_FORMATS = [
-  'qr_code',
-  'ean_13',
-  'ean_8',
-  'code_128',
-  'code_39',
-  'data_matrix',
-  'upc_a',
-  'upc_e',
+  'qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39',
+  'data_matrix', 'upc_a', 'upc_e',
 ];
 
 export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScannerProps) {
@@ -28,30 +26,38 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
   const detectorRef = useRef<any>(null);
   const detectingRef = useRef(false);
   const scannedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const isStartingRef = useRef(false);
+  const cameraActiveRef = useRef(false);
+
+  // ✅ Store callbacks in refs
+  const onScanRef = useRef(onScan);
+  const onCloseRef = useRef(onClose);
+  onScanRef.current = onScan;
+  onCloseRef.current = onClose;
 
   const [isStarting, setIsStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const stopCamera = useCallback(() => {
+  const stopCamera = () => {
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.srcObject = null;
     }
-
     detectorRef.current = null;
     detectingRef.current = false;
     scannedRef.current = false;
-  }, []);
+    isStartingRef.current = false;
+    cameraActiveRef.current = false;
+  };
 
-  const handleDetected = useCallback((barcode: string) => {
+  const handleDetected = (barcode: string) => {
     if (scannedRef.current) return;
     scannedRef.current = true;
 
@@ -61,15 +67,21 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       console.warn('[Web Scanner] Could not save pending barcode:', e);
     }
 
-    playBeep();
+    try { playBeep(); } catch {}
     if (navigator.vibrate) navigator.vibrate(120);
 
-    onScan(barcode);
-    onClose();
     stopCamera();
-  }, [onClose, onScan, stopCamera]);
 
-  const startCamera = useCallback(async () => {
+    setTimeout(() => {
+      onScanRef.current(barcode);
+      onCloseRef.current();
+    }, 50);
+  };
+
+  const startCamera = async () => {
+    if (isStartingRef.current || cameraActiveRef.current) return;
+    isStartingRef.current = true;
+
     setErrorMessage(null);
     setIsStarting(true);
 
@@ -86,11 +98,14 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       detectorRef.current = new BarcodeDetectorClass({ formats: WEB_FORMATS });
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-        },
+        video: { facingMode: { ideal: 'environment' } },
         audio: false,
       });
+
+      if (!mountedRef.current || !isStartingRef.current) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
 
       streamRef.current = stream;
 
@@ -100,6 +115,8 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
 
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
+
+      cameraActiveRef.current = true;
 
       intervalRef.current = window.setInterval(async () => {
         if (detectingRef.current || !detectorRef.current || !videoRef.current || scannedRef.current) return;
@@ -111,8 +128,8 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
           if (rawValue) {
             handleDetected(rawValue);
           }
-        } catch (error) {
-          console.warn('[Web Scanner] detect failed:', error);
+        } catch {
+          // Silently ignore
         } finally {
           detectingRef.current = false;
         }
@@ -127,23 +144,34 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       } else {
         setErrorMessage('تعذر تشغيل الكاميرا الآن. حاول مرة أخرى.');
       }
-
       stopCamera();
     } finally {
+      isStartingRef.current = false;
       setIsStarting(false);
     }
-  }, [handleDetected, stopCamera]);
+  };
 
+  // ✅ Only depends on isOpen — no function deps
   useEffect(() => {
+    mountedRef.current = true;
+
     if (!isOpen) {
       setErrorMessage(null);
       stopCamera();
       return;
     }
 
-    void startCamera();
-    return () => stopCamera();
-  }, [isOpen, startCamera, stopCamera]);
+    const timer = setTimeout(() => {
+      if (mountedRef.current) startCamera();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      mountedRef.current = false;
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -160,7 +188,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
           size="icon"
           onClick={() => {
             stopCamera();
-            onClose();
+            onCloseRef.current();
           }}
           className="h-8 w-8"
         >
@@ -171,12 +199,10 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       <div className="flex-1 p-4 flex items-center justify-center">
         <div className="w-full max-w-xl aspect-[3/4] md:aspect-video rounded-2xl border border-border overflow-hidden bg-card relative">
           <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-
           <div className="pointer-events-none absolute inset-0 bg-background/50" />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="w-[72%] h-[42%] rounded-xl border-2 border-primary/80" />
           </div>
-
           {isStarting && (
             <div className="absolute inset-0 grid place-items-center bg-background/70">
               <div className="flex items-center gap-2 text-sm text-foreground">
@@ -193,10 +219,10 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">
             <p>{errorMessage}</p>
             <div className="mt-3 flex gap-2">
-              <Button type="button" size="sm" onClick={() => void startCamera()}>
+              <Button type="button" size="sm" onClick={() => startCamera()}>
                 إعادة المحاولة
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={onClose}>
+              <Button type="button" size="sm" variant="outline" onClick={() => onCloseRef.current()}>
                 إغلاق
               </Button>
             </div>
