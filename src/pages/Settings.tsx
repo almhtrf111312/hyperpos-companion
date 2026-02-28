@@ -1808,16 +1808,17 @@ export default function Settings() {
           year: 'numeric', month: 'long', day: 'numeric'
         });
 
-        const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = [
-          { type: 'new', ar: 'نظام صور المنتجات بدون انتظار (Offline-First): الصورة تظهر فوراً ثم تُرفع في الخلفية', en: 'Offline-First product images: Photo appears instantly, uploaded in background' },
-          { type: 'new', ar: 'حفظ بيانات النموذج تلقائياً قبل فتح الكاميرا على Android لمنع فقدان البيانات', en: 'Auto-save form data before camera opens on Android to prevent data loss' },
-          { type: 'improved', ar: 'القائمة الجانبية: إخفاء "المشتريات" تلقائياً حسب نوع المحل (لا تظهر في الهواتف والإلكترونيات)', en: 'Sidebar: "Purchases" hidden automatically per store type (hidden for phones/electronics)' },
-          { type: 'improved', ar: 'شاشة الخصوصية والشروط: تظهر دائماً بثيم أبيض وأزرق بغض النظر عن إعدادات المظهر', en: 'Privacy screen: Always shown in white/blue theme regardless of app theme settings' },
-          { type: 'improved', ar: 'تبويبات الإعدادات: تحسين وضوح النصوص والمحاذاة في التبويبات الخطرة (حمراء)', en: 'Settings tabs: Improved text clarity and alignment for danger (red) tabs' },
-          { type: 'fixed', ar: 'إصلاح إعادة تشغيل التطبيق (Activity Recreation) عند العودة من كاميرا Android', en: 'Fixed app reload (Activity Recreation) when returning from Android camera' },
-          { type: 'fixed', ar: 'إصلاح تباين النصوص في الوضع الفاتح عبر جميع الشاشات والإعدادات', en: 'Fixed text contrast in light mode across all screens and settings' },
-          { type: 'fixed', ar: 'إصلاح مشكلة عودة الإعدادات (ضريبة، خصم، نوع المتجر) لقيمها الافتراضية بعد التحديث', en: 'Fixed settings (tax, discount, store type) resetting to defaults after updates' },
-        ];
+        // Load changelog from build-time injection
+        const rawChangelog = (globalThis as any).__APP_CHANGELOG__ ?? (typeof __APP_CHANGELOG__ !== 'undefined' ? __APP_CHANGELOG__ : null);
+        const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = Array.isArray(rawChangelog) && rawChangelog.length > 0
+          ? rawChangelog
+          : [
+            { type: 'fixed', ar: 'إصلاح مشكلة فتح قارئ الباركود مرتين على APK', en: 'Fixed barcode scanner opening twice on APK' },
+            { type: 'improved', ar: 'تحسين واجهة قارئ الباركود', en: 'Improved barcode scanner UI' },
+            { type: 'improved', ar: 'تحسين العمل بدون إنترنت', en: 'Improved offline experience' },
+            { type: 'new', ar: 'إضافة زر التقاط صورة من الكاميرا', en: 'Added camera capture button' },
+            { type: 'improved', ar: 'تحسين تباين المظهر النهاري', en: 'Enhanced light mode contrast' },
+          ];
 
         return (
           <div className="space-y-5">

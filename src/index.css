@@ -116,45 +116,45 @@
   }
 
   .light {
-    --background: 216 25% 97%;
-    --foreground: 222 45% 10%;
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222 45% 10%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 45% 10%;
-    --primary: 160 84% 34%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 160 84% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 20% 88%;
-    --secondary-foreground: 222 45% 14%;
-    --muted: 214 18% 89%;
-    --muted-foreground: 215 22% 30%;
-    --accent: 173 80% 36%;
+    --secondary: 214 18% 90%;
+    --secondary-foreground: 222 47% 14%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 173 80% 32%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 46%;
     --warning-foreground: 0 0% 0%;
-    --success: 142 76% 36%;
+    --success: 142 76% 32%;
     --success-foreground: 0 0% 100%;
-    --info: 217 91% 56%;
+    --info: 217 91% 52%;
     --info-foreground: 0 0% 100%;
-    --border: 214 20% 84%;
-    --input: 214 20% 87%;
-    --ring: 160 84% 34%;
-    --sidebar-background: 216 28% 98.5%;
-    --sidebar-foreground: 222 45% 10%;
-    --sidebar-primary: 160 84% 34%;
+    --border: 220 13% 78%;
+    --input: 220 13% 82%;
+    --ring: 160 84% 32%;
+    --sidebar-background: 220 18% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 160 84% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 160 60% 94%;
-    --sidebar-accent-foreground: 160 84% 28%;
-    --sidebar-border: 214 20% 86%;
-    --sidebar-ring: 160 84% 34%;
-    --pos-grid: 216 22% 95%;
+    --sidebar-accent: 160 50% 93%;
+    --sidebar-accent-foreground: 160 84% 24%;
+    --sidebar-border: 220 13% 86%;
+    --sidebar-ring: 160 84% 32%;
+    --pos-grid: 220 16% 95%;
     --pos-item: 0 0% 100%;
-    --pos-item-hover: 216 18% 96%;
+    --pos-item-hover: 220 14% 96%;
     --pos-cart: 0 0% 100%;
-    --pos-total: 160 84% 34%;
-    --shadow-card-light: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
+    --pos-total: 160 84% 32%;
+    --shadow-card-light: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.06);
   }
 
   /* Theme: Ocean Blue */
@@ -169,6 +169,7 @@
   }
 
   .light.theme-ocean {
+    --primary: 207 90% 42%;
     --sidebar-accent: 207 80% 93%;
     --sidebar-accent-foreground: 207 90% 28%;
   }
@@ -185,6 +186,7 @@
   }
 
   .light.theme-sunset {
+    --primary: 24 95% 42%;
     --sidebar-accent: 24 90% 93%;
     --sidebar-accent-foreground: 24 95% 28%;
   }
@@ -201,6 +203,7 @@
   }
 
   .light.theme-purple {
+    --primary: 262 83% 48%;
     --sidebar-accent: 262 70% 94%;
     --sidebar-accent-foreground: 262 83% 34%;
   }
@@ -217,6 +220,7 @@
   }
 
   .light.theme-rose {
+    --primary: 346 77% 42%;
     --sidebar-accent: 346 70% 93%;
     --sidebar-accent-foreground: 346 77% 28%;
   }
@@ -233,6 +237,7 @@
   }
 
   .light.theme-forest {
+    --primary: 142 71% 34%;
     --sidebar-accent: 142 60% 92%;
     --sidebar-accent-foreground: 142 71% 24%;
   }
@@ -249,6 +254,7 @@
   }
 
   .light.theme-amber {
+    --primary: 45 93% 38%;
     --sidebar-accent: 45 90% 92%;
     --sidebar-accent-foreground: 45 93% 22%;
   }
@@ -265,6 +271,7 @@
   }
 
   .light.theme-slate {
+    --primary: 215 25% 40%;
     --sidebar-accent: 215 20% 92%;
     --sidebar-accent-foreground: 215 25% 26%;
   }
@@ -281,6 +288,7 @@
   }
 
   .light.theme-cyan {
+    --primary: 187 85% 32%;
     --sidebar-accent: 187 80% 92%;
     --sidebar-accent-foreground: 187 85% 22%;
   }
@@ -297,6 +305,7 @@
   }
 
   .light.theme-indigo {
+    --primary: 239 84% 54%;
     --sidebar-accent: 239 70% 94%;
     --sidebar-accent-foreground: 239 84% 38%;
   }
@@ -806,16 +815,21 @@
 }
 
 .light [role="tab"] {
-  color: hsl(215 22% 35%) !important;
+  color: hsl(220 13% 46%) !important;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+}
+
+.light [role="tab"]:hover:not([data-state="active"]) {
+  color: hsl(var(--foreground)) !important;
+  background-color: hsl(var(--background) / 0.5) !important;
 }
 
 .light [role="tab"][data-state="active"] {
   background-color: hsl(var(--background)) !important;
   color: hsl(var(--primary)) !important;
   font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 1px hsl(var(--border));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px hsl(var(--border));
 }
 
 /* ── الحدود العامة ── */

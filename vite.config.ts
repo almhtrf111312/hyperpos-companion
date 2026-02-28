@@ -12,11 +12,19 @@ try {
   appVersion = JSON.parse(versionFile);
 } catch { /* use defaults */ }
 
+// Load changelog from public/changelog.json
+let appChangelog: Array<{ type: string; ar: string; en: string }> = [];
+try {
+  const changelogFile = fs.readFileSync(path.resolve(__dirname, 'public/changelog.json'), 'utf-8');
+  appChangelog = JSON.parse(changelogFile);
+} catch { /* use defaults */ }
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   // Inject app version at build time
   define: {
     '__APP_VERSION__': JSON.stringify(appVersion),
+    '__APP_CHANGELOG__': JSON.stringify(appChangelog),
   },
   server: {
     host: "::",

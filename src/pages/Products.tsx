@@ -2090,7 +2090,21 @@ export default function Products() {
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
                     )}
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full min-h-[48px]"
+                        onClick={handleCameraCapture}
+                        disabled={isCameraLoading}
+                      >
+                        {isCameraLoading ? (
+                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4 ml-2" />
+                        )}
+                        التقاط صورة
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -2098,11 +2112,7 @@ export default function Products() {
                         onClick={handleGallerySelect}
                         disabled={isCameraLoading}
                       >
-                        {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4 ml-2" />
-                        )}
+                        <ImageIcon className="w-4 h-4 ml-2" />
                         اختيار صورة
                       </Button>
                     </div>
@@ -2576,7 +2586,21 @@ export default function Products() {
                         <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
                       </div>
                     )}
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full min-h-[48px]"
+                        onClick={handleCameraCapture}
+                        disabled={isCameraLoading}
+                      >
+                        {isCameraLoading ? (
+                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4 ml-2" />
+                        )}
+                        التقاط صورة
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -2584,11 +2608,7 @@ export default function Products() {
                         onClick={handleGallerySelect}
                         disabled={isCameraLoading}
                       >
-                        {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4 ml-2" />
-                        )}
+                        <ImageIcon className="w-4 h-4 ml-2" />
                         {t('products.chooseImage')}
                       </Button>
                     </div>

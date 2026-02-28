@@ -1,0 +1,27 @@
+[
+  {
+    "type": "fixed",
+    "ar": "إصلاح مشكلة فتح قارئ الباركود مرتين وإعادة تشغيل التطبيق بعد القراءة على APK",
+    "en": "Fixed barcode scanner opening twice and app restarting after scan on APK"
+  },
+  {
+    "type": "improved",
+    "ar": "تكبير أزرار الفلاش والإغلاق في قارئ الباركود مع خلفية سوداء نقية بدون طبقات شفافة",
+    "en": "Enlarged flash/close buttons in barcode scanner with pure black background"
+  },
+  {
+    "type": "improved",
+    "ar": "تحسين تجربة العمل بدون إنترنت: التطبيق يفتح من الكاش فوراً بدون انتظار الشبكة",
+    "en": "Improved offline experience: App opens from cache instantly without waiting for network"
+  },
+  {
+    "type": "new",
+    "ar": "إضافة زر التقاط صورة مباشر من الكاميرا في نموذج إضافة المنتج (أوفلاين أولاً)",
+    "en": "Added direct camera capture button in product add form (offline-first)"
+  },
+  {
+    "type": "improved",
+    "ar": "تحسين تباين الألوان والنصوص في المظهر النهاري عبر جميع التبويبات والشاشات",
+    "en": "Enhanced color contrast and text visibility in light mode across all tabs and screens"
+  }
+]
