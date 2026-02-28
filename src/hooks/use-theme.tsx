@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark';
-export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta';
+export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta' | 'coffee';
 
 interface ThemeContextType {
   mode: ThemeMode;
@@ -83,6 +83,12 @@ export const themeColors: Record<ThemeColor, { name: string; nameAr: string; pri
     primary: '310 75% 55%',
     accent: '320 70% 48%',
   },
+  coffee: {
+    name: 'Coffee',
+    nameAr: 'القهوة',
+    primary: '28 80% 60%',
+    accent: '26 43% 35%',
+  },
 };
 
 // Light mode base colors
@@ -107,6 +113,30 @@ const lightModeColors = {
   posItem: '0 0% 100%',
   posItemHover: '210 40% 96%',
   posCart: '0 0% 98%',
+};
+
+// Coffee theme light mode base colors — warm off-white / coffee brown palette
+const coffeeLightModeColors = {
+  background: '60 33% 98%',         // Warm Off-White #FDFDF7
+  foreground: '26 43% 21%',         // Rich Coffee Brown #4B3621
+  card: '60 33% 99%',
+  cardForeground: '26 43% 21%',
+  popover: '60 33% 99%',
+  popoverForeground: '26 43% 21%',
+  secondary: '42 31% 94%',          // Warm Pale Cream #F6F3EC
+  secondaryForeground: '26 43% 21%',
+  muted: '42 31% 94%',              // Warm Pale Cream #F6F3EC
+  mutedForeground: '26 30% 42%',    // Medium coffee
+  border: '42 25% 85%',
+  input: '42 25% 85%',
+  sidebar: '60 33% 98%',
+  sidebarForeground: '26 43% 21%',
+  sidebarAccent: '42 31% 94%',
+  sidebarBorder: '42 25% 85%',
+  posGrid: '42 25% 96%',
+  posItem: '60 33% 99%',
+  posItemHover: '42 31% 94%',
+  posCart: '60 33% 98%',
 };
 
 // Dark mode base colors
@@ -142,7 +172,9 @@ function triggerThemeTransition() {
 
 function applyTheme(mode: ThemeMode, color: ThemeColor) {
   const root = document.documentElement;
-  const colors = mode === 'light' ? lightModeColors : darkModeColors;
+  const colors = mode === 'light'
+    ? (color === 'coffee' ? coffeeLightModeColors : lightModeColors)
+    : darkModeColors;
   const colorTheme = themeColors[color];
 
   // Apply base colors

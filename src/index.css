@@ -309,6 +309,47 @@
     --sidebar-accent: 239 70% 94%;
     --sidebar-accent-foreground: 239 84% 38%;
   }
+
+  /* Theme: Coffee Brown + Apricot Orange */
+  .theme-coffee {
+    --primary: 28 80% 60%;            /* Warm Apricot Orange #EB964B */
+    --primary-foreground: 0 0% 100%;
+    --accent: 26 43% 35%;             /* Dark Coffee Accent */
+    --accent-foreground: 0 0% 100%;
+    --ring: 28 80% 60%;
+    --sidebar-primary: 28 80% 60%;
+    --pos-total: 28 80% 60%;
+  }
+
+  .light.theme-coffee {
+    /* Backgrounds — warm off-white / pale cream */
+    --background: 60 33% 98%;         /* Warm Off-White #FDFDF7 */
+    --foreground: 26 43% 21%;         /* Rich Coffee Brown #4B3621 */
+    --card: 60 33% 99%;
+    --card-foreground: 26 43% 21%;
+    --popover: 60 33% 99%;
+    --popover-foreground: 26 43% 21%;
+    --secondary: 42 31% 94%;          /* Warm Pale Cream #F6F3EC */
+    --secondary-foreground: 26 43% 21%;
+    --muted: 42 31% 94%;
+    --muted-foreground: 26 30% 42%;
+    --border: 42 25% 85%;
+    --input: 42 25% 85%;
+    /* Sidebar */
+    --sidebar-background: 60 33% 98%;
+    --sidebar-foreground: 26 43% 21%;
+    --sidebar-accent: 42 31% 94%;
+    --sidebar-accent-foreground: 26 43% 21%;
+    --sidebar-border: 42 25% 85%;
+    /* POS */
+    --pos-grid: 42 25% 96%;
+    --pos-item: 60 33% 99%;
+    --pos-item-hover: 42 31% 94%;
+    --pos-cart: 60 33% 98%;
+    /* Primary adjustment for light readability */
+    --primary: 28 80% 55%;
+    --ring: 28 80% 55%;
+  }
 }
 
 /* ===== Blur Theme / Premium Glassmorphism ===== */
