@@ -495,11 +495,15 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
           quantity: Number(item.quantity) || 0,
         }));
 
-      restoredItemsCount = itemsToRestore.length;
-
       if (itemsToRestore.length > 0) {
-        const { restoreStockBatchCloud } = await import('./products-cloud');
-        await restoreStockBatchCloud(itemsToRestore);
+        const { isNoInventoryMode } = await import('../store-type-config');
+        if (!isNoInventoryMode()) {
+          const { restoreStockBatchCloud } = await import('./products-cloud');
+          await restoreStockBatchCloud(itemsToRestore);
+          restoredItemsCount = itemsToRestore.length;
+        } else {
+          restoredItemsCount = 0; // لا يتم استعادة المخزون في المخبز/الصيانة
+        }
       }
     }
   } catch (err) {

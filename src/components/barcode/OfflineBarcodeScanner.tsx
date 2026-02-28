@@ -93,8 +93,8 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
       console.warn('[Offline Scanner] Could not save pending barcode:', e);
     }
 
-    try { playBeep(); } catch {}
-    try { if (navigator.vibrate) navigator.vibrate(150); } catch {}
+    try { playBeep(); } catch { }
+    try { if (navigator.vibrate) navigator.vibrate(150); } catch { }
 
     // ✅ Stop camera FIRST, then notify parent via refs
     stopCamera();
@@ -146,7 +146,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
       try {
         const available = await BarcodeDetectorClass.getSupportedFormats();
         supportedFormats = SUPPORTED_FORMATS.filter(f => available.includes(f));
-      } catch {}
+      } catch { }
 
       if (supportedFormats.length === 0) {
         throw new Error('NO_SUPPORTED_FORMATS');
@@ -176,7 +176,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
         const track = stream.getVideoTracks()[0];
         const caps = track.getCapabilities?.() as any;
         if (caps?.torch) setHasTorch(true);
-      } catch {}
+      } catch { }
 
       if (!videoRef.current) {
         throw new Error('VIDEO_ELEMENT_MISSING');
@@ -257,7 +257,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
   return (
     <div className="scanner-ui-overlay fixed inset-0 z-[120] bg-background/95 backdrop-blur-sm flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80">
+      <div className="flex items-center justify-between px-4 py-3 pt-[calc(max(env(safe-area-inset-top),0.75rem))] border-b border-border bg-card/80 z-[9999] relative">
         <div className="flex items-center gap-2 text-foreground">
           <ScanLine className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">مسح الباركود</span>
@@ -299,7 +299,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
             playsInline
             className="w-full h-full object-cover"
           />
-          <div className="pointer-events-none absolute inset-0 bg-background/40" />
+          {/* تمت إزالة الطبقة الشفافة بناءً على طلب المستخدم لإصلاح الرؤية */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="w-[72%] h-[42%] rounded-xl border-2 border-primary/80 relative">
               <div className="absolute inset-x-0 top-0 h-0.5 bg-primary/60 animate-pulse" />

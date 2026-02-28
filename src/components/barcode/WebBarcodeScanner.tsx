@@ -67,7 +67,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       console.warn('[Web Scanner] Could not save pending barcode:', e);
     }
 
-    try { playBeep(); } catch {}
+    try { playBeep(); } catch { }
     if (navigator.vibrate) navigator.vibrate(120);
 
     stopCamera();
@@ -177,7 +177,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
 
   return (
     <div className="scanner-ui-overlay fixed inset-0 z-[120] bg-background/95 backdrop-blur-sm flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80">
+      <div className="flex items-center justify-between px-4 py-3 pt-[calc(max(env(safe-area-inset-top),0.75rem))] border-b border-border bg-card/80 z-[9999] relative">
         <div className="flex items-center gap-2 text-foreground">
           <ScanLine className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">مسح الباركود</span>
@@ -199,7 +199,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       <div className="flex-1 p-4 flex items-center justify-center">
         <div className="w-full max-w-xl aspect-[3/4] md:aspect-video rounded-2xl border border-border overflow-hidden bg-card relative">
           <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-          <div className="pointer-events-none absolute inset-0 bg-background/50" />
+          {/* تمت إزالة الطبقة الشفافة بناءً على طلب المستخدم لإصلاح الرؤية */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="w-[72%] h-[42%] rounded-xl border-2 border-primary/80" />
           </div>
