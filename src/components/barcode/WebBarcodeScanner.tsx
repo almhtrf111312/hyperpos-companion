@@ -176,42 +176,41 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
   if (!isOpen) return null;
 
   return (
-    <div className="scanner-ui-overlay fixed inset-0 z-[120] bg-background/95 backdrop-blur-sm flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 pt-[calc(max(env(safe-area-inset-top),0.75rem))] border-b border-border bg-card/80 z-[9999] relative">
-        <div className="flex items-center gap-2 text-foreground">
-          <ScanLine className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">مسح الباركود</span>
+    <div className="scanner-ui-overlay fixed inset-0 z-[120] bg-black flex flex-col">
+      {/* Header — floating over camera */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 pt-[calc(max(env(safe-area-inset-top),1.5rem)+0.5rem)] z-[9999]">
+        <div className="flex items-center gap-2 text-white">
+          <ScanLine className="w-5 h-5" />
+          <span className="text-sm font-semibold">مسح الباركود</span>
         </div>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           onClick={() => {
             stopCamera();
             onCloseRef.current();
           }}
-          className="h-8 w-8"
+          className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 border border-white/30 text-white"
         >
-          <X className="w-4 h-4" />
-        </Button>
+          <X className="w-6 h-6" />
+        </button>
       </div>
 
-      <div className="flex-1 p-4 flex items-center justify-center">
-        <div className="w-full max-w-xl aspect-[3/4] md:aspect-video rounded-2xl border border-border overflow-hidden bg-card relative">
-          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-          {/* تمت إزالة الطبقة الشفافة بناءً على طلب المستخدم لإصلاح الرؤية */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="w-[72%] h-[42%] rounded-xl border-2 border-primary/80" />
+      {/* Camera View — full screen */}
+      <div className="flex-1 relative">
+        <video ref={videoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="w-[75%] h-[35%] rounded-xl border-2 border-white/70 relative">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-white/80 animate-pulse" />
           </div>
-          {isStarting && (
-            <div className="absolute inset-0 grid place-items-center bg-background/70">
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <Camera className="w-4 h-4 animate-pulse text-primary" />
-                جارٍ فتح الكاميرا...
-              </div>
-            </div>
-          )}
         </div>
+        {isStarting && (
+          <div className="absolute inset-0 grid place-items-center bg-black/60">
+            <div className="flex items-center gap-2 text-sm text-white">
+              <Camera className="w-5 h-5 animate-pulse" />
+              جارٍ فتح الكاميرا...
+            </div>
+          </div>
+        )}
       </div>
 
       {errorMessage && (
