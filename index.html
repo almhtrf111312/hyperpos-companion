@@ -28,6 +28,16 @@
 
   <body style="background-color: #0a0a0a; color: #fafafa;">
     <div id="root"></div>
+    <script>
+      // Offline fallback: if SW not registered yet and no network, show message
+      if (!navigator.onLine && !navigator.serviceWorker?.controller) {
+        var d = document.getElementById('root');
+        d.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:2rem;font-family:sans-serif">'
+          + '<div><p style="font-size:3rem">📡</p><h2 style="color:#fff;margin:1rem 0">لا يوجد اتصال</h2>'
+          + '<p style="color:#999;font-size:0.875rem;margin-bottom:1rem">افتح التطبيق مع إنترنت مرة واحدة لتخزين الملفات</p>'
+          + '<button onclick="location.reload()" style="background:#6d28d9;color:#fff;border:none;padding:0.75rem 2rem;border-radius:0.75rem;font-size:1rem;cursor:pointer">إعادة المحاولة</button></div></div>';
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

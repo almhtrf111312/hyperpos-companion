@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => ({
             options: {
               cacheName: 'pages-cache',
               expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
-              networkTimeoutSeconds: 5,
+              networkTimeoutSeconds: 3,
             },
           },
           {
