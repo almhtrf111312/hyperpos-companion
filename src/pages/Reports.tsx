@@ -872,22 +872,35 @@ ${partnerExpenses.map(exp => {
 
             {/* Date Range & Export - Compact Row */}
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 px-3 py-1.5 w-full sm:w-auto sm:mx-auto">
-                <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground font-medium">من</span>
-                <Input
-                  type="date"
-                  value={dateRange.from}
-                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                  className="w-32 h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
-                />
-                <span className="text-xs text-muted-foreground font-medium">إلى</span>
-                <Input
-                  type="date"
-                  value={dateRange.to}
-                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                  className="w-32 h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
-                />
+              {/* Separate From and To Inputs */}
+              <div className="flex items-center gap-3 w-full sm:w-auto sm:mx-auto">
+                {/* From Date */}
+                <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 px-3 py-1.5 flex-1 sm:flex-none">
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">من:</span>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <Input
+                      type="date"
+                      value={dateRange.from}
+                      onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                      className="w-full sm:w-[110px] h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                    />
+                  </div>
+                </div>
+
+                {/* To Date */}
+                <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 px-3 py-1.5 flex-1 sm:flex-none">
+                  <span className="text-xs text-muted-foreground font-medium shrink-0">إلى:</span>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <Input
+                      type="date"
+                      value={dateRange.to}
+                      onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                      className="w-full sm:w-[110px] h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
@@ -1606,6 +1619,6 @@ ${partnerExpenses.map(exp => {
           </div>
         )}
       </div>
-    </MainLayout>
+    </MainLayout >
   );
 }
