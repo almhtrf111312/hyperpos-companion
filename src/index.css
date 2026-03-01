@@ -850,27 +850,30 @@
 
 /* ── Tabs ── */
 .light [role="tablist"] {
-  background-color: hsl(var(--muted)) !important;
+  background-color: hsl(var(--secondary) / 0.75) !important;
   border: 1px solid hsl(var(--border)) !important;
-  border-radius: var(--radius);
+  border-radius: 1rem;
+  padding: 0.25rem;
+  box-shadow: 0 4px 14px hsl(var(--foreground) / 0.06);
 }
 
 .light [role="tab"] {
-  color: hsl(220 13% 46%) !important;
-  font-weight: 500;
+  color: hsl(var(--muted-foreground)) !important;
+  font-weight: 600;
+  border-radius: 0.75rem;
   transition: all 0.2s ease;
 }
 
 .light [role="tab"]:hover:not([data-state="active"]) {
   color: hsl(var(--foreground)) !important;
-  background-color: hsl(var(--background) / 0.5) !important;
+  background-color: hsl(var(--background) / 0.75) !important;
 }
 
 .light [role="tab"][data-state="active"] {
-  background-color: hsl(var(--background)) !important;
-  color: hsl(var(--primary)) !important;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px hsl(var(--border));
+  background-image: var(--gradient-primary) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  font-weight: 700;
+  box-shadow: 0 8px 18px hsl(var(--primary) / 0.28);
 }
 
 /* ── الحدود العامة ── */
@@ -1063,11 +1066,12 @@ html.theme-transitioning *::after {
 
   /* POS Grid Item */
   .pos-item {
-    @apply bg-[hsl(var(--pos-item))] rounded-xl p-4 cursor-pointer transition-all duration-200;
+    @apply bg-[hsl(var(--pos-item))] rounded-2xl p-4 cursor-pointer transition-all duration-200 border border-border/70 shadow-sm;
   }
 
   .pos-item:hover {
-    @apply bg-[hsl(var(--pos-item-hover))] scale-[1.02];
+    @apply bg-[hsl(var(--pos-item-hover))] -translate-y-0.5 scale-[1.01] shadow-md;
+    border-color: hsl(var(--primary) / 0.22);
   }
 
   .pos-item:active {

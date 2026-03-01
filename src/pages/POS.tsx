@@ -643,14 +643,14 @@ export default function POS() {
 
         {/* Mode Tabs - Mobile Only (hidden if maintenance section is hidden) */}
         {isMobile && !hideMaintenanceSection && (
-          <div className="px-3 py-2 border-b border-border bg-card">
+          <div className="px-3 py-2.5 border-b border-border/70 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md">
             <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as 'products' | 'maintenance')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="products" className="flex items-center gap-2">
+              <TabsList className="grid w-full grid-cols-2 h-12 rounded-2xl bg-muted/70 border border-border p-1">
+                <TabsTrigger value="products" className="flex items-center gap-2 rounded-xl text-sm">
                   <ShoppingCart className="w-4 h-4" />
                   {tDynamic('products')}
                 </TabsTrigger>
-                <TabsTrigger value="maintenance" className="flex items-center gap-2">
+                <TabsTrigger value="maintenance" className="flex items-center gap-2 rounded-xl text-sm">
                   <Wrench className="w-4 h-4" />
                   {t('pos.maintenance')}
                 </TabsTrigger>
@@ -783,7 +783,8 @@ export default function POS() {
           onClick={() => handleSetCartOpen(true)}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 
                      w-16 h-16 rounded-full 
-                     shadow-lg shadow-primary/30
+                     bg-gradient-primary text-primary-foreground
+                     shadow-lg shadow-primary/35 border border-primary/20
                      flex items-center justify-center
                      hover:scale-105 active:scale-95
                      transition-all duration-200"

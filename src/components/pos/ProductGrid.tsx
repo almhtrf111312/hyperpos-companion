@@ -123,15 +123,15 @@ export function ProductGrid({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Search, View Toggle, and Categories */}
-      <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border space-y-3">
+      <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md space-y-3 md:space-y-4">
         <div className="flex gap-2">
           {/* View Mode Buttons - moved to left */}
-          <div className="flex border rounded-lg overflow-hidden flex-shrink-0">
+          <div className="flex border border-border rounded-2xl overflow-hidden flex-shrink-0 bg-muted/70 p-1 shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
               className={cn(
-                "p-2 md:p-2.5 transition-colors",
-                viewMode === 'grid' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                "p-2 md:p-2.5 rounded-xl transition-all duration-200",
+                viewMode === 'grid' ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-background/70"
               )}
               title={t('pos.viewGrid')}
             >
@@ -140,8 +140,8 @@ export function ProductGrid({
             <button
               onClick={() => setViewMode('list')}
               className={cn(
-                "p-2 md:p-2.5 transition-colors",
-                viewMode === 'list' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                "p-2 md:p-2.5 rounded-xl transition-all duration-200",
+                viewMode === 'list' ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-background/70"
               )}
               title={t('pos.viewList')}
             >
@@ -150,8 +150,8 @@ export function ProductGrid({
             <button
               onClick={() => setViewMode('compact')}
               className={cn(
-                "p-2 md:p-2.5 transition-colors",
-                viewMode === 'compact' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                "p-2 md:p-2.5 rounded-xl transition-all duration-200",
+                viewMode === 'compact' ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-background/70"
               )}
               title={t('pos.viewCompact')}
             >
@@ -166,7 +166,7 @@ export function ProductGrid({
               placeholder={tDynamic('productSearch')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pr-9 md:pr-10 h-10 md:h-12 bg-muted border-0 text-sm md:text-base"
+              className="pr-9 md:pr-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm"
             />
           </div>
 
@@ -174,7 +174,7 @@ export function ProductGrid({
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0"
+              className="h-11 w-11 md:h-12 md:w-12 rounded-2xl border-border bg-background/90 shadow-sm flex-shrink-0"
               onClick={() => setScannerOpen(true)}
             >
               <Barcode className="w-4 h-4 md:w-5 md:h-5" />
@@ -188,10 +188,10 @@ export function ProductGrid({
               key={`${category}-${index}`}
               onClick={() => onCategoryChange(category)}
               className={cn(
-                "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                "px-3.5 md:px-4 py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-200 flex-shrink-0 border border-border/70",
                 selectedCategory === category
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30 border-transparent"
+                  : "bg-secondary/70 text-foreground hover:bg-secondary"
               )}
             >
               {category}
@@ -242,8 +242,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors text-right fade-in"
-                style={{ animationDelay: `${index * 20}ms` }}
+                className="w-full flex items-center gap-3 p-2.5 rounded-2xl border border-border/70 bg-card shadow-sm hover:bg-muted/40 hover:shadow-md transition-all text-right fade-in"
               >
                 <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center overflow-hidden flex-shrink-0">
                   <ProductImage
@@ -275,8 +274,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors text-right fade-in"
-                style={{ animationDelay: `${index * 15}ms` }}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl border border-border/70 bg-card shadow-sm hover:bg-muted/40 hover:shadow-md transition-all text-right fade-in"
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>

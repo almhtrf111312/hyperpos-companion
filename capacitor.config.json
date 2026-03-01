@@ -2,11 +2,6 @@
   "appId": "com.flowpos.pro",
   "appName": "FlowPOS Pro",
   "webDir": "dist",
-  "server": {
-    "androidScheme": "https",
-    "url": "https://flowpospro.lovable.app",
-    "cleartext": false
-  },
   "plugins": {
     "Camera": {
       "photoGalleryPermission": "لاختيار صور المنتجات",

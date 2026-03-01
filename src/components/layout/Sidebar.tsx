@@ -282,12 +282,12 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     to={item.path}
                     onClick={(e) => handleNavClick(e, item.path)}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg transition-all duration-200 group relative",
+                      "flex items-center gap-3 rounded-xl transition-all duration-200 group relative",
                       effectiveCollapsed && !isMobile ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
                       isActive 
-                        ? "bg-primary/10 text-primary font-semibold" 
+                        ? "bg-gradient-primary text-primary-foreground font-semibold shadow-md shadow-primary/25" 
                         : cn(
-                            "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+                            "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                             !effectiveCollapsed && (isRTL ? "hover:-translate-x-0.5" : "hover:translate-x-0.5")
                           )
                     )}
@@ -302,7 +302,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     
                     <item.icon className={cn(
                       "w-[18px] h-[18px] flex-shrink-0 transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-accent-foreground"
+                      isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-sidebar-accent-foreground"
                     )} />
                     
                     {(!effectiveCollapsed || isMobile) && (
