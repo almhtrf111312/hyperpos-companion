@@ -19,7 +19,7 @@ export function POSHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="h-16 md:h-20 bg-card border-b border-border flex items-center justify-between px-3 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] rtl:pr-16 ltr:pl-16 md:rtl:pr-4 md:ltr:pl-4">
+    <header className="h-16 md:h-20 border-b border-border/70 flex items-center justify-between px-3 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] rtl:pr-16 ltr:pl-16 md:rtl:pr-4 md:ltr:pl-4 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md shadow-sm">
       {/* Right side - Title */}
       <div className="flex items-center gap-2">
         <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('pos.title')}</h1>

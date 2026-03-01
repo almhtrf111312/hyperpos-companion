@@ -42,17 +42,15 @@ export default defineConfig(({ mode }) => ({
         navigateFallbackDenylist: [/^\/~oauth/],
         skipWaiting: true,
         clientsClaim: true,
-        // ✅ Offline fallback page
-        offlineGoogleAnalytics: false,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            // Cache the app shell (HTML pages) with NetworkFirst for fast offline
+            // Fast app-shell loading after first visit (works better on weak networks)
             urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'pages-cache',
               expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
-              networkTimeoutSeconds: 3,
             },
           },
           {
