@@ -447,15 +447,16 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Toast notifications - ALWAYS opaque and readable */
+/* Toast notifications - Glassmorphism with balanced transparency */
 .blur-theme [data-sonner-toast] {
-  background: hsl(var(--card)) !important;
-  opacity: 1 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid hsl(var(--border) / 0.6) !important;
+  background: hsl(var(--card) / 0.85) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.5) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-inline-start-width: 6px !important;
   color: hsl(var(--foreground)) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+  border-radius: 9999px !important; /* ensures pill shape on blur-theme */
 }
 
 .blur-theme [data-sonner-toast] [data-title],
@@ -464,15 +465,19 @@
 }
 
 .blur-theme [data-sonner-toast][data-type="success"] {
-  background: hsl(var(--success) / 0.12) !important;
-  color: hsl(var(--success)) !important;
-  border-color: hsl(var(--success) / 0.25) !important;
+  border-inline-start-color: hsl(var(--success)) !important;
 }
 
 .blur-theme [data-sonner-toast][data-type="error"] {
-  background: hsl(var(--destructive) / 0.12) !important;
-  color: hsl(var(--destructive)) !important;
-  border-color: hsl(var(--destructive) / 0.25) !important;
+  border-inline-start-color: hsl(var(--destructive)) !important;
+}
+
+.blur-theme [data-sonner-toast][data-type="warning"] {
+  border-inline-start-color: hsl(var(--warning)) !important;
+}
+
+.blur-theme [data-sonner-toast][data-type="info"] {
+  border-inline-start-color: hsl(var(--info)) !important;
 }
 
 /* Inputs - solid but subtle in glass mode */
