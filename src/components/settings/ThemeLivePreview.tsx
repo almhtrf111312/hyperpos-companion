@@ -9,19 +9,35 @@ interface ThemeLivePreviewProps {
   transparency: number;
 }
 
+// Per-color preview backgrounds (matches lightPalettes in use-theme.tsx)
+const previewBg: Record<ThemeColor, { bg: string; card: string; muted: string; fg: string; mutedFg: string; border: string }> = {
+  emerald: { bg: 'hsl(150,30%,99%)', card: 'hsl(150,20%,99%)', muted: 'hsl(150,20%,93%)', fg: 'hsl(160,40%,12%)', mutedFg: 'hsl(160,20%,38%)', border: 'hsl(150,18%,80%)' },
+  blue: { bg: 'hsl(220,40%,99%)', card: 'hsl(220,30%,99%)', muted: 'hsl(214,30%,92%)', fg: 'hsl(222,47%,11%)', mutedFg: 'hsl(215,20%,38%)', border: 'hsl(214,28%,80%)' },
+  purple: { bg: 'hsl(270,35%,99%)', card: 'hsl(270,25%,99%)', muted: 'hsl(270,25%,92%)', fg: 'hsl(270,40%,12%)', mutedFg: 'hsl(270,20%,40%)', border: 'hsl(270,20%,80%)' },
+  rose: { bg: 'hsl(345,40%,99%)', card: 'hsl(345,25%,99%)', muted: 'hsl(345,20%,92%)', fg: 'hsl(345,40%,12%)', mutedFg: 'hsl(345,15%,40%)', border: 'hsl(345,18%,82%)' },
+  orange: { bg: 'hsl(30,45%,99%)', card: 'hsl(30,30%,99%)', muted: 'hsl(30,28%,92%)', fg: 'hsl(25,50%,12%)', mutedFg: 'hsl(25,25%,40%)', border: 'hsl(30,22%,82%)' },
+  cyan: { bg: 'hsl(186,40%,99%)', card: 'hsl(186,25%,99%)', muted: 'hsl(186,28%,91%)', fg: 'hsl(186,50%,10%)', mutedFg: 'hsl(186,20%,38%)', border: 'hsl(186,22%,80%)' },
+  indigo: { bg: 'hsl(239,40%,99%)', card: 'hsl(239,25%,99%)', muted: 'hsl(239,24%,92%)', fg: 'hsl(239,45%,12%)', mutedFg: 'hsl(239,20%,40%)', border: 'hsl(239,20%,81%)' },
+  coral: { bg: 'hsl(16,40%,99%)', card: 'hsl(16,28%,99%)', muted: 'hsl(16,26%,91%)', fg: 'hsl(16,50%,12%)', mutedFg: 'hsl(16,22%,40%)', border: 'hsl(16,20%,81%)' },
+  lime: { bg: 'hsl(85,35%,99%)', card: 'hsl(85,22%,99%)', muted: 'hsl(85,22%,91%)', fg: 'hsl(85,45%,10%)', mutedFg: 'hsl(85,18%,38%)', border: 'hsl(85,18%,80%)' },
+  magenta: { bg: 'hsl(310,38%,99%)', card: 'hsl(310,24%,99%)', muted: 'hsl(310,22%,92%)', fg: 'hsl(310,45%,12%)', mutedFg: 'hsl(310,18%,40%)', border: 'hsl(310,18%,81%)' },
+  coffee: { bg: 'hsl(60,33%,98%)', card: 'hsl(60,33%,99%)', muted: 'hsl(42,31%,94%)', fg: 'hsl(26,43%,21%)', mutedFg: 'hsl(26,30%,42%)', border: 'hsl(42,25%,85%)' },
+};
+
 export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLivePreviewProps) {
   const { isRTL, t } = useLanguage();
   const theme = themeColors[color];
   const isDark = mode === 'dark';
 
-  // Base palette
-  const bg = isDark ? 'hsl(222, 47%, 6%)' : 'hsl(0, 0%, 100%)';
-  const cardBg = isDark ? 'hsl(222, 47%, 9%)' : 'hsl(0, 0%, 98%)';
-  const mutedBg = isDark ? 'hsl(215, 28%, 15%)' : 'hsl(210, 40%, 96%)';
-  const fg = isDark ? 'hsl(210, 40%, 98%)' : 'hsl(222, 47%, 11%)';
-  const mutedFg = isDark ? 'hsl(215, 20%, 60%)' : 'hsl(215, 16%, 47%)';
-  const borderColor = isDark ? 'hsl(215, 28%, 18%)' : 'hsl(214, 32%, 91%)';
-  const sidebarBg = isDark ? 'hsl(222, 47%, 7%)' : 'hsl(0, 0%, 98%)';
+  // Base palette — per-color tinted in light mode, dark navy in dark mode
+  const pal = !isDark ? previewBg[color] : null;
+  const bg = isDark ? 'hsl(222, 47%, 6%)' : pal!.bg;
+  const cardBg = isDark ? 'hsl(222, 47%, 9%)' : pal!.card;
+  const mutedBg = isDark ? 'hsl(215, 28%, 15%)' : pal!.muted;
+  const fg = isDark ? 'hsl(210, 40%, 98%)' : pal!.fg;
+  const mutedFg = isDark ? 'hsl(215, 20%, 60%)' : pal!.mutedFg;
+  const borderColor = isDark ? 'hsl(215, 28%, 18%)' : pal!.border;
+  const sidebarBg = isDark ? 'hsl(222, 47%, 7%)' : pal!.bg;
   const primary = `hsl(${theme.primary})`;
   const accent = `hsl(${theme.accent})`;
 

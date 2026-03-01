@@ -91,55 +91,147 @@ export const themeColors: Record<ThemeColor, { name: string; nameAr: string; pri
   },
 };
 
-// Light mode base colors
-const lightModeColors = {
-  background: '0 0% 100%',
-  foreground: '222 47% 11%',
-  card: '0 0% 98%',
-  cardForeground: '222 47% 11%',
-  popover: '0 0% 100%',
-  popoverForeground: '222 47% 11%',
-  secondary: '210 40% 96%',
-  secondaryForeground: '222 47% 11%',
-  muted: '210 40% 92%',
-  mutedForeground: '215 20% 38%',
-  border: '214 32% 72%',
-  input: '214 32% 72%',
-  sidebar: '0 0% 98%',
-  sidebarForeground: '222 47% 11%',
-  sidebarAccent: '210 40% 96%',
-  sidebarBorder: '214 32% 72%',
-  posGrid: '210 40% 98%',
-  posItem: '0 0% 100%',
-  posItemHover: '210 40% 96%',
-  posCart: '0 0% 98%',
+// Per-color light-mode palette tint — each theme gets a slightly hued background/muted
+// that complements its primary color for a harmonious, polished look
+type LightPalette = {
+  background: string; foreground: string;
+  card: string; cardForeground: string;
+  popover: string; popoverForeground: string;
+  secondary: string; secondaryForeground: string;
+  muted: string; mutedForeground: string;
+  border: string; input: string;
+  sidebar: string; sidebarForeground: string;
+  sidebarAccent: string; sidebarAccentForeground: string; sidebarBorder: string;
+  posGrid: string; posItem: string; posItemHover: string; posCart: string;
 };
 
-// Coffee theme light mode base colors — warm off-white / coffee brown palette
-const coffeeLightModeColors = {
-  background: '60 33% 98%',         // Warm Off-White #FDFDF7
-  foreground: '26 43% 21%',         // Rich Coffee Brown #4B3621
-  card: '60 33% 99%',
-  cardForeground: '26 43% 21%',
-  popover: '60 33% 99%',
-  popoverForeground: '26 43% 21%',
-  secondary: '42 31% 94%',          // Warm Pale Cream #F6F3EC
-  secondaryForeground: '26 43% 21%',
-  muted: '42 31% 94%',              // Warm Pale Cream #F6F3EC
-  mutedForeground: '26 30% 42%',    // Medium coffee
-  border: '42 25% 85%',
-  input: '42 25% 85%',
-  sidebar: '60 33% 98%',
-  sidebarForeground: '26 43% 21%',
-  sidebarAccent: '42 31% 94%',
-  sidebarBorder: '42 25% 85%',
-  posGrid: '42 25% 96%',
-  posItem: '60 33% 99%',
-  posItemHover: '42 31% 94%',
-  posCart: '60 33% 98%',
+const lightPalettes: Record<ThemeColor, LightPalette> = {
+  emerald: {
+    background: '150 30% 99%', foreground: '160 40% 12%',
+    card: '150 20% 99%', cardForeground: '160 40% 12%',
+    popover: '0 0% 100%', popoverForeground: '160 40% 12%',
+    secondary: '150 25% 94%', secondaryForeground: '160 40% 18%',
+    muted: '150 20% 93%', mutedForeground: '160 20% 38%',
+    border: '150 18% 80%', input: '150 18% 80%',
+    sidebar: '150 25% 98%', sidebarForeground: '160 40% 12%',
+    sidebarAccent: '150 30% 93%', sidebarAccentForeground: '160 84% 30%', sidebarBorder: '150 18% 82%',
+    posGrid: '150 18% 97%', posItem: '150 20% 99%', posItemHover: '150 25% 94%', posCart: '150 20% 98%',
+  },
+  blue: {
+    background: '220 40% 99%', foreground: '222 47% 11%',
+    card: '220 30% 99%', cardForeground: '222 47% 11%',
+    popover: '0 0% 100%', popoverForeground: '222 47% 11%',
+    secondary: '214 35% 94%', secondaryForeground: '222 47% 14%',
+    muted: '214 30% 92%', mutedForeground: '215 20% 38%',
+    border: '214 28% 80%', input: '214 28% 80%',
+    sidebar: '220 35% 98%', sidebarForeground: '222 47% 11%',
+    sidebarAccent: '214 35% 94%', sidebarAccentForeground: '217 91% 50%', sidebarBorder: '214 28% 82%',
+    posGrid: '214 25% 97%', posItem: '220 30% 99%', posItemHover: '214 30% 94%', posCart: '220 25% 98%',
+  },
+  purple: {
+    background: '270 35% 99%', foreground: '270 40% 12%',
+    card: '270 25% 99%', cardForeground: '270 40% 12%',
+    popover: '0 0% 100%', popoverForeground: '270 40% 12%',
+    secondary: '270 30% 94%', secondaryForeground: '270 40% 18%',
+    muted: '270 25% 92%', mutedForeground: '270 20% 40%',
+    border: '270 20% 80%', input: '270 20% 80%',
+    sidebar: '270 30% 98%', sidebarForeground: '270 40% 12%',
+    sidebarAccent: '270 30% 93%', sidebarAccentForeground: '271 81% 46%', sidebarBorder: '270 20% 82%',
+    posGrid: '270 18% 97%', posItem: '270 25% 99%', posItemHover: '270 30% 94%', posCart: '270 22% 98%',
+  },
+  rose: {
+    background: '345 40% 99%', foreground: '345 40% 12%',
+    card: '345 25% 99%', cardForeground: '345 40% 12%',
+    popover: '0 0% 100%', popoverForeground: '345 40% 12%',
+    secondary: '345 30% 94%', secondaryForeground: '345 40% 18%',
+    muted: '345 20% 92%', mutedForeground: '345 15% 40%',
+    border: '345 18% 82%', input: '345 18% 82%',
+    sidebar: '345 30% 98%', sidebarForeground: '345 40% 12%',
+    sidebarAccent: '345 28% 93%', sidebarAccentForeground: '346 77% 40%', sidebarBorder: '345 18% 83%',
+    posGrid: '345 15% 97%', posItem: '345 22% 99%', posItemHover: '345 25% 94%', posCart: '345 18% 98%',
+  },
+  orange: {
+    background: '30 45% 99%', foreground: '25 50% 12%',
+    card: '30 30% 99%', cardForeground: '25 50% 12%',
+    popover: '0 0% 100%', popoverForeground: '25 50% 12%',
+    secondary: '30 35% 94%', secondaryForeground: '25 50% 18%',
+    muted: '30 28% 92%', mutedForeground: '25 25% 40%',
+    border: '30 22% 82%', input: '30 22% 82%',
+    sidebar: '30 35% 98%', sidebarForeground: '25 50% 12%',
+    sidebarAccent: '30 32% 93%', sidebarAccentForeground: '25 95% 43%', sidebarBorder: '30 22% 83%',
+    posGrid: '30 20% 97%', posItem: '30 28% 99%', posItemHover: '30 30% 94%', posCart: '30 22% 98%',
+  },
+  cyan: {
+    background: '186 40% 99%', foreground: '186 50% 10%',
+    card: '186 25% 99%', cardForeground: '186 50% 10%',
+    popover: '0 0% 100%', popoverForeground: '186 50% 10%',
+    secondary: '186 35% 93%', secondaryForeground: '186 50% 16%',
+    muted: '186 28% 91%', mutedForeground: '186 20% 38%',
+    border: '186 22% 80%', input: '186 22% 80%',
+    sidebar: '186 35% 98%', sidebarForeground: '186 50% 10%',
+    sidebarAccent: '186 32% 92%', sidebarAccentForeground: '186 100% 32%', sidebarBorder: '186 22% 81%',
+    posGrid: '186 18% 97%', posItem: '186 22% 99%', posItemHover: '186 28% 93%', posCart: '186 20% 98%',
+  },
+  indigo: {
+    background: '239 40% 99%', foreground: '239 45% 12%',
+    card: '239 25% 99%', cardForeground: '239 45% 12%',
+    popover: '0 0% 100%', popoverForeground: '239 45% 12%',
+    secondary: '239 30% 94%', secondaryForeground: '239 45% 18%',
+    muted: '239 24% 92%', mutedForeground: '239 20% 40%',
+    border: '239 20% 81%', input: '239 20% 81%',
+    sidebar: '239 30% 98%', sidebarForeground: '239 45% 12%',
+    sidebarAccent: '239 28% 93%', sidebarAccentForeground: '239 84% 54%', sidebarBorder: '239 20% 82%',
+    posGrid: '239 16% 97%', posItem: '239 22% 99%', posItemHover: '239 26% 94%', posCart: '239 18% 98%',
+  },
+  coral: {
+    background: '16 40% 99%', foreground: '16 50% 12%',
+    card: '16 28% 99%', cardForeground: '16 50% 12%',
+    popover: '0 0% 100%', popoverForeground: '16 50% 12%',
+    secondary: '16 32% 93%', secondaryForeground: '16 50% 18%',
+    muted: '16 26% 91%', mutedForeground: '16 22% 40%',
+    border: '16 20% 81%', input: '16 20% 81%',
+    sidebar: '16 32% 98%', sidebarForeground: '16 50% 12%',
+    sidebarAccent: '16 30% 92%', sidebarAccentForeground: '16 85% 45%', sidebarBorder: '16 20% 82%',
+    posGrid: '16 16% 97%', posItem: '16 24% 99%', posItemHover: '16 28% 93%', posCart: '16 18% 98%',
+  },
+  lime: {
+    background: '85 35% 99%', foreground: '85 45% 10%',
+    card: '85 22% 99%', cardForeground: '85 45% 10%',
+    popover: '0 0% 100%', popoverForeground: '85 45% 10%',
+    secondary: '85 28% 93%', secondaryForeground: '85 45% 16%',
+    muted: '85 22% 91%', mutedForeground: '85 18% 38%',
+    border: '85 18% 80%', input: '85 18% 80%',
+    sidebar: '85 28% 98%', sidebarForeground: '85 45% 10%',
+    sidebarAccent: '85 26% 92%', sidebarAccentForeground: '85 70% 35%', sidebarBorder: '85 18% 81%',
+    posGrid: '85 14% 97%', posItem: '85 20% 99%', posItemHover: '85 24% 93%', posCart: '85 16% 98%',
+  },
+  magenta: {
+    background: '310 38% 99%', foreground: '310 45% 12%',
+    card: '310 24% 99%', cardForeground: '310 45% 12%',
+    popover: '0 0% 100%', popoverForeground: '310 45% 12%',
+    secondary: '310 28% 93%', secondaryForeground: '310 45% 18%',
+    muted: '310 22% 92%', mutedForeground: '310 18% 40%',
+    border: '310 18% 81%', input: '310 18% 81%',
+    sidebar: '310 28% 98%', sidebarForeground: '310 45% 12%',
+    sidebarAccent: '310 26% 93%', sidebarAccentForeground: '310 75% 45%', sidebarBorder: '310 18% 82%',
+    posGrid: '310 14% 97%', posItem: '310 22% 99%', posItemHover: '310 24% 93%', posCart: '310 16% 98%',
+  },
+  coffee: {
+    background: '60 33% 98%',         // Warm Off-White #FDFDF7
+    foreground: '26 43% 21%',         // Rich Coffee Brown #4B3621
+    card: '60 33% 99%', cardForeground: '26 43% 21%',
+    popover: '60 33% 99%', popoverForeground: '26 43% 21%',
+    secondary: '42 31% 94%',          // Warm Pale Cream #F6F3EC
+    secondaryForeground: '26 43% 21%',
+    muted: '42 31% 94%', mutedForeground: '26 30% 42%',
+    border: '42 25% 85%', input: '42 25% 85%',
+    sidebar: '60 33% 98%', sidebarForeground: '26 43% 21%',
+    sidebarAccent: '42 31% 94%', sidebarAccentForeground: '28 80% 50%', sidebarBorder: '42 25% 85%',
+    posGrid: '42 25% 96%', posItem: '60 33% 99%', posItemHover: '42 31% 94%', posCart: '60 33% 98%',
+  },
 };
 
-// Dark mode base colors
+// Dark mode base colors (shared for all themes)
 const darkModeColors = {
   background: '222 47% 6%',
   foreground: '210 40% 98%',
@@ -172,9 +264,7 @@ function triggerThemeTransition() {
 
 function applyTheme(mode: ThemeMode, color: ThemeColor) {
   const root = document.documentElement;
-  const colors = mode === 'light'
-    ? (color === 'coffee' ? coffeeLightModeColors : lightModeColors)
-    : darkModeColors;
+  const colors = mode === 'light' ? lightPalettes[color] : darkModeColors;
   const colorTheme = themeColors[color];
 
   // Apply base colors
@@ -190,13 +280,19 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   root.style.setProperty('--muted-foreground', colors.mutedForeground);
   root.style.setProperty('--border', colors.border);
   root.style.setProperty('--input', colors.input);
-  
+
   // Sidebar
   root.style.setProperty('--sidebar-background', colors.sidebar);
   root.style.setProperty('--sidebar-foreground', colors.sidebarForeground);
   root.style.setProperty('--sidebar-accent', colors.sidebarAccent);
   root.style.setProperty('--sidebar-border', colors.sidebarBorder);
-  
+  // sidebar-accent-foreground (previously missing — causes nav hover color issues)
+  if (mode === 'light') {
+    root.style.setProperty('--sidebar-accent-foreground', (colors as LightPalette).sidebarAccentForeground);
+  } else {
+    root.style.setProperty('--sidebar-accent-foreground', '210 40% 98%');
+  }
+
   // POS
   root.style.setProperty('--pos-grid', colors.posGrid);
   root.style.setProperty('--pos-item', colors.posItem);
@@ -327,7 +423,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           .select('theme_settings')
           .eq('user_id', user.id)
           .maybeSingle();
-        
+
         const cloudSettings = store?.theme_settings;
         if (cloudSettings && cloudSettings.mode) {
           const finalMode = cloudSettings.mode || DEFAULT_MODE;
