@@ -898,14 +898,6 @@ ${partnerExpenses.map(exp => {
                   <Download className="w-3 h-3 ml-1" />
                   Excel
                 </Button>
-                <Button size="sm" onClick={handleBackup} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
-                  <Download className="w-3 h-3 ml-1" />
-                  {t('reports.backup')}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={handleExportComprehensive} disabled={isLoading} className="h-7 text-xs px-2.5 rounded-lg">
-                  <FileText className="w-3 h-3 ml-1" />
-                  شامل
-                </Button>
               </div>
             </div>
           </div>
