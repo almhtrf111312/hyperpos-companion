@@ -13,7 +13,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-center"
       duration={2000}
       closeButton
-      offset={60}
+      offset={110}
       swipeDirections={['left', 'right']}
       style={{
         '--width': 'auto',

@@ -454,7 +454,7 @@
 
 /* Toast notifications - Glassmorphism with balanced transparency */
 .blur-theme [data-sonner-toast] {
-  background: var(--glass-bg) !important;
+  background: hsl(var(--card) / 0.90) !important;
   backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.5) !important;
   -webkit-backdrop-filter: blur(calc(var(--blur-intensity) + 8px)) saturate(1.5) !important;
   border: 1px solid var(--glass-border) !important;
