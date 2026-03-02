@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -153,13 +153,27 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // حفظ السلة
-  const saveCart = useCallback(() => {
+  // ✅ useRef لحفظ آخر قيمة للسلة — يُستخدم في listeners لتجنب stale closures
+  const cartRef = useRef<CartItem[]>(cart);
+  const cartOpenRef = useRef(cartOpen);
+  useEffect(() => { cartRef.current = cart; }, [cart]);
+  useEffect(() => { cartOpenRef.current = cartOpen; }, [cartOpen]);
+
+  // ✅ حفظ السلة تلقائياً عند كل تغيير
+  useEffect(() => {
     if (cart.length > 0) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-      console.log('[POS] Cart saved:', cart.length, 'items');
     }
   }, [cart]);
+
+  // حفظ السلة
+  const saveCart = useCallback(() => {
+    const currentCart = cartRef.current;
+    if (currentCart.length > 0) {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(currentCart));
+      console.log('[POS] Cart saved:', currentCart.length, 'items');
+    }
+  }, []);
 
   // استعادة السلة - فقط إذا كانت السلة فارغة حالياً
   const restoreCart = useCallback(() => {
@@ -200,13 +214,13 @@ export default function POS() {
 
     App.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) {
-        // حفظ السلة عند الخروج
-        if (cart.length > 0) {
-          localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-          console.log('[POS] App going background, saved cart:', cart.length);
+        // ✅ استخدام cartRef لضمان أحدث القيم
+        const currentCart = cartRef.current;
+        if (currentCart.length > 0) {
+          localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(currentCart));
+          console.log('[POS] App going background, saved cart:', currentCart.length);
         }
-        // ✅ حفظ حالة السلة المفتوحة عند الخروج
-        localStorage.setItem(CART_OPEN_KEY, cartOpen ? '1' : '0');
+        localStorage.setItem(CART_OPEN_KEY, cartOpenRef.current ? '1' : '0');
       } else {
         // استعادة عند العودة
         restoreCart();
@@ -216,7 +230,6 @@ export default function POS() {
           if (pending) {
             console.log('[POS] Restoring pending barcode scan on resume:', pending);
             setPendingScan(pending);
-            // DON'T clear from localStorage here - let handleBarcodeScan clear it after successful processing
           }
         } catch { }
         // ✅ استعادة حالة السلة المفتوحة

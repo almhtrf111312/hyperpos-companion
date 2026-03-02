@@ -53,6 +53,7 @@ import {
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addToQueue } from '@/lib/sync-queue';
+import { invalidateProductsCache } from '@/lib/cloud/products-cloud';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
@@ -477,6 +478,9 @@ export function CartPanel({
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
       showToast.success('تم حفظ الفاتورة ✓');
 
+      // ✅ تحديث كاش المنتجات لضمان ظهور الكمية الجديدة
+      invalidateProductsCache();
+
       // ✅ مزامنة فورية في الخلفية (بدون انتظار المستخدم)
       if (isOnline) {
         syncImmediately();
@@ -634,6 +638,9 @@ export function CartPanel({
       playDebtRecorded();
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
       showToast.success('تم حفظ فاتورة الدين ✓');
+
+      // ✅ تحديث كاش المنتجات لضمان ظهور الكمية الجديدة
+      invalidateProductsCache();
 
       // ✅ مزامنة فورية في الخلفية
       if (isOnline) {
