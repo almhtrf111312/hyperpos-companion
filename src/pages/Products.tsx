@@ -96,7 +96,7 @@ import { getSignedImageUrl } from '@/lib/image-upload';
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  const { t, tDynamic } = useLanguage();
+  const { t, tDynamic, isRTL } = useLanguage();
   const { isBoss, isAdmin, isCashier } = useUserRole();
   const noInventory = isNoInventoryMode();
   const isRestaurant = getCurrentStoreType() === 'restaurant';
@@ -313,9 +313,8 @@ export default function Products() {
     fallbackToInline: true,
   });
 
-  // 1. Save state whenever important form values change
+  // 1. Save state whenever important form values change (only when dialog is open)
   useEffect(() => {
-    // Only save if the dialog is open and we have some data
     if (showAddDialog || showEditDialog) {
       const stateToSave = {
         formData,
@@ -326,10 +325,9 @@ export default function Products() {
         timestamp: Date.now()
       };
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
-    } else {
-      // Clear state if dialogs are closed to prevent auto-open on reload
-      localStorage.removeItem(FORM_STORAGE_KEY);
     }
+    // ✅ لا نمسح الكاش عند إغلاق الـ dialog تلقائياً
+    // المسح يحدث فقط عبر clearPersistedState() عند الحفظ الناجح أو الإلغاء الصريح
   }, [formData, customFieldValues, showAddDialog, showEditDialog, selectedProduct]);
 
   // 2. Clear state when dialog is closed explicitly (Cancel/Success)
@@ -666,12 +664,28 @@ export default function Products() {
   };
 
   const handleAddProduct = async () => {
+    // ✅ منع النقر المتعدد
+    if (isSaving) return;
+
     // In bakery/restaurant mode, barcode is auto-generated; otherwise required
     const shouldAutoBarcode = noInventory || isRestaurant;
     const effectiveBarcode = shouldAutoBarcode ? (formData.barcode || `AUTO${Date.now()}`) : formData.barcode;
     if (!formData.name || (!shouldAutoBarcode && !effectiveBarcode)) {
       toast.error(t('products.fillRequired'));
       return;
+    }
+
+    // ✅ فحص تكرار الباركود قبل الإضافة
+    if (effectiveBarcode && !effectiveBarcode.startsWith('AUTO')) {
+      const duplicate = products.find(p =>
+        p.barcode === effectiveBarcode ||
+        p.barcode2 === effectiveBarcode ||
+        p.barcode3 === effectiveBarcode
+      );
+      if (duplicate) {
+        toast.error(isRTL ? `الباركود "${effectiveBarcode}" موجود بالفعل للمنتج: ${duplicate.name}` : `Barcode "${effectiveBarcode}" already exists for: ${duplicate.name}`);
+        return;
+      }
     }
 
     // Validate required custom fields

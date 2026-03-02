@@ -131,10 +131,24 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
+  // ✅ إذا كان هناك كاش محلي صالح للرخصة، تخطي التحميل فوراً
   useEffect(() => {
     if (isFullyLoading) {
-      const retryTimer = setTimeout(() => setLoadingTimeout(true), 3000);
-      const skipTimer = setTimeout(() => setShowSkipButton(true), 6000);
+      // Check if we have a valid cached license to skip loading
+      try {
+        const cachedLicense = localStorage.getItem('hp_license_cache');
+        if (cachedLicense) {
+          const parsed = JSON.parse(cachedLicense);
+          if (parsed?.isValid && parsed?.timestamp && (Date.now() - parsed.timestamp < 86400000)) {
+            console.log('[LicenseGuard] Valid cached license found, skipping loading screen');
+            setSkipLoading(true);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+      
+      const retryTimer = setTimeout(() => setLoadingTimeout(true), 1000);
+      const skipTimer = setTimeout(() => setShowSkipButton(true), 2000);
       return () => { clearTimeout(retryTimer); clearTimeout(skipTimer); };
     } else {
       setLoadingTimeout(false);

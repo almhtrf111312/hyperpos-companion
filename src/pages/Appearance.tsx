@@ -1,11 +1,29 @@
-import { useState } from 'react';
-import { Save, Undo2, Loader2 } from 'lucide-react';
+import { useState, Component, ReactNode } from 'react';
+import { Save, Undo2, Loader2, AlertTriangle } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
 import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+// Error Boundary to catch ThemeSection render crashes
+class ThemeErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.error('[ThemeErrorBoundary] Render error:', error);
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
 
 export default function Appearance() {
   const { t, isRTL } = useLanguage();
@@ -40,15 +58,29 @@ export default function Appearance() {
     });
   };
 
+  const errorFallback = (
+    <div className="flex flex-col items-center gap-4 p-8 text-center">
+      <AlertTriangle className="w-12 h-12 text-destructive" />
+      <h3 className="text-lg font-semibold text-foreground">
+        {isRTL ? 'حدث خطأ في تحميل إعدادات المظهر' : 'Failed to load theme settings'}
+      </h3>
+      <Button variant="outline" onClick={() => window.location.reload()}>
+        {isRTL ? 'إعادة تحميل' : 'Reload'}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto pb-24 pt-14 md:pt-4">
-      <ThemeSection
-        onPendingChange={(pending, changed) => {
-          setPendingTheme(pending);
-          setHasChanges(changed);
-        }}
-        resetSignal={resetSignal}
-      />
+      <ThemeErrorBoundary fallback={errorFallback}>
+        <ThemeSection
+          onPendingChange={(pending, changed) => {
+            setPendingTheme(pending);
+            setHasChanges(changed);
+          }}
+          resetSignal={resetSignal}
+        />
+      </ThemeErrorBoundary>
 
       {/* Floating Action Buttons (FAB) */}
       <div
