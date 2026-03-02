@@ -461,7 +461,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cloudInvoice } = await (supabase as any)
     .from('invoices')
-    .select('id, status, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone')
+    .select('id, status, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone, cashier_id')
     .eq('invoice_number', id)
     .maybeSingle();
 
@@ -498,9 +498,30 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
       if (itemsToRestore.length > 0) {
         const { isNoInventoryMode } = await import('../store-type-config');
         if (!isNoInventoryMode()) {
-          const { restoreStockBatchCloud } = await import('./products-cloud');
-          await restoreStockBatchCloud(itemsToRestore);
-          restoredItemsCount = itemsToRestore.length;
+          const { getWarehouseForCashierCloud, updateWarehouseStockCloud, loadWarehouseStockCloud } = await import('./warehouses-cloud');
+
+          let targetWarehouseId = null;
+          if (cloudInvoice.cashier_id) {
+            const warehouse = await getWarehouseForCashierCloud(cloudInvoice.cashier_id);
+            if (warehouse) {
+              targetWarehouseId = warehouse.id;
+            }
+          }
+
+          if (targetWarehouseId) {
+            const existingStock = await loadWarehouseStockCloud(targetWarehouseId);
+
+            for (const item of itemsToRestore) {
+              const stockItem = existingStock.find(s => s.product_id === item.productId);
+              const currentQty = stockItem ? stockItem.quantity : 0;
+              await updateWarehouseStockCloud(targetWarehouseId, item.productId, currentQty + item.quantity);
+            }
+            restoredItemsCount = itemsToRestore.length;
+          } else {
+            const { restoreStockBatchCloud } = await import('./products-cloud');
+            await restoreStockBatchCloud(itemsToRestore);
+            restoredItemsCount = itemsToRestore.length;
+          }
         } else {
           restoredItemsCount = 0; // لا يتم استعادة المخزون في المخبز/الصيانة
         }
@@ -573,7 +594,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
         .from('invoices')
         .select('total, payment_type, status')
         .eq(cloudInvoice.customer_id ? 'customer_id' : 'customer_name',
-            cloudInvoice.customer_id || cloudInvoice.customer_name)
+          cloudInvoice.customer_id || cloudInvoice.customer_name)
         .neq('status', 'refunded')
         .neq('id', cloudInvoice.id);
 
@@ -618,7 +639,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
         .from('expenses')
         .delete()
         .like('notes', `%الفاتورة: ${id}%`);
-      
+
       if (!expErr) {
         console.log('[refundInvoiceCloud] ✅ Deleted maintenance parts expense for invoice:', id);
         const { invalidateExpensesCache } = await import('./expenses-cloud');

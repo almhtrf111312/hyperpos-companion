@@ -18,7 +18,7 @@ import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { getCurrentStoreType } from '@/lib/store-type-config';
+import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
@@ -405,7 +405,7 @@ export default function POS() {
   const [customerName, setCustomerName] = useState('');
 
   const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
-    if (product.quantity === 0) {
+    if (!isNoInventoryMode() && product.quantity === 0) {
       showToast.warning(t('pos.outOfStock').replace('{name}', product.name));
       return; // Don't add out-of-stock items
     }
@@ -422,6 +422,18 @@ export default function POS() {
     }
 
     const priceForUnit = unit === 'bulk' && product.bulkSalePrice ? product.bulkSalePrice : product.price;
+
+    const totalCartPieces = cart
+      .filter(item => item.id === product.id)
+      .reduce((sum, item) => sum + item.quantity * (item.unit === 'bulk' ? (item.conversionFactor || 1) : 1), 0);
+    const additionalPieces = unit === 'bulk' ? (product.conversionFactor || 1) : 1;
+
+    if (!isNoInventoryMode() && totalCartPieces + additionalPieces > product.quantity) {
+      const maxAvailable = unit === 'bulk' && product.conversionFactor ? Math.floor(product.quantity / product.conversionFactor) : product.quantity;
+      const unitLabel = unit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
+      showToast.error(`الكمية المطلوبة غير متوفرة. المتاح: ${maxAvailable} ${unitLabel}`);
+      return;
+    }
 
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id && item.unit === unit);
@@ -484,7 +496,7 @@ export default function POS() {
     console.log('[POS] Scanned:', barcode);
 
     // ✅ Clear pending barcode since we're handling it now
-    try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch {}
+    try { localStorage.removeItem(PENDING_BARCODE_KEY); } catch { }
 
     // 1. Try local products first (FAST) - search all 3 barcodes
     const matches = products.filter(p =>
@@ -553,6 +565,27 @@ export default function POS() {
   };
 
   const updateQuantity = (id: string, change: number, unit?: 'piece' | 'bulk') => {
+    if (change > 0 && !isNoInventoryMode()) {
+      const product = products.find(p => p.id === id);
+      if (product) {
+        const targetUnit = unit || 'piece';
+        const itemToUpdate = cart.find(item => item.id === id && item.unit === targetUnit);
+        if (itemToUpdate) {
+          const totalCartPieces = cart
+            .filter(item => item.id === id)
+            .reduce((sum, item) => sum + item.quantity * (item.unit === 'bulk' ? (item.conversionFactor || 1) : 1), 0);
+          const additionalPieces = targetUnit === 'bulk' ? (product.conversionFactor || 1) : 1;
+
+          if (totalCartPieces + additionalPieces > product.quantity) {
+            const maxAvailable = targetUnit === 'bulk' && product.conversionFactor ? Math.floor(product.quantity / product.conversionFactor) : product.quantity;
+            const unitLabel = targetUnit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
+            showToast.error(`الكمية المطلوبة غير متوفرة. المتاح: ${maxAvailable} ${unitLabel}`);
+            return;
+          }
+        }
+      }
+    }
+
     setCart(prev => prev.map(item => {
       // Match by id and unit (if provided)
       if (item.id === id && (unit === undefined || item.unit === unit)) {
