@@ -307,8 +307,8 @@ export default function Products() {
 
   // Use Capacitor Camera hook with restoration callback
   const { takePhoto, pickFromGallery, isLoading: isCameraLoading, showInlineCamera, onInlineCaptured, closeInlineCamera } = useCamera({
-    maxSize: 640,
-    quality: 70,
+    maxSize: 1200,
+    quality: 50,
     onPhotoRestored: handlePhotoRestored,
     fallbackToInline: true,
   });

@@ -26,7 +26,7 @@ interface UseCameraResult {
  * Uses webPath + fetch(Blob) to avoid OOM on low-end Android devices.
  */
 export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
-  const { maxSize = 640, quality = 70, fallbackToInline = true } = options;
+  const { maxSize = 1200, quality = 50, fallbackToInline = true } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showInlineCamera, setShowInlineCamera] = useState(false);
@@ -148,8 +148,8 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
           const photo = await Camera.getPhoto({
             resultType: CameraResultType.Uri,  // Uri → Blob avoids OOM on low-end devices
             source: CameraSource.Camera,
-            quality: 70,
-            width: 800,
+            quality: 50,
+            width: 1200,
             correctOrientation: true,
             saveToGallery: false,
             // allowEditing: false ensures we return directly after capture
@@ -233,8 +233,8 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
         const photo = await Camera.getPhoto({
           resultType: CameraResultType.Uri,
           source: CameraSource.Photos,
-          quality: 70,
-          width: 800,
+          quality: 50,
+          width: 1200,
           correctOrientation: true,
         });
 
@@ -326,7 +326,7 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
     return () => {
       if (listener) listener.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNative, processNativePhoto]); // intentionally omit options — using ref instead
 
   const onInlineCaptured = useCallback((base64: string) => {
