@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { uploadProductImage } from '@/lib/image-upload';
 import { toast } from 'sonner';
 
 type UploadStatus = 'idle' | 'syncing' | 'done' | 'error';
@@ -37,15 +36,19 @@ export function useImageUpload(onValueChange?: (value: string) => void): UseImag
   const uploadInBackground = useCallback(async (base64: string) => {
     setUploadStatus('syncing');
     try {
-      const cloudPath = await uploadProductImage(base64);
-      if (cloudPath) {
+      // Compress locally first — guaranteed offline
+      const { compressImageOffline } = await import('@/lib/image-upload');
+      const compressed = await compressImageOffline(base64);
+      setImageValue(compressed);
+      onValueChange?.(compressed);
+      setUploadStatus('done');
+      
+      // Then attempt cloud upload silently in background
+      const { uploadProductImage } = await import('@/lib/image-upload');
+      const cloudPath = await uploadProductImage(compressed);
+      if (cloudPath && !cloudPath.startsWith('data:')) {
         setImageValue(cloudPath);
         onValueChange?.(cloudPath);
-        setUploadStatus('done');
-      } else {
-        // Keep base64 as fallback — will still display correctly
-        setUploadStatus('error');
-        toast.error('تعذّر رفع الصورة، ستُحفظ محلياً مؤقتاً');
       }
     } catch {
       setUploadStatus('error');

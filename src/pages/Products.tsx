@@ -592,42 +592,56 @@ export default function Products() {
    * to returning the compressed base64 if cloud upload fails — so we ALWAYS
    * return a usable image value (never empty unless original was empty).
    */
-  const ensureImageUploaded = async (imageValue: string): Promise<string> => {
+  /**
+   * Offline-First image strategy:
+   * 1. Always compress image locally to ≤30KB
+   * 2. Save compressed base64 WITH the product (works offline)
+   * 3. After product is saved, attempt cloud upload in background
+   * 4. If upload succeeds, update the product's image_url silently
+   * 
+   * This ensures ZERO network dependency during product save.
+   */
+  const ensureImageCompressed = async (imageValue: string): Promise<string> => {
     if (!imageValue) return '';
-    // Already uploaded to cloud or is an http URL — return as-is
+    // Already a cloud path or URL — return as-is
     if (!imageValue.startsWith('data:')) return imageValue;
-    // Still base64 — upload now (or get compressed fallback) before saving
+    // Compress locally to ≤30KB — guaranteed to work offline
+    try {
+      const { compressImageOffline } = await import('@/lib/image-upload');
+      const compressed = await compressImageOffline(imageValue);
+      console.log('[Image] Compressed locally for offline save');
+      return compressed;
+    } catch (e) {
+      console.error('[ensureImageCompressed] Compression failed:', e);
+      return imageValue;
+    }
+  };
+
+  /**
+   * Background sync: upload image to cloud AFTER product is saved
+   */
+  const syncImageToCloud = async (productId: string, imageValue: string) => {
+    if (!imageValue || !imageValue.startsWith('data:')) return;
     try {
       const { uploadProductImage } = await import('@/lib/image-upload');
-      // uploadProductImage compresses ≤30KB and returns:
-      //   - cloud path on success
-      //   - compressed data URL as fallback (≤30KB, safe to store in DB)
-      const result = await uploadProductImage(imageValue);
-      if (result) {
-        setFormData(prev => ({ ...prev, image: result }));
-        localStorage.removeItem(RESTORED_IMAGE_KEY);
-        return result;
+      const cloudPath = await uploadProductImage(imageValue);
+      if (cloudPath && !cloudPath.startsWith('data:')) {
+        // Update product in DB with cloud path silently
+        await updateProductCloud(productId, { image: cloudPath });
+        console.log('[Image] ✅ Synced to cloud:', cloudPath);
       }
     } catch (e) {
-      console.error('[ensureImageUploaded] Upload failed, will try compressed fallback:', e);
+      console.warn('[Image] Background sync failed, will retry later:', e);
     }
-    // Last resort: compress and return base64 (uploadProductImage already does this,
-    // but in case it threw entirely, return the original — it will be trimmed by DB limits)
-    return imageValue;
   };
 
   // Handle inline camera capture (fallback when native camera fails)
-  const handleInlineCaptured = useCallback(async (base64Image: string) => {
+  // ✅ Offline-First: just store locally, sync happens after product save
+  const handleInlineCaptured = useCallback((base64Image: string) => {
     onInlineCaptured(base64Image);
-    // Show preview immediately — Offline-First
+    // Show preview immediately — no network needed
     setImagePreviewBase64(base64Image);
     setFormData(prev => ({ ...prev, image: base64Image }));
-    // Upload in background silently
-    const { uploadProductImage } = await import('@/lib/image-upload');
-    const imageUrl = await uploadProductImage(base64Image);
-    if (imageUrl) {
-      setFormData(prev => ({ ...prev, image: imageUrl }));
-    }
   }, [onInlineCaptured]);
 
   // Reload categories from cloud
@@ -698,8 +712,8 @@ export default function Products() {
 
     setIsSaving(true);
 
-    // ✅ تأكد من رفع الصورة أولاً إذا كانت لا تزال base64 (مشكلة APK الكاميرا)
-    const finalImage = await ensureImageUploaded(formData.image);
+    // ✅ Offline-First: ضغط الصورة محلياً فقط (بدون انتظار الشبكة)
+    const finalImage = await ensureImageCompressed(formData.image);
 
     // تحويل الكمية إلى قطع قبل الحفظ - في وضع الفرن، استخدم كمية كبيرة
     const quantityInPieces = noInventory
@@ -737,6 +751,11 @@ export default function Products() {
         );
       }
 
+      // ✅ Background sync: upload image to cloud AFTER product saved
+      if (finalImage.startsWith('data:')) {
+        syncImageToCloud(newProduct.id, finalImage);
+      }
+
       setShowAddDialog(false);
       setImagePreviewBase64('');
       setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
@@ -769,8 +788,8 @@ export default function Products() {
 
     setIsSaving(true);
 
-    // ✅ تأكد من رفع الصورة أولاً إذا كانت لا تزال base64 (مشكلة APK الكاميرا)
-    const finalImage = await ensureImageUploaded(formData.image);
+    // ✅ Offline-First: ضغط الصورة محلياً فقط (بدون انتظار الشبكة)
+    const finalImage = await ensureImageCompressed(formData.image);
 
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
     const quantityInPieces = formData.trackByUnit === 'bulk'
@@ -801,6 +820,11 @@ export default function Products() {
           `تم تعديل منتج: ${formData.name}`,
           { productId: selectedProduct.id, name: formData.name }
         );
+      }
+
+      // ✅ Background sync: upload image to cloud AFTER product saved
+      if (finalImage.startsWith('data:')) {
+        syncImageToCloud(selectedProduct.id, finalImage);
       }
 
       setShowEditDialog(false);
