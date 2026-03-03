@@ -72,7 +72,7 @@ function ArabicTerms() {
       <p>إذا تم اعتبار أي بند من هذه الشروط غير صالح أو غير قابل للتنفيذ من قبل محكمة ذات اختصاص قضائي، فسيتم تفسير البنود المتبقية بطريقة تعكس قدر الإمكان نية الأطراف الأصلية، وستظل البنود المتبقية سارية المفعول والتأثير الكامل.</p>
 
       <h3>للتواصل:</h3>
-      <p>إذا كان لديك أي أسئلة حول شروط الاستخدام وإخلاء المسؤولية هذه، يرجى التواصل معنا عبر <strong>werzakaria3472@gmail.com</strong></p>
+      <p>إذا كان لديك أي أسئلة حول شروط الاستخدام وإخلاء المسؤولية هذه، يرجى التواصل معنا عبر قنوات الدعم الرسمية للتطبيق.</p>
     </>
   );
 }
@@ -118,7 +118,7 @@ function EnglishTerms() {
       <p>If any provision of these terms is found to be invalid or unenforceable by a court of competent jurisdiction, the remaining provisions shall be interpreted to reflect the original intent of the parties as closely as possible, and shall remain in full force and effect.</p>
 
       <h3>Contact:</h3>
-      <p>If you have any questions about these Terms of Use and Disclaimer, please contact us at <strong>werzakaria3472@gmail.com</strong></p>
+      <p>If you have any questions about these Terms of Use and Disclaimer, please contact us through the app's official support channels.</p>
     </>
   );
 }

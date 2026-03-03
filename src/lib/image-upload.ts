@@ -69,6 +69,14 @@ async function compressImage(
 }
 
 /**
+ * ضغط الصورة أوفلاين فقط (بدون رفع) — للاستخدام عند حفظ المنتج محلياً
+ * يضمن أن الصورة ≤30KB وجاهزة للتخزين في قاعدة البيانات
+ */
+export async function compressImageOffline(base64Image: string): Promise<string> {
+  return compressImage(base64Image, 30, 400, 400);
+}
+
+/**
  * تحويل base64 إلى Blob بطريقة آمنة تعمل على Android Capacitor WebView
  * 
  * ⚠️ CRITICAL: fetch(dataUrl) يفشل في Capacitor Android WebView!

@@ -182,6 +182,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
         emitEvent(EVENTS.SETTINGS_UPDATED);
+        emitEvent(EVENTS.STORE_TYPE_CHANGED);
       } else {
         // First time user - create empty default store (don't migrate old localStorage)
         await saveStoreSettings({
