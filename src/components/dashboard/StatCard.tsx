@@ -19,6 +19,16 @@ interface StatCardProps {
   sparklineData?: number[];
 }
 
+const sparklineColors: Record<string, string> = {
+  default: 'hsl(var(--primary))',
+  primary: 'hsl(var(--primary))',
+  success: 'hsl(var(--success))',
+  warning: 'hsl(var(--warning))',
+  danger: 'hsl(var(--destructive))',
+  info: 'hsl(var(--info))',
+  purple: 'hsl(271, 81%, 56%)',
+};
+
 const variantStyles = {
   default: 'glass border-border/50 dark:border-border/40',
   primary: 'bg-primary/10 border border-primary/20 dark:bg-primary/15 dark:border-primary/25',
@@ -111,7 +121,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
             )}
           </div>
           {sparklineData && sparklineData.length > 1 && (
-            <MiniSparkline data={sparklineData} />
+            <MiniSparkline data={sparklineData} color={sparklineColors[variant]} />
           )}
           {trend && (
             <div className={cn("flex items-center gap-1 text-xs font-medium", getTrendColor())}>

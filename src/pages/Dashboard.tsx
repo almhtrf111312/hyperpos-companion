@@ -58,6 +58,17 @@ export default function Dashboard() {
     dailySales: [] as number[],
     todayRefundedCount: 0,
     monthRefundedAmount: 0,
+    // Sparkline data arrays (7 days)
+    dailyProfit: [] as number[],
+    dailyDebts: [] as number[],
+    dailyCustomers: [] as number[],
+    dailyInventory: [] as number[],
+    dailyCapital: [] as number[],
+    dailyCashbox: [] as number[],
+    dailyLiquid: [] as number[],
+    dailyRefunds: [] as number[],
+    weekDailySales: [] as number[],
+    monthWeeklySales: [] as number[],
   });
 
   const today = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -130,15 +141,51 @@ export default function Dashboard() {
         .filter(pi => pi.status === 'finalized')
         .reduce((sum, pi) => sum + (pi.actual_grand_total || 0), 0);
 
+      // Helper: generate 7-day array for a metric
+      const make7Days = (fn: (dayStr: string) => number) =>
+        Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(); d.setDate(d.getDate() - (6 - i));
+          return fn(d.toDateString());
+        });
+
       // Daily sales for last 7 days (sparkline)
-      const dailySales = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (6 - i));
-        const dayStr = date.toDateString();
-        return invoices
-          .filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
-          .reduce((sum, inv) => sum + inv.total, 0);
-      });
+      const dailySales = make7Days(dayStr =>
+        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+          .reduce((sum, inv) => sum + inv.total, 0)
+      );
+
+      const dailyProfit = make7Days(dayStr =>
+        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+          .reduce((sum, inv) => sum + (inv.profit || 0), 0)
+      );
+
+      const dailyDebts = make7Days(dayStr =>
+        debts.filter(d => new Date(d.createdAt).toDateString() === dayStr && d.status !== 'fully_paid')
+          .reduce((sum, d) => sum + d.remainingDebt, 0)
+      );
+
+      const dailyCustomers = make7Days(dayStr =>
+        new Set(invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+          .map(inv => inv.customerName)).size
+      );
+
+      const dailyRefunds = make7Days(dayStr =>
+        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status === 'refunded')
+          .reduce((sum, inv) => sum + inv.total, 0)
+      );
+
+      // Week daily sales for "مبيعات الأسبوع" sparkline (same as dailySales)
+      const weekDailySales = dailySales;
+
+      // Monthly: 4-week breakdown
+      const monthWeeklySales = Array.from({ length: 4 }, (_, i) => {
+        const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() - (i * 7));
+        const weekStart = new Date(weekEnd); weekStart.setDate(weekStart.getDate() - 6);
+        return invoices.filter(inv => {
+          const d = new Date(inv.createdAt);
+          return d >= weekStart && d <= weekEnd && inv.status !== 'cancelled';
+        }).reduce((sum, inv) => sum + inv.total, 0);
+      }).reverse();
 
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
 
@@ -198,6 +245,16 @@ export default function Dashboard() {
         dailySales,
         todayRefundedCount,
         monthRefundedAmount,
+        dailyProfit,
+        dailyDebts,
+        dailyCustomers,
+        dailyInventory: dailySales, // reuse sales trend for inventory visualization
+        dailyCapital: dailyProfit,
+        dailyCashbox: dailySales,
+        dailyLiquid: dailyProfit,
+        dailyRefunds,
+        weekDailySales,
+        monthWeeklySales,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -264,6 +321,7 @@ export default function Dashboard() {
           icon={<Calendar />}
           variant="info"
           linkTo="/invoices"
+          sparklineData={stats.weekDailySales}
         />
         <StatCard
           title="مبيعات الشهر"
@@ -271,6 +329,7 @@ export default function Dashboard() {
           icon={<BarChart3 />}
           variant="purple"
           linkTo="/reports"
+          sparklineData={stats.monthWeeklySales}
         />
       </div>
 
@@ -283,6 +342,7 @@ export default function Dashboard() {
           icon={<TrendingUp />}
           variant="success"
           linkTo="/reports"
+          sparklineData={stats.dailyProfit}
         />
         <StatCard
           title={t('dashboard.dueDebts')}
@@ -291,6 +351,7 @@ export default function Dashboard() {
           icon={<CreditCard />}
           variant="danger"
           linkTo="/debts"
+          sparklineData={stats.dailyDebts}
         />
         <StatCard
           title={t('dashboard.customersThisMonth')}
@@ -299,6 +360,7 @@ export default function Dashboard() {
           icon={<Users />}
           variant="info"
           linkTo="/customers"
+          sparklineData={stats.dailyCustomers}
         />
       </div>
 
@@ -311,6 +373,7 @@ export default function Dashboard() {
             icon={<ShoppingCart />}
             variant="purple"
             linkTo="/products"
+            sparklineData={stats.dailySales}
           />
         ) : (
           <StatCard
@@ -319,6 +382,7 @@ export default function Dashboard() {
             icon={<Package />}
             variant="purple"
             linkTo="/products"
+            sparklineData={stats.dailySales}
           />
         )}
         <StatCard
@@ -327,6 +391,7 @@ export default function Dashboard() {
           icon={<Wallet />}
           variant="success"
           linkTo="/partners"
+          sparklineData={stats.dailyProfit}
         />
         <StatCard
           title={t('dashboard.cashboxBalance')}
@@ -334,6 +399,7 @@ export default function Dashboard() {
           icon={<Banknote />}
           variant="primary"
           linkTo="/cashbox"
+          sparklineData={stats.dailySales}
         />
         <StatCard
           title={t('dashboard.liquidCapital')}
@@ -341,6 +407,7 @@ export default function Dashboard() {
           icon={<DollarSign />}
           variant="info"
           linkTo="/reports"
+          sparklineData={stats.dailyProfit}
         />
       </div>
 
@@ -353,6 +420,7 @@ export default function Dashboard() {
           icon={<RotateCcw />}
           variant="warning"
           linkTo="/invoices"
+          sparklineData={stats.dailyRefunds}
         />
         <StatCard
           title="إجمالي المسترجع (الشهر)"
@@ -361,6 +429,7 @@ export default function Dashboard() {
           icon={<TrendingDown />}
           variant="warning"
           linkTo="/invoices"
+          sparklineData={stats.dailyRefunds}
         />
       </div>
 

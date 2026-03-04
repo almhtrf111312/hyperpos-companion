@@ -4,9 +4,10 @@ interface MiniSparklineProps {
   data: number[];
   width?: number;
   height?: number;
+  color?: string;
 }
 
-export function MiniSparkline({ data, width = 120, height = 30 }: MiniSparklineProps) {
+export function MiniSparkline({ data, width = 120, height = 30, color = 'hsl(var(--primary))' }: MiniSparklineProps) {
   const { linePath, areaPath } = useMemo(() => {
     if (!data.length || data.every(v => v === 0)) {
       return { linePath: '', areaPath: '' };
@@ -38,12 +39,12 @@ export function MiniSparkline({ data, width = 120, height = 30 }: MiniSparklineP
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="mt-1">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={areaPath} fill={`url(#${gradientId})`} />
-      <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

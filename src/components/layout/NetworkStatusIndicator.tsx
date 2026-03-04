@@ -43,9 +43,9 @@ export const NetworkStatusIndicator = forwardRef<HTMLDivElement, NetworkStatusIn
 
     if (isOnline) {
       return (
-        <div ref={ref} className={cn(wrapperClass, 'text-success')}>
+        <div ref={ref} className={cn(wrapperClass)} style={{ color: 'hsl(var(--success))' }}>
           <Wifi className="w-4 h-4 flex-shrink-0" />
-          {showLabel && <span className="text-xs truncate">{onlineLabel}</span>}
+          {showLabel && <span className="text-xs truncate font-medium" style={{ color: 'hsl(var(--success))' }}>{onlineLabel}</span>}
         </div>
       );
     }
