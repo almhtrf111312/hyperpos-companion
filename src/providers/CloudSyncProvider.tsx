@@ -184,24 +184,31 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         emitEvent(EVENTS.SETTINGS_UPDATED);
         emitEvent(EVENTS.STORE_TYPE_CHANGED);
       } else {
-        // First time user - create empty default store (don't migrate old localStorage)
-        await saveStoreSettings({
-          name: '',
-          store_type: 'general',
-          language: 'ar',
-          theme: 'dark',
-          exchange_rates: { TRY: 0, SYP: 0, USD: 1 },
-        });
-        // Set empty settings in localStorage
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
-          storeSettings: { name: '', type: 'general', phone: '', address: '', logo: '' },
-          exchangeRates: { TRY: 0, SYP: 0 },
-          language: 'ar',
-          theme: 'dark',
-          taxEnabled: false,
-          taxRate: 0,
-        }));
-        emitEvent(EVENTS.SETTINGS_UPDATED);
+        // ✅ Check if we already have local settings before overwriting with defaults
+        const existingLocal = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (!existingLocal) {
+          // First time user - create empty default store (don't migrate old localStorage)
+          await saveStoreSettings({
+            name: '',
+            store_type: 'general',
+            language: 'ar',
+            theme: 'dark',
+            exchange_rates: { TRY: 0, SYP: 0, USD: 1 },
+          });
+          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
+            storeSettings: { name: '', type: 'general', phone: '', address: '', logo: '' },
+            exchangeRates: { TRY: 0, SYP: 0 },
+            language: 'ar',
+            theme: 'dark',
+            taxEnabled: false,
+            taxRate: 0,
+          }));
+          emitEvent(EVENTS.SETTINGS_UPDATED);
+        } else {
+          // ✅ Local settings exist (offline scenario) — keep them, don't overwrite
+          console.log('[CloudSync] Cloud returned null but local settings exist, keeping local');
+          emitEvent(EVENTS.STORE_TYPE_CHANGED);
+        }
       }
 
       setLastSyncTime(new Date().toISOString());
