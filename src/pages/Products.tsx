@@ -253,8 +253,12 @@ export default function Products() {
     window.addEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
     window.addEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
 
-    // Reload on focus (when user comes back from settings)
-    window.addEventListener('focus', reloadFieldsConfig);
+    // ✅ FIX: Use visibilitychange instead of 'focus' to avoid triggering
+    // reloadFieldsConfig when Android returns from the camera Activity.
+    const handleVisibilityChangeForFields = () => {
+      if (document.visibilityState === 'visible') reloadFieldsConfig();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChangeForFields);
 
     // Reload on storage change (different tabs)
     const handleStorageChange = (e: StorageEvent) => {
@@ -270,7 +274,7 @@ export default function Products() {
     return () => {
       window.removeEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
       window.removeEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
-      window.removeEventListener('focus', reloadFieldsConfig);
+      document.removeEventListener('visibilitychange', handleVisibilityChangeForFields);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
@@ -306,11 +310,14 @@ export default function Products() {
   }, []);
 
   // Use Capacitor Camera hook with restoration callback
+  // ✅ FIX: preferInline: true → always use the built-in WebView camera
+  //    so Android never launches a separate Activity (no 'focus' event fired).
   const { takePhoto, pickFromGallery, isLoading: isCameraLoading, showInlineCamera, onInlineCaptured, closeInlineCamera } = useCamera({
     maxSize: 1200,
     quality: 50,
     onPhotoRestored: handlePhotoRestored,
     fallbackToInline: true,
+    preferInline: true,
   });
 
   // 1. Save state whenever important form values change (only when dialog is open)
@@ -446,14 +453,22 @@ export default function Products() {
     const handleProductsUpdated = () => loadData();
     const handleCategoriesUpdated = () => loadData();
 
+    // ✅ FIX: Use visibilitychange instead of 'focus' to avoid reloading
+    // when Android returns from the native camera Activity.
+    // 'focus' fires every time the camera app closes → causes Dialog reset.
+    // 'visibilitychange' only fires when the user truly switches apps.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') loadData();
+    };
+
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
-    window.addEventListener('focus', loadData);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
-      window.removeEventListener('focus', loadData);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [loadData]);
 
