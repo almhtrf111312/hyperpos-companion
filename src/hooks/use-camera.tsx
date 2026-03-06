@@ -8,6 +8,7 @@ interface UseCameraOptions {
   quality?: number;
   onPhotoRestored?: (base64: string) => void;
   fallbackToInline?: boolean;
+  preferInline?: boolean;
 }
 
 interface UseCameraResult {
@@ -26,7 +27,7 @@ interface UseCameraResult {
  * Uses webPath + fetch(Blob) to avoid OOM on low-end Android devices.
  */
 export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
-  const { maxSize = 1200, quality = 50, fallbackToInline = true } = options;
+  const { maxSize = 1200, quality = 50, fallbackToInline = true, preferInline = true } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showInlineCamera, setShowInlineCamera] = useState(false);
@@ -141,6 +142,14 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
     setError(null);
 
     try {
+      if (preferInline) {
+        setIsLoading(false);
+        return new Promise<string | null>((resolve) => {
+          inlineCaptureResolveRef.current = resolve;
+          setShowInlineCamera(true);
+        });
+      }
+
       if (isNative) {
         await ensurePermissions();
 
@@ -219,7 +228,7 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
       console.error('Camera error:', err);
       return null;
     }
-  }, [isNative, compressBase64, ensurePermissions, processNativePhoto, fallbackToInline]);
+  }, [isNative, compressBase64, ensurePermissions, processNativePhoto, fallbackToInline, preferInline]);
 
   /**
    * Pick an image from the device gallery
