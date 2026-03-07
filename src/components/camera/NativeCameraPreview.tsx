@@ -24,8 +24,8 @@ export function NativeCameraPreview({
     isOpen,
     onClose,
     onCapture,
-    maxSize = 1200,
-    quality = 70,
+    maxSize = 400,
+    quality = 40,
 }: NativeCameraPreviewProps) {
     const isNative = Capacitor.isNativePlatform();
 

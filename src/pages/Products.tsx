@@ -296,17 +296,8 @@ export default function Products() {
     // 2. Show preview right away — Offline-First
     setImagePreviewBase64(base64Image);
     setFormData(prev => ({ ...prev, image: base64Image }));
-    // 3. Upload silently in background
-    try {
-      const { uploadProductImage } = await import('@/lib/image-upload');
-      const imageUrl = await uploadProductImage(base64Image);
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, image: imageUrl }));
-        localStorage.removeItem(RESTORED_IMAGE_KEY);
-      }
-    } catch {
-      // keep base64 as fallback
-    }
+    // ✅ Offline-First: NO cloud upload here — sync happens after product save
+    localStorage.removeItem(RESTORED_IMAGE_KEY);
   }, []);
 
   // Use Capacitor Camera hook with restoration callback
@@ -553,12 +544,7 @@ export default function Products() {
         // Show preview immediately — Offline-First
         setImagePreviewBase64(base64Image);
         setFormData(prev => ({ ...prev, image: base64Image }));
-        // Upload in background silently
-        import('@/lib/image-upload').then(({ uploadProductImage }) => {
-          uploadProductImage(base64Image).then(imageUrl => {
-            if (imageUrl) setFormData(prev => ({ ...prev, image: imageUrl }));
-          }).catch(console.error);
-        });
+        // ✅ Offline-First: NO cloud upload here — sync happens after product save
       }
     } catch (err) {
       console.error('Gallery select error:', err);
@@ -2792,8 +2778,8 @@ export default function Products() {
           isOpen={showInlineCamera}
           onClose={closeInlineCamera}
           onCapture={handleInlineCaptured}
-          maxSize={1200}
-          quality={70}
+          maxSize={400}
+          quality={40}
         />
       </div>
     </div>
