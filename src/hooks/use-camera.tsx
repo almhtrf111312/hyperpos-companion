@@ -33,7 +33,7 @@ interface UseCameraResult {
  * Falls back to a <file input> or the InlineCamera (getUserMedia).
  */
 export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
-  const { maxSize = 1200, quality = 50 } = options;
+  const { maxSize = 400, quality = 40 } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,48 +107,8 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
     setIsLoading(true);
     setError(null);
 
-    if (isNative) {
-      // Use Camera plugin for gallery on native
-      try {
-        const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
-        const photo = await Camera.getPhoto({
-          resultType: CameraResultType.Uri,
-          source: CameraSource.Photos,
-          quality: 50,
-          width: 1200,
-          correctOrientation: true,
-        });
-        if (!photo.webPath) { setIsLoading(false); return null; }
-        const response = await fetch(photo.webPath);
-        const blob = await response.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const url = URL.createObjectURL(blob);
-          const img = new Image();
-          img.onload = () => {
-            URL.revokeObjectURL(url);
-            const canvas = document.createElement('canvas');
-            let w = img.width, h = img.height;
-            if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
-            else { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/jpeg', quality / 100));
-          };
-          img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('load failed')); };
-          img.src = url;
-        });
-        setIsLoading(false);
-        return base64;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        const cancelled = msg.includes('cancelled') || msg.includes('User cancelled') || msg.includes('dismissed');
-        if (!cancelled) console.error('[Camera] Gallery pick failed:', err);
-        setIsLoading(false);
-        return null;
-      }
-    }
-
-    // Web fallback
+    // Use file input on ALL platforms (including native) to avoid
+    // launching an external Activity that causes Android Process Death
     return new Promise((resolve) => {
       if (!fileInputRef.current) {
         fileInputRef.current = document.createElement('input');

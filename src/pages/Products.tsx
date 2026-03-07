@@ -553,11 +553,7 @@ export default function Products() {
         // Show preview immediately — Offline-First
         setImagePreviewBase64(base64Image);
         setFormData(prev => ({ ...prev, image: base64Image }));
-        // Upload in background silently
-        import('@/lib/image-upload').then(({ uploadProductImage }) => {
-          uploadProductImage(base64Image).then(imageUrl => {
-            if (imageUrl) setFormData(prev => ({ ...prev, image: imageUrl }));
-          }).catch(console.error);
+        // ✅ Offline-First: NO cloud upload here — sync happens after product save
         });
       }
     } catch (err) {
