@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -154,20 +155,15 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setShowScanner(false);
   };
 
-  const handleCameraCapture = async () => {
-    try {
-      const { Camera: CapCamera } = await import('@capacitor/camera');
-      const photo = await (CapCamera as any).getPhoto({
-        quality: 70,
-        resultType: 'base64' as any,
-        source: 'CAMERA' as any,
-      });
-      if (photo?.base64String) {
-        handleBase64Image(`data:image/jpeg;base64,${photo.base64String}`);
-      }
-    } catch {
-      // Camera not available or cancelled
-    }
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
+  
+  const handleCameraCapture = () => {
+    setShowCameraPreview(true);
+  };
+
+  const handleCameraCaptured = (base64: string) => {
+    setShowCameraPreview(false);
+    handleBase64Image(base64);
   };
 
   const handleSubmit = () => {
@@ -629,6 +625,13 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}
         onScan={handleBarcodeScan}
+      />
+      <NativeCameraPreview
+        isOpen={showCameraPreview}
+        onClose={() => setShowCameraPreview(false)}
+        onCapture={handleCameraCaptured}
+        maxSize={400}
+        quality={40}
       />
     </div>
   );
