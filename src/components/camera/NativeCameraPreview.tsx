@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, X, SwitchCamera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -13,11 +14,11 @@ interface NativeCameraPreviewProps {
 /**
  * NativeCameraPreview — Compact camera modal using getUserMedia.
  *
- * Renders the camera feed as an HTML <video> element inside a small centered
- * modal window. This avoids the layer-conflict issue where the native camera
- * rendered behind the WebView was hidden by opaque dialog backdrops.
+ * Uses createPortal to render directly into document.body, ensuring it
+ * appears ABOVE Radix Dialog portals and other stacking contexts.
  *
- * Works identically on Android, iOS and Web — low memory footprint.
+ * Renders the camera as an HTML <video> element inside a small centered
+ * modal — works on Android, iOS and Web with minimal memory usage.
  */
 export function NativeCameraPreview({
     isOpen,
@@ -143,22 +144,25 @@ export function NativeCameraPreview({
 
     if (!isOpen) return null;
 
-    /* ─────────────────── UI — Compact Modal ─────────────────── */
+    /* ─────────────────── UI — Rendered via Portal ─────────────────── */
 
-    return (
+    const modalContent = (
         <div
-            className="fixed inset-0 z-[300] flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.6)' }}
+            className="fixed inset-0 flex items-center justify-center"
+            style={{
+                zIndex: 99999,
+                background: 'rgba(0,0,0,0.7)',
+            }}
             onClick={handleClose}
         >
-            {/* Modal container — small, rounded, won't propagate clicks */}
+            {/* Modal container */}
             <div
-                className="relative w-[90vw] max-w-[340px] rounded-2xl overflow-hidden bg-black shadow-2xl"
+                className="relative w-[88vw] max-w-[340px] rounded-2xl overflow-hidden bg-black shadow-2xl"
                 style={{ maxHeight: '70vh' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-3 py-2 bg-black/80 z-10">
+                <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-b from-black to-black/80">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -179,26 +183,30 @@ export function NativeCameraPreview({
                 </div>
 
                 {/* Video Feed */}
-                <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
+                <div className="relative w-full bg-neutral-900" style={{ aspectRatio: '3/4' }}>
                     <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
                         className="w-full h-full object-cover"
-                        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                        style={{
+                            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                            display: isReady ? 'block' : 'none',
+                        }}
                     />
 
                     {/* Loading overlay */}
                     {!isReady && !error && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                             <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            <span className="text-white/70 text-xs">جارٍ تشغيل الكاميرا...</span>
                         </div>
                     )}
 
                     {/* Error overlay */}
                     {error && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-4 text-center">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                             <p className="text-white text-sm mb-3">{error}</p>
                             <Button
                                 variant="outline"
@@ -213,21 +221,23 @@ export function NativeCameraPreview({
                 </div>
 
                 {/* Capture Button */}
-                {isReady && (
-                    <div className="flex justify-center py-4 bg-black/80">
-                        <button
-                            onClick={handleCapture}
-                            disabled={isCapturing}
-                            className="w-[56px] h-[56px] rounded-full border-4 border-white bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50"
-                        >
-                            {isCapturing
-                                ? <Loader2 className="h-6 w-6 text-white animate-spin" />
-                                : <Camera className="h-6 w-6 text-white" />
-                            }
-                        </button>
-                    </div>
-                )}
+                <div className="flex justify-center py-4 bg-gradient-to-t from-black to-black/80">
+                    <button
+                        onClick={handleCapture}
+                        disabled={isCapturing || !isReady}
+                        className="w-[56px] h-[56px] rounded-full border-4 border-white bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
+                    >
+                        {isCapturing
+                            ? <Loader2 className="h-6 w-6 text-white animate-spin" />
+                            : <Camera className="h-6 w-6 text-white" />
+                        }
+                    </button>
+                </div>
             </div>
         </div>
     );
+
+    // Render via portal to document.body — guarantees we are above
+    // Radix Dialog portals and any other stacking contexts.
+    return createPortal(modalContent, document.body);
 }
