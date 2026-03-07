@@ -296,17 +296,8 @@ export default function Products() {
     // 2. Show preview right away — Offline-First
     setImagePreviewBase64(base64Image);
     setFormData(prev => ({ ...prev, image: base64Image }));
-    // 3. Upload silently in background
-    try {
-      const { uploadProductImage } = await import('@/lib/image-upload');
-      const imageUrl = await uploadProductImage(base64Image);
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, image: imageUrl }));
-        localStorage.removeItem(RESTORED_IMAGE_KEY);
-      }
-    } catch {
-      // keep base64 as fallback
-    }
+    // ✅ Offline-First: NO cloud upload here — sync happens after product save
+    localStorage.removeItem(RESTORED_IMAGE_KEY);
   }, []);
 
   // Use Capacitor Camera hook with restoration callback
