@@ -554,7 +554,6 @@ export default function Products() {
         setImagePreviewBase64(base64Image);
         setFormData(prev => ({ ...prev, image: base64Image }));
         // ✅ Offline-First: NO cloud upload here — sync happens after product save
-        });
       }
     } catch (err) {
       console.error('Gallery select error:', err);
