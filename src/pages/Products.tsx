@@ -87,7 +87,7 @@ import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config'
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useCamera } from '@/hooks/use-camera';
-import { InlineCamera } from '@/components/camera/InlineCamera';
+import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
@@ -2787,12 +2787,12 @@ export default function Products() {
             ) : null}
           </DialogContent>
         </Dialog>
-        {/* Inline Camera Fallback */}
-        <InlineCamera
+        {/* Native Camera Preview — @capgo/camera-preview (no Activity restart) */}
+        <NativeCameraPreview
           isOpen={showInlineCamera}
           onClose={closeInlineCamera}
           onCapture={handleInlineCaptured}
-          maxSize={640}
+          maxSize={1200}
           quality={70}
         />
       </div>
