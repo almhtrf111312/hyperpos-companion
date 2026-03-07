@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -633,5 +634,13 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         )}
       </DialogContent>
     </Dialog>
+    <NativeCameraPreview
+      isOpen={showCameraPreview}
+      onClose={() => setShowCameraPreview(false)}
+      onCapture={handleCameraCaptured}
+      maxSize={400}
+      quality={40}
+    />
+    </>
   );
 }

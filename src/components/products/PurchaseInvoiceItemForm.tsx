@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -624,6 +625,13 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}
         onScan={handleBarcodeScan}
+      />
+      <NativeCameraPreview
+        isOpen={showCameraPreview}
+        onClose={() => setShowCameraPreview(false)}
+        onCapture={handleCameraCaptured}
+        maxSize={400}
+        quality={40}
       />
     </div>
   );
