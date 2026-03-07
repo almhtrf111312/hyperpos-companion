@@ -304,8 +304,8 @@ export default function Products() {
   // ✅ FIX: preferInline: true → always use the built-in WebView camera
   //    so Android never launches a separate Activity (no 'focus' event fired).
   const { takePhoto, pickFromGallery, isLoading: isCameraLoading, showInlineCamera, onInlineCaptured, closeInlineCamera } = useCamera({
-    maxSize: 1200,
-    quality: 50,
+    maxSize: 400,
+    quality: 40,
     onPhotoRestored: handlePhotoRestored,
     fallbackToInline: true,
     preferInline: true,

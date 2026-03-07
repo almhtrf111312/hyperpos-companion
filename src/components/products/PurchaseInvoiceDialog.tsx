@@ -321,20 +321,15 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     setShowItemForm(true);
   };
 
-  const handleCameraCapture = async () => {
-    try {
-      const { Camera: CapCamera } = await import('@capacitor/camera');
-      const photo = await (CapCamera as any).getPhoto({
-        quality: 70,
-        resultType: 'base64' as any,
-        source: 'CAMERA' as any,
-      });
-      if (photo?.base64String) {
-        handleInvoiceBase64(`data:image/jpeg;base64,${photo.base64String}`);
-      }
-    } catch {
-      // Camera not available
-    }
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
+  
+  const handleCameraCapture = () => {
+    setShowCameraPreview(true);
+  };
+
+  const handleCameraCaptured = (base64: string) => {
+    setShowCameraPreview(false);
+    handleInvoiceBase64(base64);
   };
 
   return (
