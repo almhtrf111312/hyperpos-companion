@@ -2787,8 +2787,8 @@ export default function Products() {
           isOpen={showInlineCamera}
           onClose={closeInlineCamera}
           onCapture={handleInlineCaptured}
-          maxSize={1200}
-          quality={70}
+          maxSize={400}
+          quality={40}
         />
       </div>
     </div>
