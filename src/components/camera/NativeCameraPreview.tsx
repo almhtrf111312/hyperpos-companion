@@ -151,18 +151,18 @@ export function NativeCameraPreview({
             className="fixed inset-0 flex items-center justify-center"
             style={{
                 zIndex: 99999,
-                background: 'rgba(0,0,0,0.7)',
+                background: 'rgba(0,0,0,0.95)',
             }}
             onClick={handleClose}
         >
-            {/* Modal container */}
+            {/* Modal container — بدون طبقات تمويه */}
             <div
                 className="relative w-[88vw] max-w-[340px] rounded-2xl overflow-hidden bg-black shadow-2xl"
                 style={{ maxHeight: '70vh' }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-b from-black to-black/80">
+                {/* Header — خلفية سوداء صلبة بدون gradient */}
+                <div className="flex items-center justify-between px-3 py-2.5 bg-black">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -182,8 +182,8 @@ export function NativeCameraPreview({
                     </Button>
                 </div>
 
-                {/* Video Feed */}
-                <div className="relative w-full bg-neutral-900" style={{ aspectRatio: '3/4' }}>
+                {/* Video Feed — بدون أي طبقات فوق الفيديو */}
+                <div className="relative w-full bg-black" style={{ aspectRatio: '3/4' }}>
                     <video
                         ref={videoRef}
                         autoPlay
@@ -196,9 +196,9 @@ export function NativeCameraPreview({
                         }}
                     />
 
-                    {/* Loading overlay */}
+                    {/* Loading overlay — يختفي فوراً عند جاهزية الكاميرا */}
                     {!isReady && !error && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
                             <Loader2 className="h-8 w-8 text-white animate-spin" />
                             <span className="text-white/70 text-xs">جارٍ تشغيل الكاميرا...</span>
                         </div>
@@ -206,7 +206,7 @@ export function NativeCameraPreview({
 
                     {/* Error overlay */}
                     {error && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-black">
                             <p className="text-white text-sm mb-3">{error}</p>
                             <Button
                                 variant="outline"
@@ -220,12 +220,12 @@ export function NativeCameraPreview({
                     )}
                 </div>
 
-                {/* Capture Button */}
-                <div className="flex justify-center py-4 bg-gradient-to-t from-black to-black/80">
+                {/* Capture Button — بدون backdrop-blur */}
+                <div className="flex justify-center py-4 bg-black">
                     <button
                         onClick={handleCapture}
                         disabled={isCapturing || !isReady}
-                        className="w-[56px] h-[56px] rounded-full border-4 border-white bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
+                        className="w-[56px] h-[56px] rounded-full border-4 border-white bg-white/20 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
                     >
                         {isCapturing
                             ? <Loader2 className="h-6 w-6 text-white animate-spin" />

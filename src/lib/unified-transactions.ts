@@ -274,9 +274,12 @@ export const processRefund = async (
     // Step 3: خصم المبلغ من الصندوق مع عكس بيانات الربح
     addWithdrawalFromShift(roundCurrency(total));
 
-    // Step 4: إزالة سجل الربح الأصلي إذا كان متاحاً
+    // Step 4: إزالة سجل الربح الأصلي أو تسجيل ربح سالب كـ fallback
     if (originalInvoiceId) {
       removeGrossProfit(originalInvoiceId);
+    } else {
+      // Fallback: تسجيل ربح سالب لضمان خصم الربح حتى بدون invoiceId أصلي
+      addGrossProfit(`refund_${Date.now()}`, -grossProfit, totalCOGS, -total);
     }
 
     // Step 5: تحديث إحصائيات العميل (خصم المشتريات)

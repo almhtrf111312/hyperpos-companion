@@ -40,6 +40,8 @@ import {
 } from '@/lib/cloud/debts-cloud';
 import { getInvoiceByIdCloud, InvoiceItem } from '@/lib/cloud/invoices-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
+import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
+import { updateCustomerStatsCloud } from '@/lib/cloud/customers-cloud';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -276,8 +278,17 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       profile?.full_name || user?.email || t('common.user')
     );
 
-    // Confirm pending profits proportionally to payment
+    // Confirm pending profits proportionally to payment (محلياً + سحابياً)
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
+    confirmPendingProfitCloud(selectedDebt.invoiceId, paymentRatio);
+
+    // ✅ تحديث إحصائيات العميل في السحابة (خفض الدين)
+    try {
+      const customerId = selectedDebt.customerName; // استخدام الاسم للبحث
+      await updateCustomerStatsCloud(customerId, -paymentAmount, true);
+    } catch (err) {
+      console.warn('[Debts] Failed to update customer stats cloud:', err);
+    }
 
     // Log activity
     if (user) {
