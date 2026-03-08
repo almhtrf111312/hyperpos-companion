@@ -1,98 +1,113 @@
 
 
-# خطة إصلاح شاملة — تقرير التدقيق FlowPOS Pro v2 + إصلاح عرض الكاميرا
+# خطة شاملة لإصلاح جميع المشاكل المُبلَّغ عنها
+
+## المشاكل المحددة وأسبابها
+
+### 1. صفحة المظهر (Appearance) — شاشة سوداء
+**السبب:** صفحة `Appearance.tsx` تعمل بشكل صحيح من ناحية الكود، لكن المشكلة في `ThemeSection` أو `ThemeLivePreview` — يحتمل أن يكون هناك خطأ في التقديم (render error) يتسبب في crash صامت. يجب إضافة Error Boundary حول ThemeSection وتجربة عزل المشكلة.
+
+**الإصلاح:** إضافة `try-catch` / Error Boundary حول `ThemeSection` في `Appearance.tsx` + التحقق من أن `ThemeLivePreview` لا يتسبب في خطأ عند بعض القيم.
+
+### 2. التقارير — التاريخ متصل على الموبايل
+**السبب:** في `Reports.tsx` سطر 876-903، حقول التاريخ (من/إلى) في `flex items-center gap-3` مع `flex-1` لكل حقل — على الشاشات الصغيرة جداً (~360px) التباعد غير كافٍ.
+
+**الإصلاح:** تغيير التخطيط إلى `grid grid-cols-2 gap-2` بدلاً من flex لضمان فصل واضح، مع تقليل padding داخلي.
+
+### 3. الأوفلاين — التبويبات لا تظهر كلها
+**السبب:** جميع الصفحات (Reports, Invoices, Customers, Expenses...) تستخدم `loadXxxCloud()` التي تحاول الاتصال بالسحابة أولاً. عند عدم الاتصال تعود للكاش المحلي، لكن بعض الصفحات لا تخزّن كاش محلي (مثل Invoices). المشكلة ليست في إخفاء التبويبات بل في عدم تحميل البيانات.
+
+**الإصلاح:** التأكد من أن كل `loadXxxCloud()` function تحفظ في localStorage/IndexedDB عند النجاح وتعود منها عند الفشل (نفس نمط products-cloud.ts). الصفحات الحالية التي تحتاج تحسين: `invoices-cloud.ts`, `expenses-cloud.ts`, `customers-cloud.ts`, `debts-cloud.ts`.
+
+### 4. السلة تفرغ عند الخروج والعودة
+**السبب:** `POS.tsx` سطر 157-187 — `saveCart` يعتمد على `useCallback` مع `[cart]` dependency. عند الخروج عبر `appStateChange`, `cart` قد يكون فارغاً لأن الـ listener تم إنشاؤه مع نسخة قديمة من `cart`. المشكلة في سطر 204:
+```
+if (cart.length > 0) {
+  localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+```
+لكن `cart` في closure قد لا يحتوي على أحدث القيم.
+
+**الإصلاح:** استخدام `useRef` لحفظ آخر قيمة للسلة (`cartRef.current = cart`) ثم استخدام `cartRef.current` في listener بدلاً من `cart` مباشرة. نفس الحل لـ `cartOpen`.
+
+### 5. نموذج إضافة المنتج يُفرغ عند الخروج والعودة
+**السبب:** النظام الحالي يحفظ Form State بشكل صحيح (سطر 317-333)، لكنه يمسح الحالة عندما `showAddDialog` أو `showEditDialog` يصبح `false` (سطر 330). عند خروج التطبيق والعودة، الـ dialog يُغلق أولاً ثم يُعاد فتحه، مما يمسح البيانات.
+
+**الإصلاح:** تعديل المنطق بحيث لا يمسح `FORM_STORAGE_KEY` فوراً عند إغلاق الـ dialog، بل فقط عند الحفظ الناجح أو الإلغاء الصريح.
+
+### 6. شاشة التحميل عند ضعف الانترنت
+**السبب:** `LicenseGuard.tsx` سطر 171-179 يعرض شاشة تحميل مع `Loader2` عندما `isFullyLoading` = true. هذا يحجب التطبيق بالكامل.
+
+**الإصلاح:** تقليل timeout من 3000ms إلى 1500ms لعرض زر "تخطي" بشكل أسرع، أو الأفضل: إذا كان هناك كاش محلي صالح للرخصة، تخطي التحميل فوراً.
+
+### 7. إضافة منتج مكرر بنفس الباركود
+**السبب:** `addProductCloud` (سطر 355) لا يتحقق من وجود منتج بنفس الباركود. و`handleAddProduct` (سطر 668) لا يعطّل الزر بعد الضغط الأول (يعطّل فقط بعد `setIsSaving(true)` لكن النقر السريع يمر قبل التحديث).
+
+**الإصلاح:**
+1. إضافة `disabled={isSaving}` على زر الحفظ (قد يكون موجوداً لكن النقر يمر بسبب React batching)
+2. إضافة guard في بداية `handleAddProduct`: إذا `isSaving` return فوراً
+3. إضافة فحص تكرار الباركود قبل الإضافة
+
+### 8. المخزون لا ينقص بعد البيع
+**السبب:** يحتاج فحص `confirmCashSale` / خصم المخزون. يحتمل أن الخصم يحدث على السحابة لكن الكاش المحلي لا يُحدَّث فوراً، فعند العودة لصفحة المنتجات يعرض القيمة القديمة من الكاش.
+
+**الإصلاح:** بعد كل عملية بيع، إرسال `invalidateProductsCache()` لضمان تحديث الكاش في المرة القادمة.
 
 ---
 
-## ملخص التحقق من الكود
+## خطة التنفيذ
 
-بعد فحص الكود فعلياً، تم تأكيد **12 مشكلة حقيقية** من أصل 14 + مشكلة واجهة الكاميرا:
+### الخطوة 1: إصلاح شاشة المظهر السوداء
+**ملف:** `src/pages/Appearance.tsx`
+- إضافة Error Boundary بسيط حول `ThemeSection`
+- إضافة fallback UI في حال حدوث خطأ
 
-| # | المشكلة | الحالة | التأكيد |
-|---|---------|--------|---------|
-| 1 | أرباح في localStorage فقط | ✅ مؤكدة | `profits-store.ts` يستخدم localStorage فقط |
-| 2 | حساب الربح قبل الخصم | ❌ غير مؤكدة | الكود يطبق `discountRatio` بشكل صحيح (سطر 420-421) |
-| 3 | فواتير الدين بدون ضريبة | ✅ مؤكدة | `debt-sale-handler.ts` سطر 149-168 لا يمرر `taxRate/taxAmount` |
-| 4 | فشل بيع الدين بدون Rollback | ✅ مؤكدة جزئياً | سطر 182-185 يسجل خطأ لكن لا يحذف الفاتورة |
-| 5 | الخصم لا يُوزع على الشركاء | ❌ غير مؤكدة | الكود يوزع `profitsByCategory * (1-discountRatio)` (سطر 446-448) |
-| 6 | ازدواجية تسجيل المصاريف | ⚠️ تحتاج تحقق أعمق | |
-| 7 | المرتجع يخصم grossProfit بدل netProfit | ✅ مؤكدة | `processRefund` سطر 267 يحسب `total - COGS` |
-| 8 | حذف المصاريف لا يزامن السحابة | ⚠️ تحتاج تحقق | |
-| 9 | confirmPendingProfit محلي فقط | ✅ مؤكدة | `Debts.tsx` سطر 280 يستدعي النسخة المحلية فقط |
-| 10 | سداد الدين لا يحدث إحصائيات العميل | ✅ مؤكدة | `processDebtPayment` لا يستدعي `updateCustomerStatsCloud` |
-| 11 | سداد الدين كإيداع عادي | ✅ مؤكدة | يستدعي `addDepositToShift` بدون نوع مميز |
-| 12 | المرتجع لا يحدث إحصائيات العميل أحياناً | ✅ مؤكدة | يعتمد على تمرير `customerId` |
-| 13 | ازدواجية رصيد الصندوق | ⚠️ تصميمي | نظامان مستقلان |
-| 14 | ترقيم الفواتير من localStorage | ✅ مؤكدة | خطر تكرار بأجهزة متعددة |
-| 🎥 | طبقات تغطي عرض الكاميرا على APK | ✅ مؤكدة | `NativeCameraPreview` backdrop يحجب الرؤية |
+### الخطوة 2: إصلاح تاريخ التقارير على الموبايل
+**ملف:** `src/pages/Reports.tsx` (سطر 876-903)
+- تغيير `flex items-center gap-3` إلى `grid grid-cols-2 gap-2 w-full`
+- تقليل padding الداخلي للحقول
 
----
+### الخطوة 3: إصلاح السلة تفرغ عند الخروج
+**ملف:** `src/pages/POS.tsx`
+- إضافة `cartRef` = `useRef(cart)` + تحديثه مع كل تغيير
+- استخدام `cartRef.current` في `appStateChange` listener بدلاً من `cart`
+- حفظ السلة باستمرار (كل تغيير) وليس فقط عند الخروج
 
-## خطة التنفيذ (مرتبة بالأولوية)
+### الخطوة 4: إصلاح نموذج المنتج يفرغ
+**ملف:** `src/pages/Products.tsx` (سطر 317-333)
+- تعديل useEffect: لا يمسح `FORM_STORAGE_KEY` عند إغلاق dialog تلقائياً
+- المسح يحدث فقط عبر `clearPersistedState()` الصريحة
 
-### المرحلة 1: إصلاحات فورية (< ساعة لكل واحدة)
+### الخطوة 5: إزالة/تسريع شاشة التحميل
+**ملف:** `src/components/license/LicenseGuard.tsx`
+- تقليل timeout العرض من 3000ms إلى 1000ms
+- عرض زر "تخطي" بعد 2000ms بدلاً من 6000ms
+- إذا كان الكاش المحلي صالحاً، تخطي فوراً
 
-#### 1.1 — إصلاح #3: إضافة الضريبة لفواتير الدين
-**ملف:** `src/lib/cloud/debt-sale-handler.ts`
-- إضافة `taxRate` و `taxAmount` في استدعاء `addInvoiceCloud` (سطر 149-168)
-- إضافة الحقول للـ `DebtSaleBundle` type إذا لم تكن موجودة
+### الخطوة 6: منع إضافة منتج مكرر
+**ملف:** `src/pages/Products.tsx` (handleAddProduct)
+- إضافة `if (isSaving) return;` في بداية الدالة
+- فحص الباركود المكرر قبل الإضافة عبر مقارنة مع المنتجات المحملة
 
-#### 1.2 — إصلاح #9: استدعاء confirmPendingProfitCloud
-**ملف:** `src/pages/Debts.tsx`
-- استيراد `confirmPendingProfitCloud` من `partners-cloud.ts`
-- استدعاؤها بعد `confirmPendingProfit` المحلية (سطر 280)
+### الخطوة 7: تحديث المخزون بعد البيع
+**ملف:** التحقق من `CartPanel.tsx` أو sale handler
+- التأكد من نداء `invalidateProductsCache()` بعد كل عملية بيع ناجحة
 
-#### 1.3 — إصلاح #10: تحديث إحصائيات العميل عند سداد الدين
-**ملف:** `src/pages/Debts.tsx`
-- استدعاء `updateCustomerStatsCloud(customerId, -paymentAmount, true)` لخفض رصيد الدين
-
-#### 1.4 — إصلاح #4: Rollback عند فشل إنشاء الدين
-**ملف:** `src/lib/cloud/debt-sale-handler.ts`
-- عند فشل `addDebtFromInvoiceCloud` (سطر 182)، حذف الفاتورة المُنشأة عبر `deleteInvoiceCloud(invoice.id)`
-
-### المرحلة 2: إصلاحات مهمة
-
-#### 2.1 — إصلاح #7: تصحيح خصم الربح في المرتجع
-**ملف:** `src/lib/unified-transactions.ts`
-- `removeGrossProfit` يحذف السجل بالكامل — هذا صحيح فعلاً
-- المشكلة: إذا لم يوجد `originalInvoiceId`، لا يُخصم أي ربح
-- الحل: إضافة `addGrossProfit` بقيمة سالبة كـ fallback
-
-#### 2.2 — إصلاح #11: تمييز سداد الدين عن الإيداع
-**ملف:** `src/lib/unified-transactions.ts`
-- تغيير `addDepositToShift` إلى نسخة تدعم النوع `debt_payment`
-
-### المرحلة 3: إصلاح واجهة الكاميرا (الأهم للمستخدم)
-
-#### 3.1 — إصلاح عرض الكاميرا على APK
-**ملف:** `src/components/camera/NativeCameraPreview.tsx`
-
-**المشكلة:** طبقات شفافة/معتمة تغطي معاينة الكاميرا — المستخدم يرى الكاميرا تعمل لكن بدون صورة واضحة.
-
-**الحل:**
-- إزالة `background: 'rgba(0,0,0,0.7)'` من الـ backdrop وجعله شفاف تماماً أو أسود صلب
-- التأكد أن `<video>` لا يحجبه أي `backdrop-blur` أو طبقات gradient
-- تبسيط الـ header و footer ليكونا شفافين بدون gradient
-- إزالة `backdrop-blur-sm` من زر الالتقاط
-- جعل الـ video container يعرض مباشرة بدون overlay loading إذا كان الـ stream جاهز
-
-### المرحلة 4: مخطط مستقبلي
-
-| # | المهمة | الأولوية |
-|---|--------|---------|
-| #1 | نقل profits-store إلى قاعدة البيانات السحابية | مرتفعة |
-| #13 | توحيد نظام الصندوق | متوسطة |
-| #14 | ترقيم مركزي للفواتير | منخفضة |
-| F1 | الاسترداد الجزئي للفاتورة | مخطط |
+### الخطوة 8: تحسين الكاش الأوفلاين للتبويبات الأخرى
+**ملفات:** `invoices-cloud.ts`, `customers-cloud.ts`, `expenses-cloud.ts`, `debts-cloud.ts`
+- إضافة نفس نمط `saveToLocalCache` / `loadFromLocalCache` المستخدم في `products-cloud.ts`
 
 ---
 
-## ملخص الملفات المتأثرة
+## ملخص التغييرات
 
-| الملف | التغييرات |
-|-------|----------|
-| `src/lib/cloud/debt-sale-handler.ts` | إضافة taxRate/taxAmount + rollback عند الفشل |
-| `src/pages/Debts.tsx` | confirmPendingProfitCloud + updateCustomerStats |
-| `src/lib/unified-transactions.ts` | تحسين processRefund + تمييز debt_payment |
-| `src/components/camera/NativeCameraPreview.tsx` | إزالة الطبقات المعتمة وتحسين عرض الكاميرا |
+| المشكلة | الملف | الإصلاح |
+|---------|-------|---------|
+| المظهر شاشة سوداء | Appearance.tsx | Error Boundary |
+| التاريخ متصل | Reports.tsx | grid-cols-2 بدل flex |
+| السلة تفرغ | POS.tsx | useRef للسلة + حفظ مستمر |
+| النموذج يفرغ | Products.tsx | عدم مسح الكاش عند إغلاق تلقائي |
+| شاشة التحميل | LicenseGuard.tsx | تسريع زر التخطي |
+| منتج مكرر | Products.tsx | guard + فحص باركود |
+| المخزون لا ينقص | CartPanel/sale handler | invalidateProductsCache بعد البيع |
+| تبويبات أوفلاين | cloud stores | إضافة كاش محلي |
 

@@ -44,6 +44,10 @@ export interface DebtSaleBundle {
   currency: string;
   currencySymbol: string;
   
+  // Tax data
+  taxRate?: number;
+  taxAmount?: number;
+  
   // Profit data
   profit: number;
   cogs: number;
@@ -145,7 +149,7 @@ export async function processDebtSaleWithOfflineSupport(
       throw new Error('فشل في إنشاء/العثور على العميل');
     }
     
-    // Step 2: Create invoice
+    // Step 2: Create invoice (مع الضريبة)
     const invoice = await addInvoiceCloud({
       type: 'sale',
       customerName: bundle.customerName,
@@ -158,6 +162,8 @@ export async function processDebtSaleWithOfflineSupport(
       })),
       subtotal: bundle.subtotal,
       discount: bundle.discount,
+      taxRate: bundle.taxRate || 0,
+      taxAmount: bundle.taxAmount || 0,
       total: bundle.total,
       totalInCurrency: bundle.totalInCurrency,
       currency: bundle.currency,
@@ -180,8 +186,15 @@ export async function processDebtSaleWithOfflineSupport(
     );
     
     if (!debt) {
-      // Rollback: We can't easily delete the invoice, but we log the error
-      console.error('[DebtSale] Failed to create debt, invoice created:', invoice.id);
+      // Rollback: حذف الفاتورة المُنشأة لمنع فواتير معلقة
+      console.error('[DebtSale] Failed to create debt, rolling back invoice:', invoice.id);
+      try {
+        const { deleteInvoiceCloud } = await import('./invoices-cloud');
+        await deleteInvoiceCloud(invoice.id);
+        console.log('[DebtSale] Rollback successful — invoice deleted:', invoice.id);
+      } catch (rollbackError) {
+        console.error('[DebtSale] Rollback failed:', rollbackError);
+      }
       throw new Error('فشل في إنشاء سجل الدين');
     }
     
