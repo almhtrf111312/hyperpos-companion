@@ -15,6 +15,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: undefined,
     },
     show: false,
     frame: true,
@@ -26,45 +27,100 @@ function createWindow() {
   Menu.setApplicationMenu(null);
 
   // Load the application
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+  
+  console.log('=== FlowPOS Pro Electron ===');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('isDev:', isDev);
+  console.log('app.getAppPath():', app.getAppPath());
+  console.log('process.resourcesPath:', process.resourcesPath);
+  console.log('__dirname:', __dirname);
   
   if (isDev) {
+    console.log('[DEV MODE] Loading from localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    // Production: Try multiple paths
+    // Production: Try multiple paths with detailed logging
     const possiblePaths = [
-      path.join(process.resourcesPath, 'dist/index.html'), // Packaged app (priority)
-      path.join(__dirname, '../dist/index.html'),          // Standard build
-      path.join(__dirname, 'dist/index.html'),             // Electron folder
-      path.join(app.getAppPath(), 'dist/index.html'),      // App path
+      path.join(process.resourcesPath, 'dist/index.html'),     // Packaged app (priority)
+      path.join(app.getAppPath(), 'dist/index.html'),           // App installation path
+      path.join(__dirname, '../dist/index.html'),               // Standard build relative to electron folder
+      path.join(__dirname, 'dist/index.html'),                  // Electron subfolder
+      path.join(process.cwd(), 'dist/index.html'),              // Working directory
     ];
     
+    console.log('[PROD MODE] Searching for dist folder...');
     let distPath = null;
+    
     for (const filePath of possiblePaths) {
+      console.log('  Checking:', filePath, '...', fs.existsSync(filePath) ? '✓ FOUND' : '✗ NOT FOUND');
       if (fs.existsSync(filePath)) {
         distPath = path.dirname(filePath);
-        console.log('Found dist at:', distPath);
+        console.log('✓ Found dist at:', distPath);
         break;
       }
     }
     
-    if (distPath) {
+    if (distPath && fs.existsSync(path.join(distPath, 'index.html'))) {
       // Load index.html with hash routing support
       const indexPath = path.join(distPath, 'index.html');
-      console.log('Loading from:', indexPath);
+      console.log('✓ Loading from:', indexPath);
       
       // Use loadURL with file:// protocol for proper routing
-      mainWindow.loadURL(url.format({
+      const fileUrl = url.format({
         pathname: indexPath,
         protocol: 'file:',
         slashes: true,
         hash: '/' // Start at root hash route
-      }));
+      });
+      
+      console.log('File URL:', fileUrl);
+      mainWindow.loadURL(fileUrl);
     } else {
-      // Fallback to online version if local files not found
-      console.log('Local files not found, loading online version');
-      mainWindow.loadURL('https://flowpospro.lovable.app');
+      // Error: Local files not found
+      console.error('✗ Local dist folder not found!');
+      console.error('Possible solutions:');
+      console.error('  1. Run "npm run build" to build the frontend');
+      console.error('  2. Ensure dist folder is in the correct location');
+      console.error('  3. Check that the Electron build includes the dist folder');
+      
+      // Show error page
+      const errorPage = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>FlowPOS Pro - Error</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, segoe-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; }
+            .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 500px; text-align: center; }
+            h1 { color: #e53e3e; margin: 0 0 20px 0; }
+            p { color: #4a5568; line-height: 1.6; margin: 10px 0; }
+            code { background: #f7fafc; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+            button { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 20px; }
+            button:hover { background: #5568d3; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⚠️ خطأ في التحميل</h1>
+            <p><strong>FlowPOS Pro - Build Error</strong></p>
+            <p>لم يتم العثور على ملفات التطبيق المترجمة.</p>
+            <p>The application build files were not found.</p>
+            <p style="background: #f7fafc; padding: 12px; border-radius: 6px; margin: 20px 0; font-size: 14px;">
+              Missing: <code>dist/index.html</code>
+            </p>
+            <p style="color: #718096; font-size: 14px;">
+              الحل: شغّل <code>npm run build</code> قبل بناء النسخة المسطبة<br>
+              Solution: Run <code>npm run build</code> before building the installer
+            </p>
+            <button onclick="fetch('https://flowpospro.lovable.app').then(() => window.location.href = 'https://flowpospro.lovable.app').catch(() => alert('Could not reach online version'))">التحميل من الإنترنت / Load from Web</button>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorPage)}`);
     }
   }
 
@@ -90,21 +146,50 @@ function createWindow() {
     }
   });
 
-  // Handle load errors
+  // Handle load errors with detailed feedback
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    console.error('Failed to load:', errorCode, errorDescription, validatedURL);
+    console.error('❌ Failed to load:', errorCode, errorDescription, validatedURL);
     
-    // If it's a file:// navigation error (like 404), redirect to index with hash
-    if (errorCode === -6 || errorDescription.includes('ERR_FILE_NOT_FOUND')) {
-      // Try loading error page with option to load cloud version
-      const errorPath = path.join(__dirname, 'error.html');
-      if (fs.existsSync(errorPath)) {
-        mainWindow.loadFile(errorPath);
-      } else {
-        // Fallback to online version
-        mainWindow.loadURL('https://flowpospro.lovable.app');
-      }
-    }
+    // Show user-friendly error
+    const errorHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FlowPOS Pro - Loading Error</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, segoe-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; }
+          .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 500px; text-align: center; }
+          h1 { color: #e53e3e; }
+          p { color: #4a5568; }
+          .error-code { background: #f7fafc; padding: 10px; border-radius: 6px; font-family: monospace; color: #c53030; margin: 15px 0; }
+          button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 10px 5px; }
+          button:hover { background: #5568d3; }
+          .small { font-size: 12px; color: #718096; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>❌ خطأ في التحميل</h1>
+          <p><strong>Error Loading Application</strong></p>
+          <div class="error-code">Error ${errorCode}: ${errorDescription}</div>
+          <p class="small">الرجاء التأكد من أن النسخة تم بناؤها بشكل صحيح</p>
+          <p>
+            <button onclick="location.reload()">إعادة محاولة / Retry</button>
+            <button onclick="fetch('https://flowpospro.lovable.app').then(() => window.location.href = 'https://flowpospro.lovable.app')">الإنترنت / Web</button>
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`);
+  });
+
+  // Handle crashed renderer
+  mainWindow.webContents.on('crashed', () => {
+    console.error('❌ Renderer process crashed!');
+    // Optionally restart
+    mainWindow.webContents.reloadIgnoringCache();
   });
 
   // Show when ready
