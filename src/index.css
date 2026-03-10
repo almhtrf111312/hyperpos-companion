@@ -1005,6 +1005,10 @@ html.theme-transitioning *::after {
     direction: rtl;
     pointer-events: auto !important;
     touch-action: manipulation;
+    /* Prevent zoom on mobile devices */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -1012,6 +1016,12 @@ html.theme-transitioning *::after {
     font-feature-settings: "rlig" 1, "calt" 1;
     pointer-events: auto !important;
     touch-action: manipulation;
+    /* Prevent zoom and ensure proper mobile scaling */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 
   #root {
@@ -1470,10 +1480,43 @@ html.barcode-scanner-active #root {
     left: 8px !important;
     top: 12px !important;
   }
-  
+
   [data-sonner-toast] {
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px) !important;
     min-width: 200px !important;
+  }
+
+  /* Prevent text overflow and improve mobile layout */
+  * {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Better button and input sizing on mobile */
+  button,
+  input,
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    min-height: 44px; /* Minimum touch target size */
+  }
+
+  /* Improve tab navigation on mobile */
+  [role="tab"],
+  [role="tabpanel"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Better spacing for mobile grids */
+  .grid {
+    gap: 0.5rem;
+  }
+
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden;
   }
 }
