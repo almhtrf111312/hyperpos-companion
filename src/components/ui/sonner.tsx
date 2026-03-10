@@ -10,11 +10,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      position="top-center"
+      position="top-right"
       duration={2000}
       closeButton
-      offset={110}
-      swipeDirections={['left', 'right']}
+      offset={16}
+      swipeDirections={['up', 'down', 'left', 'right']}
       style={{
         '--width': 'auto',
         '--front-toast-width': 'auto'
@@ -22,14 +22,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "group toast w-auto min-w-[300px] max-w-[90vw] group-[.toaster]:bg-background/95 dark:group-[.toaster]:bg-background/90 group-[.toaster]:backdrop-blur-md group-[.toaster]:text-foreground group-[.toaster]:border-border/50 group-[.toaster]:shadow-2xl group-[.toaster]:rounded-full group-[.toaster]:border group-[.toaster]:border-s-[6px] transition-all duration-300 hover:scale-[1.02] hover:shadow-black/10 dark:hover:shadow-white/5",
-          description: "group-[.toast]:text-muted-foreground group-[.toast]:text-sm",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground group-[.toast]:rounded-full",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-full",
-          success: "group-[.toaster]:!border-s-success group-[.toaster]:!text-foreground",
-          error: "group-[.toaster]:!border-s-destructive group-[.toaster]:!text-foreground",
-          warning: "group-[.toaster]:!border-s-warning group-[.toaster]:!text-foreground",
-          info: "group-[.toaster]:!border-s-primary group-[.toaster]:!text-foreground",
+            "group toast w-auto min-w-[220px] max-w-[85vw] group-[.toaster]:bg-card/98 dark:group-[.toaster]:bg-card/98 group-[.toaster]:backdrop-blur-lg group-[.toaster]:text-foreground group-[.toaster]:border group-[.toaster]:border-border/60 group-[.toaster]:shadow-xl group-[.toaster]:rounded-lg group-[.toaster]:border-l-4 transition-all duration-200 hover:scale-105 hover:shadow-lg dark:hover:shadow-black/30",
+          description: "group-[.toast]:text-muted-foreground group-[.toast]:text-xs",
+          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground group-[.toast]:rounded-md group-[.toast]:text-xs group-[.toast]:px-3 group-[.toast]:py-1.5",
+          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-md group-[.toast]:text-xs group-[.toast]:px-3 group-[.toast]:py-1.5",
+          success: "group-[.toaster]:!border-l-success group-[.toaster]:!text-foreground",
+          error: "group-[.toaster]:!border-l-destructive group-[.toaster]:!text-foreground",
+          warning: "group-[.toaster]:!border-l-warning group-[.toaster]:!text-foreground",
+          info: "group-[.toaster]:!border-l-primary group-[.toaster]:!text-foreground",
         },
       }}
       {...props}
