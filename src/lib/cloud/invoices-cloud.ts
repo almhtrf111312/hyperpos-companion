@@ -623,10 +623,15 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
     }
   }
 
-  // 4. Revert profit distribution
+  // 4. Revert profit distribution (cloud + local)
   try {
-    const { revertProfitDistribution } = await import('../partners-store');
-    revertProfitDistribution(id);
+    const { revertProfitDistributionCloud } = await import('./partners-cloud');
+    await revertProfitDistributionCloud(id);
+    // Also revert local for backwards compatibility
+    try {
+      const { revertProfitDistribution } = await import('../partners-store');
+      revertProfitDistribution(id);
+    } catch { /* local may not exist */ }
   } catch (err) {
     console.error('[refundInvoiceCloud] Error reverting profit:', err);
   }
