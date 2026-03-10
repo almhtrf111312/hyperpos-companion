@@ -600,3 +600,60 @@ export const confirmPendingProfitCloud = async (invoiceId: string, ratio: number
     }
   }
 };
+
+// ✅ عكس أرباح الشركاء سحابياً عند المرتجع أو حذف الدين
+export const revertProfitDistributionCloud = async (invoiceId: string): Promise<void> => {
+  if (!invoiceId) return;
+
+  const partners = await loadPartnersCloud();
+
+  for (const partner of partners) {
+    let changed = false;
+    let pendingReverted = 0;
+    let confirmedReverted = 0;
+
+    // 1. عكس الأرباح المعلقة (pending)
+    const pendingMatches = partner.pendingProfitDetails.filter(d => d.invoiceId === invoiceId);
+    if (pendingMatches.length > 0) {
+      pendingReverted = pendingMatches.reduce((sum, d) => sum + d.amount, 0);
+      changed = true;
+    }
+
+    // 2. عكس الأرباح المؤكدة (confirmed) من profitHistory
+    const confirmedMatches = partner.profitHistory.filter(r => r.invoiceId === invoiceId && !r.isDebt);
+    if (confirmedMatches.length > 0) {
+      confirmedReverted = confirmedMatches.reduce((sum, r) => sum + r.amount, 0);
+      changed = true;
+    }
+
+    // 3. عكس الأرباح المسجلة كدين ولكن تم تأكيدها لاحقاً
+    const debtMatches = partner.profitHistory.filter(r => r.invoiceId === invoiceId && r.isDebt);
+    if (debtMatches.length > 0) {
+      // هذه كانت pending ثم confirmed — نحتاج خصمها من confirmed أيضاً
+      const debtAmount = debtMatches.reduce((sum, r) => sum + r.amount, 0);
+      // تحقق: إذا لم تكن في pending بعد (تم تأكيدها) → خصم من confirmed
+      const stillPending = pendingMatches.reduce((sum, d) => sum + d.amount, 0);
+      const alreadyConfirmedFromDebt = Math.max(0, debtAmount - stillPending);
+      if (alreadyConfirmedFromDebt > 0) {
+        confirmedReverted += alreadyConfirmedFromDebt;
+        changed = true;
+      }
+    }
+
+    if (!changed) continue;
+
+    const updatedPendingDetails = partner.pendingProfitDetails.filter(d => d.invoiceId !== invoiceId);
+    const updatedProfitHistory = partner.profitHistory.filter(r => r.invoiceId !== invoiceId);
+
+    await updatePartnerCloud(partner.id, {
+      pendingProfit: Math.max(0, partner.pendingProfit - pendingReverted),
+      confirmedProfit: Math.max(0, partner.confirmedProfit - confirmedReverted),
+      currentBalance: Math.max(0, partner.currentBalance - confirmedReverted),
+      totalProfitEarned: Math.max(0, partner.totalProfitEarned - confirmedReverted),
+      pendingProfitDetails: updatedPendingDetails,
+      profitHistory: updatedProfitHistory,
+    });
+
+    console.log(`[revertProfitDistributionCloud] Partner ${partner.name}: reverted pending=${pendingReverted}, confirmed=${confirmedReverted} for invoice ${invoiceId}`);
+  }
+};
