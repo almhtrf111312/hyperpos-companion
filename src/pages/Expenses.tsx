@@ -284,14 +284,14 @@ export default function Expenses() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('expenses.title')}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('expenses.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => {
             resetRecurringForm();
             setShowRecurringDialog(true);
@@ -493,9 +493,9 @@ export default function Expenses() {
 
       {/* Add Expense Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md text-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <Receipt className="w-5 h-5 text-primary" />
               {t('expenses.addNewExpense')}
             </DialogTitle>
@@ -577,9 +577,9 @@ export default function Expenses() {
 
       {/* Add Recurring Expense Dialog */}
       <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md text-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <RefreshCw className="w-5 h-5 text-primary" />
               {t('expenses.addRecurring')}
             </DialogTitle>

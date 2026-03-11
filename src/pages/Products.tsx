@@ -1655,9 +1655,9 @@ export default function Products() {
 
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe text-sm" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2 text-base">
                 <Plus className="w-5 h-5 text-primary" />
                 إضافة منتج جديد
               </DialogTitle>
@@ -2177,9 +2177,9 @@ export default function Products() {
 
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe text-sm" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2 text-base">
                 <Edit className="w-5 h-5 text-primary" />
                 {tDynamic('editProduct')}
               </DialogTitle>
