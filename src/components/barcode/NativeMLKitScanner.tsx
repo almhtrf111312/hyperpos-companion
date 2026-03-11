@@ -1,15 +1,10 @@
-// Native Scanner using @capacitor-mlkit/barcode-scanning (Google ML Kit)
-// ALWAYS uses startScan() (in-app camera behind WebView) to avoid Activity Recreation on Android
-import { useEffect, useRef, useCallback } from 'react';
-import {
-  BarcodeScanner,
-  BarcodeFormat,
-  LensFacing,
-} from '@capacitor-mlkit/barcode-scanning';
-import type { PluginListenerHandle } from '@capacitor/core';
+// Native Scanner using @capacitor-community/barcode-scanner
+// Lightweight, fast, and does not require pre-installed Google ML models.
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { BarcodeScanner, SupportedFormat } from '@capacitor-community/barcode-scanner';
 import { playBeep } from '@/lib/sound-utils';
-import { useState } from 'react';
 import { ScanLine, X, Flashlight, Loader2 } from 'lucide-react';
+
 
 // Key used to persist the scanned barcode across potential app restarts
 export const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
@@ -22,24 +17,24 @@ interface NativeMLKitScannerProps {
 }
 
 const SCAN_FORMATS = [
-  BarcodeFormat.QrCode,
-  BarcodeFormat.Ean13,
-  BarcodeFormat.Ean8,
-  BarcodeFormat.Code128,
-  BarcodeFormat.Code39,
-  BarcodeFormat.DataMatrix,
-  BarcodeFormat.UpcA,
-  BarcodeFormat.UpcE,
+  SupportedFormat.QR_CODE,
+  SupportedFormat.EAN_13,
+  SupportedFormat.EAN_8,
+  SupportedFormat.CODE_128,
+  SupportedFormat.CODE_39,
+  SupportedFormat.DATA_MATRIX,
+  SupportedFormat.UPC_A,
+  SupportedFormat.UPC_E,
 ];
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScannerProps) {
   const scanningRef = useRef(false);
   const mountedRef = useRef(true);
-  const listenerRef = useRef<PluginListenerHandle | null>(null);
   const lastScannedRef = useRef<string>(''); // dedupe guard
   const lastScannedTimeRef = useRef<number>(0);
   const [torchOn, setTorchOn] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
 
   const setScannerTransparency = useCallback((active: boolean) => {
     document.documentElement.classList.toggle('barcode-scanner-active', active);
@@ -48,17 +43,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   }, []);
 
   const cleanup = useCallback(async () => {
+    if (!scanningRef.current) return;
     try {
-      if (listenerRef.current) {
-        await listenerRef.current.remove();
-        listenerRef.current = null;
-      }
       await BarcodeScanner.stopScan();
-      setScannerTransparency(false);
-      setTorchOn(false);
+      await BarcodeScanner.showBackground();
     } catch (e) {
-      console.warn('[MLKit Scanner] Cleanup error:', e);
+      console.warn('[Community Scanner] Cleanup error:', e);
     }
+    setScannerTransparency(false);
+    setTorchOn(false);
     scanningRef.current = false;
   }, [setScannerTransparency]);
 
@@ -81,8 +74,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       console.warn('[MLKit Scanner] Could not save pending barcode:', e);
     }
 
-    try { playBeep(); } catch { }
-    try { if (navigator.vibrate) navigator.vibrate(200); } catch { }
+    try {
+      playBeep();
+    } catch (e) {
+      console.debug('Beep failed', e);
+    }
+
+    try {
+      if (navigator.vibrate) navigator.vibrate(200);
+    } catch (e) {
+      console.debug('Vibrate failed', e);
+    }
 
     cleanup();
 
@@ -103,9 +105,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
     try {
       // Check & request camera permission
-      const { camera } = await BarcodeScanner.requestPermissions();
-      if (camera !== 'granted' && camera !== 'limited') {
-        console.warn('[MLKit Scanner] Camera permission not granted:', camera);
+      const status = await BarcodeScanner.checkPermission({ force: true });
+      if (!status.granted) {
+        console.warn('[Community Scanner] Camera permission not granted:', status);
         if (mountedRef.current) {
           setIsStarting(false);
           onClose();
@@ -114,27 +116,31 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         return;
       }
 
-      // ✅ ALWAYS use startScan() (in-app camera behind WebView)
-      // This avoids launching an external Activity which causes WebView restart on Android
+      // Check for torch support
+      // Note: The community plugin doesn't have a direct "hasTorch" check that is always reliable,
+      // but toggleTorch won't crash if it fails, so we can optimistically show the button.
+      setHasTorch(true);
+
+      // Hide the webview background so the camera shows through
+      await BarcodeScanner.hideBackground();
       setScannerTransparency(true);
-
-      // Listen for barcode events (both event names for compatibility)
-      listenerRef.current = await BarcodeScanner.addListener('barcodesScanned', (event) => {
-        if (event.barcodes?.length > 0 && event.barcodes[0].rawValue) {
-          handleBarcode(event.barcodes[0].rawValue);
-        }
-      });
-
-      await BarcodeScanner.startScan({
-        formats: SCAN_FORMATS,
-        lensFacing: LensFacing.Back,
-      });
 
       if (mountedRef.current) {
         setIsStarting(false);
       }
-    } catch (err: any) {
-      console.warn('[MLKit Scanner] Failed to start scanner:', err);
+
+      // Start the scan (this promise resolves when a barcode is found)
+      const result = await BarcodeScanner.startScan({ targetedFormats: SCAN_FORMATS });
+
+      if (result.hasContent && result.content) {
+        handleBarcode(result.content);
+      } else {
+        // Handle case where scan was stopped early without result
+        await cleanup();
+        if (mountedRef.current) onClose();
+      }
+    } catch (err: unknown) {
+      console.warn('[Community Scanner] Failed to start scanner:', err);
       await cleanup();
       if (mountedRef.current) {
         setIsStarting(false);
@@ -158,11 +164,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
 
   const toggleTorch = async () => {
     try {
-      const newState = !torchOn;
-      await BarcodeScanner.toggleTorch();
-      setTorchOn(newState);
+      if (torchOn) {
+        await BarcodeScanner.disableTorch();
+        setTorchOn(false);
+      } else {
+        await BarcodeScanner.enableTorch();
+        setTorchOn(true);
+      }
     } catch (e) {
-      console.warn('[MLKit Scanner] Toggle torch failed:', e);
+      console.warn('[Community Scanner] Toggle torch failed:', e);
     }
   };
 
@@ -177,13 +187,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
           <span className="text-sm font-semibold">مسح الباركود</span>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleTorch}
-            className={`h-11 w-11 rounded-full flex items-center justify-center border ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/40 border-white/30 text-white backdrop-blur-md'}`}
-          >
-            <Flashlight className="w-5 h-5" />
-          </button>
+          {hasTorch && (
+            <button
+              type="button"
+              onClick={toggleTorch}
+              className={`h-11 w-11 rounded-full flex items-center justify-center border ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/40 border-white/30 text-white backdrop-blur-md'}`}
+            >
+              <Flashlight className="w-5 h-5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
