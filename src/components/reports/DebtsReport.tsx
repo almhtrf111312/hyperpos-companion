@@ -6,6 +6,7 @@ import { loadDebtsCloud, Debt } from '@/lib/cloud/debts-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -24,8 +25,8 @@ export function DebtsReport({ dateRange }: Props) {
 
   const filtered = useMemo(() => {
     return debts.filter(d => {
-      const date = d.createdAt?.split('T')[0] || '';
-      return date >= dateRange.from && date <= dateRange.to;
+      const date = toLocalDateString(d.createdAt || '');
+      return isDateInRange(date, dateRange.from, dateRange.to);
     });
   }, [debts, dateRange]);
 

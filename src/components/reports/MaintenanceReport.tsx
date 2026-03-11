@@ -6,6 +6,7 @@ import { Invoice } from '@/lib/cloud/invoices-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -14,17 +15,11 @@ interface Props {
 }
 
 export function MaintenanceReport({ dateRange, invoices, isLoading }: Props) {
-  const getLocalDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const data = useMemo(() => {
     return invoices.filter(inv => {
-      const d = getLocalDateString(new Date(inv.createdAt));
-      return d >= dateRange.from && d <= dateRange.to && inv.type === 'maintenance';
+      const d = toLocalDateString(inv.createdAt);
+      return isDateInRange(d, dateRange.from, dateRange.to) && inv.type === 'maintenance';
     });
   }, [invoices, dateRange]);
 
@@ -58,7 +53,7 @@ export function MaintenanceReport({ dateRange, invoices, isLoading }: Props) {
         partsCost: inv.partsCost || 0,
         profit: inv.profit || 0,
         paymentLabel: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
-        date: getLocalDateString(new Date(inv.createdAt)),
+        date: toLocalDateString(inv.createdAt),
       })),
       totals: { total: stats.totalRevenue, partsCost: stats.totalPartsCost, profit: stats.totalProfit },
       title: 'تقرير خدمات الصيانة',
@@ -175,7 +170,7 @@ export function MaintenanceReport({ dateRange, invoices, isLoading }: Props) {
                         {inv.paymentType === 'cash' ? 'نقدي' : 'آجل'}
                       </span>
                     </td>
-                    <td className="p-3 text-center text-muted-foreground">{getLocalDateString(new Date(inv.createdAt))}</td>
+                    <td className="p-3 text-center text-muted-foreground">{toLocalDateString(inv.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

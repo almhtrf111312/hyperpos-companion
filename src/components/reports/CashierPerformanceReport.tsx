@@ -6,6 +6,7 @@ import { Invoice } from '@/lib/cloud/invoices-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -14,17 +15,11 @@ interface Props {
 }
 
 export function CashierPerformanceReport({ dateRange, invoices, isLoading }: Props) {
-  const getLocalDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const data = useMemo(() => {
     const filtered = invoices.filter(inv => {
-      const d = getLocalDateString(new Date(inv.createdAt));
-      return d >= dateRange.from && d <= dateRange.to;
+      const d = toLocalDateString(inv.createdAt);
+      return isDateInRange(d, dateRange.from, dateRange.to);
     });
 
     const cashierMap: Record<string, {

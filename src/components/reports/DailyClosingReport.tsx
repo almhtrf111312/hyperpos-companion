@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { FileText, Download, Calendar, DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
@@ -9,28 +9,31 @@ import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { toLocalDateString } from '@/lib/date-utils';
 
 interface Props {
   invoices: Invoice[];
   expenses: Expense[];
   debts: Debt[];
   isLoading: boolean;
+  dateRange: { from: string; to: string };
 }
 
-export function DailyClosingReport({ invoices, expenses, debts, isLoading }: Props) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateRange }: Props) {
+  const [selectedDate, setSelectedDate] = useState('');
 
-  const getLocalDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  // keep selectedDate in sync with the global range; default to "from" so the
+  // user doesn't have to re‑enter the day when switching tabs.
+  useEffect(() => {
+    if (dateRange.from) {
+      setSelectedDate(dateRange.from);
+    }
+  }, [dateRange.from]);
+
 
   const data = useMemo(() => {
     const dayInvoices = invoices.filter(inv => {
-      const d = getLocalDateString(new Date(inv.createdAt));
+      const d = toLocalDateString(inv.createdAt);
       return d === selectedDate;
     });
 

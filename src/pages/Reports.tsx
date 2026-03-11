@@ -24,6 +24,7 @@ import {
   Loader2,
   Package
 } from 'lucide-react';
+import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -189,13 +190,9 @@ export default function Reports() {
   const reports = allReports;
 
   // Calculate real data from stores
-  // Helper function to get local date string from a date
-  const getLocalDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  // helper moved to shared util so all components use the same logic
+  // (handles timezone correctly and simplifies comparisons)
+  // import at top: toLocalDateString, isDateInRange
 
   const reportData = useMemo(() => {
     const allInvoices = cloudInvoices;
@@ -205,10 +202,9 @@ export default function Reports() {
     // Filter invoices by date range using local timezone
     // ✅ تضمين فواتير البيع والصيانة معاً في حسابات الأرباح
     const filteredInvoices = allInvoices.filter(inv => {
-      // Parse invoice date and convert to local date string
-      const invDate = getLocalDateString(new Date(inv.createdAt));
+      const invDate = toLocalDateString(inv.createdAt);
       const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
-      return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
+      return isDateInRange(invDate, dateRange.from, dateRange.to) && isValidType;
     });
 
     // Calculate summary stats
@@ -220,7 +216,7 @@ export default function Reports() {
     // Calculate daily sales using local timezone
     const dailySalesMap: Record<string, { sales: number; profit: number; orders: number }> = {};
     filteredInvoices.forEach(inv => {
-      const date = getLocalDateString(new Date(inv.createdAt));
+      const date = toLocalDateString(inv.createdAt);
       if (!dailySalesMap[date]) {
         dailySalesMap[date] = { sales: 0, profit: 0, orders: 0 };
       }
@@ -306,8 +302,8 @@ export default function Reports() {
     const partnerProfitData = filteredPartners.map(partner => {
       // Filter profit history by date range
       const filteredProfitHistory = (partner.profitHistory || []).filter(record => {
-        const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
-        return recordDate >= dateRange.from && recordDate <= dateRange.to;
+        const recordDate = toLocalDateString(record.createdAt);
+        return isDateInRange(recordDate, dateRange.from, dateRange.to);
       });
 
       // Total profit in period
@@ -327,7 +323,7 @@ export default function Reports() {
       // Daily profit within period
       const dailyProfitMap: Record<string, number> = {};
       filteredProfitHistory.forEach(record => {
-        const date = new Date(record.createdAt).toISOString().split('T')[0];
+        const date = toLocalDateString(record.createdAt);
         if (!dailyProfitMap[date]) {
           dailyProfitMap[date] = 0;
         }
@@ -340,8 +336,8 @@ export default function Reports() {
 
       // Filter withdrawals by date range
       const filteredWithdrawals = (partner.withdrawalHistory || []).filter(w => {
-        const wDate = new Date(w.date).toISOString().split('T')[0];
-        return wDate >= dateRange.from && wDate <= dateRange.to;
+        const wDate = toLocalDateString(w.date);
+        return isDateInRange(wDate, dateRange.from, dateRange.to);
       });
 
       const totalWithdrawnInPeriod = filteredWithdrawals.reduce((sum, w) => sum + w.amount, 0);
@@ -404,8 +400,8 @@ export default function Reports() {
 
     // Filter expenses by date range
     const filteredExpenses = allExpenses.filter(exp => {
-      const expDate = exp.date;
-      return expDate >= dateRange.from && expDate <= dateRange.to;
+      const expDate = toLocalDateString(exp.date);
+      return isDateInRange(expDate, dateRange.from, dateRange.to);
     });
 
     // Total expenses in period
@@ -498,9 +494,9 @@ export default function Reports() {
         case 'sales':
         case 'profits': {
           const filteredInvoices = allInvoices.filter(inv => {
-            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
+            const invDate = toLocalDateString(inv.createdAt);
             const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
-            return invDate >= dateRange.from && invDate <= dateRange.to && isValidType;
+            return isDateInRange(invDate, dateRange.from, dateRange.to) && isValidType;
           });
 
           if (filteredInvoices.length === 0) {
@@ -621,8 +617,8 @@ export default function Reports() {
         default: {
           // Default to invoices
           const defaultInvoices = allInvoices.filter(inv => {
-            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
-            return invDate >= dateRange.from && invDate <= dateRange.to;
+            const invDate = toLocalDateString(inv.createdAt);
+            return isDateInRange(invDate, dateRange.from, dateRange.to);
           });
 
           if (defaultInvoices.length === 0) {
@@ -720,8 +716,8 @@ export default function Reports() {
         default: {
           // Default to invoices
           const filteredInvoices = allInvoices.filter(inv => {
-            const invDate = new Date(inv.createdAt).toISOString().split('T')[0];
-            return invDate >= dateRange.from && invDate <= dateRange.to;
+            const invDate = toLocalDateString(inv.createdAt);
+            return isDateInRange(invDate, dateRange.from, dateRange.to);
           });
           exportInvoicesToExcel(
             filteredInvoices.map(inv => ({
@@ -1181,7 +1177,13 @@ ${partnerExpenses.map(exp => {
 
         {/* Daily Closing Report */}
         {activeReport === 'daily-closing' && (
-          <DailyClosingReport invoices={cloudInvoices} expenses={cloudExpenses} debts={cloudDebts} isLoading={isLoading} />
+          <DailyClosingReport
+            invoices={cloudInvoices}
+            expenses={cloudExpenses}
+            debts={cloudDebts}
+            isLoading={isLoading}
+            dateRange={dateRange}
+          />
         )}
         {/* Library Report */}
         {activeReport === 'library' && (

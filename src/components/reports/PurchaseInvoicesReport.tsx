@@ -6,6 +6,7 @@ import { loadPurchaseInvoicesCloud, PurchaseInvoice } from '@/lib/cloud/purchase
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -24,8 +25,8 @@ export function PurchaseInvoicesReport({ dateRange }: Props) {
 
   const filtered = useMemo(() => {
     return invoices.filter(inv => {
-      const d = inv.invoice_date;
-      return d >= dateRange.from && d <= dateRange.to;
+      const d = toLocalDateString(inv.invoice_date);
+      return isDateInRange(d, dateRange.from, dateRange.to);
     });
   }, [invoices, dateRange]);
 

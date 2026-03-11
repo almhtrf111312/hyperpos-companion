@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { loadLoansCloud, loadMembersCloud, BookLoan, LibraryMember } from '@/lib/cloud/library-cloud';
 import { formatNumber } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
+import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 
 interface LibraryReportProps {
   dateRange: { from: string; to: string };
@@ -32,8 +33,8 @@ export function LibraryReport({ dateRange }: LibraryReportProps) {
 
     // Filter by date range
     const filteredLoans = loans.filter(l => {
-      const loanDate = l.loanDate;
-      return loanDate >= dateRange.from && loanDate <= dateRange.to;
+      const loanDate = toLocalDateString(l.loanDate);
+      return isDateInRange(loanDate, dateRange.from, dateRange.to);
     });
 
     const activeLoans = loans.filter(l => l.status === 'active');
