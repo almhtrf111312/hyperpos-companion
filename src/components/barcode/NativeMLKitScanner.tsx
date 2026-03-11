@@ -1,13 +1,10 @@
-// Native Scanner using @capacitor-mlkit/barcode-scanning (Google ML Kit)
-// ALWAYS uses startScan() (in-app camera behind WebView) to avoid Activity Recreation on Android
-import { useEffect, useRef, useCallback } from 'react';
-import {
-  BarcodeScanner,
-  BarcodeFormat,
-  LensFacing,
-} from '@capacitor-mlkit/barcode-scanning';
-import type { PluginListenerHandle } from '@capacitor/core';
+// Native Scanner using @capacitor-community/barcode-scanner
+// Lightweight, fast, and does not require pre-installed Google ML models.
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { BarcodeScanner, SupportedFormat } from '@capacitor-community/barcode-scanner';
 import { playBeep } from '@/lib/sound-utils';
+import { ScanLine, X, Flashlight, Loader2 } from 'lucide-react';
+
 
 // Key used to persist the scanned barcode across potential app restarts
 export const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
@@ -20,22 +17,24 @@ interface NativeMLKitScannerProps {
 }
 
 const SCAN_FORMATS = [
-  BarcodeFormat.QrCode,
-  BarcodeFormat.Ean13,
-  BarcodeFormat.Ean8,
-  BarcodeFormat.Code128,
-  BarcodeFormat.Code39,
-  BarcodeFormat.DataMatrix,
-  BarcodeFormat.UpcA,
-  BarcodeFormat.UpcE,
+  SupportedFormat.QR_CODE,
+  SupportedFormat.EAN_13,
+  SupportedFormat.EAN_8,
+  SupportedFormat.CODE_128,
+  SupportedFormat.CODE_39,
+  SupportedFormat.DATA_MATRIX,
+  SupportedFormat.UPC_A,
+  SupportedFormat.UPC_E,
 ];
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScannerProps) {
   const scanningRef = useRef(false);
   const mountedRef = useRef(true);
-  const listenerRef = useRef<PluginListenerHandle | null>(null);
   const lastScannedRef = useRef<string>(''); // dedupe guard
   const lastScannedTimeRef = useRef<number>(0);
+  const [torchOn, setTorchOn] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
 
   const setScannerTransparency = useCallback((active: boolean) => {
     document.documentElement.classList.toggle('barcode-scanner-active', active);
@@ -44,16 +43,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   }, []);
 
   const cleanup = useCallback(async () => {
+    if (!scanningRef.current) return;
     try {
-      if (listenerRef.current) {
-        await listenerRef.current.remove();
-        listenerRef.current = null;
-      }
       await BarcodeScanner.stopScan();
-      setScannerTransparency(false);
+      await BarcodeScanner.showBackground();
     } catch (e) {
-      console.warn('[MLKit Scanner] Cleanup error:', e);
+      console.warn('[Community Scanner] Cleanup error:', e);
     }
+    setScannerTransparency(false);
+    setTorchOn(false);
     scanningRef.current = false;
   }, [setScannerTransparency]);
 
@@ -76,8 +74,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
       console.warn('[MLKit Scanner] Could not save pending barcode:', e);
     }
 
-    try { playBeep(); } catch {}
-    try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
+    try {
+      playBeep();
+    } catch (e) {
+      console.debug('Beep failed', e);
+    }
+
+    try {
+      if (navigator.vibrate) navigator.vibrate(200);
+    } catch (e) {
+      console.debug('Vibrate failed', e);
+    }
 
     cleanup();
 
@@ -94,37 +101,51 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   const startScanning = useCallback(async () => {
     if (scanningRef.current) return;
     scanningRef.current = true;
+    setIsStarting(true);
 
     try {
       // Check & request camera permission
-      const { camera } = await BarcodeScanner.requestPermissions();
-      if (camera !== 'granted' && camera !== 'limited') {
-        console.warn('[MLKit Scanner] Camera permission not granted:', camera);
-        if (mountedRef.current) onClose();
+      const status = await BarcodeScanner.checkPermission({ force: true });
+      if (!status.granted) {
+        console.warn('[Community Scanner] Camera permission not granted:', status);
+        if (mountedRef.current) {
+          setIsStarting(false);
+          onClose();
+        }
         scanningRef.current = false;
         return;
       }
 
-      // ✅ ALWAYS use startScan() (in-app camera behind WebView)
-      // This avoids launching an external Activity which causes WebView restart on Android
+      // Check for torch support
+      // Note: The community plugin doesn't have a direct "hasTorch" check that is always reliable,
+      // but toggleTorch won't crash if it fails, so we can optimistically show the button.
+      setHasTorch(true);
+
+      // Hide the webview background so the camera shows through
+      await BarcodeScanner.hideBackground();
       setScannerTransparency(true);
 
-      // Listen for barcode events (both event names for compatibility)
-      listenerRef.current = await BarcodeScanner.addListener('barcodesScanned', (event) => {
-        if (event.barcodes?.length > 0 && event.barcodes[0].rawValue) {
-          handleBarcode(event.barcodes[0].rawValue);
-        }
-      });
+      if (mountedRef.current) {
+        setIsStarting(false);
+      }
 
-      await BarcodeScanner.startScan({
-        formats: SCAN_FORMATS,
-        lensFacing: LensFacing.Back,
-      });
+      // Start the scan (this promise resolves when a barcode is found)
+      const result = await BarcodeScanner.startScan({ targetedFormats: SCAN_FORMATS });
 
-    } catch (err: any) {
-      console.warn('[MLKit Scanner] Failed to start scanner:', err);
+      if (result.hasContent && result.content) {
+        handleBarcode(result.content);
+      } else {
+        // Handle case where scan was stopped early without result
+        await cleanup();
+        if (mountedRef.current) onClose();
+      }
+    } catch (err: unknown) {
+      console.warn('[Community Scanner] Failed to start scanner:', err);
       await cleanup();
-      if (mountedRef.current) onClose();
+      if (mountedRef.current) {
+        setIsStarting(false);
+        onClose();
+      }
     }
   }, [onClose, handleBarcode, cleanup, setScannerTransparency]);
 
@@ -141,6 +162,76 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
     };
   }, [isOpen, startScanning, cleanup]);
 
-  // The native plugin handles its own UI (camera behind WebView), so we render nothing
-  return null;
+  const toggleTorch = async () => {
+    try {
+      if (torchOn) {
+        await BarcodeScanner.disableTorch();
+        setTorchOn(false);
+      } else {
+        await BarcodeScanner.enableTorch();
+        setTorchOn(true);
+      }
+    } catch (e) {
+      console.warn('[Community Scanner] Toggle torch failed:', e);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[120] bg-transparent flex flex-col pointer-events-auto">
+      {/* Header — floating over transparent camera area */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 pt-[calc(max(env(safe-area-inset-top),1.5rem)+0.5rem)] z-[9999] bg-gradient-to-b from-black/80 to-transparent">
+        <div className="flex items-center gap-2 text-white">
+          <ScanLine className="w-5 h-5" />
+          <span className="text-sm font-semibold">مسح الباركود</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {hasTorch && (
+            <button
+              type="button"
+              onClick={toggleTorch}
+              className={`h-11 w-11 rounded-full flex items-center justify-center border ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/40 border-white/30 text-white backdrop-blur-md'}`}
+            >
+              <Flashlight className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              cleanup();
+              onClose();
+            }}
+            className="h-11 w-11 rounded-full flex items-center justify-center bg-black/40 border border-white/30 text-white backdrop-blur-md"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Transparent middle area where the native camera shows through */}
+      <div className="flex-1 relative">
+        {/* Scan guide frame */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="w-[75%] h-[35%] rounded-xl border-2 border-white/70 relative shadow-[0_0_0_4000px_rgba(0,0,0,0.4)]">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-white/80 animate-pulse" />
+          </div>
+        </div>
+
+        {isStarting && (
+          <div className="absolute inset-0 grid place-items-center bg-black/80 z-[100]">
+            <div className="flex items-center gap-2 text-sm text-white">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              جارٍ تشغيل الماسح...
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-6 text-center bg-black/80 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+        <p className="text-sm font-medium text-white">وجّه الكاميرا نحو الباركود</p>
+      </div>
+    </div>
+  );
 }
+

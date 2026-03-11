@@ -14,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       duration={2000}
       closeButton
       offset={16}
-      swipeDirections={['up', 'down', 'left', 'right']}
+      
       style={{
         '--width': 'auto',
         '--front-toast-width': 'auto'

@@ -376,16 +376,78 @@ export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boo
   }
 };
 
-// Delete debt by ID
+// Delete debt by ID — مع عكس الفاتورة + العميل + أرباح الشركاء
 export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
-  const success = await deleteFromSupabase('debts', debtId);
+  // 1. قراءة الدين قبل الحذف
+  const debts = await loadDebtsCloud();
+  const debt = debts.find(d => d.id === debtId);
 
-  if (success) {
-    invalidateDebtsCache();
-    emitEvent(EVENTS.DEBTS_UPDATED, null);
+  // 2. حذف الدين
+  const success = await deleteFromSupabase('debts', debtId);
+  if (!success) return false;
+
+  invalidateDebtsCache();
+  emitEvent(EVENTS.DEBTS_UPDATED, null);
+
+  // 3. عكس الآثار الجانبية إذا وُجد الدين
+  if (debt) {
+    try {
+      // 3a. تحديث الفاتورة المرتبطة — إعادتها لـ completed
+      if (debt.invoiceId && !debt.isCashDebt) {
+        const userId = getCurrentUserId();
+        if (userId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from('invoices')
+            .update({
+              status: 'completed',
+              payment_type: 'cash',
+              debt_paid: 0,
+              debt_remaining: 0,
+            })
+            .or(`invoice_number.eq.${debt.invoiceId},id.eq.${debt.invoiceId}`)
+            .eq('user_id', userId);
+
+          emitEvent(EVENTS.INVOICES_UPDATED, null);
+        }
+      }
+
+      // 3b. خفض total_debt للعميل
+      if (debt.customerName && debt.remainingDebt > 0) {
+        try {
+          const { loadCustomersCloud, updateCustomerCloud, invalidateCustomersCache } = await import('./customers-cloud');
+          const customers = await loadCustomersCloud();
+          const customer = customers.find(c =>
+            c.name.trim().toLowerCase() === debt.customerName.trim().toLowerCase() ||
+            (debt.customerPhone && c.phone === debt.customerPhone)
+          );
+          if (customer) {
+            await updateCustomerCloud(customer.id, {
+              totalDebt: Math.max(0, customer.totalDebt - debt.remainingDebt),
+            });
+            invalidateCustomersCache();
+            emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+          }
+        } catch (e) {
+          console.error('[deleteDebtCloud] Error updating customer stats:', e);
+        }
+      }
+
+      // 3c. عكس أرباح الشركاء المعلقة
+      if (debt.invoiceId) {
+        try {
+          const { revertProfitDistributionCloud } = await import('./partners-cloud');
+          await revertProfitDistributionCloud(debt.invoiceId);
+        } catch (e) {
+          console.error('[deleteDebtCloud] Error reverting partner profits:', e);
+        }
+      }
+    } catch (e) {
+      console.error('[deleteDebtCloud] Error in cascading cleanup:', e);
+    }
   }
 
-  return success;
+  return true;
 };
 
 // Get debts stats
