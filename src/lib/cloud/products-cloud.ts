@@ -390,6 +390,21 @@ export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): 
   }
   // === END OFFLINE SUPPORT ===
 
+  // Try to upload base64 image to cloud storage before inserting
+  if (cloudData.image_url && typeof cloudData.image_url === 'string' && (cloudData.image_url as string).startsWith('data:')) {
+    try {
+      const { uploadProductImage } = await import('../image-upload');
+      const uploadedPath = await uploadProductImage(cloudData.image_url as string);
+      if (uploadedPath) {
+        cloudData.image_url = uploadedPath;
+        console.log('[addProductCloud] ✅ Image uploaded before insert:', uploadedPath);
+      }
+    } catch (imgErr) {
+      console.warn('[addProductCloud] Image upload failed, saving with compressed base64:', imgErr);
+      // Keep the base64 as-is — it's already compressed
+    }
+  }
+
   const inserted = await insertToSupabase<CloudProduct>('products', cloudData);
 
   if (inserted) {
