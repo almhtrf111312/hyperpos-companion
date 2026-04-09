@@ -143,7 +143,7 @@ export function BackgroundSyncIndicator({
 export function useSyncState() {
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [syncMessage, setSyncMessage] = useState<string>('');
-  const [delayTimer, setDelayTimer] = useState<NodeJS.Timeout | null>(null);
+  const [delayTimer, setDelayTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const startSync = (message?: string, showImmediateToast = false) => {
     // إلغاء أي تأخير سابق

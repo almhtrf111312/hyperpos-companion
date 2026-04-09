@@ -18,7 +18,7 @@ export function ExitConfirmDialog() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [backPressCount, setBackPressCount] = useState(0);
   const location = useLocation();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backPressCountRef = useRef(0);
 
   // Keep ref in sync with state for use in listener callback

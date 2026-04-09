@@ -50,7 +50,7 @@ export function ProductGrid({
   const [scannerOpen, setScannerOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t, tDynamic } = useLanguage();
   const isRestaurant = getCurrentStoreType() === 'restaurant';
 

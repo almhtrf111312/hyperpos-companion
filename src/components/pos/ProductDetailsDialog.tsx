@@ -58,13 +58,13 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
         <Tabs defaultValue="general">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="general" className="text-sm">
-              {t('products.tabGeneral') || 'عام'}
+              {t('products.tabGeneral')}
             </TabsTrigger>
             <TabsTrigger value="stock" className="text-sm">
-              {t('products.tabStock') || 'المخزون'}
+              {t('products.tabStock')}
             </TabsTrigger>
             <TabsTrigger value="pricing" className="text-sm">
-              {t('products.tabPricing') || 'الأسعار'}
+              {t('products.tabPricing')}
             </TabsTrigger>
           </TabsList>
 
