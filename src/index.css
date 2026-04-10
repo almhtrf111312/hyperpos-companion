@@ -169,9 +169,29 @@
   }
 
   .light.theme-ocean {
-    --primary: 207 90% 42%;
-    --sidebar-accent: 207 80% 93%;
+    --background: 207 30% 97%;
+    --foreground: 207 40% 15%;
+    --card: 207 25% 99%;
+    --card-foreground: 207 40% 15%;
+    --popover: 207 25% 99%;
+    --popover-foreground: 207 40% 15%;
+    --secondary: 207 25% 93%;
+    --secondary-foreground: 207 40% 15%;
+    --muted: 207 25% 93%;
+    --muted-foreground: 207 20% 40%;
+    --border: 207 20% 84%;
+    --input: 207 20% 84%;
+    --sidebar-background: 207 30% 97%;
+    --sidebar-foreground: 207 40% 15%;
+    --sidebar-accent: 207 25% 93%;
     --sidebar-accent-foreground: 207 90% 28%;
+    --sidebar-border: 207 20% 86%;
+    --pos-grid: 207 22% 95%;
+    --pos-item: 207 25% 99%;
+    --pos-item-hover: 207 25% 93%;
+    --pos-cart: 207 30% 97%;
+    --primary: 207 90% 42%;
+    --ring: 207 90% 42%;
   }
 
   /* Theme: Sunset Orange */
@@ -186,9 +206,29 @@
   }
 
   .light.theme-sunset {
-    --primary: 24 95% 42%;
-    --sidebar-accent: 24 90% 93%;
+    --background: 24 35% 97%;
+    --foreground: 24 40% 16%;
+    --card: 24 30% 99%;
+    --card-foreground: 24 40% 16%;
+    --popover: 24 30% 99%;
+    --popover-foreground: 24 40% 16%;
+    --secondary: 24 28% 93%;
+    --secondary-foreground: 24 40% 16%;
+    --muted: 24 28% 93%;
+    --muted-foreground: 24 20% 40%;
+    --border: 24 22% 84%;
+    --input: 24 22% 84%;
+    --sidebar-background: 24 35% 97%;
+    --sidebar-foreground: 24 40% 16%;
+    --sidebar-accent: 24 28% 93%;
     --sidebar-accent-foreground: 24 95% 28%;
+    --sidebar-border: 24 22% 86%;
+    --pos-grid: 24 25% 95%;
+    --pos-item: 24 30% 99%;
+    --pos-item-hover: 24 28% 93%;
+    --pos-cart: 24 35% 97%;
+    --primary: 24 95% 42%;
+    --ring: 24 95% 42%;
   }
 
   /* Theme: Royal Purple */
@@ -203,9 +243,29 @@
   }
 
   .light.theme-purple {
-    --primary: 262 83% 48%;
-    --sidebar-accent: 262 70% 94%;
+    --background: 262 25% 97%;
+    --foreground: 262 30% 16%;
+    --card: 262 20% 99%;
+    --card-foreground: 262 30% 16%;
+    --popover: 262 20% 99%;
+    --popover-foreground: 262 30% 16%;
+    --secondary: 262 22% 93%;
+    --secondary-foreground: 262 30% 16%;
+    --muted: 262 22% 93%;
+    --muted-foreground: 262 15% 42%;
+    --border: 262 18% 84%;
+    --input: 262 18% 84%;
+    --sidebar-background: 262 25% 97%;
+    --sidebar-foreground: 262 30% 16%;
+    --sidebar-accent: 262 22% 93%;
     --sidebar-accent-foreground: 262 83% 34%;
+    --sidebar-border: 262 18% 86%;
+    --pos-grid: 262 20% 95%;
+    --pos-item: 262 20% 99%;
+    --pos-item-hover: 262 22% 93%;
+    --pos-cart: 262 25% 97%;
+    --primary: 262 83% 48%;
+    --ring: 262 83% 48%;
   }
 
   /* Theme: Rose Pink */
@@ -220,9 +280,29 @@
   }
 
   .light.theme-rose {
-    --primary: 346 77% 42%;
-    --sidebar-accent: 346 70% 93%;
+    --background: 346 25% 97%;
+    --foreground: 346 25% 16%;
+    --card: 346 20% 99%;
+    --card-foreground: 346 25% 16%;
+    --popover: 346 20% 99%;
+    --popover-foreground: 346 25% 16%;
+    --secondary: 346 20% 93%;
+    --secondary-foreground: 346 25% 16%;
+    --muted: 346 20% 93%;
+    --muted-foreground: 346 15% 42%;
+    --border: 346 16% 84%;
+    --input: 346 16% 84%;
+    --sidebar-background: 346 25% 97%;
+    --sidebar-foreground: 346 25% 16%;
+    --sidebar-accent: 346 20% 93%;
     --sidebar-accent-foreground: 346 77% 28%;
+    --sidebar-border: 346 16% 86%;
+    --pos-grid: 346 18% 95%;
+    --pos-item: 346 20% 99%;
+    --pos-item-hover: 346 20% 93%;
+    --pos-cart: 346 25% 97%;
+    --primary: 346 77% 42%;
+    --ring: 346 77% 42%;
   }
 
   /* Theme: Forest Green */
@@ -237,9 +317,29 @@
   }
 
   .light.theme-forest {
-    --primary: 142 71% 34%;
-    --sidebar-accent: 142 60% 92%;
+    --background: 142 25% 97%;
+    --foreground: 142 30% 15%;
+    --card: 142 20% 99%;
+    --card-foreground: 142 30% 15%;
+    --popover: 142 20% 99%;
+    --popover-foreground: 142 30% 15%;
+    --secondary: 142 22% 93%;
+    --secondary-foreground: 142 30% 15%;
+    --muted: 142 22% 93%;
+    --muted-foreground: 142 15% 40%;
+    --border: 142 18% 84%;
+    --input: 142 18% 84%;
+    --sidebar-background: 142 25% 97%;
+    --sidebar-foreground: 142 30% 15%;
+    --sidebar-accent: 142 22% 93%;
     --sidebar-accent-foreground: 142 71% 24%;
+    --sidebar-border: 142 18% 86%;
+    --pos-grid: 142 20% 95%;
+    --pos-item: 142 20% 99%;
+    --pos-item-hover: 142 22% 93%;
+    --pos-cart: 142 25% 97%;
+    --primary: 142 71% 34%;
+    --ring: 142 71% 34%;
   }
 
   /* Theme: Amber Gold */
@@ -254,9 +354,30 @@
   }
 
   .light.theme-amber {
-    --primary: 45 93% 38%;
-    --sidebar-accent: 45 90% 92%;
+    --background: 45 35% 97%;
+    --foreground: 45 35% 16%;
+    --card: 45 30% 99%;
+    --card-foreground: 45 35% 16%;
+    --popover: 45 30% 99%;
+    --popover-foreground: 45 35% 16%;
+    --secondary: 45 28% 93%;
+    --secondary-foreground: 45 35% 16%;
+    --muted: 45 28% 93%;
+    --muted-foreground: 45 20% 40%;
+    --border: 45 22% 84%;
+    --input: 45 22% 84%;
+    --sidebar-background: 45 35% 97%;
+    --sidebar-foreground: 45 35% 16%;
+    --sidebar-accent: 45 28% 93%;
     --sidebar-accent-foreground: 45 93% 22%;
+    --sidebar-border: 45 22% 86%;
+    --pos-grid: 45 25% 95%;
+    --pos-item: 45 30% 99%;
+    --pos-item-hover: 45 28% 93%;
+    --pos-cart: 45 35% 97%;
+    --primary: 45 93% 38%;
+    --primary-foreground: 0 0% 0%;
+    --ring: 45 93% 38%;
   }
 
   /* Theme: Slate Gray */
@@ -271,9 +392,29 @@
   }
 
   .light.theme-slate {
-    --primary: 215 25% 40%;
-    --sidebar-accent: 215 20% 92%;
+    --background: 215 18% 97%;
+    --foreground: 215 22% 16%;
+    --card: 215 15% 99%;
+    --card-foreground: 215 22% 16%;
+    --popover: 215 15% 99%;
+    --popover-foreground: 215 22% 16%;
+    --secondary: 215 16% 93%;
+    --secondary-foreground: 215 22% 16%;
+    --muted: 215 16% 93%;
+    --muted-foreground: 215 12% 42%;
+    --border: 215 14% 84%;
+    --input: 215 14% 84%;
+    --sidebar-background: 215 18% 97%;
+    --sidebar-foreground: 215 22% 16%;
+    --sidebar-accent: 215 16% 93%;
     --sidebar-accent-foreground: 215 25% 26%;
+    --sidebar-border: 215 14% 86%;
+    --pos-grid: 215 15% 95%;
+    --pos-item: 215 15% 99%;
+    --pos-item-hover: 215 16% 93%;
+    --pos-cart: 215 18% 97%;
+    --primary: 215 25% 40%;
+    --ring: 215 25% 40%;
   }
 
   /* Theme: Cyan Teal */
@@ -288,9 +429,29 @@
   }
 
   .light.theme-cyan {
-    --primary: 187 85% 32%;
-    --sidebar-accent: 187 80% 92%;
+    --background: 187 28% 97%;
+    --foreground: 187 30% 15%;
+    --card: 187 22% 99%;
+    --card-foreground: 187 30% 15%;
+    --popover: 187 22% 99%;
+    --popover-foreground: 187 30% 15%;
+    --secondary: 187 22% 93%;
+    --secondary-foreground: 187 30% 15%;
+    --muted: 187 22% 93%;
+    --muted-foreground: 187 15% 40%;
+    --border: 187 18% 84%;
+    --input: 187 18% 84%;
+    --sidebar-background: 187 28% 97%;
+    --sidebar-foreground: 187 30% 15%;
+    --sidebar-accent: 187 22% 93%;
     --sidebar-accent-foreground: 187 85% 22%;
+    --sidebar-border: 187 18% 86%;
+    --pos-grid: 187 20% 95%;
+    --pos-item: 187 22% 99%;
+    --pos-item-hover: 187 22% 93%;
+    --pos-cart: 187 28% 97%;
+    --primary: 187 85% 32%;
+    --ring: 187 85% 32%;
   }
 
   /* Theme: Indigo Night */
@@ -305,9 +466,29 @@
   }
 
   .light.theme-indigo {
-    --primary: 239 84% 54%;
-    --sidebar-accent: 239 70% 94%;
+    --background: 239 22% 97%;
+    --foreground: 239 25% 16%;
+    --card: 239 18% 99%;
+    --card-foreground: 239 25% 16%;
+    --popover: 239 18% 99%;
+    --popover-foreground: 239 25% 16%;
+    --secondary: 239 18% 93%;
+    --secondary-foreground: 239 25% 16%;
+    --muted: 239 18% 93%;
+    --muted-foreground: 239 14% 42%;
+    --border: 239 15% 84%;
+    --input: 239 15% 84%;
+    --sidebar-background: 239 22% 97%;
+    --sidebar-foreground: 239 25% 16%;
+    --sidebar-accent: 239 18% 93%;
     --sidebar-accent-foreground: 239 84% 38%;
+    --sidebar-border: 239 15% 86%;
+    --pos-grid: 239 16% 95%;
+    --pos-item: 239 18% 99%;
+    --pos-item-hover: 239 18% 93%;
+    --pos-cart: 239 22% 97%;
+    --primary: 239 84% 54%;
+    --ring: 239 84% 54%;
   }
 
   /* Theme: Coffee Brown + Apricot Orange */
