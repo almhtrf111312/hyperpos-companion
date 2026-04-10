@@ -1,59 +1,54 @@
 
 
-# خطة إصلاح أخطاء البناء + مشكلة فقدان صور المنتجات
+# خطة التدقيق الحسابي الشامل لتطبيق FlowPOS Pro
+
+## المنهجية
+
+سأقوم بتجميع **كامل الملفات المالية والحسابية** في ملف واحد وتمريره لأقوى نموذج ذكاء اصطناعي متاح (openai/gpt-5.2) مع تعليمات تدقيق شاملة. سيقوم النموذج بتحليل:
+
+- تدفق عمليات البيع (نقدي + دين) خطوة بخطوة
+- تدفق عمليات المرتجع وعكس الآثار
+- حسابات الأرباح والخسائر وتوزيعها على الشركاء
+- منطق المصاريف وخصمها من أرصدة الشركاء
+- ترقيم الفواتير وحالات التكرار
+- المستودعات والعهد (صرف/استرداد)
+- فواتير الشراء وتحديث المخزون
+- معادلات لوحة التحكم (رصيد الصندوق، رأس المال، صافي الربح)
+- طباعة الفواتير ودقة الأرقام المعروضة
+- حالات الحافة (offline, race conditions, rollback)
+
+## خطوات التنفيذ
+
+### 1. تجميع الملفات المالية (سكربت)
+تجميع محتوى ~15 ملف في ملف تحليل واحد:
+- `invoices-cloud.ts`, `debts-cloud.ts`, `products-cloud.ts`, `partners-cloud.ts`
+- `expenses-cloud.ts`, `warehouses-cloud.ts`, `customers-cloud.ts`
+- `cash-sale-handler.ts`, `debt-sale-handler.ts`, `purchase-invoices-cloud.ts`
+- `CartPanel.tsx` (منطق البيع), `Dashboard.tsx` (المعادلات)
+- `sync-queue.ts`, `purchase-queue-processor.ts`
+- `pdf-export.ts`, `print-utils.ts`
+
+### 2. تشغيل التحليل بالذكاء الاصطناعي
+استخدام `lovable_ai.py` مع نموذج `openai/gpt-5.2` مع prompt مفصل يطلب:
+- مراجعة كل معادلة حسابية
+- تتبع تسلسل كل عملية مالية
+- البحث عن أخطاء في منطق الخصم/الإضافة
+- فحص حالات الحافة والفشل
+- اقتراح حلول مفصلة
+
+### 3. إنتاج التقرير
+تقرير مفصل باللغة العربية يُحفظ في `/mnt/documents/` يتضمن:
+- جدول بكل خطأ حسابي مع شدته ومكان الحدوث
+- شرح تفصيلي لكل مشكلة مع الحل المقترح
+- تحليل كل تدفق عمل (بيع، مرتجع، دين، عهدة، مشتريات)
 
 ---
 
-## تحليل مشكلة فقدان الصور
+## الملفات المتأثرة
 
-بعد فحص قاعدة البيانات، المنتج "شاحن سيارة C11" يحتوي على `image_url = null` — أي الصورة لم تُحفظ أبداً.
+لا يوجد تعديلات على الكود — هذه عملية تحليل وتوليد تقرير فقط.
 
-**الأسباب المحتملة:**
-
-1. **المنتج أُضيف أوفلاين:** عند حفظ المنتج أوفلاين، الصورة تُحفظ كـ base64 مضغوطة في الـ sync queue. لكن عند المزامنة لاحقاً، `syncImageToCloud` قد لا تُستدعى لأن المنتج أصلاً في الـ queue وليس في `Products.tsx`.
-2. **الصورة رُفعت بنجاح لكن `updateProductCloud` فشل:** `syncImageToCloud` ترفع الصورة ثم تستدعي `updateProductCloud` لتحديث المسار — إذا فشل التحديث، المسار يضيع.
-3. **الصورة كانت base64 كبيرة جداً:** عند الحفظ في الـ offline queue، الـ base64 الكبيرة قد تُقطع أو تفشل، فيُحفظ المنتج بدون صورة.
-
-**الحل الجذري:** عند تحميل المنتجات من السحابة (`loadProductsCloud`)، إذا كان `image_url` فارغاً لكن النسخة المحلية تحتوي صورة، يجب مزامنة الصورة تلقائياً.
-
----
-
-## خطة التنفيذ
-
-### 1. إصلاح `NodeJS.Timeout` (3 ملفات)
-
-**ملفات:** `ExitConfirmDialog.tsx`, `BackgroundSyncIndicator.tsx`, `ProductGrid.tsx`
-
-تغيير `NodeJS.Timeout` إلى `ReturnType<typeof setTimeout>` — هذا النوع يعمل في كل البيئات بدون الحاجة لتعريف NodeJS.
-
-### 2. إصلاح مفاتيح الترجمة المفقودة
-
-**ملف:** `src/components/pos/ProductDetailsDialog.tsx`
-
-المفاتيح `products.tabGeneral`, `products.tabStock`, `products.tabPricing` غير موجودة في ملف i18n. الكود يستخدم fallback بالفعل (`|| 'عام'`), لكن TypeScript يرفضها كـ parameter type.
-
-**الحل:** إضافة المفاتيح الثلاث لملف `i18n.ts` في قسم `products`.
-
-### 3. تحسين حفظ الصور لمنع فقدانها
-
-**ملف:** `src/lib/cloud/products-cloud.ts`
-
-**التغيير:** في `addProductCloud`، إذا كانت الصورة `data:` (base64)، يجب محاولة رفعها مباشرة قبل إنشاء المنتج بدلاً من الاعتماد على `syncImageToCloud` اللاحق الذي قد يفشل صامتاً. إذا فشل الرفع، تُحفظ الـ base64 المضغوطة.
-
-**ملف:** `src/pages/Products.tsx`
-
-**التغيير:** إضافة آلية retry — عند تحميل المنتجات، فحص المنتجات التي `image_url = null` محلياً ولديها صورة في الكاش، ومحاولة مزامنتها.
-
----
-
-## ملخص الملفات المتأثرة
-
-| الملف | التغيير |
-|-------|---------|
-| `src/components/ExitConfirmDialog.tsx` | `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` |
-| `src/components/pos/BackgroundSyncIndicator.tsx` | `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` |
-| `src/components/pos/ProductGrid.tsx` | `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` |
-| `src/components/pos/ProductDetailsDialog.tsx` | استخدام نصوص مباشرة بدل مفاتيح ترجمة مفقودة |
-| `src/lib/i18n.ts` | إضافة مفاتيح `tabGeneral`, `tabStock`, `tabPricing` |
-| `src/lib/cloud/products-cloud.ts` | محاولة رفع الصورة مباشرة في `addProductCloud` |
+| المخرج | الوصف |
+|--------|-------|
+| `/mnt/documents/flowpos_audit_report.md` | التقرير الكامل باللغة العربية |
 
