@@ -598,8 +598,86 @@ export default function StockTransfer() {
     setReturnSelectedQuantity(1);
   };
 
+  // ==================== Partial Return from Transfer ====================
+  const openPartialReturn = async (transfer: StockTransferType) => {
+    setIsLoadingPartialReturn(true);
+    setPartialReturnTransfer(transfer);
+    setIsPartialReturnDialogOpen(true);
+    setPartialReturnNotes('');
 
-  const viewTransferDetails = async (transfer: StockTransferType) => {
+    try {
+      const [items, returned] = await Promise.all([
+        getStockTransferItemsCloud(transfer.id),
+        getReturnedQuantitiesForTransfer(transfer.id)
+      ]);
+
+      setPartialReturnOriginalItems(items);
+      setAlreadyReturnedQuantities(returned);
+
+      // Initialize quantities to 0
+      const initialQty: Record<string, number> = {};
+      items.forEach(item => { initialQty[item.product_id] = 0; });
+      setPartialReturnQuantities(initialQty);
+    } catch (error) {
+      console.error('Error loading partial return data:', error);
+      toast.error('فشل تحميل بيانات العهدة');
+    } finally {
+      setIsLoadingPartialReturn(false);
+    }
+  };
+
+  const getReturnableQuantity = (item: StockTransferItem) => {
+    const originalQty = item.quantity_in_pieces;
+    const alreadyReturned = alreadyReturnedQuantities[item.product_id] || 0;
+    return Math.max(0, originalQty - alreadyReturned);
+  };
+
+  const handlePartialReturnSubmit = async () => {
+    if (!partialReturnTransfer || !mainWarehouse) return;
+
+    // Filter items with quantity > 0
+    const itemsToReturn = partialReturnOriginalItems
+      .filter(item => (partialReturnQuantities[item.product_id] || 0) > 0)
+      .map(item => ({
+        productId: item.product_id,
+        quantity: partialReturnQuantities[item.product_id],
+        unit: 'piece' as const,
+        quantityInPieces: partialReturnQuantities[item.product_id]
+      }));
+
+    if (itemsToReturn.length === 0) {
+      toast.error('يرجى تحديد كمية واحدة على الأقل للإرجاع');
+      return;
+    }
+
+    if (!confirm('هل تريد تأكيد استرداد المنتجات المحددة؟')) return;
+
+    const result = await createReturnTransferCloud(
+      partialReturnTransfer.to_warehouse_id, // from distributor
+      mainWarehouse.id, // to main
+      itemsToReturn,
+      partialReturnNotes || `استرداد جزئي من عهدة ${partialReturnTransfer.transfer_number}`,
+      partialReturnTransfer.id // link to parent
+    );
+
+    if (result) {
+      const success = await completeReturnTransferCloud(result.id);
+      if (success) {
+        toast.success('تم استرداد المنتجات بنجاح');
+        await printReturnReceipt(result);
+        setIsPartialReturnDialogOpen(false);
+        setPartialReturnTransfer(null);
+        const newTransfers = await loadStockTransfersCloud();
+        setTransfers(newTransfers);
+        refreshWarehouses();
+      } else {
+        toast.error('فشل إتمام عملية الاسترداد');
+      }
+    } else {
+      toast.error('فشل إنشاء عملية الاسترداد');
+    }
+  };
+
     setSelectedTransfer(transfer);
     const items = await getStockTransferItemsCloud(transfer.id);
     setSelectedTransferItems(items);
