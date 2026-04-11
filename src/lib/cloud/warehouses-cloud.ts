@@ -602,7 +602,8 @@ export const createReturnTransferCloud = async (
   fromWarehouseId: string,
   toWarehouseId: string,
   items: { productId: string; quantity: number; unit: 'piece' | 'bulk'; quantityInPieces: number }[],
-  notes?: string
+  notes?: string,
+  parentTransferId?: string
 ): Promise<StockTransfer | null> => {
   const { supabase } = await import('@/integrations/supabase/client');
   const userId = getCurrentUserId();
@@ -617,7 +618,8 @@ export const createReturnTransferCloud = async (
       transfer_number: generateTransferNumber('return'),
       transfer_type: 'return' as string,
       status: 'pending',
-      notes
+      notes,
+      parent_transfer_id: parentTransferId || null
     })
     .select()
     .single();
