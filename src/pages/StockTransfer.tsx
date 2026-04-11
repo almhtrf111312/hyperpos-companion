@@ -678,6 +678,7 @@ export default function StockTransfer() {
     }
   };
 
+  const viewTransferDetails = async (transfer: StockTransferType) => {
     setSelectedTransfer(transfer);
     const items = await getStockTransferItemsCloud(transfer.id);
     setSelectedTransferItems(items);
