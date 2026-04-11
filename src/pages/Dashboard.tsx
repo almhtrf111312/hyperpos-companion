@@ -93,8 +93,10 @@ export default function Dashboard() {
 
       const todayDate = new Date();
       const todayStr = todayDate.toDateString();
+      const isActiveInvoice = (inv: { status?: string }) => inv.status !== 'cancelled' && inv.status !== 'refunded';
+
       const todayInvoices = invoices.filter(inv =>
-        new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
+        new Date(inv.createdAt).toDateString() === todayStr && isActiveInvoice(inv)
       );
 
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
