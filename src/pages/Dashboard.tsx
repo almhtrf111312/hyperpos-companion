@@ -93,8 +93,10 @@ export default function Dashboard() {
 
       const todayDate = new Date();
       const todayStr = todayDate.toDateString();
+      const isActiveInvoice = (inv: { status?: string }) => inv.status !== 'cancelled' && inv.status !== 'refunded';
+
       const todayInvoices = invoices.filter(inv =>
-        new Date(inv.createdAt).toDateString() === todayStr && inv.status !== 'cancelled'
+        new Date(inv.createdAt).toDateString() === todayStr && isActiveInvoice(inv)
       );
 
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
@@ -120,7 +122,7 @@ export default function Dashboard() {
 
       const monthInvoices = invoices.filter(inv => {
         const date = new Date(inv.createdAt);
-        return date.getMonth() === thisMonth && date.getFullYear() === thisYear && inv.status !== 'cancelled';
+        return date.getMonth() === thisMonth && date.getFullYear() === thisYear && isActiveInvoice(inv);
       });
 
       const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
@@ -130,7 +132,7 @@ export default function Dashboard() {
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
       const weekInvoices = invoices.filter(inv =>
-        new Date(inv.createdAt) >= oneWeekAgo && inv.status !== 'cancelled'
+        new Date(inv.createdAt) >= oneWeekAgo && isActiveInvoice(inv)
       );
       const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
@@ -150,12 +152,12 @@ export default function Dashboard() {
 
       // Daily sales for last 7 days (sparkline)
       const dailySales = make7Days(dayStr =>
-        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && isActiveInvoice(inv))
           .reduce((sum, inv) => sum + inv.total, 0)
       );
 
       const dailyProfit = make7Days(dayStr =>
-        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && isActiveInvoice(inv))
           .reduce((sum, inv) => sum + (inv.profit || 0), 0)
       );
 
@@ -165,7 +167,7 @@ export default function Dashboard() {
       );
 
       const dailyCustomers = make7Days(dayStr =>
-        new Set(invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status !== 'cancelled')
+        new Set(invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && isActiveInvoice(inv))
           .map(inv => inv.customerName)).size
       );
 
@@ -183,18 +185,18 @@ export default function Dashboard() {
         const weekStart = new Date(weekEnd); weekStart.setDate(weekStart.getDate() - 6);
         return invoices.filter(inv => {
           const d = new Date(inv.createdAt);
-          return d >= weekStart && d <= weekEnd && inv.status !== 'cancelled';
+          return d >= weekStart && d <= weekEnd && isActiveInvoice(inv);
         }).reduce((sum, inv) => sum + inv.total, 0);
       }).reverse();
 
       const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
 
       const totalSalesCash = invoices
-        .filter(inv => inv.status !== 'cancelled' && inv.paymentType === 'cash')
+        .filter(inv => isActiveInvoice(inv) && inv.paymentType === 'cash')
         .reduce((sum, inv) => sum + inv.total, 0);
 
       const totalDebtPaid = invoices
-        .filter(inv => inv.status !== 'cancelled')
+        .filter(inv => isActiveInvoice(inv))
         .reduce((sum, inv) => sum + (inv.debtPaid || 0), 0);
 
       const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
