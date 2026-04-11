@@ -93,6 +93,15 @@ export default function StockTransfer() {
   const [isReturnScannerOpen, setIsReturnScannerOpen] = useState(false);
   const returnSearchInputRef = useRef<HTMLInputElement>(null);
 
+  // Partial return from transfer state
+  const [isPartialReturnDialogOpen, setIsPartialReturnDialogOpen] = useState(false);
+  const [partialReturnTransfer, setPartialReturnTransfer] = useState<StockTransferType | null>(null);
+  const [partialReturnOriginalItems, setPartialReturnOriginalItems] = useState<StockTransferItem[]>([]);
+  const [partialReturnQuantities, setPartialReturnQuantities] = useState<Record<string, number>>({});
+  const [alreadyReturnedQuantities, setAlreadyReturnedQuantities] = useState<Record<string, number>>({});
+  const [partialReturnNotes, setPartialReturnNotes] = useState('');
+  const [isLoadingPartialReturn, setIsLoadingPartialReturn] = useState(false);
+
   // Form state
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [notes, setNotes] = useState('');
