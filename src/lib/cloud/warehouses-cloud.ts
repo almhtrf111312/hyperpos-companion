@@ -39,6 +39,7 @@ export interface StockTransfer {
   transfer_number: string;
   status: 'pending' | 'completed' | 'cancelled';
   transfer_type: 'outgoing' | 'return';
+  parent_transfer_id: string | null;
   notes: string | null;
   transferred_by: string | null;
   transferred_at: string | null;
