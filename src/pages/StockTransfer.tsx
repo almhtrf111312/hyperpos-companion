@@ -38,7 +38,8 @@ import {
   getStockTransferItemsCloud,
   getDistributorAvailableProducts,
   createReturnTransferCloud,
-  completeReturnTransferCloud
+  completeReturnTransferCloud,
+  getReturnedQuantitiesForTransfer
 } from '@/lib/cloud/warehouses-cloud';
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { printHTML } from '@/lib/print-utils';
