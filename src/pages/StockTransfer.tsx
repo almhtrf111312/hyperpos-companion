@@ -1285,14 +1285,27 @@ export default function StockTransfer() {
                             )}
                             
                             {transfer.status === 'completed' && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => printTransferReceipt(transfer)}
-                                title={t('stockTransfer.printReceipt')}
-                              >
-                                <Printer className="w-4 h-4" />
-                              </Button>
+                              <>
+                                {(transfer as any).transfer_type !== 'return' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => openPartialReturn(transfer)}
+                                    title="استرداد جزئي"
+                                    className="text-amber-600"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => printTransferReceipt(transfer)}
+                                  title={t('stockTransfer.printReceipt')}
+                                >
+                                  <Printer className="w-4 h-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
