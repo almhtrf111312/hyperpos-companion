@@ -725,3 +725,44 @@ export const completeReturnTransferCloud = async (transferId: string): Promise<b
   emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
   return true;
 };
+
+// ==================== Partial Return Tracking ====================
+
+// Get quantities already returned from a specific outgoing transfer
+export const getReturnedQuantitiesForTransfer = async (
+  parentTransferId: string
+): Promise<Record<string, number>> => {
+  const { supabase } = await import('@/integrations/supabase/client');
+
+  // Find all completed return transfers linked to this parent
+  const { data: returnTransfers, error } = await supabase
+    .from('stock_transfers')
+    .select('id')
+    .eq('parent_transfer_id', parentTransferId)
+    .eq('status', 'completed')
+    .eq('transfer_type', 'return');
+
+  if (error || !returnTransfers || returnTransfers.length === 0) {
+    return {};
+  }
+
+  const returnIds = returnTransfers.map(t => t.id);
+
+  // Get all items from those return transfers
+  const { data: returnItems, error: itemsError } = await supabase
+    .from('stock_transfer_items')
+    .select('product_id, quantity_in_pieces')
+    .in('transfer_id', returnIds);
+
+  if (itemsError || !returnItems) {
+    return {};
+  }
+
+  // Sum returned quantities per product
+  const returned: Record<string, number> = {};
+  for (const item of returnItems) {
+    returned[item.product_id] = (returned[item.product_id] || 0) + item.quantity_in_pieces;
+  }
+
+  return returned;
+};
