@@ -1037,6 +1037,7 @@ export type Database = {
           from_warehouse_id: string
           id: string
           notes: string | null
+          parent_transfer_id: string | null
           status: string | null
           to_warehouse_id: string
           transfer_number: string
@@ -1051,6 +1052,7 @@ export type Database = {
           from_warehouse_id: string
           id?: string
           notes?: string | null
+          parent_transfer_id?: string | null
           status?: string | null
           to_warehouse_id: string
           transfer_number: string
@@ -1065,6 +1067,7 @@ export type Database = {
           from_warehouse_id?: string
           id?: string
           notes?: string | null
+          parent_transfer_id?: string | null
           status?: string | null
           to_warehouse_id?: string
           transfer_number?: string
@@ -1080,6 +1083,13 @@ export type Database = {
             columns: ["from_warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_parent_transfer_id_fkey"
+            columns: ["parent_transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
             referencedColumns: ["id"]
           },
           {

@@ -39,6 +39,7 @@ export interface StockTransfer {
   transfer_number: string;
   status: 'pending' | 'completed' | 'cancelled';
   transfer_type: 'outgoing' | 'return';
+  parent_transfer_id: string | null;
   notes: string | null;
   transferred_by: string | null;
   transferred_at: string | null;
@@ -602,7 +603,8 @@ export const createReturnTransferCloud = async (
   fromWarehouseId: string,
   toWarehouseId: string,
   items: { productId: string; quantity: number; unit: 'piece' | 'bulk'; quantityInPieces: number }[],
-  notes?: string
+  notes?: string,
+  parentTransferId?: string
 ): Promise<StockTransfer | null> => {
   const { supabase } = await import('@/integrations/supabase/client');
   const userId = getCurrentUserId();
@@ -617,7 +619,8 @@ export const createReturnTransferCloud = async (
       transfer_number: generateTransferNumber('return'),
       transfer_type: 'return' as string,
       status: 'pending',
-      notes
+      notes,
+      parent_transfer_id: parentTransferId || null
     })
     .select()
     .single();
@@ -722,4 +725,45 @@ export const completeReturnTransferCloud = async (transferId: string): Promise<b
   emitEvent(EVENTS.PRODUCTS_UPDATED, null);
   emitEvent(EVENTS.WAREHOUSES_UPDATED, null);
   return true;
+};
+
+// ==================== Partial Return Tracking ====================
+
+// Get quantities already returned from a specific outgoing transfer
+export const getReturnedQuantitiesForTransfer = async (
+  parentTransferId: string
+): Promise<Record<string, number>> => {
+  const { supabase } = await import('@/integrations/supabase/client');
+
+  // Find all completed return transfers linked to this parent
+  const { data: returnTransfers, error } = await supabase
+    .from('stock_transfers')
+    .select('id')
+    .eq('parent_transfer_id', parentTransferId)
+    .eq('status', 'completed')
+    .eq('transfer_type', 'return');
+
+  if (error || !returnTransfers || returnTransfers.length === 0) {
+    return {};
+  }
+
+  const returnIds = returnTransfers.map(t => t.id);
+
+  // Get all items from those return transfers
+  const { data: returnItems, error: itemsError } = await supabase
+    .from('stock_transfer_items')
+    .select('product_id, quantity_in_pieces')
+    .in('transfer_id', returnIds);
+
+  if (itemsError || !returnItems) {
+    return {};
+  }
+
+  // Sum returned quantities per product
+  const returned: Record<string, number> = {};
+  for (const item of returnItems) {
+    returned[item.product_id] = (returned[item.product_id] || 0) + item.quantity_in_pieces;
+  }
+
+  return returned;
 };

@@ -38,7 +38,8 @@ import {
   getStockTransferItemsCloud,
   getDistributorAvailableProducts,
   createReturnTransferCloud,
-  completeReturnTransferCloud
+  completeReturnTransferCloud,
+  getReturnedQuantitiesForTransfer
 } from '@/lib/cloud/warehouses-cloud';
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { printHTML } from '@/lib/print-utils';
@@ -91,6 +92,15 @@ export default function StockTransfer() {
   const [returnSelectedQuantity, setReturnSelectedQuantity] = useState(1);
   const [isReturnScannerOpen, setIsReturnScannerOpen] = useState(false);
   const returnSearchInputRef = useRef<HTMLInputElement>(null);
+
+  // Partial return from transfer state
+  const [isPartialReturnDialogOpen, setIsPartialReturnDialogOpen] = useState(false);
+  const [partialReturnTransfer, setPartialReturnTransfer] = useState<StockTransferType | null>(null);
+  const [partialReturnOriginalItems, setPartialReturnOriginalItems] = useState<StockTransferItem[]>([]);
+  const [partialReturnQuantities, setPartialReturnQuantities] = useState<Record<string, number>>({});
+  const [alreadyReturnedQuantities, setAlreadyReturnedQuantities] = useState<Record<string, number>>({});
+  const [partialReturnNotes, setPartialReturnNotes] = useState('');
+  const [isLoadingPartialReturn, setIsLoadingPartialReturn] = useState(false);
 
   // Form state
   const [toWarehouseId, setToWarehouseId] = useState('');
@@ -588,6 +598,85 @@ export default function StockTransfer() {
     setReturnSelectedQuantity(1);
   };
 
+  // ==================== Partial Return from Transfer ====================
+  const openPartialReturn = async (transfer: StockTransferType) => {
+    setIsLoadingPartialReturn(true);
+    setPartialReturnTransfer(transfer);
+    setIsPartialReturnDialogOpen(true);
+    setPartialReturnNotes('');
+
+    try {
+      const [items, returned] = await Promise.all([
+        getStockTransferItemsCloud(transfer.id),
+        getReturnedQuantitiesForTransfer(transfer.id)
+      ]);
+
+      setPartialReturnOriginalItems(items);
+      setAlreadyReturnedQuantities(returned);
+
+      // Initialize quantities to 0
+      const initialQty: Record<string, number> = {};
+      items.forEach(item => { initialQty[item.product_id] = 0; });
+      setPartialReturnQuantities(initialQty);
+    } catch (error) {
+      console.error('Error loading partial return data:', error);
+      toast.error('فشل تحميل بيانات العهدة');
+    } finally {
+      setIsLoadingPartialReturn(false);
+    }
+  };
+
+  const getReturnableQuantity = (item: StockTransferItem) => {
+    const originalQty = item.quantity_in_pieces;
+    const alreadyReturned = alreadyReturnedQuantities[item.product_id] || 0;
+    return Math.max(0, originalQty - alreadyReturned);
+  };
+
+  const handlePartialReturnSubmit = async () => {
+    if (!partialReturnTransfer || !mainWarehouse) return;
+
+    // Filter items with quantity > 0
+    const itemsToReturn = partialReturnOriginalItems
+      .filter(item => (partialReturnQuantities[item.product_id] || 0) > 0)
+      .map(item => ({
+        productId: item.product_id,
+        quantity: partialReturnQuantities[item.product_id],
+        unit: 'piece' as const,
+        quantityInPieces: partialReturnQuantities[item.product_id]
+      }));
+
+    if (itemsToReturn.length === 0) {
+      toast.error('يرجى تحديد كمية واحدة على الأقل للإرجاع');
+      return;
+    }
+
+    if (!confirm('هل تريد تأكيد استرداد المنتجات المحددة؟')) return;
+
+    const result = await createReturnTransferCloud(
+      partialReturnTransfer.to_warehouse_id, // from distributor
+      mainWarehouse.id, // to main
+      itemsToReturn,
+      partialReturnNotes || `استرداد جزئي من عهدة ${partialReturnTransfer.transfer_number}`,
+      partialReturnTransfer.id // link to parent
+    );
+
+    if (result) {
+      const success = await completeReturnTransferCloud(result.id);
+      if (success) {
+        toast.success('تم استرداد المنتجات بنجاح');
+        await printReturnReceipt(result);
+        setIsPartialReturnDialogOpen(false);
+        setPartialReturnTransfer(null);
+        const newTransfers = await loadStockTransfersCloud();
+        setTransfers(newTransfers);
+        refreshWarehouses();
+      } else {
+        toast.error('فشل إتمام عملية الاسترداد');
+      }
+    } else {
+      toast.error('فشل إنشاء عملية الاسترداد');
+    }
+  };
 
   const viewTransferDetails = async (transfer: StockTransferType) => {
     setSelectedTransfer(transfer);
@@ -1196,14 +1285,27 @@ export default function StockTransfer() {
                             )}
                             
                             {transfer.status === 'completed' && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => printTransferReceipt(transfer)}
-                                title={t('stockTransfer.printReceipt')}
-                              >
-                                <Printer className="w-4 h-4" />
-                              </Button>
+                              <>
+                                {(transfer as any).transfer_type !== 'return' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => openPartialReturn(transfer)}
+                                    title="استرداد جزئي"
+                                    className="text-amber-600"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => printTransferReceipt(transfer)}
+                                  title={t('stockTransfer.printReceipt')}
+                                >
+                                  <Printer className="w-4 h-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -1273,6 +1375,145 @@ export default function StockTransfer() {
                     <p className="text-sm">{selectedTransfer.notes}</p>
                   </div>
                 )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Partial Return from Transfer Dialog */}
+        <Dialog open={isPartialReturnDialogOpen} onOpenChange={(open) => {
+          setIsPartialReturnDialogOpen(open);
+          if (!open) {
+            setPartialReturnTransfer(null);
+            setPartialReturnOriginalItems([]);
+            setPartialReturnQuantities({});
+            setAlreadyReturnedQuantities({});
+            setPartialReturnNotes('');
+          }
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="w-5 h-5 text-amber-600" />
+                استرداد جزئي من العهدة
+                {partialReturnTransfer && (
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {partialReturnTransfer.transfer_number}
+                  </Badge>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+
+            {isLoadingPartialReturn ? (
+              <div className="text-center py-8 text-muted-foreground">جاري تحميل البيانات...</div>
+            ) : partialReturnOriginalItems.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">لا توجد عناصر في هذه العهدة</div>
+            ) : (
+              <div className="space-y-4">
+                {/* Info */}
+                {partialReturnTransfer && (
+                  <div className="p-3 rounded-lg bg-muted/50 text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">المستودع:</span>
+                      <span>{getWarehouseName(partialReturnTransfer.to_warehouse_id)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">تاريخ الصرف:</span>
+                      <span>{format(new Date(partialReturnTransfer.created_at), 'yyyy/MM/dd', { locale: ar })}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Items List */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">اختر المنتجات والكميات للإرجاع:</Label>
+                  {partialReturnOriginalItems.map(item => {
+                    const product = products.find(p => p.id === item.product_id);
+                    const returnable = getReturnableQuantity(item);
+                    const alreadyReturned = alreadyReturnedQuantities[item.product_id] || 0;
+                    const currentQty = partialReturnQuantities[item.product_id] || 0;
+
+                    return (
+                      <div key={item.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{product?.name || 'منتج'}</p>
+                          <div className="flex gap-3 text-xs text-muted-foreground">
+                            <span>الأصلي: {item.quantity_in_pieces}</span>
+                            {alreadyReturned > 0 && (
+                              <span className="text-amber-600">مسترد: {alreadyReturned}</span>
+                            )}
+                            <span className="text-primary">متبقي: {returnable}</span>
+                          </div>
+                        </div>
+                        {returnable > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setPartialReturnQuantities(prev => ({
+                                ...prev,
+                                [item.product_id]: Math.max(0, currentQty - 1)
+                              }))}
+                              disabled={currentQty <= 0}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={returnable}
+                              value={currentQty}
+                              onChange={(e) => {
+                                const val = Math.min(Math.max(0, parseInt(e.target.value) || 0), returnable);
+                                setPartialReturnQuantities(prev => ({ ...prev, [item.product_id]: val }));
+                              }}
+                              className="w-16 h-7 text-center"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setPartialReturnQuantities(prev => ({
+                                ...prev,
+                                [item.product_id]: Math.min(returnable, currentQty + 1)
+                              }))}
+                              disabled={currentQty >= returnable}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">تم الاسترداد بالكامل</Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <Label>{t('stockTransfer.notesOptional')}</Label>
+                  <Textarea
+                    value={partialReturnNotes}
+                    onChange={(e) => setPartialReturnNotes(e.target.value)}
+                    placeholder="ملاحظات على الاسترداد الجزئي..."
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setIsPartialReturnDialogOpen(false)}>
+                    {t('stockTransfer.cancel')}
+                  </Button>
+                  <Button
+                    onClick={handlePartialReturnSubmit}
+                    disabled={Object.values(partialReturnQuantities).every(q => q === 0)}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    تأكيد الاسترداد
+                  </Button>
+                </div>
               </div>
             )}
           </DialogContent>
