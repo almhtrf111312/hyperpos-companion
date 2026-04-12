@@ -402,8 +402,8 @@ export function CartPanel({
         const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);
         const itemCOGS = itemCostPrice * item.quantity;
 
-        // تصنيف الأرباح (نستخدم 'عام' افتراضياً - سيُصحح عند المزامنة)
-        profitsByCategory['عام'] = (profitsByCategory['عام'] || 0) + itemProfit;
+        const cat = item.category || 'عام';
+        profitsByCategory[cat] = (profitsByCategory[cat] || 0) + itemProfit;
         totalProfit += itemProfit;
         totalCOGS += itemCOGS;
 
@@ -560,7 +560,8 @@ export function CartPanel({
         const itemProfit = roundCurrency((item.price - itemCostPrice) * item.quantity);
         const itemCOGS = itemCostPrice * item.quantity;
 
-        profitsByCategory['عام'] = (profitsByCategory['عام'] || 0) + itemProfit;
+        const cat = item.category || 'عام';
+        profitsByCategory[cat] = (profitsByCategory[cat] || 0) + itemProfit;
         totalProfit += itemProfit;
         totalCOGS += itemCOGS;
 
@@ -572,7 +573,7 @@ export function CartPanel({
           unit: item.unit,
           costPrice: itemCostPrice,
           conversionFactor: item.conversionFactor,
-          category: 'عام',
+          category: cat,
         };
       });
 
