@@ -100,6 +100,7 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  category?: string;
   // Multi-unit support
   unit: 'piece' | 'bulk';
   bulkUnit?: string;
@@ -462,6 +463,7 @@ export default function POS() {
         name: product.name,
         price: priceForUnit,
         quantity: 1,
+        category: product.category,
         unit,
         bulkUnit: product.bulkUnit,
         smallUnit: product.smallUnit,

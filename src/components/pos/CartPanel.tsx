@@ -113,6 +113,7 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  category?: string;
   // Multi-unit support
   unit: 'piece' | 'bulk';
   bulkUnit?: string;
