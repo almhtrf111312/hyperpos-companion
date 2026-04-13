@@ -171,15 +171,32 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 
   const datePrefix = `${year}${month}${day}`;
 
-  const invoices = await loadInvoicesCloud();
+  try {
+    // Query DB directly for the highest sequence number today
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
+      .from('invoices')
+      .select('invoice_number')
+      .like('invoice_number', `${datePrefix}-%`)
+      .order('invoice_number', { ascending: false })
+      .limit(1);
 
-  // Filter invoices created today to sequence them
-  const todayInvoices = invoices.filter(inv =>
-    inv.id.startsWith(datePrefix)
-  );
-
-  const nextNumber = todayInvoices.length + 1;
-  return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+    let nextNumber = 1;
+    if (data && data.length > 0) {
+      const lastNum = data[0].invoice_number;
+      const parts = lastNum.split('-');
+      if (parts.length >= 2) {
+        nextNumber = (parseInt(parts[1], 10) || 0) + 1;
+      }
+    }
+    return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+  } catch {
+    // Fallback to cache-based approach
+    const invoices = await loadInvoicesCloud();
+    const todayInvoices = invoices.filter(inv => inv.id.startsWith(datePrefix));
+    const nextNumber = todayInvoices.length + 1;
+    return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
 };
 
 // Load invoices
@@ -252,11 +269,13 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
           .eq('invoice_id', cloud.id);
 
         invoice.items = (items || []).map((item: Record<string, unknown>) => ({
-          id: item.id as string,
+          id: (item.product_id as string) || (item.id as string),
           name: item.product_name as string,
           price: Number(item.unit_price) || 0,
           quantity: Number(item.quantity) || 1,
           total: Number(item.amount_original) || 0,
+          costPrice: Number(item.cost_price) || 0,
+          profit: Number(item.profit) || 0,
         }));
 
         return invoice;
@@ -323,13 +342,13 @@ export const addInvoiceCloud = async (
     time: now.toTimeString().split(' ')[0],
     customer_name: invoice.customerName,
     customer_phone: invoice.customerPhone || null,
-    subtotal: invoice.subtotal,
-    discount: invoice.discount,
+    subtotal: Math.round((invoice.subtotal || 0) * 100) / 100,
+    discount: Math.round((invoice.discount || 0) * 100) / 100,
     discount_percentage: invoice.discountPercentage || 0,
     tax_rate: invoice.taxRate || 0,
-    tax_amount: invoice.taxAmount || 0,
-    total: invoice.total,
-    profit: invoice.profit || 0,
+    tax_amount: Math.round((invoice.taxAmount || 0) * 100) / 100,
+    total: Math.round((invoice.total || 0) * 100) / 100,
+    profit: Math.round((invoice.profit || 0) * 100) / 100,
     currency: invoice.currency,
     exchange_rate: 1,
     payment_type: invoice.paymentType,
@@ -349,10 +368,10 @@ export const addInvoiceCloud = async (
         product_id: item.id || null,
         product_name: item.name,
         quantity: item.quantity,
-        unit_price: item.price,
-        cost_price: item.costPrice || 0,
-        amount_original: item.total,
-        profit: item.profit || 0,
+        unit_price: Math.round((item.price || 0) * 100) / 100,
+        cost_price: Math.round((item.costPrice || 0) * 100) / 100,
+        amount_original: Math.round((item.total || 0) * 100) / 100,
+        profit: Math.round((item.profit || 0) * 100) / 100,
       }));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

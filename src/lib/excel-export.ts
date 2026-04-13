@@ -244,20 +244,20 @@ export const exportInvoicesToExcel = async (
   ];
 
   const data = invoices.map(inv => ({
-    id: inv.id.substring(0, 8),
+    id: inv.id,
     date: formatDate(new Date(inv.createdAt)),
     customerName: inv.customerName || 'عميل نقدي',
-    total: inv.total,
-    discount: inv.discount || 0,
-    profit: inv.profit || 0,
+    total: Math.round(inv.total * 100) / 100,
+    discount: Math.round((inv.discount || 0) * 100) / 100,
+    profit: Math.round((inv.profit || 0) * 100) / 100,
     profitMargin: inv.total > 0 ? Math.round(((inv.profit || 0) / inv.total) * 100) : 0,
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
     cashierName: inv.cashierName || '-',
   }));
 
-  const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
-  const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
-  const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  const totalSales = Math.round(invoices.reduce((sum, inv) => sum + inv.total, 0) * 100) / 100;
+  const totalProfit = Math.round(invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0) * 100) / 100;
+  const totalDiscount = Math.round(invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0) * 100) / 100;
   const avgProfitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
 
   const totals: Record<string, number> = {
