@@ -171,15 +171,32 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 
   const datePrefix = `${year}${month}${day}`;
 
-  const invoices = await loadInvoicesCloud();
+  try {
+    // Query DB directly for the highest sequence number today
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
+      .from('invoices')
+      .select('invoice_number')
+      .like('invoice_number', `${datePrefix}-%`)
+      .order('invoice_number', { ascending: false })
+      .limit(1);
 
-  // Filter invoices created today to sequence them
-  const todayInvoices = invoices.filter(inv =>
-    inv.id.startsWith(datePrefix)
-  );
-
-  const nextNumber = todayInvoices.length + 1;
-  return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+    let nextNumber = 1;
+    if (data && data.length > 0) {
+      const lastNum = data[0].invoice_number;
+      const parts = lastNum.split('-');
+      if (parts.length >= 2) {
+        nextNumber = (parseInt(parts[1], 10) || 0) + 1;
+      }
+    }
+    return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+  } catch {
+    // Fallback to cache-based approach
+    const invoices = await loadInvoicesCloud();
+    const todayInvoices = invoices.filter(inv => inv.id.startsWith(datePrefix));
+    const nextNumber = todayInvoices.length + 1;
+    return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
 };
 
 // Load invoices
