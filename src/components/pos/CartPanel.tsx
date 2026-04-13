@@ -279,7 +279,7 @@ export function CartPanel({
   const total = taxMode === 'gross'
     ? taxableAmount // price already includes tax
     : taxableAmount + taxAmount;
-  const totalInCurrency = total * selectedCurrency.rate;
+  const totalInCurrency = roundCurrency(total * selectedCurrency.rate);
 
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
   const wholesaleCOGS = roundCurrency(cart.reduce((sum, item) => {
