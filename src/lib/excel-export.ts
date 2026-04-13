@@ -255,9 +255,9 @@ export const exportInvoicesToExcel = async (
     cashierName: inv.cashierName || '-',
   }));
 
-  const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
-  const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
-  const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  const totalSales = Math.round(invoices.reduce((sum, inv) => sum + inv.total, 0) * 100) / 100;
+  const totalProfit = Math.round(invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0) * 100) / 100;
+  const totalDiscount = Math.round(invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0) * 100) / 100;
   const avgProfitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
 
   const totals: Record<string, number> = {
