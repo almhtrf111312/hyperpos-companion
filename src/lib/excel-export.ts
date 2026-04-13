@@ -244,12 +244,12 @@ export const exportInvoicesToExcel = async (
   ];
 
   const data = invoices.map(inv => ({
-    id: inv.id.substring(0, 8),
+    id: inv.id,
     date: formatDate(new Date(inv.createdAt)),
     customerName: inv.customerName || 'عميل نقدي',
-    total: inv.total,
-    discount: inv.discount || 0,
-    profit: inv.profit || 0,
+    total: Math.round(inv.total * 100) / 100,
+    discount: Math.round((inv.discount || 0) * 100) / 100,
+    profit: Math.round((inv.profit || 0) * 100) / 100,
     profitMargin: inv.total > 0 ? Math.round(((inv.profit || 0) / inv.total) * 100) : 0,
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
     cashierName: inv.cashierName || '-',
