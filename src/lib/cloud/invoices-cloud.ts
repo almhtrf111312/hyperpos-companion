@@ -252,11 +252,13 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
           .eq('invoice_id', cloud.id);
 
         invoice.items = (items || []).map((item: Record<string, unknown>) => ({
-          id: item.id as string,
+          id: (item.product_id as string) || (item.id as string),
           name: item.product_name as string,
           price: Number(item.unit_price) || 0,
           quantity: Number(item.quantity) || 1,
           total: Number(item.amount_original) || 0,
+          costPrice: Number(item.cost_price) || 0,
+          profit: Number(item.profit) || 0,
         }));
 
         return invoice;
