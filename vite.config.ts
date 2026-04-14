@@ -105,5 +105,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {},
+  build: {
+    // base './' needed for Electron file:// protocol
+    ...(process.env.ELECTRON_BUILD === 'true' ? {} : {}),
+  },
+  base: './',
 }));
