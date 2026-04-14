@@ -87,6 +87,12 @@ export interface Invoice {
   cashierName?: string;
 }
 
+// Normalize customer name based on payment type
+function normalizeCustomerName(name: string | null | undefined, paymentType: PaymentType): string {
+  if (name && name.trim() && name.trim() !== 'عميل') return name.trim();
+  return paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي';
+}
+
 // Transform cloud to legacy
 function toInvoice(cloud: CloudInvoice): Invoice {
   const subtotal = Number(cloud.subtotal) || 0;
@@ -102,7 +108,7 @@ function toInvoice(cloud: CloudInvoice): Invoice {
   return {
     id: cloud.invoice_number || cloud.id,
     type: (cloud.invoice_type as InvoiceType) || 'sale',
-    customerName: cloud.customer_name || 'عميل',
+    customerName: normalizeCustomerName(cloud.customer_name, cloud.payment_type as PaymentType),
     customerPhone: cloud.customer_phone || undefined,
     items: [], // Items loaded separately
     subtotal,
@@ -117,6 +123,8 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     profit: Number(cloud.profit) || 0,
     debtPaid: Number(cloud.debt_paid) || 0,
     debtRemaining: Number(cloud.debt_remaining) || 0,
+    serviceDescription: cloud.notes || undefined,
+    partsCost: (cloud.invoice_type === 'maintenance') ? Math.max(0, (Number(cloud.total) || 0) - (Number(cloud.profit) || 0)) : undefined,
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
     cashierId: cloud.cashier_id || undefined,

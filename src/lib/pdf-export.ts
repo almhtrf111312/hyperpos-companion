@@ -415,7 +415,7 @@ export const exportInvoicesToPDF = async (
   const data = invoices.map(inv => ({
     id: inv.id.substring(0, 8).toUpperCase(),
     date: formatInvoiceDate(inv.createdAt),
-    customerName: inv.customerName || 'عميل نقدي',
+    customerName: (inv.customerName && inv.customerName.trim() && inv.customerName.trim() !== 'عميل') ? inv.customerName.trim() : (inv.paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي'),
     total: inv.total,
     discount: inv.discount || 0,
     profit: inv.profit || 0,
