@@ -54,6 +54,12 @@ const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
   return { name: 'FlowPOS Pro' };
 };
 
+// Normalize customer name for exports
+const normalizeExportCustomerName = (name: string | undefined, paymentType: string): string => {
+  if (name && name.trim() && name.trim() !== 'عميل') return name.trim();
+  return paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي';
+};
+
 // Generate workbook buffer as base64
 const workbookToBase64 = async (wb: ExcelJS.Workbook): Promise<string> => {
   const buffer = await wb.xlsx.writeBuffer();
