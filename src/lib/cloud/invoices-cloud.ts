@@ -87,6 +87,12 @@ export interface Invoice {
   cashierName?: string;
 }
 
+// Normalize customer name based on payment type
+function normalizeCustomerName(name: string | null | undefined, paymentType: PaymentType): string {
+  if (name && name.trim() && name.trim() !== 'عميل') return name.trim();
+  return paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي';
+}
+
 // Transform cloud to legacy
 function toInvoice(cloud: CloudInvoice): Invoice {
   const subtotal = Number(cloud.subtotal) || 0;
