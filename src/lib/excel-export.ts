@@ -246,7 +246,7 @@ export const exportInvoicesToExcel = async (
   const data = invoices.map(inv => ({
     id: inv.id,
     date: formatDate(new Date(inv.createdAt)),
-    customerName: inv.customerName || 'عميل نقدي',
+    customerName: normalizeExportCustomerName(inv.customerName, inv.paymentType),
     total: Math.round(inv.total * 100) / 100,
     discount: Math.round((inv.discount || 0) * 100) / 100,
     profit: Math.round((inv.profit || 0) * 100) / 100,

@@ -249,7 +249,12 @@ export default function Invoices() {
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
           </tr>
         `).join('')
-      : `<tr><td colspan="3" style="padding: 10px;">${invoice.serviceDescription || t('invoices.maintenanceService')}</td></tr>`;
+      : `<tr><td colspan="3" style="padding: 10px;">
+          <div style="margin-bottom: 5px;"><strong>وصف الخدمة:</strong> ${invoice.serviceDescription || 'صيانة'}</div>
+          ${invoice.partsCost ? `<div style="margin-bottom: 5px;"><strong>تكلفة القطع:</strong> ${formatCurrency(invoice.partsCost)}</div>` : ''}
+          <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(invoice.total)}</div>
+          ${invoice.profit ? `<div style="color: green;"><strong>صافي الربح:</strong> ${formatCurrency(invoice.profit)}</div>` : ''}
+        </td></tr>`;
 
     const printContent = `
       <!DOCTYPE html>
@@ -801,16 +806,37 @@ export default function Invoices() {
                 </div>
               </div>
 
-              {selectedInvoice.type === 'maintenance' && selectedInvoice.serviceDescription && (
-                <div className="bg-muted rounded-lg p-3">
-                  <span className="text-sm text-muted-foreground">{t('invoices.service')}:</span>
-                  <p className="font-medium">{selectedInvoice.serviceDescription}</p>
+              {selectedInvoice.type === 'maintenance' && (
+                <div className="bg-muted rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-semibold text-muted-foreground">تفاصيل الصيانة:</p>
+                  {selectedInvoice.serviceDescription && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">الوصف / نوع العطل:</span>
+                      <span className="font-medium text-right max-w-[60%]">{selectedInvoice.serviceDescription}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">المبلغ المقبوض:</span>
+                    <span className="font-medium">{formatCurrency(selectedInvoice.total)}</span>
+                  </div>
+                  {selectedInvoice.partsCost !== undefined && selectedInvoice.partsCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">تكلفة القطع علينا:</span>
+                      <span className="font-medium text-destructive">{formatCurrency(selectedInvoice.partsCost)}</span>
+                    </div>
+                  )}
+                  {selectedInvoice.profit !== undefined && selectedInvoice.profit > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">صافي الربح:</span>
+                      <span className="font-medium text-success">{formatCurrency(selectedInvoice.profit)}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {selectedInvoice.type === 'sale' && selectedInvoice.items.length > 0 && (
+              {selectedInvoice.items.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">{t('invoices.products')}:</span>
+                  <span className="text-sm text-muted-foreground">{selectedInvoice.type === 'sale' ? t('invoices.products') : 'عناصر الفاتورة'}:</span>
                   <div className="border rounded-lg overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50">
