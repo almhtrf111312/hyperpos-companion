@@ -1,6 +1,4 @@
-import { Capacitor } from '@capacitor/core';
-import { NativeMLKitScanner } from './barcode/NativeMLKitScanner';
-import { WebBarcodeScanner } from './barcode/WebBarcodeScanner';
+import { OfflineBarcodeScanner } from './barcode/OfflineBarcodeScanner';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -10,13 +8,8 @@ interface BarcodeScannerProps {
 
 /**
  * BarcodeScanner – Unified entry point.
- * On native (APK): uses NativeMLKitScanner (Google ML Kit).
- * On web: uses WebBarcodeScanner (BarcodeDetector API).
+ * Uses a single in-app scanner path on all platforms for consistency.
  */
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
-  if (Capacitor.isNativePlatform()) {
-    return <NativeMLKitScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
-  }
-
-  return <WebBarcodeScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
+  return <OfflineBarcodeScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
 }
