@@ -121,6 +121,7 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState(t('products.all'));
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
   const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
 
@@ -666,9 +667,10 @@ export default function Products() {
       const matchesUnit = unitFilter === 'all' ||
         (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
         (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
-      return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
+      const matchesDate = !dateFilter || product.createdAt.startsWith(dateFilter);
+      return matchesSearch && matchesCategory && matchesStatus && matchesUnit && matchesDate;
     });
-  }, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter]);
+  }, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter, dateFilter]);
 
   const stats = {
     total: products.length,
@@ -1165,6 +1167,25 @@ export default function Products() {
               <Boxes className="w-3.5 h-3.5" />
               متعدد الوحدات ({stats.multiUnit})
             </button>
+            <div className="h-6 w-px bg-border mx-1 self-center" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <DatePicker
+                value={dateFilter}
+                onChange={setDateFilter}
+                placeholder={t('products.dateLabel')}
+                className="min-w-[160px]"
+              />
+              {dateFilter && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10"
+                  onClick={() => setDateFilter('')}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
