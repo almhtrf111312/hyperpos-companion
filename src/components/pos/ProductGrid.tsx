@@ -75,6 +75,7 @@ export function ProductGrid({
   const handleBarcodeScan = (barcode: string) => {
     // ✅ Don't call setScannerOpen(false) here — onClose callback handles it
     onSearchChange(barcode);
+    onBarcodeScan?.(barcode);
     toast.success(`${t('pos.barcode')}: ${barcode}`);
     try { localStorage.removeItem('hyperpos_pending_scan'); } catch {}
   };
