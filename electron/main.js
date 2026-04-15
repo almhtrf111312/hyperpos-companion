@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, protocol } = require('electron');
+const { app, BrowserWindow, Menu, shell, protocol, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
@@ -211,6 +211,14 @@ function createWindow() {
 
 // Register custom protocol handler for SPA
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media' || permission === 'camera' || permission === 'microphone') {
+      callback(true);
+      return;
+    }
+    callback(false);
+  });
+
   // Handle file:// protocol for SPA routing
   protocol.interceptFileProtocol('file', (request, callback) => {
     let filePath = request.url.replace('file:///', '').replace('file://', '');

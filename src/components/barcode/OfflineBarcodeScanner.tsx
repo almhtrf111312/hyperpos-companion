@@ -8,6 +8,7 @@
  * concurrent camera initializations (the "double-open" bug).
  */
 import { useEffect, useRef, useState } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/library';
 import { Camera, ScanLine, X, RotateCcw, Flashlight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
@@ -30,6 +31,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<number | null>(null);
   const detectorRef = useRef<any>(null);
+  const zxingReaderRef = useRef<any>(null);
   const detectingRef = useRef(false);
   const scannedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -59,6 +61,14 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    if (zxingReaderRef.current?.reset) {
+      try {
+        zxingReaderRef.current.reset();
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+    zxingReaderRef.current = null;
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.srcObject = null;
@@ -138,81 +148,96 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
       }
 
       const BarcodeDetectorClass = (window as any).BarcodeDetector;
-      if (!BarcodeDetectorClass) {
-        throw new Error('BARCODE_DETECTOR_NOT_SUPPORTED');
-      }
-
-      let supportedFormats = SUPPORTED_FORMATS;
-      try {
-        const available = await BarcodeDetectorClass.getSupportedFormats();
-        supportedFormats = SUPPORTED_FORMATS.filter(f => available.includes(f));
-      } catch { }
-
-      if (supportedFormats.length === 0) {
-        throw new Error('NO_SUPPORTED_FORMATS');
-      }
-
-      detectorRef.current = new BarcodeDetectorClass({ formats: supportedFormats });
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-
-      // Check if component was closed while we were awaiting
-      if (!mountedRef.current || !isStartingRef.current) {
-        stream.getTracks().forEach(t => t.stop());
-        return;
-      }
-
-      streamRef.current = stream;
-
-      // Check torch support
-      try {
-        const track = stream.getVideoTracks()[0];
-        const caps = track.getCapabilities?.() as any;
-        if (caps?.torch) setHasTorch(true);
-      } catch { }
-
       if (!videoRef.current) {
         throw new Error('VIDEO_ELEMENT_MISSING');
       }
 
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-
-      cameraActiveRef.current = true;
-
-      // Start detection loop
-      intervalRef.current = window.setInterval(async () => {
-        if (detectingRef.current || !detectorRef.current || !videoRef.current || scannedRef.current) return;
-        if (videoRef.current.readyState < 2) return;
-
-        detectingRef.current = true;
+      if (BarcodeDetectorClass) {
+        let supportedFormats = SUPPORTED_FORMATS;
         try {
-          const detected = await detectorRef.current.detect(videoRef.current);
-          if (detected?.length > 0) {
-            const rawValue = detected[0]?.rawValue;
-            if (rawValue && rawValue.trim()) {
-              handleDetected(rawValue.trim());
-            }
-          }
-        } catch {
-          // Silently ignore detection errors
-        } finally {
-          detectingRef.current = false;
+          const available = await BarcodeDetectorClass.getSupportedFormats();
+          supportedFormats = SUPPORTED_FORMATS.filter(f => available.includes(f));
+        } catch { }
+
+        if (supportedFormats.length === 0) {
+          throw new Error('NO_SUPPORTED_FORMATS');
         }
-      }, 150);
+
+        detectorRef.current = new BarcodeDetectorClass({ formats: supportedFormats });
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+
+        if (!mountedRef.current || !isStartingRef.current) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+
+        try {
+          const track = stream.getVideoTracks()[0];
+          const caps = track.getCapabilities?.() as any;
+          if (caps?.torch) setHasTorch(true);
+        } catch { }
+
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        cameraActiveRef.current = true;
+
+        intervalRef.current = window.setInterval(async () => {
+          if (detectingRef.current || !detectorRef.current || !videoRef.current || scannedRef.current) return;
+          if (videoRef.current.readyState < 2) return;
+
+          detectingRef.current = true;
+          try {
+            const detected = await detectorRef.current.detect(videoRef.current);
+            if (detected?.length > 0) {
+              const rawValue = detected[0]?.rawValue;
+              if (rawValue && rawValue.trim()) {
+                handleDetected(rawValue.trim());
+              }
+            }
+          } catch {
+            // Silently ignore detection errors
+          } finally {
+            detectingRef.current = false;
+          }
+        }, 150);
+      } else {
+        const reader = new BrowserMultiFormatReader();
+        zxingReaderRef.current = reader;
+
+        let preferredDeviceId: string | undefined;
+        try {
+          const devices = await reader.listVideoInputDevices();
+          preferredDeviceId = devices.length > 0 ? devices[devices.length - 1].deviceId : undefined;
+        } catch {
+          preferredDeviceId = undefined;
+        }
+
+        await reader.decodeFromVideoDevice(preferredDeviceId, videoRef.current, (result: any) => {
+          if (scannedRef.current) return;
+          const rawValue = result?.getText?.() || result?.text || result?.textContent;
+          if (rawValue && String(rawValue).trim()) {
+            handleDetected(String(rawValue).trim());
+          }
+        });
+
+        cameraActiveRef.current = true;
+      }
 
     } catch (error: any) {
       console.warn('[Offline Scanner] start failed:', error);
 
       if (error?.message === 'BARCODE_DETECTOR_NOT_SUPPORTED' || error?.message === 'NO_SUPPORTED_FORMATS') {
-        setErrorMessage('هذا الجهاز لا يدعم قارئ الباركود المدمج. جرب تحديث نظام WebView أو استخدم نسخة أحدث.');
+        setErrorMessage('تعذر تهيئة قارئ الباركود على هذا الجهاز. حاول مرة أخرى.');
       } else if (error?.name === 'NotAllowedError') {
         setErrorMessage('تم رفض إذن الكاميرا. اسمح بالإذن من الإعدادات ثم أعد المحاولة.');
       } else if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') {
