@@ -204,25 +204,25 @@ export function ProductGrid({
       <div className="flex-1 p-3 md:p-4 overflow-y-auto pb-28">
         {/* Grid View */}
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2.5">
             {filteredProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in p-2.5 md:p-4"
+                className="pos-item text-right fade-in p-2 md:p-3"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 md:mb-3 overflow-hidden">
+                <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 overflow-hidden">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
                     className="w-full h-full"
-                    iconClassName="w-8 h-8 md:w-12 md:h-12"
+                    iconClassName="w-7 h-7 md:w-10 md:h-10"
                   />
                 </div>
-                <h3 className="font-semibold text-foreground text-xs md:text-sm line-clamp-2 mb-1">{product.name}</h3>
-                <p className="text-primary font-bold text-sm md:text-base">${product.price}</p>
-                <div className="mt-0.5 md:mt-1">
+                <h3 className="font-semibold text-foreground text-[10px] md:text-sm line-clamp-2 mb-1">{product.name}</h3>
+                <p className="text-primary font-bold text-[11px] md:text-sm">${product.price}</p>
+                <div className="mt-0.5">
                   <DualUnitDisplayCompact
                     totalPieces={product.quantity}
                     conversionFactor={product.conversionFactor || 1}
