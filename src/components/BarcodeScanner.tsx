@@ -1,4 +1,7 @@
+import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { OfflineBarcodeScanner } from './barcode/OfflineBarcodeScanner';
+import { NativeMLKitScanner } from './barcode/NativeMLKitScanner';
 
 interface BarcodeScannerProps {
   isOpen: boolean;
@@ -8,8 +11,22 @@ interface BarcodeScannerProps {
 
 /**
  * BarcodeScanner – Unified entry point.
- * Uses a single in-app scanner path on all platforms for consistency.
+ * Uses native ML Kit scanner on Capacitor apps, otherwise falls back to offline web scanner.
  */
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
+  const isNative = Capacitor.isNativePlatform();
+  const [forceWebScanner, setForceWebScanner] = useState(false);
+
+  if (isNative && !forceWebScanner) {
+    return (
+      <NativeMLKitScanner
+        isOpen={isOpen}
+        onClose={onClose}
+        onScan={onScan}
+        onFallback={() => setForceWebScanner(true)}
+      />
+    );
+  }
+
   return <OfflineBarcodeScanner isOpen={isOpen} onClose={onClose} onScan={onScan} />;
 }

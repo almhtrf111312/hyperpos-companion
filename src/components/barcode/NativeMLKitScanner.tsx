@@ -32,7 +32,7 @@ function setScannerTransparency(active: boolean) {
   document.getElementById('root')?.classList.toggle('barcode-scanner-active', active);
 }
 
-export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScannerProps) {
+export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
   const scanningRef = useRef(false);
   const mountedRef = useRef(true);
   const lastScannedRef = useRef<string>('');
@@ -44,8 +44,10 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
   // Store callbacks in refs to avoid effect re-triggers
   const onScanRef = useRef(onScan);
   const onCloseRef = useRef(onClose);
+  const onFallbackRef = useRef<(() => void) | undefined>(onFallback);
   onScanRef.current = onScan;
   onCloseRef.current = onClose;
+  onFallbackRef.current = onFallback;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -129,6 +131,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan }: NativeMLKitScann
         await cleanup();
         if (mountedRef.current && !cancelled) {
           setIsStarting(false);
+          onFallbackRef.current?.();
           onCloseRef.current();
         }
       }
