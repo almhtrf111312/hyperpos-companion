@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
@@ -74,6 +75,7 @@ export default function Invoices() {
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | InvoiceType>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
@@ -120,7 +122,8 @@ export default function Invoices() {
       result = result.filter(inv =>
         inv.customerName.toLowerCase().includes(query) ||
         inv.id.toLowerCase().includes(query) ||
-        inv.serviceDescription?.toLowerCase().includes(query)
+        inv.serviceDescription?.toLowerCase().includes(query) ||
+        inv.items?.some(item => item.name.toLowerCase().includes(query))
       );
     }
 
@@ -132,8 +135,12 @@ export default function Invoices() {
       result = result.filter(inv => inv.paymentType === filterPayment);
     }
 
+    if (dateFilter) {
+      result = result.filter(inv => inv.createdAt.startsWith(dateFilter));
+    }
+
     return result;
-  }, [invoices, debouncedSearch, filterType, filterPayment]);
+  }, [invoices, debouncedSearch, filterType, filterPayment, dateFilter]);
 
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -605,6 +612,24 @@ export default function Invoices() {
             <SelectItem value="debt">{t('invoices.credit')}</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2 flex-shrink-0 sm:w-40">
+          <DatePicker
+            value={dateFilter}
+            onChange={setDateFilter}
+            placeholder="التاريخ"
+            className="w-full"
+          />
+          {dateFilter && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 flex-shrink-0"
+              onClick={() => setDateFilter('')}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Invoices List */}

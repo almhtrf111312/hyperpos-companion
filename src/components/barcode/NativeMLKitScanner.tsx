@@ -94,7 +94,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
 
         if (mountedRef.current) setIsStarting(false);
 
-        const result = await BarcodeScanner.startScan({ targetedFormats: SCAN_FORMATS });
+        // startScan without targetedFormats allows all formats supported by the library
+        const result = await BarcodeScanner.startScan();
 
         if (cancelled) {
           await cleanup();

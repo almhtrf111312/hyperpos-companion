@@ -1109,6 +1109,24 @@ export default function Products() {
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             )}
+            <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+              <DatePicker
+                value={dateFilter}
+                onChange={setDateFilter}
+                placeholder={t('products.dateLabel')}
+                className="w-[140px]"
+              />
+              {dateFilter && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 flex-shrink-0"
+                  onClick={() => setDateFilter('')}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
             {/* View Mode Buttons */}
             <div className="flex bg-muted rounded-lg p-0.5 lg:hidden">
               <Button
@@ -1137,6 +1155,26 @@ export default function Products() {
               </Button>
             </div>
           </div>
+          
+          <div className="flex items-center gap-2 md:hidden">
+            <DatePicker
+              value={dateFilter}
+              onChange={setDateFilter}
+              placeholder={t('products.dateLabel')}
+              className="flex-1"
+            />
+            {dateFilter && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 flex-shrink-0"
+                onClick={() => setDateFilter('')}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {categories.map((category) => (
               <button
@@ -1167,25 +1205,6 @@ export default function Products() {
               <Boxes className="w-3.5 h-3.5" />
               متعدد الوحدات ({stats.multiUnit})
             </button>
-            <div className="h-6 w-px bg-border mx-1 self-center" />
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <DatePicker
-                value={dateFilter}
-                onChange={setDateFilter}
-                placeholder={t('products.dateLabel')}
-                className="min-w-[160px]"
-              />
-              {dateFilter && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => setDateFilter('')}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </div>

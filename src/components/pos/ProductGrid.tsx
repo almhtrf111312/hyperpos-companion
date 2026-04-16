@@ -125,9 +125,9 @@ export function ProductGrid({
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Search, View Toggle, and Categories */}
       <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md space-y-3 md:space-y-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {/* View Mode Buttons - moved to left */}
-          <div className="flex border border-border rounded-2xl overflow-hidden flex-shrink-0 bg-muted/70 p-1 shadow-sm">
+          <div className="flex border border-border rounded-2xl overflow-hidden flex-shrink-0 bg-muted/70 p-1 shadow-sm h-11 md:h-12 items-center">
             <button
               onClick={() => setViewMode('grid')}
               className={cn(
@@ -160,8 +160,8 @@ export function ProductGrid({
             </button>
           </div>
 
-          <div className="flex-1 relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+          <div className="flex-1 relative flex items-center">
+            <Search className="absolute right-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             <Input
               type="text"
               placeholder={tDynamic('productSearch')}
@@ -205,25 +205,25 @@ export function ProductGrid({
       <div className="flex-1 p-3 md:p-4 overflow-y-auto pb-28">
         {/* Grid View */}
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-2">
             {filteredProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in p-2 md:p-3"
+                className="pos-item text-right fade-in p-1.5 md:p-2"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-2 overflow-hidden">
+                <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-1.5 overflow-hidden">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
                     className="w-full h-full"
-                    iconClassName="w-7 h-7 md:w-10 md:h-10"
+                    iconClassName="w-6 h-6 md:w-8 md:h-8"
                   />
                 </div>
-                <h3 className="font-semibold text-foreground text-[10px] md:text-sm line-clamp-2 mb-1">{product.name}</h3>
-                <p className="text-primary font-bold text-[11px] md:text-sm">${product.price}</p>
-                <div className="mt-0.5">
+                <h3 className="font-semibold text-foreground text-[9px] sm:text-[10px] md:text-xs line-clamp-2 mb-0.5 leading-tight">{product.name}</h3>
+                <p className="text-primary font-bold text-[10px] sm:text-[11px] md:text-sm">${product.price}</p>
+                <div className="mt-0.5 scale-90 origin-right">
                   <DualUnitDisplayCompact
                     totalPieces={product.quantity}
                     conversionFactor={product.conversionFactor || 1}
