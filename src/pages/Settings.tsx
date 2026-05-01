@@ -1908,7 +1908,7 @@ export default function Settings() {
   const isAdmin = users.find(u => u.user_id === currentUser?.id)?.role === 'admin';
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 overflow-x-hidden max-w-full">
       {/* Header */}
       <div className="flex items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
@@ -1918,7 +1918,7 @@ export default function Settings() {
       </div>
 
       {/* Tabs Grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-full">
         {settingsTabs
           .filter(tab => {
             if (isBoss) return true;
@@ -1930,7 +1930,7 @@ export default function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[80px]",
+                "flex flex-col items-center justify-center gap-1 p-2 md:p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[88px] overflow-hidden min-w-0",
                 (tab as any).danger
                   ? activeTab === tab.id
                     ? "border-red-600 bg-red-600 shadow-lg scale-[1.02]"
@@ -1941,7 +1941,7 @@ export default function Settings() {
               )}
             >
               <div className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
+                "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
                 (tab as any).danger
                   ? activeTab === tab.id
                     ? "bg-white/20 text-white"
@@ -1950,23 +1950,26 @@ export default function Settings() {
                     ? "bg-white/20 text-white"
                     : "bg-muted text-muted-foreground"
               )}>
-                <tab.icon className="w-5 h-5" />
+                <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <span className={cn(
-                "font-medium text-[11px] text-center leading-tight w-full break-words",
-                (tab as any).danger
-                  ? activeTab === tab.id ? "text-white" : "text-red-700"
-                  : activeTab === tab.id ? "text-white" : "text-foreground"
-              )}>
+              <span
+                className={cn(
+                  "font-medium text-[10px] md:text-[11px] text-center leading-[1.2] w-full",
+                  (tab as any).danger
+                    ? activeTab === tab.id ? "text-white" : "text-red-700"
+                    : activeTab === tab.id ? "text-white" : "text-foreground"
+                )}
+                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', hyphens: 'auto' }}
+              >
                 {tab.label}
               </span>
-              {/* Tooltip on hover */}
+              {/* Tooltip on hover - desktop only */}
               {(t(`tooltip.settings.${tab.id}` as any) !== `tooltip.settings.${tab.id}`) && (
                 <div className={cn(
                   "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
                   "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
                   "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
-                  "border border-border min-w-[160px] max-w-[220px] pointer-events-none"
+                  "border border-border min-w-[160px] max-w-[220px] pointer-events-none hidden md:block"
                 )}>
                   <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
                     {t(`tooltip.settings.${tab.id}` as any)}
@@ -1978,7 +1981,7 @@ export default function Settings() {
       </div>
 
       {/* Content */}
-      <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+      <div className="bg-card rounded-2xl border border-border p-4 md:p-6 overflow-hidden max-w-full">
         {renderTabContent()}
       </div>
 
