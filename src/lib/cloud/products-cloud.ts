@@ -75,6 +75,8 @@ export interface Product {
   bulkCostPrice?: number;
   bulkSalePrice?: number;
   trackByUnit?: 'piece' | 'bulk';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Transform cloud product to legacy format
@@ -123,6 +125,8 @@ function toProduct(cloud: CloudProduct): Product {
     bulkCostPrice: Number((cloud as any).bulk_cost_price) || 0,
     bulkSalePrice: Number((cloud as any).bulk_sale_price) || 0,
     trackByUnit: (cloud as any).track_by_unit || 'piece',
+    createdAt: cloud.created_at || undefined,
+    updatedAt: (cloud as any).updated_at || undefined,
   };
 }
 

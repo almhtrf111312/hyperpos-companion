@@ -667,7 +667,7 @@ export default function Products() {
       const matchesUnit = unitFilter === 'all' ||
         (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
         (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
-      const matchesDate = !dateFilter || product.createdAt.startsWith(dateFilter);
+      const matchesDate = !dateFilter || (product.createdAt?.startsWith(dateFilter) ?? false);
       return matchesSearch && matchesCategory && matchesStatus && matchesUnit && matchesDate;
     });
   }, [products, debouncedSearch, selectedCategory, statusFilter, unitFilter, dateFilter]);
