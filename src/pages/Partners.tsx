@@ -746,8 +746,34 @@ export default function Partners() {
               )}
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
+            {/* Expense Section */}
+            <div className="p-4 bg-muted/40 border border-border/40 rounded-xl space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('partners.expenseSharingDesc')}</p>
+                </div>
+                <Switch
+                  checked={formData.sharesExpenses}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
+                />
+              </div>
+
+              {formData.sharesExpenses && (
+                <div className="ps-3 border-s-2 border-primary/30">
+                  <label className="text-sm font-medium mb-1.5 block">{t('partners.expenseShareDesc')} (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={formData.expenseSharePercentage || ''}
+                    onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
+                  />
+                </div>
+              )}
+            </div>
+
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddPartner}>
