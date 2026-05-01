@@ -774,6 +774,8 @@ export default function Partners() {
               )}
             </div>
 
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddPartner}>
