@@ -37,7 +37,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       )}
 
       {/* Main content - margin based on RTL/LTR */}
-      <main className={`min-h-screen transition-all duration-300 pt-4 ${
+      <main className={`min-h-screen overflow-x-hidden transition-all duration-300 pt-4 ${
         isRTL 
           ? (isMobile ? 'mr-0' : isTablet ? 'mr-[calc(72px+16px)]' : 'mr-[calc(14rem+16px)]') 
           : (isMobile ? 'ml-0' : isTablet ? 'ml-[calc(72px+16px)]' : 'ml-[calc(14rem+16px)]')
