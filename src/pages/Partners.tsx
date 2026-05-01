@@ -691,46 +691,18 @@ export default function Partners() {
               />
             </div>
 
-            {/* Access Type */}
-            <div className="p-4 bg-muted rounded-xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
+            {/* Profit Section */}
+            <div className="p-4 bg-muted/40 border border-border/40 rounded-xl space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{t('partners.accessFullStore')}</p>
-                  <p className="text-sm text-muted-foreground">{t('partners.uniformPercentage')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('partners.uniformPercentage')}</p>
                 </div>
                 <Switch
                   checked={formData.accessAll}
                   onCheckedChange={handleAccessAllChange}
                 />
               </div>
-
-              {/* Shares Expenses */}
-              <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                <div>
-                  <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
-                  <p className="text-sm text-muted-foreground">{t('partners.expenseSharingDesc')}</p>
-                </div>
-                <Switch
-                  checked={formData.sharesExpenses}
-                  onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
-                />
-              </div>
-
-              {/* Expense Share Percentage */}
-              {formData.sharesExpenses && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('partners.expenseSharePercentage')}</label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    value={formData.expenseSharePercentage || ''}
-                    onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{t('partners.expenseShareDesc')}</p>
-                </div>
-              )}
 
               {formData.accessAll ? (
                 <div>
@@ -819,46 +791,18 @@ export default function Partners() {
               />
             </div>
 
-            {/* Access Type */}
-            <div className="p-4 bg-muted rounded-xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
+            {/* Profit Section */}
+            <div className="p-4 bg-muted/40 border border-border/40 rounded-xl space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{t('partners.accessFullStore')}</p>
-                  <p className="text-sm text-muted-foreground">{t('partners.uniformPercentage')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('partners.uniformPercentage')}</p>
                 </div>
                 <Switch
                   checked={formData.accessAll}
                   onCheckedChange={handleAccessAllChange}
                 />
               </div>
-
-              {/* Shares Expenses */}
-              <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                <div>
-                  <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
-                  <p className="text-sm text-muted-foreground">{t('partners.expenseSharingDesc')}</p>
-                </div>
-                <Switch
-                  checked={formData.sharesExpenses}
-                  onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
-                />
-              </div>
-
-              {/* Expense Share Percentage */}
-              {formData.sharesExpenses && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('partners.expenseSharePercentage')}</label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    value={formData.expenseSharePercentage || ''}
-                    onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{t('partners.expenseShareDesc')}</p>
-                </div>
-              )}
 
               {formData.accessAll ? (
                 <div>
@@ -898,6 +842,34 @@ export default function Partners() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* Expense Section */}
+            <div className="p-4 bg-muted/40 border border-border/40 rounded-xl space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">{t('partners.expenseSharing')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('partners.expenseSharingDesc')}</p>
+                </div>
+                <Switch
+                  checked={formData.sharesExpenses}
+                  onCheckedChange={(checked) => setFormData({ ...formData, sharesExpenses: checked })}
+                />
+              </div>
+
+              {formData.sharesExpenses && (
+                <div className="ps-3 border-s-2 border-primary/30">
+                  <label className="text-sm font-medium mb-1.5 block">{t('partners.expenseShareDesc')} (%)</label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={formData.expenseSharePercentage || ''}
+                    onChange={(e) => setFormData({ ...formData, expenseSharePercentage: Number(e.target.value) })}
+                  />
                 </div>
               )}
             </div>
