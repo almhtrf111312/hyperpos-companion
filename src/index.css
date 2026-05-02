@@ -1701,3 +1701,8 @@ html.barcode-scanner-active #root {
     overflow-x: hidden;
   }
 }
+/* Global: prevent horizontal scroll on entire app */
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}

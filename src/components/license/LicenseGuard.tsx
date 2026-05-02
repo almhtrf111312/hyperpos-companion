@@ -169,11 +169,6 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
           <Button variant="outline" onClick={() => { setLoadingTimeout(false); checkLicense(); }}>
             {t('license.retry')}
           </Button>
-          {showSkipButton && (
-            <Button variant="default" size="sm" onClick={() => setSkipLoading(true)}>
-              {t('license.skipAndEnter')}
-            </Button>
-          )}
           <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
             {t('license.reloadApp')}
           </Button>

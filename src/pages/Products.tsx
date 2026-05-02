@@ -944,32 +944,32 @@ export default function Products() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-3 pt-6 md:p-6 pb-2 md:pb-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-6 md:ltr:pl-6">
+      <div className="flex-shrink-0 p-3 pt-6 md:p-6 pb-2 md:pb-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-6 md:ltr:pl-6 overflow-x-hidden max-w-full">
         {/* Show restoring indicator if needed? Maybe just toasts are enough */}
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0 w-full">
+          <div className="min-w-0">
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{tDynamic('pageTitle')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{tDynamic('pageSubtitle')}</p>
           </div>
           {/* Mobile: Grid layout for buttons */}
-          <div className="sm:hidden flex flex-col gap-2">
-            <div className="flex gap-2">
+          <div className="sm:hidden flex flex-col gap-2 w-full min-w-0">
+            <div className="flex gap-2 w-full min-w-0">
               {!noInventory && (
-                <Button variant="outline" className="flex-1 h-10 text-xs" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                  <FileText className="w-4 h-4 ml-1" />
-                  {t('purchaseInvoice.addPurchaseInvoice')}
+                <Button variant="outline" className="flex-1 min-w-0 h-10 text-[11px] px-2 truncate" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                  <FileText className="w-4 h-4 ml-1 flex-shrink-0" />
+                  <span className="truncate">{t('purchaseInvoice.addPurchaseInvoice')}</span>
                 </Button>
               )}
               {canAddProducts && (
-                <Button className="flex-1 h-10 text-xs bg-primary hover:bg-primary/90" onClick={() => {
+                <Button className="flex-1 min-w-0 h-10 text-[11px] px-2 bg-primary hover:bg-primary/90 truncate" onClick={() => {
                   setFieldsConfig(getEffectiveFieldsConfig());
                   setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                   setImagePreviewBase64('');
                   setShowAddDialog(true);
                 }}>
-                  <Plus className="w-4 h-4 ml-1" />
-                  {tDynamic('addProduct')}
+                  <Plus className="w-4 h-4 ml-1 flex-shrink-0" />
+                  <span className="truncate">{tDynamic('addProduct')}</span>
                 </Button>
               )}
             </div>
