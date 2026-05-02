@@ -1110,16 +1110,16 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
-            <TabsTrigger value="users" className="text-xs md:text-sm py-2 gap-1">
+          <TabsList className="grid w-full grid-cols-4 h-auto gap-1 !whitespace-normal">
+            <TabsTrigger value="users" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words">
               <Users className="w-3.5 h-3.5 hidden md:inline" />
               المستخدمين
             </TabsTrigger>
-            <TabsTrigger value="codes" className="text-xs md:text-sm py-2 gap-1">
+            <TabsTrigger value="codes" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words">
               <Key className="w-3.5 h-3.5 hidden md:inline" />
               أكواد التفعيل
             </TabsTrigger>
-            <TabsTrigger value="issues" className="text-xs md:text-sm py-2 gap-1 relative">
+            <TabsTrigger value="issues" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words relative">
               <AlertTriangle className="w-3.5 h-3.5 hidden md:inline" />
               مشاكل التراخيص
               {licenseIssueOwners.length > 0 && (
@@ -1128,7 +1128,7 @@ export default function BossPanel() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="system" className="text-xs md:text-sm py-2 gap-1">
+            <TabsTrigger value="system" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words">
               <Wrench className="w-3.5 h-3.5 hidden md:inline" />
               النظام
             </TabsTrigger>
