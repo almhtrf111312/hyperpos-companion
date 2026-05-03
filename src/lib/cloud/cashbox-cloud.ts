@@ -6,7 +6,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserId, setCurrentUserId } from '../supabase-store';
-import { addToSyncQueue } from '../sync-queue';
+import { addToQueue } from '../sync-queue';
 import { roundCurrency } from '../utils';
 
 export type ShiftTxType =
@@ -74,7 +74,7 @@ export const openShiftCloud = async (params: {
     return data?.id || null;
   } catch (e) {
     console.warn('[cashbox-cloud] open shift failed, queued:', e);
-    try { addToSyncQueue('shift_open', payload); } catch { /* noop */ }
+    try { addToQueue('shift_open', payload); } catch { /* noop */ }
     return null;
   }
 };
@@ -112,7 +112,7 @@ export const closeShiftCloud = async (params: {
     return true;
   } catch (e) {
     console.warn('[cashbox-cloud] close shift failed, queued:', e);
-    try { addToSyncQueue('shift_close', { shiftId: params.shiftId, ...payload, userId }); } catch { /* noop */ }
+    try { addToQueue('shift_close', { shiftId: params.shiftId, ...payload, userId }); } catch { /* noop */ }
     return false;
   }
 };
@@ -143,7 +143,7 @@ export const addShiftTransactionCloud = async (params: {
     return true;
   } catch (e) {
     console.warn('[cashbox-cloud] tx insert failed, queued:', e);
-    try { addToSyncQueue('shift_transaction', payload); } catch { /* noop */ }
+    try { addToQueue('shift_transaction', payload); } catch { /* noop */ }
     return false;
   }
 };

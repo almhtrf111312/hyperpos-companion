@@ -6,7 +6,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserId, setCurrentUserId } from '../supabase-store';
-import { addToSyncQueue } from '../sync-queue';
+import { addToQueue } from '../sync-queue';
 import { roundCurrency } from '../utils';
 
 const ensureUserId = async (): Promise<string | null> => {
@@ -48,7 +48,7 @@ export const addGrossProfitCloud = async (input: CloudProfitInput): Promise<bool
     return true;
   } catch (e) {
     console.warn('[profits-cloud] insert failed, queued:', e);
-    try { addToSyncQueue('profit_record', payload); } catch { /* noop */ }
+    try { addToQueue('profit_record', payload); } catch { /* noop */ }
     return false;
   }
 };
@@ -70,7 +70,7 @@ export const reverseProfitCloud = async (invoiceId: string): Promise<boolean> =>
     return true;
   } catch (e) {
     console.warn('[profits-cloud] reverse failed, queued:', e);
-    try { addToSyncQueue('profit_reverse', { invoiceId, userId }); } catch { /* noop */ }
+    try { addToQueue('profit_reverse', { invoiceId, userId }); } catch { /* noop */ }
     return false;
   }
 };
