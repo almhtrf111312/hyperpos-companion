@@ -10,6 +10,7 @@ import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers
 import { deductStockBatchCloud } from './products-cloud';
 import { deductWarehouseStockBatchCloud } from './warehouses-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
+import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from './partners-cloud';
 import { isNoInventoryMode } from '@/lib/store-type-config';
 
