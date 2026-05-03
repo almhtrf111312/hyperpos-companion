@@ -12,6 +12,7 @@ import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers
 import { deductStockBatchCloud } from './products-cloud';
 import { deductWarehouseStockBatchCloud } from './warehouses-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
+import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { secureSet, secureGet } from '@/lib/secure-storage';
 
@@ -210,6 +211,7 @@ export async function processDebtSaleWithOfflineSupport(
     
     // Step 6: Record profit
     addGrossProfit(invoice.id, bundle.profit, bundle.cogs, bundle.total);
+    addGrossProfitCloud({ invoiceId: invoice.id, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
     
     // Step 7: Distribute to partners - ✅ استخدام Cloud API
     const categoryProfits = Object.entries(bundle.profitsByCategory)
