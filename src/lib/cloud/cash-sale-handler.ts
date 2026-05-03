@@ -84,6 +84,7 @@ export async function processCashSaleBundleFromQueue(
 
     // 3. Record profit
     addGrossProfit(invoice.id, bundle.profit, bundle.cogs, bundle.total);
+    addGrossProfitCloud({ invoiceId: invoice.id, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
 
     // 4. Distribute profit to partners
     const categoryProfits = Object.entries(bundle.profitsByCategory)
