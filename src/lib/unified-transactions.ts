@@ -273,7 +273,7 @@ export const processCashDeposit = (
 
     if (userId && userName) {
       addActivityLog(
-        'deposit',
+        'capital_added',
         userId,
         userName,
         `إيداع ${kind === 'capital' ? 'رأس مال' : kind === 'purchase_cover' ? 'تغطية شراء' : 'إيراد'}: $${formatNumber(amount)}`,
