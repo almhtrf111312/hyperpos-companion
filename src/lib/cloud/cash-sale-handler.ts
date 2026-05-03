@@ -10,6 +10,7 @@ import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers
 import { deductStockBatchCloud } from './products-cloud';
 import { deductWarehouseStockBatchCloud } from './warehouses-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
+import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from './partners-cloud';
 import { isNoInventoryMode } from '@/lib/store-type-config';
 
@@ -83,6 +84,7 @@ export async function processCashSaleBundleFromQueue(
 
     // 3. Record profit
     addGrossProfit(invoice.id, bundle.profit, bundle.cogs, bundle.total);
+    addGrossProfitCloud({ invoiceId: invoice.id, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
 
     // 4. Distribute profit to partners
     const categoryProfits = Object.entries(bundle.profitsByCategory)

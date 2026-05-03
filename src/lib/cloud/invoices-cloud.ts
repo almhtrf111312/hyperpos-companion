@@ -170,17 +170,28 @@ const loadInvoicesFromLocalCache = (): Invoice[] | null => {
   return null;
 };
 
-// Generate invoice number
+// Generate invoice number — uses central RPC for cross-device uniqueness, falls back to date-based scan
 const getNextInvoiceNumber = async (): Promise<string> => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-
   const datePrefix = `${year}${month}${day}`;
 
+  // Try central sequence RPC first
   try {
-    // Query DB directly for the highest sequence number today
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('get_next_invoice_number');
+    if (!error && data != null) {
+      const seq = Number(data);
+      return `${datePrefix}-${String(seq).padStart(5, '0')}`;
+    }
+  } catch (e) {
+    console.warn('[invoices-cloud] RPC sequence failed, falling back:', e);
+  }
+
+  // Fallback: scan today's invoices
+  try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any)
       .from('invoices')
@@ -199,7 +210,6 @@ const getNextInvoiceNumber = async (): Promise<string> => {
     }
     return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
   } catch {
-    // Fallback to cache-based approach
     const invoices = await loadInvoicesCloud();
     const todayInvoices = invoices.filter(inv => inv.id.startsWith(datePrefix));
     const nextNumber = todayInvoices.length + 1;
@@ -650,10 +660,15 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
     }
   }
 
-  // 4. Revert profit distribution (cloud + local)
+  // 4. Revert profit distribution (cloud + local) + reverse cloud profit_records
   try {
     const { revertProfitDistributionCloud } = await import('./partners-cloud');
     await revertProfitDistributionCloud(id);
+    // Reverse central profit_records
+    try {
+      const { reverseProfitCloud } = await import('./profits-cloud');
+      await reverseProfitCloud(id);
+    } catch { /* noop */ }
     // Also revert local for backwards compatibility
     try {
       const { revertProfitDistribution } = await import('../partners-store');

@@ -450,7 +450,103 @@ export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
   return true;
 };
 
-// Get debts stats
+/**
+ * إتلاف الدين (Write-off) - عملية محاسبية كاملة:
+ * 1. إنشاء سجل في debt_writeoffs
+ * 2. إنشاء مصروف من نوع 'debt_writeoff' (يخصم من رأس المال)
+ * 3. عكس أرباح الشركاء المعلقة المرتبطة بالفاتورة
+ * 4. تحديث الدين كـ "fully_paid" مع note + خفض رصيد العميل
+ */
+export const writeOffDebtCloud = async (
+  debtId: string,
+  reason: string
+): Promise<boolean> => {
+  const userId = getCurrentUserId();
+  if (!userId) return false;
+
+  const debts = await loadDebtsCloud();
+  const debt = debts.find(d => d.id === debtId);
+  if (!debt) return false;
+
+  const writeoffAmount = Number(debt.remainingDebt) || 0;
+  if (writeoffAmount <= 0) return false;
+
+  try {
+    // 1. سجل الإتلاف
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('debt_writeoffs').insert({
+      user_id: userId,
+      debt_id: debtId,
+      customer_name: debt.customerName,
+      amount: writeoffAmount,
+      reason,
+      capital_impact: writeoffAmount,
+      written_off_by: userId,
+    });
+
+    // 2. مصروف يخصم من رأس المال
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('expenses').insert({
+      user_id: userId,
+      expense_type: 'debt_writeoff',
+      amount: writeoffAmount,
+      description: `إتلاف دين - ${debt.customerName}`,
+      notes: reason,
+      date: new Date().toISOString().split('T')[0],
+    });
+
+    // 3. عكس أرباح الشركاء المعلقة
+    if (debt.invoiceId) {
+      try {
+        const { revertProfitDistributionCloud } = await import('./partners-cloud');
+        await revertProfitDistributionCloud(debt.invoiceId);
+      } catch (e) {
+        console.error('[writeOffDebtCloud] revert partners failed:', e);
+      }
+    }
+
+    // 4. خفض رصيد العميل
+    if (debt.customerName) {
+      try {
+        const { loadCustomersCloud, updateCustomerCloud, invalidateCustomersCache } = await import('./customers-cloud');
+        const customers = await loadCustomersCloud();
+        const customer = customers.find(c =>
+          c.name.trim().toLowerCase() === debt.customerName.trim().toLowerCase() ||
+          (debt.customerPhone && c.phone === debt.customerPhone)
+        );
+        if (customer) {
+          await updateCustomerCloud(customer.id, {
+            totalDebt: Math.max(0, customer.totalDebt - writeoffAmount),
+          });
+          invalidateCustomersCache();
+          emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+        }
+      } catch (e) {
+        console.error('[writeOffDebtCloud] customer update failed:', e);
+      }
+    }
+
+    // 5. تعليم الدين كـ مدفوع كلياً (مكتوب)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from('debts')
+      .update({
+        status: 'fully_paid',
+        total_paid: Number(debt.totalDebt) || 0,
+        remaining_debt: 0,
+        notes: `${debt.notes || ''}\n[إتلاف دين] ${reason}`.trim(),
+      })
+      .eq('id', debtId)
+      .eq('user_id', userId);
+
+    invalidateDebtsCache();
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return true;
+  } catch (e) {
+    console.error('[writeOffDebtCloud] failed:', e);
+    return false;
+  }
+};
 export const getDebtsStatsCloud = async () => {
   const debts = await loadDebtsCloud();
   return {

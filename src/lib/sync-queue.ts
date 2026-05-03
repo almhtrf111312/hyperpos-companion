@@ -25,6 +25,11 @@ export type OperationType =
   | 'customer_update'
   | 'invoice_create'
   | 'profit_record'
+  | 'profit_reverse'
+  | 'shift_open'
+  | 'shift_close'
+  | 'shift_transaction'
+  | 'debt_writeoff'
   | 'quick_purchase'    // Quick single-item purchase (bakery mode)
   | 'purchase_invoice'; // Full purchase invoice with items
 

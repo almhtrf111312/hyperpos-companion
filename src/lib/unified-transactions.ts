@@ -214,6 +214,8 @@ export const processDebtSale = async (
  * - تحديث رصيد العميل (خصم من الدين)
  * - تحديث حالة الفاتورة
  */
+export type DepositKind = 'capital' | 'revenue' | 'purchase_cover';
+
 export const processDebtPayment = (
   amount: number,
   customerId?: string,
@@ -224,19 +226,19 @@ export const processDebtPayment = (
     // Step 1: إضافة المبلغ المدفوع للصندوق
     addDepositToShift(roundCurrency(amount));
 
-    // Step 2: تسجيل النشاط
+    // Step 2: تسجيل النشاط (نوع debt_payment محدد بدلاً من deposit عام)
     if (userId && userName) {
       addActivityLog(
         'debt_payment',
         userId,
         userName,
         `تسديد دين بقيمة $${formatNumber(amount)}`,
-        { amount, customerId, type: 'debt_payment' }
+        { amount, customerId, type: 'debt_payment', txKind: 'debt_payment' }
       );
     }
 
     emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'debt_payment', amount });
-    emitEvent(EVENTS.CASHBOX_UPDATED, { added: amount });
+    emitEvent(EVENTS.CASHBOX_UPDATED, { added: amount, kind: 'debt_payment' });
 
     return { success: true };
   } catch (error) {
@@ -244,6 +246,49 @@ export const processDebtPayment = (
     return { success: false, error: 'حدث خطأ أثناء تسجيل الدفعة' };
   }
 };
+
+/**
+ * إيداع رصيد إلى الوردية مع توضيح النوع:
+ * - capital: رأس مال جديد (يضاف لرأس المال + الوردية)
+ * - revenue: إيراد آخر (يضاف للوردية فقط)
+ * - purchase_cover: تغطية شراء سابق (يضاف للوردية فقط، لا يؤثر على تكلفة المنتجات)
+ */
+export const processCashDeposit = (
+  amount: number,
+  kind: DepositKind,
+  notes?: string,
+  userId?: string,
+  userName?: string
+): TransactionResult => {
+  try {
+    const rounded = roundCurrency(amount);
+    addDepositToShift(rounded);
+
+    if (kind === 'capital') {
+      // إضافة لرأس المال
+      import('./capital-store').then(m => {
+        m.adjustCapital(rounded, notes || 'إضافة رأس مال', userName || 'system');
+      }).catch(() => {});
+    }
+
+    if (userId && userName) {
+      addActivityLog(
+        'capital_added',
+        userId,
+        userName,
+        `إيداع ${kind === 'capital' ? 'رأس مال' : kind === 'purchase_cover' ? 'تغطية شراء' : 'إيراد'}: $${formatNumber(amount)}`,
+        { amount, kind, notes, type: 'deposit' }
+      );
+    }
+
+    emitEvent(EVENTS.CASHBOX_UPDATED, { added: rounded, kind });
+    return { success: true };
+  } catch (error) {
+    console.error('خطأ في الإيداع:', error);
+    return { success: false, error: 'حدث خطأ أثناء الإيداع' };
+  }
+};
+
 
 /**
  * 4. عملية مرتجع متكاملة
