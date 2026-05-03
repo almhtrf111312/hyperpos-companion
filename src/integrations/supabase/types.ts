@@ -205,6 +205,60 @@ export type Database = {
           },
         ]
       }
+      cash_shifts: {
+        Row: {
+          actual_balance: number | null
+          cashier_id: string | null
+          cashier_name: string | null
+          closed_at: string | null
+          created_at: string
+          expected_balance: number
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_balance: number
+          reconciliation_status: string
+          updated_at: string
+          user_id: string
+          variance: number | null
+          variance_reason: string | null
+        }
+        Insert: {
+          actual_balance?: number | null
+          cashier_id?: string | null
+          cashier_name?: string | null
+          closed_at?: string | null
+          created_at?: string
+          expected_balance?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_balance?: number
+          reconciliation_status?: string
+          updated_at?: string
+          user_id: string
+          variance?: number | null
+          variance_reason?: string | null
+        }
+        Update: {
+          actual_balance?: number | null
+          cashier_id?: string | null
+          cashier_name?: string | null
+          closed_at?: string | null
+          created_at?: string
+          expected_balance?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_balance?: number
+          reconciliation_status?: string
+          updated_at?: string
+          user_id?: string
+          variance?: number | null
+          variance_reason?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -271,6 +325,48 @@ export type Database = {
           total_purchases?: number | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      debt_writeoffs: {
+        Row: {
+          amount: number
+          capital_impact: number | null
+          created_at: string
+          customer_name: string | null
+          debt_id: string
+          id: string
+          partner_impact: Json | null
+          reason: string | null
+          user_id: string
+          written_off_at: string
+          written_off_by: string | null
+        }
+        Insert: {
+          amount?: number
+          capital_impact?: number | null
+          created_at?: string
+          customer_name?: string | null
+          debt_id: string
+          id?: string
+          partner_impact?: Json | null
+          reason?: string | null
+          user_id: string
+          written_off_at?: string
+          written_off_by?: string | null
+        }
+        Update: {
+          amount?: number
+          capital_impact?: number | null
+          created_at?: string
+          customer_name?: string | null
+          debt_id?: string
+          id?: string
+          partner_impact?: Json | null
+          reason?: string | null
+          user_id?: string
+          written_off_at?: string
+          written_off_by?: string | null
         }
         Relationships: []
       }
@@ -426,6 +522,24 @@ export type Database = {
           },
         ]
       }
+      invoice_sequences: {
+        Row: {
+          last_number: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_number?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_number?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           cashier_id: string | null
@@ -443,6 +557,7 @@ export type Database = {
           exchange_rate: number | null
           id: string
           invoice_number: string
+          invoice_sequence: number | null
           invoice_type: string | null
           notes: string | null
           payment_type: string | null
@@ -473,6 +588,7 @@ export type Database = {
           exchange_rate?: number | null
           id?: string
           invoice_number: string
+          invoice_sequence?: number | null
           invoice_type?: string | null
           notes?: string | null
           payment_type?: string | null
@@ -503,6 +619,7 @@ export type Database = {
           exchange_rate?: number | null
           id?: string
           invoice_number?: string
+          invoice_sequence?: number | null
           invoice_type?: string | null
           notes?: string | null
           payment_type?: string | null
@@ -833,6 +950,48 @@ export type Database = {
         }
         Relationships: []
       }
+      profit_records: {
+        Row: {
+          cogs: number
+          created_at: string
+          currency: string | null
+          gross_profit: number
+          id: string
+          invoice_id: string
+          is_reversed: boolean
+          recorded_at: string
+          revenue: number
+          reversed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cogs?: number
+          created_at?: string
+          currency?: string | null
+          gross_profit?: number
+          id?: string
+          invoice_id: string
+          is_reversed?: boolean
+          recorded_at?: string
+          revenue?: number
+          reversed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cogs?: number
+          created_at?: string
+          currency?: string | null
+          gross_profit?: number
+          id?: string
+          invoice_id?: string
+          is_reversed?: boolean
+          recorded_at?: string
+          revenue?: number
+          reversed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       purchase_invoice_items: {
         Row: {
           barcode: string | null
@@ -985,6 +1144,39 @@ export type Database = {
           is_active?: boolean | null
           next_due_date?: string | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shift_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          reference_id: string | null
+          shift_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reference_id?: string | null
+          shift_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reference_id?: string | null
+          shift_id?: string
+          type?: string
           user_id?: string
         }
         Relationships: []
@@ -1309,6 +1501,7 @@ export type Database = {
         Returns: number
       }
       delete_owner_cascade: { Args: { _owner_id: string }; Returns: boolean }
+      get_next_invoice_number: { Args: { _user_id?: string }; Returns: number }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
