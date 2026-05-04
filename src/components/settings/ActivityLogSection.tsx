@@ -6,23 +6,39 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const activityIcons: Record<ActivityType, typeof Activity> = {
-  login: LogIn, logout: LogOut, sale: ShoppingCart, maintenance: Wrench, debt_created: CreditCard, debt_paid: CreditCard,
-  debt_payment: CreditCard, product_added: Package, product_updated: Package, product_deleted: Package, customer_added: Users, customer_updated: Users,
-  settings_changed: Settings, user_added: UserPlus, user_deleted: UserMinus, password_changed: Key, backup_created: Database,
-  invoice_created: FileText, invoice_deleted: FileX, shift_opened: Clock, shift_closed: Clock,
-  capital_added: DollarSign, capital_withdrawn: Wallet, expense_added: TrendingUp, expense: TrendingUp, refund: ShoppingCart, partner_investment: TrendingUp,
+  login: LogIn, logout: LogOut, sale: ShoppingCart, maintenance: Wrench,
+  debt_created: CreditCard, debt_paid: CreditCard, debt_payment: CreditCard,
+  debt_writeoff: FileX, debt_deleted: FileX,
+  product_added: Package, product_updated: Package, product_deleted: Package,
+  customer_added: Users, customer_updated: Users, customer_deleted: UserMinus,
+  settings_changed: Settings, user_added: UserPlus, user_deleted: UserMinus,
+  password_changed: Key, backup_created: Database,
+  invoice_created: FileText, invoice_updated: FileText, invoice_deleted: FileX, invoice_refunded: ShoppingCart,
+  shift_opened: Clock, shift_closed: Clock,
+  capital_added: DollarSign, capital_withdrawn: Wallet,
+  expense_added: TrendingUp, expense_deleted: TrendingUp, expense: TrendingUp,
+  refund: ShoppingCart,
+  partner_investment: TrendingUp, partner_added: UserPlus, partner_updated: Users,
+  partner_deleted: UserMinus, partner_withdrawal: Wallet,
 };
 
 const activityColors: Record<ActivityType, string> = {
   login: 'bg-green-500/20 text-green-500', logout: 'bg-orange-500/20 text-orange-500', sale: 'bg-blue-500/20 text-blue-500',
-  maintenance: 'bg-purple-500/20 text-purple-500', debt_created: 'bg-red-500/20 text-red-500', debt_paid: 'bg-green-500/20 text-green-500',
-  debt_payment: 'bg-green-500/20 text-green-500', product_added: 'bg-cyan-500/20 text-cyan-500', product_updated: 'bg-yellow-500/20 text-yellow-500', product_deleted: 'bg-red-500/20 text-red-500',
-  customer_added: 'bg-indigo-500/20 text-indigo-500', customer_updated: 'bg-yellow-500/20 text-yellow-500', settings_changed: 'bg-gray-500/20 text-gray-500',
+  maintenance: 'bg-purple-500/20 text-purple-500',
+  debt_created: 'bg-red-500/20 text-red-500', debt_paid: 'bg-green-500/20 text-green-500', debt_payment: 'bg-green-500/20 text-green-500',
+  debt_writeoff: 'bg-red-500/20 text-red-500', debt_deleted: 'bg-red-500/20 text-red-500',
+  product_added: 'bg-cyan-500/20 text-cyan-500', product_updated: 'bg-yellow-500/20 text-yellow-500', product_deleted: 'bg-red-500/20 text-red-500',
+  customer_added: 'bg-indigo-500/20 text-indigo-500', customer_updated: 'bg-yellow-500/20 text-yellow-500', customer_deleted: 'bg-red-500/20 text-red-500',
+  settings_changed: 'bg-gray-500/20 text-gray-500',
   user_added: 'bg-green-500/20 text-green-500', user_deleted: 'bg-red-500/20 text-red-500', password_changed: 'bg-amber-500/20 text-amber-500',
-  backup_created: 'bg-teal-500/20 text-teal-500', invoice_created: 'bg-blue-500/20 text-blue-500', invoice_deleted: 'bg-red-500/20 text-red-500',
+  backup_created: 'bg-teal-500/20 text-teal-500',
+  invoice_created: 'bg-blue-500/20 text-blue-500', invoice_updated: 'bg-yellow-500/20 text-yellow-500', invoice_deleted: 'bg-red-500/20 text-red-500', invoice_refunded: 'bg-orange-500/20 text-orange-500',
   shift_opened: 'bg-emerald-500/20 text-emerald-500', shift_closed: 'bg-slate-500/20 text-slate-500',
   capital_added: 'bg-green-500/20 text-green-500', capital_withdrawn: 'bg-orange-500/20 text-orange-500',
-  expense_added: 'bg-red-500/20 text-red-500', expense: 'bg-red-500/20 text-red-500', refund: 'bg-orange-500/20 text-orange-500', partner_investment: 'bg-indigo-500/20 text-indigo-500',
+  expense_added: 'bg-red-500/20 text-red-500', expense_deleted: 'bg-red-500/20 text-red-500', expense: 'bg-red-500/20 text-red-500',
+  refund: 'bg-orange-500/20 text-orange-500',
+  partner_investment: 'bg-indigo-500/20 text-indigo-500', partner_added: 'bg-green-500/20 text-green-500', partner_updated: 'bg-yellow-500/20 text-yellow-500',
+  partner_deleted: 'bg-red-500/20 text-red-500', partner_withdrawal: 'bg-orange-500/20 text-orange-500',
 };
 
 export function ActivityLogSection() {
