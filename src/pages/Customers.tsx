@@ -179,6 +179,7 @@ export default function Customers() {
         setShowAddDialog(false);
         setFormData({ name: '', phone: '', email: '', address: '' });
         toast.success(t('customers.addSuccess'));
+        import('@/lib/activity-log').then(({ logActivity }) => logActivity('customer_added', `إضافة زبون: ${newCustomer.name}`, { id: newCustomer.id }));
         loadData();
       } else {
         toast.error(t('customers.addFailed'));
@@ -206,8 +207,11 @@ export default function Customers() {
 
     if (success) {
       setShowEditDialog(false);
+      const editedName = formData.name;
+      const editedId = selectedCustomer.id;
       setSelectedCustomer(null);
       toast.success(t('customers.editSuccess'));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('customer_updated', `تعديل زبون: ${editedName}`, { id: editedId }));
       loadData();
     } else {
       toast.error(t('customers.editFailed'));
@@ -218,6 +222,8 @@ export default function Customers() {
     if (!selectedCustomer) return;
 
     setIsSaving(true);
+    const deletedName = selectedCustomer.name;
+    const deletedId = selectedCustomer.id;
     const success = await deleteCustomerCloud(selectedCustomer.id);
     setIsSaving(false);
 
@@ -225,6 +231,7 @@ export default function Customers() {
       setShowDeleteDialog(false);
       setSelectedCustomer(null);
       toast.success(t('customers.deleteSuccess'));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('customer_deleted', `حذف زبون: ${deletedName}`, { id: deletedId }));
       loadData();
     } else {
       toast.error(t('customers.deleteFailed'));

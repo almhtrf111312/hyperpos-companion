@@ -242,6 +242,7 @@ export default function Partners() {
       setShowAddDialog(false);
       resetForm();
       toast.success(t('partners.partnerAdded'));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('partner_added', `إضافة شريك: ${newPartner.name}`, { id: newPartner.id }));
     } else {
       toast.error(t('partners.error'));
     }
@@ -267,10 +268,13 @@ export default function Partners() {
     });
 
     if (success) {
+      const editedName = formData.name;
+      const editedId = selectedPartner.id;
       await refreshPartners();
       setShowEditDialog(false);
       setSelectedPartner(null);
       toast.success(t('partners.partnerUpdated'));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('partner_updated', `تعديل شريك: ${editedName}`, { id: editedId }));
     } else {
       toast.error(t('partners.error'));
     }
@@ -279,7 +283,8 @@ export default function Partners() {
   const handleDeletePartner = async () => {
     if (!selectedPartner) return;
 
-    // ✅ استخدام الدالة السحابية
+    const deletedName = selectedPartner.name;
+    const deletedId = selectedPartner.id;
     const success = await deletePartnerCloud(selectedPartner.id);
 
     if (success) {
@@ -287,6 +292,7 @@ export default function Partners() {
       setShowDeleteDialog(false);
       setSelectedPartner(null);
       toast.success(t('partners.partnerDeleted'));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('partner_deleted', `حذف شريك: ${deletedName}`, { id: deletedId }));
     } else {
       toast.error(t('partners.error'));
     }

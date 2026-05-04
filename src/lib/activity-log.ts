@@ -1,5 +1,6 @@
 // Activity Log Store - Secure encrypted activity tracking
 import { secureSet, secureGet, secureRemove } from './secure-storage';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ActivityType = 
   | 'login'
@@ -9,25 +10,35 @@ export type ActivityType =
   | 'debt_created'
   | 'debt_paid'
   | 'debt_payment'
+  | 'debt_writeoff'
+  | 'debt_deleted'
   | 'product_added'
   | 'product_updated'
   | 'product_deleted'
   | 'customer_added'
   | 'customer_updated'
+  | 'customer_deleted'
   | 'settings_changed'
   | 'user_added'
   | 'user_deleted'
   | 'password_changed'
   | 'backup_created'
   | 'invoice_created'
+  | 'invoice_updated'
   | 'invoice_deleted'
+  | 'invoice_refunded'
   | 'shift_opened'
   | 'shift_closed'
   | 'capital_added'
   | 'capital_withdrawn'
   | 'expense_added'
+  | 'expense_deleted'
   | 'expense'
   | 'refund'
+  | 'partner_added'
+  | 'partner_updated'
+  | 'partner_deleted'
+  | 'partner_withdrawal'
   | 'partner_investment';
 
 // Device info for tracking action origin
@@ -176,7 +187,45 @@ export const activityTypeLabels: Record<ActivityType, { ar: string; en: string; 
   capital_withdrawn: { ar: 'سحب رأس مال', en: 'Capital Withdrawn', fr: 'Capital Retiré' },
   expense_added: { ar: 'إضافة مصروف', en: 'Expense Added', fr: 'Dépense Ajoutée' },
   partner_investment: { ar: 'استثمار شريك', en: 'Partner Investment', fr: 'Investissement Partenaire' },
+  partner_added: { ar: 'إضافة شريك', en: 'Partner Added', fr: 'Partenaire Ajouté' },
+  partner_updated: { ar: 'تعديل شريك', en: 'Partner Updated', fr: 'Partenaire Modifié' },
+  partner_deleted: { ar: 'حذف شريك', en: 'Partner Deleted', fr: 'Partenaire Supprimé' },
+  partner_withdrawal: { ar: 'سحب شريك', en: 'Partner Withdrawal', fr: 'Retrait Partenaire' },
+  customer_deleted: { ar: 'حذف زبون', en: 'Customer Deleted', fr: 'Client Supprimé' },
+  invoice_updated: { ar: 'تعديل فاتورة', en: 'Invoice Updated', fr: 'Facture Modifiée' },
+  invoice_refunded: { ar: 'استرداد فاتورة', en: 'Invoice Refunded', fr: 'Facture Remboursée' },
+  expense_deleted: { ar: 'حذف مصروف', en: 'Expense Deleted', fr: 'Dépense Supprimée' },
+  debt_writeoff: { ar: 'إتلاف دين', en: 'Debt Write-off', fr: 'Annulation Dette' },
+  debt_deleted: { ar: 'حذف دين', en: 'Debt Deleted', fr: 'Dette Supprimée' },
   debt_payment: { ar: 'تسديد دفعة', en: 'Debt Payment', fr: 'Paiement Dette' },
   expense: { ar: 'مصروف', en: 'Expense', fr: 'Dépense' },
   refund: { ar: 'مرتجع', en: 'Refund', fr: 'Remboursement' },
 };
+
+/**
+ * Convenience helper: log an activity automatically resolving the current Supabase user.
+ * Safe to call without awaiting.
+ */
+export async function logActivity(
+  type: ActivityType,
+  description: string,
+  details?: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    let userName = user.email || 'مستخدم';
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: profile } = await (supabase as any)
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (profile?.full_name) userName = profile.full_name;
+    } catch { /* ignore */ }
+    addActivityLog(type, user.id, userName, description, details);
+  } catch (e) {
+    console.warn('[activity-log] logActivity failed:', e);
+  }
+}

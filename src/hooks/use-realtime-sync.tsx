@@ -41,13 +41,8 @@ export function useRealtimeSync() {
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
         console.log('[Realtime] Products changed:', payload.eventType);
+        // مسح كاش الذاكرة فقط — يبقى IDB/localStorage لعرض فوري
         invalidateProductsCache();
-        // مسح localStorage أيضاً لضمان التحديث الفوري
-        try {
-          localStorage.removeItem('hyperpos_products_cache');
-        } catch (e) {
-          console.warn('[Realtime] Failed to clear products cache:', e);
-        }
         emitEvent(EVENTS.PRODUCTS_UPDATED);
       })
       // Categories changes

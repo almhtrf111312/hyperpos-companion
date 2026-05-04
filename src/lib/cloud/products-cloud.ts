@@ -343,15 +343,47 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
   }
 };
 
-// Invalidate cache - مسح الذاكرة و localStorage للمزامنة الفورية
+// Invalidate memory cache only — keep IndexedDB/localStorage for instant offline-first loads
 export const invalidateProductsCache = () => {
+  productsCache = null;
+  cacheTimestamp = 0;
+  // ❌ لا نمسح IndexedDB/localStorage هنا — نريد المنتجات تظهر فوراً عند فتح التطبيق
+};
+
+// Clear ALL product caches (memory + IDB + localStorage) — use only on sign-out / user change / manual reset
+export const clearProductsLocalCache = () => {
   productsCache = null;
   cacheTimestamp = 0;
   try {
     localStorage.removeItem(LOCAL_PRODUCTS_CACHE_KEY);
     localStorage.removeItem(LAST_SYNC_TIMESTAMP_KEY);
   } catch (e) {
-    console.warn('Failed to clear products cache:', e);
+    console.warn('Failed to clear products local cache:', e);
+  }
+};
+
+// ✅ Local-first: returns immediately from IndexedDB / localStorage cache (no network)
+export const loadProductsLocalFirst = async (): Promise<Product[]> => {
+  if (productsCache && productsCache.length > 0) return productsCache;
+  const local = await loadFromLocalCache();
+  if (local && local.length > 0) {
+    productsCache = local;
+    cacheTimestamp = Date.now();
+    return local;
+  }
+  return [];
+};
+
+// ✅ Refresh products from cloud in background (non-blocking)
+export const refreshProductsFromCloud = async (): Promise<Product[]> => {
+  if (!navigator.onLine) return productsCache || [];
+  const userId = getCurrentUserId();
+  if (!userId) return productsCache || [];
+  cacheTimestamp = 0; // bypass memory TTL
+  try {
+    return await loadProductsCloud();
+  } catch {
+    return productsCache || [];
   }
 };
 

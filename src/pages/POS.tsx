@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { loadProductsCloud, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
+import { loadProductsCloud, loadProductsLocalFirst, refreshProductsFromCloud, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
@@ -282,43 +282,20 @@ export default function POS() {
   const [showLoanDialog, setShowLoanDialog] = useState(false);
   const [loanProduct, setLoanProduct] = useState<POSProduct | null>(null);
 
-  // Load products and categories from cloud with retry logic
-  // ✅ تحميل فوري من IndexedDB ثم تحديث من السحابة في الخلفية
+  // Load products and categories — local-first ثم تحديث من السحابة في الخلفية
   const loadData = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
-    // ✅ انتظار تحميل الـ profile أولاً
     if (profile === undefined) {
       console.log('[POS] Profile not loaded yet, waiting...');
       return;
     }
 
-    // فقط عرض Loading في المرة الأولى (ليس عند التحديث الخلفي)
-    if (!isBackgroundRefresh) {
-      setIsLoadingProducts(true);
-    }
-
-    // ❌ لا نمسح الكاش هنا - نتركه يخدم المنتجات فوراً
-    // invalidateProductsCache(); -- تم إزالته لتحميل فوري
-
-    try {
-      const [cloudProducts, cloudCategories] = await Promise.all([
-        loadProductsCloud(),
-        getCategoryNamesCloud()
-      ]);
-
-      // إذا لم تُرجع المنتجات وعدد المحاولات أقل من 3، أعد المحاولة
-      if (cloudProducts.length === 0 && retryCount < 3) {
-        console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1, isBackgroundRefresh), 1000);
-        return;
-      }
-
-      // Transform to POS format with multi-unit support
+    const transformAndSet = async (cloudProducts: Product[], cloudCategories: string[]) => {
       const allPosProducts: POSProduct[] = cloudProducts.map(p => ({
         id: p.id,
         name: p.name,
         price: p.salePrice,
         category: p.category,
-        quantity: p.quantity, // Default quantity from products table
+        quantity: p.quantity,
         image: p.image,
         barcode: p.barcode,
         barcode2: p.barcode2,
@@ -332,52 +309,65 @@ export default function POS() {
         bulkCostPrice: p.bulkCostPrice || 0,
         wholesalePrice: p.wholesalePrice,
         laborCost: p.laborCost || 0,
-        // Pharmacy fields
         expiryDate: p.expiryDate,
         batchNumber: p.batchNumber,
       }));
 
-      // ✅ تحديد نوع المستخدم من الـ profile - الافتراضي هو كاشير (يرى كل شيء)
       const userType = profile?.user_type || 'cashier';
 
-      console.log(`[POS] User type from profile: ${userType}, profile:`, profile);
-
-      // ✅ الكاشير: يرى جميع المنتجات (يعمل في المحل مباشرة)
-      // ✅ الموزع / نقطة البيع: يرى فقط المنتجات في عهدته (المستودع المخصص)
       if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
-        // جلب مخزون المستودع المُعيّن
         const { loadWarehouseStockCloud } = await import('@/lib/cloud/warehouses-cloud');
         const warehouseStock = await loadWarehouseStockCloud(activeWarehouse.id);
-
-        console.log(`[POS] ${userType} user, warehouse: ${activeWarehouse.name}, stock items:`, warehouseStock.length);
-
-        // فلترة المنتجات حسب المخزون المتاح في المستودع
         const filteredProducts = allPosProducts
           .map(p => {
             const stockItem = warehouseStock.find(s => s.product_id === p.id);
-            if (stockItem && stockItem.quantity > 0) {
-              return { ...p, quantity: stockItem.quantity };
-            }
+            if (stockItem && stockItem.quantity > 0) return { ...p, quantity: stockItem.quantity };
             return null;
           })
           .filter((p): p is POSProduct => p !== null);
-
-        console.log(`[POS] Filtered products for ${userType}:`, filteredProducts.length);
         setProducts(filteredProducts);
       } else {
-        // ✅ الكاشير والإدارة: عرض كل المنتجات (الوصول الكامل)
-        console.log(`[POS] Cashier/Admin user (type: ${userType}), showing ALL products:`, allPosProducts.length);
         setProducts(allPosProducts);
       }
 
       setCategories([t('common.all'), ...cloudCategories]);
-    } catch (error) {
-      console.error('Error loading POS data:', error);
+    };
 
-      // إعادة المحاولة في حالة الخطأ
-      if (retryCount < 3) {
-        console.log(`[POS] Error loading, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1, isBackgroundRefresh), 1500);
+    // ✅ Step 1: عرض المنتجات المحلية فوراً (0ms) — لا تظهر شاشة تحميل إذا الكاش موجود
+    if (!isBackgroundRefresh) {
+      try {
+        const localProducts = await loadProductsLocalFirst();
+        if (localProducts.length > 0) {
+          // Categories cache (from cloud module)
+          const localCats = await getCategoryNamesCloud().catch(() => [] as string[]);
+          await transformAndSet(localProducts, localCats);
+          setIsLoadingProducts(false); // ✅ نقطة البيع جاهزة فوراً
+        } else {
+          setIsLoadingProducts(true);
+        }
+      } catch (e) {
+        console.warn('[POS] Local-first load failed:', e);
+      }
+    }
+
+    // ✅ Step 2: تحديث من السحابة في الخلفية (لا يحجب الواجهة)
+    try {
+      const [cloudProducts, cloudCategories] = await Promise.all([
+        navigator.onLine ? refreshProductsFromCloud() : loadProductsCloud(),
+        getCategoryNamesCloud(),
+      ]);
+
+      if (cloudProducts.length === 0 && retryCount < 3 && navigator.onLine) {
+        console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
+        setTimeout(() => loadData(retryCount + 1, true), 1000);
+        return;
+      }
+
+      await transformAndSet(cloudProducts, cloudCategories);
+    } catch (error) {
+      console.error('Error loading POS data (background):', error);
+      if (retryCount < 3 && navigator.onLine) {
+        setTimeout(() => loadData(retryCount + 1, true), 1500);
         return;
       }
     } finally {

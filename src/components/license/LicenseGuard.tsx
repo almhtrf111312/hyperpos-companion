@@ -120,9 +120,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const [showSkipButton, setShowSkipButton] = useState(false);
-  const [skipLoading, setSkipLoading] = useState(false);
-  
+
   const isFullyLoading = authLoading || isLoading || isCheckingDevice;
 
   useEffect(() => {
@@ -131,34 +129,15 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
-  // ✅ إذا كان هناك كاش محلي صالح للرخصة، تخطي التحميل فوراً
+  // إظهار زر إعادة المحاولة فقط بعد ثانية إذا استمر التحميل
   useEffect(() => {
     if (isFullyLoading) {
-      // Check if we have a valid cached license to skip loading
-      try {
-        const cachedLicense = localStorage.getItem('hp_license_cache');
-        if (cachedLicense) {
-          const parsed = JSON.parse(cachedLicense);
-          if (parsed?.isValid && parsed?.timestamp && (Date.now() - parsed.timestamp < 86400000)) {
-            console.log('[LicenseGuard] Valid cached license found, skipping loading screen');
-            setSkipLoading(true);
-            return;
-          }
-        }
-      } catch { /* ignore */ }
-      
-      const retryTimer = setTimeout(() => setLoadingTimeout(true), 1000);
-      const skipTimer = setTimeout(() => setShowSkipButton(true), 2000);
-      return () => { clearTimeout(retryTimer); clearTimeout(skipTimer); };
+      const retryTimer = setTimeout(() => setLoadingTimeout(true), 1500);
+      return () => { clearTimeout(retryTimer); };
     } else {
       setLoadingTimeout(false);
-      setShowSkipButton(false);
     }
   }, [isFullyLoading]);
-
-  if (skipLoading) {
-    return <>{children}</>;
-  }
 
   if (isFullyLoading && loadingTimeout) {
     return (
