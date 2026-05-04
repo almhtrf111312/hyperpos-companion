@@ -1,5 +1,6 @@
 // Activity Log Store - Secure encrypted activity tracking
 import { secureSet, secureGet, secureRemove } from './secure-storage';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ActivityType = 
   | 'login'
@@ -9,25 +10,35 @@ export type ActivityType =
   | 'debt_created'
   | 'debt_paid'
   | 'debt_payment'
+  | 'debt_writeoff'
+  | 'debt_deleted'
   | 'product_added'
   | 'product_updated'
   | 'product_deleted'
   | 'customer_added'
   | 'customer_updated'
+  | 'customer_deleted'
   | 'settings_changed'
   | 'user_added'
   | 'user_deleted'
   | 'password_changed'
   | 'backup_created'
   | 'invoice_created'
+  | 'invoice_updated'
   | 'invoice_deleted'
+  | 'invoice_refunded'
   | 'shift_opened'
   | 'shift_closed'
   | 'capital_added'
   | 'capital_withdrawn'
   | 'expense_added'
+  | 'expense_deleted'
   | 'expense'
   | 'refund'
+  | 'partner_added'
+  | 'partner_updated'
+  | 'partner_deleted'
+  | 'partner_withdrawal'
   | 'partner_investment';
 
 // Device info for tracking action origin
