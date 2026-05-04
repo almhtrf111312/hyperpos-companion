@@ -206,6 +206,7 @@ export default function Expenses() {
       setShowAddDialog(false);
       resetForm();
       toast.success(t('expenses.expenseAdded'));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_added', `إضافة مصروف (${formData.type}): ${formData.amount}`, { id: created.id, amount: formData.amount, type: formData.type }));
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -238,12 +239,16 @@ export default function Expenses() {
   const handleDeleteExpense = async () => {
     if (!selectedExpense) return;
 
+    const deletedAmount = selectedExpense.amount;
+    const deletedType = selectedExpense.type;
+    const deletedId = selectedExpense.id;
     await deleteExpenseCloud(selectedExpense.id);
     const expensesData = await loadExpensesCloud();
     setExpenses(expensesData);
     setShowDeleteDialog(false);
     setSelectedExpense(null);
     toast.success(t('expenses.expenseDeleted'));
+    import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_deleted', `حذف مصروف (${deletedType}): ${deletedAmount}`, { id: deletedId, amount: deletedAmount, type: deletedType }));
   };
 
   const handlePayRecurring = async () => {
