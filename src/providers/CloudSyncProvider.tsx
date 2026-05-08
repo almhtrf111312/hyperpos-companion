@@ -22,9 +22,13 @@ const PERIODIC_RETRY_INTERVAL_MS = 30 * 60 * 1000;
 interface CloudSyncContextType {
   isReady: boolean;
   isSyncing: boolean;
+  isPaused: boolean;
+  hasInternetAccess: boolean;
   lastSyncTime: string | null;
   syncNow: () => Promise<void>;
   syncImmediately: () => void; // مزامنة فورية في الخلفية بعد عملية بيع
+  pauseSync: () => void;
+  resumeSync: () => void;
 }
 
 // Export context for safe usage in components that may render outside provider
@@ -42,14 +46,35 @@ interface CloudSyncProviderProps {
   children: ReactNode;
 }
 
+const PAUSE_KEY = 'hyperpos_sync_paused';
+
 export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   const { user, isLoading: authLoading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState<boolean>(() => {
+    try { return localStorage.getItem(PAUSE_KEY) === '1'; } catch { return false; }
+  });
+  const [hasInternetAccess, setHasInternetAccess] = useState(true);
   const { isOnline } = useNetworkStatus();
   const [wasOffline, setWasOffline] = useState(false);
   const periodicRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pauseSync = useCallback(() => {
+    setIsPaused(true);
+    try { localStorage.setItem(PAUSE_KEY, '1'); } catch { /* noop */ }
+    showToast.info('تم إيقاف المزامنة مؤقتاً', 'البيانات الجديدة ستُحفظ محلياً وتُرفع عند الاستئناف');
+  }, []);
+
+  const resumeSync = useCallback(() => {
+    setIsPaused(false);
+    try { localStorage.removeItem(PAUSE_KEY); } catch { /* noop */ }
+    showToast.success('تم استئناف المزامنة', 'جاري رفع التغييرات...');
+    setTimeout(() => { syncNowRef.current?.(); }, 50);
+  }, []);
+
+  const syncNowRef = useRef<(() => Promise<void>) | null>(null);
 
   // Enable realtime sync for instant updates across devices
   useRealtimeSync();
@@ -222,14 +247,29 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
   const syncNow = useCallback(async () => {
     if (!user || isSyncing) return;
+    if (isPaused) {
+      console.log('[CloudSync] Sync skipped: paused by user');
+      return;
+    }
+
+    // Verify real internet access (network may be on but no internet)
+    if (navigator.onLine) {
+      const hasInternet = await checkRealInternetAccess(8000);
+      setHasInternetAccess(hasInternet);
+      if (!hasInternet) {
+        showToast.error('لا يوجد اتصال إنترنت فعلي', { description: 'يتم استخدام البيانات المحلية' });
+        return;
+      }
+    } else {
+      setHasInternetAccess(false);
+      return;
+    }
 
     setIsSyncing(true);
 
     try {
-      // أولاً: تنفيذ أي مسح سحابي معلق
       await executePendingCloudClear();
-      
-      // ثانياً: معالجة طابور المزامنة (البيع بالدين وغيرها)
+
       await processQueue(async (operation) => {
         if (operation.type === 'debt_sale_bundle') {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
@@ -243,21 +283,18 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (operation.type === 'purchase_invoice') {
           return await processPurchaseInvoiceFromQueue(operation.data as any);
         }
-        // أنواع أخرى يمكن إضافتها هنا
         console.log('[SyncQueue] Processing operation:', operation.type);
-        return true; // Default: mark as processed
+        return true;
       });
-      
-      // ثالثاً: إبطال الكاش وجلب البيانات الجديدة
+
       const { invalidateAllCaches } = await import('@/lib/cloud');
       invalidateAllCaches();
 
-      // Refresh settings from cloud
       const cloudSettings = await fetchStoreSettings();
       if (cloudSettings) {
         const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
         const existing = existingRaw ? JSON.parse(existingRaw) : {};
-        
+
         const syncSettingsObj = cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object' ? cloudSettings.sync_settings as Record<string, unknown> : {};
 
         const merged = {
@@ -274,18 +311,16 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
           discountPercentEnabled: syncSettingsObj.discountPercentEnabled ?? existing.discountPercentEnabled ?? true,
           discountFixedEnabled: syncSettingsObj.discountFixedEnabled ?? existing.discountFixedEnabled ?? true,
-          // ✅ Sync additional preferences from cloud
           hideMaintenanceSection: syncSettingsObj.hideMaintenanceSection ?? existing.hideMaintenanceSection ?? false,
           currencyNames: syncSettingsObj.currencyNames ?? existing.currencyNames,
           backupSettings: syncSettingsObj.backupSettings ?? existing.backupSettings,
           notificationSettings: cloudSettings.notification_settings ?? existing.notificationSettings,
           printSettings: cloudSettings.print_settings ?? existing.printSettings,
         };
-        
+
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
       }
 
-      // Emit events to refresh all UI
       emitEvent(EVENTS.PRODUCTS_UPDATED);
       emitEvent(EVENTS.INVOICES_UPDATED);
       emitEvent(EVENTS.DEBTS_UPDATED);
@@ -295,31 +330,28 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       emitEvent(EVENTS.SETTINGS_UPDATED);
 
       setLastSyncTime(new Date().toISOString());
-      showToast.success('تمت المزامنة بنجاح', 'تم رفع جميع البيانات المعلقة');
     } catch (error) {
       console.error('Manual sync error:', error);
       showToast.error('فشل في المزامنة', { description: 'سيتم إعادة المحاولة لاحقاً' });
     } finally {
       setIsSyncing(false);
     }
-  }, [user, isSyncing]);
+  }, [user, isSyncing, isPaused]);
 
-  /**
-   * مزامنة فورية في الخلفية - تُستدعى بعد كل عملية بيع محلية
-   * لا تنتظر الانتهاء ولا تظهر أي رسائل للمستخدم
-   */
+  // expose latest syncNow to refs (for resume callback)
+  useEffect(() => { syncNowRef.current = syncNow; }, [syncNow]);
+
   const syncImmediately = useCallback(() => {
-    if (!user) return;
-    // تشغيل المزامنة في الخلفية بدون انتظار
+    if (!user || isPaused) return;
     setTimeout(() => {
       syncNow().catch(err => {
         console.warn('[CloudSync] Background sync after sale failed (will retry):', err);
       });
-    }, 100); // تأخير بسيط لضمان حفظ الطابور أولاً
-  }, [user, syncNow]);
+    }, 100);
+  }, [user, syncNow, isPaused]);
 
   return (
-    <CloudSyncContext.Provider value={{ isReady, isSyncing, lastSyncTime, syncNow, syncImmediately }}>
+    <CloudSyncContext.Provider value={{ isReady, isSyncing, isPaused, hasInternetAccess, lastSyncTime, syncNow, syncImmediately, pauseSync, resumeSync }}>
       {children}
     </CloudSyncContext.Provider>
   );

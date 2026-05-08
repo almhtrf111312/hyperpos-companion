@@ -189,25 +189,48 @@ let partnersCache: Partner[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
-// Load partners
+// Background refresh control
+let bgPartnersRefreshing = false;
+const refreshPartnersInBackground = async () => {
+  if (bgPartnersRefreshing || !navigator.onLine) return;
+  bgPartnersRefreshing = true;
+  try {
+    const cloudPartners = await fetchFromSupabase<CloudPartner>('partners', {
+      column: 'created_at',
+      ascending: true,
+    });
+    partnersCache = cloudPartners.map(toPartner);
+    cacheTimestamp = Date.now();
+    savePartnersLocally(partnersCache);
+    emitEvent(EVENTS.PARTNERS_UPDATED, null);
+  } catch (e) {
+    console.warn('[partners-cloud] background refresh failed:', e);
+  } finally {
+    bgPartnersRefreshing = false;
+  }
+};
+
+// Load partners — local-first
 export const loadPartnersCloud = async (): Promise<Partner[]> => {
   const userId = getCurrentUserId();
-  if (!userId) return [];
+  if (!userId) {
+    const local = loadPartnersLocally();
+    return local || [];
+  }
 
   if (partnersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return partnersCache;
   }
 
-  // Offline: return local cache
-  if (!navigator.onLine) {
-    const local = loadPartnersLocally();
-    if (local) {
-      partnersCache = local;
-      cacheTimestamp = Date.now();
-      return local;
-    }
-    return [];
+  const local = loadPartnersLocally();
+  if (local) {
+    partnersCache = local;
+    cacheTimestamp = Date.now();
+    if (navigator.onLine) refreshPartnersInBackground();
+    return local;
   }
+
+  if (!navigator.onLine) return [];
 
   const cloudPartners = await fetchFromSupabase<CloudPartner>('partners', {
     column: 'created_at',
@@ -217,7 +240,7 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
   partnersCache = cloudPartners.map(toPartner);
   cacheTimestamp = Date.now();
   savePartnersLocally(partnersCache);
-  
+
   return partnersCache;
 };
 
