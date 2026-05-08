@@ -1187,9 +1187,9 @@ html.theme-transitioning *::after {
     pointer-events: auto !important;
     touch-action: manipulation;
     /* Prevent zoom on mobile devices */
-    -webkit-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+    -webkit-text-size-adjust: none;
+    -ms-text-size-adjust: none;
+    text-size-adjust: none;
   }
 
   body {
@@ -1198,9 +1198,9 @@ html.theme-transitioning *::after {
     pointer-events: auto !important;
     touch-action: manipulation;
     /* Prevent zoom and ensure proper mobile scaling */
-    -webkit-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+    -webkit-text-size-adjust: none;
+    -ms-text-size-adjust: none;
+    text-size-adjust: none;
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
