@@ -46,14 +46,35 @@ interface CloudSyncProviderProps {
   children: ReactNode;
 }
 
+const PAUSE_KEY = 'hyperpos_sync_paused';
+
 export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   const { user, isLoading: authLoading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState<boolean>(() => {
+    try { return localStorage.getItem(PAUSE_KEY) === '1'; } catch { return false; }
+  });
+  const [hasInternetAccess, setHasInternetAccess] = useState(true);
   const { isOnline } = useNetworkStatus();
   const [wasOffline, setWasOffline] = useState(false);
   const periodicRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pauseSync = useCallback(() => {
+    setIsPaused(true);
+    try { localStorage.setItem(PAUSE_KEY, '1'); } catch { /* noop */ }
+    showToast.info('تم إيقاف المزامنة مؤقتاً', 'البيانات الجديدة ستُحفظ محلياً وتُرفع عند الاستئناف');
+  }, []);
+
+  const resumeSync = useCallback(() => {
+    setIsPaused(false);
+    try { localStorage.removeItem(PAUSE_KEY); } catch { /* noop */ }
+    showToast.success('تم استئناف المزامنة', 'جاري رفع التغييرات...');
+    setTimeout(() => { syncNowRef.current?.(); }, 50);
+  }, []);
+
+  const syncNowRef = useRef<(() => Promise<void>) | null>(null);
 
   // Enable realtime sync for instant updates across devices
   useRealtimeSync();
