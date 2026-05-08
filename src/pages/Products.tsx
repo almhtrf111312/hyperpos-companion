@@ -952,27 +952,25 @@ export default function Products() {
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{tDynamic('pageTitle')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{tDynamic('pageSubtitle')}</p>
           </div>
-          {/* Mobile: Grid layout for buttons */}
+          {/* Mobile: stacked buttons for better small-screen layout */}
           <div className="sm:hidden flex flex-col gap-2 w-full min-w-0">
-            <div className="flex gap-2 w-full min-w-0">
-              {!noInventory && (
-                <Button variant="outline" className="flex-1 min-w-0 h-10 text-[11px] px-2 truncate" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                  <FileText className="w-4 h-4 ml-1 flex-shrink-0" />
-                  <span className="truncate">{t('purchaseInvoice.addPurchaseInvoice')}</span>
-                </Button>
-              )}
-              {canAddProducts && (
-                <Button className="flex-1 min-w-0 h-10 text-[11px] px-2 bg-primary hover:bg-primary/90 truncate" onClick={() => {
-                  setFieldsConfig(getEffectiveFieldsConfig());
-                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-                  setImagePreviewBase64('');
-                  setShowAddDialog(true);
-                }}>
-                  <Plus className="w-4 h-4 ml-1 flex-shrink-0" />
-                  <span className="truncate">{tDynamic('addProduct')}</span>
-                </Button>
-              )}
-            </div>
+            {canAddProducts && (
+              <Button className="w-full h-10 text-[11px] px-3 bg-primary hover:bg-primary/90 truncate" onClick={() => {
+                setFieldsConfig(getEffectiveFieldsConfig());
+                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                setImagePreviewBase64('');
+                setShowAddDialog(true);
+              }}>
+                <Plus className="w-4 h-4 ml-1 flex-shrink-0" />
+                <span className="truncate">{tDynamic('addProduct')}</span>
+              </Button>
+            )}
+            {!noInventory && (
+              <Button variant="outline" className="w-full h-10 text-[11px] px-3 truncate" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                <FileText className="w-4 h-4 ml-1 flex-shrink-0" />
+                <span className="truncate">{t('purchaseInvoice.addPurchaseInvoice')}</span>
+              </Button>
+            )}
             <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
               <Tag className="w-4 h-4 ml-1" />
               {t('products.categories')}

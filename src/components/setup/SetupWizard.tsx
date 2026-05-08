@@ -418,18 +418,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           </div>
         </div>
 
-        {/* Skip */}
-        <div className="text-center mt-4">
-          <button
-            className="text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              localStorage.setItem('hyperpos_setup_complete', 'true');
-              onComplete();
-            }}
-          >
-            {t('setup.skip')}
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -342,14 +342,6 @@ export function OnboardingTour() {
               {t('onboarding.previous' as TranslationKey)}
             </button>
           )}
-          {currentStep === 0 && (
-            <button
-              onClick={completeTour}
-              className="h-7 px-2 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
-            >
-              {t('onboarding.skip' as TranslationKey)}
-            </button>
-          )}
           <button
             onClick={handleNext}
             className="h-7 px-3 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-0.5"
