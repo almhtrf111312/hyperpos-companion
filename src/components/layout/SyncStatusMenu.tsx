@@ -3,7 +3,7 @@
  * Displays in header: Online/Offline/Syncing with last 10 operations
  */
 import { useState, useEffect, useContext } from 'react';
-import { Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock, Database } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock, Database, Pause, Play, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,7 +22,11 @@ export function SyncStatusMenu() {
   const { isOnline } = useNetworkStatus();
   const cloudContext = useContext(CloudSyncContext);
   const isSyncing = cloudContext?.isSyncing ?? false;
+  const isPaused = cloudContext?.isPaused ?? false;
+  const hasInternetAccess = cloudContext?.hasInternetAccess ?? true;
   const syncNow = cloudContext?.syncNow ?? (async () => {});
+  const pauseSync = cloudContext?.pauseSync ?? (() => {});
+  const resumeSync = cloudContext?.resumeSync ?? (() => {});
 
   const [queueStatus, setQueueStatus] = useState<SyncQueueStatus>(getQueueStatus());
   const [history, setHistory] = useState<SyncHistoryItem[]>(loadHistory());
