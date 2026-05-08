@@ -475,6 +475,47 @@ export default function Reports() {
     return { name: 'HyperPOS' };
   };
 
+  // Helpers: apply same filters used in the visible report
+  const getFilteredInvoicesForReport = useCallback(() => {
+    return cloudInvoices.filter(inv => {
+      const invDate = toLocalDateString(inv.createdAt);
+      const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
+      if (!isDateInRange(invDate, dateRange.from, dateRange.to)) return false;
+      if (!isValidType) return false;
+      if (inv.status === 'refunded') return false;
+      if (filters.status !== 'all' && inv.status !== filters.status) return false;
+      if (filters.cashierId !== 'all' && (inv.cashierName || 'غير محدد') !== filters.cashierId) return false;
+      if (filters.paymentType !== 'all' && inv.paymentType !== filters.paymentType) return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const matches = (inv.customerName || '').toLowerCase().includes(q) || inv.id.toLowerCase().includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [cloudInvoices, dateRange, filters]);
+
+  const getFilteredProductsForReport = useCallback(() => {
+    return cloudProducts.filter(p => {
+      if (filters.category !== 'all' && (p.category || '') !== filters.category) return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        if (!p.name.toLowerCase().includes(q) && !(p.barcode || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [cloudProducts, filters]);
+
+  const getFilteredCustomersForReport = useCallback(() => {
+    return cloudCustomers.filter(c => {
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        if (!c.name.toLowerCase().includes(q) && !(c.phone || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [cloudCustomers, filters]);
+
   const handleExportPDF = useCallback(async () => {
     const storeInfo = getStoreInfo();
     if (isLoading) { toast.error(t('reports.waitForData')); return; }
@@ -482,11 +523,7 @@ export default function Reports() {
       switch (activeReport) {
         case 'sales':
         case 'profits': {
-          const filteredInvoices = cloudInvoices.filter(inv => {
-            const invDate = toLocalDateString(inv.createdAt);
-            const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
-            return isDateInRange(invDate, dateRange.from, dateRange.to) && isValidType && inv.status !== 'refunded';
-          });
+          const filteredInvoices = getFilteredInvoicesForReport();
           if (filteredInvoices.length === 0) { toast.error(t('reports.noDataToExport')); return; }
           await exportInvoicesToPDF(filteredInvoices.map(inv => ({
             id: inv.id, customerName: inv.customerName || 'عميل نقدي', total: inv.total,
@@ -497,8 +534,9 @@ export default function Reports() {
         }
         case 'products':
         case 'inventory': {
-          if (cloudProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
-          await exportProductsToPDF(cloudProducts.map(p => ({
+          const filteredProducts = getFilteredProductsForReport();
+          if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
+          await exportProductsToPDF(filteredProducts.map(p => ({
             name: p.name, barcode: p.barcode || '', category: p.category || 'بدون تصنيف',
             costPrice: p.costPrice || 0, salePrice: p.salePrice || 0, quantity: p.quantity || 0,
             minStockLevel: p.minStockLevel || 0,
@@ -506,8 +544,9 @@ export default function Reports() {
           break;
         }
         case 'customers': {
-          if (cloudCustomers.length === 0) { toast.error(t('reports.noCustomersToExport')); return; }
-          await exportCustomersToPDF(cloudCustomers.map(c => ({
+          const filteredCustomers = getFilteredCustomersForReport();
+          if (filteredCustomers.length === 0) { toast.error(t('reports.noCustomersToExport')); return; }
+          await exportCustomersToPDF(filteredCustomers.map(c => ({
             name: c.name, phone: c.phone || '', totalPurchases: c.totalPurchases || 0,
             ordersCount: c.invoiceCount || 0, balance: c.totalDebt || 0,
           })), storeInfo);
@@ -530,16 +569,7 @@ export default function Reports() {
           break;
         }
         default: {
-          const defaultInvoices = cloudInvoices.filter(inv => {
-            const invDate = toLocalDateString(inv.createdAt);
-            return isDateInRange(invDate, dateRange.from, dateRange.to);
-          });
-          if (defaultInvoices.length === 0) { toast.error(t('reports.noDataToExport')); return; }
-          await exportInvoicesToPDF(defaultInvoices.map(inv => ({
-            id: inv.id, customerName: inv.customerName || 'عميل نقدي', total: inv.total,
-            discount: inv.discount || 0, profit: inv.profit || 0, paymentType: inv.paymentType,
-            type: inv.type, createdAt: inv.createdAt, cashierName: inv.cashierName || '-',
-          })), storeInfo, { start: dateRange.from, end: dateRange.to });
+          toast.error('هذا التقرير لا يدعم التصدير المباشر — استخدم زر التصدير الخاص داخل التقرير');
         }
       }
       toast.success(t('reports.exportSuccessPDF'));
@@ -547,17 +577,15 @@ export default function Reports() {
       console.error('PDF export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners, isLoading, t]);
+  }, [dateRange, activeReport, expenseReportData, cloudPartners, isLoading, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
 
   const handleExportExcel = useCallback(async () => {
     try {
       switch (activeReport) {
         case 'sales':
         case 'profits': {
-          const filteredInvoices = cloudInvoices.filter(inv => {
-            const invDate = toLocalDateString(inv.createdAt);
-            return isDateInRange(invDate, dateRange.from, dateRange.to) && inv.status !== 'refunded';
-          });
+          const filteredInvoices = getFilteredInvoicesForReport();
+          if (filteredInvoices.length === 0) { toast.error(t('reports.noDataToExport')); return; }
           exportInvoicesToExcel(filteredInvoices.map(inv => ({
             id: inv.id, customerName: inv.customerName || 'عميل نقدي', total: inv.total,
             profit: inv.profit, paymentType: inv.paymentType, type: inv.type,
@@ -566,19 +594,25 @@ export default function Reports() {
           break;
         }
         case 'products':
-        case 'inventory':
-          exportProductsToExcel(cloudProducts.map(p => ({
+        case 'inventory': {
+          const filteredProducts = getFilteredProductsForReport();
+          if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
+          exportProductsToExcel(filteredProducts.map(p => ({
             name: p.name, barcode: p.barcode || '', barcode2: p.barcode2 || '', barcode3: p.barcode3 || '',
             variantLabel: p.variantLabel || '', category: p.category || 'بدون تصنيف',
             costPrice: p.costPrice, salePrice: p.salePrice, quantity: p.quantity,
           })));
           break;
-        case 'customers':
-          exportCustomersToExcel(cloudCustomers.map(c => ({
+        }
+        case 'customers': {
+          const filteredCustomers = getFilteredCustomersForReport();
+          if (filteredCustomers.length === 0) { toast.error(t('reports.noCustomersToExport')); return; }
+          exportCustomersToExcel(filteredCustomers.map(c => ({
             name: c.name, phone: c.phone, totalPurchases: c.totalPurchases || 0,
             ordersCount: c.invoiceCount || 0, balance: c.totalDebt || 0,
           })));
           break;
+        }
         case 'partners':
           exportPartnersToExcel(cloudPartners.map(p => ({
             name: p.name, sharePercentage: p.sharePercentage, initialCapital: p.initialCapital,
@@ -592,15 +626,8 @@ export default function Reports() {
           })), { start: dateRange.from, end: dateRange.to });
           break;
         default: {
-          const filteredInvoices = cloudInvoices.filter(inv => {
-            const invDate = toLocalDateString(inv.createdAt);
-            return isDateInRange(invDate, dateRange.from, dateRange.to);
-          });
-          exportInvoicesToExcel(filteredInvoices.map(inv => ({
-            id: inv.id, customerName: inv.customerName || 'عميل نقدي', total: inv.total,
-            profit: inv.profit, paymentType: inv.paymentType, type: inv.type,
-            createdAt: inv.createdAt, cashierName: inv.cashierName || '-',
-          })), { start: dateRange.from, end: dateRange.to });
+          toast.error('هذا التقرير لا يدعم التصدير المباشر — استخدم زر التصدير الخاص داخل التقرير');
+          return;
         }
       }
       toast.success(t('reports.exportSuccessExcel'));
@@ -608,7 +635,7 @@ export default function Reports() {
       console.error('Excel export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudInvoices, cloudProducts, cloudCustomers, cloudPartners, t]);
+  }, [dateRange, activeReport, expenseReportData, cloudPartners, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
 
   const handleShareExpenseReport = (partnerName: string) => {
     const partnerExpenses = expenseReportData.expenses.filter(exp =>
