@@ -62,6 +62,8 @@ export function SyncStatusMenu() {
 
   const getStatus = () => {
     if (!isOnline) return 'offline';
+    if (isOnline && !hasInternetAccess) return 'noInternet';
+    if (isPaused) return 'paused';
     if (isSyncing || queueStatus.isProcessing) return 'syncing';
     if (hasIssues) return 'error';
     if (pendingCount > 0) return 'pending';
@@ -76,6 +78,18 @@ export function SyncStatusMenu() {
       color: 'text-destructive',
       label: t('sync.offline'),
       animate: 'animate-pulse',
+    },
+    noInternet: {
+      icon: WifiOff,
+      color: 'text-destructive',
+      label: 'متصل بالشبكة بدون إنترنت',
+      animate: 'animate-pulse',
+    },
+    paused: {
+      icon: Pause,
+      color: 'text-warning',
+      label: 'المزامنة متوقفة مؤقتاً',
+      animate: '',
     },
     syncing: {
       icon: RefreshCw,
@@ -101,7 +115,7 @@ export function SyncStatusMenu() {
       label: t('sync.synced'),
       animate: '',
     },
-  };
+  } as const;
 
   const config = statusConfig[status];
   const StatusIcon = config.icon;
