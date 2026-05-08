@@ -81,25 +81,54 @@ let customersCache: Customer[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000; // 30 seconds
 
-// Load customers
+// Background refresh control
+let bgRefreshing = false;
+const refreshCustomersInBackground = async () => {
+  if (bgRefreshing || !navigator.onLine) return;
+  bgRefreshing = true;
+  try {
+    const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
+      column: 'created_at',
+      ascending: false,
+    });
+    customersCache = cloudCustomers.map(toCustomer);
+    cacheTimestamp = Date.now();
+    saveCustomersLocally(customersCache);
+    try {
+      const { emitEvent, EVENTS } = await import('../events');
+      emitEvent(EVENTS.CUSTOMERS_UPDATED);
+    } catch { /* noop */ }
+  } catch (e) {
+    console.warn('[customers-cloud] background refresh failed:', e);
+  } finally {
+    bgRefreshing = false;
+  }
+};
+
+// Load customers — local-first: serve cache instantly, refresh in background
 export const loadCustomersCloud = async (): Promise<Customer[]> => {
   const userId = getCurrentUserId();
-  if (!userId) return [];
+  if (!userId) {
+    const local = loadCustomersLocally();
+    return local || [];
+  }
 
+  // Memory cache: instant
   if (customersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return customersCache;
   }
 
-  // Offline: return local cache
-  if (!navigator.onLine) {
-    const local = loadCustomersLocally();
-    if (local) {
-      customersCache = local;
-      cacheTimestamp = Date.now();
-      return local;
-    }
-    return [];
+  // localStorage cache: instant + trigger background refresh
+  const local = loadCustomersLocally();
+  if (local) {
+    customersCache = local;
+    cacheTimestamp = Date.now();
+    if (navigator.onLine) refreshCustomersInBackground();
+    return local;
   }
+
+  // First load — must wait for network
+  if (!navigator.onLine) return [];
 
   const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
     column: 'created_at',
@@ -109,7 +138,7 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
   customersCache = cloudCustomers.map(toCustomer);
   cacheTimestamp = Date.now();
   saveCustomersLocally(customersCache);
-  
+
   return customersCache;
 };
 
