@@ -22,9 +22,13 @@ const PERIODIC_RETRY_INTERVAL_MS = 30 * 60 * 1000;
 interface CloudSyncContextType {
   isReady: boolean;
   isSyncing: boolean;
+  isPaused: boolean;
+  hasInternetAccess: boolean;
   lastSyncTime: string | null;
   syncNow: () => Promise<void>;
   syncImmediately: () => void; // مزامنة فورية في الخلفية بعد عملية بيع
+  pauseSync: () => void;
+  resumeSync: () => void;
 }
 
 // Export context for safe usage in components that may render outside provider
