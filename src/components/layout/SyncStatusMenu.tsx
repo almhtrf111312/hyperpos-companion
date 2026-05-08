@@ -193,24 +193,42 @@ export function SyncStatusMenu() {
         side="bottom"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <StatusIcon className={cn("h-4 w-4", config.color, config.animate)} />
-            <span className="font-medium text-sm">{config.label}</span>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <StatusIcon className={cn("h-4 w-4 shrink-0", config.color, config.animate)} />
+            <span className="font-medium text-xs truncate">{config.label}</span>
           </div>
-          {isOnline && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              onClick={() => syncNow()}
-              disabled={isSyncing}
-            >
-              <RefreshCw className={cn("h-3 w-3", isRTL ? "ml-1" : "mr-1", isSyncing && "animate-spin")} />
-              {t('sync.syncBtn')}
-            </Button>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {isPaused ? (
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={resumeSync}>
+                <Play className="h-3 w-3" />
+                استئناف
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={pauseSync} title="إيقاف المزامنة مؤقتاً">
+                <Pause className="h-3 w-3" />
+                إيقاف
+              </Button>
+            )}
+            {isOnline && !isPaused && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => syncNow()}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
+              </Button>
+            )}
+          </div>
         </div>
+
+        {status === 'noInternet' && (
+          <div className="px-4 py-2 text-[11px] text-destructive bg-destructive/5 border-b border-border">
+            متصل بالشبكة لكن لا يوجد إنترنت فعلي. يتم استخدام البيانات المحلية المخزّنة.
+          </div>
+        )}
 
         {/* History List */}
         <ScrollArea className="max-h-64">
