@@ -167,6 +167,7 @@ export default function Reports() {
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
     { id: 'products', label: t('reports.products'), icon: BarChart3 },
     ...(!noInventory ? [{ id: 'inventory', label: t('reports.inventoryReport'), icon: Package }] : []),
+    ...(!noInventory ? [{ id: 'product-movement', label: 'حركة منتج', icon: Activity }] : []),
     { id: 'customers', label: t('reports.customers'), icon: Users },
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
