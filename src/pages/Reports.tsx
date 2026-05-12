@@ -66,6 +66,7 @@ import { EVENTS } from '@/lib/events';
 import { getCurrentStoreType, getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
 import { ReportFiltersBar, ReportFilters } from '@/components/reports/ReportFiltersBar';
 import { ReportToolbar } from '@/components/reports/ReportToolbar';
+import { ProductMovementReport } from '@/components/reports/ProductMovementReport';
 
 export default function Reports() {
   const { t } = useLanguage();
