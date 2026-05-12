@@ -729,7 +729,7 @@ export default function Reports() {
         </div>
 
         {/* Dynamic Summary Cards */}
-        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed'].includes(activeReport) && (
+        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed', 'product-movement'].includes(activeReport) && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             {summaryCards.map((card, i) => {
               const Icon = card.icon;
