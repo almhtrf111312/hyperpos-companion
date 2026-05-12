@@ -59,6 +59,51 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_log: {
+        Row: {
+          action_type: string
+          actor_id: string | null
+          actor_name: string | null
+          actor_role: string | null
+          created_at: string
+          description: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_role?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_role?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_licenses: {
         Row: {
           activated_at: string | null
@@ -1181,6 +1226,161 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_count_items: {
+        Row: {
+          actual_qty: number
+          count_id: string
+          created_at: string
+          expected_qty: number
+          id: string
+          notes: string | null
+          product_id: string
+          product_name: string | null
+          unit_cost: number | null
+          variance: number
+          variance_value: number | null
+        }
+        Insert: {
+          actual_qty?: number
+          count_id: string
+          created_at?: string
+          expected_qty?: number
+          id?: string
+          notes?: string | null
+          product_id: string
+          product_name?: string | null
+          unit_cost?: number | null
+          variance?: number
+          variance_value?: number | null
+        }
+        Update: {
+          actual_qty?: number
+          count_id?: string
+          created_at?: string
+          expected_qty?: number
+          id?: string
+          notes?: string | null
+          product_id?: string
+          product_name?: string | null
+          unit_cost?: number | null
+          variance?: number
+          variance_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_count_items_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "stock_counts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_counts: {
+        Row: {
+          completed_at: string | null
+          count_date: string
+          counted_by: string | null
+          counted_by_name: string | null
+          created_at: string
+          id: string
+          items_count: number | null
+          notes: string | null
+          status: string
+          total_variance_value: number | null
+          updated_at: string
+          user_id: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          count_date?: string
+          counted_by?: string | null
+          counted_by_name?: string | null
+          created_at?: string
+          id?: string
+          items_count?: number | null
+          notes?: string | null
+          status?: string
+          total_variance_value?: number | null
+          updated_at?: string
+          user_id: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          count_date?: string
+          counted_by?: string | null
+          counted_by_name?: string | null
+          created_at?: string
+          id?: string
+          items_count?: number | null
+          notes?: string | null
+          status?: string
+          total_variance_value?: number | null
+          updated_at?: string
+          user_id?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
+      stock_damages: {
+        Row: {
+          cost_value: number | null
+          created_at: string
+          damaged_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          product_name: string | null
+          quantity: number
+          reason: string | null
+          recorded_by: string | null
+          recorded_by_name: string | null
+          source: string | null
+          source_ref: string | null
+          unit_cost: number | null
+          user_id: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          cost_value?: number | null
+          created_at?: string
+          damaged_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          product_name?: string | null
+          quantity?: number
+          reason?: string | null
+          recorded_by?: string | null
+          recorded_by_name?: string | null
+          source?: string | null
+          source_ref?: string | null
+          unit_cost?: number | null
+          user_id: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          cost_value?: number | null
+          created_at?: string
+          damaged_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          product_name?: string | null
+          quantity?: number
+          reason?: string | null
+          recorded_by?: string | null
+          recorded_by_name?: string | null
+          source?: string | null
+          source_ref?: string | null
+          unit_cost?: number | null
+          user_id?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
       stock_transfer_items: {
         Row: {
           id: string
@@ -1501,6 +1701,15 @@ export type Database = {
         Returns: number
       }
       delete_owner_cascade: { Args: { _owner_id: string }; Returns: boolean }
+      get_inventory_value: {
+        Args: { _owner_id: string }
+        Returns: {
+          total_cost: number
+          total_sale: number
+          total_skus: number
+          total_units: number
+        }[]
+      }
       get_next_invoice_number: { Args: { _user_id?: string }; Returns: number }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
