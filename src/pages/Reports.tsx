@@ -905,6 +905,9 @@ export default function Reports() {
           </div>
         )}
 
+        {/* Product Movement */}
+        {activeReport === 'product-movement' && <ProductMovementReport dateRange={dateRange} />}
+
         {/* Purchases */}
         {activeReport === 'purchases' && <PurchaseInvoicesReport dateRange={dateRange} />}
 
