@@ -20,7 +20,8 @@ import {
   ClipboardList,
   Truck,
   Loader2,
-  Package
+  Package,
+  Activity
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
