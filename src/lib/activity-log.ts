@@ -225,6 +225,33 @@ export async function logActivity(
       if (profile?.full_name) userName = profile.full_name;
     } catch { /* ignore */ }
     addActivityLog(type, user.id, userName, description, details);
+    // Also persist to cloud activity_log (best-effort, non-blocking)
+    try {
+      let actorRole: string | null = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: roleRow } = await (supabase as any)
+          .from('user_roles')
+          .select('role, owner_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        actorRole = roleRow?.role || null;
+        const ownerId = roleRow?.owner_id || user.id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from('activity_log').insert({
+          user_id: ownerId,
+          actor_id: user.id,
+          actor_name: userName,
+          actor_role: actorRole,
+          action_type: type,
+          entity_type: (details?.entityType as string) || null,
+          entity_id: (details?.entityId as string) || null,
+          entity_name: (details?.entityName as string) || null,
+          description,
+          metadata: details || {},
+        });
+      } catch { /* offline — local log is enough */ }
+    } catch { /* ignore */ }
   } catch (e) {
     console.warn('[activity-log] logActivity failed:', e);
   }

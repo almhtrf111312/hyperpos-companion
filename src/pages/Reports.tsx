@@ -20,7 +20,8 @@ import {
   ClipboardList,
   Truck,
   Loader2,
-  Package
+  Package,
+  Activity
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
@@ -66,6 +67,7 @@ import { EVENTS } from '@/lib/events';
 import { getCurrentStoreType, getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
 import { ReportFiltersBar, ReportFilters } from '@/components/reports/ReportFiltersBar';
 import { ReportToolbar } from '@/components/reports/ReportToolbar';
+import { ProductMovementReport } from '@/components/reports/ProductMovementReport';
 
 export default function Reports() {
   const { t } = useLanguage();
@@ -166,6 +168,7 @@ export default function Reports() {
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
     { id: 'products', label: t('reports.products'), icon: BarChart3 },
     ...(!noInventory ? [{ id: 'inventory', label: t('reports.inventoryReport'), icon: Package }] : []),
+    ...(!noInventory ? [{ id: 'product-movement', label: 'حركة منتج', icon: Activity }] : []),
     { id: 'customers', label: t('reports.customers'), icon: Users },
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
@@ -726,7 +729,7 @@ export default function Reports() {
         </div>
 
         {/* Dynamic Summary Cards */}
-        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed'].includes(activeReport) && (
+        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed', 'product-movement'].includes(activeReport) && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             {summaryCards.map((card, i) => {
               const Icon = card.icon;
@@ -901,6 +904,9 @@ export default function Reports() {
             )}
           </div>
         )}
+
+        {/* Product Movement */}
+        {activeReport === 'product-movement' && <ProductMovementReport dateRange={dateRange} />}
 
         {/* Purchases */}
         {activeReport === 'purchases' && <PurchaseInvoicesReport dateRange={dateRange} />}
