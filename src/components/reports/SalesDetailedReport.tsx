@@ -97,7 +97,7 @@ export function SalesDetailedReport({ invoices, dateRange, cashierFilter, paymen
     .slice()
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
     .map(inv => ({
-      number: inv.invoiceNumber || inv.id.slice(0, 8),
+      number: inv.id,
       date: toLocalDateString(inv.createdAt),
       customer: inv.customerName || 'زبون نقدي',
       cashier: inv.cashierName || 'غير محدد',
