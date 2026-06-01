@@ -1,7 +1,7 @@
 {
-  "versionCode": 230,
-  "versionName": "1.0.1",
-  "lastUpdated": "2026-02-18T00:00:00.000Z",
+  "versionCode": 231,
+  "versionName": "1.0.2",
+  "lastUpdated": "2026-06-01T00:00:00.000Z",
   "buildHistory": [
     {
       "versionCode": 200,
@@ -17,6 +17,11 @@
       "versionCode": 230,
       "date": "2026-02-18T00:00:00.000Z",
       "description": "v1.0.1 - Offline-First images, sidebar fixes, privacy screen white theme, settings tab clarity"
+    },
+    {
+      "versionCode": 231,
+      "date": "2026-06-01T00:00:00.000Z",
+      "description": "v1.0.2 - Advanced reporting system: product movement, inventory stock count, inventory value, top products, detailed sales reports + cloud activity log"
     }
   ]
 }
