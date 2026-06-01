@@ -211,6 +211,7 @@ export default function Reports() {
   const filterConfig = useMemo(() => {
     switch (activeReport) {
       case 'sales':
+      case 'sales-detailed':
         return { showStatus: true, showCashier: true, showPaymentType: true, showSearch: true, cashiers: uniqueCashiers };
       case 'profits':
         return { showCashier: true, showPaymentType: true, cashiers: uniqueCashiers };
