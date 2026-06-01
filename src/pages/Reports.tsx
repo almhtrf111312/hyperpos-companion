@@ -71,6 +71,7 @@ import { ProductMovementReport } from '@/components/reports/ProductMovementRepor
 import { InventoryStockReport } from '@/components/reports/InventoryStockReport';
 import { InventoryValueReport } from '@/components/reports/InventoryValueReport';
 import { TopProductsReport } from '@/components/reports/TopProductsReport';
+import { SalesDetailedReport } from '@/components/reports/SalesDetailedReport';
 
 export default function Reports() {
   const { t } = useLanguage();
@@ -157,7 +158,7 @@ export default function Reports() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
+    if (tab && ['sales', 'sales-detailed', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -168,6 +169,7 @@ export default function Reports() {
   // All available reports
   const allReports = [
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
+    { id: 'sales-detailed', label: 'مبيعات تفصيلي', icon: Receipt },
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
     { id: 'products', label: t('reports.products'), icon: BarChart3 },
     ...(!noInventory ? [{ id: 'inventory', label: t('reports.inventoryReport'), icon: Package }] : []),
@@ -209,6 +211,7 @@ export default function Reports() {
   const filterConfig = useMemo(() => {
     switch (activeReport) {
       case 'sales':
+      case 'sales-detailed':
         return { showStatus: true, showCashier: true, showPaymentType: true, showSearch: true, cashiers: uniqueCashiers };
       case 'profits':
         return { showCashier: true, showPaymentType: true, cashiers: uniqueCashiers };
@@ -913,6 +916,17 @@ export default function Reports() {
 
         {/* Product Movement */}
         {activeReport === 'product-movement' && <ProductMovementReport dateRange={dateRange} />}
+
+        {/* Sales Detailed */}
+        {activeReport === 'sales-detailed' && (
+          <SalesDetailedReport
+            invoices={cloudInvoices}
+            dateRange={dateRange}
+            cashierFilter={filters.cashierId}
+            paymentFilter={filters.paymentType}
+            statusFilter={filters.status}
+          />
+        )}
 
         {/* Inventory & Stock Counts */}
         {activeReport === 'inventory-stock' && <InventoryStockReport dateRange={dateRange} />}
