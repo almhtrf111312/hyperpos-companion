@@ -71,6 +71,7 @@ import { ProductMovementReport } from '@/components/reports/ProductMovementRepor
 import { InventoryStockReport } from '@/components/reports/InventoryStockReport';
 import { InventoryValueReport } from '@/components/reports/InventoryValueReport';
 import { TopProductsReport } from '@/components/reports/TopProductsReport';
+import { SalesDetailedReport } from '@/components/reports/SalesDetailedReport';
 
 export default function Reports() {
   const { t } = useLanguage();
