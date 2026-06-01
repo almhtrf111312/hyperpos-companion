@@ -1,5 +1,40 @@
 [
   {
+    "type": "new",
+    "ar": "نظام تقارير متقدم وموحّد: تقرير حركة المنتج (شراء/بيع/مرتجع/إتلاف) مع فلترة دقيقة",
+    "en": "Advanced unified reporting: product movement (purchase/sale/refund/damage) with precise filtering"
+  },
+  {
+    "type": "new",
+    "ar": "تقرير الجرد الفعلي للمخزون مع جلسات جرد ومطابقة الرصيد الدفتري وحساب الفروقات",
+    "en": "Physical stock count report with reconciliation sessions and variance tracking"
+  },
+  {
+    "type": "new",
+    "ar": "تقرير قيمة العهدة: رأس المال المجمد، المبيعات المحتملة، الأرباح الكامنة وتوزيع القيمة حسب الفئة",
+    "en": "Inventory value report: frozen capital, potential sales, latent profit, and category distribution"
+  },
+  {
+    "type": "new",
+    "ar": "تقرير المنتجات الأكثر مبيعاً وربحية مع الترتيب حسب الكمية أو الإيرادات أو الربح",
+    "en": "Top products report ranked by quantity, revenue, or profit margin"
+  },
+  {
+    "type": "new",
+    "ar": "تقرير المبيعات التفصيلي مع فلترة حسب الزبون أو الكاشير أو رقم الفاتورة",
+    "en": "Detailed sales report with filtering by customer, cashier, or invoice number"
+  },
+  {
+    "type": "improved",
+    "ar": "توحيد واجهة التقارير بين نسخة الويب وتطبيق APK مع تصدير PDF/Excel موحّد",
+    "en": "Unified reports UI across Web and APK with consistent PDF/Excel export"
+  },
+  {
+    "type": "improved",
+    "ar": "سجل النشاطات يُحفظ الآن في السحابة تلقائياً مع تتبع دور المستخدم وتفاصيل العملية",
+    "en": "Activity log now persists to cloud with actor role and operation metadata"
+  },
+  {
     "type": "fixed",
     "ar": "إصلاح مشكلة فتح قارئ الباركود مرتين وإعادة تشغيل التطبيق بعد القراءة على APK",
     "en": "Fixed barcode scanner opening twice and app restarting after scan on APK"
@@ -13,15 +48,5 @@
     "type": "improved",
     "ar": "تحسين تجربة العمل بدون إنترنت: التطبيق يفتح من الكاش فوراً بدون انتظار الشبكة",
     "en": "Improved offline experience: App opens from cache instantly without waiting for network"
-  },
-  {
-    "type": "new",
-    "ar": "إضافة زر التقاط صورة مباشر من الكاميرا في نموذج إضافة المنتج (أوفلاين أولاً)",
-    "en": "Added direct camera capture button in product add form (offline-first)"
-  },
-  {
-    "type": "improved",
-    "ar": "تحسين تباين الألوان والنصوص في المظهر النهاري عبر جميع التبويبات والشاشات",
-    "en": "Enhanced color contrast and text visibility in light mode across all tabs and screens"
   }
 ]
