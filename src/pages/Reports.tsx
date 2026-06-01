@@ -169,6 +169,7 @@ export default function Reports() {
   // All available reports
   const allReports = [
     { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
+    { id: 'sales-detailed', label: 'مبيعات تفصيلي', icon: Receipt },
     { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
     { id: 'products', label: t('reports.products'), icon: BarChart3 },
     ...(!noInventory ? [{ id: 'inventory', label: t('reports.inventoryReport'), icon: Package }] : []),
