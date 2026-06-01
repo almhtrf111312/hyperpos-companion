@@ -69,7 +69,7 @@ export function SalesDetailedReport({ invoices, dateRange, cashierFilter, paymen
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .map(inv => ({
         id: inv.id,
-        name: `فاتورة #${inv.invoiceNumber || inv.id.slice(0, 8)}`,
+        name: `فاتورة #${inv.id}`,
         subtitle: `${inv.customerName || 'نقدي'} • ${formatCurrency(inv.total)} • ${toLocalDateString(inv.createdAt)}`,
       }));
   }, [baseFiltered]);
