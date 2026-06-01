@@ -916,6 +916,17 @@ export default function Reports() {
         {/* Product Movement */}
         {activeReport === 'product-movement' && <ProductMovementReport dateRange={dateRange} />}
 
+        {/* Sales Detailed */}
+        {activeReport === 'sales-detailed' && (
+          <SalesDetailedReport
+            invoices={cloudInvoices}
+            dateRange={dateRange}
+            cashierFilter={filters.cashierId}
+            paymentFilter={filters.paymentType}
+            statusFilter={filters.status}
+          />
+        )}
+
         {/* Inventory & Stock Counts */}
         {activeReport === 'inventory-stock' && <InventoryStockReport dateRange={dateRange} />}
 
