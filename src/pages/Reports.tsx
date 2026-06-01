@@ -158,7 +158,7 @@ export default function Reports() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
+    if (tab && ['sales', 'sales-detailed', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
