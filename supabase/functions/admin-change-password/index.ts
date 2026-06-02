@@ -90,6 +90,32 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Ownership/role enforcement: admins may only reset passwords of their own cashiers.
+    // Bosses may reset any account.
+    const isBoss = roleData?.role === 'boss'
+    if (!isBoss) {
+      const { data: targetRoleRow, error: targetRoleErr } = await serviceClient
+        .from('user_roles')
+        .select('role, owner_id')
+        .eq('user_id', targetUserId)
+        .maybeSingle()
+
+      if (targetRoleErr || !targetRoleRow) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (targetRoleRow.role !== 'cashier' || targetRoleRow.owner_id !== adminUserId) {
+        console.warn(`Admin ${adminUserId} attempted to change password for user ${targetUserId} (role=${targetRoleRow.role}, owner=${targetRoleRow.owner_id})`)
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     // Use the already created service client to update the target user's password
     const { error: updateError } = await serviceClient.auth.admin.updateUserById(
       targetUserId,
