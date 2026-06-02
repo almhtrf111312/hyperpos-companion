@@ -248,11 +248,9 @@ export default function BossPanel() {
 
         if (response.error) {
           console.error('Error fetching users:', response.error);
-          // Fallback to view if edge function fails
-          const { data: ownersData } = await supabase
-            .from('boss_owners_view')
-            .select('*');
-          setOwners((ownersData || []).map(o => ({ ...o, email: null })));
+          // Fallback to secured RPC if edge function fails
+          const { data: ownersData } = await supabase.rpc('get_boss_owners');
+          setOwners((ownersData || []).map((o: any) => ({ ...o, email: null })));
         } else {
           setOwners(response.data.users || []);
         }
