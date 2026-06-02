@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('is_active', true)
       
-      console.log('Available codes:', codes?.map(c => c.code))
+      console.log('Active code count:', codes?.length ?? 0)
       
       // Find matching code case-insensitively
       activationCode = codes?.find(c => 
