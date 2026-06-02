@@ -1141,15 +1141,21 @@ export function CartPanel({
             )}
           </div>
 
-          {/* Row 2: Discount (only if enabled) */}
+          {/* Row 2: Discount (only if enabled) - unified pill design */}
           {(settingsDiscountPercentEnabled || settingsDiscountFixedEnabled) && (
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               {settingsDiscountPercentEnabled && (
-                <div className="flex items-center gap-0.5 flex-1 bg-muted/50 rounded-lg px-2 h-7 border border-border/30">
-                  <Percent className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <label
+                  className={cn(
+                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-colors cursor-text",
+                    discountType === 'percent' && discount > 0
+                      ? "bg-primary/5 border-primary/40"
+                      : "bg-muted/40 border-border/40 hover:border-border/60"
+                  )}
+                >
                   <Input
                     type="number"
-                    placeholder="خصم %"
+                    placeholder={t('pos.discountPercent') || 'خصم'}
                     value={discountType === 'percent' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('percent');
@@ -1157,20 +1163,32 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('percent')}
                     className={cn(
-                      "border-0 h-6 text-[10px] bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground",
+                      "border-0 h-6 text-xs bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
                       discountType === 'percent' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
                     max="100"
                   />
-                </div>
+                  <span className={cn(
+                    "flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+                    discountType === 'percent' && discount > 0
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background/70 text-muted-foreground border border-border/40"
+                  )}>%</span>
+                </label>
               )}
               {settingsDiscountFixedEnabled && (
-                <div className="flex items-center gap-0.5 flex-1 bg-muted/50 rounded-lg px-2 h-7 border border-border/30">
-                  <DollarSign className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <label
+                  className={cn(
+                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-colors cursor-text",
+                    discountType === 'fixed' && discount > 0
+                      ? "bg-primary/5 border-primary/40"
+                      : "bg-muted/40 border-border/40 hover:border-border/60"
+                  )}
+                >
                   <Input
                     type="number"
-                    placeholder={`خصم ${selectedCurrency.symbol}`}
+                    placeholder={t('pos.discountFixed') || 'خصم'}
                     value={discountType === 'fixed' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('fixed');
@@ -1178,21 +1196,32 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('fixed')}
                     className={cn(
-                      "border-0 h-6 text-[10px] bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground",
+                      "border-0 h-6 text-xs bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
                       discountType === 'fixed' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
                   />
-                </div>
+                  <span className={cn(
+                    "flex items-center justify-center min-w-[20px] h-5 px-1 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+                    discountType === 'fixed' && discount > 0
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background/70 text-muted-foreground border border-border/40"
+                  )}>{selectedCurrency.symbol}</span>
+                </label>
               )}
             </div>
           )}
 
-          {/* Row 3: Received Amount */}
-          <div className="flex items-center gap-1 bg-muted/50 rounded-lg px-2 h-7 border border-border/30">
+          {/* Row 3: Received Amount - matches discount pill design */}
+          <label className={cn(
+            "flex items-center gap-1.5 rounded-lg h-8 px-2.5 border transition-colors cursor-text",
+            receivedAmount > 0
+              ? "bg-primary/5 border-primary/40"
+              : "bg-muted/40 border-border/40 hover:border-border/60"
+          )}>
             <Banknote className={cn(
-              "w-3 h-3 flex-shrink-0",
-              wholesaleMode ? "text-warning" : "text-muted-foreground"
+              "w-3.5 h-3.5 flex-shrink-0",
+              wholesaleMode ? "text-warning" : receivedAmount > 0 ? "text-primary" : "text-muted-foreground"
             )} />
             <Input
               type="number"
@@ -1200,13 +1229,12 @@ export function CartPanel({
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
-                "border-0 h-6 text-[10px] bg-transparent p-0 focus-visible:ring-0 shadow-none flex-1 text-foreground placeholder:text-muted-foreground",
+                "border-0 h-6 text-xs bg-transparent p-0 focus-visible:ring-0 shadow-none flex-1 text-foreground placeholder:text-muted-foreground/70 min-w-0",
                 wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
               )}
               min="0"
-              dir="ltr"
             />
-          </div>
+          </label>
 
           {/* Row 4: Info summary + Total */}
           <div className="space-y-1">
