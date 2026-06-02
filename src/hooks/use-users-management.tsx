@@ -200,10 +200,21 @@ export function useUsersManagement() {
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'cashier') => {
     try {
+      // Admins can only assign 'cashier' role to their sub-accounts.
+      // Promoting to 'admin' is restricted to boss accounts via RLS WITH CHECK.
+      if (newRole !== 'cashier') {
+        toast({
+          title: 'غير مسموح',
+          description: 'لا يمكن ترقية المستخدم إلى مدير',
+          variant: 'destructive',
+        });
+        return false;
+      }
       const { error } = await supabase
         .from('user_roles')
         .update({ role: newRole })
         .eq('user_id', userId);
+
 
       if (error) {
         toast({
