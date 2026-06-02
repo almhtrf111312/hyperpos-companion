@@ -66,7 +66,53 @@ serve(async (req) => {
       });
     }
 
-    const { messages, language } = await req.json();
+    const { messages } = await req.json();
+
+    // Validate messages array — prevent prompt injection via role/content
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: "Invalid messages" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (messages.length > 20) {
+      return new Response(JSON.stringify({ error: "Too many messages" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const validRoles = new Set(["user", "assistant"]);
+    const sanitizedMessages: Array<{ role: string; content: string }> = [];
+    let totalLen = 0;
+    for (const msg of messages) {
+      if (!msg || !validRoles.has(msg.role)) {
+        return new Response(JSON.stringify({ error: "Invalid message role" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (typeof msg.content !== "string" || msg.content.trim() === "") {
+        return new Response(JSON.stringify({ error: "Invalid message content" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (msg.content.length > 4000) {
+        return new Response(JSON.stringify({ error: "Message too long" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      totalLen += msg.content.length;
+      sanitizedMessages.push({ role: msg.role, content: msg.content });
+    }
+    if (totalLen > 8000) {
+      return new Response(JSON.stringify({ error: "Message payload too large" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
@@ -86,7 +132,7 @@ serve(async (req) => {
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          ...messages,
+          ...sanitizedMessages,
         ],
         stream: true,
       }),
