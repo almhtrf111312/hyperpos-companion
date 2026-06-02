@@ -1701,6 +1701,28 @@ export type Database = {
         Returns: number
       }
       delete_owner_cascade: { Args: { _owner_id: string }; Returns: boolean }
+      get_boss_owners: {
+        Args: never
+        Returns: {
+          cashier_count: number | null
+          device_id: string | null
+          full_name: string | null
+          is_active: boolean | null
+          license_expires: string | null
+          license_revoked: boolean | null
+          license_tier: string | null
+          max_cashiers: number | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          role_created_at: string | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "boss_owners_view"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_inventory_value: {
         Args: { _owner_id: string }
         Returns: {
