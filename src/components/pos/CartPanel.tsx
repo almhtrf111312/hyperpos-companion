@@ -1188,7 +1188,7 @@ export function CartPanel({
                 >
                   <Input
                     type="number"
-                    placeholder={t('pos.discountFixed') || 'خصم'}
+                    placeholder="خصم"
                     value={discountType === 'fixed' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('fixed');
