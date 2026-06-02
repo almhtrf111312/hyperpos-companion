@@ -122,7 +122,7 @@ serve(async (req) => {
     if (updateError) {
       console.error('Error updating email:', updateError);
       return new Response(
-        JSON.stringify({ error: 'Failed to update email', details: updateError.message }),
+        JSON.stringify({ error: 'Failed to update email' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
