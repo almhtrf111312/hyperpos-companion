@@ -25,3 +25,8 @@ dist-ssr
 
 # Gradle
 gradle-*/
+
+# Android signing keys - never commit
+*.keystore
+*.jks
+keystore_base64.txt
