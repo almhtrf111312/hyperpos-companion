@@ -1155,7 +1155,7 @@ export function CartPanel({
                 >
                   <Input
                     type="number"
-                    placeholder={t('pos.discountPercent') || 'خصم'}
+                    placeholder="خصم"
                     value={discountType === 'percent' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('percent');
