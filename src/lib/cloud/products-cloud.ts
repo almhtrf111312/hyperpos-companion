@@ -469,7 +469,16 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.quantity !== undefined) updates.quantity = data.quantity;
   if (data.minStockLevel !== undefined) updates.min_stock_level = data.minStockLevel;
   if (data.expiryDate !== undefined) updates.expiry_date = data.expiryDate || null;
-  if (data.image !== undefined) updates.image_url = data.image || null;
+  // ✅ منع مسح صورة المنتج بالخطأ: نحدّث image_url فقط عند وجود قيمة فعلية.
+  // لحذف الصورة عمدًا، استخدم القيمة الخاصة '__CLEAR__'.
+  if (data.image !== undefined) {
+    if (data.image === '__CLEAR__') {
+      updates.image_url = null;
+    } else if (typeof data.image === 'string' && data.image.length > 0) {
+      updates.image_url = data.image;
+    }
+    // إن كانت فارغة، نتجاهل التحديث للحفاظ على الصورة الموجودة
+  }
   // Labor cost (workshop mode)
   if (data.laborCost !== undefined) updates.labor_cost = data.laborCost;
   // Unit settings

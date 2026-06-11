@@ -802,9 +802,16 @@ export default function Products() {
     // حساب سعر تكلفة الكرتونة تلقائياً
     const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
 
+    // ✅ حماية الصورة: إذا أصبحت فارغة لكن المنتج لديه صورة سابقة، نحافظ عليها
+    // (الحذف العمدي يستخدم قيمة خاصة '__CLEAR__')
+    const previousImage = selectedProduct?.image || '';
+    const imageToSave = finalImage && finalImage.length > 0
+      ? finalImage
+      : (previousImage || '');
+
     const productData = {
       ...formData,
-      image: finalImage, // ✅ استخدم مسار السحابة أو فارغ (ليس base64 ضخم)
+      image: imageToSave,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
       bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
       expiryDate: formData.expiryDate || undefined,
