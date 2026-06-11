@@ -125,9 +125,16 @@ export async function uploadProductImage(base64Image: string): Promise<string | 
 
     console.log(`[Image Upload] Blob size: ${(blob.size / 1024).toFixed(1)}KB`);
 
-    // الخطوة 3: رفع للسحابة
+    // الخطوة 3: رفع للسحابة — الحفظ داخل مجلد المستخدم لتتوافق مع سياسة الوصول
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-    const filePath = `products/${fileName}`;
+    let userFolder = 'products';
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) userFolder = user.id;
+    } catch {
+      // fallback يبقى 'products'
+    }
+    const filePath = `${userFolder}/products/${fileName}`;
 
     const { error } = await supabase.storage
       .from('product-images')
