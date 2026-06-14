@@ -1,11 +1,12 @@
 import { ReactNode, useState, useCallback } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Sidebar, MobileMenuTrigger } from './Sidebar';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 import { useLanguage } from '@/hooks/use-language';
 
 interface MainLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
@@ -42,7 +43,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           ? (isMobile ? 'mr-0' : isTablet ? 'mr-[calc(72px+16px)]' : 'mr-[calc(14rem+16px)]') 
           : (isMobile ? 'ml-0' : isTablet ? 'ml-[calc(72px+16px)]' : 'ml-[calc(14rem+16px)]')
       }`}>
-        {children}
+        {children ?? <Outlet />}
       </main>
     </div>
   );

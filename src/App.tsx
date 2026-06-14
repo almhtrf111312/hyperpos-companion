@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, useSearchParams, useNavigate } from "react-router-dom";
+import { HashRouter, Routes, Route, useSearchParams, useNavigate, Outlet } from "react-router-dom";
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
@@ -212,34 +212,37 @@ const AppContent = () => {
         <Route path="/signup" element={<Signup />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected routes - Cashier accessible */}
+        {/* Full-screen protected routes (no MainLayout) */}
         <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
         <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
-        <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
-        <Route path="/customers/*" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
-        <Route path="/debts" element={<ProtectedRoute><MainLayout><DebtsRedirect /></MainLayout></ProtectedRoute>} />
-        <Route path="/invoices" element={<ProtectedRoute><MainLayout><Invoices /></MainLayout></ProtectedRoute>} />
-        <Route path="/services" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
-        <Route path="/services/*" element={<ProtectedRoute><MainLayout><Services /></MainLayout></ProtectedRoute>} />
-        <Route path="/expenses" element={<ProtectedRoute><MainLayout><Expenses /></MainLayout></ProtectedRoute>} />
-        <Route path="/cash-shifts" element={<ProtectedRoute><MainLayout><CashShifts /></MainLayout></ProtectedRoute>} />
-        <Route path="/appearance" element={<ProtectedRoute><MainLayout><Appearance /></MainLayout></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-        <Route path="/library" element={<ProtectedRoute><MainLayout><LibraryMembers /></MainLayout></ProtectedRoute>} />
-
-        {/* Protected routes - Admin/Boss only */}
-        <Route path="/dashboard" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Dashboard /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/products" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/purchases" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Purchases /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/products/*" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Products /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/partners" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><PartnersRedirect /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/warehouses" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Warehouses /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/stock-transfer" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><StockTransfer /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Reports /></MainLayout></RoleGuard></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><RoleGuard allowedRoles={['boss', 'admin']}><MainLayout><Settings /></MainLayout></RoleGuard></ProtectedRoute>} />
-
-        {/* Boss only routes */}
         <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />
+
+        {/* Protected routes wrapped by a single persistent MainLayout */}
+        <Route element={<ProtectedRoute><MainLayout><Outlet /></MainLayout></ProtectedRoute>}>
+          {/* Cashier accessible */}
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/customers/*" element={<Customers />} />
+          <Route path="/debts" element={<DebtsRedirect />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/services/*" element={<Services />} />
+          <Route path="/expenses" element={<Expenses />} />
+          <Route path="/cash-shifts" element={<CashShifts />} />
+          <Route path="/appearance" element={<Appearance />} />
+          <Route path="/library" element={<LibraryMembers />} />
+
+          {/* Admin/Boss only */}
+          <Route path="/dashboard" element={<RoleGuard allowedRoles={['boss', 'admin']}><Dashboard /></RoleGuard>} />
+          <Route path="/products" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
+          <Route path="/products/*" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
+          <Route path="/purchases" element={<RoleGuard allowedRoles={['boss', 'admin']}><Purchases /></RoleGuard>} />
+          <Route path="/partners" element={<RoleGuard allowedRoles={['boss', 'admin']}><PartnersRedirect /></RoleGuard>} />
+          <Route path="/warehouses" element={<RoleGuard allowedRoles={['boss', 'admin']}><Warehouses /></RoleGuard>} />
+          <Route path="/stock-transfer" element={<RoleGuard allowedRoles={['boss', 'admin']}><StockTransfer /></RoleGuard>} />
+          <Route path="/reports" element={<RoleGuard allowedRoles={['boss', 'admin']}><Reports /></RoleGuard>} />
+          <Route path="/settings" element={<RoleGuard allowedRoles={['boss', 'admin']}><Settings /></RoleGuard>} />
+        </Route>
 
         <Route path="*" element={<NotFound />} />
       </Routes>
