@@ -82,9 +82,16 @@ const AppContent = () => {
   // Privacy policy acceptance
   const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();
 
-  // Setup wizard removed - users go directly to login/signup
-  // Settings can be configured from Settings page after login
-  const [setupComplete] = useState(true);
+  // Setup wizard shown to admin/boss on first login until completed
+  const { user } = useAuth();
+  const { role, isLoading: roleLoading } = useUserRole();
+  const [setupComplete, setSetupComplete] = useState<boolean>(() => {
+    try { return localStorage.getItem('hyperpos_setup_complete') === 'true'; } catch { return true; }
+  });
+  // Re-read flag whenever the user changes (after login/logout)
+  useEffect(() => {
+    try { setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true'); } catch {}
+  }, [user?.id]);
 
   // Handle reset mode
   useEffect(() => {
