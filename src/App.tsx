@@ -16,7 +16,10 @@ import { UserRoleProvider } from "./hooks/use-user-role";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
-// SetupWizard removed - users go directly to login
+import { SetupWizard } from "./components/setup/SetupWizard";
+import { OnboardingTour } from "./components/onboarding/OnboardingTour";
+import { useAuth } from "./hooks/use-auth";
+import { useUserRole } from "./hooks/use-user-role";
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
