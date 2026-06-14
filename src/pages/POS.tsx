@@ -842,9 +842,7 @@ export default function POS() {
           )}
         </Button>
       )}
-
-      {/* Onboarding Tour */}
-      <OnboardingTour />
     </div>
+
   );
 }
