@@ -16,7 +16,10 @@ import { UserRoleProvider } from "./hooks/use-user-role";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
-// SetupWizard removed - users go directly to login
+import { SetupWizard } from "./components/setup/SetupWizard";
+import { OnboardingTour } from "./components/onboarding/OnboardingTour";
+import { useAuth } from "./hooks/use-auth";
+import { useUserRole } from "./hooks/use-user-role";
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
@@ -79,9 +82,16 @@ const AppContent = () => {
   // Privacy policy acceptance
   const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();
 
-  // Setup wizard removed - users go directly to login/signup
-  // Settings can be configured from Settings page after login
-  const [setupComplete] = useState(true);
+  // Setup wizard shown to admin/boss on first login until completed
+  const { user } = useAuth();
+  const { role, isLoading: roleLoading } = useUserRole();
+  const [setupComplete, setSetupComplete] = useState<boolean>(() => {
+    try { return localStorage.getItem('hyperpos_setup_complete') === 'true'; } catch { return true; }
+  });
+  // Re-read flag whenever the user changes (after login/logout)
+  useEffect(() => {
+    try { setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true'); } catch {}
+  }, [user?.id]);
 
   // Handle reset mode
   useEffect(() => {
@@ -200,13 +210,28 @@ const AppContent = () => {
     return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
   }
 
+  // Show setup wizard the first time an admin/boss logs in (cashiers skip it)
+  const shouldShowSetup = !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss');
+  if (shouldShowSetup) {
+    return (
+      <>
+        <Toaster />
+        <Sonner />
+        <SetupWizard onComplete={() => setSetupComplete(true)} />
+      </>
+    );
+  }
+
   return (
     <>
       {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
       <Toaster />
       <Sonner />
+      {/* Global onboarding tour — persists across route changes */}
+      {user && <OnboardingTour />}
       <Routes>
+
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

@@ -1,72 +1,128 @@
-# تقرير حالة البنية + خطة تعديل
 
-## رأيي بملاحظات Gemini الثلاث (بعد فحص الكود الفعلي)
+# خطة: تحسين جولة الشرح (Onboarding) + معالج الإعداد الأولي
 
-### 1) العلاقة Router ↔ Layout — **ملاحظة صحيحة وتحتاج إصلاح فعلي** ✅
-في `src/App.tsx` كل مسار محمي مكتوب بهذا الشكل:
-```tsx
-<Route path="/customers" element={<ProtectedRoute><MainLayout><Customers/></MainLayout></ProtectedRoute>} />
-<Route path="/invoices"  element={<ProtectedRoute><MainLayout><Invoices/></MainLayout></ProtectedRoute>} />
-...
-```
-هذا يعني أن `MainLayout` (القائمة الجانبية + الهيدر) **يُعاد تركيبه (unmount/remount) عند كل تنقّل** بين الصفحات، لأن React يرى عنصرًا جديدًا في كل مرة. النتائج العملية:
-- وميض/قفزة بصرية للسايدبار عند الانتقال.
-- فقدان حالة السايدبار (`sidebarOpen`) و`useOrientationChange` و`NotificationBell` بدون داعٍ.
-- تنفيذ effects القائمة الجانبية مرارًا = استهلاك أعلى على الأندرويد.
-- هذا فعلاً ما حذّر منه Gemini.
-
-### 2) ربط Cloud Sync بـ Supabase — **ملاحظة على الرسم فقط، الكود سليم** ❌ لا تعديل
-`useCloudSync` و`useRealtimeSync` و`products-cloud.ts` كلها تستورد `supabase` من `@/integrations/supabase/client` وتستدعيه فعلاً. السهم مفقود في رسم Gemini فقط، أما الكود فالمزامنة موصولة بالـ Backend بشكل صحيح.
-
-### 3) ازدواجية POS UI / CartPanel — **ملاحظة غير دقيقة** ❌ لا تعديل
-`src/pages/POS.tsx` هو الحاوية (state, hooks, data loading) و`CartPanel.tsx` مكوّن عرض يستقبل props. لا يوجد منطق مكرر؛ هذا الفصل صحيح ومطابق لما اقترحه Gemini أصلاً.
-
-## الخلاصة
-البنية ممتازة كما قال Gemini. يوجد **عيب هرمي حقيقي واحد فقط** يستحق الإصلاح: إعادة تركيب `MainLayout` عند كل تنقّل.
+الهدف: شرح أول مرة يعمل بشكل صحيح على الموبايل تمامًا كما على الكمبيوتر، مع إضافة كل التبويبات الجديدة. وعند إنشاء الحساب لأول مرة، يظهر معالج إعداد شامل (نوع المحل، العملات، الضرائب، باقي الإعدادات الأساسية).
 
 ---
 
-## الخطة (تعديل واحد فقط، منخفض المخاطر)
+## القسم الأول: إصلاح جولة الشرح على الموبايل (`OnboardingTour.tsx`)
 
-### تحويل MainLayout إلى Layout Route باستخدام `<Outlet/>`
+### المشاكل الحالية على الموبايل
+- بعض الخطوات تستهدف عناصر داخل الـ Sidebar؛ على الموبايل الـ Sidebar يُغلق تلقائيًا عند تغيير المسار (`useOrientationChange` + التنقل) فيختفي العنصر قبل تموضع البطاقة.
+- زر القائمة `data-tour="mobile-menu-trigger"` يُنقر برمجيًا لكن أحيانًا الـ Sidebar غير مهيأ بعد بسبب التنقل المتزامن (`navigate(step.route)`).
+- البطاقة السفلية (`bottom-sheet`) تغطي الأزرار في خطوات السلة (`cash-btn`, `debt-btn`, `action-btns`) لأنّ `scrollIntoView({ block: 'start' })` يضع الزر تحت الشاشة.
+- خطوات سطح المكتب فقط (`desktopOnly: true` مثل `sidebar`, `cart-panel`) مستثناة، لكن لا يوجد بديل موبايل مكافئ لها → تجربة ناقصة.
+- التبويبات الجديدة (Cashbox, Cash Shifts, Purchases, Warehouses, Stock Transfer, Partners, Debts, Services, Library, Appearance) غير موجودة في `tourSteps`.
 
-**الملفات:**
-- `src/components/layout/MainLayout.tsx` — قبول `children` اختياريًا والرجوع إلى `<Outlet/>` عند غيابها (يحافظ على التوافق العكسي للاستخدامات الحالية إن وُجدت).
-- `src/App.tsx` — إعادة هيكلة `<Routes>` لتجميع المسارات المحمية تحت Route والد واحد يستخدم `MainLayout`.
+### الإصلاحات
 
-**الشكل الجديد المختصر في `App.tsx`:**
-```text
-<Routes>
-  /login, /signup, /reset-password         (عامة كما هي)
-  /, /pos                                  (بدون MainLayout — POS كامل الشاشة كما هو الآن)
-  /help                                    (بدون MainLayout كما هو الآن)
-  /boss                                    (بدون MainLayout كما هو الآن)
+1. **إعادة بناء قائمة `tourSteps`** بفئات منطقية، مع نسختين عند اللزوم (mobile vs desktop):
+   - **مقدمة**: ترحيب عام (بطاقة وسط الشاشة، بدون selector).
+   - **التنقل**: 
+     - Desktop: تعريف بالـ Sidebar.
+     - Mobile: تعريف بزر `mobile-menu-trigger` ثم فتح الـ Sidebar وعرض كل عنصر داخله بالتتابع.
+   - **التبويبات** (بالترتيب الجديد الكامل): POS, Dashboard, Invoices, Products, Customers, Debts, Cashbox, Cash Shifts, Expenses, Purchases, Warehouses, Stock Transfer, Partners, Reports, Services, Library Members, Appearance, Settings.
+   - **داخل POS**: شريط البحث، شبكة المنتجات، السلة (cart-panel على ديسكتوب / cart-fab على موبايل + فتح Drawer)، أزرار الدفع.
 
-  <Route element={<ProtectedRoute><MainLayout><Outlet/></MainLayout></ProtectedRoute>}>
-     /customers, /customers/*, /debts, /invoices, /services, /services/*,
-     /expenses, /cash-shifts, /appearance, /library
-     (داخلها RoleGuard للمسارات الإدارية:)
-     /dashboard, /products, /products/*, /purchases, /partners,
-     /warehouses, /stock-transfer, /reports, /settings
-  </Route>
+2. **تثبيت الـ Sidebar على الموبايل أثناء جولة التبويبات**:
+   - إضافة flag `tourMode` في `MainLayout` يمنع إغلاق الـ Sidebar تلقائيًا عند تغيير المسار طالما الجولة فعّالة.
+   - بثّ حدث `onboarding:active` من `OnboardingTour` يلتقطه `MainLayout` و`Sidebar`.
 
-  * → NotFound
-</Routes>
-```
+3. **تحسين توقيت الخطوات على الموبايل**:
+   - زيادة `settleDelay` إلى 900ms عند `requireSidebar` على الموبايل (للسماح بانتهاء حركة الانزلاق).
+   - عند انتقال خطوة → خطوة داخل نفس الـ Sidebar، عدم إعادة النقر على زر القائمة (فحص حالة الفتح).
+   - استخدام `scrollIntoView({ block: 'nearest' })` على الموبايل بدلًا من `'start'` لتجنّب اختفاء العنصر خلف البطاقة، مع إضافة هامش سفلي ديناميكي = ارتفاع الـ bottom-sheet.
 
-**النتيجة:**
-- `MainLayout` يُركّب **مرة واحدة** ويبقى ثابتًا أثناء التنقل بين الصفحات الإدارية.
-- لا يتأثر `POS` و`Help` و`BossPanel` (تبقى خارج التخطيط كما هي).
-- لا تغيير على المنطق، البيانات، السحابة، أو الأمان — فقط هيكلة التوجيه.
+4. **معالجة خطوات السلة على الموبايل**:
+   - فتح Drawer السلة عبر `cart-fab` ثم انتظار `data-tour="cart-panel"` يظهر داخل Drawer.
+   - تقليص ارتفاع البطاقة السفلية إلى `18vh` مع تمرير تلقائي للزر المستهدف فوقها.
 
-### تحقق بعد التطبيق
-1. التنقل بين Customers → Invoices → Reports: السايدبار لا يومض ولا يُعاد بناؤه (يمكن إثباته بـ `console.log` في `MainLayout` أثناء التطوير).
-2. الحراس (`ProtectedRoute` + `RoleGuard`) ما زالوا يعملون: المستخدم غير المسجّل يُحوَّل لـ /login، والكاشير لا يصل لـ /products.
-3. مسار POS كامل الشاشة على الموبايل ما زال بدون سايدبار.
-4. زر الرجوع في الأندرويد و`useOrientationChange` يعملان.
+5. **معالجة العناصر غير الموجودة** (مثل تبويب يخفيه دور المستخدم):
+   - تخطّي الخطوة تلقائيًا بعد فشل polling بدلًا من عرض بطاقة فارغة.
+   - استخدام `useUserRole` لفلترة الخطوات (مثلًا cashier لا يرى Partners/Reports).
 
-### خارج النطاق (لن أعدّله)
-- لن أعدّل `CloudSyncProvider` ولا منطق `realtime-sync` ولا `CartPanel` — الكود صحيح.
-- لن أحدّث الرسم البياني نفسه (هو وثيقة خارجية).
+6. **زر "تخطي الجولة" و"إعادة عرضها"**:
+   - زر تخطي واضح في كل خطوة (موجود).
+   - إضافة زر "إعادة الجولة" في صفحة Help لاستدعاء `localStorage.removeItem(ONBOARDING_KEY)` وإعادة التحميل.
 
-هل تريدني أن أنفّذ هذا التعديل؟
+7. **إضافة `data-tour` السمات الناقصة** على التبويبات الجديدة في `Sidebar.tsx`:
+   - `data-tour="cashbox"`, `data-tour="cash-shifts"`, `data-tour="purchases"`, `data-tour="warehouses"`, `data-tour="stock-transfer"`, `data-tour="partners"`, `data-tour="debts"`, `data-tour="services"`, `data-tour="library"`, `data-tour="appearance"`.
+
+8. **ترجمات جديدة** في `src/lib/i18n.ts` لكل خطوة جديدة (ar/en/tr/fa/ku) بصيغة قصيرة وواضحة.
+
+---
+
+## القسم الثاني: توسيع معالج الإعداد الأولي (`SetupWizard.tsx`)
+
+حاليًا 4 خطوات: معلومات المحل / رأس المال / الشركاء / العملات. سيتم توسيعه إلى **6 خطوات** تشمل أهم الإعدادات القابلة للتخصيص.
+
+### الخطوات الجديدة (6 خطوات)
+
+1. **معلومات المحل** (موجودة - تحسين):
+   - اسم، نوع (قائمة موسّعة من `store-type-config.ts`)، هاتف، عنوان، **شعار/صورة** (اختياري عبر `image-upload`).
+
+2. **العملات والأسعار** (نقل من الخطوة 4):
+   - **العملة الأساسية**: USD / TRY / SYP / EUR (راديو).
+   - أسعار الصرف للعملات الأخرى.
+   - رمز العملة الافتراضي في الفواتير.
+
+3. **الضرائب** (جديد):
+   - تفعيل/تعطيل الضريبة.
+   - نسبة الضريبة الافتراضية (%).
+   - الضريبة شاملة في السعر أم تضاف؟ (راديو).
+   - اسم الضريبة المعروض (مثل: VAT, KDV, ضريبة القيمة المضافة).
+
+4. **إعدادات الفاتورة والطباعة** (جديد):
+   - رقم فاتورة البداية.
+   - عرض الطابعة (58mm / 80mm / A4).
+   - تذييل الفاتورة (نص حر، مثل "شكرًا لزيارتكم").
+   - تفعيل صوت تأكيد البيع.
+
+5. **رأس المال + الشركاء** (دمج الخطوتين 2 و3):
+   - إجمالي رأس المال.
+   - إضافة الشركاء (الاسم، النسبة، رأس مال كل شريك).
+   - تحقّق من مجموع النسب = 100%.
+
+6. **الميزات المتقدمة** (جديد - اختيارية، يمكن تفعيلها لاحقًا):
+   - إدارة المخازن (Warehouses) ✓/✗
+   - إدارة الديون (Debts) ✓/✗
+   - الصيانة (Services) ✓/✗
+   - المكتبة (Library) ✓/✗
+   - الكاشيرات المتعددة (إذا كانت الرخصة تسمح).
+   - تخزن في `hyperpos_enabled_features` ويُقرأ منها في الـ Sidebar لإخفاء/إظهار التبويبات.
+
+### حفظ الإعدادات
+
+كل خطوة تحفظ في `localStorage` تحت المفتاح المناسب (`hyperpos_settings_v1`, `hyperpos_tax_settings`, `hyperpos_print_settings`, `hyperpos_enabled_features`) **+** مزامنة سحابية عبر `app_settings` table الموجود (لكل مالك).
+
+في نهاية المعالج:
+- `localStorage.setItem('hyperpos_setup_complete', 'true')`.
+- بثّ حدث `setup:complete` ليلتقطه `OnboardingTour` ويبدأ بعد ثانية واحدة.
+- توجيه المستخدم إلى Dashboard مع رسالة ترحيب.
+
+### التصميم
+- 6 نقاط تقدّم في الأعلى (الموجود حاليًا) بدلًا من 4.
+- كل خطوة قابلة للتخطي عدا "معلومات المحل" و"العملة الأساسية".
+- زر "تخطي الإعداد المتقدم" بعد الخطوة 1 للمستخدم العجول → يفتح المعالج المختصر القديم.
+
+---
+
+## القسم الثالث: التفاصيل التقنية
+
+### الملفات المُعدَّلة
+- `src/components/onboarding/OnboardingTour.tsx` — إعادة بناء `tourSteps`، تحسين توقيت الموبايل، فلترة حسب الدور.
+- `src/components/setup/SetupWizard.tsx` — إضافة 2 خطوات + إعادة ترتيب الموجودة.
+- `src/components/layout/MainLayout.tsx` + `Sidebar.tsx` — منع إغلاق Sidebar أثناء الجولة، إضافة `data-tour` للتبويبات الجديدة.
+- `src/lib/i18n.ts` — ترجمات الخطوات الجديدة لـ 5 لغات.
+- `src/pages/Help.tsx` — زر "إعادة جولة الشرح".
+- `src/pages/Index.tsx` (أو حيث يُستدعى `SetupWizard`) — ربط حدث `setup:complete` بـ `OnboardingTour`.
+
+### بدون تغييرات
+- لا تغيير في الـ backend/RLS، باستثناء استخدام `app_settings` الموجود.
+- لا تغيير في منطق POS أو الفواتير.
+- مفتاح `hp_onboarding_complete` يبقى كما هو لمنع إعادة عرض الجولة للمستخدمين الحاليين.
+
+### التحقّق
+- اختبار يدوي على viewport 375x700 (موبايل) و 1280x800 (ديسكتوب).
+- التأكد من ظهور كل التبويبات الجديدة في الجولة.
+- التأكد أن المعالج يحفظ كل الإعدادات ويظهر تأثيرها فورًا (مثل العملة في POS).
