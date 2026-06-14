@@ -210,13 +210,28 @@ const AppContent = () => {
     return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
   }
 
+  // Show setup wizard the first time an admin/boss logs in (cashiers skip it)
+  const shouldShowSetup = !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss');
+  if (shouldShowSetup) {
+    return (
+      <>
+        <Toaster />
+        <Sonner />
+        <SetupWizard onComplete={() => setSetupComplete(true)} />
+      </>
+    );
+  }
+
   return (
     <>
       {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
       <Toaster />
       <Sonner />
+      {/* Global onboarding tour — persists across route changes */}
+      {user && <OnboardingTour />}
       <Routes>
+
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
