@@ -189,7 +189,20 @@ export default function HelpPage() {
           <p className="text-muted-foreground max-w-xl mx-auto">
             {isAr ? 'نظام محاسبة شامل لجميع الأنشطة التجارية' : 'Comprehensive accounting system for all business types'}
           </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
+              window.dispatchEvent(new CustomEvent('onboarding:replay'));
+            }}
+          >
+            <Sparkles className="w-4 h-4 me-2" />
+            {isAr ? 'إعادة جولة الشرح' : 'Replay onboarding tour'}
+          </Button>
         </div>
+
 
         {/* AI Assistant Hint */}
         <Card 
