@@ -24,7 +24,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
 import { App } from '@capacitor/app';
-import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+// OnboardingTour mounted globally in App.tsx
 // POS Product type for display
 interface POSProduct {
   id: string;
