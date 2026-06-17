@@ -519,12 +519,14 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
       .eq('invoice_id', cloudInvoice.id);
 
     if (items && items.length > 0) {
-      const itemsToRestore = items
-        .filter((item: Record<string, unknown>) => item.product_id)
-        .map((item: Record<string, unknown>) => ({
-          productId: item.product_id,
+      const typedItems = items as Array<{ product_id: string | null; quantity: number | string | null }>;
+      const itemsToRestore = typedItems
+        .filter(item => !!item.product_id)
+        .map(item => ({
+          productId: item.product_id as string,
           quantity: Number(item.quantity) || 0,
         }));
+
 
       if (itemsToRestore.length > 0) {
         const { isNoInventoryMode } = await import('../store-type-config');
