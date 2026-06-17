@@ -388,7 +388,7 @@ export async function hasCloudData(tableName: string): Promise<boolean> {
 
 // Fetch store settings
 // ✅ Uses getOwnerIdForInsert to fetch owner's store settings for cashiers
-export async function fetchStoreSettings(): Promise<Record<string, unknown> | null> {
+export async function fetchStoreSettings(): Promise<StoreSettingsRow | null> {
   // For reading, use owner ID so cashiers see their owner's settings
   const ownerId = await getOwnerIdForInsert();
   if (!ownerId) return null;
@@ -405,12 +405,13 @@ export async function fetchStoreSettings(): Promise<Record<string, unknown> | nu
       return null;
     }
 
-    return data as Record<string, unknown> | null;
+    return data as StoreSettingsRow | null;
   } catch (error) {
     console.error('Error fetching store settings:', error);
     return null;
   }
 }
+
 
 // Save store settings
 // ✅ Uses getOwnerIdForInsert - cashiers should NOT save store settings
