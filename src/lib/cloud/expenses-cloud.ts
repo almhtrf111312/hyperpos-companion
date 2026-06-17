@@ -7,6 +7,10 @@ import {
   isCashierUser
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
@@ -149,8 +153,7 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
   
   if (isCashier) {
     // Cashiers see only their own expenses
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await sb
       .from('expenses')
       .select('*')
       .eq('cashier_id', userId)
@@ -173,8 +176,7 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
   // Fetch cashier names for expenses with cashier_id
   const cashierIds = [...new Set(cloudExpenses.filter(e => e.cashier_id).map(e => e.cashier_id!))];
   if (cashierIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profiles } = await (supabase as any)
+    const { data: profiles } = await sb
       .from('profiles')
       .select('user_id, full_name')
       .in('user_id', cashierIds);

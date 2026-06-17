@@ -5,6 +5,10 @@
  * يعمل بشكل تكاملي مع cashbox-store المحلي (cache).
  */
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { getCurrentUserId, setCurrentUserId } from '../supabase-store';
 import { addToQueue } from '../sync-queue';
 import { roundCurrency } from '../utils';
@@ -64,8 +68,7 @@ export const openShiftCloud = async (params: {
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await sb
       .from('cash_shifts')
       .insert(payload)
       .select('id')
@@ -102,8 +105,7 @@ export const closeShiftCloud = async (params: {
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await sb
       .from('cash_shifts')
       .update(payload)
       .eq('id', params.shiftId)
@@ -137,8 +139,7 @@ export const addShiftTransactionCloud = async (params: {
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('shift_transactions').insert(payload);
+    const { error } = await sb.from('shift_transactions').insert(payload);
     if (error) throw error;
     return true;
   } catch (e) {
@@ -152,8 +153,7 @@ export const loadCloudShifts = async (limit = 50): Promise<CloudShift[]> => {
   const userId = await ensureUserId();
   if (!userId) return [];
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await sb
       .from('cash_shifts')
       .select('*')
       .eq('user_id', userId)

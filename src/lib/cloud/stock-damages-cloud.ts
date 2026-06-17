@@ -1,4 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { logActivity } from '@/lib/activity-log';
 
 export interface StockDamage {
@@ -21,8 +25,7 @@ export interface StockDamage {
 }
 
 export async function listStockDamages(opts?: { from?: string; to?: string; productId?: string }): Promise<StockDamage[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q = (supabase as any).from('stock_damages').select('*').order('damaged_at', { ascending: false }).limit(500);
+  let q = sb.from('stock_damages').select('*').order('damaged_at', { ascending: false }).limit(500);
   if (opts?.from) q = q.gte('damaged_at', opts.from);
   if (opts?.to) q = q.lte('damaged_at', opts.to);
   if (opts?.productId) q = q.eq('product_id', opts.productId);
@@ -43,15 +46,13 @@ export async function recordDamage(params: {
 }): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: roleRow } = await (supabase as any)
+  const { data: roleRow } = await sb
     .from('user_roles').select('owner_id').eq('user_id', user.id).maybeSingle();
   const owner = roleRow?.owner_id || user.id;
 
   const cost_value = params.quantity * params.unit_cost;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('stock_damages').insert({
+  const { error } = await sb.from('stock_damages').insert({
     user_id: owner,
     product_id: params.product_id,
     product_name: params.product_name || null,
@@ -68,8 +69,7 @@ export async function recordDamage(params: {
   if (error) { console.error(error); return false; }
 
   if (params.applyToStock) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).rpc('deduct_product_quantity', {
+    await sb.rpc('deduct_product_quantity', {
       _product_id: params.product_id,
       _amount: params.quantity,
     });

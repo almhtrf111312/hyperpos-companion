@@ -469,7 +469,6 @@ export const completeStockTransferCloud = async (transferId: string): Promise<bo
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (transfer as any).stock_transfer_items as StockTransferItem[];
 
   // ✅ معالجة كل منتج: خصم من المخزون الرئيسي وإضافة لمستودع الوجهة
@@ -668,7 +667,6 @@ export const completeReturnTransferCloud = async (transferId: string): Promise<b
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (transfer as any).stock_transfer_items as StockTransferItem[];
 
   for (const item of items) {
