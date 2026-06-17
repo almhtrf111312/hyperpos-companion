@@ -1,4 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { getCurrentUserId } from '../supabase-store';
 
 export interface LibraryMember {
@@ -37,8 +41,7 @@ export const loadMembersCloud = async (): Promise<LibraryMember[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('library_members')
     .select('*')
     .eq('user_id', userId)
@@ -49,7 +52,18 @@ export const loadMembersCloud = async (): Promise<LibraryMember[]> => {
     return [];
   }
 
-  return (data || []).map((m: any) => ({
+  type MemberRow = {
+    id: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    registration_date?: string | null;
+    membership_status?: 'active' | 'suspended' | null;
+    late_fees?: number | null;
+    notes?: string | null;
+    created_at: string;
+  };
+  return ((data as MemberRow[]) || []).map(m => ({
     id: m.id,
     name: m.name,
     phone: m.phone || '',
@@ -60,14 +74,14 @@ export const loadMembersCloud = async (): Promise<LibraryMember[]> => {
     notes: m.notes || '',
     createdAt: m.created_at,
   }));
+
 };
 
 export const addMemberCloud = async (member: Partial<LibraryMember>): Promise<LibraryMember | null> => {
   const userId = getCurrentUserId();
   if (!userId) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('library_members')
     .insert({
       user_id: userId,
@@ -99,8 +113,7 @@ export const addMemberCloud = async (member: Partial<LibraryMember>): Promise<Li
 };
 
 export const updateMemberCloud = async (id: string, updates: Partial<LibraryMember>): Promise<boolean> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.phone !== undefined) updateData.phone = updates.phone || null;
   if (updates.email !== undefined) updateData.email = updates.email || null;
@@ -108,8 +121,7 @@ export const updateMemberCloud = async (id: string, updates: Partial<LibraryMemb
   if (updates.lateFees !== undefined) updateData.late_fees = updates.lateFees;
   if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('library_members')
     .update(updateData)
     .eq('id', id);
@@ -122,8 +134,7 @@ export const updateMemberCloud = async (id: string, updates: Partial<LibraryMemb
 };
 
 export const deleteMemberCloud = async (id: string): Promise<boolean> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('library_members')
     .delete()
     .eq('id', id);
@@ -141,8 +152,7 @@ export const loadLoansCloud = async (): Promise<BookLoan[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('book_loans')
     .select('*, library_members(name), products(name)')
     .eq('user_id', userId)
@@ -153,7 +163,21 @@ export const loadLoansCloud = async (): Promise<BookLoan[]> => {
     return [];
   }
 
-  return (data || []).map((l: any) => ({
+  type LoanRow = {
+    id: string;
+    product_id: string;
+    member_id: string;
+    loan_date: string;
+    due_date: string;
+    return_date: string | null;
+    status?: 'active' | 'returned' | 'overdue' | 'lost' | null;
+    late_fee?: number | null;
+    notes?: string | null;
+    created_at: string;
+    library_members?: { name?: string | null } | null;
+    products?: { name?: string | null } | null;
+  };
+  return ((data as LoanRow[]) || []).map(l => ({
     id: l.id,
     productId: l.product_id,
     memberId: l.member_id,
@@ -167,6 +191,7 @@ export const loadLoansCloud = async (): Promise<BookLoan[]> => {
     memberName: l.library_members?.name || '',
     bookName: l.products?.name || '',
   }));
+
 };
 
 export const addLoanCloud = async (loan: {
@@ -178,8 +203,7 @@ export const addLoanCloud = async (loan: {
   const userId = getCurrentUserId();
   if (!userId) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('book_loans')
     .insert({
       user_id: userId,
@@ -225,15 +249,13 @@ export const addLoanCloud = async (loan: {
 
 export const returnLoanCloud = async (id: string, lateFee: number = 0): Promise<boolean> => {
   // First get the loan to know the product_id
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: loanData } = await (supabase as any)
+  const { data: loanData } = await sb
     .from('book_loans')
     .select('product_id')
     .eq('id', id)
     .single();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('book_loans')
     .update({
       status: 'returned',
@@ -264,8 +286,7 @@ export const returnLoanCloud = async (id: string, lateFee: number = 0): Promise<
 };
 
 export const markLoanLostCloud = async (id: string): Promise<boolean> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('book_loans')
     .update({ status: 'lost' })
     .eq('id', id);
@@ -278,8 +299,7 @@ export const markLoanLostCloud = async (id: string): Promise<boolean> => {
 };
 
 export const deleteLoanCloud = async (id: string): Promise<boolean> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('book_loans')
     .delete()
     .eq('id', id);

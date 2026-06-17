@@ -1,4 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { logActivity } from '@/lib/activity-log';
 
 export interface StockCountItem {
@@ -33,26 +37,22 @@ export interface StockCount {
 const ownerId = async (): Promise<string | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
+  const { data } = await sb
     .from('user_roles').select('owner_id').eq('user_id', user.id).maybeSingle();
   return data?.owner_id || user.id;
 };
 
 export async function listStockCounts(): Promise<StockCount[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await sb
     .from('stock_counts').select('*').order('created_at', { ascending: false }).limit(200);
   if (error) { console.error(error); return []; }
   return (data || []) as StockCount[];
 }
 
 export async function getStockCountWithItems(id: string): Promise<{ count: StockCount; items: StockCountItem[] } | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: count } = await (supabase as any).from('stock_counts').select('*').eq('id', id).maybeSingle();
+  const { data: count } = await sb.from('stock_counts').select('*').eq('id', id).maybeSingle();
   if (!count) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: items } = await (supabase as any).from('stock_count_items').select('*').eq('count_id', id);
+  const { data: items } = await sb.from('stock_count_items').select('*').eq('count_id', id);
   return { count, items: (items || []) as StockCountItem[] };
 }
 
@@ -72,8 +72,7 @@ export async function saveStockCount(params: {
 
   let countId = params.id;
   if (!countId) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).from('stock_counts').insert({
+    const { data, error } = await sb.from('stock_counts').insert({
       user_id: owner,
       warehouse_id: params.warehouse_id || null,
       status: params.status,
@@ -87,21 +86,18 @@ export async function saveStockCount(params: {
     if (error) { console.error(error); return null; }
     countId = data.id;
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('stock_counts').update({
+    await sb.from('stock_counts').update({
       status: params.status,
       notes: params.notes || null,
       total_variance_value: totalVariance,
       items_count: params.items.length,
       completed_at: params.status === 'completed' ? new Date().toISOString() : null,
     }).eq('id', countId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('stock_count_items').delete().eq('count_id', countId);
+    await sb.from('stock_count_items').delete().eq('count_id', countId);
   }
 
   if (params.items.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('stock_count_items').insert(
+    await sb.from('stock_count_items').insert(
       params.items.map(i => ({
         count_id: countId,
         product_id: i.product_id,
@@ -120,15 +116,13 @@ export async function saveStockCount(params: {
   if (params.status === 'completed' && params.applyAdjustments) {
     for (const it of params.items) {
       if (it.variance === 0) continue;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from('products').update({
+      await sb.from('products').update({
         quantity: it.actual_qty
       }).eq('id', it.product_id);
 
       if (it.variance < 0) {
         const lostQty = Math.abs(it.variance);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('stock_damages').insert({
+        await sb.from('stock_damages').insert({
           user_id: owner,
           product_id: it.product_id,
           product_name: it.product_name || null,
@@ -154,7 +148,6 @@ export async function saveStockCount(params: {
 }
 
 export async function deleteStockCount(id: string): Promise<boolean> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('stock_counts').delete().eq('id', id);
+  const { error } = await sb.from('stock_counts').delete().eq('id', id);
   return !error;
 }

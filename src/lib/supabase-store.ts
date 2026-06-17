@@ -1,13 +1,47 @@
 // Supabase Store - Cloud sync utilities for all data stores
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { showToast } from './toast-config';
+
+// Loose-typed client for dynamic table access.
+// The generated Database types only enumerate known tables, but this module is a
+// generic utility layer that accepts table names as runtime strings, so we widen
+// the type once here instead of sprinkling `any` across every call site.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
+
+// Shape of the `stores` row as consumed by the app. All fields optional/nullable
+// because legacy rows may be missing newer columns.
+export interface StoreSettingsRow {
+  name?: string | null;
+  store_type?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  logo_url?: string | null;
+  tax_enabled?: boolean | null;
+  tax_rate?: number | null;
+  notification_settings?: Record<string, unknown> | null;
+  print_settings?: Record<string, unknown> | null;
+  exchange_rates?: Record<string, number> | null;
+  sync_settings?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
+
+type UserRole = 'admin' | 'boss' | 'cashier';
+
+interface UserRoleRow {
+  role: UserRole;
+  owner_id?: string | null;
+}
 
 // Current user ID cache
 let currentUserId: string | null = null;
 // Owner ID cache (for cashiers who need to write to owner's data)
 let currentOwnerId: string | null = null;
 // Current user role cache
-let currentUserRole: 'admin' | 'boss' | 'cashier' | null = null;
+let currentUserRole: UserRole | null = null;
 
 export const setCurrentUserId = (userId: string | null) => {
   currentUserId = userId;
@@ -21,22 +55,22 @@ export const getCurrentUserId = (): string | null => {
 };
 
 // Get user role (cached)
-export const getCurrentUserRole = async (): Promise<'admin' | 'boss' | 'cashier' | null> => {
+export const getCurrentUserRole = async (): Promise<UserRole | null> => {
   if (currentUserRole) return currentUserRole;
-  
+
   const userId = getCurrentUserId();
   if (!userId) return null;
-  
+
   try {
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
       .maybeSingle();
-    
+
     if (error || !data) return null;
-    
-    currentUserRole = data.role as 'admin' | 'boss' | 'cashier';
+
+    currentUserRole = data.role as UserRole;
     return currentUserRole;
   } catch {
     return null;
@@ -53,39 +87,39 @@ export const isCashierUser = async (): Promise<boolean> => {
 export const getOwnerIdForInsert = async (): Promise<string | null> => {
   // If cached, return cached value
   if (currentOwnerId) return currentOwnerId;
-  
+
   const userId = getCurrentUserId();
   if (!userId) return null;
-  
+
   try {
     // Query user_roles to get owner_id
     const { data, error } = await supabase
       .from('user_roles')
       .select('role, owner_id')
       .eq('user_id', userId)
-      .maybeSingle();
-    
+      .maybeSingle<UserRoleRow>();
+
     if (error || !data) {
       console.warn('[getOwnerIdForInsert] Could not fetch role, using self as owner');
       return userId;
     }
-    
+
     // Cache the role
-    currentUserRole = data.role as 'admin' | 'boss' | 'cashier';
-    
+    currentUserRole = data.role;
+
     // If admin or boss, they are their own owner
     if (data.role === 'admin' || data.role === 'boss') {
       currentOwnerId = userId;
       return userId;
     }
-    
+
     // If cashier with owner_id, use owner_id
     if (data.role === 'cashier' && data.owner_id) {
       currentOwnerId = data.owner_id;
       console.log('[getOwnerIdForInsert] Cashier owner_id:', currentOwnerId);
       return data.owner_id;
     }
-    
+
     // Fallback to self
     return userId;
   } catch (error) {
@@ -97,8 +131,7 @@ export const getOwnerIdForInsert = async (): Promise<string | null> => {
 // Generic fetch function with error handling
 // ✅ يعتمد على RLS (get_owner_id) لتصفية البيانات تلقائياً
 // لا نضيف فلتر user_id يدوياً لأن الكاشير يجب أن يرى بيانات المالك
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function fetchFromSupabase<T = any>(
+export async function fetchFromSupabase<T = unknown>(
   tableName: string,
   orderBy?: { column: string; ascending?: boolean }
 ): Promise<T[]> {
@@ -111,9 +144,8 @@ export async function fetchFromSupabase<T = any>(
   try {
     // ✅ الاستعلام بدون فلتر user_id - RLS ستتعامل مع التصفية
     // RLS تستخدم get_owner_id(auth.uid()) للسماح للكاشير برؤية بيانات المالك
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any).from(tableName).select('*');
-    
+    let query = sb.from(tableName).select('*');
+
     if (orderBy) {
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
     }
@@ -134,8 +166,7 @@ export async function fetchFromSupabase<T = any>(
 
 // Generic insert function
 // ✅ Uses getOwnerIdForInsert to properly set user_id for cashiers
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function insertToSupabase<T = any>(
+export async function insertToSupabase<T = unknown>(
   tableName: string,
   data: Record<string, unknown>,
   options?: { silent?: boolean }
@@ -148,8 +179,7 @@ export async function insertToSupabase<T = any>(
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: inserted, error } = await (supabase as any)
+    const { data: inserted, error } = await sb
       .from(tableName)
       .insert({ ...data, user_id: ownerId })
       .select()
@@ -186,8 +216,7 @@ export async function updateInSupabase(
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await sb
       .from(tableName)
       .update(updates)
       .eq('id', id)
@@ -219,8 +248,7 @@ export async function deleteFromSupabase(
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await sb
       .from(tableName)
       .delete()
       .eq('id', id)
@@ -258,9 +286,8 @@ export async function batchInsertToSupabase(
     const batchSize = 100;
     for (let i = 0; i < itemsWithUserId.length; i += batchSize) {
       const batch = itemsWithUserId.slice(i, i + batchSize);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).from(tableName).insert(batch);
-      
+      const { error } = await sb.from(tableName).insert(batch);
+
       if (error) {
         console.error(`Error batch inserting to ${tableName}:`, error);
         return false;
@@ -276,8 +303,7 @@ export async function batchInsertToSupabase(
 
 // Upsert function (insert or update)
 // ✅ Uses getOwnerIdForInsert for proper user_id
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function upsertToSupabase<T = any>(
+export async function upsertToSupabase<T = unknown>(
   tableName: string,
   data: Record<string, unknown>,
   conflictColumn: string = 'id'
@@ -289,8 +315,7 @@ export async function upsertToSupabase<T = any>(
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: upserted, error } = await (supabase as any)
+    const { data: upserted, error } = await sb
       .from(tableName)
       .upsert({ ...data, user_id: ownerId }, { onConflict: conflictColumn })
       .select()
@@ -309,8 +334,7 @@ export async function upsertToSupabase<T = any>(
 }
 
 // Incremental fetch: get records updated since a given timestamp
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function fetchIncrementalFromSupabase<T = any>(
+export async function fetchIncrementalFromSupabase<T = unknown>(
   tableName: string,
   since: string,
   orderBy?: { column: string; ascending?: boolean }
@@ -319,8 +343,7 @@ export async function fetchIncrementalFromSupabase<T = any>(
   if (!userId) return [];
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any).from(tableName).select('*').gt('updated_at', since);
+    let query = sb.from(tableName).select('*').gt('updated_at', since);
 
     if (orderBy) {
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
@@ -346,8 +369,7 @@ export async function hasCloudData(tableName: string): Promise<boolean> {
   if (!userId) return false;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count, error } = await (supabase as any)
+    const { count, error } = await sb
       .from(tableName)
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
@@ -366,15 +388,13 @@ export async function hasCloudData(tableName: string): Promise<boolean> {
 
 // Fetch store settings
 // ✅ Uses getOwnerIdForInsert to fetch owner's store settings for cashiers
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function fetchStoreSettings(): Promise<Record<string, any> | null> {
+export async function fetchStoreSettings(): Promise<StoreSettingsRow | null> {
   // For reading, use owner ID so cashiers see their owner's settings
   const ownerId = await getOwnerIdForInsert();
   if (!ownerId) return null;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('stores')
       .select('*')
       .eq('user_id', ownerId)
@@ -385,12 +405,13 @@ export async function fetchStoreSettings(): Promise<Record<string, any> | null> 
       return null;
     }
 
-    return data;
+    return data as StoreSettingsRow | null;
   } catch (error) {
     console.error('Error fetching store settings:', error);
     return null;
   }
 }
+
 
 // Save store settings
 // ✅ Uses getOwnerIdForInsert - cashiers should NOT save store settings
@@ -400,8 +421,7 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
 
   try {
     // Check if store exists using owner's ID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from('stores')
       .select('id')
       .eq('user_id', ownerId)
@@ -409,8 +429,7 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
 
     if (existing) {
       // Update existing
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await sb
         .from('stores')
         .update(settings)
         .eq('user_id', ownerId);
@@ -421,8 +440,7 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
       }
     } else {
       // Insert new using owner's ID
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await sb
         .from('stores')
         .insert({ ...settings, user_id: ownerId });
 
@@ -451,7 +469,7 @@ export async function deleteAllUserData(): Promise<boolean> {
     'warehouse_stock',       // مرتبط بـ products و warehouses
     'invoice_items',         // مرتبط بـ invoices
   ];
-  
+
   // المرحلة 2: حذف الجداول التي تعتمد عليها المرحلة 1
   const phase2Tables = [
     'stock_transfers',       // يعتمد على warehouses
@@ -462,7 +480,7 @@ export async function deleteAllUserData(): Promise<boolean> {
     'maintenance_services',
     'partners',
   ];
-  
+
   // المرحلة 3: حذف الجداول الأساسية
   const phase3Tables = [
     'products',
@@ -474,27 +492,25 @@ export async function deleteAllUserData(): Promise<boolean> {
   try {
     // حذف المرحلة 1
     for (const table of phase1Tables) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await sb
         .from(table)
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000'); // حذف كل شيء
-      
+
       if (error) {
         console.error(`Error deleting from ${table}:`, error);
         // محاولة الحذف بطريقة بديلة للجداول المرتبطة
         if (table === 'stock_transfer_items' || table === 'warehouse_stock') {
           // جلب IDs المنتجات للمستخدم أولاً
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: products } = await (supabase as any)
+          const { data: products } = await sb
             .from('products')
             .select('id')
             .eq('user_id', userId);
-          
-          if (products && products.length > 0) {
-            const productIds = products.map((p: { id: string }) => p.id);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
+
+          const productRows = (products || []) as Array<{ id: string }>;
+          if (productRows.length > 0) {
+            const productIds = productRows.map(p => p.id);
+            await sb
               .from(table)
               .delete()
               .in('product_id', productIds);
@@ -502,25 +518,23 @@ export async function deleteAllUserData(): Promise<boolean> {
         }
       }
     }
-    
+
     // حذف المرحلة 2
     for (const table of phase2Tables) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await sb
         .from(table)
         .delete()
         .eq('user_id', userId);
     }
-    
+
     // حذف المرحلة 3
     for (const table of phase3Tables) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await sb
         .from(table)
         .delete()
         .eq('user_id', userId);
     }
-    
+
     console.log('[deleteAllUserData] All user data deleted successfully');
     return true;
   } catch (error) {

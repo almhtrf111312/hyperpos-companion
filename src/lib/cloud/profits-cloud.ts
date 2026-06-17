@@ -5,6 +5,10 @@
  * يعمل بشكل تكاملي مع profits-store المحلي (cache).
  */
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { getCurrentUserId, setCurrentUserId } from '../supabase-store';
 import { addToQueue } from '../sync-queue';
 import { roundCurrency } from '../utils';
@@ -42,8 +46,7 @@ export const addGrossProfitCloud = async (input: CloudProfitInput): Promise<bool
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('profit_records').insert(payload);
+    const { error } = await sb.from('profit_records').insert(payload);
     if (error) throw error;
     return true;
   } catch (e) {
@@ -59,8 +62,7 @@ export const reverseProfitCloud = async (invoiceId: string): Promise<boolean> =>
   if (!userId) return false;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await sb
       .from('profit_records')
       .update({ is_reversed: true, reversed_at: new Date().toISOString() })
       .eq('user_id', userId)

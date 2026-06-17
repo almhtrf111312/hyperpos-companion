@@ -9,6 +9,9 @@ import {
   isCashierUser
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { triggerAutoBackup } from '../local-auto-backup';
 
@@ -180,8 +183,7 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 
   // Try central sequence RPC first
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc('get_next_invoice_number');
+    const { data, error } = await sb.rpc('get_next_invoice_number');
     if (!error && data != null) {
       const seq = Number(data);
       return `${datePrefix}-${String(seq).padStart(5, '0')}`;
@@ -192,8 +194,7 @@ const getNextInvoiceNumber = async (): Promise<string> => {
 
   // Fallback: scan today's invoices
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data } = await sb
       .from('invoices')
       .select('invoice_number')
       .like('invoice_number', `${datePrefix}-%`)
@@ -280,8 +281,7 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
         const invoice = toInvoice(cloud);
 
         // Fetch items
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: items } = await (supabase as any)
+        const { data: items } = await sb
           .from('invoice_items')
           .select('*')
           .eq('invoice_id', cloud.id);
@@ -341,8 +341,7 @@ export const addInvoiceCloud = async (
   let cashierName = '';
   if (userId) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile } = await (supabase as any)
+      const { data: profile } = await sb
         .from('profiles')
         .select('full_name')
         .eq('user_id', userId)
@@ -392,8 +391,7 @@ export const addInvoiceCloud = async (
         profit: Math.round((item.profit || 0) * 100) / 100,
       }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from('invoice_items').insert(itemsToInsert);
+      await sb.from('invoice_items').insert(itemsToInsert);
     }
 
     invalidateInvoicesCache();
@@ -424,8 +422,7 @@ export const updateInvoiceCloud = async (
   if (!invoice) return null;
 
   // Get the actual UUID from cloud
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: cloudInvoice } = await (supabase as any)
+  const { data: cloudInvoice } = await sb
     .from('invoices')
     .select('id')
     .eq('invoice_number', id)
@@ -454,8 +451,7 @@ export const updateInvoiceCloud = async (
 // Delete invoice
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   // Find by invoice_number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: cloudInvoice } = await (supabase as any)
+  const { data: cloudInvoice } = await sb
     .from('invoices')
     .select('id')
     .eq('invoice_number', id)
@@ -495,8 +491,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   if (!userId) return false;
 
   // Find by invoice_number - جلب بيانات الفاتورة الكاملة
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: cloudInvoice } = await (supabase as any)
+  const { data: cloudInvoice } = await sb
     .from('invoices')
     .select('id, status, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone, cashier_id')
     .eq('invoice_number', id)
@@ -518,19 +513,20 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
 
   // 1. Restore stock for sale invoices
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: items } = await (supabase as any)
+    const { data: items } = await sb
       .from('invoice_items')
       .select('product_id, quantity')
       .eq('invoice_id', cloudInvoice.id);
 
     if (items && items.length > 0) {
-      const itemsToRestore = items
-        .filter((item: any) => item.product_id)
-        .map((item: any) => ({
-          productId: item.product_id,
+      const typedItems = items as Array<{ product_id: string | null; quantity: number | string | null }>;
+      const itemsToRestore = typedItems
+        .filter(item => !!item.product_id)
+        .map(item => ({
+          productId: item.product_id as string,
           quantity: Number(item.quantity) || 0,
         }));
+
 
       if (itemsToRestore.length > 0) {
         const { isNoInventoryMode } = await import('../store-type-config');
@@ -570,8 +566,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
 
   // 2. Get debt amount before deleting (for the notification)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: debtData } = await (supabase as any)
+    const { data: debtData } = await sb
       .from('debts')
       .select('remaining_debt')
       .eq('invoice_id', id)
@@ -584,8 +579,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   // 2b. Delete associated debts
   try {
     // محاولة 1: حذف بـ invoice_number (الأكثر موثوقية)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: err1, count: count1 } = await (supabase as any)
+    const { error: err1, count: count1 } = await sb
       .from('debts')
       .delete({ count: 'exact' })
       .eq('invoice_id', id);
@@ -593,8 +587,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
     if (!err1 && count1 && count1 > 0) {
       console.log('[refundInvoiceCloud] ✅ Deleted', count1, 'debts by invoice_number');
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: err2, count: count2 } = await (supabase as any)
+      const { error: err2, count: count2 } = await sb
         .from('debts')
         .delete({ count: 'exact' })
         .eq('invoice_id', cloudInvoice.id);
@@ -618,16 +611,14 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   if (customerIdentifier) {
     try {
       // جلب رصيد العميل قبل التحديث
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: custBefore } = await (supabase as any)
+      const { data: custBefore } = await sb
         .from('customers')
         .select('total_purchases')
         .eq(cloudInvoice.customer_id ? 'id' : 'name', cloudInvoice.customer_id || cloudInvoice.customer_name)
         .maybeSingle();
       customerBalanceBefore = Number(custBefore?.total_purchases) || 0;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: activeInvoices } = await (supabase as any)
+      const { data: activeInvoices } = await sb
         .from('invoices')
         .select('total, payment_type, status')
         .eq(cloudInvoice.customer_id ? 'customer_id' : 'customer_name',
@@ -646,8 +637,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
         ? { column: 'id', value: cloudInvoice.customer_id }
         : { column: 'name', value: cloudInvoice.customer_name };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await sb
         .from('customers')
         .update({ total_purchases: newTotalPurchases, total_debt: newTotalDebt, invoice_count: newInvoiceCount })
         .eq(filter.column, filter.value);
@@ -681,8 +671,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   // 4b. For maintenance invoices, delete associated parts cost expense
   if (cloudInvoice.invoice_type === 'maintenance') {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: expErr } = await (supabase as any)
+      const { error: expErr } = await sb
         .from('expenses')
         .delete()
         .like('notes', `%الفاتورة: ${id}%`);
@@ -699,8 +688,7 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   }
 
   // 5. Mark invoice as refunded
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('invoices')
     .update({
       status: 'refunded',
@@ -766,8 +754,7 @@ export const updateInvoiceByNumberCloud = async (
   if (updates.debtPaid !== undefined) cloudUpdates.debt_paid = updates.debtPaid;
   if (updates.debtRemaining !== undefined) cloudUpdates.debt_remaining = updates.debtRemaining;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await sb
     .from('invoices')
     .update(cloudUpdates)
     .eq('invoice_number', invoiceNumber)

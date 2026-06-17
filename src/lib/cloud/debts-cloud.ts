@@ -13,6 +13,10 @@ import { triggerAutoBackup } from '../local-auto-backup';
 import { updateInvoiceCloud } from './invoices-cloud';
 import { supabase } from '@/integrations/supabase/client';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 export type DebtStatus = 'due' | 'partially_paid' | 'overdue' | 'fully_paid';
 
 export interface CloudDebt {
@@ -167,8 +171,7 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
   // Fetch cashier names for debts with cashier_id
   const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
   if (cashierIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profiles } = await (supabase as any)
+    const { data: profiles } = await sb
       .from('profiles')
       .select('user_id, full_name')
       .in('user_id', cashierIds);
@@ -328,8 +331,7 @@ export const recordPaymentWithInvoiceSyncCloud = async (
           };
 
         // محاولة التحديث بـ invoice_number أولاً
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase as any)
+        const { error } = await sb
           .from('invoices')
           .update(updateData)
           .or(`invoice_number.eq.${debt.invoiceId},id.eq.${debt.invoiceId}`)
@@ -353,16 +355,14 @@ export const recordPaymentWithInvoiceSyncCloud = async (
 export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boolean> => {
   try {
     // البحث أولاً بـ invoice_id ثم الحذف بـ UUID لضمان الدقة
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: foundDebts } = await (supabase as any)
+    const { data: foundDebts } = await sb
       .from('debts')
       .select('id')
       .eq('invoice_id', invoiceId);
 
     if (foundDebts && foundDebts.length > 0) {
       for (const debt of foundDebts) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('debts').delete().eq('id', debt.id);
+        await sb.from('debts').delete().eq('id', debt.id);
       }
       invalidateDebtsCache();
       emitEvent(EVENTS.DEBTS_UPDATED, null);
@@ -396,8 +396,7 @@ export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
       if (debt.invoiceId && !debt.isCashDebt) {
         const userId = getCurrentUserId();
         if (userId) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
+          await sb
             .from('invoices')
             .update({
               status: 'completed',
@@ -473,8 +472,7 @@ export const writeOffDebtCloud = async (
 
   try {
     // 1. سجل الإتلاف
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('debt_writeoffs').insert({
+    await sb.from('debt_writeoffs').insert({
       user_id: userId,
       debt_id: debtId,
       customer_name: debt.customerName,
@@ -485,8 +483,7 @@ export const writeOffDebtCloud = async (
     });
 
     // 2. مصروف يخصم من رأس المال
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('expenses').insert({
+    await sb.from('expenses').insert({
       user_id: userId,
       expense_type: 'debt_writeoff',
       amount: writeoffAmount,
@@ -527,8 +524,7 @@ export const writeOffDebtCloud = async (
     }
 
     // 5. تعليم الدين كـ مدفوع كلياً (مكتوب)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await sb
       .from('debts')
       .update({
         status: 'fully_paid',

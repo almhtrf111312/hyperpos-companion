@@ -104,9 +104,9 @@ export const generateBackupData = async (): Promise<object> => {
 
   // Load all data from Cloud Stores (Source of Truth)
   // These functions should ideally have local fallback/caching
-  let invoices: any[] = [];
-  let products: any[] = [];
-  let partners: any[] = [];
+  let invoices: unknown[] = [];
+  let products: unknown[] = [];
+  let partners: unknown[] = [];
   // dynamically import to avoid circular deps if any
   const { loadInvoicesCloud } = await import('./cloud/invoices-cloud');
   const { loadProductsCloud } = await import('./cloud/products-cloud');
@@ -119,12 +119,12 @@ export const generateBackupData = async (): Promise<object> => {
   try { products = await loadProductsCloud(); } catch (e) { console.error('Backup product error', e); }
   try { partners = await loadPartnersCloud(); } catch (e) { console.error('Backup partner error', e); }
 
-  let expenses: any[] = [];
+  let expenses: unknown[] = [];
   try { expenses = await loadExpensesCloud(); } catch (e) { console.error('Backup expense error', e); }
 
-  let warehouses: any[] = [];
-  let warehouseStock: any[] = [];
-  let stockTransfers: any[] = [];
+  let warehouses: unknown[] = [];
+  let warehouseStock: unknown[] = [];
+  let stockTransfers: unknown[] = [];
   try { warehouses = await loadWarehousesCloud(); } catch (e) { console.error('Backup warehouse error', e); }
   try { warehouseStock = await fetchAllWarehouseStocksCloud(); } catch (e) { console.error('Backup stock error', e); }
   try { stockTransfers = await loadStockTransfersCloud(); } catch (e) { console.error('Backup transfer error', e); }
