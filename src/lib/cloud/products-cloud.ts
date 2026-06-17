@@ -36,6 +36,14 @@ export interface CloudProduct {
   archived: boolean;
   created_at: string;
   updated_at: string;
+  // Optional unit-tracking columns (added in later migrations; may be missing on legacy rows)
+  labor_cost?: number | null;
+  bulk_unit?: string | null;
+  small_unit?: string | null;
+  conversion_factor?: number | null;
+  bulk_cost_price?: number | null;
+  bulk_sale_price?: number | null;
+  track_by_unit?: 'piece' | 'bulk' | null;
 }
 
 // Legacy Product interface for backwards compatibility
