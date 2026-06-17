@@ -10,6 +10,10 @@ import {
 import { emitEvent, EVENTS } from '../events';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
+const sb = supabase as unknown as LooseSupabase;
 import { saveProductsToIDB, loadProductsFromIDB, getProductByBarcodeIDB } from '../indexeddb-cache';
 
 export interface CloudProduct {
@@ -126,15 +130,15 @@ function toProduct(cloud: CloudProduct): Product {
       )
     ) : undefined,
     // Unit settings
-    laborCost: Number((cloud as any).labor_cost) || 0,
-    bulkUnit: (cloud as any).bulk_unit || 'كرتونة',
-    smallUnit: (cloud as any).small_unit || 'قطعة',
-    conversionFactor: (cloud as any).conversion_factor || 1,
-    bulkCostPrice: Number((cloud as any).bulk_cost_price) || 0,
-    bulkSalePrice: Number((cloud as any).bulk_sale_price) || 0,
-    trackByUnit: (cloud as any).track_by_unit || 'piece',
+    laborCost: Number(cloud.labor_cost) || 0,
+    bulkUnit: cloud.bulk_unit || 'كرتونة',
+    smallUnit: cloud.small_unit || 'قطعة',
+    conversionFactor: cloud.conversion_factor || 1,
+    bulkCostPrice: Number(cloud.bulk_cost_price) || 0,
+    bulkSalePrice: Number(cloud.bulk_sale_price) || 0,
+    trackByUnit: cloud.track_by_unit || 'piece',
     createdAt: cloud.created_at || undefined,
-    updatedAt: (cloud as any).updated_at || undefined,
+    updatedAt: cloud.updated_at || undefined,
   };
 }
 
@@ -567,15 +571,13 @@ export const deleteProductCloud = async (id: string): Promise<boolean> => {
     // ✅ المرحلة 1: حذف السجلات المرتبطة أولاً (بسبب المفاتيح الأجنبية)
 
     // حذف من stock_transfer_items
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await sb
       .from('stock_transfer_items')
       .delete()
       .eq('product_id', id);
 
     // حذف من warehouse_stock
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await sb
       .from('warehouse_stock')
       .delete()
       .eq('product_id', id);
