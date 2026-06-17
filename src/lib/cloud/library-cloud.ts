@@ -52,7 +52,18 @@ export const loadMembersCloud = async (): Promise<LibraryMember[]> => {
     return [];
   }
 
-  return (data || []).map((m: Record<string, unknown>) => ({
+  type MemberRow = {
+    id: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    registration_date?: string | null;
+    membership_status?: 'active' | 'suspended' | null;
+    late_fees?: number | null;
+    notes?: string | null;
+    created_at: string;
+  };
+  return ((data as MemberRow[]) || []).map(m => ({
     id: m.id,
     name: m.name,
     phone: m.phone || '',
@@ -63,6 +74,7 @@ export const loadMembersCloud = async (): Promise<LibraryMember[]> => {
     notes: m.notes || '',
     createdAt: m.created_at,
   }));
+
 };
 
 export const addMemberCloud = async (member: Partial<LibraryMember>): Promise<LibraryMember | null> => {
