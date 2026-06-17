@@ -1,128 +1,94 @@
+# خطة تنظيف الكود والأمان — تدريجية على 3 مراحل
 
-# خطة: تحسين جولة الشرح (Onboarding) + معالج الإعداد الأولي
+## نتائج الفحص الأولي
 
-الهدف: شرح أول مرة يعمل بشكل صحيح على الموبايل تمامًا كما على الكمبيوتر، مع إضافة كل التبويبات الجديدة. وعند إنشاء الحساب لأول مرة، يظهر معالج إعداد شامل (نوع المحل، العملات، الضرائب، باقي الإعدادات الأساسية).
-
----
-
-## القسم الأول: إصلاح جولة الشرح على الموبايل (`OnboardingTour.tsx`)
-
-### المشاكل الحالية على الموبايل
-- بعض الخطوات تستهدف عناصر داخل الـ Sidebar؛ على الموبايل الـ Sidebar يُغلق تلقائيًا عند تغيير المسار (`useOrientationChange` + التنقل) فيختفي العنصر قبل تموضع البطاقة.
-- زر القائمة `data-tour="mobile-menu-trigger"` يُنقر برمجيًا لكن أحيانًا الـ Sidebar غير مهيأ بعد بسبب التنقل المتزامن (`navigate(step.route)`).
-- البطاقة السفلية (`bottom-sheet`) تغطي الأزرار في خطوات السلة (`cash-btn`, `debt-btn`, `action-btns`) لأنّ `scrollIntoView({ block: 'start' })` يضع الزر تحت الشاشة.
-- خطوات سطح المكتب فقط (`desktopOnly: true` مثل `sidebar`, `cart-panel`) مستثناة، لكن لا يوجد بديل موبايل مكافئ لها → تجربة ناقصة.
-- التبويبات الجديدة (Cashbox, Cash Shifts, Purchases, Warehouses, Stock Transfer, Partners, Debts, Services, Library, Appearance) غير موجودة في `tourSteps`.
-
-### الإصلاحات
-
-1. **إعادة بناء قائمة `tourSteps`** بفئات منطقية، مع نسختين عند اللزوم (mobile vs desktop):
-   - **مقدمة**: ترحيب عام (بطاقة وسط الشاشة، بدون selector).
-   - **التنقل**: 
-     - Desktop: تعريف بالـ Sidebar.
-     - Mobile: تعريف بزر `mobile-menu-trigger` ثم فتح الـ Sidebar وعرض كل عنصر داخله بالتتابع.
-   - **التبويبات** (بالترتيب الجديد الكامل): POS, Dashboard, Invoices, Products, Customers, Debts, Cashbox, Cash Shifts, Expenses, Purchases, Warehouses, Stock Transfer, Partners, Reports, Services, Library Members, Appearance, Settings.
-   - **داخل POS**: شريط البحث، شبكة المنتجات، السلة (cart-panel على ديسكتوب / cart-fab على موبايل + فتح Drawer)، أزرار الدفع.
-
-2. **تثبيت الـ Sidebar على الموبايل أثناء جولة التبويبات**:
-   - إضافة flag `tourMode` في `MainLayout` يمنع إغلاق الـ Sidebar تلقائيًا عند تغيير المسار طالما الجولة فعّالة.
-   - بثّ حدث `onboarding:active` من `OnboardingTour` يلتقطه `MainLayout` و`Sidebar`.
-
-3. **تحسين توقيت الخطوات على الموبايل**:
-   - زيادة `settleDelay` إلى 900ms عند `requireSidebar` على الموبايل (للسماح بانتهاء حركة الانزلاق).
-   - عند انتقال خطوة → خطوة داخل نفس الـ Sidebar، عدم إعادة النقر على زر القائمة (فحص حالة الفتح).
-   - استخدام `scrollIntoView({ block: 'nearest' })` على الموبايل بدلًا من `'start'` لتجنّب اختفاء العنصر خلف البطاقة، مع إضافة هامش سفلي ديناميكي = ارتفاع الـ bottom-sheet.
-
-4. **معالجة خطوات السلة على الموبايل**:
-   - فتح Drawer السلة عبر `cart-fab` ثم انتظار `data-tour="cart-panel"` يظهر داخل Drawer.
-   - تقليص ارتفاع البطاقة السفلية إلى `18vh` مع تمرير تلقائي للزر المستهدف فوقها.
-
-5. **معالجة العناصر غير الموجودة** (مثل تبويب يخفيه دور المستخدم):
-   - تخطّي الخطوة تلقائيًا بعد فشل polling بدلًا من عرض بطاقة فارغة.
-   - استخدام `useUserRole` لفلترة الخطوات (مثلًا cashier لا يرى Partners/Reports).
-
-6. **زر "تخطي الجولة" و"إعادة عرضها"**:
-   - زر تخطي واضح في كل خطوة (موجود).
-   - إضافة زر "إعادة الجولة" في صفحة Help لاستدعاء `localStorage.removeItem(ONBOARDING_KEY)` وإعادة التحميل.
-
-7. **إضافة `data-tour` السمات الناقصة** على التبويبات الجديدة في `Sidebar.tsx`:
-   - `data-tour="cashbox"`, `data-tour="cash-shifts"`, `data-tour="purchases"`, `data-tour="warehouses"`, `data-tour="stock-transfer"`, `data-tour="partners"`, `data-tour="debts"`, `data-tour="services"`, `data-tour="library"`, `data-tour="appearance"`.
-
-8. **ترجمات جديدة** في `src/lib/i18n.ts` لكل خطوة جديدة (ar/en/tr/fa/ku) بصيغة قصيرة وواضحة.
+- **172 استخدام لـ `any`** موزعة على ~30 ملف. أعلى التركيزات:
+  - `src/lib/cloud/invoices-cloud.ts` (20)
+  - `src/lib/supabase-store.ts` (17)
+  - `src/lib/cloud/library-cloud.ts` (13)
+  - `src/pages/Settings.tsx` (12)
+  - `src/lib/cloud/stock-counts-cloud.ts` (11)
+  - `src/lib/cloud/products-cloud.ts` (10)
+  - `src/lib/cloud/debts-cloud.ts` (8)
+  - `src/lib/auto-backup.ts` (7)
+- **`.env` متعقَّب فعلياً في Git** ولا يوجد في `.gitignore` (مشكلة أمنية حقيقية).
+- `.gitignore` يحوي بالفعل `*.keystore`, `*.jks`, `keystore_base64.txt`.
+- **لا توجد ملفات keystore/jks/p12 فعلياً** في المشروع حالياً (رغم إجابتك "نعم موجودة" — سأبحث مرة ثانية بدقة وأبلغك قبل أي حذف).
+- لا توجد JWT/مفاتيح Supabase مكتوبة يدوياً داخل `src/` — يستخدم `import.meta.env`.
 
 ---
 
-## القسم الثاني: توسيع معالج الإعداد الأولي (`SetupWizard.tsx`)
+## المرحلة 1 — الأمان (تنفّذ أولاً، تغييرات صغيرة جداً)
 
-حاليًا 4 خطوات: معلومات المحل / رأس المال / الشركاء / العملات. سيتم توسيعه إلى **6 خطوات** تشمل أهم الإعدادات القابلة للتخصيص.
+1. **حماية `.env`:**
+   - إضافة `.env` و `.env.local` و `.env.*.local` إلى `.gitignore`.
+   - إزالة `.env` من تتبع Git مع الإبقاء عليه محلياً (`git rm --cached .env`).
+   - تنبيهك بأن قيم `VITE_SUPABASE_*` الحالية publishable keys (آمنة للنشر العام) — لا حاجة لتدويرها، لكن الحفاظ على `.env` خارج Git ممارسة صحيحة.
+2. **بحث نهائي عن ملفات التوقيع الحساسة:**
+   - فحص شامل لكامل المستودع (ليس فقط `android/`) عن `*.keystore`, `*.jks`, `*.p12`, `keystore_base64.txt`, `*.pem`, `google-services.json` بمفاتيح حقيقية.
+   - **لن أحذف شيئاً قبل عرض القائمة عليك** والحصول على موافقتك ملفاً ملفاً، مع شرح كيفية إعادة إنشاء keystore يدوياً وتخزينه آمناً (GitHub Secrets / build secret).
+3. **بدون لمس** أي ملف من `src/integrations/supabase/client.ts` أو `.env` (auto-generated/managed).
 
-### الخطوات الجديدة (6 خطوات)
-
-1. **معلومات المحل** (موجودة - تحسين):
-   - اسم، نوع (قائمة موسّعة من `store-type-config.ts`)، هاتف، عنوان، **شعار/صورة** (اختياري عبر `image-upload`).
-
-2. **العملات والأسعار** (نقل من الخطوة 4):
-   - **العملة الأساسية**: USD / TRY / SYP / EUR (راديو).
-   - أسعار الصرف للعملات الأخرى.
-   - رمز العملة الافتراضي في الفواتير.
-
-3. **الضرائب** (جديد):
-   - تفعيل/تعطيل الضريبة.
-   - نسبة الضريبة الافتراضية (%).
-   - الضريبة شاملة في السعر أم تضاف؟ (راديو).
-   - اسم الضريبة المعروض (مثل: VAT, KDV, ضريبة القيمة المضافة).
-
-4. **إعدادات الفاتورة والطباعة** (جديد):
-   - رقم فاتورة البداية.
-   - عرض الطابعة (58mm / 80mm / A4).
-   - تذييل الفاتورة (نص حر، مثل "شكرًا لزيارتكم").
-   - تفعيل صوت تأكيد البيع.
-
-5. **رأس المال + الشركاء** (دمج الخطوتين 2 و3):
-   - إجمالي رأس المال.
-   - إضافة الشركاء (الاسم، النسبة، رأس مال كل شريك).
-   - تحقّق من مجموع النسب = 100%.
-
-6. **الميزات المتقدمة** (جديد - اختيارية، يمكن تفعيلها لاحقًا):
-   - إدارة المخازن (Warehouses) ✓/✗
-   - إدارة الديون (Debts) ✓/✗
-   - الصيانة (Services) ✓/✗
-   - المكتبة (Library) ✓/✗
-   - الكاشيرات المتعددة (إذا كانت الرخصة تسمح).
-   - تخزن في `hyperpos_enabled_features` ويُقرأ منها في الـ Sidebar لإخفاء/إظهار التبويبات.
-
-### حفظ الإعدادات
-
-كل خطوة تحفظ في `localStorage` تحت المفتاح المناسب (`hyperpos_settings_v1`, `hyperpos_tax_settings`, `hyperpos_print_settings`, `hyperpos_enabled_features`) **+** مزامنة سحابية عبر `app_settings` table الموجود (لكل مالك).
-
-في نهاية المعالج:
-- `localStorage.setItem('hyperpos_setup_complete', 'true')`.
-- بثّ حدث `setup:complete` ليلتقطه `OnboardingTour` ويبدأ بعد ثانية واحدة.
-- توجيه المستخدم إلى Dashboard مع رسالة ترحيب.
-
-### التصميم
-- 6 نقاط تقدّم في الأعلى (الموجود حاليًا) بدلًا من 4.
-- كل خطوة قابلة للتخطي عدا "معلومات المحل" و"العملة الأساسية".
-- زر "تخطي الإعداد المتقدم" بعد الخطوة 1 للمستخدم العجول → يفتح المعالج المختصر القديم.
+**معيار النجاح:** بناء ناجح + لا تغيير في سلوك التطبيق.
 
 ---
 
-## القسم الثالث: التفاصيل التقنية
+## المرحلة 2 — إزالة `any` من ملفات الـ Cloud الحرجة
 
-### الملفات المُعدَّلة
-- `src/components/onboarding/OnboardingTour.tsx` — إعادة بناء `tourSteps`، تحسين توقيت الموبايل، فلترة حسب الدور.
-- `src/components/setup/SetupWizard.tsx` — إضافة 2 خطوات + إعادة ترتيب الموجودة.
-- `src/components/layout/MainLayout.tsx` + `Sidebar.tsx` — منع إغلاق Sidebar أثناء الجولة، إضافة `data-tour` للتبويبات الجديدة.
-- `src/lib/i18n.ts` — ترجمات الخطوات الجديدة لـ 5 لغات.
-- `src/pages/Help.tsx` — زر "إعادة جولة الشرح".
-- `src/pages/Index.tsx` (أو حيث يُستدعى `SetupWizard`) — ربط حدث `setup:complete` بـ `OnboardingTour`.
+ترتيب الملفات (الأهم أولاً، دفعة واحدة لكل ملف، بناء بعد كل ملف):
 
-### بدون تغييرات
-- لا تغيير في الـ backend/RLS، باستثناء استخدام `app_settings` الموجود.
-- لا تغيير في منطق POS أو الفواتير.
-- مفتاح `hp_onboarding_complete` يبقى كما هو لمنع إعادة عرض الجولة للمستخدمين الحاليين.
+1. `src/lib/supabase-store.ts` (17)
+2. `src/lib/cloud/invoices-cloud.ts` (20)
+3. `src/lib/cloud/products-cloud.ts` (10)
+4. `src/lib/cloud/debts-cloud.ts` (8)
+5. `src/lib/auto-backup.ts` (7)
+6. `src/lib/cloud/library-cloud.ts` (13)
+7. `src/lib/cloud/stock-counts-cloud.ts` (11)
 
-### التحقّق
-- اختبار يدوي على viewport 375x700 (موبايل) و 1280x800 (ديسكتوب).
-- التأكد من ظهور كل التبويبات الجديدة في الجولة.
-- التأكد أن المعالج يحفظ كل الإعدادات ويظهر تأثيرها فورًا (مثل العملة في POS).
+**النهج المعتمد (حسب اختيارك "interfaces مرنة"):**
+- تعريف `interface` لكل كيان (Product / Invoice / Customer / Debt …) داخل `src/types/cloud.ts` جديد، مع جعل الحقول الاختيارية `?:` لاحتواء البيانات القديمة.
+- للحقول `jsonb` (مثل `custom_fields`, `metadata`, `items_snapshot`): استخدام `Record<string, unknown>` بدلاً من `any` — أقل تشدداً من `unknown` الخالص ولا يكسر `obj.foo` access.
+- استخدام أنواع Supabase التلقائية من `src/integrations/supabase/types.ts` كأساس عبر `Database['public']['Tables']['products']['Row']` حيث ممكن.
+- في حالات التحويل من DB row إلى نوع التطبيق: إضافة دوال `mapRowToProduct(row)` صغيرة بدل `as any`.
+
+**قاعدة صارمة:** إذا تطلب إصلاح ملف لمساً لمنطق أعمال (POS / فواتير / مزامنة) — أتوقف وأسألك قبل أي تغيير منطقي.
+
+**معيار النجاح بعد كل ملف:** بناء ناجح + لا warnings TypeScript جديدة.
+
+---
+
+## المرحلة 3 — إزالة `any` من بقية الملفات
+
+ملفات صفحات وواجهات أقل خطورة (`Settings.tsx`, `BossPanel.tsx`, `Customers.tsx`, `Sidebar.tsx`, `ProductDetailsDialog.tsx`, …) — نفس النهج، دفعات صغيرة، بناء بعد كل دفعة.
+
+---
+
+## ضوابط الأمان أثناء كل المراحل
+
+- **ممنوع:** تغيير مخطط قاعدة البيانات، RLS، سياسات، أو منطق `sync-queue` / `cash-sale-handler` / `debt-sale-handler`.
+- **ممنوع:** تعديل ملفات auto-generated (`supabase/client.ts`, `types.ts`).
+- **ممنوع:** المساس بحساب المال (`Math.round`, currency conversions, profit logic) — حتى لو ظهر تحذير type، نوسّع النوع لا نغير الحساب.
+- **التحقق:** بناء فقط (كما طلبت) بعد كل ملف؛ لن أعتمد على فحص يدوي للصفحات.
+
+---
+
+## ما لن تتضمنه هذه الجولة
+
+- إضافة Offline-First جديد (مؤجل حتى تستقر الأنواع).
+- إعادة هيكلة `POS.tsx` إلى Container/Presentational.
+- تحديث dependencies.
+- أي تغيير في UI أو ترجمات.
+
+---
+
+## مخرجات المرحلة 1 (الجولة القادمة فقط)
+
+تعديل ملفين:
+- `.gitignore` (إضافة `.env*`)
+- إزالة `.env` من تتبع Git (`git rm --cached`)
+
+وتقرير لك يحتوي:
+- قائمة ملفات keystore/secrets موجودة فعلياً (إن وُجدت) قبل أي حذف.
+- تأكيد أن البناء نجح.
+
+بعد موافقتك على نتيجة المرحلة 1، ننتقل للمرحلة 2.
