@@ -163,7 +163,21 @@ export const loadLoansCloud = async (): Promise<BookLoan[]> => {
     return [];
   }
 
-  return (data || []).map((l: Record<string, unknown>) => ({
+  type LoanRow = {
+    id: string;
+    product_id: string;
+    member_id: string;
+    loan_date: string;
+    due_date: string;
+    return_date: string | null;
+    status?: 'active' | 'returned' | 'overdue' | 'lost' | null;
+    late_fee?: number | null;
+    notes?: string | null;
+    created_at: string;
+    library_members?: { name?: string | null } | null;
+    products?: { name?: string | null } | null;
+  };
+  return ((data as LoanRow[]) || []).map(l => ({
     id: l.id,
     productId: l.product_id,
     memberId: l.member_id,
@@ -177,6 +191,7 @@ export const loadLoansCloud = async (): Promise<BookLoan[]> => {
     memberName: l.library_members?.name || '',
     bookName: l.products?.name || '',
   }));
+
 };
 
 export const addLoanCloud = async (loan: {
