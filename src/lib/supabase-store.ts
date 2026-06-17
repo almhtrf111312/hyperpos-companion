@@ -7,8 +7,27 @@ import { showToast } from './toast-config';
 // The generated Database types only enumerate known tables, but this module is a
 // generic utility layer that accepts table names as runtime strings, so we widen
 // the type once here instead of sprinkling `any` across every call site.
-type LooseSupabase = SupabaseClient<Record<string, never>, 'public', Record<string, never>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
+
+// Shape of the `stores` row as consumed by the app. All fields optional/nullable
+// because legacy rows may be missing newer columns.
+export interface StoreSettingsRow {
+  name?: string | null;
+  store_type?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  logo_url?: string | null;
+  tax_enabled?: boolean | null;
+  tax_rate?: number | null;
+  notification_settings?: Record<string, unknown> | null;
+  print_settings?: Record<string, unknown> | null;
+  exchange_rates?: Record<string, number> | null;
+  sync_settings?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
 
 type UserRole = 'admin' | 'boss' | 'cashier';
 
