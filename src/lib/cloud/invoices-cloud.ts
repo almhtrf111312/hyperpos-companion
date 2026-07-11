@@ -102,11 +102,12 @@ function toInvoice(cloud: CloudInvoice): Invoice {
   const rawDiscount = Number(cloud.discount) || 0;
   const discountPercentage = Number(cloud.discount_percentage) || 0;
 
-  // Calculate actual discount amount:
-  // If discountPercentage > 0, it means the raw discount is a percentage, so compute the actual amount
-  const actualDiscount = discountPercentage > 0
-    ? (subtotal * discountPercentage) / 100
-    : rawDiscount;
+  // Use stored discount amount directly — it was already rounded when persisted.
+  // Only fall back to computing from percentage if the stored amount is missing/zero
+  // while a percentage is present (legacy rows).
+  const actualDiscount = rawDiscount > 0
+    ? rawDiscount
+    : (discountPercentage > 0 ? (subtotal * discountPercentage) / 100 : 0);
 
   return {
     id: cloud.invoice_number || cloud.id,
