@@ -399,7 +399,7 @@ export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
           await sb
             .from('invoices')
             .update({
-              status: 'completed',
+              status: 'paid',
               payment_type: 'cash',
               debt_paid: 0,
               debt_remaining: 0,

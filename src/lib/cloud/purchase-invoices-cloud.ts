@@ -272,12 +272,18 @@
             // Update existing product quantity + stock
             const { data: product } = await supabase
               .from('products')
-              .select('quantity, purchase_history')
+              .select('quantity, cost_price, purchase_history')
               .eq('id', item.product_id)
               .single();
   
             if (product) {
-              const newQuantity = (product.quantity || 0) + item.quantity;
+              const oldQty = product.quantity || 0;
+              const oldCost = Number((product as any).cost_price) || 0;
+              const newQuantity = oldQty + item.quantity;
+              // Weighted Average Cost: blend old inventory cost with newly-purchased cost
+              const avgCost = newQuantity > 0 && item.quantity > 0
+                ? Math.round(((oldQty * oldCost) + (item.quantity * item.cost_price)) / newQuantity * 100) / 100
+                : (item.cost_price ?? oldCost);
               const purchaseHistory = Array.isArray(product.purchase_history) 
                 ? product.purchase_history 
                 : [];
@@ -296,7 +302,7 @@
                 .from('products')
                 .update({
                   quantity: newQuantity,
-                  cost_price: item.cost_price,
+                  cost_price: avgCost,
                   purchase_history: purchaseHistory
                 })
                 .eq('id', item.product_id);
