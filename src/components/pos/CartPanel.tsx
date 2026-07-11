@@ -21,7 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn, formatNumber, formatCurrency, roundCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
