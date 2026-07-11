@@ -1,5 +1,30 @@
 [
   {
+    "type": "improved",
+    "ar": "v1.0.4 - تسجيل الربح الإجمالي وتكلفة البضاعة المباعة (COGS) في الوردية النقدية تلقائياً عند كل بيع",
+    "en": "v1.0.4 - Cash shift now automatically records gross profit and COGS on every sale"
+  },
+  {
+    "type": "fixed",
+    "ar": "استكمال حقول فاتورة الدين (نسبة الخصم، الضريبة) لضمان توافق دقيق مع الفاتورة النقدية",
+    "en": "Debt-sale bundle now includes discount percentage & tax fields to match cash sales"
+  },
+  {
+    "type": "improved",
+    "ar": "استخدام دالة الجمع المالي الآمنة (addCurrency) في تجميع الأرباح والتكاليف لمنع أخطاء التقريب",
+    "en": "Profit & COGS aggregation now uses safe addCurrency helper to avoid rounding drift"
+  },
+  {
+    "type": "fixed",
+    "ar": "عرض قيمة الخصم بشكل صحيح (مبلغ ثابت أو نسبة مئوية) في ملخص الفاتورة",
+    "en": "Invoice summary now correctly displays discount as fixed amount or percentage"
+  },
+  {
+    "type": "fixed",
+    "ar": "تقريب إجمالي بند فاتورة الدين لمنزلتين عشريتين",
+    "en": "Debt invoice line totals now rounded to 2 decimals"
+  },
+  {
     "type": "fixed",
     "ar": "v1.0.3 - دقة مالية: تقريب العملات إلى منزلتين عشريتين بدلاً من ثلاث في جميع الحسابات",
     "en": "v1.0.3 - Financial precision: currency rounding standardized to 2 decimals across all calculations"
