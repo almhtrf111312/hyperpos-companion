@@ -1,5 +1,31 @@
 [
   {
+    "type": "fixed",
+    "ar": "v1.0.3 - دقة مالية: تقريب العملات إلى منزلتين عشريتين بدلاً من ثلاث في جميع الحسابات",
+    "en": "v1.0.3 - Financial precision: currency rounding standardized to 2 decimals across all calculations"
+  },
+  {
+    "type": "improved",
+    "ar": "احتساب متوسط التكلفة المرجّح (WAC) تلقائياً عند إضافة فاتورة شراء لمنتج موجود",
+    "en": "Automatic Weighted Average Cost (WAC) calculation when purchasing existing products"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح عرض قيمة الخصم في الفواتير المحفوظة (كان يُحتسب من النسبة بدلاً من القيمة الفعلية)",
+    "en": "Fixed saved-invoice discount display (was recomputing from percentage instead of stored amount)"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح إعادة حالة الفاتورة إلى \"مدفوعة\" بشكل صحيح عند حذف الدين المرتبط بها",
+    "en": "Fixed invoice status correctly reverting to 'paid' when linked debt is deleted"
+  },
+  {
+    "type": "improved",
+    "ar": "دعم حفظ وحدة البيع ومعامل التحويل في بنود الفواتير للتقارير المستقبلية",
+    "en": "Store unit and conversion factor on invoice items for future reporting accuracy"
+  },
+
+  {
     "type": "new",
     "ar": "نظام تقارير متقدم وموحّد: تقرير حركة المنتج (شراء/بيع/مرتجع/إتلاف) مع فلترة دقيقة",
     "en": "Advanced unified reporting: product movement (purchase/sale/refund/damage) with precise filtering"
