@@ -5,10 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// ====== Fix #11: Precise Financial Calculations ======
-// Round currency values to exactly 3 decimal places
+// ====== Precise Financial Calculations ======
+// Round currency values to exactly 2 decimal places (cents)
 export function roundCurrency(amount: number): number {
-  return Math.round(amount * 1000) / 1000;  // ✅ 3 decimals
+  return Math.round(amount * 100) / 100;
 }
 
 // Safe addition for currency values
