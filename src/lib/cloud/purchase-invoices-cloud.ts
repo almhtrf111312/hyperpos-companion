@@ -272,7 +272,7 @@
             // Update existing product quantity + stock
             const { data: product } = await supabase
               .from('products')
-              .select('quantity, purchase_history')
+              .select('quantity, cost_price, purchase_history')
               .eq('id', item.product_id)
               .single();
   
