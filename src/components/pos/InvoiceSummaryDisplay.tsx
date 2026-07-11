@@ -6,6 +6,7 @@ interface InvoiceSummaryProps {
   subtotal: number;
   discount: number;
   discountAmount: number;
+  discountType?: 'amount' | 'percent';
   total: number;
   totalInCurrency: number;
   exchangeRate: number;
@@ -22,6 +23,7 @@ export function InvoiceSummaryDisplay({
   subtotal,
   discount,
   discountAmount,
+  discountType = 'amount',
   total,
   totalInCurrency,
   exchangeRate,
@@ -47,9 +49,9 @@ export function InvoiceSummaryDisplay({
       </div>
 
       {/* Discount */}
-      {discount > 0 && (
+      {discountAmount > 0 && (
         <div className="flex justify-between text-success">
-          <span>{t('pos.discount')} ({discount}%)</span>
+          <span>{t('pos.discount')}{discountType === 'percent' ? ` (${discount}%)` : ''}</span>
           <span>-${formatNumber(discountAmount)}</span>
         </div>
       )}

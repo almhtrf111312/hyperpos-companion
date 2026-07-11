@@ -159,7 +159,7 @@ export async function processDebtSaleWithOfflineSupport(
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        total: item.price * item.quantity,
+        total: Math.round(item.price * item.quantity * 100) / 100,
       })),
       subtotal: bundle.subtotal,
       discount: bundle.discount,

@@ -1,6 +1,6 @@
 {
-  "versionCode": 232,
-  "versionName": "1.0.3",
+  "versionCode": 233,
+  "versionName": "1.0.4",
   "lastUpdated": "2026-07-11T00:00:00.000Z",
   "buildHistory": [
     {
@@ -27,6 +27,11 @@
       "versionCode": 232,
       "date": "2026-07-11T00:00:00.000Z",
       "description": "v1.0.3 - Financial precision fixes: 2-decimal currency rounding, weighted average cost for purchases, discount display fix, debt deletion status fix + security hardening + onboarding tour + product image restore"
+    },
+    {
+      "versionCode": 233,
+      "date": "2026-07-11T00:00:00.000Z",
+      "description": "v1.0.4 - Phase 2 financial fixes: shift profit/COGS tracking on cash sales, complete debt-sale bundle fields (discount%, tax), addCurrency summation, discount type display, invoice item total rounding"
     }
   ]
 }

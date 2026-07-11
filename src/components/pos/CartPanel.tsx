@@ -21,7 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn, formatNumber, formatCurrency, roundCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -400,12 +400,12 @@ export function CartPanel({
 
         const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
         const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);
-        const itemCOGS = itemCostPrice * item.quantity;
+        const itemCOGS = roundCurrency(itemCostPrice * item.quantity);
 
         const cat = item.category || 'عام';
-        profitsByCategory[cat] = (profitsByCategory[cat] || 0) + itemProfit;
-        totalProfit += itemProfit;
-        totalCOGS += itemCOGS;
+        profitsByCategory[cat] = addCurrency(profitsByCategory[cat] || 0, itemProfit);
+        totalProfit = addCurrency(totalProfit, itemProfit);
+        totalCOGS = addCurrency(totalCOGS, itemCOGS);
 
         return {
           id: item.id,
@@ -419,7 +419,7 @@ export function CartPanel({
       });
 
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = totalProfit * (1 - discountRatio);
+      const discountedProfit = roundCurrency(totalProfit * (1 - discountRatio));
 
       const stockItemsLocal = cartSnapshot.map(item => ({
         productId: item.id,
@@ -469,7 +469,7 @@ export function CartPanel({
         );
       }
 
-      addSalesToShift(totalSnapshot);
+      addSalesToShift(totalSnapshot, discountedProfit, totalCOGS);
       recordActivity();
 
       // ✅ إغلاق الواجهة فوراً (< 100ms من الضغط على "بيع")
@@ -558,12 +558,12 @@ export function CartPanel({
         }
 
         const itemProfit = roundCurrency((item.price - itemCostPrice) * item.quantity);
-        const itemCOGS = itemCostPrice * item.quantity;
+        const itemCOGS = roundCurrency(itemCostPrice * item.quantity);
 
         const cat = item.category || 'عام';
-        profitsByCategory[cat] = (profitsByCategory[cat] || 0) + itemProfit;
-        totalProfit += itemProfit;
-        totalCOGS += itemCOGS;
+        profitsByCategory[cat] = addCurrency(profitsByCategory[cat] || 0, itemProfit);
+        totalProfit = addCurrency(totalProfit, itemProfit);
+        totalCOGS = addCurrency(totalCOGS, itemCOGS);
 
         return {
           id: item.id,
@@ -578,7 +578,7 @@ export function CartPanel({
       });
 
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = totalProfit * (1 - discountRatio);
+      const discountedProfit = roundCurrency(totalProfit * (1 - discountRatio));
 
       const stockItemsLocal = cartSnapshot.map(item => ({
         productId: item.id,
@@ -596,6 +596,9 @@ export function CartPanel({
         subtotal,
         discount,
         discountAmount,
+        discountPercentage: discountType === 'percent' ? discount : 0,
+        taxRate: effectiveTaxRate,
+        taxAmount,
         total: totalSnapshot,
         totalInCurrency,
         currency: selectedCurrency.code,
@@ -603,7 +606,7 @@ export function CartPanel({
         profit: discountedProfit,
         cogs: totalCOGS,
         profitsByCategory: Object.fromEntries(
-          Object.entries(profitsByCategory).map(([k, v]) => [k, v * (1 - discountRatio)])
+          Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(v * (1 - discountRatio))])
         ),
         stockItems: stockItemsLocal,
         warehouseId: activeWarehouse?.id,
