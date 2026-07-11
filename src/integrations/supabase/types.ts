@@ -512,6 +512,7 @@ export type Database = {
         Row: {
           amount_original: number | null
           amount_usd: number | null
+          conversion_factor: number
           cost_price: number | null
           currency: string | null
           exchange_rate: number | null
@@ -521,6 +522,7 @@ export type Database = {
           product_name: string
           profit: number | null
           quantity: number | null
+          unit: string | null
           unit_price: number | null
           variant_id: string | null
           variant_name: string | null
@@ -528,6 +530,7 @@ export type Database = {
         Insert: {
           amount_original?: number | null
           amount_usd?: number | null
+          conversion_factor?: number
           cost_price?: number | null
           currency?: string | null
           exchange_rate?: number | null
@@ -537,6 +540,7 @@ export type Database = {
           product_name: string
           profit?: number | null
           quantity?: number | null
+          unit?: string | null
           unit_price?: number | null
           variant_id?: string | null
           variant_name?: string | null
@@ -544,6 +548,7 @@ export type Database = {
         Update: {
           amount_original?: number | null
           amount_usd?: number | null
+          conversion_factor?: number
           cost_price?: number | null
           currency?: string | null
           exchange_rate?: number | null
@@ -553,6 +558,7 @@ export type Database = {
           product_name?: string
           profit?: number | null
           quantity?: number | null
+          unit?: string | null
           unit_price?: number | null
           variant_id?: string | null
           variant_name?: string | null
