@@ -8,6 +8,7 @@
 import { secureSet, secureGet, secureRemove } from './secure-storage';
 import { emitEvent, EVENTS } from './events';
 import { addToHistory, updateHistoryStatus } from './sync-history';
+import { toast } from 'sonner';
 
 // Storage key
 const SYNC_QUEUE_KEY = 'sync_queue';
@@ -114,7 +115,19 @@ export const addToQueue = (
   addToHistory(operation.id, type);
   
   console.log(`[SyncQueue] Added operation: ${type}`, operation.id);
-  
+
+  // Notify the user when a change is being stored locally because the device is offline
+  try {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const pendingTotal = queue.filter(op => op.status === 'pending').length;
+      toast.info('تم الحفظ محلياً', {
+        id: 'sync-queue-offline',
+        description: `العملية محفوظة على الجهاز. سيتم رفع (${pendingTotal}) عملية عند عودة الإنترنت.`,
+        duration: 3000,
+      });
+    }
+  } catch { /* toast is best-effort */ }
+
   return operation;
 };
 

@@ -6,7 +6,7 @@ import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
-import { processQueue, hasPendingOperations } from '@/lib/sync-queue';
+import { processQueue, hasPendingOperations, getQueueStatus } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
 import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '@/lib/cloud/purchase-queue-processor';
@@ -270,7 +270,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     try {
       await executePendingCloudClear();
 
-      await processQueue(async (operation) => {
+      const pendingBefore = getQueueStatus().pendingCount + getQueueStatus().processingCount;
+
+      const result = await processQueue(async (operation) => {
         if (operation.type === 'debt_sale_bundle') {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
         }
@@ -286,6 +288,23 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         console.log('[SyncQueue] Processing operation:', operation.type);
         return true;
       });
+
+      // Report sync completion to the user when we actually processed queued work
+      if (pendingBefore > 0) {
+        if (result.failed === 0 && result.processed > 0) {
+          showToast.success(
+            'اكتملت المزامنة',
+            `تمت مزامنة ${result.processed} عملية بنجاح`
+          );
+        } else if (result.processed > 0 && result.failed > 0) {
+          showToast.info(
+            'اكتملت المزامنة جزئياً',
+            `نجحت ${result.processed} — فشلت ${result.failed} (ستُعاد المحاولة)`
+          );
+        } else if (result.failed > 0 && result.processed === 0) {
+          showToast.error('فشلت المزامنة', { description: `${result.failed} عملية تحتاج إعادة محاولة` });
+        }
+      }
 
       const { invalidateAllCaches } = await import('@/lib/cloud');
       invalidateAllCaches();

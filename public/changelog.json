@@ -1,6 +1,16 @@
 [
   {
     "type": "improved",
+    "ar": "v1.0.6 - إشعار فوري عند حفظ أي عملية محلياً أثناء انقطاع الإنترنت مع عرض عدد العمليات المعلّقة",
+    "en": "v1.0.6 - Instant toast when a change is saved locally while offline, showing the pending operations count"
+  },
+  {
+    "type": "improved",
+    "ar": "إشعار عند اكتمال المزامنة يوضّح عدد العمليات التي رُفعت للسحابة بنجاح أو فشلت",
+    "en": "Sync-completion toast summarising how many operations were uploaded or failed"
+  },
+  {
+    "type": "improved",
     "ar": "v1.0.5 - إظهار قيمة الضريبة ونسبتها في الفواتير المحمّلة من السحابة (كانت تظهر صفراً في بعض التقارير)",
     "en": "v1.0.5 - Cloud-loaded invoices now expose tax rate & tax amount (previously showed zero in some reports)"
   },

@@ -1,6 +1,6 @@
 {
-  "versionCode": 234,
-  "versionName": "1.0.5",
+  "versionCode": 235,
+  "versionName": "1.0.6",
   "lastUpdated": "2026-07-12T00:00:00.000Z",
   "buildHistory": [
     {
@@ -34,9 +34,9 @@
       "description": "v1.0.4 - Phase 2 financial fixes: shift profit/COGS tracking on cash sales, complete debt-sale bundle fields (discount%, tax), addCurrency summation, discount type display, invoice item total rounding"
     },
     {
-      "versionCode": 234,
+      "versionCode": 235,
       "date": "2026-07-12T00:00:00.000Z",
-      "description": "v1.0.5 - Phase 3 polish: toInvoice now exposes taxRate/taxAmount for reports; wholesale profit & change-due use formatCurrency for consistent multi-currency display"
+      "description": "v1.0.6 - Sync UX: offline toast when a change is stored locally, and success/partial/failed toast when the queue drains after reconnection"
     }
   ]
 }
