@@ -8,6 +8,7 @@
 import { secureSet, secureGet, secureRemove } from './secure-storage';
 import { emitEvent, EVENTS } from './events';
 import { addToHistory, updateHistoryStatus } from './sync-history';
+import { toast } from 'sonner';
 
 // Storage key
 const SYNC_QUEUE_KEY = 'sync_queue';
