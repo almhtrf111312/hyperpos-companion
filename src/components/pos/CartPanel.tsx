@@ -1261,12 +1261,12 @@ export function CartPanel({
                 )}
                 {receivedAmount > 0 && !wholesaleMode && receivedAmount >= total && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                    باقي: ${formatNumber(receivedAmount - total)}
+                    باقي: {formatCurrency(roundCurrency(receivedAmount - total))}
                   </span>
                 )}
                 {receivedAmount > 0 && wholesaleMode && (
                   <span className={cn("px-1.5 py-0.5 rounded font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
-                    ربح: ${formatNumber(wholesaleProfit || 0)}
+                    ربح: {formatCurrency(wholesaleProfit || 0)}
                   </span>
                 )}
               </div>

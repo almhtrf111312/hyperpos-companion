@@ -1,6 +1,16 @@
 [
   {
     "type": "improved",
+    "ar": "v1.0.5 - إظهار قيمة الضريبة ونسبتها في الفواتير المحمّلة من السحابة (كانت تظهر صفراً في بعض التقارير)",
+    "en": "v1.0.5 - Cloud-loaded invoices now expose tax rate & tax amount (previously showed zero in some reports)"
+  },
+  {
+    "type": "improved",
+    "ar": "توحيد عرض الربح والباقي في سلة البيع بالجملة باستخدام تنسيق العملة الرسمي بدل الرمز الثابت $",
+    "en": "Wholesale profit & change-due in cart now use the official currency formatter instead of a hardcoded $"
+  },
+  {
+    "type": "improved",
     "ar": "v1.0.4 - تسجيل الربح الإجمالي وتكلفة البضاعة المباعة (COGS) في الوردية النقدية تلقائياً عند كل بيع",
     "en": "v1.0.4 - Cash shift now automatically records gross profit and COGS on every sale"
   },
