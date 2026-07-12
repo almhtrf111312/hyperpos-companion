@@ -118,6 +118,8 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     subtotal,
     discount: actualDiscount,
     discountPercentage,
+    taxRate: Number(cloud.tax_rate) || 0,
+    taxAmount: Number(cloud.tax_amount) || 0,
     total: Number(cloud.total) || 0,
     totalInCurrency: Number(cloud.total) || 0,
     currency: cloud.currency || 'USD',
