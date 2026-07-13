@@ -65,6 +65,9 @@ import {
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
+import { useActionGuard } from '@/hooks/use-action-guard';
+import { addToQueue } from '@/lib/sync-queue';
+import { useNetworkStatus } from '@/hooks/use-network-status';
 
 export default function Invoices() {
   const { t } = useLanguage();
@@ -81,6 +84,10 @@ export default function Invoices() {
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
+  const refundGuard = useActionGuard();
+  const markPaidGuard = useActionGuard();
+  const deleteGuard = useActionGuard();
+  const { isOnline } = useNetworkStatus();
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -157,55 +164,67 @@ export default function Invoices() {
     setShowRefundDialog(true);
   };
 
-  const confirmRefund = async () => {
-    if (invoiceToRefund) {
-      const result = await refundInvoiceCloud(invoiceToRefund.id);
-      if (result && (result === true || (result as RefundResult).success)) {
-        const [invoicesData, statsData] = await Promise.all([
-          loadInvoicesCloud(),
-          getInvoiceStatsCloud()
-        ]);
-        setInvoices(invoicesData);
-        setStats(statsData);
+  const confirmRefund = () => refundGuard.run(async () => {
+    if (!invoiceToRefund) return;
+    const invoice = invoiceToRefund;
 
-        // ✅ إشعار تفصيلي
-        if (typeof result === 'object' && (result as RefundResult).success) {
-          const r = result as RefundResult;
-          const lines: string[] = [];
-          if (r.restoredItemsCount > 0) {
-            lines.push(`📦 ${r.restoredItemsCount} منتج أُعيد للمخزون`);
-          }
-          if (r.deletedDebtAmount > 0) {
-            lines.push(`🗑️ دين بمبلغ ${r.deletedDebtAmount.toFixed(2)}$ حُذف`);
-          }
-          if (r.customerName && r.customerBalanceBefore !== r.customerBalanceAfter) {
-            lines.push(`👤 رصيد ${r.customerName}: ${r.customerBalanceBefore.toFixed(2)}$ ← ${r.customerBalanceAfter.toFixed(2)}$`);
-          }
-          toast.success('✅ تم استرداد الفاتورة بنجاح', {
-            description: lines.length > 0 ? lines.join('\n') : 'تم تحديث جميع البيانات',
-            duration: 6000,
-          });
-        } else {
-          toast.success('تم استرداد الفاتورة بنجاح وإعادة المخزون');
-        }
-      } else {
-        toast.error('فشل في استرداد الفاتورة');
-      }
+    // ✅ Offline path: queue the refund and update UI optimistically
+    if (!isOnline) {
+      addToQueue('invoice_refund', { invoiceNumber: invoice.id });
+      setInvoices(prev => prev.map(inv =>
+        inv.id === invoice.id ? { ...inv, status: 'refunded' as const } : inv
+      ));
+      toast.info('تم جدولة الاسترداد', {
+        description: 'سيتم تنفيذه على السحابة عند عودة الإنترنت',
+        duration: 4000,
+      });
       setShowRefundDialog(false);
       setInvoiceToRefund(null);
+      return;
     }
-  };
 
-  const handleMarkPaid = async (invoice: Invoice) => {
-    // Update invoice status
+    const result = await refundInvoiceCloud(invoice.id);
+    if (result && (result === true || (result as RefundResult).success)) {
+      const [invoicesData, statsData] = await Promise.all([
+        loadInvoicesCloud(),
+        getInvoiceStatsCloud()
+      ]);
+      setInvoices(invoicesData);
+      setStats(statsData);
+
+      if (typeof result === 'object' && (result as RefundResult).success) {
+        const r = result as RefundResult;
+        const lines: string[] = [];
+        if (r.restoredItemsCount > 0) {
+          lines.push(`📦 ${r.restoredItemsCount} منتج أُعيد للمخزون`);
+        }
+        if (r.deletedDebtAmount > 0) {
+          lines.push(`🗑️ دين بمبلغ ${r.deletedDebtAmount.toFixed(2)}$ حُذف`);
+        }
+        if (r.customerName && r.customerBalanceBefore !== r.customerBalanceAfter) {
+          lines.push(`👤 رصيد ${r.customerName}: ${r.customerBalanceBefore.toFixed(2)}$ ← ${r.customerBalanceAfter.toFixed(2)}$`);
+        }
+        toast.success('✅ تم استرداد الفاتورة بنجاح', {
+          description: lines.length > 0 ? lines.join('\n') : 'تم تحديث جميع البيانات',
+          duration: 6000,
+        });
+      } else {
+        toast.success('تم استرداد الفاتورة بنجاح وإعادة المخزون');
+      }
+    } else {
+      toast.error('فشل في استرداد الفاتورة');
+    }
+    setShowRefundDialog(false);
+    setInvoiceToRefund(null);
+  });
+
+  const handleMarkPaid = (invoice: Invoice) => markPaidGuard.run(async () => {
     await updateInvoiceCloud(invoice.id, { status: 'paid', debtPaid: invoice.total, debtRemaining: 0 });
-    // Delete associated debt
     await deleteDebtByInvoiceIdCloud(invoice.id);
-    // Reload data
     const invoicesData = await loadInvoicesCloud();
     setInvoices(invoicesData);
     toast.success(t('invoices.statusUpdated'));
-  };
+  });
 
   // Navigate to debts page to pay installment
   const handlePayDebt = (invoice: Invoice) => {
@@ -942,12 +961,17 @@ export default function Invoices() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowRefundDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRefundDialog(false)} disabled={refundGuard.isRunning}>
               {t('common.cancel')}
             </Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={confirmRefund}>
-              <Undo2 className="w-4 h-4 ml-2" />
-              تأكيد الاسترداد
+            <Button
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={confirmRefund}
+              disabled={refundGuard.isRunning}
+              aria-busy={refundGuard.isRunning}
+            >
+              <Undo2 className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
+              {refundGuard.isRunning ? 'جاري الاسترداد...' : 'تأكيد الاسترداد'}
             </Button>
           </DialogFooter>
         </DialogContent>

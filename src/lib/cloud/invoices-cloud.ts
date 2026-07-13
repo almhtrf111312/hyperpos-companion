@@ -482,8 +482,26 @@ export interface RefundResult {
   customerName: string | null;
 }
 
+// ✅ In-flight mutex: blocks concurrent refund calls for the same invoice
+// (protects against double-click race even before the network round-trip)
+const refundInFlight = new Set<string>();
+
 // Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
 export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boolean> => {
+  // ✅ Client-side mutex - reject duplicate concurrent calls immediately
+  if (refundInFlight.has(id)) {
+    console.warn('[refundInvoiceCloud] Refund already in-flight for:', id);
+    return false;
+  }
+  refundInFlight.add(id);
+  try {
+    return await refundInvoiceCloudImpl(id);
+  } finally {
+    refundInFlight.delete(id);
+  }
+};
+
+const refundInvoiceCloudImpl = async (id: string): Promise<RefundResult | boolean> => {
   // ✅ Reliable userId: always fallback to supabase.auth.getUser()
   let userId = getCurrentUserId();
   if (!userId) {
@@ -502,9 +520,22 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
 
   if (!cloudInvoice) return false;
 
-  // ✅ منع الاسترداد المزدوج
-  if (cloudInvoice.status === 'refunded') {
-    console.warn('[refundInvoiceCloud] Invoice already refunded:', id);
+  // ✅ Atomic server-side reservation: mark as refunded FIRST, only if it wasn't already.
+  // This eliminates the check-then-act race that allowed double-refunds when the
+  // client fired multiple concurrent requests before the previous one finished.
+  const { data: reserved, error: reserveErr } = await sb
+    .from('invoices')
+    .update({
+      status: 'refunded',
+      notes: `مسترجعة بتاريخ ${new Date().toLocaleDateString('ar-SA')}`,
+    })
+    .eq('id', cloudInvoice.id)
+    .neq('status', 'refunded')
+    .select('id')
+    .maybeSingle();
+
+  if (reserveErr || !reserved) {
+    console.warn('[refundInvoiceCloud] Invoice already refunded or reserve failed:', id, reserveErr);
     return false;
   }
 
@@ -690,29 +721,17 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
     }
   }
 
-  // 5. Mark invoice as refunded
-  const { error } = await sb
-    .from('invoices')
-    .update({
-      status: 'refunded',
-      notes: `مسترجعة بتاريخ ${new Date().toLocaleDateString('ar-SA')}`,
-    })
-    .eq('id', cloudInvoice.id);
-
-  if (!error) {
-    invalidateInvoicesCache();
-    emitEvent(EVENTS.INVOICES_UPDATED, null);
-    return {
-      success: true,
-      restoredItemsCount,
-      deletedDebtAmount,
-      customerBalanceBefore,
-      customerBalanceAfter,
-      customerName: cloudInvoice.customer_name || null,
-    };
-  }
-
-  return false;
+  // 5. Invoice was already reserved+marked as refunded at the top (atomic reservation).
+  invalidateInvoicesCache();
+  emitEvent(EVENTS.INVOICES_UPDATED, null);
+  return {
+    success: true,
+    restoredItemsCount,
+    deletedDebtAmount,
+    customerBalanceBefore,
+    customerBalanceAfter,
+    customerName: cloudInvoice.customer_name || null,
+  };
 };
 
 // Get invoice by ID
