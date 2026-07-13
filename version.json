@@ -37,6 +37,11 @@
       "versionCode": 235,
       "date": "2026-07-12T00:00:00.000Z",
       "description": "v1.0.6 - Sync UX: offline toast when a change is stored locally, and success/partial/failed toast when the queue drains after reconnection"
+    },
+    {
+      "versionCode": 236,
+      "date": "2026-07-13T00:00:00.000Z",
+      "description": "v1.0.7 - Duplicate-click protection: refund/sale/mark-paid buttons disable while running + atomic server-side refund reservation + offline refund queue"
     }
   ]
 }
