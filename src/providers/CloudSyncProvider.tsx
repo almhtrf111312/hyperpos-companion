@@ -285,6 +285,13 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (operation.type === 'purchase_invoice') {
           return await processPurchaseInvoiceFromQueue(operation.data as any);
         }
+        if (operation.type === 'invoice_refund') {
+          const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
+          const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
+          const result = await refundInvoiceCloud(invoiceNumber);
+          // A `false` return can mean "already refunded" (idempotent) — treat as success
+          return true;
+        }
         console.log('[SyncQueue] Processing operation:', operation.type);
         return true;
       });
