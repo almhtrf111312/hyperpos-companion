@@ -721,29 +721,17 @@ const refundInvoiceCloudImpl = async (id: string): Promise<RefundResult | boolea
     }
   }
 
-  // 5. Mark invoice as refunded
-  const { error } = await sb
-    .from('invoices')
-    .update({
-      status: 'refunded',
-      notes: `مسترجعة بتاريخ ${new Date().toLocaleDateString('ar-SA')}`,
-    })
-    .eq('id', cloudInvoice.id);
-
-  if (!error) {
-    invalidateInvoicesCache();
-    emitEvent(EVENTS.INVOICES_UPDATED, null);
-    return {
-      success: true,
-      restoredItemsCount,
-      deletedDebtAmount,
-      customerBalanceBefore,
-      customerBalanceAfter,
-      customerName: cloudInvoice.customer_name || null,
-    };
-  }
-
-  return false;
+  // 5. Invoice was already reserved+marked as refunded at the top (atomic reservation).
+  invalidateInvoicesCache();
+  emitEvent(EVENTS.INVOICES_UPDATED, null);
+  return {
+    success: true,
+    restoredItemsCount,
+    deletedDebtAmount,
+    customerBalanceBefore,
+    customerBalanceAfter,
+    customerName: cloudInvoice.customer_name || null,
+  };
 };
 
 // Get invoice by ID
