@@ -84,6 +84,10 @@ export default function Invoices() {
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
+  const refundGuard = useActionGuard();
+  const markPaidGuard = useActionGuard();
+  const deleteGuard = useActionGuard();
+  const { isOnline } = useNetworkStatus();
 
   // Debounce search (300ms)
   useEffect(() => {
