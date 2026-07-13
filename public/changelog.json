@@ -1,5 +1,20 @@
 [
   {
+    "type": "fixed",
+    "ar": "v1.0.7 - إصلاح تضخّم المخزون عند النقر المتكرر على زر تأكيد الاسترداد: الزر يُعطَّل فوراً وتُرفض النقرات المتكررة، مع حجز ذرّي على السحابة يمنع الاسترداد المزدوج نهائياً",
+    "en": "v1.0.7 - Fixed inflated stock caused by double-clicking refund: button disables instantly, duplicate clicks are ignored, and an atomic cloud reservation guarantees a single refund"
+  },
+  {
+    "type": "improved",
+    "ar": "أزرار تأكيد البيع النقدي، البيع بالدين، تسديد الدين، والاسترداد تعرض حالة \"جاري الحفظ...\" ولا تقبل نقرات إضافية أثناء المعالجة",
+    "en": "Cash-sale, debt-sale, mark-paid and refund confirm buttons now show a busy state and reject extra clicks while processing"
+  },
+  {
+    "type": "added",
+    "ar": "دعم استرداد الفواتير أثناء العمل بدون إنترنت: تُجدوَل العملية في طابور المزامنة وتُنفَّذ تلقائياً عند عودة الاتصال",
+    "en": "Invoice refunds now work offline — queued to the sync engine and processed automatically when the connection returns"
+  },
+  {
     "type": "improved",
     "ar": "v1.0.6 - إشعار فوري عند حفظ أي عملية محلياً أثناء انقطاع الإنترنت مع عرض عدد العمليات المعلّقة",
     "en": "v1.0.6 - Instant toast when a change is saved locally while offline, showing the pending operations count"
