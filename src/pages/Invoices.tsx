@@ -961,12 +961,17 @@ export default function Invoices() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowRefundDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRefundDialog(false)} disabled={refundGuard.isRunning}>
               {t('common.cancel')}
             </Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={confirmRefund}>
-              <Undo2 className="w-4 h-4 ml-2" />
-              تأكيد الاسترداد
+            <Button
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={confirmRefund}
+              disabled={refundGuard.isRunning}
+              aria-busy={refundGuard.isRunning}
+            >
+              <Undo2 className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
+              {refundGuard.isRunning ? 'جاري الاسترداد...' : 'تأكيد الاسترداد'}
             </Button>
           </DialogFooter>
         </DialogContent>
