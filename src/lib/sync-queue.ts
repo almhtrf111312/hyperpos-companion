@@ -32,7 +32,8 @@ export type OperationType =
   | 'shift_transaction'
   | 'debt_writeoff'
   | 'quick_purchase'    // Quick single-item purchase (bakery mode)
-  | 'purchase_invoice'; // Full purchase invoice with items
+  | 'purchase_invoice'  // Full purchase invoice with items
+  | 'invoice_refund';   // Offline invoice refund (restores stock + reverses profit)
 
 export interface QueuedOperation {
   id: string;
