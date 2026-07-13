@@ -65,6 +65,9 @@ import {
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
+import { useActionGuard } from '@/hooks/use-action-guard';
+import { addToQueue } from '@/lib/sync-queue';
+import { useNetworkStatus } from '@/hooks/use-network-status';
 
 export default function Invoices() {
   const { t } = useLanguage();
