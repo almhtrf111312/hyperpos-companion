@@ -1364,12 +1364,12 @@ export function CartPanel({
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowCashDialog(false)}>
+              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowCashDialog(false)} disabled={isSaving}>
                 إلغاء
               </Button>
-              <Button className="flex-1 bg-success hover:bg-success/90" onClick={confirmCashSale}>
-                <Check className="w-4 h-4 ml-2" />
-                تأكيد
+              <Button className="flex-1 bg-success hover:bg-success/90" onClick={confirmCashSale} disabled={isSaving} aria-busy={isSaving}>
+                <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
+                {isSaving ? 'جاري الحفظ...' : 'تأكيد'}
               </Button>
             </div>
           </div>
