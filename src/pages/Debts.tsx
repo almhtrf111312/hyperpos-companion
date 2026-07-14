@@ -865,7 +865,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 // Close dialog immediately for responsive UX
                 setShowDeleteDialog(false);
                 setSelectedDebt(null);
-                toast.loading(t('debts.deleteInProgress') || 'جاري الحذف...', { id: toastId });
+                toast.loading('جاري الحذف...', { id: toastId });
                 try {
                   const success = await deleteDebtCloud(debtSnapshot.id);
                   if (success) {
