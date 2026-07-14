@@ -524,42 +524,51 @@ export default function StockTransfer() {
     setReturnItems(prev => prev.filter(i => i.productId !== productId));
   };
 
-  const handleCreateReturn = async () => {
+  const handleCreateReturn = () => createReturnGuard.run(async () => {
     if (!mainWarehouse || !returnFromWarehouseId || returnItems.length === 0) return;
-
     if (!confirm(t('stockTransfer.confirmReturnMessage'))) return;
 
-    const result = await createReturnTransferCloud(
-      returnFromWarehouseId,
-      mainWarehouse.id,
-      returnItems.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unit: 'piece' as const,
-        quantityInPieces: item.quantity
-      })),
-      returnNotes
-    );
+    const toastId = `create-return-${Date.now()}`;
+    // Close dialog immediately for responsive UX
+    setIsReturnDialogOpen(false);
+    const itemsSnapshot = [...returnItems];
+    const fromId = returnFromWarehouseId;
+    const notesSnapshot = returnNotes;
+    resetReturnForm();
+    toast.loading(t('stockTransfer.returnSuccess'), { id: toastId });
 
-    if (result) {
-      // Auto-complete the return
-      const success = await completeReturnTransferCloud(result.id);
-      if (success) {
-        toast.success(t('stockTransfer.returnSuccess'));
-        // Print return receipt
-        await printReturnReceipt(result);
-        setIsReturnDialogOpen(false);
-        resetReturnForm();
-        const newTransfers = await loadStockTransfersCloud();
-        setTransfers(newTransfers);
-        refreshWarehouses();
+    try {
+      const result = await createReturnTransferCloud(
+        fromId,
+        mainWarehouse.id,
+        itemsSnapshot.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unit: 'piece' as const,
+          quantityInPieces: item.quantity
+        })),
+        notesSnapshot
+      );
+
+      if (result) {
+        const success = await completeReturnTransferCloud(result.id);
+        if (success) {
+          toast.success(t('stockTransfer.returnSuccess'), { id: toastId });
+          await printReturnReceipt(result);
+          const newTransfers = await loadStockTransfersCloud();
+          setTransfers(newTransfers);
+          refreshWarehouses();
+        } else {
+          toast.error(t('stockTransfer.returnFailed'), { id: toastId });
+        }
       } else {
-        toast.error(t('stockTransfer.returnFailed'));
+        toast.error(t('stockTransfer.returnFailed'), { id: toastId });
       }
-    } else {
-      toast.error(t('stockTransfer.returnFailed'));
+    } catch (err) {
+      console.error('[handleCreateReturn]', err);
+      toast.error(t('stockTransfer.returnFailed'), { id: toastId });
     }
-  };
+  });
 
   const printReturnReceipt = async (transfer: StockTransferType) => {
     const items = await getStockTransferItemsCloud(transfer.id);
