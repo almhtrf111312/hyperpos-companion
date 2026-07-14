@@ -77,6 +77,10 @@ export default function StockTransfer() {
   const [selectedTransfer, setSelectedTransfer] = useState<StockTransferType | null>(null);
   const [selectedTransferItems, setSelectedTransferItems] = useState<StockTransferItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const createTransferGuard = useActionGuard();
+  const completeTransferGuard = useActionGuard();
+  const cancelTransferGuard = useActionGuard();
+  const createReturnGuard = useActionGuard();
 
   // Return form state
   const [returnFromWarehouseId, setReturnFromWarehouseId] = useState('');
