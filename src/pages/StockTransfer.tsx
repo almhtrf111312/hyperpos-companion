@@ -1225,7 +1225,7 @@ export default function StockTransfer() {
                 <Button variant="outline" onClick={() => { setIsReturnDialogOpen(false); resetReturnForm(); }}>
                   {t('stockTransfer.cancel')}
                 </Button>
-                <Button onClick={handleCreateReturn} disabled={returnItems.length === 0}>
+                <Button onClick={handleCreateReturn} disabled={returnItems.length === 0 || createReturnGuard.isRunning}>
                   <RotateCcw className="w-4 h-4 mr-2" />
                   {t('stockTransfer.confirmReturn')}
                 </Button>
