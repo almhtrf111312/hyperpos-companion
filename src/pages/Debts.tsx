@@ -854,33 +854,34 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteGuard.isRunning}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              disabled={isDeleting}
+              disabled={deleteGuard.isRunning}
               className="bg-destructive hover:bg-destructive/90"
-              onClick={async () => {
-                if (!selectedDebt || isDeleting) return;
-                setIsDeleting(true);
+              onClick={() => deleteGuard.run(async () => {
+                if (!selectedDebt) return;
+                const debtSnapshot = selectedDebt;
+                const toastId = `delete-debt-${debtSnapshot.id}`;
+                // Close dialog immediately for responsive UX
+                setShowDeleteDialog(false);
+                setSelectedDebt(null);
+                toast.loading(t('debts.deleteInProgress') || 'جاري الحذف...', { id: toastId });
                 try {
-                  const success = await deleteDebtCloud(selectedDebt.id);
+                  const success = await deleteDebtCloud(debtSnapshot.id);
                   if (success) {
-                    toast.success(t('debts.deleteSuccess'));
+                    toast.success(t('debts.deleteSuccess'), { id: toastId });
                     const debtsData = await loadDebtsCloud();
                     setDebts(debtsData);
                   } else {
-                    toast.error(t('debts.deleteFailed'));
+                    toast.error(t('debts.deleteFailed'), { id: toastId });
                   }
                 } catch (error) {
                   console.error('Delete debt error:', error);
-                  toast.error(t('common.deleteError'));
-                } finally {
-                  setIsDeleting(false);
-                  setShowDeleteDialog(false);
-                  setSelectedDebt(null);
+                  toast.error(t('common.deleteError'), { id: toastId });
                 }
-              }}
+              })}
             >
-              {isDeleting ? 'جاري الحذف...' : t('common.delete')}
+              {deleteGuard.isRunning ? 'جاري الحذف...' : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
