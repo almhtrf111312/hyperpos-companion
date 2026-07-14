@@ -292,76 +292,91 @@ export default function StockTransfer() {
     }));
   };
 
-  const handleCreateTransfer = async () => {
+  const handleCreateTransfer = () => createTransferGuard.run(async () => {
     if (!mainWarehouse) {
       toast.error(t('stockTransfer.noMainWarehouse'));
       return;
     }
-
     if (!toWarehouseId) {
       toast.error(t('stockTransfer.selectDestination'));
       return;
     }
-
     if (transferItems.length === 0) {
       toast.error(t('stockTransfer.addProductsFirst'));
       return;
     }
 
-    const result = await createStockTransferCloud(
-      mainWarehouse.id,
-      toWarehouseId,
-      transferItems.map(item => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unit: item.unit,
-        quantityInPieces: item.quantityInPieces
-      })),
-      notes
-    );
+    const toastId = `create-transfer-${Date.now()}`;
+    toast.loading(t('stockTransfer.createSuccess'), { id: toastId });
 
-    if (result) {
-      toast.success(t('stockTransfer.createSuccess'));
-      setIsCreateDialogOpen(false);
-      resetForm();
-      // Reload transfers
-      const newTransfers = await loadStockTransfersCloud();
-      setTransfers(newTransfers);
-    } else {
-      toast.error(t('stockTransfer.createFailed'));
+    try {
+      const result = await createStockTransferCloud(
+        mainWarehouse.id,
+        toWarehouseId,
+        transferItems.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unit: item.unit,
+          quantityInPieces: item.quantityInPieces
+        })),
+        notes
+      );
+
+      if (result) {
+        toast.success(t('stockTransfer.createSuccess'), { id: toastId });
+        setIsCreateDialogOpen(false);
+        resetForm();
+        const newTransfers = await loadStockTransfersCloud();
+        setTransfers(newTransfers);
+      } else {
+        toast.error(t('stockTransfer.createFailed'), { id: toastId });
+      }
+    } catch (err) {
+      console.error('[handleCreateTransfer]', err);
+      toast.error(t('stockTransfer.createFailed'), { id: toastId });
     }
-  };
+  });
 
-  const handleCompleteTransfer = async (transfer: StockTransferType) => {
-    if (confirm(t('stockTransfer.confirmComplete'))) {
+  const handleCompleteTransfer = (transfer: StockTransferType) => completeTransferGuard.run(async () => {
+    if (!confirm(t('stockTransfer.confirmComplete'))) return;
+    const toastId = `complete-transfer-${transfer.id}`;
+    toast.loading(t('stockTransfer.completeSuccess'), { id: toastId });
+    try {
       const success = await completeStockTransferCloud(transfer.id);
       if (success) {
-        toast.success(t('stockTransfer.completeSuccess'));
-        
-        // طباعة وصل استلام العهدة تلقائياً بعد التأكيد
+        toast.success(t('stockTransfer.completeSuccess'), { id: toastId });
         await printTransferReceipt(transfer);
-        
         const newTransfers = await loadStockTransfersCloud();
         setTransfers(newTransfers);
         refreshWarehouses();
       } else {
-        toast.error(t('stockTransfer.completeFailed'));
+        toast.error(t('stockTransfer.completeFailed'), { id: toastId });
       }
+    } catch (err) {
+      console.error('[handleCompleteTransfer]', err);
+      toast.error(t('stockTransfer.completeFailed'), { id: toastId });
     }
-  };
+  });
 
-  const handleCancelTransfer = async (transfer: StockTransferType) => {
-    if (confirm(t('stockTransfer.confirmCancel'))) {
+  const handleCancelTransfer = (transfer: StockTransferType) => cancelTransferGuard.run(async () => {
+    if (!confirm(t('stockTransfer.confirmCancel'))) return;
+    const toastId = `cancel-transfer-${transfer.id}`;
+    toast.loading(t('stockTransfer.cancelSuccess'), { id: toastId });
+    try {
       const success = await cancelStockTransferCloud(transfer.id);
       if (success) {
-        toast.success(t('stockTransfer.cancelSuccess'));
+        toast.success(t('stockTransfer.cancelSuccess'), { id: toastId });
         const newTransfers = await loadStockTransfersCloud();
         setTransfers(newTransfers);
       } else {
-        toast.error(t('stockTransfer.cancelFailed'));
+        toast.error(t('stockTransfer.cancelFailed'), { id: toastId });
       }
+    } catch (err) {
+      console.error('[handleCancelTransfer]', err);
+      toast.error(t('stockTransfer.cancelFailed'), { id: toastId });
     }
-  };
+  });
+
 
   // ==================== Return Stock Handlers ====================
   const handleReturnWarehouseChange = async (warehouseId: string) => {
