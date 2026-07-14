@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { loadInvoicesCloud, deleteInvoiceCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { EVENTS } from '@/lib/events';
+import { useActionGuard } from '@/hooks/use-action-guard';
 
 const statusStyles: Record<string, string> = {
   paid: 'bg-success/10 text-success',
@@ -39,6 +40,7 @@ export function RecentInvoices() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const deleteGuard = useActionGuard();
 
   const loadData = useCallback(async () => {
     try {
@@ -143,16 +145,23 @@ export function RecentInvoices() {
     navigate('/pos');
   };
 
-  const handleDeleteInvoice = async (invoice: Invoice) => {
-    const success = await deleteInvoiceCloud(invoice.id);
-    if (success) {
-      toast.success(`تم حذف الفاتورة ${invoice.id}`);
-      loadData();
-      setShowViewDialog(false);
-    } else {
-      toast.error('فشل في حذف الفاتورة');
+  const handleDeleteInvoice = (invoice: Invoice) => deleteGuard.run(async () => {
+    const toastId = `delete-invoice-${invoice.id}`;
+    toast.loading(`جاري حذف الفاتورة ${invoice.id}...`, { id: toastId });
+    try {
+      const success = await deleteInvoiceCloud(invoice.id);
+      if (success) {
+        toast.success(`تم حذف الفاتورة ${invoice.id}`, { id: toastId });
+        loadData();
+        setShowViewDialog(false);
+      } else {
+        toast.error('فشل في حذف الفاتورة', { id: toastId });
+      }
+    } catch (err) {
+      console.error('[handleDeleteInvoice]', err);
+      toast.error('فشل في حذف الفاتورة', { id: toastId });
     }
-  };
+  });
 
   const handleViewAll = () => {
     navigate('/invoices');
@@ -278,10 +287,11 @@ export function RecentInvoices() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => handleDeleteInvoice(invoice)}
+                                disabled={deleteGuard.isRunning}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="w-4 h-4 ml-2" />
-                                حذف
+                                {deleteGuard.isRunning ? 'جاري الحذف...' : 'حذف'}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

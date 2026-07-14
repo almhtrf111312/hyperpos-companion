@@ -11,6 +11,7 @@ import {
   Shift
 } from '@/lib/cashbox-store';
 import { EVENTS } from '@/lib/events';
+import { useActionGuard } from '@/hooks/use-action-guard';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { addActivityLog } from '@/lib/activity-log';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   ArrowDownRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -65,6 +67,7 @@ export default function CashShifts() {
   const [openingCash, setOpeningCash] = useState('');
   const [closingCash, setClosingCash] = useState('');
   const [createAdjustment, setCreateAdjustment] = useState(true);
+  const closeShiftGuard = useActionGuard();
 
   // Load data
   const loadData = () => {
@@ -129,7 +132,7 @@ export default function CashShifts() {
   };
 
   // Handle close shift
-  const handleCloseShift = () => {
+  const handleCloseShift = () => closeShiftGuard.run(async () => {
     if (!openShift) return;
 
     const amount = parseFloat(closingCash);
@@ -138,25 +141,34 @@ export default function CashShifts() {
       return;
     }
 
-    const result = closeShiftFn(amount, createAdjustment ? t('cashShifts.createAdjustment') : undefined);
+    const adjustmentNote = createAdjustment ? t('cashShifts.createAdjustment') : undefined;
 
-    if (result) {
-      const { shift: closedShift, discrepancy } = result;
-      const discrepancyText = discrepancy === 0
-        ? t('cashShifts.noDiscrepancy')
-        : discrepancy > 0
-          ? `${t('cashShifts.surplus')} ${discrepancy.toFixed(2)}`
-          : `${t('cashShifts.shortage')} ${Math.abs(discrepancy).toFixed(2)}`;
-
-      addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText}`);
-      toast.success(t('cashShifts.shiftClosed'));
-    }
-
+    // Close dialog immediately for responsive UX
     setShowCloseDialog(false);
     setClosingCash('');
     setCreateAdjustment(true);
-    loadData();
-  };
+
+    try {
+      const result = closeShiftFn(amount, adjustmentNote);
+
+      if (result) {
+        const { discrepancy } = result;
+        const discrepancyText = discrepancy === 0
+          ? t('cashShifts.noDiscrepancy')
+          : discrepancy > 0
+            ? `${t('cashShifts.surplus')} ${discrepancy.toFixed(2)}`
+            : `${t('cashShifts.shortage')} ${Math.abs(discrepancy).toFixed(2)}`;
+
+        addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText}`);
+        toast.success(t('cashShifts.shiftClosed'), { description: discrepancyText });
+      }
+    } catch (err) {
+      console.error('[handleCloseShift]', err);
+      toast.error(t('cashShifts.enterValidAmount'));
+    } finally {
+      loadData();
+    }
+  });
 
   // Calculate discrepancy for preview
   const previewDiscrepancy = useMemo(() => {
@@ -538,7 +550,8 @@ export default function CashShifts() {
             <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="destructive" onClick={handleCloseShift}>
+            <Button variant="destructive" onClick={handleCloseShift} disabled={closeShiftGuard.isRunning}>
+              {closeShiftGuard.isRunning && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {t('cashShifts.closeShift')}
             </Button>
           </DialogFooter>

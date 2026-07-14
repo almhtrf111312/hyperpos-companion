@@ -1,5 +1,10 @@
 [
   {
+    "type": "improved",
+    "ar": "v1.0.9 - توسيع الحماية من النقر المزدوج والمعالجة في الخلفية لتشمل: حذف الفواتير، حذف الديون، حذف المنتجات، إغلاق الوردية، وتحويلات المخزون (إنشاء/تأكيد/إلغاء/إرجاع) مع إشعارات موحّدة لكل عملية",
+    "en": "v1.0.9 - Extended duplicate-click protection and background processing to invoice deletion, debt deletion, product deletion, shift closing, and stock transfers (create/complete/cancel/return) with unified per-operation toasts"
+  },
+  {
     "type": "fixed",
     "ar": "v1.0.8 - سرعة الاسترداد: نافذة تأكيد الاسترداد تُغلق فوراً بمجرد النقر، والعملية تُنفَّذ في الخلفية بدون تجميد الواجهة",
     "en": "v1.0.8 - Refund speed: the confirm dialog now closes immediately and the refund executes in the background without freezing the UI"
