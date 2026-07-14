@@ -66,6 +66,7 @@ export default function CashShifts() {
   const [openingCash, setOpeningCash] = useState('');
   const [closingCash, setClosingCash] = useState('');
   const [createAdjustment, setCreateAdjustment] = useState(true);
+  const closeShiftGuard = useActionGuard();
 
   // Load data
   const loadData = () => {
