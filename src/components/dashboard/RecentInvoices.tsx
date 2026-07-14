@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { loadInvoicesCloud, deleteInvoiceCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { EVENTS } from '@/lib/events';
+import { useActionGuard } from '@/hooks/use-action-guard';
 
 const statusStyles: Record<string, string> = {
   paid: 'bg-success/10 text-success',
