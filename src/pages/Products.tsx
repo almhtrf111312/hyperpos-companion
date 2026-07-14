@@ -2730,9 +2730,9 @@ export default function Products() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-row-reverse gap-2">
-              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90">
-                {t('common.delete')}
+              <AlertDialogCancel disabled={deleteGuard.isRunning}>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteProduct} disabled={deleteGuard.isRunning} className="bg-destructive hover:bg-destructive/90">
+                {deleteGuard.isRunning ? 'جاري الحذف...' : t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
