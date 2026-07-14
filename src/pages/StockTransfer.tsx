@@ -23,9 +23,11 @@ import {
   FileText,
   Search,
   ScanLine,
-  RotateCcw
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
+import { useActionGuard } from '@/hooks/use-action-guard';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { 
   StockTransfer as StockTransferType,
