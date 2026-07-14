@@ -145,16 +145,23 @@ export function RecentInvoices() {
     navigate('/pos');
   };
 
-  const handleDeleteInvoice = async (invoice: Invoice) => {
-    const success = await deleteInvoiceCloud(invoice.id);
-    if (success) {
-      toast.success(`تم حذف الفاتورة ${invoice.id}`);
-      loadData();
-      setShowViewDialog(false);
-    } else {
-      toast.error('فشل في حذف الفاتورة');
+  const handleDeleteInvoice = (invoice: Invoice) => deleteGuard.run(async () => {
+    const toastId = `delete-invoice-${invoice.id}`;
+    toast.loading(`جاري حذف الفاتورة ${invoice.id}...`, { id: toastId });
+    try {
+      const success = await deleteInvoiceCloud(invoice.id);
+      if (success) {
+        toast.success(`تم حذف الفاتورة ${invoice.id}`, { id: toastId });
+        loadData();
+        setShowViewDialog(false);
+      } else {
+        toast.error('فشل في حذف الفاتورة', { id: toastId });
+      }
+    } catch (err) {
+      console.error('[handleDeleteInvoice]', err);
+      toast.error('فشل في حذف الفاتورة', { id: toastId });
     }
-  };
+  });
 
   const handleViewAll = () => {
     navigate('/invoices');
