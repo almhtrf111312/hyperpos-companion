@@ -11,6 +11,7 @@ import {
   Shift
 } from '@/lib/cashbox-store';
 import { EVENTS } from '@/lib/events';
+import { useActionGuard } from '@/hooks/use-action-guard';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { addActivityLog } from '@/lib/activity-log';
 import { Button } from '@/components/ui/button';
