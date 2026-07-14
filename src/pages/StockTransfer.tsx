@@ -1047,7 +1047,8 @@ export default function StockTransfer() {
                   <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetForm(); }}>
                     {t('stockTransfer.cancel')}
                   </Button>
-                  <Button onClick={handleCreateTransfer} disabled={transferItems.length === 0}>
+                  <Button onClick={handleCreateTransfer} disabled={transferItems.length === 0 || createTransferGuard.isRunning}>
+                    {createTransferGuard.isRunning && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                     {t('stockTransfer.createTransferBtn')}
                   </Button>
                 </div>
