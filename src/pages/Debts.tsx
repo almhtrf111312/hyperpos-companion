@@ -42,6 +42,7 @@ import { getInvoiceByIdCloud, InvoiceItem } from '@/lib/cloud/invoices-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
 import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
 import { updateCustomerStatsCloud } from '@/lib/cloud/customers-cloud';
+import { useActionGuard } from '@/hooks/use-action-guard';
 import {
   AlertDialog,
   AlertDialogAction,
