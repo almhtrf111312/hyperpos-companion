@@ -853,36 +853,38 @@ export default function Products() {
     setIsSaving(false);
   };
 
-  const handleDeleteProduct = async () => {
+  const handleDeleteProduct = () => deleteGuard.run(async () => {
     if (!selectedProduct) return;
+    const productSnapshot = selectedProduct;
+    const toastId = `delete-product-${productSnapshot.id}`;
 
-    setIsSaving(true);
+    // Close dialog immediately for responsive UX
+    setShowDeleteDialog(false);
+    setSelectedProduct(null);
+    toast.loading(`جاري حذف: ${productSnapshot.name}`, { id: toastId });
 
-    const productName = selectedProduct.name;
-    const success = await deleteProductCloud(selectedProduct.id);
-
-    if (success) {
-      // Log activity
-      if (user) {
-        addActivityLog(
-          'product_deleted',
-          user.id,
-          profile?.full_name || user.email || t('products.defaultUser'),
-          `تم حذف منتج: ${productName}`, // This log message might need translation
-          { productId: selectedProduct.id, name: productName }
-        );
+    try {
+      const success = await deleteProductCloud(productSnapshot.id);
+      if (success) {
+        if (user) {
+          addActivityLog(
+            'product_deleted',
+            user.id,
+            profile?.full_name || user.email || t('products.defaultUser'),
+            `تم حذف منتج: ${productSnapshot.name}`,
+            { productId: productSnapshot.id, name: productSnapshot.name }
+          );
+        }
+        toast.success(t('products.deleteSuccess'), { id: toastId });
+        loadData();
+      } else {
+        toast.error(t('products.deleteFailed'), { id: toastId });
       }
-
-      setShowDeleteDialog(false);
-      setSelectedProduct(null);
-      toast.success(t('products.deleteSuccess'));
-      loadData();
-    } else {
-      toast.error(t('products.deleteFailed'));
+    } catch (err) {
+      console.error('[handleDeleteProduct]', err);
+      toast.error(t('products.deleteFailed'), { id: toastId });
     }
-
-    setIsSaving(false);
-  };
+  });
 
   const openEditDialog = (product: Product) => {
     setSelectedProduct(product);
