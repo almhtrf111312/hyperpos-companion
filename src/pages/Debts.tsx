@@ -80,6 +80,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [debtItems, setDebtItems] = useState<InvoiceItem[]>([]);
