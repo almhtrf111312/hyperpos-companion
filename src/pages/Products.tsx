@@ -72,6 +72,7 @@ import {
   Product
 } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { useActionGuard } from '@/hooks/use-action-guard';
 import {
   fetchAllWarehouseStocksCloud,
   WarehouseStock,
