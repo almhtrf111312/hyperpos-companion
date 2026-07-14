@@ -1,6 +1,16 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.8 - سرعة الاسترداد: نافذة تأكيد الاسترداد تُغلق فوراً بمجرد النقر، والعملية تُنفَّذ في الخلفية بدون تجميد الواجهة",
+    "en": "v1.0.8 - Refund speed: the confirm dialog now closes immediately and the refund executes in the background without freezing the UI"
+  },
+  {
+    "type": "fixed",
+    "ar": "إشعار الاسترداد يعرض رقم الفاتورة المستردة وقيمتها الحقيقية، ولا يتكرر بعد الآن — الإشعار الجديد يستبدل القديم لنفس الفاتورة",
+    "en": "Refund toast now shows the correct invoice number and amount, and no longer stacks — a new toast replaces the old one for the same invoice"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.7 - إصلاح تضخّم المخزون عند النقر المتكرر على زر تأكيد الاسترداد: الزر يُعطَّل فوراً وتُرفض النقرات المتكررة، مع حجز ذرّي على السحابة يمنع الاسترداد المزدوج نهائياً",
     "en": "v1.0.7 - Fixed inflated stock caused by double-clicking refund: button disables instantly, duplicate clicks are ignored, and an atomic cloud reservation guarantees a single refund"
   },

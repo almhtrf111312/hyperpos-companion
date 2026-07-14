@@ -167,55 +167,71 @@ export default function Invoices() {
   const confirmRefund = () => refundGuard.run(async () => {
     if (!invoiceToRefund) return;
     const invoice = invoiceToRefund;
+    // Snapshot invoice-specific data BEFORE running so notifications reflect this exact invoice
+    const invoiceLabel = invoice.id;
+    const invoiceTotal = invoice.totalInCurrency || invoice.total || 0;
+    const invoiceCurrencySymbol = invoice.currencySymbol || '$';
+    // Unique toast id per invoice → prevents duplicate stacked notifications on re-triggers
+    const toastId = `refund-${invoiceLabel}`;
 
-    // ✅ Offline path: queue the refund and update UI optimistically
+    // ✅ Close dialog IMMEDIATELY and hide invoice from list (optimistic).
+    // The heavy work (stock restore + debt delete + profit reversal) runs in the background.
+    setShowRefundDialog(false);
+    setInvoiceToRefund(null);
+    setInvoices(prev => prev.map(inv =>
+      inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+    ));
+
+    // ✅ Offline path: queue and stop here
     if (!isOnline) {
-      addToQueue('invoice_refund', { invoiceNumber: invoice.id });
-      setInvoices(prev => prev.map(inv =>
-        inv.id === invoice.id ? { ...inv, status: 'refunded' as const } : inv
-      ));
-      toast.info('تم جدولة الاسترداد', {
-        description: 'سيتم تنفيذه على السحابة عند عودة الإنترنت',
-        duration: 4000,
+      addToQueue('invoice_refund', { invoiceNumber: invoiceLabel });
+      toast.info(`تم جدولة استرداد ${invoiceLabel}`, {
+        id: toastId,
+        description: `المبلغ: ${formatCurrency(invoiceTotal, invoice.currency)} — سيُنفَّذ عند عودة الإنترنت`,
+        duration: 3500,
       });
-      setShowRefundDialog(false);
-      setInvoiceToRefund(null);
       return;
     }
 
-    const result = await refundInvoiceCloud(invoice.id);
-    if (result && (result === true || (result as RefundResult).success)) {
-      const [invoicesData, statsData] = await Promise.all([
-        loadInvoicesCloud(),
-        getInvoiceStatsCloud()
-      ]);
-      setInvoices(invoicesData);
-      setStats(statsData);
+    // ✅ Online path: run in background, keep UI responsive
+    toast.loading(`جاري استرداد ${invoiceLabel}...`, { id: toastId });
+    void (async () => {
+      try {
+        const result = await refundInvoiceCloud(invoiceLabel);
+        const ok = result && (result === true || (result as RefundResult).success);
+        if (!ok) {
+          toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
+          // Rollback optimistic hide
+          const invoicesData = await loadInvoicesCloud();
+          setInvoices(invoicesData);
+          return;
+        }
 
-      if (typeof result === 'object' && (result as RefundResult).success) {
-        const r = result as RefundResult;
-        const lines: string[] = [];
-        if (r.restoredItemsCount > 0) {
-          lines.push(`📦 ${r.restoredItemsCount} منتج أُعيد للمخزون`);
+        // Refresh stats silently — don't block UI
+        getInvoiceStatsCloud().then(setStats).catch(() => {});
+
+        const lines: string[] = [`💵 المبلغ: ${formatCurrency(invoiceTotal, invoice.currency)}`];
+        if (typeof result === 'object' && (result as RefundResult).success) {
+          const r = result as RefundResult;
+          if (r.restoredItemsCount > 0) {
+            lines.push(`📦 ${r.restoredItemsCount} منتج أُعيد للمخزون`);
+          }
+          if (r.deletedDebtAmount > 0) {
+            lines.push(`🗑️ دين محذوف: ${r.deletedDebtAmount.toFixed(2)}${invoiceCurrencySymbol}`);
+          }
         }
-        if (r.deletedDebtAmount > 0) {
-          lines.push(`🗑️ دين بمبلغ ${r.deletedDebtAmount.toFixed(2)}$ حُذف`);
-        }
-        if (r.customerName && r.customerBalanceBefore !== r.customerBalanceAfter) {
-          lines.push(`👤 رصيد ${r.customerName}: ${r.customerBalanceBefore.toFixed(2)}$ ← ${r.customerBalanceAfter.toFixed(2)}$`);
-        }
-        toast.success('✅ تم استرداد الفاتورة بنجاح', {
-          description: lines.length > 0 ? lines.join('\n') : 'تم تحديث جميع البيانات',
-          duration: 6000,
+        toast.success(`✅ تم استرداد ${invoiceLabel}`, {
+          id: toastId,
+          description: lines.join(' • '),
+          duration: 4500,
         });
-      } else {
-        toast.success('تم استرداد الفاتورة بنجاح وإعادة المخزون');
+      } catch (err) {
+        console.error('[confirmRefund] background error:', err);
+        toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
+        const invoicesData = await loadInvoicesCloud();
+        setInvoices(invoicesData);
       }
-    } else {
-      toast.error('فشل في استرداد الفاتورة');
-    }
-    setShowRefundDialog(false);
-    setInvoiceToRefund(null);
+    })();
   });
 
   const handleMarkPaid = (invoice: Invoice) => markPaidGuard.run(async () => {
