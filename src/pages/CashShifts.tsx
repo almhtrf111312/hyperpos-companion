@@ -131,7 +131,7 @@ export default function CashShifts() {
   };
 
   // Handle close shift
-  const handleCloseShift = () => {
+  const handleCloseShift = () => closeShiftGuard.run(async () => {
     if (!openShift) return;
 
     const amount = parseFloat(closingCash);
@@ -140,25 +140,34 @@ export default function CashShifts() {
       return;
     }
 
-    const result = closeShiftFn(amount, createAdjustment ? t('cashShifts.createAdjustment') : undefined);
+    const adjustmentNote = createAdjustment ? t('cashShifts.createAdjustment') : undefined;
 
-    if (result) {
-      const { shift: closedShift, discrepancy } = result;
-      const discrepancyText = discrepancy === 0
-        ? t('cashShifts.noDiscrepancy')
-        : discrepancy > 0
-          ? `${t('cashShifts.surplus')} ${discrepancy.toFixed(2)}`
-          : `${t('cashShifts.shortage')} ${Math.abs(discrepancy).toFixed(2)}`;
-
-      addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText}`);
-      toast.success(t('cashShifts.shiftClosed'));
-    }
-
+    // Close dialog immediately for responsive UX
     setShowCloseDialog(false);
     setClosingCash('');
     setCreateAdjustment(true);
-    loadData();
-  };
+
+    try {
+      const result = closeShiftFn(amount, adjustmentNote);
+
+      if (result) {
+        const { discrepancy } = result;
+        const discrepancyText = discrepancy === 0
+          ? t('cashShifts.noDiscrepancy')
+          : discrepancy > 0
+            ? `${t('cashShifts.surplus')} ${discrepancy.toFixed(2)}`
+            : `${t('cashShifts.shortage')} ${Math.abs(discrepancy).toFixed(2)}`;
+
+        addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText}`);
+        toast.success(t('cashShifts.shiftClosed'), { description: discrepancyText });
+      }
+    } catch (err) {
+      console.error('[handleCloseShift]', err);
+      toast.error(t('cashShifts.enterValidAmount'));
+    } finally {
+      loadData();
+    }
+  });
 
   // Calculate discrepancy for preview
   const previewDiscrepancy = useMemo(() => {
