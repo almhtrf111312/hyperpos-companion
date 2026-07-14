@@ -40,6 +40,7 @@ export function RecentInvoices() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const deleteGuard = useActionGuard();
 
   const loadData = useCallback(async () => {
     try {
