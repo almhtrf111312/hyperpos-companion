@@ -287,10 +287,11 @@ export function RecentInvoices() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => handleDeleteInvoice(invoice)}
+                                disabled={deleteGuard.isRunning}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="w-4 h-4 ml-2" />
-                                حذف
+                                {deleteGuard.isRunning ? 'جاري الحذف...' : 'حذف'}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
