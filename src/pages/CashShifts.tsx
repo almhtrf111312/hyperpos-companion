@@ -549,7 +549,8 @@ export default function CashShifts() {
             <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="destructive" onClick={handleCloseShift}>
+            <Button variant="destructive" onClick={handleCloseShift} disabled={closeShiftGuard.isRunning}>
+              {closeShiftGuard.isRunning && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {t('cashShifts.closeShift')}
             </Button>
           </DialogFooter>
