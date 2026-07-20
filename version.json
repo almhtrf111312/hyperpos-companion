@@ -1,7 +1,7 @@
 {
-  "versionCode": 238,
-  "versionName": "1.0.9",
-  "lastUpdated": "2026-07-14T00:00:00.000Z",
+  "versionCode": 239,
+  "versionName": "1.0.10",
+  "lastUpdated": "2026-07-20T00:00:00.000Z",
   "buildHistory": [
     {
       "versionCode": 200,
@@ -52,6 +52,11 @@
       "versionCode": 238,
       "date": "2026-07-14T00:00:00.000Z",
       "description": "v1.0.9 - Extended duplicate-click protection & background processing to invoice deletion, debt deletion, product deletion, shift closing, and stock transfers (create/complete/cancel/return) with unique toast IDs"
+    },
+    {
+      "versionCode": 239,
+      "date": "2026-07-20T00:00:00.000Z",
+      "description": "v1.0.10 - Fully atomic and idempotent invoice refunds: exact stock quantity restored once, duplicate offline refunds deduplicated, and accurate single notification using backend-confirmed invoice amount and restored units"
     }
   ]
 }

@@ -475,11 +475,15 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
 export interface RefundResult {
   success: boolean;
+  alreadyRefunded?: boolean;
   restoredItemsCount: number;
+  restoredUnitsCount: number;
   deletedDebtAmount: number;
   customerBalanceBefore: number;
   customerBalanceAfter: number;
   customerName: string | null;
+  invoiceTotal: number;
+  invoiceCurrency: string | null;
 }
 
 // ✅ In-flight mutex: blocks concurrent refund calls for the same invoice
@@ -511,180 +515,36 @@ const refundInvoiceCloudImpl = async (id: string): Promise<RefundResult | boolea
   }
   if (!userId) return false;
 
-  // Find by invoice_number - جلب بيانات الفاتورة الكاملة
-  const { data: cloudInvoice } = await sb
-    .from('invoices')
-    .select('id, status, payment_type, invoice_type, total, profit, customer_id, customer_name, customer_phone, cashier_id')
-    .eq('invoice_number', id)
-    .maybeSingle();
-
-  if (!cloudInvoice) return false;
-
-  // ✅ Atomic server-side reservation: mark as refunded FIRST, only if it wasn't already.
-  // This eliminates the check-then-act race that allowed double-refunds when the
-  // client fired multiple concurrent requests before the previous one finished.
-  const { data: reserved, error: reserveErr } = await sb
-    .from('invoices')
-    .update({
-      status: 'refunded',
-      notes: `مسترجعة بتاريخ ${new Date().toLocaleDateString('ar-SA')}`,
-    })
-    .eq('id', cloudInvoice.id)
-    .neq('status', 'refunded')
-    .select('id')
-    .maybeSingle();
-
-  if (reserveErr || !reserved) {
-    console.warn('[refundInvoiceCloud] Invoice already refunded or reserve failed:', id, reserveErr);
+  // Stock, debt, customer totals, and invoice status are committed in one locked
+  // database transaction. Only the first caller can receive success=true.
+  const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id });
+  if (error) {
+    console.error('[refundInvoiceCloud] Atomic refund failed:', error.code);
     return false;
   }
 
-  // ✅ جمع بيانات تفصيلية للإشعار
-  let restoredItemsCount = 0;
-  let deletedDebtAmount = 0;
-  let customerBalanceBefore = 0;
-  let customerBalanceAfter = 0;
+  const atomic = data?.[0];
+  if (!atomic) return false;
 
-  // 1. Restore stock for sale invoices
-  try {
-    const { data: items } = await sb
-      .from('invoice_items')
-      .select('product_id, quantity')
-      .eq('invoice_id', cloudInvoice.id);
-
-    if (items && items.length > 0) {
-      const typedItems = items as Array<{ product_id: string | null; quantity: number | string | null }>;
-      const itemsToRestore = typedItems
-        .filter(item => !!item.product_id)
-        .map(item => ({
-          productId: item.product_id as string,
-          quantity: Number(item.quantity) || 0,
-        }));
-
-
-      if (itemsToRestore.length > 0) {
-        const { isNoInventoryMode } = await import('../store-type-config');
-        if (!isNoInventoryMode()) {
-          const { getWarehouseForCashierCloud, updateWarehouseStockCloud, loadWarehouseStockCloud } = await import('./warehouses-cloud');
-
-          let targetWarehouseId = null;
-          if (cloudInvoice.cashier_id) {
-            const warehouse = await getWarehouseForCashierCloud(cloudInvoice.cashier_id);
-            if (warehouse) {
-              targetWarehouseId = warehouse.id;
-            }
-          }
-
-          if (targetWarehouseId) {
-            const existingStock = await loadWarehouseStockCloud(targetWarehouseId);
-
-            for (const item of itemsToRestore) {
-              const stockItem = existingStock.find(s => s.product_id === item.productId);
-              const currentQty = stockItem ? stockItem.quantity : 0;
-              await updateWarehouseStockCloud(targetWarehouseId, item.productId, currentQty + item.quantity);
-            }
-            restoredItemsCount = itemsToRestore.length;
-          } else {
-            const { restoreStockBatchCloud } = await import('./products-cloud');
-            await restoreStockBatchCloud(itemsToRestore);
-            restoredItemsCount = itemsToRestore.length;
-          }
-        } else {
-          restoredItemsCount = 0; // لا يتم استعادة المخزون في المخبز/الصيانة
-        }
-      }
-    }
-  } catch (err) {
-    console.error('[refundInvoiceCloud] Error restoring stock:', err);
+  if (atomic.already_refunded) {
+    return {
+      success: false,
+      alreadyRefunded: true,
+      restoredItemsCount: 0,
+      restoredUnitsCount: 0,
+      deletedDebtAmount: 0,
+      customerBalanceBefore: 0,
+      customerBalanceAfter: 0,
+      customerName: atomic.customer_name,
+      invoiceTotal: Number(atomic.invoice_total) || 0,
+      invoiceCurrency: atomic.invoice_currency,
+    };
   }
 
-  // 2. Get debt amount before deleting (for the notification)
-  try {
-    const { data: debtData } = await sb
-      .from('debts')
-      .select('remaining_debt')
-      .eq('invoice_id', id)
-      .maybeSingle();
-    if (debtData) {
-      deletedDebtAmount = Number(debtData.remaining_debt) || 0;
-    }
-  } catch { /* silent */ }
+  if (!atomic.success) return false;
 
-  // 2b. Delete associated debts
-  try {
-    // محاولة 1: حذف بـ invoice_number (الأكثر موثوقية)
-    const { error: err1, count: count1 } = await sb
-      .from('debts')
-      .delete({ count: 'exact' })
-      .eq('invoice_id', id);
-
-    if (!err1 && count1 && count1 > 0) {
-      console.log('[refundInvoiceCloud] ✅ Deleted', count1, 'debts by invoice_number');
-    } else {
-      const { error: err2, count: count2 } = await sb
-        .from('debts')
-        .delete({ count: 'exact' })
-        .eq('invoice_id', cloudInvoice.id);
-
-      if (!err2 && count2 && count2 > 0) {
-        console.log('[refundInvoiceCloud] ✅ Deleted', count2, 'debts by invoice UUID');
-      } else {
-        console.warn('[refundInvoiceCloud] ⚠️ No debt deleted for invoice:', id);
-      }
-    }
-
-    const { invalidateDebtsCache } = await import('./debts-cloud');
-    invalidateDebtsCache();
-    emitEvent(EVENTS.DEBTS_UPDATED, null);
-  } catch (err) {
-    console.error('[refundInvoiceCloud] Error deleting debt:', err);
-  }
-
-  // 3. Reverse customer statistics
-  const customerIdentifier = cloudInvoice.customer_id || cloudInvoice.customer_name;
-  if (customerIdentifier) {
-    try {
-      // جلب رصيد العميل قبل التحديث
-      const { data: custBefore } = await sb
-        .from('customers')
-        .select('total_purchases')
-        .eq(cloudInvoice.customer_id ? 'id' : 'name', cloudInvoice.customer_id || cloudInvoice.customer_name)
-        .maybeSingle();
-      customerBalanceBefore = Number(custBefore?.total_purchases) || 0;
-
-      const { data: activeInvoices } = await sb
-        .from('invoices')
-        .select('total, payment_type, status')
-        .eq(cloudInvoice.customer_id ? 'customer_id' : 'customer_name',
-          cloudInvoice.customer_id || cloudInvoice.customer_name)
-        .neq('status', 'refunded')
-        .neq('id', cloudInvoice.id);
-
-      const newTotalPurchases = (activeInvoices || []).reduce((s: number, i: { total: number }) => s + (Number(i.total) || 0), 0);
-      const newTotalDebt = (activeInvoices || [])
-        .filter((i: { payment_type: string; status: string }) => i.payment_type === 'debt' && i.status !== 'paid')
-        .reduce((s: number, i: { total: number }) => s + (Number(i.total) || 0), 0);
-      const newInvoiceCount = (activeInvoices || []).length;
-      customerBalanceAfter = newTotalPurchases;
-
-      const filter = cloudInvoice.customer_id
-        ? { column: 'id', value: cloudInvoice.customer_id }
-        : { column: 'name', value: cloudInvoice.customer_name };
-
-      await sb
-        .from('customers')
-        .update({ total_purchases: newTotalPurchases, total_debt: newTotalDebt, invoice_count: newInvoiceCount })
-        .eq(filter.column, filter.value);
-
-      const { invalidateCustomersCache } = await import('./customers-cloud');
-      invalidateCustomersCache();
-      emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
-    } catch (err) {
-      console.error('[refundInvoiceCloud] Error reversing customer stats:', err);
-    }
-  }
-
-  // 4. Revert profit distribution (cloud + local) + reverse cloud profit_records
+  // Secondary accounting cleanup is idempotent and only runs for the caller that
+  // won the atomic refund transaction. It cannot restore stock again.
   try {
     const { revertProfitDistributionCloud } = await import('./partners-cloud');
     await revertProfitDistributionCloud(id);
@@ -702,35 +562,24 @@ const refundInvoiceCloudImpl = async (id: string): Promise<RefundResult | boolea
     console.error('[refundInvoiceCloud] Error reverting profit:', err);
   }
 
-  // 4b. For maintenance invoices, delete associated parts cost expense
-  if (cloudInvoice.invoice_type === 'maintenance') {
-    try {
-      const { error: expErr } = await sb
-        .from('expenses')
-        .delete()
-        .like('notes', `%الفاتورة: ${id}%`);
-
-      if (!expErr) {
-        console.log('[refundInvoiceCloud] ✅ Deleted maintenance parts expense for invoice:', id);
-        const { invalidateExpensesCache } = await import('./expenses-cloud');
-        invalidateExpensesCache();
-        emitEvent(EVENTS.EXPENSES_UPDATED, null);
-      }
-    } catch (err) {
-      console.error('[refundInvoiceCloud] Error deleting maintenance expense:', err);
-    }
-  }
-
-  // 5. Invoice was already reserved+marked as refunded at the top (atomic reservation).
   invalidateInvoicesCache();
+  const { invalidateDebtsCache } = await import('./debts-cloud');
+  invalidateDebtsCache();
+  const { invalidateCustomersCache } = await import('./customers-cloud');
+  invalidateCustomersCache();
   emitEvent(EVENTS.INVOICES_UPDATED, null);
+  emitEvent(EVENTS.DEBTS_UPDATED, null);
+  emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
   return {
     success: true,
-    restoredItemsCount,
-    deletedDebtAmount,
-    customerBalanceBefore,
-    customerBalanceAfter,
-    customerName: cloudInvoice.customer_name || null,
+    restoredItemsCount: Number(atomic.restored_item_count) || 0,
+    restoredUnitsCount: Number(atomic.restored_unit_count) || 0,
+    deletedDebtAmount: Number(atomic.deleted_debt_amount) || 0,
+    customerBalanceBefore: 0,
+    customerBalanceAfter: 0,
+    customerName: atomic.customer_name,
+    invoiceTotal: Number(atomic.invoice_total) || 0,
+    invoiceCurrency: atomic.invoice_currency,
   };
 };
 
