@@ -289,8 +289,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
           const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
           const result = await refundInvoiceCloud(invoiceNumber);
-          // A `false` return can mean "already refunded" (idempotent) — treat as success
-          return true;
+          // An already-refunded invoice is an idempotent success; a real failure retries.
+          return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
         }
         console.log('[SyncQueue] Processing operation:', operation.type);
         return true;

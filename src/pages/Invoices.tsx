@@ -66,7 +66,7 @@ import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
-import { addToQueue } from '@/lib/sync-queue';
+import { addToQueueIfNotExists } from '@/lib/sync-queue';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 
 export default function Invoices() {
@@ -184,7 +184,7 @@ export default function Invoices() {
 
     // ✅ Offline path: queue and stop here
     if (!isOnline) {
-      addToQueue('invoice_refund', { invoiceNumber: invoiceLabel });
+      addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel }, `invoice-refund:${invoiceLabel}`);
       toast.info(`تم جدولة استرداد ${invoiceLabel}`, {
         id: toastId,
         description: `المبلغ: ${formatCurrency(invoiceTotal, invoice.currency)} — سيُنفَّذ عند عودة الإنترنت`,
@@ -198,6 +198,15 @@ export default function Invoices() {
     void (async () => {
       try {
         const result = await refundInvoiceCloud(invoiceLabel);
+        if (typeof result === 'object' && result.alreadyRefunded) {
+          toast.info(`الفاتورة ${invoiceLabel} مستردة بالفعل`, {
+            id: toastId,
+            description: 'لم تتم إضافة أي كمية جديدة إلى المخزون',
+            duration: 3500,
+          });
+          return;
+        }
+
         const ok = result && (result === true || (result as RefundResult).success);
         if (!ok) {
           toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
@@ -210,11 +219,13 @@ export default function Invoices() {
         // Refresh stats silently — don't block UI
         getInvoiceStatsCloud().then(setStats).catch(() => {});
 
-        const lines: string[] = [`💵 المبلغ: ${formatCurrency(invoiceTotal, invoice.currency)}`];
+        const refundedTotal = typeof result === 'object' ? result.invoiceTotal : invoiceTotal;
+        const refundedCurrency = typeof result === 'object' ? (result.invoiceCurrency || invoice.currency) : invoice.currency;
+        const lines: string[] = [`💵 المبلغ: ${formatCurrency(refundedTotal, refundedCurrency)}`];
         if (typeof result === 'object' && (result as RefundResult).success) {
           const r = result as RefundResult;
-          if (r.restoredItemsCount > 0) {
-            lines.push(`📦 ${r.restoredItemsCount} منتج أُعيد للمخزون`);
+          if (r.restoredUnitsCount > 0) {
+            lines.push(`📦 أُعيدت ${formatNumber(r.restoredUnitsCount)} قطعة من ${formatNumber(r.restoredItemsCount)} منتج`);
           }
           if (r.deletedDebtAmount > 0) {
             lines.push(`🗑️ دين محذوف: ${r.deletedDebtAmount.toFixed(2)}${invoiceCurrencySymbol}`);
