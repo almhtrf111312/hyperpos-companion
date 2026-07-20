@@ -1754,6 +1754,21 @@ export type Database = {
       is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
+      refund_invoice_atomic: {
+        Args: { _invoice_number: string }
+        Returns: {
+          already_refunded: boolean
+          customer_name: string
+          deleted_debt_amount: number
+          invoice_currency: string
+          invoice_id: string
+          invoice_number: string
+          invoice_total: number
+          restored_item_count: number
+          restored_unit_count: number
+          success: boolean
+        }[]
+      }
       reset_user_device: { Args: { _target_user_id: string }; Returns: boolean }
       revoke_license: {
         Args: { _license_id: string; _reason?: string }
