@@ -21,7 +21,8 @@ import {
   Truck,
   Loader2,
   Package,
-  Activity
+  Activity,
+  PackageSearch
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';

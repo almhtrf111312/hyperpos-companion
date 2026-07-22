@@ -1,7 +1,7 @@
 {
-  "versionCode": 239,
-  "versionName": "1.0.10",
-  "lastUpdated": "2026-07-20T00:00:00.000Z",
+  "versionCode": 240,
+  "versionName": "1.0.11",
+  "lastUpdated": "2026-07-22T00:00:00.000Z",
   "buildHistory": [
     {
       "versionCode": 200,
@@ -57,6 +57,11 @@
       "versionCode": 239,
       "date": "2026-07-20T00:00:00.000Z",
       "description": "v1.0.10 - Fully atomic and idempotent invoice refunds: exact stock quantity restored once, duplicate offline refunds deduplicated, and accurate single notification using backend-confirmed invoice amount and restored units"
+    },
+    {
+      "versionCode": 240,
+      "date": "2026-07-22T00:00:00.000Z",
+      "description": "v1.0.11 - Refund hardening with movement-ledger idempotency, consolidated notifications, guarded offline retries, refund activity tracking, and a stock discrepancy detector"
     }
   ]
 }

@@ -1,6 +1,21 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.11 - منع تضخّم المخزون نهائياً عبر سجل حركات بمعرّفات فريدة، مع تنفيذ الاسترداد مرة واحدة فقط للمخزون الرئيسي أو المستودع حتى عند تكرار الطلب من جهاز قديم أو طابور العمل دون إنترنت",
+    "en": "v1.0.11 - Prevented stock inflation with idempotent movement records, ensuring each refund restores the main or warehouse stock only once even from legacy devices or offline retries"
+  },
+  {
+    "type": "fixed",
+    "ar": "توحيد نظام الإشعارات وإزالة مصادر العرض والاستماع المكررة، مع إبقاء إشعار استرداد واحد ذكي يعرض نتيجة قاعدة البيانات الفعلية",
+    "en": "Consolidated toast rendering and network listeners so each refund shows one smart notification based on the confirmed database result"
+  },
+  {
+    "type": "added",
+    "ar": "إضافة سجل تدقيق لحركات الاسترداد وكاشف فروقات المخزون لمقارنة الرصيد الفعلي بالرصيد المتوقع مع تصدير PDF وExcel",
+    "en": "Added refund movement auditing and a stock discrepancy detector comparing actual versus expected balances with PDF and Excel export"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.10 - جعل استرداد الفاتورة عملية ذرّية واحدة: تُعاد الكمية المباعة الحقيقية مرة واحدة فقط مهما تكرر النقر أو تعددت الأجهزة، مع منع تكرار الاسترداد أثناء العمل دون إنترنت",
     "en": "v1.0.10 - Invoice refunds are now fully atomic: the exact sold quantity is restored once only despite repeated taps or multiple devices, with offline refund deduplication"
   },
