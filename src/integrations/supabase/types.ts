@@ -1387,6 +1387,69 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          idempotency_key: string
+          invoice_id: string | null
+          invoice_number: string | null
+          metadata: Json
+          movement_type: string
+          product_id: string
+          product_name: string | null
+          quantity_after: number
+          quantity_before: number
+          quantity_delta: number
+          source: string
+          unit_cost: number
+          user_id: string
+          warehouse_id: string | null
+          warehouse_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          idempotency_key: string
+          invoice_id?: string | null
+          invoice_number?: string | null
+          metadata?: Json
+          movement_type: string
+          product_id: string
+          product_name?: string | null
+          quantity_after: number
+          quantity_before: number
+          quantity_delta: number
+          source?: string
+          unit_cost?: number
+          user_id: string
+          warehouse_id?: string | null
+          warehouse_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          idempotency_key?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
+          metadata?: Json
+          movement_type?: string
+          product_id?: string
+          product_name?: string | null
+          quantity_after?: number
+          quantity_before?: number
+          quantity_delta?: number
+          source?: string
+          unit_cost?: number
+          user_id?: string
+          warehouse_id?: string | null
+          warehouse_name?: string | null
+        }
+        Relationships: []
+      }
       stock_transfer_items: {
         Row: {
           id: string
@@ -1740,6 +1803,21 @@ export type Database = {
       }
       get_next_invoice_number: { Args: { _user_id?: string }; Returns: number }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
+      get_stock_discrepancies: {
+        Args: never
+        Returns: {
+          actual_quantity: number
+          expected_quantity: number
+          last_movement_at: string
+          product_id: string
+          product_name: string
+          unit_cost: number
+          variance: number
+          variance_value: number
+          warehouse_id: string
+          warehouse_name: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1755,7 +1833,7 @@ export type Database = {
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
       refund_invoice_atomic: {
-        Args: { _invoice_number: string }
+        Args: { _invoice_number: string; _source?: string }
         Returns: {
           already_refunded: boolean
           customer_name: string
