@@ -330,7 +330,8 @@ export const addToQueueIfNotExists = (
   const exists = queue.some(op => 
     op.type === type && 
     op.data.uniqueKey === uniqueKey &&
-    (op.status === 'pending' || op.status === 'processing')
+    (op.status === 'pending' || op.status === 'processing' ||
+      (op.status === 'failed' && op.retryCount < op.maxRetries))
   );
   
   if (exists) {

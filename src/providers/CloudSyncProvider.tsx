@@ -24,6 +24,7 @@ interface CloudSyncContextType {
   isSyncing: boolean;
   isPaused: boolean;
   hasInternetAccess: boolean;
+  isOnline: boolean;
   lastSyncTime: string | null;
   syncNow: () => Promise<void>;
   syncImmediately: () => void; // مزامنة فورية في الخلفية بعد عملية بيع
@@ -288,7 +289,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (operation.type === 'invoice_refund') {
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
           const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
-          const result = await refundInvoiceCloud(invoiceNumber);
+          const result = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
           // An already-refunded invoice is an idempotent success; a real failure retries.
           return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
         }
@@ -298,11 +299,14 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
       // Report sync completion to the user when we actually processed queued work
       if (pendingBefore > 0) {
+        const refundOnly = getQueueStatus().pendingCount === 0 && result.processed > 0;
         if (result.failed === 0 && result.processed > 0) {
-          showToast.success(
-            'اكتملت المزامنة',
-            `تمت مزامنة ${result.processed} عملية بنجاح`
-          );
+          if (!refundOnly) {
+            showToast.success(
+              'اكتملت المزامنة',
+              `تمت مزامنة ${result.processed} عملية بنجاح`
+            );
+          }
         } else if (result.processed > 0 && result.failed > 0) {
           showToast.info(
             'اكتملت المزامنة جزئياً',
@@ -377,7 +381,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   }, [user, syncNow, isPaused]);
 
   return (
-    <CloudSyncContext.Provider value={{ isReady, isSyncing, isPaused, hasInternetAccess, lastSyncTime, syncNow, syncImmediately, pauseSync, resumeSync }}>
+    <CloudSyncContext.Provider value={{ isReady, isSyncing, isPaused, hasInternetAccess, isOnline, lastSyncTime, syncNow, syncImmediately, pauseSync, resumeSync }}>
       {children}
     </CloudSyncContext.Provider>
   );

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -215,8 +214,6 @@ const AppContent = () => {
   if (shouldShowSetup) {
     return (
       <>
-        <Toaster />
-        <Sonner />
         <SetupWizard onComplete={() => setSetupComplete(true)} />
       </>
     );
@@ -226,8 +223,6 @@ const AppContent = () => {
     <>
       {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
-      <Toaster />
-      <Sonner />
       {/* Global onboarding tour — persists across route changes */}
       {user && <OnboardingTour />}
       <Routes>
@@ -287,6 +282,7 @@ const App = () => (
                   <UserRoleProvider>
                     <WarehouseProvider>
                       <NotificationsProvider>
+                        <Sonner />
                         {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
                         <LicenseWarningBadge />
                         <OfflineProtectionBanner />

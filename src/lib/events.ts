@@ -22,7 +22,6 @@ export const EVENTS = {
   CUSTOM_FIELDS_UPDATED: 'hyperpos:custom-fields-updated',
   // Unified transaction events
   TRANSACTION_COMPLETED: 'hyperpos:transaction-completed',
-  REFUND_PROCESSED: 'hyperpos:refund-processed',
   // Profit tracking events
   PROFITS_UPDATED: 'hyperpos:profits-updated',
   // Warehouse events

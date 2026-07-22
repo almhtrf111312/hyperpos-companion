@@ -67,7 +67,7 @@ import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
 import { addToQueueIfNotExists } from '@/lib/sync-queue';
-import { useNetworkStatus } from '@/hooks/use-network-status';
+import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
 export default function Invoices() {
   const { t } = useLanguage();
@@ -87,7 +87,7 @@ export default function Invoices() {
   const refundGuard = useActionGuard();
   const markPaidGuard = useActionGuard();
   const deleteGuard = useActionGuard();
-  const { isOnline } = useNetworkStatus();
+  const { isOnline } = useCloudSyncContext();
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -193,11 +193,10 @@ export default function Invoices() {
       return;
     }
 
-    // ✅ Online path: run in background, keep UI responsive
+    // ✅ Online path: dialog is already closed, but the guard remains held until completion.
     toast.loading(`جاري استرداد ${invoiceLabel}...`, { id: toastId });
-    void (async () => {
-      try {
-        const result = await refundInvoiceCloud(invoiceLabel);
+    try {
+        const result = await refundInvoiceCloud(invoiceLabel, 'online');
         if (typeof result === 'object' && result.alreadyRefunded) {
           toast.info(`الفاتورة ${invoiceLabel} مستردة بالفعل`, {
             id: toastId,
@@ -211,6 +210,7 @@ export default function Invoices() {
         if (!ok) {
           toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
           // Rollback optimistic hide
+          invalidateInvoicesCache();
           const invoicesData = await loadInvoicesCloud();
           setInvoices(invoicesData);
           return;
@@ -239,10 +239,10 @@ export default function Invoices() {
       } catch (err) {
         console.error('[confirmRefund] background error:', err);
         toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
+        invalidateInvoicesCache();
         const invoicesData = await loadInvoicesCloud();
         setInvoices(invoicesData);
       }
-    })();
   });
 
   const handleMarkPaid = (invoice: Invoice) => markPaidGuard.run(async () => {

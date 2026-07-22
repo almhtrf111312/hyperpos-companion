@@ -2,7 +2,6 @@
 import { forwardRef } from 'react';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -14,12 +13,8 @@ interface NetworkStatusIndicatorProps {
 
 export const NetworkStatusIndicator = forwardRef<HTMLDivElement, NetworkStatusIndicatorProps>(
   ({ compact = false, showLabel = false, className }, ref) => {
-    const { isSyncing, syncNow } = useCloudSyncContext();
+    const { isSyncing, isOnline } = useCloudSyncContext();
     const { language, t } = useLanguage();
-
-    const { isOnline } = useNetworkStatus(() => {
-      syncNow();
-    });
 
     const isArabic = language === 'ar';
     const onlineLabel = isArabic ? 'متصل بالإنترنت' : 'Online';

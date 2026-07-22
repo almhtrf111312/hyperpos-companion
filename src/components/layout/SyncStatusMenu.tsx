@@ -10,7 +10,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
-import { useNetworkStatus } from '@/hooks/use-network-status';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
 import { loadHistory, SyncHistoryItem, SYNC_HISTORY_UPDATED, cleanupSyncedItems } from '@/lib/sync-history';
@@ -19,8 +18,8 @@ import { loadRecentBackups, formatBackupSize, BACKUP_UPDATED_EVENT, LocalBackup 
 
 export function SyncStatusMenu() {
   const { isRTL, t, language } = useLanguage();
-  const { isOnline } = useNetworkStatus();
   const cloudContext = useContext(CloudSyncContext);
+  const isOnline = cloudContext?.isOnline ?? (typeof navigator !== 'undefined' ? navigator.onLine : true);
   const isSyncing = cloudContext?.isSyncing ?? false;
   const isPaused = cloudContext?.isPaused ?? false;
   const hasInternetAccess = cloudContext?.hasInternetAccess ?? true;
