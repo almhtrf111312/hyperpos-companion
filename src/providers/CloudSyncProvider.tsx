@@ -276,6 +276,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       let processedRefund = false;
       let processedNonRefund = false;
       const result = await processQueue(async (operation) => {
+        if (operation.type === 'invoice_refund') processedRefund = true;
+        else processedNonRefund = true;
         if (operation.type === 'debt_sale_bundle') {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
         }
@@ -289,14 +291,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           return await processPurchaseInvoiceFromQueue(operation.data as any);
         }
         if (operation.type === 'invoice_refund') {
-          processedRefund = true;
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
           const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
           const result = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
           // An already-refunded invoice is an idempotent success; a real failure retries.
           return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
         }
-        processedNonRefund = true;
         console.log('[SyncQueue] Processing operation:', operation.type);
         return true;
       });
