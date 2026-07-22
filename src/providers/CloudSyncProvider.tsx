@@ -273,6 +273,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
       const pendingBefore = getQueueStatus().pendingCount + getQueueStatus().processingCount;
 
+      let processedRefund = false;
+      let processedNonRefund = false;
       const result = await processQueue(async (operation) => {
         if (operation.type === 'debt_sale_bundle') {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
@@ -287,19 +289,21 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           return await processPurchaseInvoiceFromQueue(operation.data as any);
         }
         if (operation.type === 'invoice_refund') {
+          processedRefund = true;
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
           const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
           const result = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
           // An already-refunded invoice is an idempotent success; a real failure retries.
           return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
         }
+        processedNonRefund = true;
         console.log('[SyncQueue] Processing operation:', operation.type);
         return true;
       });
 
       // Report sync completion to the user when we actually processed queued work
       if (pendingBefore > 0) {
-        const refundOnly = getQueueStatus().pendingCount === 0 && result.processed > 0;
+        const refundOnly = processedRefund && !processedNonRefund;
         if (result.failed === 0 && result.processed > 0) {
           if (!refundOnly) {
             showToast.success(

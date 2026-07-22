@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
-import { showToast } from '@/lib/toast-config';
-import { toast } from 'sonner';
 
 interface NetworkStatus {
   isOnline: boolean;
@@ -16,7 +14,6 @@ interface NetworkStatus {
  * Hook to track network connectivity status
  * Uses Capacitor Network plugin on mobile for reliable detection
  * Falls back to browser events on web
- * Shows toast notifications on status changes
  * Triggers callback when coming back online
  */
 export function useNetworkStatus(onReconnect?: () => void) {
@@ -46,11 +43,6 @@ export function useNetworkStatus(onReconnect?: () => void) {
     });
     
     if (wasOffline) {
-      // Dismiss all existing toasts first to prevent stale "disconnected" showing
-      toast.dismiss();
-      setTimeout(() => {
-        showToast.success('عادت الاتصال بالإنترنت ✓');
-      }, 100);
       // Trigger reconnect callback
       setTimeout(() => {
         onReconnectRef.current?.();
@@ -70,7 +62,6 @@ export function useNetworkStatus(onReconnect?: () => void) {
       wasOffline: true,
     }));
     
-    showToast.error('انقطع الاتصال بالإنترنت');
   }, []);
 
   useEffect(() => {
