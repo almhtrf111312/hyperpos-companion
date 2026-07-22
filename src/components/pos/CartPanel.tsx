@@ -54,7 +54,6 @@ import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addToQueue } from '@/lib/sync-queue';
 import { invalidateProductsCache } from '@/lib/cloud/products-cloud';
-import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
 import { Calculator } from '@/components/ui/Calculator';
@@ -175,8 +174,7 @@ export function CartPanel({
   const { t } = useLanguage();
   const { activeWarehouse } = useWarehouse();
   const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
-  const { isOnline } = useNetworkStatus();
-  const { syncImmediately } = useCloudSyncContext();
+  const { isOnline, syncImmediately } = useCloudSyncContext();
   const [showCashDialog, setShowCashDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);

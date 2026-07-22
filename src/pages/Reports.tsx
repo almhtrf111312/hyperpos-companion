@@ -21,7 +21,8 @@ import {
   Truck,
   Loader2,
   Package,
-  Activity
+  Activity,
+  PackageSearch
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
@@ -72,6 +73,7 @@ import { InventoryStockReport } from '@/components/reports/InventoryStockReport'
 import { InventoryValueReport } from '@/components/reports/InventoryValueReport';
 import { TopProductsReport } from '@/components/reports/TopProductsReport';
 import { SalesDetailedReport } from '@/components/reports/SalesDetailedReport';
+import { StockDiscrepancyReport } from '@/components/reports/StockDiscrepancyReport';
 
 export default function Reports() {
   const { t } = useLanguage();
@@ -158,7 +160,7 @@ export default function Reports() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['sales', 'sales-detailed', 'profits', 'products', 'inventory', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
+    if (tab && ['sales', 'sales-detailed', 'profits', 'products', 'inventory', 'product-movement', 'inventory-stock', 'inventory-value', 'stock-discrepancy', 'top-products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
       setActiveReport(tab);
     }
   }, [searchParams]);
@@ -176,6 +178,7 @@ export default function Reports() {
     ...(!noInventory ? [{ id: 'product-movement', label: 'حركة منتج', icon: Activity }] : []),
     ...(!noInventory ? [{ id: 'inventory-stock', label: 'المخزون والجرد', icon: Package }] : []),
     ...(!noInventory ? [{ id: 'inventory-value', label: 'قيمة العهدة', icon: Wallet }] : []),
+    ...(!noInventory ? [{ id: 'stock-discrepancy', label: 'فروقات المخزون', icon: PackageSearch }] : []),
     ...(!noInventory ? [{ id: 'top-products', label: 'الأكثر مبيعاً', icon: TrendingUp }] : []),
     { id: 'customers', label: t('reports.customers'), icon: Users },
     { id: 'partners', label: t('reports.partners'), icon: UsersRound },
@@ -219,6 +222,8 @@ export default function Reports() {
         return { showCategory: true, showSearch: true, categories: uniqueCategories };
       case 'inventory':
         return { showCategory: true, showSearch: true, categories: uniqueCategories };
+      case 'stock-discrepancy':
+        return { showSearch: true, showWarehouse: true, warehouses: [] };
       case 'customers':
         return { showSearch: true };
       case 'cashier-performance':
@@ -738,7 +743,7 @@ export default function Reports() {
         </div>
 
         {/* Dynamic Summary Cards */}
-        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed', 'product-movement', 'inventory-stock', 'inventory-value', 'top-products'].includes(activeReport) && (
+        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed', 'product-movement', 'inventory-stock', 'inventory-value', 'stock-discrepancy', 'top-products'].includes(activeReport) && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             {summaryCards.map((card, i) => {
               const Icon = card.icon;
@@ -933,6 +938,9 @@ export default function Reports() {
 
         {/* Inventory Value */}
         {activeReport === 'inventory-value' && <InventoryValueReport dateRange={dateRange} />}
+
+        {/* Stock Discrepancy Detector */}
+        {activeReport === 'stock-discrepancy' && <StockDiscrepancyReport search={filters.search} warehouseId={filters.warehouseId} />}
 
         {/* Top Products */}
         {activeReport === 'top-products' && <TopProductsReport dateRange={dateRange} />}

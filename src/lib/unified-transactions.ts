@@ -17,18 +17,18 @@
  * - طابور التزامن (Sync Queue) للعمل offline-first
  */
 
-import { addSalesToShift, addDepositToShift, addWithdrawalFromShift, addExpensesToShift, getActiveShift } from './cashbox-store';
-import { deductStockBatch, checkStockAvailability, restoreStockBatch } from './products-store';
+import { addSalesToShift, addDepositToShift, addExpensesToShift, getActiveShift } from './cashbox-store';
+import { deductStockBatch, checkStockAvailability } from './products-store';
 import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
 import { roundCurrency, addCurrency, formatNumber } from './utils';
-import { addGrossProfit, addOperatingExpense, removeGrossProfit } from './profits-store';
+import { addGrossProfit, addOperatingExpense } from './profits-store';
 import { withLock, LOCK_RESOURCES } from './transaction-lock';
 import { addToQueue } from './sync-queue';
 
 // Cloud imports
-import { deductStockBatchCloud, restoreStockBatchCloud } from './cloud/products-cloud';
+import { deductStockBatchCloud } from './cloud/products-cloud';
 import { updateCustomerStatsCloud } from './cloud/customers-cloud';
 
 export interface TransactionItem {
@@ -289,69 +289,6 @@ export const processCashDeposit = (
   }
 };
 
-
-/**
- * 4. عملية مرتجع متكاملة
- * - إعادة الكميات للمخزون
- * - خصم المبلغ من الصندوق
- * - إلغاء سجل الربح من سجل الأرباح
- * - تحديث إحصائيات العميل
- */
-export const processRefund = async (
-  items: TransactionItem[],
-  total: number,
-  customerId?: string,
-  userId?: string,
-  userName?: string,
-  originalInvoiceId?: string
-): Promise<TransactionResult> => {
-  try {
-    // Step 1: حساب COGS للمرتجع
-    const totalCOGS = items.reduce((sum, item) =>
-      addCurrency(sum, roundCurrency(item.costPrice * item.quantity)), 0);
-    const grossProfit = roundCurrency(total - totalCOGS);
-
-    // Step 2: إعادة الكميات للمخزون
-    const stockItems = items.map(item => ({ productId: item.productId, quantity: item.quantity }));
-    await restoreStockBatchCloud(stockItems);
-    restoreStockBatch(stockItems);
-
-    // Step 3: خصم المبلغ من الصندوق مع عكس بيانات الربح
-    addWithdrawalFromShift(roundCurrency(total));
-
-    // Step 4: إزالة سجل الربح الأصلي أو تسجيل ربح سالب كـ fallback
-    if (originalInvoiceId) {
-      removeGrossProfit(originalInvoiceId);
-    } else {
-      // Fallback: تسجيل ربح سالب لضمان خصم الربح حتى بدون invoiceId أصلي
-      addGrossProfit(`refund_${Date.now()}`, -grossProfit, totalCOGS, -total);
-    }
-
-    // Step 5: تحديث إحصائيات العميل (خصم المشتريات)
-    if (customerId) {
-      await updateCustomerStatsCloud(customerId, -total, false);
-    }
-
-    // Step 6: تسجيل النشاط
-    if (userId && userName) {
-      addActivityLog(
-        'refund',
-        userId,
-        userName,
-        `مرتجع: -$${formatNumber(total)} | تراجع ربح: -$${formatNumber(grossProfit)}`,
-        { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'refund' }
-      );
-    }
-
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'refund', total, grossProfit, cogs: totalCOGS });
-    emitEvent(EVENTS.REFUND_PROCESSED, { total, originalInvoiceId });
-
-    return { success: true, grossProfit: -grossProfit, cogs: totalCOGS };
-  } catch (error) {
-    console.error('خطأ في عملية المرتجع:', error);
-    return { success: false, error: 'حدث خطأ أثناء إتمام المرتجع' };
-  }
-};
 
 /**
  * 5. تسجيل مصروف متكامل

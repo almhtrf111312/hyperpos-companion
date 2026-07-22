@@ -419,6 +419,10 @@ export const updateInvoiceCloud = async (
   id: string,
   updates: Partial<Invoice>
 ): Promise<Invoice | null> => {
+  if (updates.status === 'refunded') {
+    console.warn('[updateInvoiceCloud] Refunded status is protected; use refundInvoiceCloud');
+    return null;
+  }
   // Find invoice by invoice_number
   const invoices = await loadInvoicesCloud();
   const invoice = invoices.find(inv => inv.id === id);
@@ -491,7 +495,7 @@ export interface RefundResult {
 const refundInFlight = new Set<string>();
 
 // Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
-export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boolean> => {
+export const refundInvoiceCloud = async (id: string, source: 'online' | 'offline-sync' = 'online'): Promise<RefundResult | boolean> => {
   // ✅ Client-side mutex - reject duplicate concurrent calls immediately
   if (refundInFlight.has(id)) {
     console.warn('[refundInvoiceCloud] Refund already in-flight for:', id);
@@ -499,13 +503,13 @@ export const refundInvoiceCloud = async (id: string): Promise<RefundResult | boo
   }
   refundInFlight.add(id);
   try {
-    return await refundInvoiceCloudImpl(id);
+    return await refundInvoiceCloudImpl(id, source);
   } finally {
     refundInFlight.delete(id);
   }
 };
 
-const refundInvoiceCloudImpl = async (id: string): Promise<RefundResult | boolean> => {
+const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sync'): Promise<RefundResult | boolean> => {
   // ✅ Reliable userId: always fallback to supabase.auth.getUser()
   let userId = getCurrentUserId();
   if (!userId) {
@@ -517,7 +521,7 @@ const refundInvoiceCloudImpl = async (id: string): Promise<RefundResult | boolea
 
   // Stock, debt, customer totals, and invoice status are committed in one locked
   // database transaction. Only the first caller can receive success=true.
-  const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id });
+  const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id, _source: source });
   if (error) {
     console.error('[refundInvoiceCloud] Atomic refund failed:', error.code);
     return false;
