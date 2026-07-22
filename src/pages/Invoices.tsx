@@ -54,6 +54,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
+  invalidateInvoicesCache,
   deleteInvoiceCloud,
   refundInvoiceCloud,
   updateInvoiceCloud,
