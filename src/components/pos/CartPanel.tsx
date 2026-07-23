@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency } from '@/lib/utils';
+import { checkStockAvailability, deductStockBatch } from '@/lib/products-store';
 import {
   Dialog,
   DialogContent,
@@ -609,6 +610,28 @@ export function CartPanel({
         stockItems: stockItemsLocal,
         warehouseId: activeWarehouse?.id,
       };
+
+      // Validate local stock availability before queuing (unless no-inventory mode)
+      if (!noInventory) {
+        const stockCheck = checkStockAvailability(stockItemsLocal);
+        if (!stockCheck.success) {
+          const msgs = stockCheck.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
+          showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
+          savingRef.current = false;
+          setIsSaving(false);
+          return;
+        }
+
+        // Deduct local stock immediately to keep local inventory consistent
+        const deductResult = deductStockBatch(stockItemsLocal);
+        if (!deductResult.success) {
+          const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
+          showToast.error('فشل في خصم المخزون محلياً: ' + msgs.join('، '));
+          savingRef.current = false;
+          setIsSaving(false);
+          return;
+        }
+      }
 
       addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
 
