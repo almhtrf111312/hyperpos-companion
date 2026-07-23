@@ -63,6 +63,8 @@ import {
   InvoiceType,
   RefundResult
 } from '@/lib/cloud/invoices-cloud';
+import { invalidateProductsCache, refreshProductsFromCloud } from '@/lib/cloud/products-cloud';
+import { emitEvent, EVENTS as PROD_EVENTS } from '@/lib/events';
 import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
@@ -219,6 +221,15 @@ export default function Invoices() {
 
         // Refresh stats silently — don't block UI
         getInvoiceStatsCloud().then(setStats).catch(() => {});
+
+        // Refresh product quantities from cloud so local inventory reflects the refund
+        try {
+          invalidateProductsCache();
+          refreshProductsFromCloud().then(() => {
+            // Notify listeners that products updated
+            emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as any, null);
+          }).catch(() => {});
+        } catch (e) { /* noop */ }
 
         const refundedTotal = typeof result === 'object' ? result.invoiceTotal : invoiceTotal;
         const refundedCurrency = typeof result === 'object' ? (result.invoiceCurrency || invoice.currency) : invoice.currency;
