@@ -1173,8 +1173,8 @@ export function CartPanel({
                   <span className={cn(
                     "flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
                     discountType === 'percent' && discount > 0
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background/70 text-muted-foreground border border-border/40"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground border border-border/60"
                   )}>%</span>
                 </label>
               )}
@@ -1203,10 +1203,10 @@ export function CartPanel({
                     min="0"
                   />
                   <span className={cn(
-                    "flex items-center justify-center min-w-[20px] h-5 px-1 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+                    "flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
                     discountType === 'fixed' && discount > 0
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background/70 text-muted-foreground border border-border/40"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground border border-border/60"
                   )}>{selectedCurrency.symbol}</span>
                 </label>
               )}
@@ -1275,7 +1275,7 @@ export function CartPanel({
                 <span className="text-xs font-bold text-foreground">{t('pos.total')}</span>
                 <button
                   onClick={() => setShowCalculator(true)}
-                  className="w-5 h-5 rounded bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-[10px]"
+                  className="w-6 h-6 rounded-md bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-xs font-semibold"
                   title="آلة حاسبة"
                 >
                   ⊞
