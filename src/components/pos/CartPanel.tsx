@@ -1171,7 +1171,7 @@ export function CartPanel({
               {settingsDiscountPercentEnabled && (
                 <label
                   className={cn(
-                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-colors cursor-text",
+                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-all cursor-text overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'percent' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1187,7 +1187,7 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('percent')}
                     className={cn(
-                      "border-0 h-6 text-xs bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
+                      "border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none h-full text-xs bg-transparent p-0 text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
                       discountType === 'percent' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
@@ -1204,7 +1204,7 @@ export function CartPanel({
               {settingsDiscountFixedEnabled && (
                 <label
                   className={cn(
-                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-colors cursor-text",
+                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-all cursor-text overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'fixed' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1220,7 +1220,7 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('fixed')}
                     className={cn(
-                      "border-0 h-6 text-xs bg-transparent p-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
+                      "border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none h-full text-xs bg-transparent p-0 text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
                       discountType === 'fixed' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
@@ -1238,7 +1238,7 @@ export function CartPanel({
 
           {/* Row 3: Received Amount - matches discount pill design */}
           <label className={cn(
-            "flex items-center gap-1.5 rounded-lg h-8 px-2.5 border transition-colors cursor-text",
+            "flex items-center gap-1.5 rounded-lg h-8 px-2.5 border transition-all cursor-text overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
             receivedAmount > 0
               ? "bg-primary/5 border-primary/40"
               : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1253,7 +1253,7 @@ export function CartPanel({
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
-                "border-0 h-6 text-xs bg-transparent p-0 focus-visible:ring-0 shadow-none flex-1 text-foreground placeholder:text-muted-foreground/70 min-w-0",
+                "border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none h-full text-xs bg-transparent p-0 flex-1 text-foreground placeholder:text-muted-foreground/70 min-w-0",
                 wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
               )}
               min="0"

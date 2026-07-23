@@ -85,11 +85,15 @@ const AppContent = () => {
   const { user } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
   const [setupComplete, setSetupComplete] = useState<boolean>(() => {
-    try { return localStorage.getItem('hyperpos_setup_complete') === 'true'; } catch { return true; }
+    try {
+      return localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1');
+    } catch { return true; }
   });
   // Re-read flag whenever the user changes (after login/logout)
   useEffect(() => {
-    try { setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true'); } catch {}
+    try {
+      setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1'));
+    } catch {}
   }, [user?.id]);
 
   // Handle reset mode

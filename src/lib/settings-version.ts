@@ -18,7 +18,6 @@ const KEYS_TO_CLEAR = [
   'hyperpos_print_settings',
   'hyperpos_store_type',
   'hyperpos_sync_settings',
-  'setup_complete',
 ];
 
 // Keys to NEVER clear (user session & critical data)

@@ -567,6 +567,8 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   }
 
   invalidateInvoicesCache();
+  const { invalidateProductsCache } = await import('./products-cloud');
+  invalidateProductsCache();
   const { invalidateDebtsCache } = await import('./debts-cloud');
   invalidateDebtsCache();
   const { invalidateCustomersCache } = await import('./customers-cloud');
