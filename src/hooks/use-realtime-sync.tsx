@@ -30,15 +30,51 @@ export function useRealtimeSync() {
       return;
     }
 
-    // Create realtime channel for all user data
-    const channel = supabase
-      .channel(`user-sync-${user.id}`)
+    let cancelled = false;
+    let cleanupLifecycle: (() => void) | undefined;
+
+    const startSubscription = async () => {
+      const { data: ownerId, error: ownerError } = await supabase.rpc('get_owner_id', { _user_id: user.id });
+      if (cancelled) return;
+      const syncOwnerId = !ownerError && typeof ownerId === 'string' ? ownerId : user.id;
+
+      const refreshAll = () => {
+        invalidateProductsCache();
+        invalidateCategoriesCache();
+        invalidateInvoicesCache();
+        invalidateDebtsCache();
+        invalidateCustomersCache();
+        invalidatePartnersCache();
+        invalidateExpensesCache();
+        emitEvent(EVENTS.PRODUCTS_UPDATED);
+        emitEvent(EVENTS.CATEGORIES_UPDATED);
+        emitEvent(EVENTS.INVOICES_UPDATED);
+        emitEvent(EVENTS.DEBTS_UPDATED);
+        emitEvent(EVENTS.CUSTOMERS_UPDATED);
+        emitEvent(EVENTS.PARTNERS_UPDATED);
+        emitEvent(EVENTS.EXPENSES_UPDATED);
+        emitEvent(EVENTS.WAREHOUSES_UPDATED);
+      };
+
+      const onResume = () => {
+        if (document.visibilityState === 'visible' && navigator.onLine) refreshAll();
+      };
+      window.addEventListener('online', refreshAll);
+      document.addEventListener('visibilitychange', onResume);
+      cleanupLifecycle = () => {
+        window.removeEventListener('online', refreshAll);
+        document.removeEventListener('visibilitychange', onResume);
+      };
+
+      // All business rows are owned by the resolved owner, including cashier sessions.
+      const channel = supabase
+      .channel(`owner-sync-${syncOwnerId}`)
       // Products changes - مع مسح localStorage للمزامنة الفورية
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'products',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Products changed:', payload.eventType);
         // مسح كاش الذاكرة فقط — يبقى IDB/localStorage لعرض فوري
@@ -50,7 +86,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'categories',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Categories changed:', payload.eventType);
         invalidateCategoriesCache();
@@ -61,7 +97,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'invoices',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Invoices changed:', payload.eventType);
         invalidateInvoicesCache();
@@ -72,7 +108,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'debts',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Debts changed:', payload.eventType);
         invalidateDebtsCache();
@@ -83,7 +119,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'customers',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Customers changed:', payload.eventType);
         invalidateCustomersCache();
@@ -94,7 +130,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'partners',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Partners changed:', payload.eventType);
         invalidatePartnersCache();
@@ -105,7 +141,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'expenses',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, (payload) => {
         console.log('[Realtime] Expenses changed:', payload.eventType);
         invalidateExpensesCache();
@@ -116,7 +152,7 @@ export function useRealtimeSync() {
         event: '*',
         schema: 'public',
         table: 'stores',
-        filter: `user_id=eq.${user.id}`
+        filter: `user_id=eq.${syncOwnerId}`
       }, async (payload) => {
         console.log('[Realtime] Store settings changed:', payload.eventType);
         // Fetch and apply new settings
@@ -140,6 +176,9 @@ export function useRealtimeSync() {
               theme: settings.theme || existing.theme,
               taxEnabled: settings.tax_enabled ?? existing.taxEnabled,
               taxRate: settings.tax_rate ?? existing.taxRate,
+              discountPercentEnabled: settings.sync_settings?.discountPercentEnabled ?? existing.discountPercentEnabled,
+              discountFixedEnabled: settings.sync_settings?.discountFixedEnabled ?? existing.discountFixedEnabled,
+              barcodeScanMode: settings.sync_settings?.barcodeScanMode ?? existing.barcodeScanMode,
             };
             
             localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
@@ -149,13 +188,37 @@ export function useRealtimeSync() {
           }
         }
       })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'warehouses',
+        filter: `user_id=eq.${syncOwnerId}`
+      }, () => {
+        emitEvent(EVENTS.WAREHOUSES_UPDATED);
+        emitEvent(EVENTS.PRODUCTS_UPDATED);
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'stock_movements',
+        filter: `user_id=eq.${syncOwnerId}`
+      }, () => {
+        invalidateProductsCache();
+        emitEvent(EVENTS.PRODUCTS_UPDATED);
+      })
       .subscribe((status) => {
         console.log('[Realtime] Subscription status:', status);
+        if (status === 'SUBSCRIBED') refreshAll();
       });
 
-    channelRef.current = channel;
+      channelRef.current = channel;
+    };
+
+    void startSubscription();
 
     return () => {
+      cancelled = true;
+      cleanupLifecycle?.();
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
