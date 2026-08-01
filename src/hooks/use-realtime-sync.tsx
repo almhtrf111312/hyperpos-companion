@@ -19,6 +19,7 @@ const SYNC_TABLES = [
   { name: 'expenses', event: EVENTS.EXPENSES_UPDATED },
   { name: 'warehouses', event: EVENTS.WAREHOUSES_UPDATED },
   { name: 'stock_transfers', event: EVENTS.STOCK_TRANSFERS_UPDATED },
+  { name: 'stock_movements', event: EVENTS.PRODUCTS_UPDATED },
   { name: 'purchases', event: EVENTS.PURCHASES_UPDATED },
   { name: 'maintenance_services', event: EVENTS.MAINTENANCE_UPDATED },
   { name: 'recurring_expenses', event: EVENTS.RECURRING_EXPENSES_UPDATED },
@@ -111,6 +112,9 @@ export function useRealtimeSync() {
               theme: settings.theme || existing.theme,
               taxEnabled: settings.tax_enabled ?? existing.taxEnabled,
               taxRate: settings.tax_rate ?? existing.taxRate,
+              discountPercentEnabled: settings.sync_settings?.discountPercentEnabled ?? existing.discountPercentEnabled,
+              discountFixedEnabled: settings.sync_settings?.discountFixedEnabled ?? existing.discountFixedEnabled,
+              barcodeScanMode: settings.sync_settings?.barcodeScanMode ?? existing.barcodeScanMode,
             };
             localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
             emitEvent(EVENTS.SETTINGS_UPDATED);
