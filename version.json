@@ -1,8 +1,13 @@
 {
-  "versionCode": 240,
-  "versionName": "1.0.11",
-  "lastUpdated": "2026-07-22T00:00:00.000Z",
+  "versionCode": 241,
+  "versionName": "1.0.12",
+  "lastUpdated": "2026-08-01T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 241,
+      "date": "2026-08-01T00:00:00.000Z",
+      "description": "v1.0.12 - Embedded APK builds, owner-scoped realtime sync, barcode direct-add setting, cart field layout, and idempotent offline queue recovery"
+    },
     {
       "versionCode": 200,
       "date": "2026-02-06T01:50:29+03:00",

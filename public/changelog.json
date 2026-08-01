@@ -1,6 +1,21 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.12 - أصبح APK يضم نفس ملفات الإصدار المبنية من GitHub بدل فتح نسخة موقع قديمة، مع مزامنة لحظية صحيحة ضمن حساب المالك والكاشير",
+    "en": "v1.0.12 - APK releases now embed the exact GitHub-built app instead of opening a stale hosted copy, with owner-aware realtime sync for owners and cashiers"
+  },
+  {
+    "type": "added",
+    "ar": "إضافة إعداد لاختيار سلوك الباركود: عرض المنتج أو إضافته مباشرة للسلة، وكل قراءة جديدة تزيد الكمية قطعة واحدة",
+    "en": "Added a barcode behavior setting to show the product or add it directly to cart, incrementing once per intentional scan"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح تجاوز حقول الخصم والمبلغ المقبوض لحاوياتها على الهاتف والويب، وتحسين تعافي طابور المزامنة بعد إغلاق التطبيق أثناء المعالجة",
+    "en": "Fixed discount and received-amount field overflow on mobile and web, and improved sync queue recovery after interruption"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.11 - منع تضخّم المخزون نهائياً عبر سجل حركات بمعرّفات فريدة، مع تنفيذ الاسترداد مرة واحدة فقط للمخزون الرئيسي أو المستودع حتى عند تكرار الطلب من جهاز قديم أو طابور العمل دون إنترنت",
     "en": "v1.0.11 - Prevented stock inflation with idempotent movement records, ensuring each refund restores the main or warehouse stock only once even from legacy devices or offline retries"
   },

@@ -128,6 +128,7 @@ type PersistedSettings = {
   taxRate?: number;
   discountPercentEnabled?: boolean;
   discountFixedEnabled?: boolean;
+  barcodeScanMode?: 'search' | 'add';
 };
 
 const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
@@ -245,6 +246,7 @@ export default function Settings() {
   // Discount control settings
   const [discountPercentEnabled, setDiscountPercentEnabled] = useState(persisted?.discountPercentEnabled ?? true);
   const [discountFixedEnabled, setDiscountFixedEnabled] = useState(persisted?.discountFixedEnabled ?? true);
+  const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(persisted?.barcodeScanMode ?? 'search');
 
   // Logo upload handler
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -440,6 +442,7 @@ export default function Settings() {
     taxRate: number;
     discountPercentEnabled: boolean;
     discountFixedEnabled: boolean;
+    barcodeScanMode: 'search' | 'add';
   } | null>(null);
 
   // ✅ Load settings from cloud on mount to ensure persistence across reinstalls/updates
@@ -495,6 +498,9 @@ export default function Settings() {
           if (typeof sync.discountFixedEnabled === 'boolean') {
             setDiscountFixedEnabled(sync.discountFixedEnabled);
           }
+          if (sync.barcodeScanMode === 'search' || sync.barcodeScanMode === 'add') {
+            setBarcodeScanMode(sync.barcodeScanMode);
+          }
           // ✅ Restore hideMaintenanceSection from cloud
           if (typeof sync.hideMaintenanceSection === 'boolean') {
             setHideMaintenanceSection(sync.hideMaintenanceSection);
@@ -542,6 +548,7 @@ export default function Settings() {
           hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : undefined,
           discountPercentEnabled: syncObj.discountPercentEnabled !== false,
           discountFixedEnabled: syncObj.discountFixedEnabled !== false,
+          barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : 'search',
         });
 
         console.log('[Settings] Loaded and synced from cloud successfully');
@@ -569,6 +576,7 @@ export default function Settings() {
         taxRate,
         discountPercentEnabled,
         discountFixedEnabled,
+        barcodeScanMode,
       };
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -589,6 +597,7 @@ export default function Settings() {
       taxRate !== snap.taxRate ||
       discountPercentEnabled !== snap.discountPercentEnabled ||
       discountFixedEnabled !== snap.discountFixedEnabled ||
+      barcodeScanMode !== snap.barcodeScanMode ||
       productFieldsChanged
     );
   })();
@@ -610,6 +619,7 @@ export default function Settings() {
     setTaxRate(snap.taxRate);
     setDiscountPercentEnabled(snap.discountPercentEnabled);
     setDiscountFixedEnabled(snap.discountFixedEnabled);
+    setBarcodeScanMode(snap.barcodeScanMode);
     toast({
       title: t('common.success'),
       description: t('settings.changesReverted'),
@@ -675,6 +685,7 @@ export default function Settings() {
       taxRate,
       discountPercentEnabled,
       discountFixedEnabled,
+      barcodeScanMode,
     });
 
     // Build merged sync_settings: keep productFieldsConfig alongside sync settings
@@ -694,6 +705,7 @@ export default function Settings() {
     // Add discount settings to merged sync_settings
     mergedSyncSettings.discountPercentEnabled = discountPercentEnabled;
     mergedSyncSettings.discountFixedEnabled = discountFixedEnabled;
+    mergedSyncSettings.barcodeScanMode = barcodeScanMode;
 
     // ✅ Sync additional preferences to cloud
     mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
@@ -738,6 +750,7 @@ export default function Settings() {
       taxRate,
       discountPercentEnabled,
       discountFixedEnabled,
+      barcodeScanMode,
     };
 
     if (cloudSuccess) {
@@ -1287,6 +1300,27 @@ export default function Settings() {
                 {/* Language Section */}
                 <div className="border-t border-border pt-2">
                   <LanguageSection />
+                </div>
+
+                {/* Barcode behavior */}
+                <div className="pt-2 border-t border-border space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="text-base font-semibold text-foreground">{isRTL ? 'سلوك قراءة الباركود' : 'Barcode scan behavior'}</h3>
+                  </div>
+                  <Tabs value={barcodeScanMode} onValueChange={(value) => setBarcodeScanMode(value === 'add' ? 'add' : 'search')}>
+                    <TabsList className="grid h-auto w-full grid-cols-2">
+                      <TabsTrigger value="search" className="min-h-10 whitespace-normal text-xs">
+                        {isRTL ? 'عرض المنتج' : 'Show product'}
+                      </TabsTrigger>
+                      <TabsTrigger value="add" className="min-h-10 whitespace-normal text-xs">
+                        {isRTL ? 'إضافة مباشرة للسلة' : 'Add directly to cart'}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <p className="text-xs text-muted-foreground">
+                    {isRTL ? 'في وضع الإضافة المباشرة، كل تمرير جديد يزيد الكمية قطعة واحدة.' : 'In direct-add mode, every new scan adds one item.'}
+                  </p>
                 </div>
               </TabsContent>
 

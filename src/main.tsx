@@ -1,14 +1,15 @@
 import { createRoot } from "react-dom/client";
 import { registerSW } from 'virtual:pwa-register';
+import { Capacitor } from '@capacitor/core';
 import App from "./App.tsx";
 import "./index.css";
 
 // Register Service Worker for offline support — as early as possible
-const updateSW = registerSW({
+const updateSW = Capacitor.isNativePlatform() ? null : registerSW({
   immediate: true,
   onNeedRefresh() {
     // Auto-update when new version available
-    updateSW(true);
+    updateSW?.(true);
   },
   onOfflineReady() {
     console.log('[SW] App ready for offline use');

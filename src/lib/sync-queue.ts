@@ -68,7 +68,19 @@ let lastSyncTime: string | null = null;
 export const loadQueue = (): QueuedOperation[] => {
   try {
     const queue = secureGet<QueuedOperation[]>(SYNC_QUEUE_KEY, { namespace: SYNC_QUEUE_NAMESPACE });
-    return queue || [];
+    if (!queue) return [];
+    const staleBefore = Date.now() - 5 * 60 * 1000;
+    let recovered = false;
+    const normalized = queue.map(operation => {
+      const lastAttempt = operation.lastAttempt ? Date.parse(operation.lastAttempt) : 0;
+      if (operation.status === 'processing' && (!lastAttempt || lastAttempt < staleBefore)) {
+        recovered = true;
+        return { ...operation, status: 'pending' as const, error: undefined };
+      }
+      return operation;
+    });
+    if (recovered) secureSet(SYNC_QUEUE_KEY, normalized, { namespace: SYNC_QUEUE_NAMESPACE });
+    return normalized;
   } catch (error) {
     console.error('Error loading sync queue:', error);
     return [];
@@ -98,7 +110,9 @@ export const addToQueue = (
   const queue = loadQueue();
   
   const operation: QueuedOperation = {
-    id: `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `op_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
     type,
     timestamp: new Date().toISOString(),
     data,
@@ -323,7 +337,7 @@ export const addToQueueIfNotExists = (
   
   if (exists) {
     console.log(`[SyncQueue] Operation already exists: ${type} - ${uniqueKey}`);
-    return null;
+    return queue.find(op => op.type === type && op.data.uniqueKey === uniqueKey) || null;
   }
   
   return addToQueue(type, { ...data, uniqueKey });

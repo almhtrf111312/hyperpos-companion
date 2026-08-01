@@ -201,6 +201,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           // ✅ Restore all synced preferences from cloud
           discountPercentEnabled: syncObj.discountPercentEnabled ?? true,
           discountFixedEnabled: syncObj.discountFixedEnabled ?? true,
+          barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : 'search',
           hideMaintenanceSection: syncObj.hideMaintenanceSection ?? false,
           currencyNames: syncObj.currencyNames,
           backupSettings: syncObj.backupSettings,
@@ -345,6 +346,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
           discountPercentEnabled: syncSettingsObj.discountPercentEnabled ?? existing.discountPercentEnabled ?? true,
           discountFixedEnabled: syncSettingsObj.discountFixedEnabled ?? existing.discountFixedEnabled ?? true,
+          barcodeScanMode: syncSettingsObj.barcodeScanMode === 'add' ? 'add' : (existing.barcodeScanMode ?? 'search'),
           hideMaintenanceSection: syncSettingsObj.hideMaintenanceSection ?? existing.hideMaintenanceSection ?? false,
           currencyNames: syncSettingsObj.currencyNames ?? existing.currencyNames,
           backupSettings: syncSettingsObj.backupSettings ?? existing.backupSettings,
