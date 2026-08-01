@@ -1,0 +1,89 @@
+name: Build FlowPOS Pro APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Read application version
+        shell: bash
+        run: |
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build embedded web application
+        env:
+          VITE_BUILD_COMMIT: ${{ github.sha }}
+        run: npm run build
+
+      - name: Sync embedded files to Android
+        run: npx cap sync android
+
+      - name: Check signing key
+        id: signing
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decode signing key
+        if: steps.signing.outputs.available == 'true'
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
+
+      - name: Build signed release APK
+        if: steps.signing.outputs.available == 'true'
+        working-directory: android
+        env:
+          KEYSTORE_PATH: flowpos-release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: chmod +x gradlew && ./gradlew assembleRelease
+
+      - name: Build debug APK
+        if: steps.signing.outputs.available != 'true'
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlowPOS-Pro-APK-v${{ env.VERSION_NAME }}
+          path: android/app/build/outputs/apk/**/*.apk
+          retention-days: 30
+
+      - name: Create tagged release
+        if: steps.signing.outputs.available == 'true' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/app-release.apk
