@@ -53,6 +53,18 @@ interface POSProduct {
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
+type BarcodeScanMode = 'search' | 'add';
+
+const loadBarcodeScanMode = (): BarcodeScanMode => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return 'search';
+    return JSON.parse(raw)?.barcodeScanMode === 'add' ? 'add' : 'search';
+  } catch {
+    return 'search';
+  }
+};
+
 const loadHideMaintenanceSetting = (): boolean => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -515,6 +527,10 @@ export default function POS() {
     }
 
     if (matches.length === 1) {
+      if (loadBarcodeScanMode() === 'add') {
+        addToCart(matches[0], 'piece');
+        return;
+      }
       setSearchQuery(barcode);
       showToast.success(t('pos.productFound').replace('{name}', matches[0].name) || `Found: ${matches[0].name}`);
       return;
@@ -524,6 +540,30 @@ export default function POS() {
     try {
       const cloudProduct = await getProductByBarcodeCloud(barcode);
       if (cloudProduct) {
+        if (loadBarcodeScanMode() === 'add') {
+          addToCart({
+            id: cloudProduct.id,
+            name: cloudProduct.name,
+            price: cloudProduct.salePrice,
+            category: cloudProduct.category,
+            quantity: cloudProduct.quantity,
+            image: cloudProduct.image,
+            barcode: cloudProduct.barcode,
+            barcode2: cloudProduct.barcode2,
+            barcode3: cloudProduct.barcode3,
+            variantLabel: cloudProduct.variantLabel,
+            bulkUnit: cloudProduct.bulkUnit,
+            smallUnit: cloudProduct.smallUnit,
+            conversionFactor: cloudProduct.conversionFactor,
+            bulkSalePrice: cloudProduct.bulkSalePrice,
+            costPrice: cloudProduct.costPrice,
+            bulkCostPrice: cloudProduct.bulkCostPrice,
+            wholesalePrice: cloudProduct.wholesalePrice,
+            laborCost: cloudProduct.laborCost,
+            expiryDate: cloudProduct.expiryDate,
+          }, 'piece');
+          return;
+        }
         setSearchQuery(barcode);
         showToast.success(t('pos.productFound').replace('{name}', cloudProduct.name) || `Found: ${cloudProduct.name}`);
       } else {

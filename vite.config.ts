@@ -47,16 +47,17 @@ export default defineConfig(({ mode }) => ({
           {
             // Fast app-shell loading after first visit (works better on weak networks)
             urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'StaleWhileRevalidate',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'pages-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 20, maxAgeSeconds: 24 * 60 * 60 },
             },
           },
           {
-            // Cache JS/CSS assets aggressively
+            // Hashed build assets are immutable; old caches are removed on upgrade.
             urlPattern: /\.(?:js|css)$/i,
-            handler: 'StaleWhileRevalidate',
+            handler: 'CacheFirst',
             options: {
               cacheName: 'static-assets',
               expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 },

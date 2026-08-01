@@ -1167,11 +1167,11 @@ export function CartPanel({
 
           {/* Row 2: Discount (only if enabled) - unified pill design */}
           {(settingsDiscountPercentEnabled || settingsDiscountFixedEnabled) && (
-            <div className="flex gap-1.5">
+            <div className="grid min-w-0 grid-cols-2 gap-1.5">
               {settingsDiscountPercentEnabled && (
                 <label
                   className={cn(
-                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-all cursor-text overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+                    "group box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'percent' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1187,7 +1187,7 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('percent')}
                     className={cn(
-                      "border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none h-full text-xs bg-transparent p-0 text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
+                      "box-border h-full min-w-0 w-0 flex-1 border-0 bg-transparent p-0 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
                       discountType === 'percent' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
@@ -1204,7 +1204,7 @@ export function CartPanel({
               {settingsDiscountFixedEnabled && (
                 <label
                   className={cn(
-                    "group flex items-center gap-1.5 flex-1 rounded-lg h-8 px-2.5 border transition-all cursor-text overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+                    "group box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'fixed' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1220,7 +1220,7 @@ export function CartPanel({
                     }}
                     onFocus={() => setDiscountType('fixed')}
                     className={cn(
-                      "border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none h-full text-xs bg-transparent p-0 text-foreground placeholder:text-muted-foreground/70 flex-1 min-w-0",
+                      "box-border h-full min-w-0 w-0 flex-1 border-0 bg-transparent p-0 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
                       discountType === 'fixed' && discount > 0 && "font-semibold text-primary"
                     )}
                     min="0"
@@ -1238,7 +1238,7 @@ export function CartPanel({
 
           {/* Row 3: Received Amount - matches discount pill design */}
           <label className={cn(
-            "flex items-center gap-1.5 rounded-lg h-8 px-2.5 border transition-all cursor-text overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+            "box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
             receivedAmount > 0
               ? "bg-primary/5 border-primary/40"
               : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1253,7 +1253,7 @@ export function CartPanel({
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
-                "border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none h-full text-xs bg-transparent p-0 flex-1 text-foreground placeholder:text-muted-foreground/70 min-w-0",
+                "box-border h-full min-w-0 w-0 flex-1 border-0 bg-transparent p-0 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
                 wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
               )}
               min="0"
