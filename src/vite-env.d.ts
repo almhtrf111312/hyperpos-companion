@@ -7,6 +7,8 @@ declare const __APP_VERSION__: {
   buildHistory?: Array<{ versionCode: number; date: string; description: string }>;
 };
 
+declare const __BUILD_COMMIT__: string;
+
 declare const __APP_CHANGELOG__: {
   type: 'new' | 'improved' | 'fixed';
   ar: string;

@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => ({
   define: {
     '__APP_VERSION__': JSON.stringify(appVersion),
     '__APP_CHANGELOG__': JSON.stringify(appChangelog),
+    '__BUILD_COMMIT__': JSON.stringify(process.env.VITE_BUILD_COMMIT || 'local'),
   },
   server: {
     host: "::",
