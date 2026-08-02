@@ -148,6 +148,12 @@ export async function checkRealInternetAccess(timeoutMs: number = 10000): Promis
   const networkOnline = await getNetworkStatus();
   if (!networkOnline) return false;
 
+  // Capacitor's native network status is more reliable than cross-origin
+  // Google probes, which are frequently blocked inside Android WebView.
+  // The real backend request remains the final connectivity check and will
+  // stay queued automatically if it fails.
+  if (Capacitor.isNativePlatform()) return true;
+
   // ثانياً: فحص فعلي عبر fetch مع timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

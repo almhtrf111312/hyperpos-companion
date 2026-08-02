@@ -22,7 +22,6 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency } from '@/lib/utils';
-import { checkStockAvailability, deductStockBatch } from '@/lib/products-store';
 import {
   Dialog,
   DialogContent,
@@ -54,7 +53,7 @@ import {
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addToQueue } from '@/lib/sync-queue';
-import { invalidateProductsCache } from '@/lib/cloud/products-cloud';
+import { deductProductsLocalCache, invalidateProductsCache } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
 import { Calculator } from '@/components/ui/Calculator';
@@ -427,8 +426,22 @@ export function CartPanel({
           : item.quantity,
       }));
 
+      if (!noInventory) {
+        const deductResult = await deductProductsLocalCache(stockItemsLocal);
+        if (!deductResult.success) {
+          const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
+          showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
+          return;
+        }
+      }
+
+      const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+
       // ✅ إضافة الفاتورة للطابور فوراً (محلياً - 0ms)
       addToQueue('invoice_create', {
+        operationId,
         bundle: {
           customerName: customerNameSnapshot || 'عميل نقدي',
           items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit * (1 - discountRatio)) })),
@@ -613,17 +626,7 @@ export function CartPanel({
 
       // Validate local stock availability before queuing (unless no-inventory mode)
       if (!noInventory) {
-        const stockCheck = checkStockAvailability(stockItemsLocal);
-        if (!stockCheck.success) {
-          const msgs = stockCheck.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
-          showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
-          savingRef.current = false;
-          setIsSaving(false);
-          return;
-        }
-
-        // Deduct local stock immediately to keep local inventory consistent
-        const deductResult = deductStockBatch(stockItemsLocal);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('فشل في خصم المخزون محلياً: ' + msgs.join('، '));
@@ -633,7 +636,10 @@ export function CartPanel({
         }
       }
 
-      addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
+      const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      addToQueue('debt_sale_bundle', { localId: operationId, bundle });
 
       // ✅ تسجيل الربح محلياً فوراً
       const tempInvoiceId = `local_debt_${Date.now()}`;

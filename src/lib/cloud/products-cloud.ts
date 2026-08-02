@@ -362,6 +362,46 @@ export const invalidateProductsCache = () => {
   // ❌ لا نمسح IndexedDB/localStorage هنا — نريد المنتجات تظهر فوراً عند فتح التطبيق
 };
 
+// Apply a sale immediately to the same IndexedDB/local cache rendered by POS.
+// The backend later confirms the operation atomically; this is visual/local
+// state only and is never used to perform another cloud deduction.
+export const deductProductsLocalCache = async (
+  items: { productId: string; quantity: number }[],
+): Promise<{ success: boolean; insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> }> => {
+  const products = productsCache || await loadFromLocalCache() || [];
+  const requestedByProduct = new Map<string, number>();
+  for (const item of items) {
+    requestedByProduct.set(item.productId, (requestedByProduct.get(item.productId) || 0) + item.quantity);
+  }
+
+  const insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> = [];
+  for (const [productId, requested] of requestedByProduct) {
+    const product = products.find(candidate => candidate.id === productId);
+    const available = product?.quantity || 0;
+    if (!product || requested <= 0 || available < requested) {
+      insufficientItems.push({
+        productId,
+        productName: product?.name || productId,
+        requested,
+        available,
+      });
+    }
+  }
+
+  if (insufficientItems.length > 0) return { success: false, insufficientItems };
+
+  productsCache = products.map(product => {
+    const requested = requestedByProduct.get(product.id);
+    if (!requested) return product;
+    const quantity = product.quantity - requested;
+    return { ...product, quantity, status: getStatus(quantity, product.minStockLevel) };
+  });
+  cacheTimestamp = Date.now();
+  saveToLocalCache(productsCache);
+  emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
+  return { success: true, insufficientItems: [] };
+};
+
 // Clear ALL product caches (memory + IDB + localStorage) — use only on sign-out / user change / manual reset
 export const clearProductsLocalCache = () => {
   productsCache = null;

@@ -1,0 +1,4 @@
+REVOKE ALL ON FUNCTION public.process_pos_sale_atomic(text, text, text, text, numeric, numeric, numeric, numeric, numeric, numeric, numeric, text, uuid, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.process_pos_sale_atomic(text, text, text, text, numeric, numeric, numeric, numeric, numeric, numeric, numeric, text, uuid, jsonb) FROM anon;
+GRANT EXECUTE ON FUNCTION public.process_pos_sale_atomic(text, text, text, text, numeric, numeric, numeric, numeric, numeric, numeric, numeric, text, uuid, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.process_pos_sale_atomic(text, text, text, text, numeric, numeric, numeric, numeric, numeric, numeric, numeric, text, uuid, jsonb) TO service_role;
