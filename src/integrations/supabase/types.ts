@@ -611,6 +611,7 @@ export type Database = {
           invoice_sequence: number | null
           invoice_type: string | null
           notes: string | null
+          operation_id: string | null
           payment_type: string | null
           profit: number | null
           status: string | null
@@ -642,6 +643,7 @@ export type Database = {
           invoice_sequence?: number | null
           invoice_type?: string | null
           notes?: string | null
+          operation_id?: string | null
           payment_type?: string | null
           profit?: number | null
           status?: string | null
@@ -673,6 +675,7 @@ export type Database = {
           invoice_sequence?: number | null
           invoice_type?: string | null
           notes?: string | null
+          operation_id?: string | null
           payment_type?: string | null
           profit?: number | null
           status?: string | null
@@ -1832,6 +1835,30 @@ export type Database = {
       is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
+      process_pos_sale_atomic: {
+        Args: {
+          _currency: string
+          _customer_name: string
+          _customer_phone: string
+          _discount: number
+          _discount_percentage: number
+          _items: Json
+          _operation_id: string
+          _payment_type: string
+          _profit: number
+          _subtotal: number
+          _tax_amount: number
+          _tax_rate: number
+          _total: number
+          _warehouse_id: string
+        }
+        Returns: {
+          already_processed: boolean
+          invoice_id: string
+          invoice_number: string
+          success: boolean
+        }[]
+      }
       refund_invoice_atomic: {
         Args: { _invoice_number: string; _source?: string }
         Returns: {
