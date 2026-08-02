@@ -1,6 +1,16 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.13 - إصلاح فشل البيع النقدي والبيع بالدين في APK، وجعل إنشاء الفاتورة وخصم المخزون وتسجيل الدين عملية ذرّية واحدة لا تتكرر عند إعادة المزامنة",
+    "en": "v1.0.13 - Fixed cash and debt sales in APK by making invoice creation, stock deduction, and debt creation one retry-safe atomic transaction"
+  },
+  {
+    "type": "fixed",
+    "ar": "يتم الآن خصم الكمية محلياً فور البيع لتظهر مباشرة في نقطة البيع، ثم تؤكد قاعدة البيانات الخصم دون تكراره حتى بعد انقطاع الاتصال أو إغلاق التطبيق",
+    "en": "Stock is now deducted locally immediately for POS feedback and confirmed by the backend without duplication after reconnects or app restarts"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.12 - أصبح APK يضم نفس ملفات الإصدار المبنية من GitHub بدل فتح نسخة موقع قديمة، مع مزامنة لحظية صحيحة ضمن حساب المالك والكاشير",
     "en": "v1.0.12 - APK releases now embed the exact GitHub-built app instead of opening a stale hosted copy, with owner-aware realtime sync for owners and cashiers"
   },

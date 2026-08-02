@@ -1,8 +1,13 @@
 {
-  "versionCode": 241,
-  "versionName": "1.0.12",
-  "lastUpdated": "2026-08-01T00:00:00.000Z",
+  "versionCode": 242,
+  "versionName": "1.0.13",
+  "lastUpdated": "2026-08-02T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 242,
+      "date": "2026-08-02T00:00:00.000Z",
+      "description": "v1.0.13 - Atomic cash/debt sales, reliable APK stock deduction, and retry-safe offline synchronization"
+    },
     {
       "versionCode": 241,
       "date": "2026-08-01T00:00:00.000Z",

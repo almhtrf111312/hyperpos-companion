@@ -427,8 +427,27 @@ export function CartPanel({
           : item.quantity,
       }));
 
+      if (!noInventory) {
+        const stockCheck = checkStockAvailability(stockItemsLocal);
+        if (!stockCheck.success) {
+          const msgs = stockCheck.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
+          showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
+          return;
+        }
+        const deductResult = deductStockBatch(stockItemsLocal, true);
+        if (!deductResult.success) {
+          showToast.error('فشل في خصم المخزون محلياً');
+          return;
+        }
+      }
+
+      const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+
       // ✅ إضافة الفاتورة للطابور فوراً (محلياً - 0ms)
       addToQueue('invoice_create', {
+        operationId,
         bundle: {
           customerName: customerNameSnapshot || 'عميل نقدي',
           items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit * (1 - discountRatio)) })),
@@ -633,7 +652,10 @@ export function CartPanel({
         }
       }
 
-      addToQueue('debt_sale_bundle', { localId: `debt_${Date.now()}`, bundle });
+      const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      addToQueue('debt_sale_bundle', { localId: operationId, bundle });
 
       // ✅ تسجيل الربح محلياً فوراً
       const tempInvoiceId = `local_debt_${Date.now()}`;

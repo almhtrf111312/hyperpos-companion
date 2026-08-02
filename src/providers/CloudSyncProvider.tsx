@@ -283,7 +283,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
         }
         if (operation.type === 'invoice_create') {
-          return await processCashSaleBundleFromQueue(operation.data as { bundle: any });
+          return await processCashSaleBundleFromQueue(operation.data as { operationId?: string; bundle: any });
         }
         if (operation.type === 'quick_purchase') {
           return await processQuickPurchaseFromQueue(operation.data as any);

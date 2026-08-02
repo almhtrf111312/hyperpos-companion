@@ -6,15 +6,12 @@
  */
 
 import { addToQueue, OperationType } from '@/lib/sync-queue';
-import { addInvoiceCloud } from './invoices-cloud';
-import { addDebtFromInvoiceCloud } from './debts-cloud';
 import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers-cloud';
-import { deductStockBatchCloud } from './products-cloud';
-import { deductWarehouseStockBatchCloud } from './warehouses-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
 import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { secureSet, secureGet } from '@/lib/secure-storage';
+import { processPosSaleAtomic } from './pos-sale-atomic';
 
 // ============= Types =============
 
@@ -110,9 +107,12 @@ export const markOfflineDebtSaleSynced = (localId: string): void => {
  */
 export async function processDebtSaleWithOfflineSupport(
   bundle: DebtSaleBundle,
-  isOnline: boolean
+  isOnline: boolean,
+  existingOperationId?: string,
 ): Promise<DebtSaleResult> {
-  const localId = `debt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const localId = existingOperationId || (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`);
   
   if (!isOnline) {
     // =============== Offline Mode ===============
@@ -150,68 +150,15 @@ export async function processDebtSaleWithOfflineSupport(
       throw new Error('فشل في إنشاء/العثور على العميل');
     }
     
-    // Step 2: Create invoice (مع الضريبة)
-    const invoice = await addInvoiceCloud({
-      type: 'sale',
-      customerName: bundle.customerName,
-      items: bundle.items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        total: Math.round(item.price * item.quantity * 100) / 100,
-      })),
-      subtotal: bundle.subtotal,
-      discount: bundle.discount,
-      taxRate: bundle.taxRate || 0,
-      taxAmount: bundle.taxAmount || 0,
-      total: bundle.total,
-      totalInCurrency: bundle.totalInCurrency,
-      currency: bundle.currency,
-      currencySymbol: bundle.currencySymbol,
-      paymentType: 'debt',
-      status: 'pending',
-      profit: bundle.profit,
-    });
-    
-    if (!invoice) {
-      throw new Error('فشل في إنشاء الفاتورة');
-    }
-    
-    // Step 3: Create debt record
-    const debt = await addDebtFromInvoiceCloud(
-      invoice.id,
-      bundle.customerName,
-      bundle.customerPhone,
-      bundle.total
-    );
-    
-    if (!debt) {
-      // Rollback: حذف الفاتورة المُنشأة لمنع فواتير معلقة
-      console.error('[DebtSale] Failed to create debt, rolling back invoice:', invoice.id);
-      try {
-        const { deleteInvoiceCloud } = await import('./invoices-cloud');
-        await deleteInvoiceCloud(invoice.id);
-        console.log('[DebtSale] Rollback successful — invoice deleted:', invoice.id);
-      } catch (rollbackError) {
-        console.error('[DebtSale] Rollback failed:', rollbackError);
-      }
-      throw new Error('فشل في إنشاء سجل الدين');
-    }
-    
-    // Step 4: Deduct stock
-    if (bundle.warehouseId) {
-      await deductWarehouseStockBatchCloud(bundle.warehouseId, bundle.stockItems);
-    } else {
-      await deductStockBatchCloud(bundle.stockItems);
-    }
+    // Steps 2-4 are one database transaction: invoice + debt + stock.
+    const sale = await processPosSaleAtomic(localId, 'debt', bundle);
     
     // Step 5: Update customer stats
     await updateCustomerStatsCloud(customer.id, bundle.total, true);
     
     // Step 6: Record profit
-    addGrossProfit(invoice.id, bundle.profit, bundle.cogs, bundle.total);
-    addGrossProfitCloud({ invoiceId: invoice.id, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+    addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
+    addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
     
     // Step 7: Distribute to partners - ✅ استخدام Cloud API
     const categoryProfits = Object.entries(bundle.profitsByCategory)
@@ -219,12 +166,12 @@ export async function processDebtSaleWithOfflineSupport(
       .map(([category, profit]) => ({ category, profit }));
     
     if (categoryProfits.length > 0) {
-      distributeDetailedProfitCloud(categoryProfits, invoice.id, bundle.customerName, true);
+      distributeDetailedProfitCloud(categoryProfits, sale.invoiceNumber, bundle.customerName, true);
     }
     
     return {
       success: true,
-      invoiceId: invoice.id,
+      invoiceId: sale.invoiceNumber,
       isOffline: false,
     };
     
@@ -264,7 +211,7 @@ export async function processDebtSaleBundleFromQueue(
   console.log('[DebtSale] Processing queued bundle:', data.localId);
   
   try {
-    const result = await processDebtSaleWithOfflineSupport(data.bundle, true);
+    const result = await processDebtSaleWithOfflineSupport(data.bundle, true, data.localId);
     
     if (result.success && !result.isOffline) {
       // Mark as synced

@@ -5,14 +5,12 @@
  * يضمن حفظ الفاتورة محلياً ومزامنتها لاحقاً
  */
 
-import { addInvoiceCloud } from './invoices-cloud';
 import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers-cloud';
-import { deductStockBatchCloud } from './products-cloud';
-import { deductWarehouseStockBatchCloud } from './warehouses-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
 import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from './partners-cloud';
 import { isNoInventoryMode } from '@/lib/store-type-config';
+import { processPosSaleAtomic } from './pos-sale-atomic';
 
 // ============= Types =============
 
@@ -48,7 +46,7 @@ export interface CashSaleBundle {
  * Process a cash sale bundle from the sync queue (when coming back online)
  */
 export async function processCashSaleBundleFromQueue(
-  data: { bundle: CashSaleBundle }
+  data: { operationId?: string; bundle: CashSaleBundle }
 ): Promise<boolean> {
   const { bundle } = data;
   console.log('[CashSale] Processing queued bundle for:', bundle.customerName);
@@ -59,32 +57,14 @@ export async function processCashSaleBundleFromQueue(
       ? await findOrCreateCustomerCloud(bundle.customerName)
       : null;
 
-    // 2. Create invoice in cloud
-    const invoice = await addInvoiceCloud({
-      type: 'sale',
-      customerName: bundle.customerName || 'عميل نقدي',
-      items: bundle.items,
-      subtotal: bundle.subtotal,
-      discount: bundle.discount,
-      discountPercentage: bundle.discountPercentage,
-      taxRate: bundle.taxRate,
-      taxAmount: bundle.taxAmount,
-      total: bundle.total,
-      totalInCurrency: bundle.totalInCurrency,
-      currency: bundle.currency,
-      currencySymbol: bundle.currencySymbol,
-      paymentType: 'cash',
-      status: 'paid',
-      profit: bundle.profit,
-    });
-
-    if (!invoice) {
-      throw new Error('Failed to create invoice in cloud');
-    }
+    if (isNoInventoryMode()) throw new Error('Atomic inventory sale is unavailable in no-inventory mode');
+    const operationId = data.operationId;
+    if (!operationId) throw new Error('Missing sale operation id');
+    const sale = await processPosSaleAtomic(operationId, 'cash', bundle);
 
     // 3. Record profit
-    addGrossProfit(invoice.id, bundle.profit, bundle.cogs, bundle.total);
-    addGrossProfitCloud({ invoiceId: invoice.id, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+    addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
+    addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
 
     // 4. Distribute profit to partners
     const categoryProfits = Object.entries(bundle.profitsByCategory)
@@ -94,27 +74,18 @@ export async function processCashSaleBundleFromQueue(
     if (categoryProfits.length > 0) {
       await distributeDetailedProfitCloud(
         categoryProfits,
-        invoice.id,
+        sale.invoiceNumber,
         bundle.customerName || 'عميل نقدي',
         false
       ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
     }
 
-    // 5. Deduct stock - تجاوز في وضع الفرن (بدون مخزون)
-    if (!isNoInventoryMode()) {
-      if (bundle.warehouseId) {
-        await deductWarehouseStockBatchCloud(bundle.warehouseId, bundle.stockItems);
-      } else {
-        await deductStockBatchCloud(bundle.stockItems);
-      }
-    }
-
-    // 6. Update customer stats
+    // 5. Update customer stats (stock was deducted in the atomic transaction)
     if (customer) {
       await updateCustomerStatsCloud(customer.id, bundle.total, false);
     }
 
-    console.log('[CashSale] Bundle synced successfully:', invoice.id);
+    console.log('[CashSale] Bundle synced successfully:', sale.invoiceNumber);
     return true;
   } catch (error) {
     console.error('[CashSale] Failed to process queued bundle:', error);
