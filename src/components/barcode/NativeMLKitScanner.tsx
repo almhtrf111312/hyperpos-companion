@@ -176,7 +176,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-transparent flex flex-col pointer-events-auto">
+    <div className="barcode-scanner-modal fixed inset-0 z-[120] bg-transparent flex flex-col pointer-events-auto">
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 pt-[calc(max(env(safe-area-inset-top),1.5rem)+0.5rem)] z-[9999] bg-gradient-to-b from-black/80 to-transparent">
         <div className="flex items-center gap-2 text-white">
           <ScanLine className="w-5 h-5" />

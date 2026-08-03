@@ -51,14 +51,14 @@ export async function processCashSaleBundleFromQueue(
   console.log('[CashSale] Processing queued bundle for:', bundle.customerName);
 
   try {
-    // 1. Find or create customer
-    const customer = bundle.customerName && bundle.customerName !== 'عميل نقدي'
-      ? await findOrCreateCustomerCloud(bundle.customerName)
-      : null;
-
     const operationId = data.operationId;
     if (!operationId) throw new Error('Missing sale operation id');
     const sale = await processPosSaleAtomic(operationId, 'cash', bundle);
+
+    // Customer bookkeeping is best-effort and must never block the invoice.
+    const customer = !sale.alreadyProcessed && bundle.customerName && bundle.customerName !== 'عميل نقدي'
+      ? await findOrCreateCustomerCloud(bundle.customerName).catch(() => null)
+      : null;
 
     // 3. Record profit
     if (!sale.alreadyProcessed) {
