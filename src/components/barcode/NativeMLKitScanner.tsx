@@ -1,7 +1,6 @@
-// Native Scanner using @capacitor-community/barcode-scanner
-// Lightweight, fast, and does not require pre-installed Google ML models.
 import React, { useEffect, useRef, useState } from 'react';
-import { BarcodeScanner, SupportedFormat } from '@capacitor-community/barcode-scanner';
+import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { playBeep } from '@/lib/sound-utils';
 import { ScanLine, X, Flashlight, Loader2 } from 'lucide-react';
 
@@ -16,20 +15,19 @@ interface NativeMLKitScannerProps {
 }
 
 const SCAN_FORMATS = [
-  SupportedFormat.QR_CODE,
-  SupportedFormat.EAN_13,
-  SupportedFormat.EAN_8,
-  SupportedFormat.CODE_128,
-  SupportedFormat.CODE_39,
-  SupportedFormat.DATA_MATRIX,
-  SupportedFormat.UPC_A,
-  SupportedFormat.UPC_E,
+  BarcodeFormat.QrCode,
+  BarcodeFormat.Ean13,
+  BarcodeFormat.Ean8,
+  BarcodeFormat.Code128,
+  BarcodeFormat.Code39,
+  BarcodeFormat.DataMatrix,
+  BarcodeFormat.UpcA,
+  BarcodeFormat.UpcE,
 ];
 
 function setScannerTransparency(active: boolean) {
   document.documentElement.classList.toggle('barcode-scanner-active', active);
   document.body.classList.toggle('barcode-scanner-active', active);
-  document.getElementById('root')?.classList.toggle('barcode-scanner-active', active);
 }
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
@@ -59,15 +57,18 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     if (scanningRef.current) return;
 
     let cancelled = false;
+    let scanListener: PluginListenerHandle | null = null;
+    let errorListener: PluginListenerHandle | null = null;
     scanningRef.current = true;
     setIsStarting(true);
 
     const cleanup = async () => {
       try {
+        await scanListener?.remove();
+        await errorListener?.remove();
         await BarcodeScanner.stopScan();
-        await BarcodeScanner.showBackground();
       } catch (e) {
-        console.warn('[Community Scanner] Cleanup error:', e);
+        console.warn('[MLKit Scanner] Cleanup error:', e);
       }
       setScannerTransparency(false);
       setTorchOn(false);
@@ -76,9 +77,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
 
     (async () => {
       try {
-        const status = await BarcodeScanner.checkPermission({ force: true });
-        if (!status.granted || cancelled) {
-          console.warn('[Community Scanner] Camera permission not granted:', status);
+        const supported = await BarcodeScanner.isSupported();
+        if (!supported.supported) throw new Error('Barcode scanning is not supported');
+
+        let status = await BarcodeScanner.checkPermissions();
+        if (status.camera === 'prompt' || status.camera === 'prompt-with-rationale') {
+          status = await BarcodeScanner.requestPermissions();
+        }
+        if (status.camera !== 'granted' || cancelled) {
+          console.warn('[MLKit Scanner] Camera permission not granted:', status);
           await cleanup();
           if (mountedRef.current && !cancelled) {
             setIsStarting(false);
@@ -87,27 +94,16 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           return;
         }
 
-        setHasTorch(true);
-
-        await BarcodeScanner.hideBackground();
+        const torch = await BarcodeScanner.isTorchAvailable().catch(() => ({ available: false }));
+        setHasTorch(torch.available);
         setScannerTransparency(true);
 
-        if (mountedRef.current) setIsStarting(false);
-
-        // startScan without targetedFormats allows all formats supported by the library
-        const result = await BarcodeScanner.startScan();
-
-        if (cancelled) {
-          await cleanup();
-          return;
-        }
-
-        if (result.hasContent && result.content) {
-          const barcode = result.content;
+        scanListener = await BarcodeScanner.addListener('barcodesScanned', async ({ barcodes }) => {
+          const barcode = barcodes.find(item => item.rawValue || item.displayValue)?.rawValue
+            || barcodes.find(item => item.displayValue)?.displayValue;
+          if (!barcode || cancelled) return;
           const now = Date.now();
           if (barcode === lastScannedRef.current && now - lastScannedTimeRef.current < 2000) {
-            console.log('[MLKit Scanner] Dedupe: ignoring repeat scan:', barcode);
-            await cleanup();
             return;
           }
           lastScannedRef.current = barcode;
@@ -123,12 +119,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             onScanRef.current(barcode);
             onCloseRef.current();
           }
-        } else {
+        });
+        errorListener = await BarcodeScanner.addListener('scanError', async ({ message }) => {
+          console.warn('[MLKit Scanner] Scan error:', message);
           await cleanup();
-          if (mountedRef.current) onCloseRef.current();
-        }
+          if (mountedRef.current && !cancelled) onFallbackRef.current?.();
+        });
+
+        await BarcodeScanner.startScan({ formats: SCAN_FORMATS });
+        if (mountedRef.current) setIsStarting(false);
       } catch (err) {
-        console.warn('[Community Scanner] Failed to start scanner:', err);
+        console.warn('[MLKit Scanner] Failed to start scanner:', err);
         await cleanup();
         if (mountedRef.current && !cancelled) {
           setIsStarting(false);
@@ -141,8 +142,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     return () => {
       cancelled = true;
       if (scanningRef.current) {
+        scanListener?.remove().catch(() => {});
+        errorListener?.remove().catch(() => {});
         BarcodeScanner.stopScan().catch(() => {});
-        BarcodeScanner.showBackground().catch(() => {});
         setScannerTransparency(false);
         scanningRef.current = false;
       }
@@ -159,13 +161,12 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         setTorchOn(true);
       }
     } catch (e) {
-      console.warn('[Community Scanner] Toggle torch failed:', e);
+      console.warn('[MLKit Scanner] Toggle torch failed:', e);
     }
   };
 
   const handleClose = () => {
     BarcodeScanner.stopScan().catch(() => {});
-    BarcodeScanner.showBackground().catch(() => {});
     setScannerTransparency(false);
     setTorchOn(false);
     scanningRef.current = false;
@@ -175,7 +176,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-transparent flex flex-col pointer-events-auto">
+    <div className="barcode-scanner-modal fixed inset-0 z-[120] bg-transparent flex flex-col pointer-events-auto">
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 pt-[calc(max(env(safe-area-inset-top),1.5rem)+0.5rem)] z-[9999] bg-gradient-to-b from-black/80 to-transparent">
         <div className="flex items-center gap-2 text-white">
           <ScanLine className="w-5 h-5" />

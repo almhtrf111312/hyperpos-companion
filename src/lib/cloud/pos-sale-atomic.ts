@@ -45,15 +45,20 @@ export async function processPosSaleAtomic(
   paymentType: 'cash' | 'debt',
   bundle: AtomicSaleBundle,
 ): Promise<AtomicSaleResult> {
+  if (!operationId || operationId.length < 8) throw new Error('Missing or invalid sale operation id');
   const itemById = new Map(bundle.items.map(item => [item.id, item]));
   const rpcItems = bundle.stockItems.map(stockItem => {
     const item = itemById.get(stockItem.productId);
     if (!item) throw new Error(`Missing invoice item for product ${stockItem.productId}`);
 
+    const quantity = Number(stockItem.quantity);
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+      throw new Error(`Invalid stock quantity for ${item.name}`);
+    }
     return {
       product_id: stockItem.productId,
       product_name: item.name,
-      quantity: stockItem.quantity,
+      quantity,
       unit_price: item.price,
       cost_price: item.costPrice || 0,
       amount_original: item.total ?? item.price * item.quantity,

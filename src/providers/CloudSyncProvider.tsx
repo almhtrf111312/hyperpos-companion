@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/supabase-store';
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
-import { toast } from 'sonner';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
 import { processQueue, hasPendingOperations, getQueueStatus } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
@@ -12,6 +11,7 @@ import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
 import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '@/lib/cloud/purchase-queue-processor';
 import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus, checkRealInternetAccess } from '@/hooks/use-network-status';
+import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-processor';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
@@ -298,8 +298,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           // An already-refunded invoice is an idempotent success; a real failure retries.
           return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
         }
-        console.log('[SyncQueue] Processing operation:', operation.type);
-        return true;
+        return processGenericQueuedOperation(operation);
       });
 
       // Report sync completion to the user when we actually processed queued work

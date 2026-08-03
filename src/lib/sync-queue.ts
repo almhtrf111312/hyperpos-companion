@@ -133,6 +133,18 @@ export const addToQueue = (
   return operation;
 };
 
+/** Add a business operation once, using its stable server idempotency key. */
+export const addUniqueOperation = (
+  type: OperationType,
+  data: Record<string, unknown>,
+  uniqueKey: string,
+  maxRetries: number = 10,
+): QueuedOperation => {
+  const existing = addToQueueIfNotExists(type, data, uniqueKey, maxRetries);
+  if (existing) return existing;
+  return addToQueue(type, { ...data, uniqueKey }, maxRetries);
+};
+
 /**
  * تحديث حالة عملية
  */
@@ -323,7 +335,8 @@ export const getOperationByTimestamp = (timestamp: string): QueuedOperation | un
 export const addToQueueIfNotExists = (
   type: OperationType,
   data: Record<string, unknown>,
-  uniqueKey: string
+  uniqueKey: string,
+  maxRetries: number = 3,
 ): QueuedOperation | null => {
   const queue = loadQueue();
   
@@ -340,5 +353,5 @@ export const addToQueueIfNotExists = (
     return queue.find(op => op.type === type && op.data.uniqueKey === uniqueKey) || null;
   }
   
-  return addToQueue(type, { ...data, uniqueKey });
+  return addToQueue(type, { ...data, uniqueKey }, maxRetries);
 };

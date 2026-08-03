@@ -19,10 +19,8 @@
     "version:set": "node scripts/bump-version.js --set"
   },
   "dependencies": {
-    "@capacitor-community/barcode-scanner": "^4.0.1",
     "@capacitor-mlkit/barcode-scanning": "^8.0.1",
     "@capacitor/app": "^8.0.1",
-    "@capacitor/barcode-scanner": "^3.0.2",
     "@capacitor/camera": "^8.0.1",
     "@capacitor/core": "^8.1.0",
     "@capacitor/device": "^8.0.1",
