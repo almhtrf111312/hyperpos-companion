@@ -9,7 +9,6 @@ import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers
 import { addGrossProfit } from '@/lib/profits-store';
 import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from './partners-cloud';
-import { isNoInventoryMode } from '@/lib/store-type-config';
 import { processPosSaleAtomic } from './pos-sale-atomic';
 
 // ============= Types =============
@@ -57,21 +56,22 @@ export async function processCashSaleBundleFromQueue(
       ? await findOrCreateCustomerCloud(bundle.customerName)
       : null;
 
-    if (isNoInventoryMode()) throw new Error('Atomic inventory sale is unavailable in no-inventory mode');
     const operationId = data.operationId;
     if (!operationId) throw new Error('Missing sale operation id');
     const sale = await processPosSaleAtomic(operationId, 'cash', bundle);
 
     // 3. Record profit
-    addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
-    addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+    if (!sale.alreadyProcessed) {
+      addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
+      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+    }
 
     // 4. Distribute profit to partners
     const categoryProfits = Object.entries(bundle.profitsByCategory)
       .filter(([_, profit]) => profit > 0)
       .map(([category, profit]) => ({ category, profit }));
 
-    if (categoryProfits.length > 0) {
+    if (!sale.alreadyProcessed && categoryProfits.length > 0) {
       await distributeDetailedProfitCloud(
         categoryProfits,
         sale.invoiceNumber,
@@ -81,7 +81,7 @@ export async function processCashSaleBundleFromQueue(
     }
 
     // 5. Update customer stats (stock was deducted in the atomic transaction)
-    if (customer) {
+    if (!sale.alreadyProcessed && customer) {
       await updateCustomerStatsCloud(customer.id, bundle.total, false);
     }
 

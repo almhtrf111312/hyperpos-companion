@@ -25,6 +25,8 @@ export interface DebtSaleItem {
   bulkCostPrice?: number;
   conversionFactor?: number;
   category?: string;
+  total?: number;
+  profit?: number;
 }
 
 export interface DebtSaleBundle {
@@ -144,28 +146,27 @@ export async function processDebtSaleWithOfflineSupport(
   console.log('[DebtSale] Online mode - processing cloud transaction');
   
   try {
-    // Step 1: Find or create customer
-    const customer = await findOrCreateCustomerCloud(bundle.customerName, bundle.customerPhone);
-    if (!customer) {
-      throw new Error('فشل في إنشاء/العثور على العميل');
+    // Invoice + debt + stock are committed first in one idempotent transaction.
+    const sale = await processPosSaleAtomic(localId, 'debt', bundle);
+
+    // Customer bookkeeping is best-effort and must never block the debt invoice.
+    if (!sale.alreadyProcessed) {
+      const customer = await findOrCreateCustomerCloud(bundle.customerName, bundle.customerPhone).catch(() => null);
+      if (customer) await updateCustomerStatsCloud(customer.id, bundle.total, true).catch(() => false);
     }
     
-    // Steps 2-4 are one database transaction: invoice + debt + stock.
-    const sale = await processPosSaleAtomic(localId, 'debt', bundle);
-    
-    // Step 5: Update customer stats
-    await updateCustomerStatsCloud(customer.id, bundle.total, true);
-    
     // Step 6: Record profit
-    addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
-    addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+    if (!sale.alreadyProcessed) {
+      addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
+      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+    }
     
     // Step 7: Distribute to partners - ✅ استخدام Cloud API
     const categoryProfits = Object.entries(bundle.profitsByCategory)
       .filter(([_, profit]) => profit > 0)
       .map(([category, profit]) => ({ category, profit }));
     
-    if (categoryProfits.length > 0) {
+    if (!sale.alreadyProcessed && categoryProfits.length > 0) {
       distributeDetailedProfitCloud(categoryProfits, sale.invoiceNumber, bundle.customerName, true);
     }
     
@@ -177,20 +178,6 @@ export async function processDebtSaleWithOfflineSupport(
     
   } catch (error) {
     console.error('[DebtSale] Online transaction failed:', error);
-    
-    // Fallback: Save offline and queue for retry
-    saveOfflineDebtSale({
-      localId,
-      bundle,
-      timestamp: new Date().toISOString(),
-      synced: false,
-    });
-    
-    addToQueue('debt_sale_bundle' as OperationType, {
-      localId,
-      bundle,
-      timestamp: new Date().toISOString(),
-    });
     
     return {
       success: false,

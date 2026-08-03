@@ -133,6 +133,18 @@ export const addToQueue = (
   return operation;
 };
 
+/** Add a business operation once, using its stable server idempotency key. */
+export const addUniqueOperation = (
+  type: OperationType,
+  data: Record<string, unknown>,
+  uniqueKey: string,
+  maxRetries: number = 10,
+): QueuedOperation => {
+  const existing = addToQueueIfNotExists(type, data, uniqueKey);
+  if (existing) return existing;
+  return addToQueue(type, { ...data, uniqueKey }, maxRetries);
+};
+
 /**
  * تحديث حالة عملية
  */

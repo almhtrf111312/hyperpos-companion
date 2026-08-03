@@ -1551,10 +1551,9 @@ html.barcode-scanner-active #root {
   --ion-background-color: transparent !important;
 }
 
-/* Prevent UI layers from covering native camera preview */
+/* Keep the React scanner controls visible while the native camera is behind the WebView. */
 html.barcode-scanner-active #root {
-  opacity: 0 !important;
-  pointer-events: none !important;
+  background: transparent !important;
 }
 
 
