@@ -1,6 +1,21 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.14 - إصلاح قارئ الباركود في APK باستخدام ML Kit المتوافق مع Capacitor 8 مع إبقاء واجهة الكاميرا وأزرار الإغلاق والفلاش فعّالة",
+    "en": "v1.0.14 - Fixed APK barcode scanning using Capacitor 8-compatible ML Kit while keeping camera controls visible and interactive"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح جذري للبيع النقدي والدين: معاملة ذرّية بمعرّف ثابت، خصم مخزون مرة واحدة، ودعم أوضاع المتاجر بدون مخزون وعدم تعطيل فاتورة الدين بسبب تحديث العميل",
+    "en": "Hardened cash and debt sales with stable idempotency, single stock deduction, no-inventory modes, and non-blocking customer bookkeeping"
+  },
+  {
+    "type": "fixed",
+    "ar": "منع حذف عمليات المزامنة غير المعالجة بصمت؛ كل نوع مدعوم يُرسل فعلياً وأي نوع قديم غير معروف يبقى محفوظاً للمراجعة وإعادة المحاولة",
+    "en": "Prevented silent sync data loss: supported operations are persisted and unknown legacy operations remain queued for review"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.13 - إصلاح فشل البيع النقدي والبيع بالدين في APK، وجعل إنشاء الفاتورة وخصم المخزون وتسجيل الدين عملية ذرّية واحدة لا تتكرر عند إعادة المزامنة",
     "en": "v1.0.13 - Fixed cash and debt sales in APK by making invoice creation, stock deduction, and debt creation one retry-safe atomic transaction"
   },

@@ -1,8 +1,13 @@
 {
-  "versionCode": 242,
-  "versionName": "1.0.13",
-  "lastUpdated": "2026-08-02T00:00:00.000Z",
+  "versionCode": 243,
+  "versionName": "1.0.14",
+  "lastUpdated": "2026-08-03T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 243,
+      "date": "2026-08-03T00:00:00.000Z",
+      "description": "v1.0.14 - Capacitor 8 ML Kit barcode scanning, lossless sync dispatch, and hardened idempotent cash/debt sales"
+    },
     {
       "versionCode": 242,
       "date": "2026-08-02T00:00:00.000Z",

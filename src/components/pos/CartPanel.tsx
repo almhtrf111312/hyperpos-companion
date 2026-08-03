@@ -52,7 +52,7 @@ import {
 } from '@/lib/cloud/customers-cloud';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
-import { addToQueue } from '@/lib/sync-queue';
+import { addUniqueOperation } from '@/lib/sync-queue';
 import { deductProductsLocalCache, invalidateProductsCache } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
@@ -344,6 +344,9 @@ export function CartPanel({
     const cartSnapshot = [...cart];
     const totalSnapshot = total;
     const customerNameSnapshot = customerName;
+    const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     setShowCashDialog(false);
     startSync('جاري حفظ الفاتورة...', false);
@@ -435,12 +438,8 @@ export function CartPanel({
         }
       }
 
-      const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-
       // ✅ إضافة الفاتورة للطابور فوراً (محلياً - 0ms)
-      addToQueue('invoice_create', {
+      addUniqueOperation('invoice_create', {
         operationId,
         bundle: {
           customerName: customerNameSnapshot || 'عميل نقدي',
@@ -463,7 +462,7 @@ export function CartPanel({
           warehouseId: activeWarehouse?.id,
           wholesaleMode,
         },
-      });
+      }, operationId);
 
       // ✅ تسجيل الربح محلياً فوراً (تقريبي - سيُحدَّث بدقة عند المزامنة)
       const tempInvoiceId = `local_${Date.now()}`;
@@ -520,6 +519,9 @@ export function CartPanel({
     const totalSnapshot = total;
     const customerNameSnapshot = customerName;
     const customerPhoneSnapshot = customerPhone;
+    const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     setShowDebtDialog(false);
     startSync('جاري إنشاء فاتورة الدين...', false);
@@ -586,6 +588,8 @@ export function CartPanel({
           costPrice: itemCostPrice,
           conversionFactor: item.conversionFactor,
           category: cat,
+          total: roundCurrency(item.price * item.quantity),
+          profit: roundCurrency(itemProfit * (1 - (subtotal > 0 ? discountAmount / subtotal : 0))),
         };
       });
 
@@ -636,10 +640,7 @@ export function CartPanel({
         }
       }
 
-      const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-      addToQueue('debt_sale_bundle', { localId: operationId, bundle });
+      addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
 
       // ✅ تسجيل الربح محلياً فوراً
       const tempInvoiceId = `local_debt_${Date.now()}`;
