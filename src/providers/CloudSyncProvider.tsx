@@ -321,8 +321,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         }
       }
 
-      const { invalidateAllCaches } = await import('@/lib/cloud');
-      invalidateAllCaches();
+      if (result.processed > 0) {
+        const { invalidateAllCaches } = await import('@/lib/cloud');
+        await invalidateAllCaches();
+      }
 
       const cloudSettings = await fetchStoreSettings();
       if (cloudSettings) {

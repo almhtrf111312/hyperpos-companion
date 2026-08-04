@@ -12,6 +12,7 @@ import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { secureSet, secureGet } from '@/lib/secure-storage';
 import { processPosSaleAtomic } from './pos-sale-atomic';
+import { confirmPendingStockDeduction } from './products-cloud';
 
 // ============= Types =============
 
@@ -148,6 +149,7 @@ export async function processDebtSaleWithOfflineSupport(
   try {
     // Invoice + debt + stock are committed first in one idempotent transaction.
     const sale = await processPosSaleAtomic(localId, 'debt', bundle);
+    await confirmPendingStockDeduction(localId);
 
     // Customer bookkeeping is best-effort and must never block the debt invoice.
     if (!sale.alreadyProcessed) {
@@ -207,9 +209,9 @@ export async function processDebtSaleBundleFromQueue(
       return true;
     }
     
-    return false;
+    throw new Error(result.error || 'Debt sale synchronization failed');
   } catch (error) {
     console.error('[DebtSale] Failed to process queued bundle:', error);
-    return false;
+    throw error;
   }
 }

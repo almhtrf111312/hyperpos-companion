@@ -10,6 +10,7 @@ import { addGrossProfit } from '@/lib/profits-store';
 import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from './partners-cloud';
 import { processPosSaleAtomic } from './pos-sale-atomic';
+import { confirmPendingStockDeduction } from './products-cloud';
 
 // ============= Types =============
 
@@ -54,6 +55,7 @@ export async function processCashSaleBundleFromQueue(
     const operationId = data.operationId;
     if (!operationId) throw new Error('Missing sale operation id');
     const sale = await processPosSaleAtomic(operationId, 'cash', bundle);
+    await confirmPendingStockDeduction(operationId);
 
     // Customer bookkeeping is best-effort and must never block the invoice.
     const customer = !sale.alreadyProcessed && bundle.customerName && bundle.customerName !== 'عميل نقدي'
@@ -89,6 +91,6 @@ export async function processCashSaleBundleFromQueue(
     return true;
   } catch (error) {
     console.error('[CashSale] Failed to process queued bundle:', error);
-    return false;
+    throw error;
   }
 }

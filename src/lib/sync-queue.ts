@@ -43,9 +43,23 @@ export interface QueuedOperation {
   maxRetries: number;
   status: 'pending' | 'processing' | 'failed' | 'completed';
   error?: string;
+  errorClass?: 'retryable' | 'terminal';
   createdAt: string;
   lastAttempt?: string;
 }
+
+const isTerminalSyncError = (message: string): boolean => {
+  const normalized = message.toLowerCase();
+  return [
+    'insufficient stock',
+    'product not found',
+    'invalid item',
+    'invalid sale item',
+    'invalid financial',
+    'missing sale operation id',
+    'missing invoice item',
+  ].some(fragment => normalized.includes(fragment));
+};
 
 export interface SyncQueueStatus {
   pendingCount: number;
@@ -258,7 +272,26 @@ export const processQueue = async (
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        updateOperationStatus(operation.id, 'failed', errorMessage);
+        const terminal = isTerminalSyncError(errorMessage);
+        if (terminal) {
+          const queue = loadQueue();
+          const index = queue.findIndex(item => item.id === operation.id);
+          if (index !== -1) {
+            queue[index].status = 'failed';
+            queue[index].retryCount = queue[index].maxRetries;
+            queue[index].error = errorMessage;
+            queue[index].errorClass = 'terminal';
+            queue[index].lastAttempt = new Date().toISOString();
+            saveQueue(queue);
+          }
+          const uniqueKey = String(operation.data.uniqueKey || operation.data.operationId || operation.data.localId || '');
+          if (uniqueKey && (operation.type === 'invoice_create' || operation.type === 'debt_sale_bundle')) {
+            const { rollbackPendingStockDeduction } = await import('./cloud/products-cloud');
+            await rollbackPendingStockDeduction(uniqueKey);
+          }
+        } else {
+          updateOperationStatus(operation.id, 'failed', errorMessage);
+        }
         updateHistoryStatus(operation.id, 'failed', errorMessage);
         failed++;
         console.error(`[SyncQueue] Failed: ${operation.id}`, error);

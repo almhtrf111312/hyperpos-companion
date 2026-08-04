@@ -134,7 +134,6 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         if (mountedRef.current && !cancelled) {
           setIsStarting(false);
           onFallbackRef.current?.();
-          onCloseRef.current();
         }
       }
     })();

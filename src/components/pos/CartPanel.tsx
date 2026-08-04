@@ -430,7 +430,7 @@ export function CartPanel({
       }));
 
       if (!noInventory) {
-        const deductResult = await deductProductsLocalCache(stockItemsLocal);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
@@ -489,9 +489,6 @@ export function CartPanel({
       playSaleComplete();
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
       showToast.success('تم حفظ الفاتورة ✓');
-
-      // ✅ تحديث كاش المنتجات لضمان ظهور الكمية الجديدة
-      invalidateProductsCache();
 
       // ✅ مزامنة فورية في الخلفية (بدون انتظار المستخدم)
       if (isOnline) {
@@ -630,7 +627,7 @@ export function CartPanel({
 
       // Validate local stock availability before queuing (unless no-inventory mode)
       if (!noInventory) {
-        const deductResult = await deductProductsLocalCache(stockItemsLocal);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('فشل في خصم المخزون محلياً: ' + msgs.join('، '));
@@ -671,9 +668,6 @@ export function CartPanel({
       playDebtRecorded();
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
       showToast.success('تم حفظ فاتورة الدين ✓');
-
-      // ✅ تحديث كاش المنتجات لضمان ظهور الكمية الجديدة
-      invalidateProductsCache();
 
       // ✅ مزامنة فورية في الخلفية
       if (isOnline) {
