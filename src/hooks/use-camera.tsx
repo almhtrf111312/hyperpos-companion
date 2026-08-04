@@ -25,9 +25,8 @@ interface UseCameraResult {
  * Custom hook for camera functionality.
  *
  * ── Native (Android/iOS) ──────────────────────────────────────────────────
- * Opens the NativeCameraPreview component which uses @capgo/camera-preview.
- * The camera renders as a native layer INSIDE the current Activity — no new
- * Activity is launched, so Android never kills the WebView (no app restart).
+ * Opens the in-app NativeCameraPreview component using getUserMedia.
+ * No external Activity is launched, so Android keeps the WebView alive.
  *
  * ── Web ───────────────────────────────────────────────────────────────────
  * Falls back to a <file input> or the InlineCamera (getUserMedia).
@@ -77,14 +76,14 @@ export function useCamera(options: UseCameraOptions = {}): UseCameraResult {
    * Take a photo.
    *
    * On native → opens NativeCameraPreview (via showInlineCamera flag).
-   *             @capgo/camera-preview is used inside the component.
+   *             The component uses the WebView camera stream.
    * On web    → opens <file input> with capture="environment".
    */
   const takePhoto = useCallback(async (): Promise<string | null> => {
     setIsLoading(false); // NativeCameraPreview handles its own loading state
     setError(null);
 
-    // Native: use NativeCameraPreview (camera-preview plugin)
+    // Native: use the in-app WebView camera preview.
     if (isNative) {
       return new Promise<string | null>((resolve) => {
         inlineCaptureResolveRef.current = resolve;

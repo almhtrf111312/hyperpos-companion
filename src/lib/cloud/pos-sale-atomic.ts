@@ -2,7 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { invalidateInvoicesCache } from './invoices-cloud';
-import { invalidateProductsCache } from './products-cloud';
 
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
@@ -93,9 +92,7 @@ export async function processPosSaleAtomic(
   }
 
   invalidateInvoicesCache();
-  invalidateProductsCache();
   emitEvent(EVENTS.INVOICES_UPDATED, null);
-  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
   if (paymentType === 'debt') emitEvent(EVENTS.DEBTS_UPDATED, null);
 
   return {

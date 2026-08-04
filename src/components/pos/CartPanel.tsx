@@ -53,7 +53,7 @@ import {
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addUniqueOperation } from '@/lib/sync-queue';
-import { deductProductsLocalCache, invalidateProductsCache } from '@/lib/cloud/products-cloud';
+import { deductProductsLocalCache } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
 import { Calculator } from '@/components/ui/Calculator';

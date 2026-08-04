@@ -13,6 +13,8 @@ import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { secureSet, secureGet } from '@/lib/secure-storage';
 import { processPosSaleAtomic } from './pos-sale-atomic';
 import { confirmPendingStockDeduction } from './products-cloud';
+import { invalidateProductsCache } from './products-cloud';
+import { emitEvent, EVENTS } from '@/lib/events';
 
 // ============= Types =============
 
@@ -150,6 +152,8 @@ export async function processDebtSaleWithOfflineSupport(
     // Invoice + debt + stock are committed first in one idempotent transaction.
     const sale = await processPosSaleAtomic(localId, 'debt', bundle);
     await confirmPendingStockDeduction(localId);
+    invalidateProductsCache();
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
 
     // Customer bookkeeping is best-effort and must never block the debt invoice.
     if (!sale.alreadyProcessed) {
