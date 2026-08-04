@@ -14,7 +14,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
-import { saveProductsToIDB, loadProductsFromIDB, getProductByBarcodeIDB } from '../indexeddb-cache';
+import {
+  saveProductsToIDB,
+  loadProductsFromIDB,
+  getProductByBarcodeIDB,
+  getPendingStockDeductions,
+  savePendingStockDeduction,
+  removePendingStockDeduction,
+} from '../indexeddb-cache';
 
 export interface CloudProduct {
   id: string;
@@ -249,6 +256,25 @@ const loadFromLocalCache = async (): Promise<Product[] | null> => {
   return null;
 };
 
+const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promise<Product[]> => {
+  const pending = await getPendingStockDeductions();
+  if (pending.length === 0) return products;
+
+  const totals = new Map<string, number>();
+  for (const operation of pending) {
+    for (const item of operation.items) {
+      totals.set(item.productId, (totals.get(item.productId) || 0) + item.quantity);
+    }
+  }
+
+  return products.map(product => {
+    const deduction = totals.get(product.id) || 0;
+    if (deduction === 0) return product;
+    const quantity = Math.max(0, product.quantity - deduction);
+    return { ...product, quantity, status: getStatus(quantity, product.minStockLevel) };
+  });
+};
+
 // Load products from cloud with incremental sync (delta sync)
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
@@ -293,7 +319,8 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
       if (updatedProducts.length > 0) {
         console.log('[ProductsCloud] 🔄 Delta sync:', updatedProducts.length, 'updated products');
-        const updatedMap = new Map(updatedProducts.map(p => [p.id, toProduct(p)]));
+        const updatedWithPending = await applyPendingDeductionsToCloudProducts(updatedProducts.map(toProduct));
+        const updatedMap = new Map(updatedWithPending.map(p => [p.id, p]));
         
         // Merge: replace existing or add new
         productsCache = productsCache.map(p => updatedMap.get(p.id) || p);
@@ -325,7 +352,7 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
         }
       }
 
-      productsCache = cloudProducts.map(toProduct);
+      productsCache = await applyPendingDeductionsToCloudProducts(cloudProducts.map(toProduct));
     }
 
     cacheTimestamp = Date.now();
@@ -367,10 +394,18 @@ export const invalidateProductsCache = () => {
 // state only and is never used to perform another cloud deduction.
 export const deductProductsLocalCache = async (
   items: { productId: string; quantity: number }[],
+  operationId: string,
 ): Promise<{ success: boolean; insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> }> => {
+  if (!operationId) throw new Error('Missing local stock operation id');
   const products = productsCache || await loadFromLocalCache() || [];
   const requestedByProduct = new Map<string, number>();
   for (const item of items) {
+    if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0) {
+      return {
+        success: false,
+        insufficientItems: [{ productId: item.productId, productName: item.productId, requested: item.quantity, available: 0 }],
+      };
+    }
     requestedByProduct.set(item.productId, (requestedByProduct.get(item.productId) || 0) + item.quantity);
   }
 
@@ -390,6 +425,13 @@ export const deductProductsLocalCache = async (
 
   if (insufficientItems.length > 0) return { success: false, insufficientItems };
 
+  const persisted = await savePendingStockDeduction({
+    operationId,
+    items: Array.from(requestedByProduct, ([productId, quantity]) => ({ productId, quantity })),
+    createdAt: new Date().toISOString(),
+  });
+  if (!persisted) return { success: true, insufficientItems: [] };
+
   productsCache = products.map(product => {
     const requested = requestedByProduct.get(product.id);
     if (!requested) return product;
@@ -400,6 +442,29 @@ export const deductProductsLocalCache = async (
   saveToLocalCache(productsCache);
   emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
   return { success: true, insufficientItems: [] };
+};
+
+export const confirmPendingStockDeduction = async (operationId: string): Promise<void> => {
+  await removePendingStockDeduction(operationId);
+};
+
+export const rollbackPendingStockDeduction = async (operationId: string): Promise<boolean> => {
+  const pending = (await getPendingStockDeductions()).find(item => item.operationId === operationId);
+  if (!pending) return false;
+
+  const products = productsCache || await loadFromLocalCache() || [];
+  const restoredByProduct = new Map(pending.items.map(item => [item.productId, item.quantity]));
+  productsCache = products.map(product => {
+    const restored = restoredByProduct.get(product.id) || 0;
+    if (restored === 0) return product;
+    const quantity = product.quantity + restored;
+    return { ...product, quantity, status: getStatus(quantity, product.minStockLevel) };
+  });
+  cacheTimestamp = Date.now();
+  saveToLocalCache(productsCache);
+  await removePendingStockDeduction(operationId);
+  emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
+  return true;
 };
 
 // Clear ALL product caches (memory + IDB + localStorage) — use only on sign-out / user change / manual reset

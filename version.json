@@ -1,8 +1,13 @@
 {
-  "versionCode": 243,
-  "versionName": "1.0.14",
-  "lastUpdated": "2026-08-03T00:00:00.000Z",
+  "versionCode": 244,
+  "versionName": "1.0.15",
+  "lastUpdated": "2026-08-04T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 244,
+      "date": "2026-08-04T00:00:00.000Z",
+      "description": "v1.0.15 - Stable ML Kit scanner lifecycle, durable pending stock ledger, terminal sync rollback, and clean Android plugin generation"
+    },
     {
       "versionCode": 243,
       "date": "2026-08-03T00:00:00.000Z",

@@ -1,6 +1,21 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.15 - تثبيت قارئ الباركود في APK باعتماد ML Kit وحده، وإزالة إضافات Android القديمة المتعارضة، مع انتقال فعلي إلى قارئ الويب عند تعذر التشغيل بدل إغلاق النافذة",
+    "en": "v1.0.15 - Stabilized APK barcode scanning with ML Kit as the only native scanner, removed conflicting legacy Android plugins, and kept the scanner open during web fallback"
+  },
+  {
+    "type": "fixed",
+    "ar": "إضافة سجل دائم للخصم المحلي المعلّق يمنع رجوع كمية المنتج عند فشل المزامنة أو تحديث الصفحة، ويضمن تطبيق الخصم مرة واحدة لكل عملية",
+    "en": "Added a durable pending-stock ledger that prevents quantities from reverting after sync failures or refreshes and applies each local deduction once"
+  },
+  {
+    "type": "fixed",
+    "ar": "تمييز أخطاء البيع النهائية عن أخطاء الشبكة: الأخطاء النهائية توقف إعادة المحاولة غير المفيدة وتعكس الخصم المحلي مرة واحدة، بينما تبقى أخطاء الاتصال في الطابور",
+    "en": "Classified terminal sale errors separately from network failures: terminal errors now stop futile retries and roll back local stock once while connectivity errors remain queued"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.14 - إصلاح قارئ الباركود في APK باستخدام ML Kit المتوافق مع Capacitor 8 مع إبقاء واجهة الكاميرا وأزرار الإغلاق والفلاش فعّالة",
     "en": "v1.0.14 - Fixed APK barcode scanning using Capacitor 8-compatible ML Kit while keeping camera controls visible and interactive"
   },
