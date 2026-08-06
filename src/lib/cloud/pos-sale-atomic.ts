@@ -50,10 +50,11 @@ export async function processPosSaleAtomic(
     const item = itemById.get(stockItem.productId);
     if (!item) throw new Error(`Missing invoice item for product ${stockItem.productId}`);
 
-    const quantity = Number(stockItem.quantity);
-    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+    const quantity = Math.round(Number(stockItem.quantity) * 1000) / 1000;
+    if (!Number.isFinite(quantity) || quantity <= 0) {
       throw new Error(`Invalid stock quantity for ${item.name}`);
     }
+
     return {
       product_id: stockItem.productId,
       product_name: item.name,

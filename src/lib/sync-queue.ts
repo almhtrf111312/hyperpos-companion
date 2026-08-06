@@ -55,11 +55,18 @@ const isTerminalSyncError = (message: string): boolean => {
     'product not found',
     'invalid item',
     'invalid sale item',
+    'invalid stock quantity',
+    'invalid item quantity',
+    'invalid operation id',
+    'invalid payment type',
     'invalid financial',
+    'sale items are required',
+    'warehouse not found',
     'missing sale operation id',
     'missing invoice item',
   ].some(fragment => normalized.includes(fragment));
 };
+
 
 export interface SyncQueueStatus {
   pendingCount: number;
@@ -194,6 +201,20 @@ export const removeFromQueue = (operationId: string): void => {
   const filtered = queue.filter(op => op.id !== operationId);
   saveQueue(filtered);
 };
+
+/** إعادة عملية واحدة لحالة الانتظار حتى تُعاد محاولتها فوراً */
+export const resetOperationForRetry = (operationId: string): boolean => {
+  const queue = loadQueue();
+  const index = queue.findIndex(op => op.id === operationId);
+  if (index === -1) return false;
+  queue[index].status = 'pending';
+  queue[index].retryCount = 0;
+  queue[index].error = undefined;
+  queue[index].errorClass = undefined;
+  saveQueue(queue);
+  return true;
+};
+
 
 /**
  * الحصول على العمليات المعلقة

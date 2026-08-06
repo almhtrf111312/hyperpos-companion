@@ -1,5 +1,20 @@
 [
   {
+    "type": "added",
+    "ar": "v1.0.16 - إدارة العمليات العالقة في المزامنة: عرض سبب الفشل الحقيقي من الخادم مع أزرار (استرداد إلى سلة نقطة البيع، إعادة المحاولة، حذف) وإرجاع المخزون المحجوز محلياً عند الاسترداد أو الحذف",
+    "en": "v1.0.16 - Stuck sync operations manager: shows the real server failure reason with Restore-to-cart, Retry and Discard actions, and returns locally reserved stock on restore or discard"
+  },
+  {
+    "type": "fixed",
+    "ar": "دعم الكميات الكسرية (مثل 1.5 كغ) في البيع والمخزون وبنود الفواتير وحركات المخزون بدل رفض العملية",
+    "en": "Added fractional quantity support (e.g. 1.5 kg) across sales, stock, invoice items and stock movements instead of rejecting the sale"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح فشل البيع عند عدم وجود سجل للمنتج في المستودع المحدد: يتم الخصم من المخزون الرئيسي تلقائياً مع رسائل خطأ أوضح",
+    "en": "Fixed sales failing when a product had no row in the selected warehouse: the sale now falls back to main inventory with clearer error messages"
+  },
+  {
     "type": "fixed",
     "ar": "v1.0.15 - تثبيت قارئ الباركود في APK باعتماد ML Kit وحده، وإزالة إضافات Android القديمة المتعارضة، مع انتقال فعلي إلى قارئ الويب عند تعذر التشغيل بدل إغلاق النافذة",
     "en": "v1.0.15 - Stabilized APK barcode scanning with ML Kit as the only native scanner, removed conflicting legacy Android plugins, and kept the scanner open during web fallback"
@@ -179,7 +194,6 @@
     "ar": "دعم حفظ وحدة البيع ومعامل التحويل في بنود الفواتير للتقارير المستقبلية",
     "en": "Store unit and conversion factor on invoice items for future reporting accuracy"
   },
-
   {
     "type": "new",
     "ar": "نظام تقارير متقدم وموحّد: تقرير حركة المنتج (شراء/بيع/مرتجع/إتلاف) مع فلترة دقيقة",

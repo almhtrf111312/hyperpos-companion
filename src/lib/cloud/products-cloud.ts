@@ -400,14 +400,16 @@ export const deductProductsLocalCache = async (
   const products = productsCache || await loadFromLocalCache() || [];
   const requestedByProduct = new Map<string, number>();
   for (const item of items) {
-    if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0) {
+    const quantity = Math.round(Number(item.quantity) * 1000) / 1000;
+    if (!Number.isFinite(quantity) || quantity <= 0) {
       return {
         success: false,
         insufficientItems: [{ productId: item.productId, productName: item.productId, requested: item.quantity, available: 0 }],
       };
     }
-    requestedByProduct.set(item.productId, (requestedByProduct.get(item.productId) || 0) + item.quantity);
+    requestedByProduct.set(item.productId, (requestedByProduct.get(item.productId) || 0) + quantity);
   }
+
 
   const insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> = [];
   for (const [productId, requested] of requestedByProduct) {

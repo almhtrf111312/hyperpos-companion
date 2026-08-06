@@ -1,8 +1,13 @@
 {
-  "versionCode": 244,
-  "versionName": "1.0.15",
-  "lastUpdated": "2026-08-04T00:00:00.000Z",
+  "versionCode": 245,
+  "versionName": "1.0.16",
+  "lastUpdated": "2026-08-06T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 245,
+      "date": "2026-08-06T00:00:00.000Z",
+      "description": "v1.0.16 - Stuck sync recovery UI (restore to cart / retry / discard), real server error messages, fractional quantity support end-to-end, and warehouse stock fallback to main inventory"
+    },
     {
       "versionCode": 244,
       "date": "2026-08-04T00:00:00.000Z",

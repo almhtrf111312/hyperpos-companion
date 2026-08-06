@@ -127,6 +127,8 @@ interface CartItem {
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
 
 // Keys for persistence across app background/foreground cycles
+import { CART_RECOVERED_EVENT } from '@/lib/sync-recovery';
+
 const CART_STORAGE_KEY = 'hyperpos_temp_cart';
 const CART_OPEN_KEY = 'hyperpos_cart_open';
 const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
@@ -212,6 +214,20 @@ export default function POS() {
       console.error('[POS] Failed to restore cart:', e);
     }
   }, []);
+
+  // ✅ استعادة فاتورة عالقة من طابور المزامنة إلى السلة
+  useEffect(() => {
+    const handleRecovered = (e: Event) => {
+      const items = (e as CustomEvent<CartItem[]>).detail;
+      if (!Array.isArray(items) || items.length === 0) return;
+      setCart(items);
+      setCartOpen(true);
+      try { localStorage.removeItem(CART_STORAGE_KEY); } catch { /* noop */ }
+    };
+    window.addEventListener(CART_RECOVERED_EVENT, handleRecovered);
+    return () => window.removeEventListener(CART_RECOVERED_EVENT, handleRecovered);
+  }, []);
+
 
   // ✅ حفظ حالة فتح السلة في localStorage لاستعادتها عند العودة
   const handleSetCartOpen = useCallback((open: boolean) => {

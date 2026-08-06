@@ -15,6 +15,8 @@ import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
 import { loadHistory, SyncHistoryItem, SYNC_HISTORY_UPDATED, cleanupSyncedItems } from '@/lib/sync-history';
 import { EVENTS } from '@/lib/events';
 import { loadRecentBackups, formatBackupSize, BACKUP_UPDATED_EVENT, LocalBackup } from '@/lib/local-auto-backup';
+import { StuckOperationsList } from './StuckOperationsList';
+
 
 export function SyncStatusMenu() {
   const { isRTL, t, language } = useLanguage();
@@ -229,8 +231,12 @@ export function SyncStatusMenu() {
           </div>
         )}
 
+        {/* Stuck operations with recovery actions */}
+        <StuckOperationsList />
+
         {/* History List */}
         <ScrollArea className="max-h-64">
+
           {sortedHistory.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
               {t('sync.noRecentOperations')}
