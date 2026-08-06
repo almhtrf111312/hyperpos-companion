@@ -213,6 +213,20 @@ export default function POS() {
     }
   }, []);
 
+  // ✅ استعادة فاتورة عالقة من طابور المزامنة إلى السلة
+  useEffect(() => {
+    const handleRecovered = (e: Event) => {
+      const items = (e as CustomEvent<CartItem[]>).detail;
+      if (!Array.isArray(items) || items.length === 0) return;
+      setCart(items);
+      setCartOpen(true);
+      try { localStorage.removeItem(CART_STORAGE_KEY); } catch { /* noop */ }
+    };
+    window.addEventListener(CART_RECOVERED_EVENT, handleRecovered);
+    return () => window.removeEventListener(CART_RECOVERED_EVENT, handleRecovered);
+  }, []);
+
+
   // ✅ حفظ حالة فتح السلة في localStorage لاستعادتها عند العودة
   const handleSetCartOpen = useCallback((open: boolean) => {
     setCartOpen(open);
