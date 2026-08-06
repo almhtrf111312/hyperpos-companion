@@ -173,16 +173,6 @@ export const discardStuckOperation = async (operationQueueId: string): Promise<b
 };
 
 /** إعادة عملية واحدة إلى حالة الانتظار لإعادة المحاولة فوراً */
-export const retryStuckOperation = (operationQueueId: string): boolean => {
-  const queue = loadQueue();
-  const index = queue.findIndex(op => op.id === operationQueueId);
-  if (index === -1) return false;
-  queue[index].status = 'pending';
-  queue[index].retryCount = 0;
-  queue[index].error = undefined;
-  queue[index].errorClass = undefined;
-  try {
-    // saveQueue is internal to sync-queue; reuse its public API instead
-  } catch { /* noop */ }
-  return true;
-};
+export const retryStuckOperation = (operationQueueId: string): boolean =>
+  resetOperationForRetry(operationQueueId);
+
