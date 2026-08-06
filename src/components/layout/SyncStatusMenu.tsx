@@ -15,6 +15,8 @@ import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
 import { loadHistory, SyncHistoryItem, SYNC_HISTORY_UPDATED, cleanupSyncedItems } from '@/lib/sync-history';
 import { EVENTS } from '@/lib/events';
 import { loadRecentBackups, formatBackupSize, BACKUP_UPDATED_EVENT, LocalBackup } from '@/lib/local-auto-backup';
+import { StuckOperationsList } from './StuckOperationsList';
+
 
 export function SyncStatusMenu() {
   const { isRTL, t, language } = useLanguage();
