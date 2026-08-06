@@ -127,6 +127,8 @@ interface CartItem {
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
 
 // Keys for persistence across app background/foreground cycles
+import { CART_RECOVERED_EVENT } from '@/lib/sync-recovery';
+
 const CART_STORAGE_KEY = 'hyperpos_temp_cart';
 const CART_OPEN_KEY = 'hyperpos_cart_open';
 const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
