@@ -229,8 +229,12 @@ export function SyncStatusMenu() {
           </div>
         )}
 
+        {/* Stuck operations with recovery actions */}
+        <StuckOperationsList />
+
         {/* History List */}
         <ScrollArea className="max-h-64">
+
           {sortedHistory.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
               {t('sync.noRecentOperations')}
