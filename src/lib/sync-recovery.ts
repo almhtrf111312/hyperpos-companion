@@ -7,7 +7,7 @@
  * - حذف العملية نهائياً مع إرجاع المخزون المخصوم محلياً
  */
 
-import { loadQueue, removeFromQueue, QueuedOperation } from './sync-queue';
+import { loadQueue, removeFromQueue, resetOperationForRetry, QueuedOperation } from './sync-queue';
 import { emitEvent, EVENTS } from './events';
 import { updateHistoryStatus } from './sync-history';
 
