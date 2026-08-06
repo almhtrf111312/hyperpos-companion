@@ -202,6 +202,20 @@ export const removeFromQueue = (operationId: string): void => {
   saveQueue(filtered);
 };
 
+/** إعادة عملية واحدة لحالة الانتظار حتى تُعاد محاولتها فوراً */
+export const resetOperationForRetry = (operationId: string): boolean => {
+  const queue = loadQueue();
+  const index = queue.findIndex(op => op.id === operationId);
+  if (index === -1) return false;
+  queue[index].status = 'pending';
+  queue[index].retryCount = 0;
+  queue[index].error = undefined;
+  queue[index].errorClass = undefined;
+  saveQueue(queue);
+  return true;
+};
+
+
 /**
  * الحصول على العمليات المعلقة
  */
