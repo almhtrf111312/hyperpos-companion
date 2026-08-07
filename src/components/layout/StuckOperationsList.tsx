@@ -2,18 +2,16 @@
  * Stuck Operations List
  * =====================
  * يعرض العمليات العالقة في طابور المزامنة مع سبب الفشل الحقيقي،
- * ويتيح إعادة المحاولة، أو استرداد الفاتورة إلى سلة نقطة البيع، أو حذفها.
+ * ويتيح إعادة المحاولة أو إلغاء العملية غير المكتملة.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Clock, RefreshCw, RotateCcw, Trash2, Loader2 } from 'lucide-react';
+import { AlertTriangle, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
 import {
   getStuckOperations,
-  recoverOperationToCart,
   discardStuckOperation,
   retryStuckOperation,
   StuckOperation,
@@ -27,7 +25,6 @@ const statusLabel = (op: StuckOperation) => {
 };
 
 export function StuckOperationsList() {
-  const navigate = useNavigate();
   const [operations, setOperations] = useState<StuckOperation[]>(() => getStuckOperations());
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -44,28 +41,12 @@ export function StuckOperationsList() {
 
   if (operations.length === 0) return null;
 
-  const handleRecover = async (op: StuckOperation) => {
-    setBusyId(op.id);
-    try {
-      const result = await recoverOperationToCart(op.id);
-      if (result.success) {
-        toast.success(result.message, { id: `recover-${op.id}` });
-        navigate('/pos');
-      } else {
-        toast.error(result.message, { id: `recover-${op.id}` });
-      }
-    } finally {
-      setBusyId(null);
-      refresh();
-    }
-  };
-
   const handleDiscard = async (op: StuckOperation) => {
     setBusyId(op.id);
     try {
       const done = await discardStuckOperation(op.id);
       toast[done ? 'success' : 'error'](
-        done ? 'تم حذف العملية وإرجاع المخزون المحجوز' : 'تعذر حذف العملية',
+        done ? 'تم إلغاء العملية غير المكتملة وإرجاع حجز المخزون' : 'تعذر إلغاء العملية',
         { id: `discard-${op.id}` },
       );
     } finally {
@@ -119,20 +100,6 @@ export function StuckOperationsList() {
               )}
 
               <div className="flex items-center gap-1.5">
-                {op.canRestoreToCart && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-[11px] gap-1 flex-1"
-                    disabled={busyId === op.id}
-                    onClick={() => handleRecover(op)}
-                  >
-                    {busyId === op.id
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : <RotateCcw className="h-3 w-3" />}
-                    استرداد للسلة
-                  </Button>
-                )}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -151,7 +118,7 @@ export function StuckOperationsList() {
                   onClick={() => handleDiscard(op)}
                 >
                   <Trash2 className="h-3 w-3" />
-                  حذف
+                  إلغاء العملية
                 </Button>
               </div>
             </div>

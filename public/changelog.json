@@ -1,5 +1,25 @@
 [
   {
+    "type": "fixed",
+    "ar": "v1.0.17 - توحيد بيع الموزع النقدي والمؤجل مع مخزون عهدته، ومنع الرجوع الصامت إلى المخزون الرئيسي عند غياب الصنف من المستودع",
+    "en": "v1.0.17 - Unified distributor cash and deferred sales with custody stock and prevented silent fallback to main inventory"
+  },
+  {
+    "type": "fixed",
+    "ar": "حفظ موقع الخصم الحقيقي لكل بند وإعادة المسترد إلى الموقع نفسه حصراً، مع جمع البنود المتكررة ومنع أي زيادة أو نقص عبر دورات البيع والاسترداد",
+    "en": "Stored each item's exact stock source and refund it only there, with correct duplicate-line aggregation and idempotent sell/refund cycles"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح قراءة الباركود في APK والموقع عبر إعداد ML Kit المطلوب، دقة كاميرا أعلى، صيغ أوسع، وانتقال تلقائي إلى ZXing عند تعطل BarcodeDetector",
+    "en": "Fixed APK and web barcode detection with required ML Kit setup, higher camera resolution, wider formats, and automatic ZXing fallback"
+  },
+  {
+    "type": "improved",
+    "ar": "إزالة استرداد العملية العالقة إلى السلة، والإبقاء على إعادة المحاولة أو إلغاء العملية مع تحرير الحجز المحلي، وتوحيد تسمية بيع مؤجل",
+    "en": "Removed restore-to-cart for stuck operations, retained retry/cancel with local reservation release, and unified deferred-sale terminology"
+  },
+  {
     "type": "added",
     "ar": "v1.0.16 - إدارة العمليات العالقة في المزامنة: عرض سبب الفشل الحقيقي من الخادم مع أزرار (استرداد إلى سلة نقطة البيع، إعادة المحاولة، حذف) وإرجاع المخزون المحجوز محلياً عند الاسترداد أو الحذف",
     "en": "v1.0.16 - Stuck sync operations manager: shows the real server failure reason with Restore-to-cart, Retry and Discard actions, and returns locally reserved stock on restore or discard"

@@ -80,7 +80,7 @@ const tourSteps: TourStep[] = [
   { id: 'cart-desktop', selector: '[data-tour="cart-panel"]', title: { ar: 'سلة المشتريات', en: 'Cart' }, desc: { ar: 'السلة ومجاميعها وخيارات الدفع.', en: 'Cart, totals, and payment options.' }, desktopOnly: true, route: '/' },
   { id: 'cart-mobile', selector: '[data-tour="cart-fab"]', title: { ar: 'زر السلة', en: 'Cart Button' }, desc: { ar: 'اضغط هنا لفتح السلة على الجوال.', en: 'Tap to open the cart on mobile.' }, mobileOnly: true, route: '/' },
   { id: 'cash-btn', selector: '[data-tour="cash-btn"]', title: { ar: 'الدفع النقدي', en: 'Cash Payment' }, desc: { ar: 'تأكيد البيع نقداً وحفظ الفاتورة مباشرة.', en: 'Confirm a cash sale and save instantly.' }, route: '/', prefer: 'top', requireCart: true },
-  { id: 'debt-btn', selector: '[data-tour="debt-btn"]', title: { ar: 'البيع بالدين', en: 'Sell on Credit' }, desc: { ar: 'تسجيل البيع كدين على العميل ومتابعته لاحقاً.', en: 'Record the sale as a customer debt to follow up later.' }, route: '/', prefer: 'top', requireCart: true },
+  { id: 'debt-btn', selector: '[data-tour="debt-btn"]', title: { ar: 'البيع المؤجل', en: 'Deferred Sale' }, desc: { ar: 'تسجيل المبلغ كمستحق على العميل ومتابعة دفعاته.', en: 'Record the amount as due from the customer and track payments.' }, route: '/', prefer: 'top', requireCart: true },
 
   // Finish
   {

@@ -4,6 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Camera, ScanLine, X } from 'lucide-react';
+import { BrowserMultiFormatReader } from '@zxing/library';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
 import { PENDING_BARCODE_KEY } from './OfflineBarcodeScanner';
@@ -24,6 +25,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<number | null>(null);
   const detectorRef = useRef<any>(null);
+  const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const detectingRef = useRef(false);
   const scannedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -51,6 +53,8 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       videoRef.current.srcObject = null;
     }
     detectorRef.current = null;
+    try { zxingReaderRef.current?.reset(); } catch { /* noop */ }
+    zxingReaderRef.current = null;
     detectingRef.current = false;
     scannedRef.current = false;
     isStartingRef.current = false;
@@ -91,11 +95,6 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
       }
 
       const BarcodeDetectorClass = (window as any).BarcodeDetector;
-      if (!BarcodeDetectorClass) {
-        throw new Error('BARCODE_DETECTOR_NOT_SUPPORTED');
-      }
-
-      detectorRef.current = new BarcodeDetectorClass({ formats: WEB_FORMATS });
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
@@ -118,6 +117,19 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
 
       cameraActiveRef.current = true;
 
+      if (!BarcodeDetectorClass) {
+        const reader = new BrowserMultiFormatReader();
+        zxingReaderRef.current = reader;
+        await reader.decodeFromStream(stream, videoRef.current, result => {
+          const rawValue = result?.getText?.();
+          if (rawValue?.trim()) handleDetected(rawValue.trim());
+        });
+        return;
+      }
+
+      const available = await BarcodeDetectorClass.getSupportedFormats().catch(() => WEB_FORMATS);
+      const formats = WEB_FORMATS.filter(format => available.includes(format));
+      detectorRef.current = new BarcodeDetectorClass({ formats });
       intervalRef.current = window.setInterval(async () => {
         if (detectingRef.current || !detectorRef.current || !videoRef.current || scannedRef.current) return;
 
@@ -137,9 +149,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
     } catch (error: any) {
       console.warn('[Web Scanner] start failed:', error);
 
-      if (error?.message === 'BARCODE_DETECTOR_NOT_SUPPORTED') {
-        setErrorMessage('المتصفح لا يدعم قارئ الباركود المباشر. استخدم Chrome حديث أو نسخة APK.');
-      } else if (error?.name === 'NotAllowedError') {
+      if (error?.name === 'NotAllowedError') {
         setErrorMessage('تم رفض إذن الكاميرا. اسمح بالإذن ثم أعد المحاولة.');
       } else {
         setErrorMessage('تعذر تشغيل الكاميرا الآن. حاول مرة أخرى.');

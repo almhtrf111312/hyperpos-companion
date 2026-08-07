@@ -9,6 +9,7 @@ const PENDING_STOCK_STORE = 'pending_stock_deductions';
 
 export interface PendingStockDeduction {
   operationId: string;
+  warehouseId?: string;
   items: Array<{ productId: string; quantity: number }>;
   createdAt: string;
 }

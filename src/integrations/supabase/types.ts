@@ -522,6 +522,7 @@ export type Database = {
           product_name: string
           profit: number | null
           quantity: number | null
+          stock_warehouse_id: string | null
           unit: string | null
           unit_price: number | null
           variant_id: string | null
@@ -540,6 +541,7 @@ export type Database = {
           product_name: string
           profit?: number | null
           quantity?: number | null
+          stock_warehouse_id?: string | null
           unit?: string | null
           unit_price?: number | null
           variant_id?: string | null
@@ -558,6 +560,7 @@ export type Database = {
           product_name?: string
           profit?: number | null
           quantity?: number | null
+          stock_warehouse_id?: string | null
           unit?: string | null
           unit_price?: number | null
           variant_id?: string | null
@@ -569,6 +572,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_stock_warehouse_id_fkey"
+            columns: ["stock_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]

@@ -101,7 +101,7 @@ export function usePOSShortcuts({
     {
       key: POS_SHORTCUTS.DEBT_SALE,
       callback: () => onDebtSale?.(),
-      description: 'بيع بالدين',
+      description: 'بيع مؤجل',
       enabled: !!onDebtSale,
     },
     {

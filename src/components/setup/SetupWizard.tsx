@@ -413,7 +413,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             <div className="space-y-2">
               {[
                 { key: 'warehouses' as const, icon: Boxes, ar: 'مستودعات متعددة', en: 'Multiple warehouses', descAr: 'إدارة مخازن متعددة وتحويل البضاعة', descEn: 'Manage multiple stores and transfer stock' },
-                { key: 'debts' as const, icon: CreditCard, ar: 'الديون', en: 'Debts', descAr: 'البيع بالدين وتتبع المستحقات', descEn: 'Sell on credit and track receivables' },
+                { key: 'debts' as const, icon: CreditCard, ar: 'الديون - البيع المؤجل', en: 'Deferred Sales', descAr: 'البيع المؤجل وتتبع المستحقات', descEn: 'Deferred sales and receivables tracking' },
                 { key: 'maintenance' as const, icon: Wrench, ar: 'الصيانة', en: 'Maintenance', descAr: 'أوامر صيانة وإصلاح', descEn: 'Repair and maintenance orders' },
                 { key: 'library' as const, icon: BookOpen, ar: 'المكتبة', en: 'Library', descAr: 'أعضاء وإعارة الكتب', descEn: 'Members and book loans' },
                 { key: 'multiCashier' as const, icon: Users, ar: 'كاشيرات متعددة', en: 'Multiple cashiers', descAr: 'إنشاء حسابات لموظفي الكاشير', descEn: 'Create accounts for cashier staff' },

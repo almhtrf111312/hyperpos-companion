@@ -430,7 +430,7 @@ export function CartPanel({
       }));
 
       if (!noInventory) {
-        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId, activeWarehouse?.id);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
@@ -521,7 +521,7 @@ export function CartPanel({
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     setShowDebtDialog(false);
-    startSync('جاري إنشاء فاتورة الدين...', false);
+    startSync('جاري إنشاء فاتورة البيع المؤجل...', false);
 
     try {
       // ============================================================
@@ -627,7 +627,7 @@ export function CartPanel({
 
       // Validate local stock availability before queuing (unless no-inventory mode)
       if (!noInventory) {
-        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId, activeWarehouse?.id);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('فشل في خصم المخزون محلياً: ' + msgs.join('، '));
@@ -650,7 +650,7 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع بالدين بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          `عملية بيع مؤجل بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
           { total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot, paymentType: 'debt' }
         );
         addActivityLog(
@@ -667,7 +667,7 @@ export function CartPanel({
       onClearCart();
       playDebtRecorded();
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
-      showToast.success('تم حفظ فاتورة الدين ✓');
+      showToast.success('تم حفظ فاتورة البيع المؤجل ✓');
 
       // ✅ مزامنة فورية في الخلفية
       if (isOnline) {
@@ -677,7 +677,7 @@ export function CartPanel({
     } catch (error) {
       console.error('Debt sale error:', error);
       failSync('حدث خطأ - الفاتورة محفوظة محلياً');
-      showToast.warning('تم حفظ فاتورة الدين أوفلاين - سيتم رفعها تلقائياً');
+      showToast.warning('تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -1404,7 +1404,7 @@ export function CartPanel({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-warning" />
-              تأكيد البيع بالدين
+              تأكيد البيع المؤجل
             </DialogTitle>
             <DialogDescription>
               سيتم إضافة المبلغ كدين على العميل
@@ -1455,7 +1455,7 @@ export function CartPanel({
                 }}
               >
                 <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
-                {isSaving ? 'جاري الحفظ...' : 'تأكيد الدين'}
+                {isSaving ? 'جاري الحفظ...' : 'تأكيد البيع المؤجل'}
               </Button>
             </div>
           </div>
