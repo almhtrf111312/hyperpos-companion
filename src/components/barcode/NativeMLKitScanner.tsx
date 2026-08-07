@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeFormat, BarcodeScanner, Resolution } from '@capacitor-mlkit/barcode-scanning';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { playBeep } from '@/lib/sound-utils';
 import { ScanLine, X, Flashlight, Loader2 } from 'lucide-react';
@@ -20,7 +20,12 @@ const SCAN_FORMATS = [
   BarcodeFormat.Ean8,
   BarcodeFormat.Code128,
   BarcodeFormat.Code39,
+  BarcodeFormat.Code93,
   BarcodeFormat.DataMatrix,
+  BarcodeFormat.Codabar,
+  BarcodeFormat.Itf,
+  BarcodeFormat.Pdf417,
+  BarcodeFormat.Aztec,
   BarcodeFormat.UpcA,
   BarcodeFormat.UpcE,
 ];
@@ -80,6 +85,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         const supported = await BarcodeScanner.isSupported();
         if (!supported.supported) throw new Error('Barcode scanning is not supported');
 
+        // Warm up the optional Play Services scanner module when available.
+        // Continuous CameraX scanning below remains functional on bundled ML Kit.
+        const module = await BarcodeScanner.isGoogleBarcodeScannerModuleAvailable().catch(() => ({ available: true }));
+        if (!module.available) {
+          await BarcodeScanner.installGoogleBarcodeScannerModule().catch(error => {
+            console.warn('[MLKit Scanner] Module warm-up failed:', error);
+          });
+        }
+
         let status = await BarcodeScanner.checkPermissions();
         if (status.camera === 'prompt' || status.camera === 'prompt-with-rationale') {
           status = await BarcodeScanner.requestPermissions();
@@ -126,7 +140,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           if (mountedRef.current && !cancelled) onFallbackRef.current?.();
         });
 
-        await BarcodeScanner.startScan({ formats: SCAN_FORMATS });
+        await BarcodeScanner.startScan({ formats: SCAN_FORMATS, resolution: Resolution['1920x1080'] });
         if (mountedRef.current) setIsStarting(false);
       } catch (err) {
         console.warn('[MLKit Scanner] Failed to start scanner:', err);

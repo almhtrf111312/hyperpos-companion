@@ -262,6 +262,7 @@ const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promi
 
   const totals = new Map<string, number>();
   for (const operation of pending) {
+    if (operation.warehouseId) continue;
     for (const item of operation.items) {
       totals.set(item.productId, (totals.get(item.productId) || 0) + item.quantity);
     }
@@ -395,6 +396,7 @@ export const invalidateProductsCache = () => {
 export const deductProductsLocalCache = async (
   items: { productId: string; quantity: number }[],
   operationId: string,
+  warehouseId?: string,
 ): Promise<{ success: boolean; insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> }> => {
   if (!operationId) throw new Error('Missing local stock operation id');
   const products = productsCache || await loadFromLocalCache() || [];
@@ -412,7 +414,25 @@ export const deductProductsLocalCache = async (
 
 
   const insufficientItems: Array<{ productId: string; productName: string; requested: number; available: number }> = [];
+  if (warehouseId) {
+    const { adjustWarehouseStockLocalCache } = await import('./warehouses-cloud');
+    const adjustment = adjustWarehouseStockLocalCache(
+      warehouseId,
+      Array.from(requestedByProduct, ([productId, quantity]) => ({ productId, quantity })),
+      'deduct',
+    );
+    if (!adjustment.success) {
+      return {
+        success: false,
+        insufficientItems: adjustment.insufficientItems.map(item => ({
+          ...item,
+          productName: products.find(product => product.id === item.productId)?.name || item.productId,
+        })),
+      };
+    }
+  }
   for (const [productId, requested] of requestedByProduct) {
+    if (warehouseId) continue;
     const product = products.find(candidate => candidate.id === productId);
     const available = product?.quantity || 0;
     if (!product || requested <= 0 || available < requested) {
@@ -429,10 +449,16 @@ export const deductProductsLocalCache = async (
 
   const persisted = await savePendingStockDeduction({
     operationId,
+    warehouseId,
     items: Array.from(requestedByProduct, ([productId, quantity]) => ({ productId, quantity })),
     createdAt: new Date().toISOString(),
   });
   if (!persisted) return { success: true, insufficientItems: [] };
+
+  if (warehouseId) {
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return { success: true, insufficientItems: [] };
+  }
 
   productsCache = products.map(product => {
     const requested = requestedByProduct.get(product.id);
@@ -453,6 +479,14 @@ export const confirmPendingStockDeduction = async (operationId: string): Promise
 export const rollbackPendingStockDeduction = async (operationId: string): Promise<boolean> => {
   const pending = (await getPendingStockDeductions()).find(item => item.operationId === operationId);
   if (!pending) return false;
+
+  if (pending.warehouseId) {
+    const { adjustWarehouseStockLocalCache } = await import('./warehouses-cloud');
+    adjustWarehouseStockLocalCache(pending.warehouseId, pending.items, 'restore');
+    await removePendingStockDeduction(operationId);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return true;
+  }
 
   const products = productsCache || await loadFromLocalCache() || [];
   const restoredByProduct = new Map(pending.items.map(item => [item.productId, item.quantity]));

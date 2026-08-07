@@ -30,6 +30,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const fallbackTimerRef = useRef<number | null>(null);
   const detectorRef = useRef<any>(null);
   const zxingReaderRef = useRef<any>(null);
   const detectingRef = useRef(false);
@@ -58,6 +59,10 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -152,6 +157,27 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
         throw new Error('VIDEO_ELEMENT_MISSING');
       }
 
+      const startZxing = async () => {
+        if (!videoRef.current || scannedRef.current) return;
+        if (intervalRef.current) window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        detectorRef.current = null;
+        streamRef.current?.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+
+        const reader = new BrowserMultiFormatReader();
+        zxingReaderRef.current = reader;
+        await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+          videoRef.current,
+          (result: any) => {
+            const rawValue = result?.getText?.() || result?.text || result?.textContent;
+            if (rawValue && String(rawValue).trim()) handleDetected(String(rawValue).trim());
+          },
+        );
+        cameraActiveRef.current = true;
+      };
+
       if (BarcodeDetectorClass) {
         let supportedFormats = SUPPORTED_FORMATS;
         try {
@@ -210,27 +236,15 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
             detectingRef.current = false;
           }
         }, 150);
-      } else {
-        const reader = new BrowserMultiFormatReader();
-        zxingReaderRef.current = reader;
-
-        let preferredDeviceId: string | undefined;
-        try {
-          const devices = await reader.listVideoInputDevices();
-          preferredDeviceId = devices.length > 0 ? devices[devices.length - 1].deviceId : undefined;
-        } catch {
-          preferredDeviceId = undefined;
-        }
-
-        await reader.decodeFromVideoDevice(preferredDeviceId, videoRef.current, (result: any) => {
-          if (scannedRef.current) return;
-          const rawValue = result?.getText?.() || result?.text || result?.textContent;
-          if (rawValue && String(rawValue).trim()) {
-            handleDetected(String(rawValue).trim());
+        // Some WebViews expose BarcodeDetector but never return a result.
+        // Switch to ZXing automatically instead of leaving a dead camera open.
+        fallbackTimerRef.current = window.setTimeout(() => {
+          if (!scannedRef.current && mountedRef.current) {
+            startZxing().catch(error => console.warn('[Offline Scanner] ZXing fallback failed:', error));
           }
-        });
-
-        cameraActiveRef.current = true;
+        }, 4000);
+      } else {
+        await startZxing();
       }
 
     } catch (error: any) {

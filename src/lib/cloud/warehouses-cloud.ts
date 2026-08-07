@@ -85,6 +85,33 @@ const loadWarehouseStockLocally = (warehouseId: string): WarehouseStock[] | null
   } catch { return null; }
 };
 
+export const adjustWarehouseStockLocalCache = (
+  warehouseId: string,
+  items: Array<{ productId: string; quantity: number }>,
+  direction: 'deduct' | 'restore',
+): { success: boolean; insufficientItems: Array<{ productId: string; requested: number; available: number }> } => {
+  const stock = loadWarehouseStockLocally(warehouseId) || [];
+  const totals = new Map<string, number>();
+  for (const item of items) totals.set(item.productId, (totals.get(item.productId) || 0) + item.quantity);
+
+  const insufficientItems: Array<{ productId: string; requested: number; available: number }> = [];
+  if (direction === 'deduct') {
+    for (const [productId, requested] of totals) {
+      const available = Number(stock.find(row => row.product_id === productId)?.quantity || 0);
+      if (available < requested) insufficientItems.push({ productId, requested, available });
+    }
+  }
+  if (insufficientItems.length > 0) return { success: false, insufficientItems };
+
+  const updated = stock.map(row => {
+    const amount = totals.get(row.product_id) || 0;
+    if (!amount) return row;
+    return { ...row, quantity: Number(row.quantity) + (direction === 'deduct' ? -amount : amount), last_updated: new Date().toISOString() };
+  });
+  saveWarehouseStockLocally(warehouseId, updated);
+  return { success: true, insufficientItems: [] };
+};
+
 // Cache for warehouses
 let warehousesCache: Warehouse[] | null = null;
 let cacheTimestamp = 0;
