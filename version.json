@@ -1,8 +1,13 @@
 {
-  "versionCode": 245,
-  "versionName": "1.0.16",
-  "lastUpdated": "2026-08-06T00:00:00.000Z",
+  "versionCode": 246,
+  "versionName": "1.0.17",
+  "lastUpdated": "2026-08-07T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 246,
+      "date": "2026-08-07T00:00:00.000Z",
+      "description": "v1.0.17 - Warehouse-aware deferred/cash sales, exact-source atomic refunds, reliable Android/web barcode scanning, simplified stuck-operation cancellation, and deferred-sale terminology"
+    },
     {
       "versionCode": 245,
       "date": "2026-08-06T00:00:00.000Z",

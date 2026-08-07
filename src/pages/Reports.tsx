@@ -185,7 +185,7 @@ export default function Reports() {
     { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
     { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
     { id: 'purchases', label: 'فواتير المشتريات', icon: FileText },
-    { id: 'debts', label: 'تقرير الديون', icon: Banknote },
+    { id: 'debts', label: 'الديون - البيع المؤجل', icon: Banknote },
     { id: 'cashier-performance', label: 'أداء الكاشير', icon: Users },
     ...(visibleSections.maintenance ? [{ id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
     { id: 'daily-closing', label: 'الإغلاق اليومي', icon: Calendar },

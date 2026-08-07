@@ -62,7 +62,7 @@ export function DebtsReport({ dateRange }: Props) {
   const handleExportExcel = async () => {
     if (filtered.length === 0) { toast.error('لا توجد بيانات للتصدير'); return; }
     await exportToExcel({
-      sheetName: 'الديون',
+      sheetName: 'البيع المؤجل',
       fileName: `تقرير_ديون_${dateRange.from}_${dateRange.to}.xlsx`,
       columns: [
         { header: 'العميل', key: 'customerName', width: 20 },
@@ -83,8 +83,8 @@ export function DebtsReport({ dateRange }: Props) {
         date: d.createdAt?.split('T')[0] || '',
       })),
       totals: { totalDebt: stats.totalDebt, totalPaid: stats.totalPaid, remainingDebt: stats.totalRemaining },
-      title: 'تقرير الديون',
-      reportType: 'تقرير الديون',
+      title: 'تقرير الديون - البيع المؤجل',
+      reportType: 'تقرير الديون - البيع المؤجل',
       subtitle: `من ${dateRange.from} إلى ${dateRange.to}`,
       summary: [
         { label: 'عدد الديون', value: stats.count },
@@ -99,8 +99,8 @@ export function DebtsReport({ dateRange }: Props) {
   const handleExportPDF = async () => {
     if (filtered.length === 0) { toast.error('لا توجد بيانات للتصدير'); return; }
     await exportToPDF({
-      title: 'تقرير الديون',
-      reportType: 'تقرير الديون',
+      title: 'تقرير الديون - البيع المؤجل',
+      reportType: 'تقرير الديون - البيع المؤجل',
       subtitle: `من ${dateRange.from} إلى ${dateRange.to}`,
       columns: [
         { header: 'العميل', key: 'customerName' },
