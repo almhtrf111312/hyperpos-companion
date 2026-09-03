@@ -1,6 +1,22 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.18 - إصلاح فشل استرداد الفواتير النقدية والمؤجلة: كان الجدول المؤقت داخل دالة الاسترداد يرفض بنود المخزون الرئيسي بسبب قيد المفتاح الأساسي، فتفشل كل عملية استرداد",
+    "en": "v1.0.18 - Fixed failing cash and deferred invoice refunds caused by the refund temp-table primary key rejecting main-inventory items"
+  },
+  {
+    "type": "fixed",
+    "ar": "إعادة الكميات إلى المخزون الرئيسي بشكل صحيح مع جمع البنود المكررة، والرجوع الآمن إلى المخزون الرئيسي إذا اختفى سجل المستودع",
+    "en": "Correct main-inventory restoration with duplicate-line aggregation and safe fallback when the warehouse stock row is missing"
+  },
+  {
+    "type": "improved",
+    "ar": "الفاتورة لم تعد تختفي من القائمة قبل تأكيد الخادم، وأصبح إشعار الفشل يعرض سبب الخطأ الحقيقي القادم من الخادم",
+    "en": "Invoices no longer disappear before server confirmation, and failure notifications now show the real server error"
+  },
+
+  {
+    "type": "fixed",
     "ar": "v1.0.17 - توحيد بيع الموزع النقدي والمؤجل مع مخزون عهدته، ومنع الرجوع الصامت إلى المخزون الرئيسي عند غياب الصنف من المستودع",
     "en": "v1.0.17 - Unified distributor cash and deferred sales with custody stock and prevented silent fallback to main inventory"
   },

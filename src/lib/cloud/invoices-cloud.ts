@@ -480,6 +480,7 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 export interface RefundResult {
   success: boolean;
   alreadyRefunded?: boolean;
+  error?: string;
   restoredItemsCount: number;
   restoredUnitsCount: number;
   deletedDebtAmount: number;
@@ -490,6 +491,20 @@ export interface RefundResult {
   invoiceCurrency: string | null;
 }
 
+const failedRefund = (error: string): RefundResult => ({
+  success: false,
+  error,
+  restoredItemsCount: 0,
+  restoredUnitsCount: 0,
+  deletedDebtAmount: 0,
+  customerBalanceBefore: 0,
+  customerBalanceAfter: 0,
+  customerName: null,
+  invoiceTotal: 0,
+  invoiceCurrency: null,
+});
+
+
 // ✅ In-flight mutex: blocks concurrent refund calls for the same invoice
 // (protects against double-click race even before the network round-trip)
 const refundInFlight = new Set<string>();
@@ -499,7 +514,7 @@ export const refundInvoiceCloud = async (id: string, source: 'online' | 'offline
   // ✅ Client-side mutex - reject duplicate concurrent calls immediately
   if (refundInFlight.has(id)) {
     console.warn('[refundInvoiceCloud] Refund already in-flight for:', id);
-    return false;
+    return failedRefund('عملية استرداد لهذه الفاتورة قيد التنفيذ بالفعل');
   }
   refundInFlight.add(id);
   try {
@@ -517,18 +532,19 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     userId = user?.id || null;
     if (userId) setCurrentUserId(userId);
   }
-  if (!userId) return false;
+  if (!userId) return failedRefund('تعذّر تحديد المستخدم الحالي');
 
   // Stock, debt, customer totals, and invoice status are committed in one locked
   // database transaction. Only the first caller can receive success=true.
   const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id, _source: source });
   if (error) {
-    console.error('[refundInvoiceCloud] Atomic refund failed:', error.code);
-    return false;
+    console.error('[refundInvoiceCloud] Atomic refund failed:', error);
+    return failedRefund(error.message || 'فشل تنفيذ الاسترداد على الخادم');
   }
 
   const atomic = data?.[0];
-  if (!atomic) return false;
+  if (!atomic) return failedRefund('لم يرد الخادم بأي نتيجة للاسترداد');
+
 
   if (atomic.already_refunded) {
     return {
@@ -545,7 +561,7 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     };
   }
 
-  if (!atomic.success) return false;
+  if (!atomic.success) return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
 
   // Secondary accounting cleanup is idempotent and only runs for the caller that
   // won the atomic refund transaction. It cannot restore stock again.

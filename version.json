@@ -1,13 +1,19 @@
 {
-  "versionCode": 246,
-  "versionName": "1.0.17",
-  "lastUpdated": "2026-08-07T00:00:00.000Z",
+  "versionCode": 247,
+  "versionName": "1.0.18",
+  "lastUpdated": "2026-09-03T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 247,
+      "date": "2026-09-03T00:00:00.000Z",
+      "description": "v1.0.18 - Fixed always-failing invoice refunds (cash + deferred) caused by a NOT NULL primary key on the refund temp table, correct main-inventory restoration, real server error messages, and no optimistic UI hiding before confirmation"
+    },
     {
       "versionCode": 246,
       "date": "2026-08-07T00:00:00.000Z",
       "description": "v1.0.17 - Warehouse-aware deferred/cash sales, exact-source atomic refunds, reliable Android/web barcode scanning, simplified stuck-operation cancellation, and deferred-sale terminology"
     },
+
     {
       "versionCode": 245,
       "date": "2026-08-06T00:00:00.000Z",
