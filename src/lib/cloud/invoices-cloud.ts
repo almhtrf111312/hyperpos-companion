@@ -561,7 +561,7 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     };
   }
 
-  if (!atomic.success) return false;
+  if (!atomic.success) return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
 
   // Secondary accounting cleanup is idempotent and only runs for the caller that
   // won the atomic refund transaction. It cannot restore stock again.
