@@ -177,13 +177,10 @@ export default function Invoices() {
     // Unique toast id per invoice → prevents duplicate stacked notifications on re-triggers
     const toastId = `refund-${invoiceLabel}`;
 
-    // ✅ Close dialog IMMEDIATELY and hide invoice from list (optimistic).
-    // The heavy work (stock restore + debt delete + profit reversal) runs in the background.
+    // ✅ Close the dialog immediately (non-blocking UX) but DO NOT change the
+    // invoice state until the server confirms the refund succeeded.
     setShowRefundDialog(false);
     setInvoiceToRefund(null);
-    setInvoices(prev => prev.map(inv =>
-      inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
-    ));
 
     // ✅ Offline path: queue and stop here
     if (!isOnline) {
@@ -201,6 +198,9 @@ export default function Invoices() {
     try {
         const result = await refundInvoiceCloud(invoiceLabel, 'online');
         if (typeof result === 'object' && result.alreadyRefunded) {
+          setInvoices(prev => prev.map(inv =>
+            inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+          ));
           toast.info(`الفاتورة ${invoiceLabel} مستردة بالفعل`, {
             id: toastId,
             description: 'لم تتم إضافة أي كمية جديدة إلى المخزون',
@@ -211,13 +211,22 @@ export default function Invoices() {
 
         const ok = result && (result === true || (result as RefundResult).success);
         if (!ok) {
-          toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
-          // Rollback optimistic hide
-          invalidateInvoicesCache();
-          const invoicesData = await loadInvoicesCloud();
-          setInvoices(invoicesData);
+          const reason = typeof result === 'object' ? (result as RefundResult).error : undefined;
+          toast.error(`فشل في استرداد ${invoiceLabel}`, {
+            id: toastId,
+            description: reason || 'لم يطرأ أي تغيير على الفاتورة أو المخزون',
+            duration: 5000,
+          });
+          // No optimistic change was made, so nothing to roll back.
           return;
         }
+
+        // Confirmed by the server → now reflect the refunded state in the list
+        setInvoices(prev => prev.map(inv =>
+          inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+        ));
+        invalidateInvoicesCache();
+
 
         // Refresh stats silently — don't block UI
         getInvoiceStatsCloud().then(setStats).catch(() => {});
