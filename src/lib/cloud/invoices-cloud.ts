@@ -480,6 +480,7 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 export interface RefundResult {
   success: boolean;
   alreadyRefunded?: boolean;
+  error?: string;
   restoredItemsCount: number;
   restoredUnitsCount: number;
   deletedDebtAmount: number;
@@ -489,6 +490,20 @@ export interface RefundResult {
   invoiceTotal: number;
   invoiceCurrency: string | null;
 }
+
+const failedRefund = (error: string): RefundResult => ({
+  success: false,
+  error,
+  restoredItemsCount: 0,
+  restoredUnitsCount: 0,
+  deletedDebtAmount: 0,
+  customerBalanceBefore: 0,
+  customerBalanceAfter: 0,
+  customerName: null,
+  invoiceTotal: 0,
+  invoiceCurrency: null,
+});
+
 
 // ✅ In-flight mutex: blocks concurrent refund calls for the same invoice
 // (protects against double-click race even before the network round-trip)
