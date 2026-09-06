@@ -173,6 +173,8 @@ export function CartPanel({
   const { user, profile } = useAuth();
   const { t } = useLanguage();
   const { activeWarehouse } = useWarehouse();
+  // المستودع الرئيسي يخزن كمياته في المنتج نفسه وليس في جدول مخزون المستودعات
+  const stockWarehouseId = activeWarehouse && activeWarehouse.type !== 'main' ? activeWarehouse.id : undefined;
   const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
   const { isOnline, syncImmediately } = useCloudSyncContext();
   const [showCashDialog, setShowCashDialog] = useState(false);
