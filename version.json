@@ -1,8 +1,13 @@
 {
-  "versionCode": 247,
-  "versionName": "1.0.18",
-  "lastUpdated": "2026-09-03T00:00:00.000Z",
+  "versionCode": 248,
+  "versionName": "1.0.19",
+  "lastUpdated": "2026-09-06T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 248,
+      "date": "2026-09-06T00:00:00.000Z",
+      "description": "v1.0.19 - Fixed 'insufficient stock (available: 0)' blocking cash and deferred sales: main warehouse now reads quantities from the product record instead of the empty warehouse stock table, and warehouse validation no longer blocks sales when the local warehouse cache is empty"
+    },
     {
       "versionCode": 247,
       "date": "2026-09-03T00:00:00.000Z",
@@ -13,7 +18,6 @@
       "date": "2026-08-07T00:00:00.000Z",
       "description": "v1.0.17 - Warehouse-aware deferred/cash sales, exact-source atomic refunds, reliable Android/web barcode scanning, simplified stuck-operation cancellation, and deferred-sale terminology"
     },
-
     {
       "versionCode": 245,
       "date": "2026-08-06T00:00:00.000Z",
