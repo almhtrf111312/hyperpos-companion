@@ -173,6 +173,8 @@ export function CartPanel({
   const { user, profile } = useAuth();
   const { t } = useLanguage();
   const { activeWarehouse } = useWarehouse();
+  // المستودع الرئيسي يخزن كمياته في المنتج نفسه وليس في جدول مخزون المستودعات
+  const stockWarehouseId = activeWarehouse && activeWarehouse.type !== 'main' ? activeWarehouse.id : undefined;
   const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
   const { isOnline, syncImmediately } = useCloudSyncContext();
   const [showCashDialog, setShowCashDialog] = useState(false);
@@ -430,7 +432,7 @@ export function CartPanel({
       }));
 
       if (!noInventory) {
-        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId, activeWarehouse?.id);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId, stockWarehouseId);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('المخزون غير كافٍ: ' + msgs.join('، '));
@@ -459,7 +461,7 @@ export function CartPanel({
             Object.entries(profitsByCategory).map(([k, v]) => [k, v * (1 - discountRatio)])
           ),
           stockItems: stockItemsLocal,
-          warehouseId: activeWarehouse?.id,
+          warehouseId: stockWarehouseId,
           wholesaleMode,
         },
       }, operationId);
@@ -622,12 +624,12 @@ export function CartPanel({
           Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(v * (1 - discountRatio))])
         ),
         stockItems: stockItemsLocal,
-        warehouseId: activeWarehouse?.id,
+        warehouseId: stockWarehouseId,
       };
 
       // Validate local stock availability before queuing (unless no-inventory mode)
       if (!noInventory) {
-        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId, activeWarehouse?.id);
+        const deductResult = await deductProductsLocalCache(stockItemsLocal, operationId, stockWarehouseId);
         if (!deductResult.success) {
           const msgs = deductResult.insufficientItems.map(i => `${i.productName} (المطلوب: ${i.requested}, المتاح: ${i.available})`);
           showToast.error('فشل في خصم المخزون محلياً: ' + msgs.join('، '));

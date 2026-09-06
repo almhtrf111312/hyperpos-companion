@@ -90,15 +90,24 @@ export const adjustWarehouseStockLocalCache = (
   items: Array<{ productId: string; quantity: number }>,
   direction: 'deduct' | 'restore',
 ): { success: boolean; insufficientItems: Array<{ productId: string; requested: number; available: number }> } => {
-  const stock = loadWarehouseStockLocally(warehouseId) || [];
+  const cached = loadWarehouseStockLocally(warehouseId);
+  const stock = cached || [];
   const totals = new Map<string, number>();
   for (const item of items) totals.set(item.productId, (totals.get(item.productId) || 0) + item.quantity);
+
+  // لا يوجد كاش محلي لهذا المستودع → لا نمنع البيع، الخادم هو المرجع النهائي
+  if (!cached || cached.length === 0) {
+    return { success: true, insufficientItems: [] };
+  }
 
   const insufficientItems: Array<{ productId: string; requested: number; available: number }> = [];
   if (direction === 'deduct') {
     for (const [productId, requested] of totals) {
-      const available = Number(stock.find(row => row.product_id === productId)?.quantity || 0);
-      if (available < requested) insufficientItems.push({ productId, requested, available });
+      const row = stock.find(entry => entry.product_id === productId);
+      if (!row) continue; // المنتج غير مُدرج في كاش المستودع → يتحقق الخادم منه
+      if (Number(row.quantity || 0) < requested) {
+        insufficientItems.push({ productId, requested, available: Number(row.quantity || 0) });
+      }
     }
   }
   if (insufficientItems.length > 0) return { success: false, insufficientItems };
