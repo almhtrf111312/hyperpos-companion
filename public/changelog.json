@@ -1,6 +1,16 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.19 - إصلاح رسالة «المخزون غير كافٍ (المتاح: 0)» التي كانت تمنع البيع النقدي والمؤجل: المستودع الرئيسي أصبح يقرأ الكميات من بطاقة المنتج بدل جدول مخزون المستودعات الفارغ",
+    "en": "v1.0.19 - Fixed the 'insufficient stock (available: 0)' error blocking cash and deferred sales: main warehouse now reads quantities from the product record"
+  },
+  {
+    "type": "fixed",
+    "ar": "لم يعد التحقق من مخزون المستودعات يمنع البيع عندما يكون الكاش المحلي للمستودع فارغًا، والخادم يبقى المرجع النهائي",
+    "en": "Warehouse stock validation no longer blocks sales when the local warehouse cache is empty; the server remains the final authority"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.18 - إصلاح فشل استرداد الفواتير النقدية والمؤجلة: كان الجدول المؤقت داخل دالة الاسترداد يرفض بنود المخزون الرئيسي بسبب قيد المفتاح الأساسي، فتفشل كل عملية استرداد",
     "en": "v1.0.18 - Fixed failing cash and deferred invoice refunds caused by the refund temp-table primary key rejecting main-inventory items"
   },
@@ -14,7 +24,6 @@
     "ar": "الفاتورة لم تعد تختفي من القائمة قبل تأكيد الخادم، وأصبح إشعار الفشل يعرض سبب الخطأ الحقيقي القادم من الخادم",
     "en": "Invoices no longer disappear before server confirmation, and failure notifications now show the real server error"
   },
-
   {
     "type": "fixed",
     "ar": "v1.0.17 - توحيد بيع الموزع النقدي والمؤجل مع مخزون عهدته، ومنع الرجوع الصامت إلى المخزون الرئيسي عند غياب الصنف من المستودع",
