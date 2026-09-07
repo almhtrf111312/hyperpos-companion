@@ -39,6 +39,7 @@ import Partners from "./pages/Partners";
 import Settings from "./pages/Settings";
 import Services from "./pages/Services";
 import Invoices from "./pages/Invoices";
+import InvoiceTracking from "./pages/InvoiceTracking";
 import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
 import CashShifts from "./pages/CashShifts";
@@ -249,6 +250,7 @@ const AppContent = () => {
           <Route path="/customers/*" element={<Customers />} />
           <Route path="/debts" element={<DebtsRedirect />} />
           <Route path="/invoices" element={<Invoices />} />
+          <Route path="/invoice-tracking" element={<InvoiceTracking />} />
           <Route path="/services" element={<Services />} />
           <Route path="/services/*" element={<Services />} />
           <Route path="/expenses" element={<Expenses />} />
