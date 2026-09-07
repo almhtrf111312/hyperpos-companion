@@ -17,7 +17,7 @@ import { loadQueue, QueuedOperation } from '@/lib/sync-queue';
 import { discardStuckOperation, retryStuckOperation } from '@/lib/sync-recovery';
 import { getPendingStockDeductions, PendingStockDeduction } from '@/lib/indexeddb-cache';
 import { loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
-import type { Invoice } from '@/lib/invoices-store';
+import type { Invoice } from '@/lib/cloud/invoices-cloud';
 
 type ItemState = 'deducted' | 'synced' | 'stuck';
 
@@ -122,8 +122,8 @@ const mapCloudInvoice = (invoice: Invoice): TrackedInvoice => ({
   progress: 100,
   state: 'synced',
   items: (invoice.items || []).map(item => ({
-    productId: String(item.productId ?? item.id ?? ''),
-    name: item.productName || 'منتج',
+    productId: String(item.id ?? ''),
+    name: item.name || 'منتج',
     quantity: num(item.quantity, 1),
     state: 'synced' as ItemState,
   })),
