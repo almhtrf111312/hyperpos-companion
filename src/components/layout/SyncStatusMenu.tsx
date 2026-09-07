@@ -303,7 +303,20 @@ export function SyncStatusMenu() {
             )}
           </div>
         )}
+
+        <div className="border-t border-border p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-center text-xs h-8"
+            onClick={() => { window.location.hash ? window.location.assign('#/invoice-tracking') : window.history.pushState({}, '', '/invoice-tracking'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+          >
+            <Receipt className="h-3.5 w-3.5 ml-1" />
+            شاشة تتبع الفواتير
+          </Button>
+        </div>
       </PopoverContent>
+
     </Popover>
   );
 }
