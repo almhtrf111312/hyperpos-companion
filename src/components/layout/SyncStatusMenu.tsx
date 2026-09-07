@@ -3,7 +3,8 @@
  * Displays in header: Online/Offline/Syncing with last 10 operations
  */
 import { useState, useEffect, useContext } from 'react';
-import { Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock, Database, Pause, Play, WifiOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Receipt, Cloud, CloudOff, RefreshCw, Check, AlertTriangle, Clock, Database, Pause, Play, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -20,6 +21,7 @@ import { StuckOperationsList } from './StuckOperationsList';
 
 export function SyncStatusMenu() {
   const { isRTL, t, language } = useLanguage();
+  const navigate = useNavigate();
   const cloudContext = useContext(CloudSyncContext);
   const isOnline = cloudContext?.isOnline ?? (typeof navigator !== 'undefined' ? navigator.onLine : true);
   const isSyncing = cloudContext?.isSyncing ?? false;
@@ -309,7 +311,7 @@ export function SyncStatusMenu() {
             variant="ghost"
             size="sm"
             className="w-full justify-center text-xs h-8"
-            onClick={() => { window.location.hash ? window.location.assign('#/invoice-tracking') : window.history.pushState({}, '', '/invoice-tracking'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+            onClick={() => navigate('/invoice-tracking')}
           >
             <Receipt className="h-3.5 w-3.5 ml-1" />
             شاشة تتبع الفواتير
