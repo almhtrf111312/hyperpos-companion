@@ -113,6 +113,7 @@ function toInvoice(cloud: CloudInvoice): Invoice {
   return {
     id: cloud.invoice_number || cloud.id,
     type: (cloud.invoice_type as InvoiceType) || 'sale',
+    customerId: cloud.customer_id || undefined,
     customerName: normalizeCustomerName(cloud.customer_name, cloud.payment_type as PaymentType),
     customerPhone: cloud.customer_phone || undefined,
     items: [], // Items loaded separately
