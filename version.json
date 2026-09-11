@@ -1,8 +1,13 @@
 {
-  "versionCode": 250,
-  "versionName": "1.0.21",
+  "versionCode": 251,
+  "versionName": "1.0.22",
   "lastUpdated": "2026-09-11T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 251,
+      "date": "2026-09-11T00:00:00.000Z",
+      "description": "v1.0.22 - Security: internal database functions no longer callable from the API, business functions restricted to signed-in users, per-installation local encryption key, device blocking is server-confirmed"
+    },
     {
       "versionCode": 250,
       "date": "2026-09-11T00:00:00.000Z",
