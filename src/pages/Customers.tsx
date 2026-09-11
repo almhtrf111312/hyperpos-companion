@@ -50,6 +50,12 @@ import {
   Customer
 } from '@/lib/cloud/customers-cloud';
 import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
+import {
+  loadCustomersStatsMap,
+  getCustomerStatsFrom,
+  filterCustomerInvoices,
+  remainingDebtOf,
+} from '@/lib/cloud/customer-stats';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
@@ -101,7 +107,19 @@ export default function Customers() {
     try {
       // ✅ للمالك: تحميل مع أسماء الكاشير
       const data = await loadCustomersWithCashierNamesCloud();
-      setCustomers(data);
+
+      // ✅ مصدر حقيقة واحد: الأرقام تُحسب من الفواتير النشطة
+      try {
+        const statsMap = await loadCustomersStatsMap();
+        setCustomers(
+          data.map(c => {
+            const s = getCustomerStatsFrom(statsMap, { id: c.id, name: c.name });
+            return { ...c, ...s };
+          })
+        );
+      } catch {
+        setCustomers(data);
+      }
     } catch (error) {
       console.error('Error loading customers:', error);
     } finally {
