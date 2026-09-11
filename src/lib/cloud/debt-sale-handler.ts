@@ -6,7 +6,7 @@
  */
 
 import { addToQueue, OperationType } from '@/lib/sync-queue';
-import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers-cloud';
+import { findOrCreateCustomerCloud, linkInvoiceToCustomerCloud } from './customers-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
 import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
@@ -158,7 +158,7 @@ export async function processDebtSaleWithOfflineSupport(
     // Customer bookkeeping is best-effort and must never block the debt invoice.
     if (!sale.alreadyProcessed) {
       const customer = await findOrCreateCustomerCloud(bundle.customerName, bundle.customerPhone).catch(() => null);
-      if (customer) await updateCustomerStatsCloud(customer.id, bundle.total, true).catch(() => false);
+      if (customer) await linkInvoiceToCustomerCloud(sale.invoiceNumber, customer.id).catch(() => {});
     }
     
     // Step 6: Record profit
