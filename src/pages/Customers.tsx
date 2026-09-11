@@ -276,10 +276,7 @@ export default function Customers() {
     setLoadingInvoices(true);
     try {
       const allInvoices = await loadInvoicesCloud();
-      const active = allInvoices.filter(
-        inv => inv.customerName === customer.name && inv.status !== 'refunded'
-      );
-      setCustomerInvoices(active);
+      setCustomerInvoices(filterCustomerInvoices(allInvoices, { id: customer.id, name: customer.name }));
     } catch (e) {
       console.error('Error loading customer invoices:', e);
     } finally {
