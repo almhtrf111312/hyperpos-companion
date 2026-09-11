@@ -284,10 +284,17 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
     confirmPendingProfitCloud(selectedDebt.invoiceId, paymentRatio);
 
-    // ✅ تحديث إحصائيات العميل في السحابة (خفض الدين)
+    // ✅ إعادة احتساب أرقام العميل من الفواتير النشطة بعد السداد
     try {
-      const customerId = selectedDebt.customerName; // استخدام الاسم للبحث
-      await updateCustomerStatsCloud(customerId, -paymentAmount, true);
+      const { loadCustomersCloud } = await import('@/lib/cloud/customers-cloud');
+      const { invalidateInvoicesCache } = await import('@/lib/cloud/invoices-cloud');
+      invalidateInvoicesCache();
+      const customers = await loadCustomersCloud();
+      const customer = customers.find(c =>
+        c.name.trim().toLowerCase() === (selectedDebt.customerName || '').trim().toLowerCase() ||
+        (selectedDebt.customerPhone && c.phone === selectedDebt.customerPhone)
+      );
+      if (customer) await updateCustomerStatsCloud(customer.id);
     } catch (err) {
       console.warn('[Debts] Failed to update customer stats cloud:', err);
     }

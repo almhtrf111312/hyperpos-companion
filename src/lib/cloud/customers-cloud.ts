@@ -280,32 +280,109 @@ export const findOrCreateCustomerCloud = async (name: string, phone?: string): P
   return customer;
 };
 
-// Update customer stats
+/**
+ * ✅ إعادة احتساب أرقام العميل من الفواتير النشطة (مصدر حقيقة واحد).
+ * البارامترات القديمة تُتجاهل ويُحتفظ بها فقط لتوافق النداءات الحالية.
+ */
 export const updateCustomerStatsCloud = async (
-  customerId: string, 
-  purchaseAmount: number, 
-  isDebt: boolean
+  customerId: string,
+  _legacyAmount?: number,
+  _legacyIsDebt?: boolean
 ): Promise<void> => {
-  const customers = await loadCustomersCloud();
-  const customer = customers.find(c => c.id === customerId);
-  
-  if (customer) {
-    await updateCustomerCloud(customerId, {
-      totalPurchases: customer.totalPurchases + purchaseAmount,
-      totalDebt: isDebt ? customer.totalDebt + purchaseAmount : customer.totalDebt,
-      invoiceCount: customer.invoiceCount + 1,
-      lastPurchase: new Date().toISOString(),
-    });
+  if (!customerId) return;
+
+  // نداءات قديمة كانت تمرّر الاسم بدل المعرّف — نحوّلها لمعرّف حقيقي
+  let resolvedId = customerId;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(customerId)) {
+    const customers = await loadCustomersCloud();
+    const match = customers.find(
+      c => c.name.trim().toLowerCase() === customerId.trim().toLowerCase()
+    );
+    if (!match) return;
+    resolvedId = match.id;
   }
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('total, debt_remaining, payment_type, status, created_at')
+    .eq('customer_id', resolvedId);
+
+  if (error) {
+    console.warn('[updateCustomerStatsCloud] failed to recompute:', error);
+    return;
+  }
+
+  const active = (data || []).filter(
+    inv => inv.status !== 'refunded' && inv.status !== 'cancelled'
+  );
+
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const totalPurchases = round2(active.reduce((s, inv) => s + (Number(inv.total) || 0), 0));
+  const totalDebt = round2(
+    active
+      .filter(inv => inv.payment_type === 'debt' && inv.status !== 'paid')
+      .reduce((s, inv) => {
+        const remaining = Number(inv.debt_remaining) || 0;
+        return s + (remaining > 0 ? remaining : Number(inv.total) || 0);
+      }, 0)
+  );
+  const lastPurchase = active
+    .map(inv => inv.created_at)
+    .filter(Boolean)
+    .sort()
+    .pop();
+
+  await updateCustomerCloud(resolvedId, {
+    totalPurchases,
+    totalDebt,
+    invoiceCount: active.length,
+    ...(lastPurchase ? { lastPurchase } : {}),
+  });
 };
 
-// Get customers stats
+/** ربط الفاتورة بسجل العميل ثم إعادة احتساب أرقامه */
+export const linkInvoiceToCustomerCloud = async (
+  invoiceNumber: string,
+  customerId: string
+): Promise<void> => {
+  const userId = getCurrentUserId();
+  if (!userId || !invoiceNumber || !customerId) return;
+  try {
+    await supabase
+      .from('invoices')
+      .update({ customer_id: customerId })
+      .eq('invoice_number', invoiceNumber)
+      .eq('user_id', userId);
+    const { invalidateInvoicesCache } = await import('./invoices-cloud');
+    invalidateInvoicesCache();
+  } catch (e) {
+    console.warn('[linkInvoiceToCustomerCloud] failed:', e);
+  }
+  await updateCustomerStatsCloud(customerId);
+};
+
+// Get customers stats — محسوبة من الفواتير النشطة
 export const getCustomersStatsCloud = async () => {
   const customers = await loadCustomersCloud();
+  const { loadCustomersStatsMap, getCustomerStatsFrom } = await import('./customer-stats');
+
+  let statsMap: Awaited<ReturnType<typeof loadCustomersStatsMap>> | null = null;
+  try {
+    statsMap = await loadCustomersStatsMap();
+  } catch {
+    statsMap = null;
+  }
+
+  const rows = customers.map(c =>
+    statsMap
+      ? getCustomerStatsFrom(statsMap, { id: c.id, name: c.name })
+      : { invoiceCount: c.invoiceCount, totalPurchases: c.totalPurchases, totalDebt: c.totalDebt }
+  );
+
   return {
     total: customers.length,
-    withDebt: customers.filter(c => c.totalDebt > 0).length,
-    totalDebt: customers.reduce((sum, c) => sum + c.totalDebt, 0),
-    totalPurchases: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
+    withDebt: rows.filter(r => r.totalDebt > 0).length,
+    totalDebt: rows.reduce((sum, r) => sum + r.totalDebt, 0),
+    totalPurchases: rows.reduce((sum, r) => sum + r.totalPurchases, 0),
   };
 };

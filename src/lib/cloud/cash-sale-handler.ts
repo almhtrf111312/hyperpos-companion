@@ -5,7 +5,7 @@
  * يضمن حفظ الفاتورة محلياً ومزامنتها لاحقاً
  */
 
-import { findOrCreateCustomerCloud, updateCustomerStatsCloud } from './customers-cloud';
+import { findOrCreateCustomerCloud, linkInvoiceToCustomerCloud } from './customers-cloud';
 import { addGrossProfit } from '@/lib/profits-store';
 import { addGrossProfitCloud } from './profits-cloud';
 import { distributeDetailedProfitCloud } from './partners-cloud';
@@ -86,9 +86,9 @@ export async function processCashSaleBundleFromQueue(
       ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
     }
 
-    // 5. Update customer stats (stock was deducted in the atomic transaction)
+    // 5. Link invoice to customer then recompute his stats from active invoices
     if (!sale.alreadyProcessed && customer) {
-      await updateCustomerStatsCloud(customer.id, bundle.total, false);
+      await linkInvoiceToCustomerCloud(sale.invoiceNumber, customer.id).catch(() => {});
     }
 
     console.log('[CashSale] Bundle synced successfully:', sale.invoiceNumber);
