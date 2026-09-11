@@ -53,11 +53,14 @@ function loadDeviceCache(): { isDeviceBlocked: boolean; deviceId: string | null;
 
 export function useDeviceBinding() {
   const { user } = useAuth();
+  // The local cache is a UX hint only and is never trusted to unblock a device.
+  // A blocked state is honoured immediately (fail closed); an unblocked state
+  // still waits for the server check to confirm it while we are online.
   const cached = loadDeviceCache();
+  const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   const [state, setState] = useState<DeviceBindingState>({
-    // ✅ If cache exists and device was not blocked, skip loading
-    isChecking: !cached || cached.isDeviceBlocked,
+    isChecking: !(isOffline && cached) || Boolean(cached?.isDeviceBlocked),
     isDeviceBlocked: cached?.isDeviceBlocked ?? false,
     deviceId: cached?.deviceId ?? null,
     registeredDeviceId: cached?.registeredDeviceId ?? null,
