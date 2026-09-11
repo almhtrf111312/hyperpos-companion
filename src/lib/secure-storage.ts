@@ -191,9 +191,11 @@ export const secureGet = <T = unknown>(key: string, options: SecureStorageOption
     const deviceKey = getDeviceKey();
     const decoded = decodeURIComponent(escape(atob(stored.d)));
     
-    // Decrypt
-    const keys = [APP_SECRET, deviceKey, stored.s];
-    const decrypted = xorDecrypt(decoded, keys);
+    // Decrypt (falls back to the legacy secret for values stored before rotation)
+    let decrypted = xorDecrypt(decoded, [getAppSecret(), deviceKey, stored.s]);
+    if (simpleHash(decrypted + stored.s) !== stored.h) {
+      decrypted = xorDecrypt(decoded, [LEGACY_APP_SECRET, deviceKey, stored.s]);
+    }
     
     // Verify integrity
     const hash = simpleHash(decrypted + stored.s);
