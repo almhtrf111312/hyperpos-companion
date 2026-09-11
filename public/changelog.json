@@ -1,6 +1,11 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.20 - إصلاح فشل التفعيل عن بُعد من حساب المدير العام: كان الخادم يُمنع من تعديل مدة الترخيص وعدد الكاشيرات ونوع الباقة",
+    "en": "v1.0.20 - Fixed remote activation failing from the boss account: the server was blocked from changing license duration, cashier limit and tier"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.20 - توحيد أرقام العميل: عدد الفواتير والمشتريات والديون تُحسب الآن من الفواتير النشطة فقط، فاختفى التناقض بين شاشة قائمة العملاء وبطاقة تفاصيل العميل",
     "en": "v1.0.20 - Unified customer figures: invoice count, purchases and debts are computed from active invoices only, removing the mismatch between the customers list and the customer details card"
   },
