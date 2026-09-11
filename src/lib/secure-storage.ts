@@ -88,7 +88,30 @@ interface StoredData {
 }
 
 const CURRENT_VERSION = 1;
-const APP_SECRET = 'HyperPOS2024SecureStorage';
+
+// Legacy key that used to be hardcoded in the bundle. Kept ONLY so existing
+// stored values can still be decrypted; never used to encrypt new values.
+const LEGACY_APP_SECRET = 'HyperPOS2024SecureStorage';
+const APP_SECRET_STORAGE = 'hp_app_secret';
+
+/**
+ * Per-installation secret, generated randomly on first use.
+ * NOTE: this is obfuscation for locally cached data only. It is NOT a security
+ * boundary — never make a trust/authorization decision based on local storage.
+ */
+const getAppSecret = (): string => {
+  try {
+    const existing = localStorage.getItem(APP_SECRET_STORAGE);
+    if (existing) return existing;
+    const array = new Uint8Array(24);
+    crypto.getRandomValues(array);
+    const secret = Array.from(array).map(b => b.toString(36)).join('');
+    localStorage.setItem(APP_SECRET_STORAGE, secret);
+    return secret;
+  } catch {
+    return LEGACY_APP_SECRET;
+  }
+};
 
 /**
  * Securely store data with encryption
@@ -113,7 +136,7 @@ export const secureSet = (key: string, data: unknown, options: SecureStorageOpti
     const deviceKey = getDeviceKey();
     
     // Multi-layer encryption
-    const keys = [APP_SECRET, deviceKey, salt];
+    const keys = [getAppSecret(), deviceKey, salt];
     const encrypted = xorEncrypt(dataString, keys);
     
     // Base64 encode for safe storage
@@ -168,9 +191,11 @@ export const secureGet = <T = unknown>(key: string, options: SecureStorageOption
     const deviceKey = getDeviceKey();
     const decoded = decodeURIComponent(escape(atob(stored.d)));
     
-    // Decrypt
-    const keys = [APP_SECRET, deviceKey, stored.s];
-    const decrypted = xorDecrypt(decoded, keys);
+    // Decrypt (falls back to the legacy secret for values stored before rotation)
+    let decrypted = xorDecrypt(decoded, [getAppSecret(), deviceKey, stored.s]);
+    if (simpleHash(decrypted + stored.s) !== stored.h) {
+      decrypted = xorDecrypt(decoded, [LEGACY_APP_SECRET, deviceKey, stored.s]);
+    }
     
     // Verify integrity
     const hash = simpleHash(decrypted + stored.s);

@@ -1,6 +1,11 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.22 - تعزيز الأمان: الدوال الداخلية لقاعدة البيانات لم تعد قابلة للاستدعاء من الخارج، والعمليات محصورة بالمستخدمين المسجّلين، ومفتاح تشفير محلي خاص بكل جهاز، ومنع الأجهزة يُؤكَّد من الخادم",
+    "en": "v1.0.22 - Security hardening: internal database functions are no longer callable from outside, operations are limited to signed-in users, a per-installation local encryption key is used, and device blocking is confirmed by the server"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.21 - تعزيز الأمان: لم يعد بإمكان أي مستخدم قراءة قيمة مخزون متجر آخر أو العبث بترقيم فواتيره، وإعدادات التطبيق لم تعد تكشف سوى بيانات التواصل العامة",
     "en": "v1.0.21 - Security hardening: no user can read another store's inventory value or tamper with its invoice numbering, and app settings only expose public contact details"
   },
