@@ -136,7 +136,7 @@ export const secureSet = (key: string, data: unknown, options: SecureStorageOpti
     const deviceKey = getDeviceKey();
     
     // Multi-layer encryption
-    const keys = [APP_SECRET, deviceKey, salt];
+    const keys = [getAppSecret(), deviceKey, salt];
     const encrypted = xorEncrypt(dataString, keys);
     
     // Base64 encode for safe storage
