@@ -612,7 +612,7 @@ export default function Customers() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold">{selectedCustomer.name}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedCustomer.invoiceCount} فاتورة نشطة</p>
+                  <p className="text-sm text-muted-foreground">{customerInvoices.length} فاتورة نشطة</p>
                 </div>
               </div>
 
@@ -647,10 +647,10 @@ export default function Customers() {
                   <p className="text-xs text-muted-foreground">الديون المستحقة</p>
                   <p className={cn(
                     "text-xl font-bold",
-                    customerInvoices.filter(i => i.paymentType === 'debt').reduce((s, i) => s + i.total, 0) > 0
+                    customerInvoices.reduce((s, i) => s + remainingDebtOf(i), 0) > 0
                       ? "text-destructive" : "text-success"
                   )}>
-                    {formatCurrency(customerInvoices.filter(i => i.paymentType === 'debt').reduce((s, i) => s + i.total, 0))}
+                    {formatCurrency(customerInvoices.reduce((s, i) => s + remainingDebtOf(i), 0))}
                   </p>
                 </div>
               </div>
