@@ -411,19 +411,19 @@ export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
         }
       }
 
-      // 3b. خفض total_debt للعميل
-      if (debt.customerName && debt.remainingDebt > 0) {
+      // 3b. ✅ إعادة احتساب أرقام العميل من الفواتير النشطة
+      if (debt.customerName) {
         try {
-          const { loadCustomersCloud, updateCustomerCloud, invalidateCustomersCache } = await import('./customers-cloud');
+          const { loadCustomersCloud, updateCustomerStatsCloud, invalidateCustomersCache } = await import('./customers-cloud');
+          const { invalidateInvoicesCache } = await import('./invoices-cloud');
+          invalidateInvoicesCache();
           const customers = await loadCustomersCloud();
           const customer = customers.find(c =>
             c.name.trim().toLowerCase() === debt.customerName.trim().toLowerCase() ||
             (debt.customerPhone && c.phone === debt.customerPhone)
           );
           if (customer) {
-            await updateCustomerCloud(customer.id, {
-              totalDebt: Math.max(0, customer.totalDebt - debt.remainingDebt),
-            });
+            await updateCustomerStatsCloud(customer.id);
             invalidateCustomersCache();
             emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
           }

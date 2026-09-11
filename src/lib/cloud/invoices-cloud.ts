@@ -462,7 +462,7 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   // Find by invoice_number
   const { data: cloudInvoice } = await sb
     .from('invoices')
-    .select('id')
+    .select('id, customer_id')
     .eq('invoice_number', id)
     .eq('user_id', getCurrentUserId())
     .maybeSingle();
@@ -474,6 +474,16 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   if (success) {
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
+
+    // ✅ إعادة احتساب أرقام العميل بدون هذه الفاتورة
+    if (cloudInvoice.customer_id) {
+      try {
+        const { updateCustomerStatsCloud } = await import('./customers-cloud');
+        await updateCustomerStatsCloud(cloudInvoice.customer_id);
+      } catch (e) {
+        console.warn('[deleteInvoiceCloud] failed to refresh customer stats:', e);
+      }
+    }
   }
 
   return success;
