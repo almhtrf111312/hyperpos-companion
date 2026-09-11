@@ -1,8 +1,13 @@
 {
-  "versionCode": 249,
-  "versionName": "1.0.20",
-  "lastUpdated": "2026-09-09T00:00:00.000Z",
+  "versionCode": 250,
+  "versionName": "1.0.21",
+  "lastUpdated": "2026-09-11T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 250,
+      "date": "2026-09-11T00:00:00.000Z",
+      "description": "v1.0.21 - Security: inventory value and invoice numbering functions now reject requests for other businesses; app settings expose only public contact details"
+    },
     {
       "versionCode": 249,
       "date": "2026-09-09T00:00:00.000Z",

@@ -1,6 +1,11 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.21 - تعزيز الأمان: لم يعد بإمكان أي مستخدم قراءة قيمة مخزون متجر آخر أو العبث بترقيم فواتيره، وإعدادات التطبيق لم تعد تكشف سوى بيانات التواصل العامة",
+    "en": "v1.0.21 - Security hardening: no user can read another store's inventory value or tamper with its invoice numbering, and app settings only expose public contact details"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.20 - إصلاح فشل التفعيل عن بُعد من حساب المدير العام: كان الخادم يُمنع من تعديل مدة الترخيص وعدد الكاشيرات ونوع الباقة",
     "en": "v1.0.20 - Fixed remote activation failing from the boss account: the server was blocked from changing license duration, cashier limit and tier"
   },
