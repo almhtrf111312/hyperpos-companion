@@ -1,8 +1,13 @@
 {
-  "versionCode": 248,
-  "versionName": "1.0.19",
-  "lastUpdated": "2026-09-06T00:00:00.000Z",
+  "versionCode": 249,
+  "versionName": "1.0.20",
+  "lastUpdated": "2026-09-09T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 249,
+      "date": "2026-09-09T00:00:00.000Z",
+      "description": "v1.0.20 - Single source of truth for customer figures: invoice count, purchases and outstanding debt are always computed from active invoices; invoices are linked to customer records; stats recomputed on sale, payment, refund and manual deletion; one-time data correction of historical customer totals"
+    },
     {
       "versionCode": 248,
       "date": "2026-09-06T00:00:00.000Z",

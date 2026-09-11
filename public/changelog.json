@@ -1,6 +1,21 @@
 [
   {
     "type": "fixed",
+    "ar": "v1.0.20 - توحيد أرقام العميل: عدد الفواتير والمشتريات والديون تُحسب الآن من الفواتير النشطة فقط، فاختفى التناقض بين شاشة قائمة العملاء وبطاقة تفاصيل العميل",
+    "en": "v1.0.20 - Unified customer figures: invoice count, purchases and debts are computed from active invoices only, removing the mismatch between the customers list and the customer details card"
+  },
+  {
+    "type": "fixed",
+    "ar": "لم تعد الفواتير المستردة أو المحذوفة تترك ديونًا وهمية في حساب العميل، وتُعاد أرقامه تلقائيًا بعد كل بيع أو سداد أو استرداد أو حذف",
+    "en": "Refunded or deleted invoices no longer leave phantom debt on a customer; figures are recalculated after every sale, payment, refund or deletion"
+  },
+  {
+    "type": "improved",
+    "ar": "ربط كل فاتورة بسجل العميل بدل الاعتماد على تطابق الاسم، مع تصحيح لمرة واحدة لأرقام كل العملاء السابقين",
+    "en": "Every invoice is now linked to the customer record instead of relying on name matching, with a one-time correction of all historical customer totals"
+  },
+  {
+    "type": "fixed",
     "ar": "v1.0.19 - إصلاح رسالة «المخزون غير كافٍ (المتاح: 0)» التي كانت تمنع البيع النقدي والمؤجل: المستودع الرئيسي أصبح يقرأ الكميات من بطاقة المنتج بدل جدول مخزون المستودعات الفارغ",
     "en": "v1.0.19 - Fixed the 'insufficient stock (available: 0)' error blocking cash and deferred sales: main warehouse now reads quantities from the product record"
   },
