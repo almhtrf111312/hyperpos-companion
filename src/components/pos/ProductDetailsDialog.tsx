@@ -129,7 +129,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
                 </div>
                 <p className="font-bold text-sm text-green-600">${product.price}</p>
               </div>
-              {product.bulkSalePrice && product.bulkSalePrice > 0 && (
+              {!!product.bulkSalePrice && product.bulkSalePrice > 0 && (
                 <div className="glass-card p-3 rounded-xl">
                   <div className="flex items-center gap-2 mb-1">
                     <Box className="w-4 h-4 text-blue-500" />
@@ -140,17 +140,17 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
                   <p className="font-bold text-sm text-blue-600">${product.bulkSalePrice}</p>
                 </div>
               )}
-              {(product.costPrice || product.bulkCostPrice) && (
+              {(!!product.costPrice || !!product.bulkCostPrice) && (
                 <div className="glass-card p-4 rounded-xl">
                   <h4 className="font-semibold mb-2 text-sm">{t('products.costPrice')}</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    {product.costPrice && (
+                    {!!product.costPrice && (
                       <div>
                         <span className="text-muted-foreground">{product.smallUnit || t('products.unitPiece')}: </span>
                         <span className="font-semibold">${product.costPrice}</span>
                       </div>
                     )}
-                    {product.bulkCostPrice && product.bulkCostPrice > 0 && (
+                    {!!product.bulkCostPrice && product.bulkCostPrice > 0 && (
                       <div>
                         <span className="text-muted-foreground">{product.bulkUnit || t('products.unitCarton')}: </span>
                         <span className="font-semibold">${product.bulkCostPrice}</span>
@@ -159,7 +159,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
                   </div>
                 </div>
               )}
-              {product.costPrice && product.costPrice > 0 && (
+              {!!product.costPrice && product.costPrice > 0 && (
                 <div className="glass-card p-4 rounded-xl bg-primary/5">
                   <h4 className="font-semibold mb-2 text-sm">{t('products.profitMargin')}</h4>
                   <div className="text-sm">

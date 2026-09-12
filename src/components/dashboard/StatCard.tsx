@@ -61,10 +61,13 @@ const iconColorStyles = {
 
 function extractNumber(value: string | number): { num: number; prefix: string; suffix: string } {
   if (typeof value === 'number') return { num: value, prefix: '', suffix: '' };
-  const match = value.match(/^([^\d-]*)([-\d,.]+)(.*)$/);
-  if (!match) return { num: 0, prefix: '', suffix: value };
-  const num = parseFloat(match[2].replace(/,/g, ''));
-  return { num: isNaN(num) ? 0 : num, prefix: match[1], suffix: match[3] };
+  let start = 0;
+  while (start < value.length && !/[\d-]/.test(value[start])) start++;
+  if (start === value.length) return { num: 0, prefix: '', suffix: value };
+  let end = start;
+  while (end < value.length && /[-\d,.]/.test(value[end])) end++;
+  const num = Number.parseFloat(value.slice(start, end).replace(/,/g, ''));
+  return { num: Number.isNaN(num) ? 0 : num, prefix: value.slice(0, start), suffix: value.slice(end) };
 }
 
 function formatAnimatedNumber(num: number, original: string | number): string {

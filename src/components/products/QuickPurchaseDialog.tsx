@@ -47,8 +47,8 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     }
 
     setLoading(true);
-    const totalCost = parseFloat(costPrice) * parseInt(quantity || '1');
-    const qtyNum = parseInt(quantity || '1');
+    const totalCost = Number.parseFloat(costPrice) * Number.parseInt(quantity || '1');
+    const qtyNum = Number.parseInt(quantity || '1');
 
     // فحص الاتصال الفعلي بالإنترنت (وليس فقط الشبكة)
     const hasInternet = await checkRealInternetAccess(15000);
@@ -57,7 +57,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
       addToQueue('quick_purchase', {
         productName,
         quantity: qtyNum,
-        costPrice: parseFloat(costPrice),
+        costPrice: Number.parseFloat(costPrice),
         totalCost,
         imageUrl: imageUrl || undefined,
       });
@@ -104,7 +104,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           invoice_id: invoice.id,
           product_name: productName,
           quantity: qtyNum,
-          cost_price: parseFloat(costPrice),
+          cost_price: Number.parseFloat(costPrice),
           total_cost: totalCost,
         });
 
@@ -118,7 +118,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
       addToQueue('quick_purchase', {
         productName,
         quantity: qtyNum,
-        costPrice: parseFloat(costPrice),
+        costPrice: Number.parseFloat(costPrice),
         totalCost,
         imageUrl: imageUrl || undefined,
       });
@@ -178,7 +178,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             <div className="p-2 bg-muted rounded-lg text-center">
               <span className="text-sm text-muted-foreground">{t('common.total')}: </span>
               <span className="font-bold text-foreground">
-                ${(parseFloat(costPrice || '0') * parseInt(quantity || '1')).toFixed(2)}
+                ${(Number.parseFloat(costPrice || '0') * Number.parseInt(quantity || '1')).toFixed(2)}
               </span>
             </div>
           )}

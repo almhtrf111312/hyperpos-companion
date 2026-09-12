@@ -30,10 +30,10 @@ let setVersion = null;
 
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--increment' && args[i + 1]) {
-        incrementBy = parseInt(args[i + 1], 10);
+        incrementBy = Number.parseInt(args[i + 1], 10);
         i++;
     } else if (args[i] === '--set' && args[i + 1]) {
-        setVersion = parseInt(args[i + 1], 10);
+        setVersion = Number.parseInt(args[i + 1], 10);
         i++;
     }
 }

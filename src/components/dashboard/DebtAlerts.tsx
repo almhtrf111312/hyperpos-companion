@@ -136,7 +136,15 @@ export function DebtAlerts() {
                   config.borderColor
                 )}
                 style={{ animationDelay: `${index * 50}ms` }}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleDebtClick(debt.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleDebtClick(debt.id);
+                  }
+                }}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">

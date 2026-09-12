@@ -30,7 +30,8 @@ export function LicenseWarningBadge() {
   const isUrgent = remainingDays <= 14;
 
   return (
-    <div 
+    <button
+      type="button"
       className={cn(
         "fixed z-50 flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg cursor-pointer transition-all duration-300 hover:scale-105",
         "top-4 left-4",

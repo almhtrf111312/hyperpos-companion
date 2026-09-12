@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Undo2, Smartphone, UserCheck } from 'lucide-react';
+import { Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
@@ -172,8 +172,16 @@ export default function Settings() {
   const { t, isRTL } = useLanguage();
   const { user: currentUser } = useAuth();
   const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'store');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab');
+  const setActiveTab = (tabId: string | null) => {
+    if (tabId) {
+      setSearchParams({ tab: tabId });
+    } else {
+      setSearchParams({});
+    }
+    window.scrollTo({ top: 0 });
+  };
   const [isSavingUser, setIsSavingUser] = useState(false);
   const navigate = useNavigate();
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
@@ -1943,81 +1951,101 @@ export default function Settings() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 overflow-x-hidden max-w-full">
-      {/* Header */}
-      <div className="flex items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
-        </div>
-      </div>
+      {activeTab === null ? (
+        <>
+          {/* Header */}
+          <div className="flex items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
+              <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
+            </div>
+          </div>
 
-      {/* Tabs Grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-full">
-        {settingsTabs
-          .filter(tab => {
-            if (isBoss) return true;
-            if (isOwnerAdmin && !(tab as any).bossOnly) return true;
-            return !tab.adminOnly && !(tab as any).bossOnly;
-          })
-          .map((tab) => (
+          {/* Tabs Grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-full">
+            {settingsTabs
+              .filter(tab => {
+                if (isBoss) return true;
+                if (isOwnerAdmin && !(tab as any).bossOnly) return true;
+                return !tab.adminOnly && !(tab as any).bossOnly;
+              })
+              .map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1 p-2 md:p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[88px] overflow-hidden min-w-0",
+                    (tab as any).danger
+                      ? "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 hover:scale-[1.01]"
+                      : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
+                    (tab as any).danger
+                      ? "bg-red-100 text-red-600"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
+                  </div>
+                  <span
+                    className={cn(
+                      "font-medium text-[10px] md:text-[11px] text-center leading-[1.2] w-full",
+                      (tab as any).danger ? "text-red-700" : "text-foreground"
+                    )}
+                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', hyphens: 'auto' }}
+                  >
+                    {tab.label}
+                  </span>
+                  {/* Tooltip on hover - desktop only */}
+                  {(t(`tooltip.settings.${tab.id}` as any) !== `tooltip.settings.${tab.id}`) && (
+                    <div className={cn(
+                      "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
+                      "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
+                      "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
+                      "border border-border min-w-[160px] max-w-[220px] pointer-events-none hidden md:block"
+                    )}>
+                      <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                        {t(`tooltip.settings.${tab.id}` as any)}
+                      </p>
+                    </div>
+                  )}
+                </button>
+              ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Sub-page header with back button */}
+          <div className="flex items-center gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 p-2 md:p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[88px] overflow-hidden min-w-0",
-                (tab as any).danger
-                  ? activeTab === tab.id
-                    ? "border-red-600 bg-red-600 shadow-lg scale-[1.02]"
-                    : "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 hover:scale-[1.01]"
-                  : activeTab === tab.id
-                    ? "border-primary bg-primary shadow-lg scale-[1.02]"
-                    : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
-              )}
+              type="button"
+              onClick={() => setActiveTab(null)}
+              aria-label={t('common.back') || 'رجوع'}
+              className="flex items-center justify-center w-10 h-10 rounded-xl border border-border bg-card hover:bg-muted transition-colors flex-shrink-0"
             >
-              <div className={cn(
-                "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
-                (tab as any).danger
-                  ? activeTab === tab.id
-                    ? "bg-white/20 text-white"
-                    : "bg-red-100 text-red-600"
-                  : activeTab === tab.id
-                    ? "bg-white/20 text-white"
-                    : "bg-muted text-muted-foreground"
-              )}>
-                <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
-              </div>
-              <span
-                className={cn(
-                  "font-medium text-[10px] md:text-[11px] text-center leading-[1.2] w-full",
-                  (tab as any).danger
-                    ? activeTab === tab.id ? "text-white" : "text-red-700"
-                    : activeTab === tab.id ? "text-white" : "text-foreground"
-                )}
-                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', hyphens: 'auto' }}
-              >
-                {tab.label}
-              </span>
-              {/* Tooltip on hover - desktop only */}
-              {(t(`tooltip.settings.${tab.id}` as any) !== `tooltip.settings.${tab.id}`) && (
-                <div className={cn(
-                  "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
-                  "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
-                  "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
-                  "border border-border min-w-[160px] max-w-[220px] pointer-events-none hidden md:block"
-                )}>
-                  <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                    {t(`tooltip.settings.${tab.id}` as any)}
-                  </p>
-                </div>
-              )}
+              {isRTL ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
             </button>
-          ))}
-      </div>
+            {(() => {
+              const current = settingsTabs.find(tab => tab.id === activeTab);
+              if (!current) return null;
+              return (
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <current.icon className="w-5 h-5" />
+                  </div>
+                  <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">{current.label}</h1>
+                </div>
+              );
+            })()}
+          </div>
 
-      {/* Content */}
-      <div className="bg-card rounded-2xl border border-border p-4 md:p-6 overflow-hidden max-w-full">
-        {renderTabContent()}
-      </div>
+          {/* Content */}
+          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 overflow-hidden max-w-full">
+            {renderTabContent()}
+          </div>
+        </>
+      )}
 
       {/* User Dialog */}
       <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
