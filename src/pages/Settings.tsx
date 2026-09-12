@@ -172,8 +172,16 @@ export default function Settings() {
   const { t, isRTL } = useLanguage();
   const { user: currentUser } = useAuth();
   const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'store');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab');
+  const setActiveTab = (tabId: string | null) => {
+    if (tabId) {
+      setSearchParams({ tab: tabId });
+    } else {
+      setSearchParams({});
+    }
+    window.scrollTo({ top: 0 });
+  };
   const [isSavingUser, setIsSavingUser] = useState(false);
   const navigate = useNavigate();
   const { isBoss, isAdmin: isOwnerAdmin } = useUserRole();
