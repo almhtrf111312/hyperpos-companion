@@ -1,8 +1,13 @@
 {
-  "versionCode": 251,
-  "versionName": "1.0.22",
-  "lastUpdated": "2026-09-11T00:00:00.000Z",
+  "versionCode": 252,
+  "versionName": "1.0.23",
+  "lastUpdated": "2026-09-12T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 252,
+      "date": "2026-09-12T00:00:00.000Z",
+      "description": "v1.0.23 - Dependency security fixes: removed unused xlsx packages, updated jspdf, react-router and the build/PWA toolchain, and refreshed all transitive packages to patched versions (ws, minimatch, brace-expansion, dompurify, fflate, lodash, rollup, ajv, fast-uri, picomatch, tmp and others)"
+    },
     {
       "versionCode": 251,
       "date": "2026-09-11T00:00:00.000Z",

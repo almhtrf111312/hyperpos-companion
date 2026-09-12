@@ -1,5 +1,10 @@
 [
   {
+    "type": "security",
+    "ar": "v1.0.23 - إصلاح ثغرات مكتبات البرنامج: إزالة مكتبات إكسل غير المستخدمة، وتحديث مكتبات PDF والتنقل وأدوات البناء، وتحديث جميع المكتبات الداخلية إلى إصدارات مُصلحة",
+    "en": "v1.0.23 - Dependency security fixes: removed unused Excel libraries, updated PDF, router and build toolchain, and refreshed all internal libraries to patched versions"
+  },
+  {
     "type": "fixed",
     "ar": "v1.0.22 - تعزيز الأمان: الدوال الداخلية لقاعدة البيانات لم تعد قابلة للاستدعاء من الخارج، والعمليات محصورة بالمستخدمين المسجّلين، ومفتاح تشفير محلي خاص بكل جهاز، ومنع الأجهزة يُؤكَّد من الخادم",
     "en": "v1.0.22 - Security hardening: internal database functions are no longer callable from outside, operations are limited to signed-in users, a per-installation local encryption key is used, and device blocking is confirmed by the server"
