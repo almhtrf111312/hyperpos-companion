@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Undo2, Smartphone, UserCheck } from 'lucide-react';
+import { Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
