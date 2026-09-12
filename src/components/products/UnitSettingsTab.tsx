@@ -86,16 +86,16 @@ export function UnitSettingsTab({ data, onChange, quantityInPieces, pieceCostPri
               if (value === '') {
                 onChange({ conversionFactor: 0 });
               } else {
-                const num = parseInt(value, 10);
-                if (!isNaN(num) && num >= 0) {
+                const num = Number.parseInt(value, 10);
+                if (!Number.isNaN(num) && num >= 0) {
                   onChange({ conversionFactor: num });
                 }
               }
             }}
             onBlur={(e) => {
               // عند مغادرة الحقل، تأكد من أن القيمة لا تقل عن 1
-              const value = parseInt(e.target.value, 10);
-              if (isNaN(value) || value < 1) {
+              const value = Number.parseInt(e.target.value, 10);
+              if (Number.isNaN(value) || value < 1) {
                 onChange({ conversionFactor: 1 });
               }
             }}
