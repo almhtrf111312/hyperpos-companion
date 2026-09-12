@@ -153,13 +153,24 @@ export function NativeCameraPreview({
                 zIndex: 99999,
                 background: 'rgba(0,0,0,0.95)',
             }}
+            role="button"
+            tabIndex={0}
+            aria-label="إغلاق الكاميرا"
             onClick={handleClose}
+            onKeyDown={(e) => {
+                if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleClose();
+                }
+            }}
         >
             {/* Modal container — بدون طبقات تمويه */}
             <div
                 className="relative w-[88vw] max-w-[340px] rounded-2xl overflow-hidden bg-black shadow-2xl"
                 style={{ maxHeight: '70vh' }}
+                role="presentation"
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
             >
                 {/* Header — خلفية سوداء صلبة بدون gradient */}
                 <div className="flex items-center justify-between px-3 py-2.5 bg-black">

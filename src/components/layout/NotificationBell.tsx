@@ -228,7 +228,15 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                           "p-4 hover:bg-muted/50 transition-colors cursor-pointer relative",
                           !notification.read && "bg-primary/5"
                         )}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => handleNotificationClick(notification)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleNotificationClick(notification);
+                          }
+                        }}
                       >
                         <div className="flex gap-3">
                           <div className={cn("p-2 rounded-lg flex-shrink-0", config.bgColor)}>

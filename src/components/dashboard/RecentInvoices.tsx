@@ -313,7 +313,15 @@ export function RecentInvoices() {
                     index % 2 === 0 ? "bg-muted/20" : "bg-transparent",
                     index < invoices.length - 1 && "border-b border-border/30"
                   )}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleViewInvoice(invoice)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleViewInvoice(invoice);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
