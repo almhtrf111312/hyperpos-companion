@@ -1420,10 +1420,11 @@ export function CartPanel({
               </div>
               {isNewCustomer && (
                 <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <label className="text-sm font-medium mb-1.5 block text-warning">
+                  <label htmlFor="cart-new-customer-phone" className="text-sm font-medium mb-1.5 block text-warning">
                     رقم الهاتف * (مطلوب لعميل جديد)
                   </label>
                   <Input
+                    id="cart-new-customer-phone"
                     placeholder="+963 xxx xxx xxx"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
@@ -1479,24 +1480,27 @@ export function CartPanel({
           <div className="space-y-4 py-4">
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
+                <label htmlFor="cart-customer-name" className="text-sm font-medium mb-1.5 block">الاسم *</label>
                 <Input
+                  id="cart-customer-name"
                   placeholder="اسم العميل"
                   value={newCustomer.name}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+                <label htmlFor="cart-customer-phone" className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
                 <Input
+                  id="cart-customer-phone"
                   placeholder="+963 xxx xxx xxx"
                   value={newCustomer.phone}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+                <label htmlFor="cart-customer-email" className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
                 <Input
+                  id="cart-customer-email"
                   placeholder="email@example.com"
                   value={newCustomer.email}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))}
