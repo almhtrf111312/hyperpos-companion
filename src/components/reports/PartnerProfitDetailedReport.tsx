@@ -68,7 +68,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
         }
       });
     });
-    return Array.from(categories).sort();
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, 'ar'));
   }, [partners]);
 
   // Process detailed profit data

@@ -310,7 +310,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     {(!effectiveCollapsed || isMobile) && (
                       <>
                         <span className="text-sm truncate">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
-                        {item.badge && (
+                        {!!item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                             {item.badge}
                           </span>

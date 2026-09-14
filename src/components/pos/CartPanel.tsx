@@ -76,8 +76,8 @@ function EditablePrice({ value, onChange, className }: { value: number; classNam
 
   const commit = () => {
     setIsEditing(false);
-    const parsed = parseFloat(localValue);
-    if (!isNaN(parsed) && parsed >= 0) {
+    const parsed = Number.parseFloat(localValue);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
       onChange(parsed);
     } else {
       setLocalValue(String(value)); // revert
@@ -1058,7 +1058,7 @@ export function CartPanel({
                 <div className="flex items-center justify-between gap-1.5 mb-1.5">
                   <div className="flex-1 min-w-0 flex items-center gap-1.5">
                     <h4 className="font-semibold text-xs leading-tight line-clamp-1 text-foreground">{item.name}</h4>
-                    {item.bulkSalePrice && item.bulkSalePrice > 0 && (
+                    {!!item.bulkSalePrice && item.bulkSalePrice > 0 && (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${item.unit === 'bulk'
                           ? 'bg-primary/20 text-primary'
@@ -1420,10 +1420,11 @@ export function CartPanel({
               </div>
               {isNewCustomer && (
                 <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <label className="text-sm font-medium mb-1.5 block text-warning">
+                  <label htmlFor="cart-new-customer-phone" className="text-sm font-medium mb-1.5 block text-warning">
                     رقم الهاتف * (مطلوب لعميل جديد)
                   </label>
                   <Input
+                    id="cart-new-customer-phone"
                     placeholder="+963 xxx xxx xxx"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
@@ -1479,24 +1480,27 @@ export function CartPanel({
           <div className="space-y-4 py-4">
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">الاسم *</label>
+                <label htmlFor="cart-customer-name" className="text-sm font-medium mb-1.5 block">الاسم *</label>
                 <Input
+                  id="cart-customer-name"
                   placeholder="اسم العميل"
                   value={newCustomer.name}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+                <label htmlFor="cart-customer-phone" className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
                 <Input
+                  id="cart-customer-phone"
                   placeholder="+963 xxx xxx xxx"
                   value={newCustomer.phone}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+                <label htmlFor="cart-customer-email" className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
                 <Input
+                  id="cart-customer-email"
                   placeholder="email@example.com"
                   value={newCustomer.email}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))}

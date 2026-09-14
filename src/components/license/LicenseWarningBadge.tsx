@@ -50,6 +50,6 @@ export function LicenseWarningBadge() {
         {`${isTrial ? t('license.trialPrefix') : ''}${remainingDays} ${remainingDays === 1 ? t('license.days') : t('license.daysPlural')} ${t('license.daysLeft')}`}
       </span>
       <X className="w-3 h-3 flex-shrink-0 opacity-70 hover:opacity-100" />
-    </div>
+    </button>
   );
 }
