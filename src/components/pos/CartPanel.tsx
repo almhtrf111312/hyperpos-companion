@@ -76,8 +76,8 @@ function EditablePrice({ value, onChange, className }: { value: number; classNam
 
   const commit = () => {
     setIsEditing(false);
-    const parsed = parseFloat(localValue);
-    if (!isNaN(parsed) && parsed >= 0) {
+    const parsed = Number.parseFloat(localValue);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
       onChange(parsed);
     } else {
       setLocalValue(String(value)); // revert
@@ -1058,7 +1058,7 @@ export function CartPanel({
                 <div className="flex items-center justify-between gap-1.5 mb-1.5">
                   <div className="flex-1 min-w-0 flex items-center gap-1.5">
                     <h4 className="font-semibold text-xs leading-tight line-clamp-1 text-foreground">{item.name}</h4>
-                    {item.bulkSalePrice && item.bulkSalePrice > 0 && (
+                    {!!item.bulkSalePrice && item.bulkSalePrice > 0 && (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${item.unit === 'bulk'
                           ? 'bg-primary/20 text-primary'
