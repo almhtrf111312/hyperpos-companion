@@ -11,10 +11,12 @@
     "directories": {
       "output": "../electron-dist"
     },
+    "compression": "maximum",
+    "asar": true,
     "files": [
       "../dist/**/*",
       "main.js",
-      "../resources/**/*"
+      "error.html"
     ],
     "win": {
       "target": [
@@ -34,7 +36,9 @@
       "shortcutName": "FlowPOS Pro",
       "installerIcon": "../resources/icon.png",
       "uninstallerIcon": "../resources/icon.png",
-      "installerHeaderIcon": "../resources/icon.png"
+      "installerHeaderIcon": "../resources/icon.png",
+      "differentialPackage": false,
+      "packElevate": false
     }
   }
 }

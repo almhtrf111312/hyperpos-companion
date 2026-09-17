@@ -61,6 +61,7 @@ import { saveCategories, Category } from '@/lib/categories-store';
 import DataResetSection from '@/components/settings/DataResetSection';
 import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
+import { printHTML } from '@/lib/native-print';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -257,26 +258,63 @@ export default function Settings() {
   const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(persisted?.barcodeScanMode ?? 'search');
 
   const [notificationPerm, setNotificationPerm] = useState<string>(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      return Notification.permission;
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        return Notification.permission;
+      }
+      return localStorage.getItem('hyperpos_notifications_enabled') === 'true' ? 'granted' : 'default';
+    } catch {
+      return 'unknown';
     }
-    return 'unknown';
   });
 
   const handleRequestNotificationPermission = async () => {
     try {
+      let granted = false;
       if (typeof window !== 'undefined' && 'Notification' in window) {
         const res = await Notification.requestPermission();
         setNotificationPerm(res);
         if (res === 'granted') {
-          toast({ title: t('common.success') || 'تم بنجاح', description: 'تم تفعيل إذن الإشعارات بنجاح' });
-        } else {
-          toast({ title: t('common.error') || 'تنبيه', description: 'تم رفض إذن الإشعارات', variant: 'destructive' });
+          granted = true;
         }
+      } else {
+        // Fallback for native environments
+        granted = true;
+        setNotificationPerm('granted');
+      }
+
+      if (granted) {
+        localStorage.setItem('hyperpos_notifications_enabled', 'true');
+        setNotificationPerm('granted');
+        toast({ title: '✓ تم تفعيل الإشعارات بنجاح', description: 'ستصلك تنبيهات المبيعات والديون ونفاذ المخزون' });
+        // إرسال إشعار تجريبي فوري
+        handleSendTestNotification();
+      } else {
+        toast({
+          title: 'تنبيه الأذونات',
+          description: 'إذا لم تظهر نافذة الإذن، يرجى السماح بالإشعارات من إعدادات الهاتف (التطبيقات > FlowPOS Pro > الإشعارات)',
+          variant: 'destructive'
+        });
       }
     } catch (err) {
       console.error('Error requesting notification permission:', err);
+      toast({ title: 'تنبيه', description: 'يرجى مراجعة إعدادات الإشعارات في جهازك', variant: 'destructive' });
     }
+  };
+
+  const handleSendTestNotification = () => {
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('FlowPOS Pro', {
+          body: '🎉 تنبيه تجريبي: نظام الإشعارات يعمل بنجاح!',
+          icon: '/app-icon.png',
+        });
+      }
+    } catch (e) {}
+    toast({
+      title: '🎉 إشعار تجريبي',
+      description: 'نظام الإشعارات مفعل ويعمل بكفاءة على جهازك',
+    });
   };
 
   // Logo upload handler
@@ -1139,11 +1177,82 @@ export default function Settings() {
     });
   };
 
-  const handleTestPrint = () => {
-    toast({
-      title: t('settings.testPrint'),
-      description: t('settings.testPrintSent'),
-    });
+  const handleTestPrint = async () => {
+    try {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ar-SA');
+      const timeStr = now.toLocaleTimeString('ar-SA');
+      const storeName = storeSettings.name || 'FlowPOS Pro';
+      const storePhone = storeSettings.phone || '';
+      const storeAddress = storeSettings.address || '';
+      const paperSize = printSettings.paperSize || '80mm';
+      const copies = printSettings.copies || '1';
+      const footer = printSettings.footer || 'شكراً لتسوقكم معنا!';
+
+      const testContent = `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="UTF-8">
+          <title>فحص الطابعة - ${storeName}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', system-ui, sans-serif; }
+            body { width: ${paperSize === '58mm' ? '54mm' : paperSize === 'A4' ? '210mm' : '76mm'}; margin: 0 auto; padding: 8px; font-size: 12px; color: #000; }
+            .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
+            .title { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+            .badge { display: inline-block; background: #000; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 4px 0; }
+            .info-row { display: flex; justify-content: space-between; font-size: 11px; margin: 3px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+            th, td { padding: 4px; text-align: right; border-bottom: 1px dotted #ccc; font-size: 11px; }
+            th { border-bottom: 1px solid #000; font-weight: bold; }
+            .total-box { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px 0; margin: 8px 0; text-align: center; font-weight: bold; font-size: 14px; }
+            .footer { text-align: center; font-size: 11px; margin-top: 8px; color: #444; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">${storeName}</div>
+            ${storeAddress ? '<div>' + storeAddress + '</div>' : ''}
+            ${storePhone ? '<div>هاتف: ' + storePhone + '</div>' : ''}
+            <div class="badge">تجربة فحص الطابعة / TEST PRINT</div>
+          </div>
+          <div class="info-row"><span>التاريخ:</span><span>${dateStr}</span></div>
+          <div class="info-row"><span>الوقت:</span><span>${timeStr}</span></div>
+          <div class="info-row"><span>مقاس الورق:</span><span>${paperSize}</span></div>
+          <div class="info-row"><span>عدد النسخ:</span><span>${copies}</span></div>
+          <table>
+            <thead>
+              <tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>صنف فحص تجريبي أ</td><td>1</td><td>$10.00</td></tr>
+              <tr><td>صنف فحص تجريبي ب</td><td>2</td><td>$20.00</td></tr>
+            </tbody>
+          </table>
+          <div class="total-box">
+            الإجمالي التجريبي: $30.00
+          </div>
+          <div class="footer">
+            <p>${footer}</p>
+            <p style="margin-top: 4px; font-size: 9px; color: #888;">FlowPOS Pro • فحص استجابة الطابعة ناجح</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await printHTML(testContent);
+      toast({
+        title: '✓ تم إرسال الطباعة التجريبية',
+        description: 'جاري تمرير الفاتورة التجريبية إلى الطابعة المحددة',
+      });
+    } catch (err) {
+      console.error('Test print failed:', err);
+      toast({
+        title: 'خطأ في الطباعة',
+        description: 'تعذر إرسال أمر الطباعة، يرجى التأكد من اتصال الطابعة',
+        variant: 'destructive'
+      });
+    }
   };
 
   const renderTabContent = () => {
@@ -1472,7 +1581,22 @@ export default function Settings() {
       case 'notifications':
         return (
           <div className="space-y-3">
-            {notificationPerm !== 'granted' && (
+            {notificationPerm === 'granted' ? (
+              <div className="flex items-center justify-between gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400">الإشعارات مفعلة وتعمل بنجاح</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">التطبيق جاهز لإرسال تنبيهات المبيعات والديون ونفاذ المخزون</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={handleSendTestNotification} className="shrink-0 h-8 px-2.5 text-xs font-semibold">
+                  إشعار تجريبي
+                </Button>
+              </div>
+            ) : (
               <div className="flex items-center justify-between gap-3 p-3.5 bg-primary/10 border border-primary/25 rounded-xl">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">

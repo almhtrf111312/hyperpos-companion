@@ -29,18 +29,21 @@ export async function nativeShare(options: ShareOptions): Promise<boolean> {
         title: title || 'مشاركة',
         text: text,
         url: url,
-        dialogTitle: dialogTitle || 'مشاركة عبر',
+        dialogTitle: dialogTitle || 'مشاركة عبر التطبيقات',
       });
       return true;
-    } catch (error) {
-      console.error('[NativeShare] Capacitor share failed:', error);
-      // Fallback to WhatsApp direct link
-      return shareViaWhatsApp(text);
+    } catch (error: any) {
+      // إذا قام المستخدم بإلغاء نافذة المشاركة، لا نعتبره خطأ ولا نفتح واتساب إجبارياً
+      if (error?.message?.includes('cancel') || error?.name === 'AbortError') {
+        return false;
+      }
+      console.warn('[NativeShare] Capacitor share failed or dismissed:', error);
+      return false;
     }
   }
 
   // على المتصفح: استخدم Web Share API إذا متاح
-  if (navigator.share) {
+  if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({
         title: title,
@@ -53,16 +56,16 @@ export async function nativeShare(options: ShareOptions): Promise<boolean> {
       if ((error as Error).name === 'AbortError') {
         return false;
       }
-      console.warn('[NativeShare] Web Share failed, trying WhatsApp:', error);
+      console.warn('[NativeShare] Web Share failed, falling back to clipboard or link:', error);
     }
   }
 
-  // Fallback: فتح واتساب
+  // Fallback: فتح نافذة بدون تغيير مسار الـ WebView حتى لا يُعاد تحميل التطبيق
   return shareViaWhatsApp(text);
 }
 
 /**
- * مشاركة مباشرة عبر واتساب
+ * مشاركة مباشرة عبر واتساب بدون إعادة تحميل الـ WebView
  */
 export function shareViaWhatsApp(text: string, phoneNumber?: string): boolean {
   try {
@@ -70,31 +73,14 @@ export function shareViaWhatsApp(text: string, phoneNumber?: string): boolean {
     let whatsappUrl: string;
 
     if (phoneNumber) {
-      // إزالة + من الرقم
       const cleanNumber = phoneNumber.replace(/\+/g, '').replace(/\s/g, '');
       whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodedText}`;
     } else {
       whatsappUrl = `https://wa.me/?text=${encodedText}`;
     }
 
-    // على الأندرويد، استخدم intent URL للفتح المباشر
-    if (Capacitor.isNativePlatform()) {
-      // استخدم whatsapp:// protocol للأندرويد
-      const intentUrl = phoneNumber
-        ? `whatsapp://send?phone=${phoneNumber.replace(/\+/g, '')}&text=${encodedText}`
-        : `whatsapp://send?text=${encodedText}`;
-
-      // جرب intent أولاً
-      window.location.href = intentUrl;
-
-      // إذا لم يعمل، استخدم https
-      setTimeout(() => {
-        window.open(whatsappUrl, '_system');
-      }, 500);
-    } else {
-      window.open(whatsappUrl, '_blank');
-    }
-
+    // فتح الرابط كنافذة منفصلة بدون المساس بـ window.location.href
+    window.open(whatsappUrl, '_blank');
     return true;
   } catch (error) {
     console.error('[NativeShare] WhatsApp share failed:', error);

@@ -289,99 +289,50 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
  * على المتصفح: يستخدم iframe + window.print()
  */
 export async function printHTML(htmlContent: string): Promise<boolean> {
-  // على الأندرويد: استخدم الطريقة الأصلية
+  // 1. إذا كان التطبيق يعمل داخل أندرويد ويدعم واجهة الطباعة الأصلية المباشرة
+  if (typeof window !== 'undefined' && (window as any).AndroidPrinter?.print) {
+    try {
+      printOnWeb(htmlContent);
+      setTimeout(() => {
+        try {
+          (window as any).AndroidPrinter.print();
+        } catch (e) {
+          console.warn('[NativePrint] AndroidPrinter.print failed:', e);
+        }
+      }, 350);
+      return true;
+    } catch (e) {
+      console.warn('[NativePrint] Error invoking AndroidPrinter:', e);
+    }
+  }
+
+  // 2. على المتصفح / PC أو الأندرويد: جرب الطباعة المباشرة أولاً
+  const printed = printOnWeb(htmlContent);
+  if (printed) return true;
+
+  // 3. Fallback للأندرويد في حال عدم توفر خدمة الطباعة
   if (Capacitor.isNativePlatform()) {
     return printOnNative(htmlContent);
   }
 
-  // على المتصفح: استخدم iframe
-  return printOnWeb(htmlContent);
+  return false;
 }
 
 /**
- * طباعة على الأندرويد عبر حفظ HTML ومشاركته
- */
-async function printOnNative(htmlContent: string): Promise<boolean> {
-  try {
-    const fileName = `receipt_${Date.now()}.html`;
-
-    // إضافة زر إغلاق داخل HTML (يظهر فقط على الشاشة ولا يطبع)
-    const closeButtonHTML = `
-      <style>
-        @media print { .close-btn-container { display: none !important; } }
-        .close-btn-container {
-          position: fixed; top: 0; left: 0; right: 0;
-          background: #f44336; padding: 12px; text-align: center; z-index: 9999;
-        }
-        .close-btn-container button {
-          background: white; color: #f44336; border: none; padding: 10px 32px;
-          font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;
-        }
-      </style>
-      <div class="close-btn-container">
-        <button onclick="window.close(); history.back(); setTimeout(function(){window.close();},100);">✕ إغلاق / Close</button>
-      </div>
-    `;
-
-    // إدراج زر الإغلاق في بداية body
-    const enhancedHTML = htmlContent.replace('<body>', '<body>' + closeButtonHTML);
-
-    // حفظ الملف مؤقتاً
-    const result = await Filesystem.writeFile({
-      path: fileName,
-      data: enhancedHTML,
-      directory: Directory.Cache,
-      encoding: Encoding.UTF8,
-    });
-
-    // مشاركة الملف للطباعة
-    await Share.share({
-      title: 'طباعة الفاتورة',
-      text: 'فاتورة جاهزة للطباعة',
-      url: result.uri,
-      dialogTitle: 'طباعة - اختر الطابعة أو التطبيق',
-    });
-
-    // حذف الملف بعد المشاركة
-    setTimeout(async () => {
-      try {
-        await Filesystem.deleteFile({
-          path: fileName,
-          directory: Directory.Cache,
-        });
-      } catch {
-        // تجاهل أخطاء الحذف
-      }
-    }, 10000);
-
-    return true;
-  } catch (error) {
-    console.error('[NativePrint] Native print failed:', error);
-
-    // Fallback: استخدم iframe بدلاً من window.open لتجنب مشكلة عدم القدرة على الإغلاق
-    try {
-      return printOnWeb(htmlContent);
-    } catch {
-      // تجاهل
-    }
-
-    return false;
-  }
-}
-
-/**
- * طباعة على المتصفح عبر iframe
+ * طباعة على المتصفح والـ PC عبر iframe
  */
 function printOnWeb(htmlContent: string): boolean {
   try {
-    // إنشاء iframe مخفي للطباعة
+    // إنشاء iframe خفيف للطباعة المباشرة
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
-    iframe.style.right = '-9999px';
-    iframe.style.top = '-9999px';
-    iframe.style.width = '80mm';
-    iframe.style.height = '0';
+    iframe.style.bottom = '0';
+    iframe.style.right = '0';
+    iframe.style.width = '10px';
+    iframe.style.height = '10px';
     iframe.style.border = 'none';
+    iframe.style.opacity = '0.01';
+    iframe.style.pointerEvents = 'none';
     document.body.appendChild(iframe);
 
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -390,39 +341,29 @@ function printOnWeb(htmlContent: string): boolean {
       iframeDoc.write(htmlContent);
       iframeDoc.close();
 
-      // انتظار تحميل المحتوى ثم الطباعة
       const attemptPrint = () => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch (e) {
-          console.error('Print error:', e);
+          console.error('[NativePrint] iframe print error:', e);
         }
 
-        // إزالة الـ iframe بعد الطباعة
+        // تنظيف الـ iframe بعد الطباعة
         setTimeout(() => {
           try {
-            document.body.removeChild(iframe);
-          } catch {
-            // تجاهل
-          }
-        }, 1000);
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          } catch {}
+        }, 3000);
       };
 
-      // انتظار تحميل المحتوى
-      if (iframe.contentWindow) {
-        iframe.contentWindow.onload = () => {
-          setTimeout(attemptPrint, 250);
-        };
-
-        // fallback
-        setTimeout(attemptPrint, 500);
-      } else {
-        setTimeout(attemptPrint, 500);
-      }
+      setTimeout(attemptPrint, 350);
+      return true;
     }
 
-    return true;
+    return false;
   } catch (error) {
     console.error('[NativePrint] Web print failed:', error);
     return false;

@@ -22,7 +22,8 @@ import {
   RotateCcw,
   Plus,
   Minus,
-  Layers
+  Layers,
+  Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -747,9 +748,10 @@ export default function Invoices() {
 
     const success = await shareInvoice(shareData);
     if (success) {
-      toast.success(t('invoices.shareOpened'));
+      toast.success(t('invoices.shareOpened') || 'تم فتح نافذة المشاركة');
     }
   };
+  const handleShare = handleWhatsApp;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -994,9 +996,9 @@ export default function Invoices() {
                           <Printer className="w-4 h-4 ml-2" />
                           {t('common.print')}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleWhatsApp(invoice)}>
-                          <Send className="w-4 h-4 ml-2" />
-                          {t('common.whatsapp')}
+                        <DropdownMenuItem onClick={() => handleShare(invoice)}>
+                          <Share2 className="w-4 h-4 ml-2 text-primary" />
+                          {t('common.share') || 'مشاركة الفاتورة'}
                         </DropdownMenuItem>
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                           <>
@@ -1157,9 +1159,9 @@ export default function Invoices() {
                   <Printer className="w-4 h-4 ml-2" />
                   {t('common.print')}
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => handleWhatsApp(selectedInvoice)}>
-                  <Send className="w-4 h-4 ml-2" />
-                  {t('common.whatsapp')}
+                <Button variant="outline" className="flex-1" onClick={() => handleShare(selectedInvoice)}>
+                  <Share2 className="w-4 h-4 ml-2 text-primary" />
+                  {t('common.share') || 'مشاركة'}
                 </Button>
               </div>
             </div>

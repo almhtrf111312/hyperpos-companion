@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Archive, Bell, Package, CreditCard, FileX, Undo2, Trash2, AlertTriangle } from 'lucide-react';
+import { Archive, Bell, Package, CreditCard, FileX, Undo2, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,12 +36,12 @@ export function ArchiveSection() {
     setIsLoading(true);
     try {
       const [debts, products, invoices] = await Promise.all([
-        loadDebtsCloud(),
-        loadProductsCloud(),
-        loadInvoicesCloud(),
+        loadDebtsCloud().catch(() => []),
+        loadProductsCloud().catch(() => []),
+        loadInvoicesCloud().catch(() => []),
       ]);
-      setPaidDebts(debts.filter(d => d.status === 'fully_paid'));
-      setOutOfStockProducts(products.filter(p => p.quantity === 0));
+      setPaidDebts((debts || []).filter(d => d.status === 'fully_paid'));
+      setOutOfStockProducts((products || []).filter(p => p.quantity === 0));
       // Include refunded, partially refunded, and cancelled invoices
       setArchivedInvoices(invoices.filter(i => 
         i.status === 'refunded' || 
