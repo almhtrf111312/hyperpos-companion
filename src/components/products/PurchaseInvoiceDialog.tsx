@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { checkRealInternetAccess } from '@/hooks/use-network-status';
+import { addProductCloud } from '@/lib/cloud/products-cloud';
 
 interface PurchaseInvoiceDialogProps {
   open: boolean;
@@ -149,8 +150,97 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     cost_price: number;
     sale_price?: number;
     product_id?: string;
+    // Extended fields
+    wholesale_price?: number;
+    expiry_date?: string;
+    serial_number?: string;
+    batch_number?: string;
+    warranty?: string;
+    size?: string;
+    color?: string;
+    weight?: string;
+    fabric_type?: string;
+    table_number?: string;
+    order_notes?: string;
+    author?: string;
+    publisher?: string;
+    min_stock_level?: number;
+    image_url?: string;
+    // Dual unit fields
+    track_by_unit?: string;
+    bulk_unit?: string;
+    small_unit?: string;
+    conversion_factor?: number;
+    bulk_cost_price?: number;
+    bulk_sale_price?: number;
   }) => {
     if (!currentInvoice) return;
+
+    let resolvedProductId = item.product_id;
+
+    // If not linked to an existing product, resolve or pre-create in products catalog
+    if (!resolvedProductId && !isOfflineInvoice) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (item.barcode?.trim()) {
+            const { data: existing } = await supabase
+              .from('products')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('barcode', item.barcode.trim())
+              .maybeSingle();
+            if (existing) resolvedProductId = existing.id;
+          }
+          if (!resolvedProductId && item.product_name.trim()) {
+            const { data: existing } = await supabase
+              .from('products')
+              .select('id')
+              .eq('user_id', user.id)
+              .ilike('name', item.product_name.trim())
+              .maybeSingle();
+            if (existing) resolvedProductId = existing.id;
+          }
+
+          if (!resolvedProductId) {
+            const createdProd = await addProductCloud({
+              name: item.product_name.trim(),
+              barcode: item.barcode?.trim() || '',
+              category: item.category?.trim() || '',
+              costPrice: item.cost_price,
+              salePrice: item.sale_price || item.cost_price,
+              quantity: 0, // Initial 0; finalized invoice adds item.quantity cleanly!
+              minStockLevel: item.min_stock_level || 5,
+              expiryDate: item.expiry_date,
+              image: item.image_url,
+              wholesalePrice: item.wholesale_price,
+              serialNumber: item.serial_number,
+              batchNumber: item.batch_number,
+              warranty: item.warranty,
+              size: item.size,
+              color: item.color,
+              weight: item.weight,
+              fabricType: item.fabric_type,
+              tableNumber: item.table_number,
+              orderNotes: item.order_notes,
+              author: item.author,
+              publisher: item.publisher,
+              trackByUnit: item.track_by_unit as any,
+              bulkUnit: item.bulk_unit,
+              smallUnit: item.small_unit,
+              conversionFactor: item.conversion_factor,
+              bulkCostPrice: item.bulk_cost_price,
+              bulkSalePrice: item.bulk_sale_price,
+            });
+            if (createdProd) {
+              resolvedProductId = createdProd.id;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not pre-create product catalog item:', err);
+      }
+    }
 
     // If offline invoice, store items locally
     if (isOfflineInvoice) {
@@ -165,7 +255,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         sale_price: item.sale_price,
         total_cost: item.quantity * item.cost_price,
         created_at: new Date().toISOString(),
-        product_id: item.product_id,
+        product_id: resolvedProductId,
       };
       setInvoiceItems(prev => [...prev, localItem]);
       // Update local invoice totals
@@ -186,7 +276,13 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     setLoading(true);
     const newItem = await addPurchaseInvoiceItemCloud({
       invoice_id: currentInvoice.id,
-      ...item
+      product_name: item.product_name,
+      barcode: item.barcode,
+      category: item.category,
+      quantity: item.quantity,
+      cost_price: item.cost_price,
+      sale_price: item.sale_price,
+      product_id: resolvedProductId,
     });
     setLoading(false);
 
@@ -259,6 +355,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setLoading(false);
       toast.success(t('purchaseInvoice.finalized') + ' (offline)', { icon: '📴' });
       emitEvent(EVENTS.PURCHASES_UPDATED);
+      emitEvent(EVENTS.PRODUCTS_UPDATED);
       onSuccess?.();
       onOpenChange(false);
       return;
@@ -279,6 +376,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       if (success) {
         toast.success(t('purchaseInvoice.finalized'));
         emitEvent(EVENTS.PURCHASES_UPDATED);
+        emitEvent(EVENTS.PRODUCTS_UPDATED);
         onSuccess?.();
         onOpenChange(false);
       } else {
@@ -307,6 +405,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setLoading(false);
       toast.success(t('purchaseInvoice.finalized') + ' (queued)', { icon: '📴' });
       emitEvent(EVENTS.PURCHASES_UPDATED);
+      emitEvent(EVENTS.PRODUCTS_UPDATED);
       onSuccess?.();
       onOpenChange(false);
     }

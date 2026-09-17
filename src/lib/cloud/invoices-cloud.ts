@@ -656,12 +656,13 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
 };
 
 export interface PartialRefundItem {
-  productId: string;
+  productId?: string;
   productName: string;
-  quantityToRefund: number;
+  quantityToRefund?: number;
+  quantity?: number;
   unitPrice: number;
-  costPrice: number;
-  profit: number;
+  costPrice?: number;
+  profit?: number;
   warehouseId?: string;
 }
 
@@ -707,7 +708,16 @@ export const refundInvoicePartialCloud = async (
     return { success: false, error: 'هذه الفاتورة مستردة بالكامل بالفعل', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: true, newInvoiceTotal: 0 };
   }
 
-  const validRefundItems = itemsToRefund.filter(item => item.quantityToRefund > 0);
+  const validRefundItems = itemsToRefund
+    .map(item => ({
+      ...item,
+      quantityToRefund: Number(item.quantityToRefund ?? item.quantity) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
+      costPrice: Number(item.costPrice) || 0,
+      profit: Number(item.profit) || 0,
+    }))
+    .filter(item => item.quantityToRefund > 0);
+
   if (validRefundItems.length === 0) {
     return { success: false, error: 'يرجى تحديد كمية للإرجاع أكبر من الصفر', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
   }
@@ -741,7 +751,10 @@ export const refundInvoicePartialCloud = async (
 
   // التحقق من الكميات وحساب المجاميع
   for (const rItem of validRefundItems) {
-    const existingCloudItem = cloudItems.find(ci => ci.product_id === rItem.productId || ci.id === rItem.productId);
+    const existingCloudItem = cloudItems.find(ci =>
+      (rItem.productId && (ci.product_id === rItem.productId || ci.id === rItem.productId)) ||
+      (ci.item_name && ci.item_name.trim().toLowerCase() === rItem.productName.trim().toLowerCase())
+    );
     if (!existingCloudItem) {
       return { success: false, error: `المنتج ${rItem.productName} غير موجود ضمن الفاتورة`, refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
     }
@@ -763,7 +776,10 @@ export const refundInvoicePartialCloud = async (
 
   // 2. إعادة المخزون وتحديث بنود الفاتورة
   for (const rItem of validRefundItems) {
-    const existingCloudItem = cloudItems.find(ci => ci.product_id === rItem.productId || ci.id === rItem.productId);
+    const existingCloudItem = cloudItems.find(ci =>
+      (rItem.productId && (ci.product_id === rItem.productId || ci.id === rItem.productId)) ||
+      (ci.item_name && ci.item_name.trim().toLowerCase() === rItem.productName.trim().toLowerCase())
+    );
     const warehouseId = existingCloudItem?.stock_warehouse_id || rItem.warehouseId;
     const actualProductId = existingCloudItem?.product_id || rItem.productId;
 

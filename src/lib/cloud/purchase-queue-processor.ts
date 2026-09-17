@@ -12,6 +12,13 @@ interface QuickPurchaseData {
   costPrice: number;
   totalCost: number;
   imageUrl?: string;
+  barcode?: string;
+  category?: string;
+  salePrice?: number;
+  wholesalePrice?: number;
+  minStockLevel?: number;
+  expiryDate?: string;
+  productId?: string;
 }
 
 interface PurchaseInvoiceData {
@@ -37,14 +44,112 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
   if (!user) return false;
 
   const invoiceNumber = `QP-${Date.now()}`;
+  const today = new Date().toISOString().split('T')[0];
 
+  // 1. Resolve or create target product
+  let targetProductId = data.productId;
+  if (!targetProductId) {
+    if (data.barcode?.trim()) {
+      const { data: byBarcode } = await supabase
+        .from('products')
+        .select('id, quantity, cost_price, purchase_history')
+        .eq('user_id', user.id)
+        .eq('barcode', data.barcode.trim())
+        .maybeSingle();
+      if (byBarcode) targetProductId = byBarcode.id;
+    }
+    if (!targetProductId && data.productName?.trim()) {
+      const { data: byName } = await supabase
+        .from('products')
+        .select('id, quantity, cost_price, purchase_history')
+        .eq('user_id', user.id)
+        .ilike('name', data.productName.trim())
+        .maybeSingle();
+      if (byName) targetProductId = byName.id;
+    }
+  }
+
+  if (targetProductId) {
+    const { data: existingProd } = await supabase
+      .from('products')
+      .select('quantity, cost_price, purchase_history')
+      .eq('id', targetProductId)
+      .single();
+
+    const curQty = existingProd?.quantity || 0;
+    const curCost = Number(existingProd?.cost_price) || 0;
+    const newQty = curQty + data.quantity;
+    const avgCost = newQty > 0 && data.costPrice > 0
+      ? Math.round(((curQty * curCost) + (data.quantity * data.costPrice)) / newQty * 100) / 100
+      : data.costPrice;
+
+    const hist = Array.isArray(existingProd?.purchase_history) ? [...existingProd.purchase_history] : [];
+    hist.push({
+      invoice_id: invoiceNumber,
+      invoice_number: invoiceNumber,
+      supplier_name: data.productName,
+      date: today,
+      quantity: data.quantity,
+      cost_price: data.costPrice,
+      added_at: new Date().toISOString(),
+    });
+
+    const updates: Record<string, any> = {
+      quantity: newQty,
+      cost_price: avgCost,
+      purchase_history: hist,
+      updated_at: new Date().toISOString(),
+    };
+    if (data.salePrice) updates.sale_price = data.salePrice;
+    if (data.category) updates.category = data.category;
+    if (data.barcode) updates.barcode = data.barcode;
+    if (data.expiryDate) updates.expiry_date = data.expiryDate;
+    if (data.imageUrl) updates.image_url = data.imageUrl;
+    if (data.wholesalePrice) {
+      updates.custom_fields = { wholesalePrice: data.wholesalePrice };
+    }
+
+    await supabase.from('products').update(updates).eq('id', targetProductId);
+  } else {
+    // Insert new product
+    const { data: newProd } = await supabase
+      .from('products')
+      .insert({
+        user_id: user.id,
+        name: data.productName,
+        barcode: data.barcode || null,
+        category: data.category || null,
+        cost_price: data.costPrice,
+        sale_price: data.salePrice || data.costPrice,
+        quantity: data.quantity,
+        min_stock_level: data.minStockLevel || 5,
+        expiry_date: data.expiryDate || null,
+        image_url: data.imageUrl || null,
+        custom_fields: data.wholesalePrice ? { wholesalePrice: data.wholesalePrice } : null,
+        purchase_history: [{
+          invoice_id: invoiceNumber,
+          invoice_number: invoiceNumber,
+          supplier_name: data.productName,
+          date: today,
+          quantity: data.quantity,
+          cost_price: data.costPrice,
+          added_at: new Date().toISOString(),
+        }]
+      })
+      .select('id')
+      .single();
+
+    if (newProd) targetProductId = newProd.id;
+  }
+
+  // 2. Create invoice
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
     .insert({
       user_id: user.id,
       invoice_number: invoiceNumber,
       supplier_name: data.productName,
-      invoice_date: new Date().toISOString().split('T')[0],
+      invoice_date: today,
       expected_items_count: 1,
       expected_total_quantity: data.quantity,
       expected_grand_total: data.totalCost,
@@ -59,13 +164,18 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
 
   if (invError) throw invError;
 
+  // 3. Create invoice item
   const { error: itemError } = await supabase
     .from('purchase_invoice_items')
     .insert({
       invoice_id: invoice.id,
+      product_id: targetProductId || null,
       product_name: data.productName,
+      barcode: data.barcode || null,
+      category: data.category || null,
       quantity: data.quantity,
       cost_price: data.costPrice,
+      sale_price: data.salePrice || data.costPrice,
       total_cost: data.totalCost,
     });
 

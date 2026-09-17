@@ -375,9 +375,11 @@ export default function Invoices() {
         itemsToRefund.push({
           productId: item.productId,
           productName: item.name,
+          quantityToRefund: qty,
           quantity: qty,
           unitPrice: item.price,
-          costPrice: item.costPrice || 0
+          costPrice: item.costPrice || 0,
+          profit: (item.price - (item.costPrice || 0)) * qty
         });
       }
     });

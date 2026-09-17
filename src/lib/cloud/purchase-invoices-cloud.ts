@@ -309,16 +309,40 @@
             }
           }
         } else {
-          // Create new product
-          const newProductData: any = {
-            user_id: user.id,
-            name: item.product_name,
-            barcode: item.barcode,
-            category: item.category,
-            quantity: noInventory ? 99999 : item.quantity,
-            cost_price: item.cost_price,
-            sale_price: item.sale_price || item.cost_price,
-            purchase_history: [{
+          // Check if product already exists by barcode or name
+          let existingProduct: any = null;
+          if (item.barcode?.trim()) {
+            const { data } = await supabase
+              .from('products')
+              .select('id, quantity, cost_price, purchase_history')
+              .eq('user_id', user.id)
+              .eq('barcode', item.barcode.trim())
+              .maybeSingle();
+            existingProduct = data;
+          }
+          if (!existingProduct && item.product_name?.trim()) {
+            const { data } = await supabase
+              .from('products')
+              .select('id, quantity, cost_price, purchase_history')
+              .eq('user_id', user.id)
+              .ilike('name', item.product_name.trim())
+              .maybeSingle();
+            existingProduct = data;
+          }
+
+          if (existingProduct) {
+            const oldQty = existingProduct.quantity || 0;
+            const oldCost = Number(existingProduct.cost_price) || 0;
+            const newQuantity = noInventory ? 99999 : oldQty + item.quantity;
+            const avgCost = newQuantity > 0 && item.quantity > 0
+              ? Math.round(((oldQty * oldCost) + (item.quantity * item.cost_price)) / newQuantity * 100) / 100
+              : (item.cost_price ?? oldCost);
+
+            const purchaseHistory = Array.isArray(existingProduct.purchase_history)
+              ? existingProduct.purchase_history
+              : [];
+
+            purchaseHistory.push({
               invoice_id: invoiceId,
               invoice_number: invoice.invoice_number,
               supplier_name: invoice.supplier_name,
@@ -326,21 +350,56 @@
               quantity: item.quantity,
               cost_price: item.cost_price,
               added_at: new Date().toISOString()
-            }]
-          };
+            });
 
-          const { data: newProduct } = await supabase
-            .from('products')
-            .insert(newProductData)
-            .select()
-            .single();
+            await supabase
+              .from('products')
+              .update({
+                quantity: newQuantity,
+                cost_price: avgCost,
+                purchase_history: purchaseHistory
+              })
+              .eq('id', existingProduct.id);
 
-          // Update item with new product_id
-          if (newProduct) {
             await supabase
               .from('purchase_invoice_items')
-              .update({ product_id: newProduct.id })
+              .update({ product_id: existingProduct.id })
               .eq('id', item.id);
+          } else {
+            // Create new product with safe defaults
+            const newProductData: any = {
+              user_id: user.id,
+              name: item.product_name,
+              barcode: item.barcode || null,
+              category: item.category || null,
+              quantity: noInventory ? 99999 : item.quantity,
+              cost_price: item.cost_price,
+              sale_price: item.sale_price || item.cost_price,
+              min_stock_level: 5,
+              purchase_history: [{
+                invoice_id: invoiceId,
+                invoice_number: invoice.invoice_number,
+                supplier_name: invoice.supplier_name,
+                date: invoice.invoice_date,
+                quantity: item.quantity,
+                cost_price: item.cost_price,
+                added_at: new Date().toISOString()
+              }]
+            };
+
+            const { data: newProduct } = await supabase
+              .from('products')
+              .insert(newProductData)
+              .select()
+              .single();
+
+            // Update item with new product_id
+            if (newProduct) {
+              await supabase
+                .from('purchase_invoice_items')
+                .update({ product_id: newProduct.id })
+                .eq('id', item.id);
+            }
           }
         }
       }
