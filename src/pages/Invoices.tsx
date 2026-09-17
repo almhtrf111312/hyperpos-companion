@@ -17,7 +17,12 @@ import {
   ShoppingCart,
   X,
   Check,
-  MoreVertical
+  MoreVertical,
+  AlertTriangle,
+  RotateCcw,
+  Plus,
+  Minus,
+  Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,7 +54,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import {
@@ -57,6 +62,8 @@ import {
   invalidateInvoicesCache,
   deleteInvoiceCloud,
   refundInvoiceCloud,
+  refundInvoicePartialCloud,
+  PartialRefundItem,
   updateInvoiceCloud,
   getInvoiceStatsCloud,
   Invoice,
@@ -86,6 +93,8 @@ export default function Invoices() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
+  const [refundMode, setRefundMode] = useState<'full' | 'partial'>('full');
+  const [partialRefundQuantities, setPartialRefundQuantities] = useState<Record<string, number>>({});
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
   const refundGuard = useActionGuard();
   const markPaidGuard = useActionGuard();
@@ -164,8 +173,91 @@ export default function Invoices() {
       return;
     }
     setInvoiceToRefund(invoice);
+    setRefundMode('full');
+    const initialQty: Record<string, number> = {};
+    if (invoice.items && invoice.items.length > 0) {
+      invoice.items.forEach(item => {
+        const key = item.productId || item.name;
+        initialQty[key] = 0;
+      });
+    }
+    setPartialRefundQuantities(initialQty);
     setShowRefundDialog(true);
   };
+
+  const updatePartialQty = (key: string, delta: number, maxQty: number) => {
+    setPartialRefundQuantities(prev => {
+      const current = prev[key] || 0;
+      const updated = Math.max(0, Math.min(maxQty, current + delta));
+      return { ...prev, [key]: updated };
+    });
+  };
+
+  const setAllPartialQtyMax = () => {
+    if (!invoiceToRefund?.items) return;
+    const allMax: Record<string, number> = {};
+    invoiceToRefund.items.forEach(item => {
+      const key = item.productId || item.name;
+      allMax[key] = item.quantity;
+    });
+    setPartialRefundQuantities(allMax);
+  };
+
+  const resetAllPartialQty = () => {
+    if (!invoiceToRefund?.items) return;
+    const allZero: Record<string, number> = {};
+    invoiceToRefund.items.forEach(item => {
+      const key = item.productId || item.name;
+      allZero[key] = 0;
+    });
+    setPartialRefundQuantities(allZero);
+  };
+
+  const partialRefundStats = useMemo(() => {
+    if (!invoiceToRefund || !invoiceToRefund.items) {
+      return { totalRefundAmount: 0, itemsCount: 0, unitsCount: 0, isValid: false, cashToReturn: 0, debtReduction: 0 };
+    }
+    let totalRefundAmount = 0;
+    let unitsCount = 0;
+    let itemsCount = 0;
+
+    invoiceToRefund.items.forEach(item => {
+      const key = item.productId || item.name;
+      const qty = partialRefundQuantities[key] || 0;
+      if (qty > 0) {
+        unitsCount += qty;
+        itemsCount += 1;
+        totalRefundAmount += item.price * qty;
+      }
+    });
+
+    totalRefundAmount = roundCurrency(totalRefundAmount);
+
+    let cashToReturn = 0;
+    let debtReduction = 0;
+
+    if (invoiceToRefund.paymentType === 'debt') {
+      const debtRemaining = Number(invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid ?? 0)));
+      if (totalRefundAmount <= debtRemaining) {
+        debtReduction = totalRefundAmount;
+        cashToReturn = 0;
+      } else {
+        debtReduction = debtRemaining;
+        cashToReturn = roundCurrency(totalRefundAmount - debtRemaining);
+      }
+    } else {
+      cashToReturn = totalRefundAmount;
+    }
+
+    return {
+      totalRefundAmount,
+      itemsCount,
+      unitsCount,
+      isValid: unitsCount > 0,
+      cashToReturn,
+      debtReduction
+    };
+  }, [invoiceToRefund, partialRefundQuantities]);
 
   const confirmRefund = () => refundGuard.run(async () => {
     if (!invoiceToRefund) return;
@@ -251,6 +343,9 @@ export default function Invoices() {
           if (r.deletedDebtAmount > 0) {
             lines.push(`🗑️ دين محذوف: ${r.deletedDebtAmount.toFixed(2)}${invoiceCurrencySymbol}`);
           }
+          if (r.cashToRefund && r.cashToRefund > 0) {
+            lines.push(`💰 يُرجع نقداً للعميل ومن الوردية: ${formatCurrency(r.cashToRefund, refundedCurrency)}`);
+          }
         }
         toast.success(`✅ تم استرداد ${invoiceLabel}`, {
           id: toastId,
@@ -264,6 +359,88 @@ export default function Invoices() {
         const invoicesData = await loadInvoicesCloud();
         setInvoices(invoicesData);
       }
+  });
+
+  const confirmPartialRefund = () => refundGuard.run(async () => {
+    if (!invoiceToRefund) return;
+    const invoice = invoiceToRefund;
+    const invoiceLabel = invoice.id;
+    const toastId = `refund-${invoiceLabel}`;
+
+    const itemsToRefund: PartialRefundItem[] = [];
+    invoice.items?.forEach(item => {
+      const key = item.productId || item.name;
+      const qty = partialRefundQuantities[key] || 0;
+      if (qty > 0) {
+        itemsToRefund.push({
+          productId: item.productId,
+          productName: item.name,
+          quantity: qty,
+          unitPrice: item.price,
+          costPrice: item.costPrice || 0
+        });
+      }
+    });
+
+    if (itemsToRefund.length === 0) {
+      toast.warning('يرجى تحديد كمية عنصر واحد على الأقل للاسترداد');
+      return;
+    }
+
+    setShowRefundDialog(false);
+    setInvoiceToRefund(null);
+
+    if (!isOnline) {
+      toast.error('الاسترداد الجزئي يتطلب الاتصال بالإنترنت حالياً');
+      return;
+    }
+
+    toast.loading(`جاري الاسترداد الجزئي للفاتورة ${invoiceLabel}...`, { id: toastId });
+    try {
+      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund);
+      if (!result.success) {
+        toast.error(`فشل الاسترداد الجزئي: ${result.error}`, { id: toastId, duration: 5000 });
+        return;
+      }
+
+      // Invalidate and reload
+      invalidateInvoicesCache();
+      const [updatedInvoices, statsData] = await Promise.all([
+        loadInvoicesCloud(),
+        getInvoiceStatsCloud()
+      ]);
+      setInvoices(updatedInvoices);
+      setStats(statsData);
+
+      try {
+        invalidateProductsCache();
+        refreshProductsFromCloud().then(() => {
+          emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as any, null);
+        }).catch(() => {});
+      } catch (e) { /* noop */ }
+
+      const lines: string[] = [
+        `💵 قيمة المرتجع: ${formatCurrency(result.refundedAmount, invoice.currency)}`
+      ];
+      if (result.cashToRefund > 0) {
+        lines.push(`💰 يُرجع نقداً للعميل ومن الوردية: ${formatCurrency(result.cashToRefund, invoice.currency)}`);
+      }
+      if (result.debtReduced > 0) {
+        lines.push(`📉 تخفيض الدين: ${formatCurrency(result.debtReduced, invoice.currency)}`);
+      }
+      lines.push(`📦 أُعيدت ${formatNumber(result.restoredUnitsCount)} قطعة`);
+
+      toast.success(result.isFullyRefunded ? `✅ تم استرداد كامل الفاتورة ${invoiceLabel}` : `✅ تم الاسترداد الجزئي للفاتورة ${invoiceLabel}`, {
+        id: toastId,
+        description: lines.join(' • '),
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error('[confirmPartialRefund] error:', err);
+      toast.error(`فشل الاسترداد الجزئي للفاتورة ${invoiceLabel}`, { id: toastId, duration: 4000 });
+      const invoicesData = await loadInvoicesCloud();
+      setInvoices(invoicesData);
+    }
   });
 
   const handleMarkPaid = (invoice: Invoice) => markPaidGuard.run(async () => {
@@ -990,37 +1167,250 @@ export default function Invoices() {
 
       {/* Refund Confirmation Dialog */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-orange-600 flex items-center gap-2">
-              <Undo2 className="w-5 h-5" />
-              استرداد الفاتورة
-            </DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2 text-right">
+            <DialogTitle className="text-orange-600 flex items-center justify-between gap-2 text-lg">
+              <div className="flex items-center gap-2">
+                <Undo2 className="w-5 h-5" />
+                <span>استرداد الفاتورة {invoiceToRefund?.id}</span>
+              </div>
               {invoiceToRefund && (
-                <>
-                  هل أنت متأكد من استرداد الفاتورة <strong>{invoiceToRefund.id}</strong>؟
-                  <br />
-                  <span className="text-sm text-muted-foreground mt-2 block">
-                    سيتم: إعادة المنتجات للمخزون • إلغاء الدين المرتبط • عكس الأرباح
-                  </span>
-                </>
+                <Badge variant={invoiceToRefund.paymentType === 'cash' ? 'default' : 'destructive'} className="text-xs">
+                  {invoiceToRefund.paymentType === 'cash' ? 'نقدي' : 'دين / آجل'}
+                </Badge>
               )}
+            </DialogTitle>
+            <DialogDescription className="text-right pt-1">
+              إرجاع منتجات الفاتورة للمخزون وتسوية الحسابات المالية ووردية الكاشير.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
+
+          {/* Mode Switcher if Sale Invoice */}
+          {invoiceToRefund?.type === 'sale' && invoiceToRefund.items && invoiceToRefund.items.length > 0 && (
+            <div className="px-6 pt-1 pb-2">
+              <Tabs value={refundMode} onValueChange={(v) => setRefundMode(v as 'full' | 'partial')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="full" className="flex items-center gap-2 text-xs">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    استرداد كلي للفاتورة
+                  </TabsTrigger>
+                  <TabsTrigger value="partial" className="flex items-center gap-2 text-xs">
+                    <Layers className="w-3.5 h-3.5" />
+                    استرداد جزئي (تحديد بنود)
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
+
+          {/* Scrollable Content Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
+            {/* Debt specific alert */}
+            {invoiceToRefund?.paymentType === 'debt' && (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-950/30 p-3.5 space-y-2 text-xs text-amber-900 dark:text-amber-200 text-right">
+                <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>تنبيه مالي مهم لفواتير الديون / الآجل:</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 py-1 bg-white/70 dark:bg-black/20 rounded p-2 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">المسدد سابقاً: </span>
+                    <span className="font-bold text-success">{formatCurrency(invoiceToRefund.debtPaid || 0, invoiceToRefund.currency)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">المتبقي بذمة العميل: </span>
+                    <span className="font-bold text-destructive">{formatCurrency(invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid || 0)), invoiceToRefund.currency)}</span>
+                  </div>
+                </div>
+                <p className="leading-relaxed">
+                  {refundMode === 'full' ? (
+                    (invoiceToRefund.debtPaid || 0) > 0 ? (
+                      <>
+                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency(invoiceToRefund.debtPaid || 0, invoiceToRefund.currency)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
+                      </>
+                    ) : (
+                      'سيتم إلغاء وشطب الدين المتبقي في ذمة العميل بالكامل دون التأثير على درج الكاشير.'
+                    )
+                  ) : (
+                    partialRefundStats.cashToReturn > 0 ? (
+                      <>
+                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount, invoiceToRefund.currency)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund.currency)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
+                      </>
+                    ) : (
+                      `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction, invoiceToRefund.currency)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
+                    )
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Cash specific notice */}
+            {invoiceToRefund?.paymentType === 'cash' && (
+              <div className="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/20 p-3 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2 text-right">
+                <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-semibold">تسوية درج الكاشير والوردية النشطة:</span>
+                  <p className="leading-relaxed text-muted-foreground dark:text-slate-300">
+                    {refundMode === 'full'
+                      ? `سيتم تسليم ${formatCurrency(invoiceToRefund.totalInCurrency || invoiceToRefund.total, invoiceToRefund.currency)} نقداً للعميل وخصمها فوراً من مبيعات ودرج الوردية الحالية لمنع حدوث عجز وهمي.`
+                      : `سيتم تسليم ${formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund.currency)} نقداً للعميل وخصمها فوراً من الوردية الحالية.`}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {refundMode === 'full' ? (
+              <div className="space-y-3 py-1 text-right">
+                <div className="bg-muted/40 rounded-lg p-3 text-sm space-y-2 border">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">العميل:</span>
+                    <span className="font-semibold">{invoiceToRefund?.customerName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">إجمالي الفاتورة:</span>
+                    <span className="font-bold">{formatCurrency(invoiceToRefund?.totalInCurrency || invoiceToRefund?.total || 0, invoiceToRefund?.currency)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">عدد العناصر والقطع:</span>
+                    <span>{invoiceToRefund?.items?.length || 0} صنف ({invoiceToRefund?.items?.reduce((s, i) => s + i.quantity, 0) || 0} قطعة)</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  سيتم استرداد كامل الفاتورة، وإعادة جميع المنتجات لمخزون المستودع، وعكس الأرباح في تقارير اليوم.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 text-right">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-muted-foreground">حدد الكميات المراد إرجاعها للمخزون:</span>
+                  <div className="flex items-center gap-1.5">
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2 text-primary" onClick={setAllPartialQtyMax}>
+                      تحديد الكل
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2 text-muted-foreground" onClick={resetAllPartialQty}>
+                      تصفير
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg divide-y max-h-56 overflow-y-auto bg-card">
+                  {invoiceToRefund?.items?.map((item) => {
+                    const key = item.productId || item.name;
+                    const currentQty = partialRefundQuantities[key] || 0;
+                    const isSelected = currentQty > 0;
+                    return (
+                      <div key={key} className={cn("p-2.5 flex items-center justify-between gap-3 text-sm transition-colors", isSelected && "bg-orange-50/60 dark:bg-orange-950/20")}>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{item.name}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                            <span>{formatCurrency(item.price, invoiceToRefund.currency)} للقطعة</span>
+                            <span>•</span>
+                            <span>الكمية بالفاتورة: <strong className="text-foreground">{item.quantity}</strong></span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center border rounded-md overflow-hidden bg-background">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-none"
+                              onClick={() => updatePartialQty(key, -1, item.quantity)}
+                              disabled={currentQty <= 0}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="w-8 text-center font-bold text-xs">{currentQty}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-none"
+                              onClick={() => updatePartialQty(key, 1, item.quantity)}
+                              disabled={currentQty >= item.quantity}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={cn("h-7 px-2 text-xs", currentQty === item.quantity && "bg-primary text-primary-foreground")}
+                            onClick={() => updatePartialQty(key, item.quantity - currentQty, item.quantity)}
+                          >
+                            الكل
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Partial summary box */}
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-xs border">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">الأصناف المحددة:</span>
+                    <span className="font-semibold">{partialRefundStats.itemsCount} صنف ({partialRefundStats.unitsCount} قطعة)</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-bold border-t pt-1.5">
+                    <span>إجمالي قيمة المرتجع:</span>
+                    <span className="text-orange-600">{formatCurrency(partialRefundStats.totalRefundAmount, invoiceToRefund?.currency)}</span>
+                  </div>
+                  {invoiceToRefund?.paymentType === 'debt' ? (
+                    <>
+                      {partialRefundStats.debtReduction > 0 && (
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                          <span>تخفيض من الدين المتبقي:</span>
+                          <span className="font-semibold text-destructive">-{formatCurrency(partialRefundStats.debtReduction, invoiceToRefund.currency)}</span>
+                        </div>
+                      )}
+                      {partialRefundStats.cashToReturn > 0 && (
+                        <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                          <span>يُعاد نقداً للعميل ومن الوردية:</span>
+                          <span>{formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund.currency)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span>يُعاد نقداً للعميل ومن الوردية:</span>
+                      <span>{formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund?.currency)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="p-4 border-t bg-muted/20 gap-2 flex-row justify-end">
             <Button variant="outline" onClick={() => setShowRefundDialog(false)} disabled={refundGuard.isRunning}>
               {t('common.cancel')}
             </Button>
-            <Button
-              className="bg-orange-600 hover:bg-orange-700 text-white"
-              onClick={confirmRefund}
-              disabled={refundGuard.isRunning}
-              aria-busy={refundGuard.isRunning}
-            >
-              <Undo2 className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
-              {refundGuard.isRunning ? 'جاري الاسترداد...' : 'تأكيد الاسترداد'}
-            </Button>
+            {refundMode === 'full' ? (
+              <Button
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={confirmRefund}
+                disabled={refundGuard.isRunning}
+                aria-busy={refundGuard.isRunning}
+              >
+                <Undo2 className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
+                {refundGuard.isRunning ? 'جاري الاسترداد...' : 'تأكيد الاسترداد الكامل'}
+              </Button>
+            ) : (
+              <Button
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={confirmPartialRefund}
+                disabled={refundGuard.isRunning || !partialRefundStats.isValid}
+                aria-busy={refundGuard.isRunning}
+              >
+                <Layers className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
+                {refundGuard.isRunning
+                  ? 'جاري الاسترداد...'
+                  : `تأكيد الاسترداد الجزئي (${formatCurrency(partialRefundStats.totalRefundAmount, invoiceToRefund?.currency)})`}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

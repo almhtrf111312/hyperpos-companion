@@ -208,7 +208,7 @@ export const closeShift = (
  */
 export const updateCashboxBalance = (
   amount: number,
-  type: 'deposit' | 'withdrawal' | 'sale' | 'expense'
+  type: 'deposit' | 'withdrawal' | 'sale' | 'expense' | 'refund'
 ): void => {
   const roundedAmount = roundCurrency(amount);
   const state = loadCashboxState();
@@ -217,6 +217,7 @@ export const updateCashboxBalance = (
   if (type === 'deposit' || type === 'sale') {
     state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
   } else {
+    // withdrawal, expense, refund
     state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
   }
 
@@ -231,6 +232,9 @@ export const updateCashboxBalance = (
       case 'sale':
         shifts[activeIndex].salesTotal = addCurrency(shifts[activeIndex].salesTotal, roundedAmount);
         break;
+      case 'refund':
+        shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
+        break;
       case 'expense':
         shifts[activeIndex].expensesTotal = addCurrency(shifts[activeIndex].expensesTotal, roundedAmount);
         break;
@@ -242,6 +246,7 @@ export const updateCashboxBalance = (
         break;
     }
     saveShifts(shifts);
+    emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
   }
 };
 
@@ -273,6 +278,51 @@ export const addSalesToShift = (
     shifts[activeIndex].grossProfitTotal = addCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit);
     shifts[activeIndex].cogsTotal = addCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs);
     saveShifts(shifts);
+    emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
+  }
+};
+
+/**
+ * ✅ تسجيل مرتجع نقدي وخصمه من الوردية النشطة ورصيد الصندوق
+ * يمنع العجز الوهمي في درج الكاشير عند تسليم أموال المرتجع للعميل
+ */
+export const recordRefundInShift = (
+  amount: number,
+  grossProfit: number = 0,
+  cogs: number = 0,
+  invoiceNumber?: string
+): void => {
+  if (amount <= 0) return;
+  const roundedAmount = roundCurrency(amount);
+  const roundedProfit = roundCurrency(grossProfit);
+  const roundedCogs = roundCurrency(cogs);
+
+  const state = loadCashboxState();
+  state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
+  state.lastUpdated = new Date().toISOString();
+  saveCashboxState(state);
+
+  const shifts = loadShifts();
+  const activeIndex = shifts.findIndex(s => s.status === 'open');
+  if (activeIndex !== -1) {
+    shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
+    shifts[activeIndex].grossProfitTotal = Math.max(0, subtractCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
+    shifts[activeIndex].cogsTotal = Math.max(0, subtractCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs));
+    saveShifts(shifts);
+    emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
+
+    // تسجيل حركة الوردية سحابياً إن أمكن
+    try {
+      import('./cloud/cashbox-cloud').then(({ addShiftTransactionCloud }) => {
+        addShiftTransactionCloud({
+          shiftId: shifts[activeIndex].id,
+          type: 'refund',
+          amount: roundedAmount,
+          referenceId: invoiceNumber,
+          notes: invoiceNumber ? `مرتجع فاتورة ${invoiceNumber}` : 'مرتجع نقدي',
+        }).catch(() => {});
+      }).catch(() => {});
+    } catch { /* noop */ }
   }
 };
 

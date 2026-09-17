@@ -501,6 +501,8 @@ export interface RefundResult {
   customerName: string | null;
   invoiceTotal: number;
   invoiceCurrency: string | null;
+  debtPaidAmount?: number;
+  cashToRefund?: number;
 }
 
 const failedRefund = (error: string): RefundResult => ({
@@ -514,6 +516,8 @@ const failedRefund = (error: string): RefundResult => ({
   customerName: null,
   invoiceTotal: 0,
   invoiceCurrency: null,
+  debtPaidAmount: 0,
+  cashToRefund: 0,
 });
 
 
@@ -546,6 +550,13 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   }
   if (!userId) return failedRefund('تعذّر تحديد المستخدم الحالي');
 
+  // جلب الفاتورة الحالية لمعرفة طريقة السداد والدفعات السابقة
+  const existingInvoices = await loadInvoicesCloud();
+  const targetInvoice = existingInvoices.find(inv => inv.id === id);
+  const targetDebtPaid = targetInvoice ? (Number(targetInvoice.debtPaid) || 0) : 0;
+  const isTargetCash = targetInvoice ? targetInvoice.paymentType === 'cash' : false;
+  const isTargetDebt = targetInvoice ? targetInvoice.paymentType === 'debt' : false;
+
   // Stock, debt, customer totals, and invoice status are committed in one locked
   // database transaction. Only the first caller can receive success=true.
   const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id, _source: source });
@@ -570,10 +581,32 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
       customerName: atomic.customer_name,
       invoiceTotal: Number(atomic.invoice_total) || 0,
       invoiceCurrency: atomic.invoice_currency,
+      debtPaidAmount: 0,
+      cashToRefund: 0,
     };
   }
 
   if (!atomic.success) return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
+
+  // حساب النقدية الواجب إرجاعها (كاش كامل أو دفعة دين سابقة)
+  const cashToRefund = isTargetCash
+    ? (Number(atomic.invoice_total) || Number(targetInvoice?.total) || 0)
+    : (isTargetDebt ? targetDebtPaid : 0);
+
+  // ✅ الخصم الفوري من الوردية النشطة وصندوق النقدية لمنع العجز الوهمي في درج الكاشير
+  if (cashToRefund > 0) {
+    try {
+      const { recordRefundInShift } = await import('../cashbox-store');
+      recordRefundInShift(
+        cashToRefund,
+        Number(targetInvoice?.profit) || 0,
+        Math.max(0, (Number(targetInvoice?.total) || 0) - (Number(targetInvoice?.profit) || 0)),
+        id
+      );
+    } catch (shiftErr) {
+      console.warn('[refundInvoiceCloud] Failed to record refund in shift:', shiftErr);
+    }
+  }
 
   // Secondary accounting cleanup is idempotent and only runs for the caller that
   // won the atomic refund transaction. It cannot restore stock again.
@@ -595,8 +628,9 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   }
 
   invalidateInvoicesCache();
-  const { invalidateProductsCache } = await import('./products-cloud');
+  const { invalidateProductsCache, refreshProductsFromCloud } = await import('./products-cloud');
   invalidateProductsCache();
+  refreshProductsFromCloud().catch(() => {});
   const { invalidateDebtsCache } = await import('./debts-cloud');
   invalidateDebtsCache();
   const { invalidateCustomersCache } = await import('./customers-cloud');
@@ -604,6 +638,8 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   emitEvent(EVENTS.INVOICES_UPDATED, null);
   emitEvent(EVENTS.DEBTS_UPDATED, null);
   emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+
   return {
     success: true,
     restoredItemsCount: Number(atomic.restored_item_count) || 0,
@@ -614,6 +650,359 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     customerName: atomic.customer_name,
     invoiceTotal: Number(atomic.invoice_total) || 0,
     invoiceCurrency: atomic.invoice_currency,
+    debtPaidAmount: targetDebtPaid,
+    cashToRefund: cashToRefund,
+  };
+};
+
+export interface PartialRefundItem {
+  productId: string;
+  productName: string;
+  quantityToRefund: number;
+  unitPrice: number;
+  costPrice: number;
+  profit: number;
+  warehouseId?: string;
+}
+
+export interface PartialRefundResult {
+  success: boolean;
+  error?: string;
+  refundedAmount: number;
+  cashToRefund: number;
+  debtReduced: number;
+  restoredItemsCount: number;
+  restoredUnitsCount: number;
+  isFullyRefunded: boolean;
+  newInvoiceTotal: number;
+}
+
+/**
+ * ✅ استرداد جزئي لأصناف محددة من الفاتورة
+ * يعيد كميات الأصناف المحددة فقط للمخزون، ويعدل إجمالي الفاتورة، وأرباحها، والدين أو النقدية
+ */
+export const refundInvoicePartialCloud = async (
+  invoiceNumber: string,
+  itemsToRefund: PartialRefundItem[],
+  _reason?: string
+): Promise<PartialRefundResult> => {
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id || null;
+    if (userId) setCurrentUserId(userId);
+  }
+  if (!userId) {
+    return { success: false, error: 'تعذّر تحديد المستخدم الحالي', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: 0 };
+  }
+
+  // 1. جلب الفاتورة الحالية
+  const invoices = await loadInvoicesCloud();
+  const invoice = invoices.find(inv => inv.id === invoiceNumber);
+  if (!invoice) {
+    return { success: false, error: 'لم يتم العثور على الفاتورة', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: 0 };
+  }
+
+  if (invoice.status === 'refunded') {
+    return { success: false, error: 'هذه الفاتورة مستردة بالكامل بالفعل', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: true, newInvoiceTotal: 0 };
+  }
+
+  const validRefundItems = itemsToRefund.filter(item => item.quantityToRefund > 0);
+  if (validRefundItems.length === 0) {
+    return { success: false, error: 'يرجى تحديد كمية للإرجاع أكبر من الصفر', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
+  }
+
+  // جلب سجل الفاتورة السحابي
+  const { data: cloudInvoice, error: invFetchErr } = await sb
+    .from('invoices')
+    .select('*')
+    .eq('invoice_number', invoiceNumber)
+    .eq('user_id', userId)
+    .single();
+
+  if (invFetchErr || !cloudInvoice) {
+    return { success: false, error: 'تعذّر جلب بيانات الفاتورة من السحابة', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
+  }
+
+  // جلب بنود الفاتورة
+  const { data: cloudItems, error: itemsFetchErr } = await sb
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_id', cloudInvoice.id);
+
+  if (itemsFetchErr || !cloudItems || cloudItems.length === 0) {
+    return { success: false, error: 'تعذّر جلب بنود الفاتورة من السحابة', refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
+  }
+
+  let totalRefundedAmount = 0;
+  let totalRefundedProfit = 0;
+  let totalRefundedUnits = 0;
+  let restoredItemsCount = 0;
+
+  // التحقق من الكميات وحساب المجاميع
+  for (const rItem of validRefundItems) {
+    const existingCloudItem = cloudItems.find(ci => ci.product_id === rItem.productId || ci.id === rItem.productId);
+    if (!existingCloudItem) {
+      return { success: false, error: `المنتج ${rItem.productName} غير موجود ضمن الفاتورة`, refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
+    }
+    const currentQty = Number(existingCloudItem.quantity) || 0;
+    if (rItem.quantityToRefund > currentQty) {
+      return { success: false, error: `كمية الإرجاع (${rItem.quantityToRefund}) أكبر من الكمية المتبقية (${currentQty}) للمنتج ${rItem.productName}`, refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: invoice.total };
+    }
+
+    const itemUnitSalePrice = Number(existingCloudItem.unit_price) || rItem.unitPrice;
+    const itemUnitCostPrice = Number(existingCloudItem.cost_price) || rItem.costPrice;
+    const itemRefundAmount = roundCurrency(rItem.quantityToRefund * itemUnitSalePrice);
+    const itemRefundProfit = roundCurrency(rItem.quantityToRefund * (itemUnitSalePrice - itemUnitCostPrice));
+
+    totalRefundedAmount = addCurrency(totalRefundedAmount, itemRefundAmount);
+    totalRefundedProfit = addCurrency(totalRefundedProfit, itemRefundProfit);
+    totalRefundedUnits += rItem.quantityToRefund;
+    restoredItemsCount += 1;
+  }
+
+  // 2. إعادة المخزون وتحديث بنود الفاتورة
+  for (const rItem of validRefundItems) {
+    const existingCloudItem = cloudItems.find(ci => ci.product_id === rItem.productId || ci.id === rItem.productId);
+    const warehouseId = existingCloudItem?.stock_warehouse_id || rItem.warehouseId;
+    const actualProductId = existingCloudItem?.product_id || rItem.productId;
+
+    if (warehouseId) {
+      const { data: wsRow } = await sb
+        .from('warehouse_stock')
+        .select('quantity')
+        .eq('warehouse_id', warehouseId)
+        .eq('product_id', actualProductId)
+        .maybeSingle();
+
+      if (wsRow) {
+        await sb
+          .from('warehouse_stock')
+          .update({
+            quantity: (Number(wsRow.quantity) || 0) + rItem.quantityToRefund,
+            last_updated: new Date().toISOString()
+          })
+          .eq('warehouse_id', warehouseId)
+          .eq('product_id', actualProductId);
+      } else {
+        const { data: pRow } = await sb
+          .from('products')
+          .select('quantity')
+          .eq('id', actualProductId)
+          .maybeSingle();
+        if (pRow) {
+          await sb
+            .from('products')
+            .update({ quantity: (Number(pRow.quantity) || 0) + rItem.quantityToRefund })
+            .eq('id', actualProductId);
+        }
+      }
+    } else {
+      const { data: pRow } = await sb
+        .from('products')
+        .select('quantity')
+        .eq('id', actualProductId)
+        .maybeSingle();
+      if (pRow) {
+        await sb
+          .from('products')
+          .update({ quantity: (Number(pRow.quantity) || 0) + rItem.quantityToRefund })
+          .eq('id', actualProductId);
+      }
+    }
+
+    // تحديث كمية الصنف في invoice_items
+    const newQty = (Number(existingCloudItem.quantity) || 0) - rItem.quantityToRefund;
+    const newAmount = roundCurrency(newQty * (Number(existingCloudItem.unit_price) || 0));
+    const newProfit = roundCurrency(newQty * ((Number(existingCloudItem.unit_price) || 0) - (Number(existingCloudItem.cost_price) || 0)));
+
+    await sb
+      .from('invoice_items')
+      .update({
+        quantity: newQty,
+        amount_original: newAmount,
+        amount_usd: newAmount,
+        profit: newProfit
+      })
+      .eq('id', existingCloudItem.id);
+  }
+
+  // 3. فحص ما إذا استُردت كامل كميات الفاتورة
+  const { data: refreshedCloudItems } = await sb
+    .from('invoice_items')
+    .select('quantity')
+    .eq('invoice_id', cloudInvoice.id);
+
+  const remainingTotalUnits = (refreshedCloudItems || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  const isFullyRefunded = remainingTotalUnits <= 0;
+
+  // 4. الحسابات المالية
+  const oldTotal = Number(cloudInvoice.total) || 0;
+  const oldSubtotal = Number(cloudInvoice.subtotal) || 0;
+  const oldProfit = Number(cloudInvoice.profit) || 0;
+  const newTotal = isFullyRefunded ? 0 : Math.max(0, subtractCurrency(oldTotal, totalRefundedAmount));
+  const newSubtotal = isFullyRefunded ? 0 : Math.max(0, subtractCurrency(oldSubtotal, totalRefundedAmount));
+  const newProfit = isFullyRefunded ? 0 : Math.max(0, subtractCurrency(oldProfit, totalRefundedProfit));
+
+  let cashToRefund = 0;
+  let debtReduced = 0;
+
+  const isDebt = cloudInvoice.payment_type === 'debt';
+  const currentDebtRemaining = Number(cloudInvoice.debt_remaining) || 0;
+  const currentDebtPaid = Number(cloudInvoice.debt_paid) || 0;
+
+  const refundTimestamp = new Date().toLocaleDateString('ar-EG');
+  const appendNote = (oldNotes: string | null, text: string) => oldNotes ? `${oldNotes}\n${text}` : text;
+
+  if (isDebt) {
+    if (currentDebtRemaining >= totalRefundedAmount) {
+      debtReduced = totalRefundedAmount;
+      cashToRefund = 0;
+      const newDebtRemaining = subtractCurrency(currentDebtRemaining, debtReduced);
+
+      await sb
+        .from('invoices')
+        .update({
+          total: newTotal,
+          subtotal: newSubtotal,
+          profit: newProfit,
+          debt_remaining: newDebtRemaining,
+          status: isFullyRefunded ? 'refunded' : cloudInvoice.status,
+          notes: appendNote(cloudInvoice.notes, `مرتجع جزئي بمبلغ ${totalRefundedAmount} بتاريخ ${refundTimestamp}`)
+        })
+        .eq('id', cloudInvoice.id);
+
+      // تحديث جدول debts
+      const { data: debtRows } = await sb
+        .from('debts')
+        .select('*')
+        .or(`invoice_id.eq.${invoiceNumber},invoice_id.eq.${cloudInvoice.id}`);
+
+      if (debtRows && debtRows.length > 0) {
+        for (const d of debtRows) {
+          const dRemaining = Math.max(0, subtractCurrency(Number(d.remaining_debt) || 0, debtReduced));
+          const dTotal = Math.max(0, subtractCurrency(Number(d.total_debt) || 0, debtReduced));
+          if (isFullyRefunded && dRemaining <= 0) {
+            await sb.from('debts').delete().eq('id', d.id);
+          } else {
+            await sb.from('debts').update({
+              remaining_debt: dRemaining,
+              total_debt: dTotal,
+              status: dRemaining <= 0 ? 'fully_paid' : d.status
+            }).eq('id', d.id);
+          }
+        }
+      }
+    } else {
+      // المرتجع يتجاوز الدين المتبقي → العميل يسترجع الفائض نقداً
+      debtReduced = currentDebtRemaining;
+      cashToRefund = subtractCurrency(totalRefundedAmount, currentDebtRemaining);
+      const newDebtPaid = Math.max(0, subtractCurrency(currentDebtPaid, cashToRefund));
+
+      await sb
+        .from('invoices')
+        .update({
+          total: newTotal,
+          subtotal: newSubtotal,
+          profit: newProfit,
+          debt_remaining: 0,
+          debt_paid: newDebtPaid,
+          status: isFullyRefunded ? 'refunded' : cloudInvoice.status,
+          notes: appendNote(cloudInvoice.notes, `مرتجع جزئي: إلغاء دين ${debtReduced} وإرجاع نقدية ${cashToRefund} بتاريخ ${refundTimestamp}`)
+        })
+        .eq('id', cloudInvoice.id);
+
+      const { data: debtRows } = await sb
+        .from('debts')
+        .select('id, total_debt')
+        .or(`invoice_id.eq.${invoiceNumber},invoice_id.eq.${cloudInvoice.id}`);
+
+      if (debtRows && debtRows.length > 0) {
+        for (const d of debtRows) {
+          if (isFullyRefunded) {
+            await sb.from('debts').delete().eq('id', d.id);
+          } else {
+            await sb.from('debts').update({
+              remaining_debt: 0,
+              total_debt: Math.max(0, subtractCurrency(Number(d.total_debt) || 0, debtReduced)),
+              status: 'fully_paid'
+            }).eq('id', d.id);
+          }
+        }
+      }
+    }
+  } else {
+    // بيع نقدي
+    cashToRefund = totalRefundedAmount;
+    debtReduced = 0;
+
+    await sb
+      .from('invoices')
+      .update({
+        total: newTotal,
+        subtotal: newSubtotal,
+        profit: newProfit,
+        status: isFullyRefunded ? 'refunded' : cloudInvoice.status,
+        notes: appendNote(cloudInvoice.notes, `مرتجع جزئي بقيمة ${totalRefundedAmount} بتاريخ ${refundTimestamp}`)
+      })
+      .eq('id', cloudInvoice.id);
+  }
+
+  // 5. خصم النقدية من الوردية النشطة إذا أُعيد مال نقدي
+  if (cashToRefund > 0) {
+    try {
+      const { recordRefundInShift } = await import('../cashbox-store');
+      const cogs = Math.max(0, totalRefundedAmount - totalRefundedProfit);
+      recordRefundInShift(cashToRefund, totalRefundedProfit, cogs, invoiceNumber);
+    } catch (e) {
+      console.warn('[refundInvoicePartialCloud] Failed to record refund in shift:', e);
+    }
+  }
+
+  // 6. تحديث إحصاءات العميل إن وُجد
+  if (cloudInvoice.customer_id) {
+    try {
+      const { updateCustomerStatsCloud } = await import('./customers-cloud');
+      await updateCustomerStatsCloud(cloudInvoice.customer_id);
+    } catch { /* noop */ }
+  }
+
+  // 7. تحديث الكاش وإرسال الإشعارات
+  invalidateInvoicesCache();
+  const { invalidateProductsCache, refreshProductsFromCloud } = await import('./products-cloud');
+  invalidateProductsCache();
+  refreshProductsFromCloud().catch(() => {});
+  const { invalidateDebtsCache } = await import('./debts-cloud');
+  invalidateDebtsCache();
+  const { invalidateCustomersCache } = await import('./customers-cloud');
+  invalidateCustomersCache();
+
+  emitEvent(EVENTS.INVOICES_UPDATED, null);
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  emitEvent(EVENTS.DEBTS_UPDATED, null);
+  emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+
+  // 8. سجل النشاط
+  try {
+    const { addActivityLog } = await import('../activity-log');
+    addActivityLog(
+      'invoice_refund',
+      userId,
+      cloudInvoice.cashier_name || 'كاشير',
+      `تم استرداد جزئي للفاتورة ${invoiceNumber}: ${restoredItemsCount} أصناف بقيمة ${totalRefundedAmount}`,
+      { invoiceNumber, refundedAmount: totalRefundedAmount, cashToRefund, debtReduced, isFullyRefunded }
+    );
+  } catch { /* noop */ }
+
+  return {
+    success: true,
+    refundedAmount: totalRefundedAmount,
+    cashToRefund,
+    debtReduced,
+    restoredItemsCount,
+    restoredUnitsCount: totalRefundedUnits,
+    isFullyRefunded,
+    newInvoiceTotal: newTotal
   };
 };
 
