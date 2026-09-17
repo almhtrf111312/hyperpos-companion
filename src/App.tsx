@@ -25,6 +25,7 @@ import { OfflineProtectionBanner } from "./components/license/OfflineProtectionB
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { checkSettingsVersion } from "./lib/settings-version";
+import { EVENTS } from "./lib/events";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
@@ -82,7 +83,7 @@ const AppContent = () => {
   // Privacy policy acceptance
   const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();
 
-  // Setup wizard shown to admin/boss on first login until completed
+  // Setup wizard state for fresh installations
   const { user } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
   const [setupComplete, setSetupComplete] = useState<boolean>(() => {
@@ -90,11 +91,16 @@ const AppContent = () => {
       return localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1');
     } catch { return true; }
   });
-  // Re-read flag whenever the user changes (after login/logout)
+  // Re-read flag whenever the user changes (after login/logout) or settings are updated
   useEffect(() => {
-    try {
-      setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1'));
-    } catch {}
+    const checkState = () => {
+      try {
+        setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1'));
+      } catch {}
+    };
+    checkState();
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, checkState);
+    return () => window.removeEventListener(EVENTS.SETTINGS_UPDATED, checkState);
   }, [user?.id]);
 
   // Handle reset mode
@@ -214,12 +220,25 @@ const AppContent = () => {
     return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
   }
 
-  // Show setup wizard the first time an admin/boss logs in (cashiers skip it)
-  const shouldShowSetup = !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss');
+  // Show setup wizard ONLY for brand new signups (first-time account registration)
+  // Existing accounts logging in bypass it completely
+  const isNewSignup = (() => {
+    try {
+      return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+    } catch { return false; }
+  })();
+
+  const shouldShowSetup = isNewSignup && !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss');
   if (shouldShowSetup) {
     return (
       <>
-        <SetupWizard onComplete={() => setSetupComplete(true)} />
+        <SetupWizard onComplete={() => {
+          try {
+            sessionStorage.removeItem('hyperpos_just_signed_up');
+            localStorage.setItem('hyperpos_setup_complete', 'true');
+          } catch {}
+          setSetupComplete(true);
+        }} />
       </>
     );
   }

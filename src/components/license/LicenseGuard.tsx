@@ -119,8 +119,6 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const { t, direction } = useLanguage();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-
   const isFullyLoading = authLoading || isLoading || isCheckingDevice;
 
   useEffect(() => {
@@ -129,39 +127,12 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
 
-  // إظهار زر إعادة المحاولة فقط بعد ثانية إذا استمر التحميل
-  useEffect(() => {
-    if (isFullyLoading) {
-      const retryTimer = setTimeout(() => setLoadingTimeout(true), 1500);
-      return () => { clearTimeout(retryTimer); };
-    } else {
-      setLoadingTimeout(false);
-    }
-  }, [isFullyLoading]);
-
-  if (isFullyLoading && loadingTimeout) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background" style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}>
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground" style={{ color: '#a1a1aa' }}>{t('license.loading')}</p>
-          <Button variant="outline" onClick={() => { setLoadingTimeout(false); checkLicense(); }}>
-            {t('license.retry')}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
-            {t('license.reloadApp')}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   if (isFullyLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background" style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground" style={{ color: '#a1a1aa' }}>{t('license.loading')}</p>
+          <p className="text-muted-foreground text-sm" style={{ color: '#a1a1aa' }}>{t('license.loading')}</p>
         </div>
       </div>
     );

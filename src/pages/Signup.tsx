@@ -61,6 +61,11 @@ export default function Signup() {
       return;
     }
 
+    try {
+      sessionStorage.setItem('hyperpos_just_signed_up', 'true');
+      localStorage.removeItem('hyperpos_setup_complete');
+    } catch {}
+
     toast.success(t('auth.signupSuccess'));
     navigate('/');
   };

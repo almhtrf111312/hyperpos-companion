@@ -163,6 +163,13 @@ export default function Login() {
       }
     }
 
+    // Existing account login -> bypass setup wizard and onboarding tour
+    try {
+      localStorage.setItem('hyperpos_setup_complete', 'true');
+      localStorage.setItem('hp_onboarding_complete', 'true');
+      sessionStorage.removeItem('hyperpos_just_signed_up');
+    } catch {}
+
     setIsLoading(false);
     toast.success(t('auth.loginSuccess'));
     navigate('/');
@@ -201,6 +208,12 @@ export default function Login() {
           setIsLoading(false);
           return;
         }
+
+        try {
+          localStorage.setItem('hyperpos_setup_complete', 'true');
+          localStorage.setItem('hp_onboarding_complete', 'true');
+          sessionStorage.removeItem('hyperpos_just_signed_up');
+        } catch {}
 
         toast.success(t('auth.loginSuccess'));
         navigate('/');

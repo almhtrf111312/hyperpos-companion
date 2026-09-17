@@ -208,6 +208,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         };
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        localStorage.setItem('hyperpos_setup_complete', 'true');
         emitEvent(EVENTS.SETTINGS_UPDATED);
         emitEvent(EVENTS.STORE_TYPE_CHANGED);
       } else {
@@ -356,6 +357,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         };
 
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
+        localStorage.setItem('hyperpos_setup_complete', 'true');
       }
 
       emitEvent(EVENTS.PRODUCTS_UPDATED);

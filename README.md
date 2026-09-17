@@ -1,5 +1,8 @@
 # Welcome to your Lovable project
 
+> 📌 **توثيق إصلاحات Antigravity المحاسبية والسحابية:**
+> راجع [دليل الإصلاحات من قبل أنتي جرافيتي](الاصلاحات_من_قبل_انتي_جرافيتي.md) للاطلاع على تفاصيل ربط الورديات، مرتجعات الديون، والاسترداد الجزئي.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
