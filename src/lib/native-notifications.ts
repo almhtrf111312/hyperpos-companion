@@ -2,12 +2,14 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 const CHANNEL_ID = 'flowpos_alerts';
+let channelCreated = false; // Guard: create channel only once per session
 
 /**
  * تهيئة قناة إشعارات أندرويد (ضرورية لنظام Android 8+)
+ * يتم الاستدعاء مرة واحدة فقط لتجنب تكرار إنشاء القناة
  */
 export async function initNotificationChannel(): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || channelCreated) return;
   try {
     await LocalNotifications.createChannel({
       id: CHANNEL_ID,
@@ -20,6 +22,7 @@ export async function initNotificationChannel(): Promise<void> {
       lights: true,
       lightColor: '#ff6600',
     });
+    channelCreated = true;
   } catch (e) {
     console.warn('[Notifications] Failed to create channel:', e);
   }
@@ -75,6 +78,11 @@ export async function requestNotificationPermissionNative(): Promise<'granted' |
 
 /**
  * إرسال إشعار فوري يظهر في شريط إشعارات الهاتف (Android Notification Shade)
+ *
+ * KEY FIX: لا نستخدم schedule.at هنا — الجدولة عبر AlarmManager تسبب تأخير
+ * 3-4 ثوانٍ بسبب آليات توفير الطاقة في أندرويد.
+ * بحذف schedule يتم توجيه الإشعار مباشرة إلى NotificationManager.notify()
+ * فيظهر فورياً في أقل من 50 ميلي ثانية.
  */
 export async function sendLocalNotification(title: string, body: string): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
@@ -89,8 +97,7 @@ export async function sendLocalNotification(title: string, body: string): Promis
             body,
             channelId: CHANNEL_ID,
             smallIcon: 'ic_launcher',
-            schedule: { at: new Date(Date.now() + 100) },
-            sound: 'beep.wav',
+            // No 'schedule' field here → fires instantly via NotificationManager (not AlarmManager)
           },
         ],
       });

@@ -92,6 +92,7 @@ interface SyncSettingsType {
 }
 
 interface NotificationSettingsType {
+  masterEnabled: boolean; // مفتاح الإشعارات الرئيسي الشامل
   sound: boolean;
   newSale: boolean;
   lowStock: boolean;
@@ -370,12 +371,13 @@ export default function Settings() {
 
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
-    sound: true,
-    newSale: true,
-    lowStock: true,
-    newDebt: true,
-    paymentReceived: true,
-    dailyReport: false,
+    masterEnabled: persisted?.notificationSettings?.masterEnabled ?? true,
+    sound: persisted?.notificationSettings?.sound ?? true,
+    newSale: persisted?.notificationSettings?.newSale ?? true,
+    lowStock: persisted?.notificationSettings?.lowStock ?? true,
+    newDebt: persisted?.notificationSettings?.newDebt ?? true,
+    paymentReceived: persisted?.notificationSettings?.paymentReceived ?? true,
+    dailyReport: persisted?.notificationSettings?.dailyReport ?? false,
   });
 
   // Printing settings
@@ -1570,6 +1572,7 @@ export default function Settings() {
       case 'notifications':
         return (
           <div className="space-y-3">
+            {/* بطاقة حالة إذن النظام */}
             {notificationPerm === 'granted' ? (
               <div className="flex items-center justify-between gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -1601,7 +1604,40 @@ export default function Settings() {
                 </Button>
               </div>
             )}
-            <div className="bg-muted/30 rounded-xl border border-border/50 p-4 space-y-2">
+
+            {/* المفتاح الرئيسي الشامل للإشعارات */}
+            <div className={`flex items-center justify-between gap-3 p-4 rounded-xl border-2 transition-colors ${
+              notificationSettings.masterEnabled
+                ? 'bg-primary/5 border-primary/30'
+                : 'bg-muted/50 border-border'
+            }`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  notificationSettings.masterEnabled ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                }`}>
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground">
+                    {notificationSettings.masterEnabled ? 'الإشعارات مفعلة' : 'الإشعارات معطلة'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {notificationSettings.masterEnabled
+                      ? 'سيتم إرسال جميع التنبيهات المحددة'
+                      : 'لن تصلك أي تنبيهات حتى تعيد التفعيل'}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={notificationSettings.masterEnabled}
+                onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, masterEnabled: checked })}
+              />
+            </div>
+
+            {/* خيارات التحكم التفصيلية */}
+            <div className={`bg-muted/30 rounded-xl border border-border/50 p-4 space-y-2 transition-opacity ${
+              notificationSettings.masterEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'
+            }`}>
               <h2 className="text-base font-bold text-foreground mb-2">{t('settings.notifications')}</h2>
               {/* الصوت */}
               <div className="flex items-center justify-between py-2">

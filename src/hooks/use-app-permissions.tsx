@@ -1,12 +1,6 @@
-/**
- * Early App Permissions Hook
- * ===========================
- * طلب أذونات الكاميرا والتخزين عند بدء تشغيل التطبيق
- * يُستدعى في App.tsx لضمان طلب الأذونات مبكراً
- */
-
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { requestNotificationPermissionNative } from '@/lib/native-notifications';
 
 interface PermissionStatus {
   camera: 'granted' | 'denied' | 'prompt' | 'unknown';
@@ -24,8 +18,8 @@ export function useAppPermissions() {
   });
 
   useEffect(() => {
-    // Request notification permission if web/PWA supports it
-    const requestNotificationPermission = async (): Promise<'granted' | 'denied' | 'prompt'> => {
+    // Request notification permission (web / PWA path only)
+    const requestWebNotificationPermission = async (): Promise<'granted' | 'denied' | 'prompt'> => {
       try {
         if (typeof window !== 'undefined' && 'Notification' in window) {
           if (Notification.permission === 'granted') return 'granted';
@@ -40,7 +34,7 @@ export function useAppPermissions() {
     };
 
     if (!Capacitor.isNativePlatform()) {
-      requestNotificationPermission().then(notifStatus => {
+      requestWebNotificationPermission().then(notifStatus => {
         setStatus({ camera: 'granted', storage: 'granted', notifications: notifStatus, requested: true });
       });
       return;
@@ -68,7 +62,12 @@ export function useAppPermissions() {
           storageStatus = 'prompt';
         }
 
-        const notifStatus = await requestNotificationPermission();
+        // On Android, use @capacitor/local-notifications to show the real
+        // POST_NOTIFICATIONS system dialog (Android 13+). The web Notification API
+        // is NOT supported inside Android WebView and shows nothing.
+        const notifResult = await requestNotificationPermissionNative();
+        const notifStatus: 'granted' | 'denied' | 'prompt' =
+          notifResult === 'granted' ? 'granted' : 'denied';
 
         setStatus({
           camera: cameraStatus,
