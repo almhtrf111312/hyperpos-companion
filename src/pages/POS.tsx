@@ -391,19 +391,16 @@ export default function POS() {
   useEffect(() => {
     loadData();
 
-    // التحديثات اللاحقة تكون في الخلفية (بدون شاشة تحميل)
+    // التحديثات اللاحقة تكون في الخلفية عند تعديل المنتجات أو الفئات فقط
     const onProductsUpdated = () => loadData(0, true);
     const onCategoriesUpdated = () => loadData(0, true);
-    const onFocus = () => loadData(0, true);
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-    window.addEventListener('focus', onFocus);
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
-      window.removeEventListener('focus', onFocus);
     };
   }, [loadData]);
 

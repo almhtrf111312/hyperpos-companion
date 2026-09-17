@@ -508,9 +508,13 @@ export default function Customers() {
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('customers.phone')} *</label>
               <Input
+                type="tel"
+                inputMode="tel"
+                dir="ltr"
                 placeholder="+963 xxx xxx xxx"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+]/g, '') })}
+                className="text-left"
               />
             </div>
             <div>
@@ -562,8 +566,13 @@ export default function Customers() {
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('customers.phone')} *</label>
               <Input
+                type="tel"
+                inputMode="tel"
+                dir="ltr"
+                placeholder="+963 xxx xxx xxx"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+]/g, '') })}
+                className="text-left"
               />
             </div>
             <div>

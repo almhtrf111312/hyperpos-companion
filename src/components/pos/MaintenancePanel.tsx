@@ -440,10 +440,13 @@ ${footer}`;
                   <div className="relative">
                     <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
+                      type="tel"
+                      inputMode="tel"
+                      dir="ltr"
                       placeholder="+963 xxx xxx xxx"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="pr-9 bg-muted border-0"
+                      onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
+                      className="pr-9 bg-muted border-0 text-left"
                     />
                   </div>
                 </div>

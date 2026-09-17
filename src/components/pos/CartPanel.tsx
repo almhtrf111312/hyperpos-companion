@@ -322,12 +322,15 @@ export function CartPanel({
 
     // ✅ التحقق إذا كان العميل موجوداً في قاعدة البيانات واستخدام رقم هاتفه
     const existingCustomer = allCustomers.find(c =>
-      c.name.toLowerCase() === customerName.toLowerCase().trim()
+      c.name.toLowerCase().trim() === customerName.toLowerCase().trim()
     );
 
     if (existingCustomer) {
       setIsNewCustomer(false);
-      setCustomerPhone(existingCustomer.phone || ''); // ✅ استخدام الهاتف المحفوظ
+      setCustomerPhone(existingCustomer.phone || customerPhone || ''); // ✅ استخدام الهاتف المحفوظ
+    } else if (customerPhone && customerPhone.trim()) {
+      // ✅ العميل تمت إضافته للتو برقم هاتف في هذه الجلسة
+      setIsNewCustomer(false);
     } else {
       setIsNewCustomer(true);
       setCustomerPhone('');
@@ -753,9 +756,8 @@ export function CartPanel({
       setCustomerPhone(created.phone || '');
       setIsNewCustomer(false);
 
-      // تحديث قائمة العملاء للبحث التلقائي
-      const refreshed = await loadCustomersCloud();
-      setAllCustomers(refreshed);
+      // تحديث قائمة العملاء للبحث التلقائي فوراً
+      setAllCustomers(prev => [created, ...prev.filter(c => c.id !== created.id)]);
 
       showToast.success(t('pos.customerAdded'));
       setShowCustomerDialog(false);
@@ -1425,10 +1427,13 @@ export function CartPanel({
                   </label>
                   <Input
                     id="cart-new-customer-phone"
+                    type="tel"
+                    inputMode="tel"
+                    dir="ltr"
                     placeholder="+963 xxx xxx xxx"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="bg-background border-warning"
+                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
+                    className="bg-background border-warning text-left"
                   />
                 </div>
               )}
@@ -1492,9 +1497,16 @@ export function CartPanel({
                 <label htmlFor="cart-customer-phone" className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
                 <Input
                   id="cart-customer-phone"
+                  type="tel"
+                  inputMode="tel"
+                  dir="ltr"
                   placeholder="+963 xxx xxx xxx"
                   value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^\d+]/g, '');
+                    setNewCustomer(prev => ({ ...prev, phone: val }));
+                  }}
+                  className="text-left"
                 />
               </div>
               <div>

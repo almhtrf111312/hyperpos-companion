@@ -206,10 +206,16 @@ export const addCustomerCloud = async (
   });
   
   if (inserted) {
-    invalidateCustomersCache();
+    const newCustomer = toCustomer(inserted);
+    // ✅ تحديث الكاش المحلي وفي الذاكرة فوراً لضمان توفره لحظياً
+    const currentList = customersCache || loadCustomersLocally() || [];
+    customersCache = [newCustomer, ...currentList.filter(c => c.id !== newCustomer.id)];
+    cacheTimestamp = Date.now();
+    saveCustomersLocally(customersCache);
+
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
     triggerAutoBackup(`عميل جديد: ${normalizedName}`);
-    return toCustomer(inserted);
+    return newCustomer;
   }
   
   return null;
@@ -234,7 +240,11 @@ export const updateCustomerCloud = async (
   const success = await updateInSupabase('customers', id, updates);
   
   if (success) {
-    invalidateCustomersCache();
+    const currentList = customersCache || loadCustomersLocally() || [];
+    customersCache = currentList.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c);
+    cacheTimestamp = Date.now();
+    saveCustomersLocally(customersCache);
+
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
   }
   
@@ -246,7 +256,11 @@ export const deleteCustomerCloud = async (id: string): Promise<boolean> => {
   const success = await deleteFromSupabase('customers', id);
   
   if (success) {
-    invalidateCustomersCache();
+    const currentList = customersCache || loadCustomersLocally() || [];
+    customersCache = currentList.filter(c => c.id !== id);
+    cacheTimestamp = Date.now();
+    saveCustomersLocally(customersCache);
+
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
   }
   
