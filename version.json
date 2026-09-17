@@ -1,8 +1,13 @@
 {
-  "versionCode": 255,
-  "versionName": "1.0.25",
-  "lastUpdated": "2026-09-17T15:00:00.000Z",
+  "versionCode": 256,
+  "versionName": "1.0.26",
+  "lastUpdated": "2026-09-18T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 256,
+      "date": "2026-09-18T00:00:00.000Z",
+      "description": "v1.0.26 - Native Android local notifications via @capacitor/local-notifications with system permission prompt, customer phone retention in debt sales, phone input numbers-only restriction, RAM state preservation without refresh on app switch, category deduplication across cloud and UI, and distinct versioned APK artifact naming in GitHub Actions workflow"
+    },
     {
       "versionCode": 255,
       "date": "2026-09-17T15:00:00.000Z",

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext, ReactNode 
 import { toast } from 'sonner';
 import { loadProductsCloud, getStatus } from '@/lib/cloud/products-cloud';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
+import { sendLocalNotification } from '@/lib/native-notifications';
 
 export interface Notification {
   id: string;
@@ -112,6 +113,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       } else {
         toast.warning(notification.title, { description: notification.message });
       }
+
+      // إرسال تنبيه في شريط إشعارات الهاتف
+      sendLocalNotification(notification.title, notification.message).catch(() => {});
     }
   }, []);
 

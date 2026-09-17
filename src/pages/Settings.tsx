@@ -62,6 +62,7 @@ import DataResetSection from '@/components/settings/DataResetSection';
 import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { printHTML } from '@/lib/native-print';
+import { checkNotificationPermissionNative, requestNotificationPermissionNative, sendLocalNotification } from '@/lib/native-notifications';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -257,42 +258,29 @@ export default function Settings() {
   const [discountFixedEnabled, setDiscountFixedEnabled] = useState(persisted?.discountFixedEnabled ?? true);
   const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(persisted?.barcodeScanMode ?? 'search');
 
-  const [notificationPerm, setNotificationPerm] = useState<string>(() => {
-    try {
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        return Notification.permission;
-      }
-      return localStorage.getItem('hyperpos_notifications_enabled') === 'true' ? 'granted' : 'default';
-    } catch {
-      return 'unknown';
-    }
-  });
+  const [notificationPerm, setNotificationPerm] = useState<string>('prompt');
+
+  // التحقق الحقيقي من إذن الإشعارات الأصلي عند تحميل الإعدادات
+  useEffect(() => {
+    checkNotificationPermissionNative().then(status => {
+      setNotificationPerm(status);
+    }).catch(() => {});
+  }, []);
 
   const handleRequestNotificationPermission = async () => {
     try {
-      let granted = false;
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        const res = await Notification.requestPermission();
-        setNotificationPerm(res);
-        if (res === 'granted') {
-          granted = true;
-        }
-      } else {
-        // Fallback for native environments
-        granted = true;
-        setNotificationPerm('granted');
-      }
+      const status = await requestNotificationPermissionNative();
+      setNotificationPerm(status);
 
-      if (granted) {
+      if (status === 'granted') {
         localStorage.setItem('hyperpos_notifications_enabled', 'true');
-        setNotificationPerm('granted');
         toast({ title: '✓ تم تفعيل الإشعارات بنجاح', description: 'ستصلك تنبيهات المبيعات والديون ونفاذ المخزون' });
-        // إرسال إشعار تجريبي فوري
-        handleSendTestNotification();
+        // إرسال إشعار تجريبي فوري حقيقي في شريط الإشعارات
+        await sendLocalNotification('FlowPOS Pro', '🎉 تنبيه تجريبي: نظام الإشعارات يعمل بنجاح!');
       } else {
         toast({
           title: 'تنبيه الأذونات',
-          description: 'إذا لم تظهر نافذة الإذن، يرجى السماح بالإشعارات من إعدادات الهاتف (التطبيقات > FlowPOS Pro > الإشعارات)',
+          description: 'يرجى السماح بالإشعارات للتطبيق من إعدادات الهاتف (التطبيقات > FlowPOS Pro > الإشعارات)',
           variant: 'destructive'
         });
       }
@@ -302,19 +290,20 @@ export default function Settings() {
     }
   };
 
-  const handleSendTestNotification = () => {
-    try {
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('FlowPOS Pro', {
-          body: '🎉 تنبيه تجريبي: نظام الإشعارات يعمل بنجاح!',
-          icon: '/app-icon.png',
-        });
-      }
-    } catch (e) {}
-    toast({
-      title: '🎉 إشعار تجريبي',
-      description: 'نظام الإشعارات مفعل ويعمل بكفاءة على جهازك',
-    });
+  const handleSendTestNotification = async () => {
+    const success = await sendLocalNotification('FlowPOS Pro', '🎉 تنبيه تجريبي: نظام الإشعارات يعمل بنجاح!');
+    if (success) {
+      toast({
+        title: '🎉 تم إرسال الإشعار التجريبي',
+        description: 'تحقق من شريط إشعارات الهاتف في الأعلى',
+      });
+    } else {
+      toast({
+        title: '⚠️ لم يتم إرسال الإشعار',
+        description: 'تأكد من تفعيل إذن الإشعارات للتطبيق في إعدادات الهاتف',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Logo upload handler

@@ -95,16 +95,40 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
+      - name: Prepare versioned APK files
+        shell: bash
+        run: |
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          VERSION="${{ env.VERSION_NAME }}"
+          BUILD_CODE="${{ env.VERSION_CODE }}"
+          RUN_NUM="${{ github.run_number }}"
+          
+          # Distinct, versioned filename with strictly increasing build number
+          VERSIONED_APK="FlowPOS-Pro-v${VERSION}-b${BUILD_CODE}-build${RUN_NUM}.apk"
+          
+          echo "Copying APK to: $VERSIONED_APK"
+          cp "$RELEASE_DIR/app-release.apk" "$RELEASE_DIR/$VERSIONED_APK"
+          
+          echo "VERSIONED_APK_NAME=$VERSIONED_APK" >> "$GITHUB_ENV"
+          echo "VERSIONED_APK_PATH=$RELEASE_DIR/$VERSIONED_APK" >> "$GITHUB_ENV"
+          
+          echo "=== Release directory contents ==="
+          ls -lh "$RELEASE_DIR"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlowPOS-Pro-v${{ env.VERSION_NAME }}-Release
-          path: android/app/build/outputs/apk/release/*.apk
+          name: FlowPOS-Pro-v${{ env.VERSION_NAME }}-b${{ env.VERSION_CODE }}-build${{ github.run_number }}
+          path: |
+            android/app/build/outputs/apk/release/FlowPOS-Pro-*.apk
+            android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
 
       - name: Create tagged release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: |
+            ${{ env.VERSIONED_APK_PATH }}
+            android/app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true

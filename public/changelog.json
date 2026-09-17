@@ -1,6 +1,31 @@
 [
   {
     "type": "improved",
+    "ar": "v1.0.26 - تفعيل نظام الإشعارات الأصلي لنظام أندرويد عبر @capacitor/local-notifications مع طلب إذن النظام الرسمي، وإظهار التنبيهات التجريبية وتنبيهات الديون ونفاذ المخزون في شريط إشعارات الهاتف",
+    "en": "v1.0.26 - Activated native Android notifications via @capacitor/local-notifications with system permission prompt, test alerts, and stock/debt notifications in device status bar"
+  },
+  {
+    "type": "fixed",
+    "ar": "حل مشكلة إعادة طلب رقم هاتف العميل عند البيع المؤجل في السلة، وحصر جميع خانات إدخال الهاتف بالأرقام فقط ورمز (+)",
+    "en": "Fixed customer phone prompt duplication in cart debt sales, and restricted phone input fields to digits and (+) only"
+  },
+  {
+    "type": "fixed",
+    "ar": "إلغاء إعادة تحميل شاشة نقطة البيع (الريفرش) وتثبيت حالة التطبيق والسلة في الذاكرة (RAM) عند التبديل بين التطبيقات",
+    "en": "Eliminated POS screen reload/refresh and preserved app/cart state in RAM when switching between applications"
+  },
+  {
+    "type": "fixed",
+    "ar": "حل مشكلة تكرار التصنيفات (18 مرة) وتنظيف السجلات المكررة تلقائياً من السحابة والواجهة مع إضافة أداة تنظيف التكرارات",
+    "en": "Fixed duplicated categories (up to 18x), cleaned existing duplicates from cloud and local storage, and added a clean duplicates tool"
+  },
+  {
+    "type": "improved",
+    "ar": "تسمية ملفات الـ APK في GitHub Actions باسم فريد يتضمن رقم الإصدار ورقم البناء التسلسلي لتمييز الإصدارات الجديدة فوراً",
+    "en": "Added distinct versioned APK artifact naming in GitHub Actions workflow with version name and sequential build number"
+  },
+  {
+    "type": "improved",
     "ar": "v1.0.25 - ترقية شاملة لتصميم صفحة الإعدادات على الهواتف: إلغاء ازدواجية وتكرار إطارات النوافذ (تفكيك النوافذ المتداخلة داخل بعض)، وتنسيق بطاقات متناسقة وناعمة تتناسب مع شاشات الموبايل",
     "en": "v1.0.25 - Mobile UX overhaul for Settings: eliminated nested double-card borders, streamlined subview layout, and refined typography for mobile screens"
   },
