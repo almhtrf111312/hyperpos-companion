@@ -2,6 +2,7 @@ name: Build FlowPOS Pro APK
 
 on:
   push:
+    branches: [ main ]
     tags: ['v*']
   workflow_dispatch:
 
@@ -53,54 +54,56 @@ jobs:
       - name: Sync embedded files to Android
         run: npx cap sync android
 
-      - name: Check signing key
-        id: signing
+      - name: Setup release signing key
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Decode signing key
-        if: steps.signing.outputs.available == 'true'
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: echo "$KEYSTORE_BASE64" | base64 -d > android/app/flowpos-release.keystore
-
-      - name: Build signed release APK
-        if: steps.signing.outputs.available == 'true'
-        working-directory: android
-        env:
-          KEYSTORE_PATH: flowpos-release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using custom repository signing key..."
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/flowpos-release.keystore
+            echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "Generating production release signing keystore..."
+            keytool -genkeypair -v \
+              -keystore android/app/flowpos-release.keystore \
+              -alias flowpos \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass flowpos123 \
+              -keypass flowpos123 \
+              -dname "CN=FlowPOS Pro, OU=POS, O=FlowPOS, L=Global, ST=Global, C=US"
+            echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=flowpos123" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=flowpos123" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
           APP_VERSION_CODE: ${{ env.VERSION_CODE }}
           APP_VERSION_NAME: ${{ env.VERSION_NAME }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Build debug APK
-        if: steps.signing.outputs.available != 'true'
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlowPOS-Pro-APK-v${{ env.VERSION_NAME }}
-          path: android/app/build/outputs/apk/**/*.apk
+          name: FlowPOS-Pro-v${{ env.VERSION_NAME }}-Release
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
       - name: Create tagged release
-        if: steps.signing.outputs.available == 'true' && startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: android/app/build/outputs/apk/release/app-release.apk

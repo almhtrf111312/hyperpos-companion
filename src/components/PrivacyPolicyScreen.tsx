@@ -3,7 +3,7 @@
  * User must scroll to bottom before checkbox is enabled, then check to enable button
  */
 import { useState, useRef, useCallback } from 'react';
-import { Shield, Check } from 'lucide-react';
+import { Shield, Check, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -134,65 +134,135 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Check if scrolled near bottom (within 30px)
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+    // Check if scrolled near bottom (within 40px)
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
       setScrolledToBottom(true);
     }
   }, []);
 
-  // Always use white/blue theme regardless of user's dark/light preference
+  const scrollToBottom = () => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: 'smooth'
+      });
+      // Small timeout to guarantee scrolledToBottom activates smoothly
+      setTimeout(() => setScrolledToBottom(true), 350);
+    }
+  };
+
+  // Always use crisp, high-contrast theme
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-3 sm:p-4"
       style={{ backgroundColor: '#ffffff', color: '#1a1a2e' }}
     >
-      <div className="w-full max-w-2xl flex flex-col items-center gap-4 h-full max-h-[100dvh] py-4">
-        {/* Header */}
-        <div className="flex-shrink-0 flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#2563eb1a' }}>
-            <Shield className="w-7 h-7" style={{ color: '#2563eb' }} />
+      <div className="w-full max-w-2xl flex flex-col items-center gap-3 sm:gap-4 h-full max-h-[100dvh] py-2 sm:py-4">
+        {/* Header with strictly circular icon badge */}
+        <div className="flex-shrink-0 flex flex-col items-center gap-2 text-center">
+          <div
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shrink-0 aspect-square border border-blue-200 shadow-sm"
+            style={{
+              backgroundColor: '#eff6ff',
+              width: '56px',
+              height: '56px',
+              minWidth: '56px',
+              minHeight: '56px',
+              maxWidth: '56px',
+              maxHeight: '56px',
+              aspectRatio: '1 / 1'
+            }}
+          >
+            <Shield className="w-7 h-7 sm:w-8 sm:h-8 shrink-0" style={{ color: '#2563eb' }} />
           </div>
-          <h1 className="text-xl font-bold text-center" style={{ color: '#1e3a8a' }}>
+          <h1 className="text-lg sm:text-2xl font-bold" style={{ color: '#1e3a8a' }}>
             {t('privacy.title')}
           </h1>
+          <p className="text-[11px] sm:text-xs text-muted-foreground max-w-md px-2">
+            {isRTLLang
+              ? 'يرجى قراءة شروط الاستخدام وإخلاء المسؤولية للمتابعة واستخدام التطبيق'
+              : 'Please review the terms of service and disclaimer to proceed'}
+          </p>
         </div>
 
         {/* Scrollable Terms Content */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 w-full overflow-y-auto rounded-xl p-4"
+          className="flex-1 min-h-0 w-full overflow-y-auto rounded-xl p-3 sm:p-4 text-xs sm:text-sm shadow-inner"
           dir={isRTL ? 'rtl' : 'ltr'}
           style={{ border: '1px solid #bfdbfe', backgroundColor: '#f8faff' }}
         >
           <div
-            className={`prose prose-sm max-w-none text-sm leading-relaxed space-y-4 ${isRTLLang ? 'pr-2' : 'pl-2'}`}
+            className={`prose prose-sm max-w-none leading-relaxed space-y-3 sm:space-y-4 ${isRTLLang ? 'pr-1.5' : 'pl-1.5'}`}
             style={{ color: '#1e3a8a' }}
           >
             {isRTLLang ? <ArabicTerms /> : <EnglishTerms />}
           </div>
         </div>
 
-        {/* Scroll hint */}
-        {!scrolledToBottom && (
-          <p className="text-xs animate-pulse flex-shrink-0" style={{ color: '#3b82f6' }}>
-            {isRTLLang ? '⬇ قم بالتمرير للأسفل لقراءة جميع الشروط' : '⬇ Scroll down to read all terms'}
-          </p>
+        {/* Bouncing Scroll Down Indicator Bar */}
+        {!scrolledToBottom ? (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl shadow-sm cursor-pointer transition-all duration-300 hover:opacity-95 active:scale-[0.99] border border-blue-300"
+            style={{ backgroundColor: '#eff6ff', color: '#1d4ed8' }}
+          >
+            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white shrink-0 animate-bounce">
+              <ArrowDown className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-xs sm:text-sm font-semibold">
+              {isRTLLang
+                ? 'انزل للأسفل لقراءة الشروط وتفعيل خيار الموافقة ⬇'
+                : 'Scroll down to read terms and enable agreement ⬇'}
+            </span>
+          </button>
+        ) : (
+          <div
+            className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg border border-green-200 text-xs font-medium text-green-700 animate-in fade-in duration-300"
+            style={{ backgroundColor: '#f0fdf4' }}
+          >
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <span>
+              {isRTLLang
+                ? 'تمت قراءة الشروط بنجاح — يمكنك الآن تأكيد الموافقة أدناه'
+                : 'Terms read — you may now confirm agreement below'}
+            </span>
+          </div>
         )}
 
-        {/* Checkbox */}
-        <div className="flex items-center gap-3 w-full flex-shrink-0" dir={isRTL ? 'rtl' : 'ltr'}>
+        {/* Checkbox Card */}
+        <div
+          onClick={() => {
+            if (!scrolledToBottom) {
+              scrollToBottom();
+            } else {
+              setAgreed(!agreed);
+            }
+          }}
+          className={`flex items-center gap-3 w-full flex-shrink-0 p-3 rounded-xl border transition-all cursor-pointer ${
+            !scrolledToBottom
+              ? 'opacity-50 border-gray-200 bg-gray-50'
+              : agreed
+              ? 'border-blue-500 bg-blue-50/60 shadow-sm'
+              : 'border-blue-200 bg-white hover:border-blue-400'
+          }`}
+          dir={isRTL ? 'rtl' : 'ltr'}
+        >
           <Checkbox
             id="terms-agree"
             checked={agreed}
-            onCheckedChange={(checked) => setAgreed(checked === true)}
+            onCheckedChange={(checked) => {
+              if (scrolledToBottom) setAgreed(checked === true);
+            }}
             disabled={!scrolledToBottom}
-            className={!scrolledToBottom ? 'opacity-40' : ''}
-            style={{ accentColor: '#2563eb' }}
+            className="h-5 w-5 rounded-md data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shrink-0"
           />
           <Label
             htmlFor="terms-agree"
-            className={`cursor-pointer text-sm font-medium ${!scrolledToBottom ? 'opacity-40' : ''}`}
+            className="cursor-pointer text-xs sm:text-sm font-medium select-none flex-1"
             style={{ color: '#1e3a8a' }}
           >
             {t('privacy.agreeCheckbox')}
@@ -201,15 +271,16 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
 
         {/* Continue button */}
         <button
-          className="w-full gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-6 rounded-xl font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3.5 px-6 rounded-xl font-bold text-white shadow-md disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99] min-h-[48px]"
           style={{ backgroundColor: agreed ? '#2563eb' : '#93c5fd', fontSize: '1rem' }}
           disabled={!agreed}
           onClick={onAccept}
         >
-          <Check className="w-5 h-5" />
-          {t('privacy.continue')}
+          <Check className="w-5 h-5 shrink-0" />
+          <span>{t('privacy.continue')}</span>
         </button>
       </div>
     </div>
   );
 }
+

@@ -22,4 +22,3 @@ project(':capacitor-network').projectDir = new File('../node_modules/@capacitor/
 
 include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')
-
