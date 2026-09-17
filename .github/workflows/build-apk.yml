@@ -95,40 +95,45 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Prepare versioned APK files
+      - name: Prepare single versioned APK
         shell: bash
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
           VERSION="${{ env.VERSION_NAME }}"
-          BUILD_CODE="${{ env.VERSION_CODE }}"
-          RUN_NUM="${{ github.run_number }}"
           
-          # Distinct, versioned filename with strictly increasing build number
-          VERSIONED_APK="FlowPOS-Pro-v${VERSION}-b${BUILD_CODE}-build${RUN_NUM}.apk"
+          # Single clean APK with short version name (e.g. FlowPOS-v1.0.26.apk)
+          FINAL_APK="FlowPOS-v${VERSION}.apk"
           
-          echo "Copying APK to: $VERSIONED_APK"
-          cp "$RELEASE_DIR/app-release.apk" "$RELEASE_DIR/$VERSIONED_APK"
+          SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
+          if [ -z "$SRC_APK" ]; then
+            echo "Error: No APK found in $RELEASE_DIR"
+            exit 1
+          fi
           
-          echo "VERSIONED_APK_NAME=$VERSIONED_APK" >> "$GITHUB_ENV"
-          echo "VERSIONED_APK_PATH=$RELEASE_DIR/$VERSIONED_APK" >> "$GITHUB_ENV"
+          echo "Found release APK: $SRC_APK"
+          if [ "$SRC_APK" != "$RELEASE_DIR/$FINAL_APK" ]; then
+            mv "$SRC_APK" "$RELEASE_DIR/$FINAL_APK"
+          fi
           
-          echo "=== Release directory contents ==="
+          # Ensure strictly only the final APK exists (remove duplicates/extras)
+          find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
+          
+          echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
+          echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
+          
+          echo "=== Release directory (guaranteed single APK) ==="
           ls -lh "$RELEASE_DIR"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlowPOS-Pro-v${{ env.VERSION_NAME }}-b${{ env.VERSION_CODE }}-build${{ github.run_number }}
-          path: |
-            android/app/build/outputs/apk/release/FlowPOS-Pro-*.apk
-            android/app/build/outputs/apk/release/app-release.apk
+          name: FlowPOS-v${{ env.VERSION_NAME }}
+          path: android/app/build/outputs/apk/release/FlowPOS-v${{ env.VERSION_NAME }}.apk
           retention-days: 30
 
       - name: Create tagged release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ env.VERSIONED_APK_PATH }}
-            android/app/build/outputs/apk/release/app-release.apk
+          files: ${{ env.FINAL_APK_PATH }}
           generate_release_notes: true
