@@ -11,6 +11,7 @@ import { Capacitor } from '@capacitor/core';
 interface PermissionStatus {
   camera: 'granted' | 'denied' | 'prompt' | 'unknown';
   storage: 'granted' | 'denied' | 'prompt' | 'unknown';
+  notifications: 'granted' | 'denied' | 'prompt' | 'unknown';
   requested: boolean;
 }
 
@@ -18,13 +19,30 @@ export function useAppPermissions() {
   const [status, setStatus] = useState<PermissionStatus>({
     camera: 'unknown',
     storage: 'unknown',
+    notifications: 'unknown',
     requested: false,
   });
 
   useEffect(() => {
-    // Only request on native platforms
+    // Request notification permission if web/PWA supports it
+    const requestNotificationPermission = async (): Promise<'granted' | 'denied' | 'prompt'> => {
+      try {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') return 'granted';
+          if (Notification.permission === 'denied') return 'denied';
+          const res = await Notification.requestPermission();
+          return res === 'granted' ? 'granted' : res === 'denied' ? 'denied' : 'prompt';
+        }
+      } catch (err) {
+        console.warn('[Permissions] Notification request error:', err);
+      }
+      return 'prompt';
+    };
+
     if (!Capacitor.isNativePlatform()) {
-      setStatus({ camera: 'granted', storage: 'granted', requested: true });
+      requestNotificationPermission().then(notifStatus => {
+        setStatus({ camera: 'granted', storage: 'granted', notifications: notifStatus, requested: true });
+      });
       return;
     }
 
@@ -50,13 +68,16 @@ export function useAppPermissions() {
           storageStatus = 'prompt';
         }
 
+        const notifStatus = await requestNotificationPermission();
+
         setStatus({
           camera: cameraStatus,
           storage: storageStatus,
+          notifications: notifStatus,
           requested: true,
         });
 
-        console.log('[Permissions] Camera:', cameraStatus, '| Storage:', storageStatus);
+        console.log('[Permissions] Camera:', cameraStatus, '| Storage:', storageStatus, '| Notifications:', notifStatus);
       } catch (error) {
         console.warn('[Permissions] Failed to request permissions:', error);
         setStatus(prev => ({ ...prev, requested: true }));

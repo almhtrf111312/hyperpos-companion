@@ -1,5 +1,40 @@
 [
   {
+    "type": "improved",
+    "ar": "v1.0.25 - ترقية شاملة لتصميم صفحة الإعدادات على الهواتف: إلغاء ازدواجية وتكرار إطارات النوافذ (تفكيك النوافذ المتداخلة داخل بعض)، وتنسيق بطاقات متناسقة وناعمة تتناسب مع شاشات الموبايل",
+    "en": "v1.0.25 - Mobile UX overhaul for Settings: eliminated nested double-card borders, streamlined subview layout, and refined typography for mobile screens"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح تداخل أزرار التفعيل مع نصوص حقول المنتجات، وضبط المسافات لعزل زر التفعيل عن اسم الحقل ووصفه تماماً",
+    "en": "Fixed product field switch toggles overlapping text labels; isolated toggles with dedicated responsive row spacing"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح خروج زر تعديل البريد الإلكتروني عن إطار الشاشة بالهواتف في الملف الشخصي، وإصلاح تداخل زر إضافة مستخدم مع عنوان إدارة المستخدمين",
+    "en": "Fixed email edit button breaking outside card boundaries on mobile, and resolved add-user button overlapping the title"
+  },
+  {
+    "type": "fixed",
+    "ar": "تفعيل أرشيف الفواتير المستردة والملغاة وسجل المحذوفات تلقائياً في صفحة الأرشيف لتوثيق جميع العمليات والمبيعات المستردة",
+    "en": "Activated refunded and cancelled invoices and deletion logs in the Archive page by default"
+  },
+  {
+    "type": "improved",
+    "ar": "إضافة طلب إذن الإشعارات للهاتف والويب وتضمين صلاحية POST_NOTIFICATIONS لأجهزة أندرويد الحديثة",
+    "en": "Added notification permission request prompt and Android POST_NOTIFICATIONS permission support"
+  },
+  {
+    "type": "fixed",
+    "ar": "إصلاح تشوه خيارات الطباعة وتجميع حجم الورق وعدد النسخ بشكل عمودي متناسق للهواتف ومنع قص أزرار الشركاء",
+    "en": "Fixed squashed print options on mobile with responsive grid and prevented button truncation in Partners page"
+  },
+  {
+    "type": "fixed",
+    "ar": "v1.0.24 - إصلاح اختفاء أيقونة التطبيق في أندرويد، وإلغاء رسالة التثبيت عبر USB بالبناء التلقائي لحزم Release رسمية موقعة عبر GitHub Actions",
+    "en": "v1.0.24 - Fixed missing Android app icon, eliminated USB installation prompt, and automated signed Release APK builds on GitHub push"
+  },
+  {
     "type": "security",
     "ar": "v1.0.23 - إصلاح ثغرات مكتبات البرنامج: إزالة مكتبات إكسل غير المستخدمة، وتحديث مكتبات PDF والتنقل وأدوات البناء، وتحديث جميع المكتبات الداخلية إلى إصدارات مُصلحة",
     "en": "v1.0.23 - Dependency security fixes: removed unused Excel libraries, updated PDF, router and build toolchain, and refreshed all internal libraries to patched versions"

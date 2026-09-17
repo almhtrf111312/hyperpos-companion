@@ -88,28 +88,37 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
         </div>
       </div>
 
-      <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
-        <div className="flex items-center gap-2 mb-3">
-          <Settings2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <Settings2 className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="text-xs sm:text-sm text-muted-foreground">
             {t('productFields.autoNote')} ({getStoreTypeName(storeType, t)})
           </span>
         </div>
 
         {fields.length > 0 ? (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {fields.map((field) => (
-              <div key={field} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-foreground">{FIELD_LABELS[field].name}</span>
-                  <span className="text-xs text-muted-foreground mr-2">— {FIELD_LABELS[field].description}</span>
+              <div
+                key={field}
+                onClick={() => handleToggle(field)}
+                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 border border-border/50 transition-colors cursor-pointer select-none"
+              >
+                <div className="flex-1 min-w-0 text-start">
+                  <p className="text-sm font-semibold text-foreground">{FIELD_LABELS[field].name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{FIELD_LABELS[field].description}</p>
                 </div>
-                <Switch checked={config[field]} onCheckedChange={() => handleToggle(field)} className="flex-shrink-0" />
+                <div className="shrink-0 ms-2" onClick={(e) => e.stopPropagation()}>
+                  <Switch
+                    checked={config[field]}
+                    onCheckedChange={() => handleToggle(field)}
+                  />
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-4 bg-muted/20 rounded-xl">
             لا توجد حقول إضافية لهذا النوع من المتاجر
           </p>
         )}

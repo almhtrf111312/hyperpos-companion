@@ -213,26 +213,28 @@ export function ProfileManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                {t('profile.title')}
+    <div className="space-y-4 max-w-full overflow-hidden">
+      <Card className="border-0 sm:border shadow-none sm:shadow-sm bg-transparent sm:bg-card">
+        <CardHeader className="px-0 sm:px-6 pt-0 sm:pt-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <User className="w-5 h-5 text-primary shrink-0" />
+                <span>{t('profile.title')}</span>
               </CardTitle>
-              <CardDescription>{t('profile.description')}</CardDescription>
+              <CardDescription className="text-xs sm:text-sm mt-1">{t('profile.description')}</CardDescription>
             </div>
-            {getRoleBadge()}
+            <div className="shrink-0">
+              {getRoleBadge()}
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 px-0 sm:px-6 pb-0 sm:pb-6">
           {/* Name */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <User className="w-4 h-4 text-muted-foreground" />
-              {t('profile.name')}
+            <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium">
+              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span>{t('profile.name')}</span>
             </Label>
             {isEditingName ? (
               <div className="flex gap-2">
@@ -240,20 +242,20 @@ export function ProfileManagement() {
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder={t('profile.enterName')}
-                  className="flex-1"
+                  className="flex-1 min-w-0"
                 />
-                <Button size="icon" onClick={handleSaveName} disabled={isSavingName}>
+                <Button size="icon" onClick={handleSaveName} disabled={isSavingName} className="shrink-0">
                   {isSavingName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 </Button>
-                <Button size="icon" variant="outline" onClick={() => { setIsEditingName(false); setNewName(profile?.full_name || ''); }}>
+                <Button size="icon" variant="outline" onClick={() => { setIsEditingName(false); setNewName(profile?.full_name || ''); }} className="shrink-0">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span>{profile?.full_name || t('profile.notSet')}</span>
-                <Button size="sm" variant="ghost" onClick={() => setIsEditingName(true)}>
-                  <Edit className="w-4 h-4 me-1" />
+              <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40">
+                <span className="truncate flex-1 font-medium text-foreground text-sm">{profile?.full_name || t('profile.notSet')}</span>
+                <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs" onClick={() => setIsEditingName(true)}>
+                  <Edit className="w-3.5 h-3.5 me-1" />
                   {t('profile.edit')}
                 </Button>
               </div>
@@ -262,29 +264,29 @@ export function ProfileManagement() {
 
           {/* Email */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              {t('profile.email')}
+            <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium">
+              <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span>{t('profile.email')}</span>
               {!isBoss && (
-                <Badge variant="outline" className="text-xs">{t('profile.readOnly')}</Badge>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t('profile.readOnly')}</Badge>
               )}
             </Label>
             {isBoss && isEditingEmail ? (
               <div className="flex gap-2">
-                <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={t('profile.enterNewEmail')} className="flex-1" dir="ltr" />
-                <Button size="icon" onClick={handleSaveEmail} disabled={isSavingEmail}>
+                <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={t('profile.enterNewEmail')} className="flex-1 min-w-0" dir="ltr" />
+                <Button size="icon" onClick={handleSaveEmail} disabled={isSavingEmail} className="shrink-0">
                   {isSavingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 </Button>
-                <Button size="icon" variant="outline" onClick={() => { setIsEditingEmail(false); setNewEmail(user?.email || ''); }}>
+                <Button size="icon" variant="outline" onClick={() => { setIsEditingEmail(false); setNewEmail(user?.email || ''); }} className="shrink-0">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <span dir="ltr">{user?.email}</span>
+              <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40 overflow-hidden">
+                <span dir="ltr" className="truncate flex-1 font-mono text-xs sm:text-sm text-foreground">{user?.email}</span>
                 {isBoss && (
-                  <Button size="sm" variant="ghost" onClick={() => { setNewEmail(user?.email || ''); setIsEditingEmail(true); }}>
-                    <Edit className="w-4 h-4 me-1" />
+                  <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs ms-1" onClick={() => { setNewEmail(user?.email || ''); setIsEditingEmail(true); }}>
+                    <Edit className="w-3.5 h-3.5 me-1" />
                     {t('profile.edit')}
                   </Button>
                 )}
@@ -292,18 +294,18 @@ export function ProfileManagement() {
             )}
           </div>
 
-          <Separator />
+          <Separator className="my-2" />
 
           {/* Password */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-muted-foreground" />
-              {t('profile.password')}
+            <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium">
+              <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span>{t('profile.password')}</span>
             </Label>
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <span className="text-muted-foreground">••••••••</span>
-              <Button size="sm" variant="ghost" onClick={() => setShowPasswordDialog(true)}>
-                <Lock className="w-4 h-4 me-1" />
+            <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40">
+              <span className="text-muted-foreground tracking-widest text-sm flex-1">••••••••</span>
+              <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs" onClick={() => setShowPasswordDialog(true)}>
+                <Lock className="w-3.5 h-3.5 me-1" />
                 {t('profile.changeBtn')}
               </Button>
             </div>

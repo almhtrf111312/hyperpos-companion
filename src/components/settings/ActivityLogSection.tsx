@@ -70,43 +70,65 @@ export function ActivityLogSection() {
   const activityTypes: (ActivityType | 'all')[] = ['all', 'login', 'logout', 'sale', 'maintenance', 'debt_created', 'debt_paid', 'invoice_created'];
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
-          <Activity className="w-5 h-5 text-primary" />سجل النشاط
+    <div className="space-y-4 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+          <Activity className="w-5 h-5 text-primary shrink-0" />
+          <span>سجل النشاط</span>
         </h2>
-        <Button variant="outline" size="sm" onClick={() => setClearDialogOpen(true)} disabled={logs.length === 0}>
-          <Trash2 className="w-4 h-4 ml-2" />مسح السجل
+        <Button variant="outline" size="sm" onClick={() => setClearDialogOpen(true)} disabled={logs.length === 0} className="h-8 px-2.5 text-xs self-start sm:self-auto">
+          <Trash2 className="w-3.5 h-3.5 ml-1.5" />
+          <span>مسح السجل</span>
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        <div className="flex gap-2">
-          {activityTypes.map(type => (
-            <button key={type} onClick={() => setFilter(type)} className={cn("px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors", filter === type ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
-              {type === 'all' ? 'الكل' : getActivityLabel(type)}
-            </button>
-          ))}
+      {/* Filter Chips */}
+      <div className="flex flex-wrap items-center gap-1.5 pb-1">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground me-1 shrink-0">
+          <Filter className="w-3.5 h-3.5" />
+          <span>تصفية:</span>
         </div>
+        {activityTypes.map(type => (
+          <button
+            key={type}
+            onClick={() => setFilter(type)}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors shrink-0",
+              filter === type
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+            )}
+          >
+            {type === 'all' ? 'الكل' : getActivityLabel(type)}
+          </button>
+        ))}
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      {/* Log items */}
+      <div className="space-y-2 max-h-[460px] overflow-y-auto">
         {filteredLogs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground"><Activity className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>لا يوجد نشاط</p></div>
+          <div className="text-center py-10 text-muted-foreground bg-muted/20 rounded-xl p-4">
+            <Activity className="w-10 h-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm font-medium">لا توجد نشاطات مسجلة</p>
+          </div>
         ) : (
           filteredLogs.map(log => {
             const Icon = activityIcons[log.type] || Activity;
             return (
-              <div key={log.id} className="flex items-start gap-3 p-3 bg-muted rounded-xl">
-                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0", activityColors[log.type])}><Icon className="w-5 h-5" /></div>
+              <div key={log.id} className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/40">
+                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5", activityColors[log.type])}>
+                  <Icon className="w-4 h-4" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-foreground text-sm">{getActivityLabel(log.type)}</span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(log.timestamp)}</span>
+                    <span className="font-semibold text-foreground text-xs sm:text-sm">{getActivityLabel(log.type)}</span>
+                    <span className="text-[11px] text-muted-foreground font-mono shrink-0">{formatDate(log.timestamp)}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5 truncate">{log.description}</p>
-                  <div className="flex items-center gap-1 mt-1"><User className="w-3 h-3 text-muted-foreground" /><span className="text-xs text-muted-foreground">{log.userName}</span></div>
+                  <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed break-words">{log.description}</p>
+                  <div className="flex items-center gap-1 mt-1.5 text-muted-foreground text-[11px]">
+                    <User className="w-3 h-3" />
+                    <span>{log.userName}</span>
+                  </div>
                 </div>
               </div>
             );
@@ -114,7 +136,9 @@ export function ActivityLogSection() {
         )}
       </div>
 
-      <div className="pt-4 border-t border-border"><p className="text-sm text-muted-foreground">إجمالي النشاطات: {logs.length}</p></div>
+      <div className="pt-2 border-t border-border/50">
+        <p className="text-xs text-muted-foreground">إجمالي النشاطات المسجلة: {logs.length}</p>
+      </div>
 
       <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <DialogContent className="max-w-sm">

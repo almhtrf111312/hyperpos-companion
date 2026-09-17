@@ -84,15 +84,17 @@ export function ContactLinksSection() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {activeChannels.map((ch) => (
           <button
             key={ch.key}
             onClick={() => window.open(ch.openUrl(links![ch.key]!), '_blank')}
-            className={`${ch.color} ${ch.hoverColor} text-white rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-200 hover:shadow-lg active:scale-95`}
+            className={`${ch.color} ${ch.hoverColor} !text-white rounded-xl p-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 transition-all duration-200 hover:shadow-lg active:scale-95 border border-white/10`}
           >
-            <span className="text-xl">{ch.icon}</span>
-            <span className="font-medium text-sm">
+            <div className="w-8 h-8 rounded-lg bg-black/20 flex items-center justify-center shrink-0 text-base">
+              {ch.icon}
+            </div>
+            <span className="font-semibold text-xs sm:text-sm !text-white truncate">
               {t(ch.labelKey as any)}
             </span>
           </button>

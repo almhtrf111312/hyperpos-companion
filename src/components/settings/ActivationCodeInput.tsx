@@ -73,13 +73,13 @@ export function ActivationCodeInput() {
       </div>
 
       {/* Current License Status */}
-      <div className="bg-card rounded-xl border border-border p-4">
+      <div className="bg-muted/40 rounded-xl border border-border/50 p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-foreground flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             {t('license.currentLicense')}
           </h3>
-          <span className={`text-xs px-2 py-1 rounded-full ${
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
             isExpired 
               ? 'bg-destructive/10 text-destructive' 
               : isTrial 
@@ -107,7 +107,7 @@ export function ActivationCodeInput() {
       </div>
 
       {/* Activation Code Input */}
-      <div className="bg-card rounded-xl border border-border p-4">
+      <div className="bg-muted/40 rounded-xl border border-border/50 p-4">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
           <Key className="w-4 h-4" />
           {t('license.activateNewCode')}

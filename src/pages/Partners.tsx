@@ -477,24 +477,24 @@ export default function Partners() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-0 sm:p-4 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('partners.title')}</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('partners.subtitle')}</p>
+          <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-0.5">{t('partners.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
-            <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            {t('partners.categories')}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <Button variant="outline" size="sm" className="h-9 px-3 text-xs sm:text-sm" onClick={() => setShowCategoryManager(true)}>
+            <Tag className="w-4 h-4 ml-1.5" />
+            <span>{t('partners.categories')}</span>
           </Button>
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+          <Button size="sm" className="bg-primary hover:bg-primary/90 h-9 px-3 text-xs sm:text-sm" onClick={() => {
             resetForm();
             setShowAddDialog(true);
           }}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            {t('partners.addPartner')}
+            <Plus className="w-4 h-4 ml-1.5" />
+            <span className="whitespace-nowrap">{t('partners.addPartner')}</span>
           </Button>
         </div>
       </div>

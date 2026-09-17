@@ -256,6 +256,29 @@ export default function Settings() {
   const [discountFixedEnabled, setDiscountFixedEnabled] = useState(persisted?.discountFixedEnabled ?? true);
   const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(persisted?.barcodeScanMode ?? 'search');
 
+  const [notificationPerm, setNotificationPerm] = useState<string>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'unknown';
+  });
+
+  const handleRequestNotificationPermission = async () => {
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        const res = await Notification.requestPermission();
+        setNotificationPerm(res);
+        if (res === 'granted') {
+          toast({ title: t('common.success') || 'تم بنجاح', description: 'تم تفعيل إذن الإشعارات بنجاح' });
+        } else {
+          toast({ title: t('common.error') || 'تنبيه', description: 'تم رفض إذن الإشعارات', variant: 'destructive' });
+        }
+      }
+    } catch (err) {
+      console.error('Error requesting notification permission:', err);
+    }
+  };
+
   // Logo upload handler
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1129,16 +1152,14 @@ export default function Settings() {
         return <ProfileManagement />;
       case 'productFields':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
-            <ProductFieldsSection
-              storeType={storeSettings.type}
-              onConfigChange={(config) => {
-                setProductFieldsConfig(config);
-                setProductFieldsChanged(true);
-              }}
-              pendingConfig={productFieldsConfig}
-            />
-          </div>
+          <ProductFieldsSection
+            storeType={storeSettings.type}
+            onConfigChange={(config) => {
+              setProductFieldsConfig(config);
+              setProductFieldsChanged(true);
+            }}
+            pendingConfig={productFieldsConfig}
+          />
         );
       case 'language':
         return <LanguageSection />;
@@ -1147,7 +1168,7 @@ export default function Settings() {
         return <ActivityLogSection />;
       case 'store':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+          <div className="space-y-4">
             <Tabs defaultValue="info">
               <TabsList className="w-full mb-4">
                 <TabsTrigger value="info" className="flex-1">{t('settings.storeInfoTab') || 'معلومات المتجر'}</TabsTrigger>
@@ -1450,46 +1471,64 @@ export default function Settings() {
 
       case 'notifications':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-2">
-            <h2 className="text-lg font-bold text-foreground mb-2">{t('settings.notifications')}</h2>
-            {/* الصوت */}
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2">
-                {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
-                <span className="text-sm font-medium">{t('settings.sound')}</span>
+          <div className="space-y-3">
+            {notificationPerm !== 'granted' && (
+              <div className="flex items-center justify-between gap-3 p-3.5 bg-primary/10 border border-primary/25 rounded-xl">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                    <Bell className="w-4 h-4 animate-bounce" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-bold text-foreground">تفعيل إذن الإشعارات</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">اضغط لمنح إذن وصول تنبيهات البيع والمخزون</p>
+                  </div>
+                </div>
+                <Button size="sm" onClick={handleRequestNotificationPermission} className="shrink-0 h-8 px-3 text-xs font-semibold">
+                  تفعيل الآن
+                </Button>
               </div>
-              <Switch
-                checked={notificationSettings.sound}
-                onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, sound: checked })}
-              />
-            </div>
-            {[
-              { key: 'newSale', label: t('settings.newSale'), icon: CheckCircle2 },
-              { key: 'lowStock', label: t('settings.lowStock'), icon: AlertCircle },
-              { key: 'newDebt', label: t('settings.newDebt'), icon: FileText },
-              { key: 'paymentReceived', label: t('settings.paymentReceived'), icon: DollarSign },
-              { key: 'dailyReport', label: t('settings.dailyReport'), icon: Clock },
-            ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between py-2 border-t border-border/50">
+            )}
+            <div className="bg-muted/30 rounded-xl border border-border/50 p-4 space-y-2">
+              <h2 className="text-base font-bold text-foreground mb-2">{t('settings.notifications')}</h2>
+              {/* الصوت */}
+              <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-2">
-                  <item.icon className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">{item.label}</span>
+                  {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+                  <span className="text-sm font-medium">{t('settings.sound')}</span>
                 </div>
                 <Switch
-                  checked={notificationSettings[item.key as keyof NotificationSettingsType] as boolean}
-                  onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
+                  checked={notificationSettings.sound}
+                  onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, sound: checked })}
                 />
               </div>
-            ))}
+              {[
+                { key: 'newSale', label: t('settings.newSale'), icon: CheckCircle2 },
+                { key: 'lowStock', label: t('settings.lowStock'), icon: AlertCircle },
+                { key: 'newDebt', label: t('settings.newDebt'), icon: FileText },
+                { key: 'paymentReceived', label: t('settings.paymentReceived'), icon: DollarSign },
+                { key: 'dailyReport', label: t('settings.dailyReport'), icon: Clock },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between py-2 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <item.icon className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{item.label}</span>
+                  </div>
+                  <Switch
+                    checked={notificationSettings[item.key as keyof NotificationSettingsType] as boolean}
+                    onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         );
 
       case 'printing':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-3">
-            <h2 className="text-lg font-bold text-foreground mb-2">{t('settings.printing')}</h2>
+          <div className="bg-muted/30 rounded-xl border border-border/50 p-4 space-y-3.5">
+            <h2 className="text-base font-bold text-foreground mb-1">{t('settings.printing')}</h2>
             {/* الطباعة التلقائية */}
-            <div className="flex items-center justify-between py-1">
+            <div className="flex items-center justify-between py-2 border-b border-border/40">
               <span className="text-sm font-medium">{t('settings.autoPrint')}</span>
               <Switch
                 checked={printSettings.autoPrint}
@@ -1497,28 +1536,28 @@ export default function Settings() {
               />
             </div>
             {/* حجم الورق + النسخ */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-foreground w-20 shrink-0">{t('settings.paperSize')}</label>
                 <select
                   value={printSettings.paperSize}
                   onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
-                  className="flex-1 h-9 px-3 rounded-md bg-muted border-0 text-foreground text-sm"
+                  className="flex-1 h-9 px-3 rounded-lg bg-card border border-border/60 text-foreground text-sm"
                 >
                   <option value="58mm">58mm</option>
                   <option value="80mm">80mm</option>
                   <option value="A4">A4</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2 flex-1">
-                <label className="text-sm font-medium text-foreground w-16 shrink-0">{t('settings.copies')}</label>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-foreground w-20 sm:w-16 shrink-0">{t('settings.copies')}</label>
                 <Input
                   type="number"
                   value={printSettings.copies}
                   onChange={(e) => setPrintSettings({ ...printSettings, copies: e.target.value })}
                   min="1"
                   max="5"
-                  className="bg-muted border-0 h-9"
+                  className="bg-card border border-border/60 h-9 flex-1"
                 />
               </div>
             </div>
@@ -1528,10 +1567,10 @@ export default function Settings() {
               <Input
                 value={printSettings.footer}
                 onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
-                className="bg-muted border-0 h-9 flex-1"
+                className="bg-card border border-border/60 h-9 flex-1"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={handleTestPrint}>
+            <Button variant="outline" size="sm" onClick={handleTestPrint} className="w-full sm:w-auto">
               <Printer className="w-4 h-4 ml-2" />
               {t('settings.testPrint')}
             </Button>
@@ -1540,39 +1579,39 @@ export default function Settings() {
 
       case 'users':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg md:text-xl font-bold text-foreground">{t('settings.userManagement')}</h2>
-              <Button onClick={handleAddUser}>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 className="text-base sm:text-lg font-bold text-foreground">{t('settings.userManagement')}</h2>
+              <Button onClick={handleAddUser} className="w-full sm:w-auto h-9">
                 <Plus className="w-4 h-4 ml-2" />
                 {t('settings.addUser')}
               </Button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {usersLoading ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                  <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-primary" />
                   {t('common.loading')}
                 </div>
               ) : users.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-xl p-4">
                   {t('settings.noUsers')}
                 </div>
               ) : (
                 users
                   .filter((user) => user.role !== 'boss') // Hide boss accounts from this list
                   .map((user) => (
-                    <div key={user.id} className="flex flex-col gap-2 p-4 bg-muted rounded-xl">
+                    <div key={user.id} className="flex flex-col gap-2 p-3.5 bg-muted/40 rounded-xl border border-border/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                          <User className="w-5 h-5 text-primary" />
+                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4 text-primary" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate">{user.name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-foreground text-sm truncate">{user.name}</p>
                           {user.email && (
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                            <p className="text-xs text-muted-foreground truncate font-mono">{user.email}</p>
                           )}
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {user.role === 'admin' ? t('settings.userTypeOwner') :
                               user.userType === 'distributor' ? t('settings.userTypeDistributor') :
                                 user.userType === 'pos' ? t('settings.userTypePOS') :
@@ -1580,34 +1619,34 @@ export default function Settings() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 border-t border-border/50 pt-2">
+                      <div className="flex items-center gap-1.5 border-t border-border/40 pt-2">
                         {!user.isOwner && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="flex-1 gap-1"
+                            className="flex-1 h-8 gap-1 text-xs"
                             onClick={() => {
                               setPasswordChangeUserId(user.user_id);
                               setPasswordDialogOpen(true);
                             }}
                           >
-                            <Key className="w-3.5 h-3.5" />
-                            <span className="text-xs">{t('settings.password')}</span>
+                            <Key className="w-3 h-3" />
+                            <span>{t('settings.password')}</span>
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" className="flex-1 gap-1" onClick={() => handleEditUser(user)}>
-                          <Edit className="w-3.5 h-3.5" />
-                          <span className="text-xs">{t('common.edit')}</span>
+                        <Button variant="ghost" size="sm" className="flex-1 h-8 gap-1 text-xs" onClick={() => handleEditUser(user)}>
+                          <Edit className="w-3 h-3" />
+                          <span>{t('common.edit')}</span>
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 gap-1 text-destructive"
+                          className="flex-1 h-8 gap-1 text-xs text-destructive"
                           onClick={() => handleDeleteUser(user)}
                           disabled={user.user_id === currentUser?.id || user.isOwner}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="text-xs">{t('common.delete')}</span>
+                          <Trash2 className="w-3 h-3" />
+                          <span>{t('common.delete')}</span>
                         </Button>
                       </div>
                     </div>
@@ -1619,35 +1658,33 @@ export default function Settings() {
 
       case 'backup':
         return (
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 space-y-4 overflow-hidden">
-            <h2 className="text-lg font-bold text-foreground">
+          <div className="space-y-4 overflow-hidden">
+            <h2 className="text-base sm:text-lg font-bold text-foreground">
               {t('settings.backupSync')}
             </h2>
 
-            {/* Backup & Import - compact stacked for mobile */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handleBackupNow} disabled={isBackingUp} className="flex-1 min-w-0">
-                  {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Download className="w-3.5 h-3.5 shrink-0" />}
-                  <span className="text-xs truncate">{t('settings.downloadBackup')}</span>
-                </Button>
-                <div className="flex-1 min-w-0">
-                  <input type="file" accept=".json,application/json,text/plain" onChange={handleImportBackup} className="hidden" id="import-backup" ref={importInputRef} />
-                  <label htmlFor="import-backup" className="w-full block">
-                    <Button variant="outline" size="sm" className="w-full" asChild disabled={isImporting}>
-                      <span className="cursor-pointer">
-                        {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FileUp className="w-3.5 h-3.5 shrink-0" />}
-                        <span className="text-xs truncate">{t('settings.importBackup')}</span>
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleExportData} className="w-full">
-                <Download className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-xs">JSON</span>
+            {/* Backup & Import */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button size="sm" onClick={handleBackupNow} disabled={isBackingUp} className="w-full h-9">
+                {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 ml-1.5" /> : <Download className="w-3.5 h-3.5 shrink-0 ml-1.5" />}
+                <span className="text-xs">{t('settings.downloadBackup')}</span>
               </Button>
+              <div className="w-full">
+                <input type="file" accept=".json,application/json,text/plain" onChange={handleImportBackup} className="hidden" id="import-backup" ref={importInputRef} />
+                <label htmlFor="import-backup" className="w-full block">
+                  <Button variant="outline" size="sm" className="w-full h-9" asChild disabled={isImporting}>
+                    <span className="cursor-pointer">
+                      {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 ml-1.5" /> : <FileUp className="w-3.5 h-3.5 shrink-0 ml-1.5" />}
+                      <span className="text-xs">{t('settings.importBackup')}</span>
+                    </span>
+                  </Button>
+                </label>
+              </div>
             </div>
+            <Button variant="outline" size="sm" onClick={handleExportData} className="w-full h-9">
+              <Download className="w-3.5 h-3.5 shrink-0 ml-1.5" />
+              <span className="text-xs">تصدير بيانات JSON</span>
+            </Button>
 
             {/* Last backup result */}
             {lastBackupResult?.success && (
@@ -2017,31 +2054,31 @@ export default function Settings() {
       ) : (
         <>
           {/* Sub-page header with back button */}
-          <div className="flex items-center gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <div className="flex items-center gap-2.5 rtl:pr-12 ltr:pl-12 md:rtl:pr-0 md:ltr:pl-0">
             <button
               type="button"
               onClick={() => setActiveTab(null)}
               aria-label={t('common.back') || 'رجوع'}
-              className="flex items-center justify-center w-10 h-10 rounded-xl border border-border bg-card hover:bg-muted transition-colors flex-shrink-0"
+              className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-border/70 bg-card hover:bg-muted transition-colors flex-shrink-0 shadow-sm"
             >
-              {isRTL ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+              {isRTL ? <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" /> : <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
             {(() => {
               const current = settingsTabs.find(tab => tab.id === activeTab);
               if (!current) return null;
               return (
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                    <current.icon className="w-5 h-5" />
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <current.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">{current.label}</h1>
+                  <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate">{current.label}</h1>
                 </div>
               );
             })()}
           </div>
 
           {/* Content */}
-          <div className="bg-card rounded-2xl border border-border p-4 md:p-6 overflow-hidden max-w-full">
+          <div className="bg-card/70 sm:bg-card rounded-2xl border border-border/70 sm:border-border p-3.5 sm:p-6 overflow-hidden max-w-full pb-28">
             {renderTabContent()}
           </div>
         </>

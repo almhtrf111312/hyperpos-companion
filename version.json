@@ -1,8 +1,13 @@
 {
-  "versionCode": 252,
-  "versionName": "1.0.23",
-  "lastUpdated": "2026-09-12T00:00:00.000Z",
+  "versionCode": 255,
+  "versionName": "1.0.25",
+  "lastUpdated": "2026-09-17T15:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 255,
+      "date": "2026-09-17T15:00:00.000Z",
+      "description": "v1.0.25 - Comprehensive mobile UX overhaul for Settings: removed nested double-card borders, fixed product field toggles overlapping text, resolved email editing overflow, added notification permission prompt with Android POST_NOTIFICATIONS, restored refunded and cancelled invoices to Archive, improved Partners and Printing responsive layouts, and auto-building signed Release APK on push"
+    },
     {
       "versionCode": 252,
       "date": "2026-09-12T00:00:00.000Z",
