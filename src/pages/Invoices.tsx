@@ -79,6 +79,7 @@ import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
 import { addToQueueIfNotExists } from '@/lib/sync-queue';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
+import { getCurrentUserRole } from '@/lib/supabase-store';
 
 export default function Invoices() {
   const { t } = useLanguage();
@@ -173,17 +174,28 @@ export default function Invoices() {
       toast.warning('هذه الفاتورة مستردة بالفعل');
       return;
     }
-    setInvoiceToRefund(invoice);
-    setRefundMode('full');
-    const initialQty: Record<string, number> = {};
-    if (invoice.items && invoice.items.length > 0) {
-      invoice.items.forEach(item => {
-        const key = item.productId || item.name;
-        initialQty[key] = 0;
-      });
-    }
-    setPartialRefundQuantities(initialQty);
-    setShowRefundDialog(true);
+    // ✅ فحص دور المستخدم — الكاشير لا يملك صلاحية الاسترداد (يحتاج إذن مشرف)
+    getCurrentUserRole().then(role => {
+      if (role === 'cashier') {
+        toast.error('ليس لديك صلاحية تنفيذ الاسترداد', {
+          description: 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
+          duration: 5000,
+        });
+        return;
+      }
+      // لديه صلاحية — نفتح نافذة الاسترداد
+      setInvoiceToRefund(invoice);
+      setRefundMode('full');
+      const initialQty: Record<string, number> = {};
+      if (invoice.items && invoice.items.length > 0) {
+        invoice.items.forEach(item => {
+          const key = item.productId || item.name;
+          initialQty[key] = 0;
+        });
+      }
+      setPartialRefundQuantities(initialQty);
+      setShowRefundDialog(true);
+    });
   };
 
   const updatePartialQty = (key: string, delta: number, maxQty: number) => {
@@ -454,6 +466,19 @@ export default function Invoices() {
     toast.success(t('invoices.statusUpdated'));
   });
 
+  // ✅ دالة تعقيم HTML لمنع XSS في template الطباعة
+  // القيم المُدخَلة من المستخدم (أسماء المنتجات/العملاء/العناوين) قد تحتوي على
+  // رموز HTML خبيثة لو أُدرجت مباشرة في template string.
+  const escapeHtml = (unsafe: string | null | undefined): string => {
+    if (!unsafe) return '';
+    return String(unsafe)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
   // Navigate to debts page to pay installment
   const handlePayDebt = (invoice: Invoice) => {
     navigate(`/debts?invoiceId=${invoice.id}&autoOpenPayment=true`);
@@ -495,16 +520,17 @@ export default function Invoices() {
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
     const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
 
+    // ✅ جميع القيم المُدخَلة من المستخدم تمر عبر escapeHtml() لمنع XSS
     const itemsHtml = invoice.type === 'sale'
       ? invoice.items.map(item => `
           <tr>
-            <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.name}</td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">${escapeHtml(item.name)}</td>
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
           </tr>
         `).join('')
       : `<tr><td colspan="3" style="padding: 10px;">
-          <div style="margin-bottom: 5px;"><strong>وصف الخدمة:</strong> ${invoice.serviceDescription || 'صيانة'}</div>
+          <div style="margin-bottom: 5px;"><strong>وصف الخدمة:</strong> ${escapeHtml(invoice.serviceDescription) || 'صيانة'}</div>
           ${invoice.partsCost ? `<div style="margin-bottom: 5px;"><strong>تكلفة القطع:</strong> ${formatCurrency(invoice.partsCost)}</div>` : ''}
           <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(invoice.total)}</div>
           ${invoice.profit ? `<div style="color: green;"><strong>صافي الربح:</strong> ${formatCurrency(invoice.profit)}</div>` : ''}
@@ -666,16 +692,16 @@ export default function Invoices() {
         </head>
         <body>
           <div class="header">
-            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" onerror="this.style.display='none'" />` : ''}
-            <div class="store-name">${storeName}</div>
-            ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
-            ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+            ${storeLogo ? `<img src="${escapeHtml(storeLogo)}" alt="شعار" class="logo" onerror="this.style.display='none'" />` : ''}
+            <div class="store-name">${escapeHtml(storeName)}</div>
+            ${storeAddress ? `<div class="store-info">${escapeHtml(storeAddress)}</div>` : ''}
+            ${storePhone ? `<div class="store-info">${escapeHtml(storePhone)}</div>` : ''}
           </div>
           <div class="invoice-info">
-            <div><strong>رقم الفاتورة:</strong> <span>${invoice.id}</span></div>
-            <div><strong>التاريخ:</strong> <span>${date} - ${time}</span></div>
-            <div><strong>العميل:</strong> <span>${invoice.customerName}</span></div>
-            ${invoice.customerPhone ? `<div><strong>الهاتف:</strong> <span>${invoice.customerPhone}</span></div>` : ''}
+            <div><strong>رقم الفاتورة:</strong> <span>${escapeHtml(invoice.id)}</span></div>
+            <div><strong>التاريخ:</strong> <span>${escapeHtml(date)} - ${escapeHtml(time)}</span></div>
+            <div><strong>العميل:</strong> <span>${escapeHtml(invoice.customerName)}</span></div>
+            ${invoice.customerPhone ? `<div><strong>الهاتف:</strong> <span>${escapeHtml(invoice.customerPhone)}</span></div>` : ''}
             <div><strong>النوع:</strong> <span>${invoice.type === 'sale' ? 'مبيعات' : 'صيانة'}</span></div>
             <div><strong>الدفع:</strong> <span>${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</span></div>
           </div>

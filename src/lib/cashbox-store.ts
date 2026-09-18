@@ -1,9 +1,22 @@
-// Cash Box (الصندوق) Store - Daily Shift Management & Reconciliation
-import { emitEvent, EVENTS } from './events';
-import { roundCurrency, addCurrency, subtractCurrency } from './utils';
+// ✅ مفاتيح التخزين المحلي مرتبطة بـ userId لمنع تداخل بيانات الورديات
+// عند تبديل الكاشير على نفس الجهاز — كل مستخدم لديه قسم عزل خاص به.
+// SECURITY FIX: الثابتة القديمة كانت hyperpos_cashbox_v1 / hyperpos_shifts_v1
+// ولم تتضمن userId مما يتسبب في مسح ورديات الكاشير الأول عند تسجيل دخول آخر.
+import { getCurrentUserId } from './supabase-store';
 
-const CASHBOX_STORAGE_KEY = 'hyperpos_cashbox_v1';
-const SHIFTS_STORAGE_KEY = 'hyperpos_shifts_v1';
+// المفاتيح القديمة (للتوافق مع البيانات المخزنة سابقاً — تُقرأ كـ fallback)
+const LEGACY_CASHBOX_KEY = 'hyperpos_cashbox_v1';
+const LEGACY_SHIFTS_KEY = 'hyperpos_shifts_v1';
+
+// مفاتيح ديناميكية مرتبطة بـ userId
+const getCashboxKey = () => {
+  const uid = getCurrentUserId();
+  return uid ? `hyperpos_cashbox_u_${uid}` : LEGACY_CASHBOX_KEY;
+};
+const getShiftsKey = () => {
+  const uid = getCurrentUserId();
+  return uid ? `hyperpos_shifts_u_${uid}` : LEGACY_SHIFTS_KEY;
+};
 
 export type AdjustmentType = 'surplus' | 'shortage';
 
@@ -53,10 +66,13 @@ export interface CashboxState {
   lastUpdated: string;
 }
 
-// Load cashbox state
+
+// Load cashbox state — tries user-scoped key first, then legacy key (backwards compat)
 export const loadCashboxState = (): CashboxState => {
   try {
-    const stored = localStorage.getItem(CASHBOX_STORAGE_KEY);
+    const userKey = getCashboxKey();
+    const stored = localStorage.getItem(userKey)
+      || (userKey !== LEGACY_CASHBOX_KEY ? localStorage.getItem(LEGACY_CASHBOX_KEY) : null);
     if (stored) {
       return JSON.parse(stored);
     }
@@ -69,20 +85,22 @@ export const loadCashboxState = (): CashboxState => {
   };
 };
 
-// Save cashbox state
+// Save cashbox state — always writes to user-scoped key
 export const saveCashboxState = (state: CashboxState): void => {
   try {
-    localStorage.setItem(CASHBOX_STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(getCashboxKey(), JSON.stringify(state));
     emitEvent(EVENTS.CASHBOX_UPDATED, state);
   } catch {
     // ignore
   }
 };
 
-// Load all shifts
+// Load all shifts — tries user-scoped key first, then legacy key (backwards compat)
 export const loadShifts = (): Shift[] => {
   try {
-    const stored = localStorage.getItem(SHIFTS_STORAGE_KEY);
+    const userKey = getShiftsKey();
+    const stored = localStorage.getItem(userKey)
+      || (userKey !== LEGACY_SHIFTS_KEY ? localStorage.getItem(LEGACY_SHIFTS_KEY) : null);
     if (stored) {
       return JSON.parse(stored);
     }
@@ -92,10 +110,10 @@ export const loadShifts = (): Shift[] => {
   return [];
 };
 
-// Save shifts
+// Save shifts — always writes to user-scoped key
 export const saveShifts = (shifts: Shift[]): void => {
   try {
-    localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(shifts));
+    localStorage.setItem(getShiftsKey(), JSON.stringify(shifts));
     emitEvent(EVENTS.SHIFTS_UPDATED, shifts);
   } catch {
     // ignore
