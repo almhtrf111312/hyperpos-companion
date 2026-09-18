@@ -15,6 +15,7 @@ import {
   CreditCard,
   Wrench,
   ShoppingCart,
+  Truck,
   X,
   Check,
   MoreVertical,
@@ -80,10 +81,12 @@ import { useActionGuard } from '@/hooks/use-action-guard';
 import { addToQueueIfNotExists } from '@/lib/sync-queue';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getCurrentUserRole } from '@/lib/supabase-store';
+import { PurchaseInvoicesListTab } from '@/components/purchases/PurchaseInvoicesListTab';
 
 export default function Invoices() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [activeMainTab, setActiveMainTab] = useState<'sales' | 'purchases'>('sales');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -793,8 +796,21 @@ export default function Invoices() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="sales" className="gap-2 flex-1 sm:flex-initial">
+            <ShoppingCart className="w-4 h-4" />
+            <span>فواتير المبيعات</span>
+          </TabsTrigger>
+          <TabsTrigger value="purchases" className="gap-2 flex-1 sm:flex-initial">
+            <Truck className="w-4 h-4" />
+            <span>فواتير المشتريات</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sales" className="space-y-6 m-0">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -1060,6 +1076,12 @@ export default function Invoices() {
           ))
         )}
       </div>
+    </TabsContent>
+
+    <TabsContent value="purchases" className="space-y-6 m-0">
+      <PurchaseInvoicesListTab />
+    </TabsContent>
+  </Tabs>
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>

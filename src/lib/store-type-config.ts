@@ -547,9 +547,9 @@ export interface VisibleSections {
 export const getVisibleSections = (storeType: string): VisibleSections => {
   switch (storeType) {
     case 'phones':
-      return { maintenance: true, warranty: true, expiry: false, serialNumber: true, sizeColor: false, purchases: false };
+      return { maintenance: true, warranty: true, expiry: false, serialNumber: true, sizeColor: false, purchases: true };
     case 'repair':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: true };
     case 'grocery':
       return { maintenance: false, warranty: false, expiry: true, serialNumber: false, sizeColor: false, purchases: true };
     case 'pharmacy':
@@ -557,9 +557,9 @@ export const getVisibleSections = (storeType: string): VisibleSections => {
     case 'clothing':
       return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: true, purchases: true };
     case 'restaurant':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: true };
     case 'bakery':
-      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: false };
+      return { maintenance: false, warranty: false, expiry: false, serialNumber: false, sizeColor: false, purchases: true };
     case 'bookstore':
       return { maintenance: false, warranty: false, expiry: false, serialNumber: true, sizeColor: false, purchases: true };
     default:

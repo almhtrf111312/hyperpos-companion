@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Truck, Calendar, DollarSign, Loader2, ShoppingBag } from 'lucide-react';
+import { FileText, Plus, Truck, Calendar, DollarSign, Loader2, ShoppingBag, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 import { formatNumber } from '@/lib/utils';
 import { loadPurchaseInvoicesCloud, PurchaseInvoice } from '@/lib/cloud/purchase-invoices-cloud';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 import { QuickPurchaseDialog } from '@/components/products/QuickPurchaseDialog';
+import { PurchaseInvoiceViewDialog } from '@/components/purchases/PurchaseInvoiceViewDialog';
 import { EVENTS } from '@/lib/events';
 import { format } from 'date-fns';
 import { ar, enUS, tr } from 'date-fns/locale';
@@ -16,6 +17,8 @@ export default function Purchases() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showQuickDialog, setShowQuickDialog] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
 
   const dateLocale = language === 'ar' ? ar : language === 'tr' ? tr : enUS;
 
@@ -113,15 +116,30 @@ export default function Purchases() {
         ) : (
           <div className="space-y-3">
             {invoices.map((invoice) => (
-              <div key={invoice.id} className="bg-card rounded-xl border border-border p-4">
+              <div
+                key={invoice.id}
+                onClick={() => {
+                  setSelectedInvoiceId(invoice.id);
+                  setShowViewDialog(true);
+                }}
+                className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+              >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="font-semibold text-foreground">{invoice.supplier_name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                        {invoice.supplier_name}
+                      </h3>
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        عرض التفاصيل
+                      </span>
+                    </div>
                     {invoice.supplier_company && (
                       <p className="text-xs text-muted-foreground">{invoice.supplier_company}</p>
                     )}
                   </div>
-                  <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
+                  <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground font-mono">
                     #{invoice.invoice_number}
                   </span>
                 </div>
@@ -156,6 +174,12 @@ export default function Purchases() {
         open={showQuickDialog}
         onOpenChange={setShowQuickDialog}
         onSuccess={loadData}
+      />
+      <PurchaseInvoiceViewDialog
+        invoiceId={selectedInvoiceId}
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+        onDeleted={loadData}
       />
     </div>
   );
