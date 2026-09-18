@@ -30,16 +30,31 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Read application version
+      - name: Read and update application version
         shell: bash
         run: |
           if [ -f "./version.json" ]; then
-            VERSION_CODE=$(node -p "require('./version.json').versionCode || 1")
-            VERSION_NAME=$(node -p "require('./version.json').versionName || '1.0.0'")
+            BASE_CODE=$(node -p "require('./version.json').versionCode || 256")
+            BASE_NAME=$(node -p "require('./version.json').versionName || '1.0.26'")
           else
-            VERSION_CODE="1"
-            VERSION_NAME="1.0.0"
+            BASE_CODE="256"
+            BASE_NAME="1.0.26"
           fi
+
+          RUN_NUM="${{ github.run_number }}"
+          # Dynamic version: e.g. 1.0.26-b38
+          VERSION_NAME="${BASE_NAME}-b${RUN_NUM}"
+          VERSION_CODE=$(( BASE_CODE + RUN_NUM ))
+
+          # Update version.json so Vite (__APP_VERSION__) and build.gradle both use this build version
+          node -e "
+            const fs = require('fs');
+            const v = JSON.parse(fs.readFileSync('./version.json', 'utf8'));
+            v.versionCode = $VERSION_CODE;
+            v.versionName = '$VERSION_NAME';
+            fs.writeFileSync('./version.json', JSON.stringify(v, null, 2));
+          "
+
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 
