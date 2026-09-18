@@ -1089,48 +1089,65 @@ export default function BossPanel() {
 
   return (
     <MainLayout>
-      <div className="p-3 md:p-6 space-y-4 md:space-y-6 pt-12 md:pt-3" dir={direction}>
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6 pt-2 md:pt-3" dir={direction}>
+        {/* Header - Styled to prevent overlap with floating mobile menu trigger */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ps-12 md:ps-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-amber-500/20">
               <Crown className="w-5 h-5 md:w-6 md:h-6 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">لوحة التحكم الرئيسية</h1>
-              <p className="text-xs md:text-sm text-muted-foreground">إدارة التراخيص والمستخدمين</p>
+              <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight">لوحة التحكم الرئيسية</h1>
+              <p className="text-xs md:text-sm text-muted-foreground font-medium">إدارة التراخيص والمستخدمين</p>
             </div>
           </div>
           {isLoading && (
-            <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg self-start sm:self-auto">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
+              <span>جاري التحديث...</span>
+            </div>
           )}
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 h-auto gap-1 !whitespace-normal">
-            <TabsTrigger value="users" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words">
-              <Users className="w-3.5 h-3.5 hidden md:inline" />
-              المستخدمين
-            </TabsTrigger>
-            <TabsTrigger value="codes" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words">
-              <Key className="w-3.5 h-3.5 hidden md:inline" />
-              أكواد التفعيل
-            </TabsTrigger>
-            <TabsTrigger value="issues" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words relative">
-              <AlertTriangle className="w-3.5 h-3.5 hidden md:inline" />
-              مشاكل التراخيص
-              {licenseIssueOwners.length > 0 && (
-                <span className="absolute -top-1 -end-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-                  {licenseIssueOwners.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="system" className="text-[10px] md:text-sm py-2 px-1 gap-1 !whitespace-normal text-center leading-tight min-w-0 break-words">
-              <Wrench className="w-3.5 h-3.5 hidden md:inline" />
-              النظام
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="users" className="space-y-4" dir={direction}>
+          <div className="w-full overflow-x-auto scrollbar-none pb-1">
+            <TabsList className="flex md:grid md:grid-cols-4 w-full min-w-full h-auto p-1.5 bg-muted/70 backdrop-blur-md rounded-2xl border border-border/80 gap-1.5 shadow-sm">
+              <TabsTrigger
+                value="users"
+                className="flex-1 min-w-[85px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              >
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>المستخدمين</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="codes"
+                className="flex-1 min-w-[85px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              >
+                <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>أكواد التفعيل</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="issues"
+                className="flex-1 min-w-[95px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 relative"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>مشاكل التراخيص</span>
+                {licenseIssueOwners.length > 0 && (
+                  <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                    {licenseIssueOwners.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="system"
+                className="flex-1 min-w-[75px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              >
+                <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>النظام</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Tab 1: Users */}
           <TabsContent value="users" className="space-y-4">
@@ -1202,26 +1219,40 @@ export default function BossPanel() {
             </div>
 
             {/* Owners List */}
-            <Card className="overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-                  </div>
-                  المستخدمين المسجلين
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button onClick={() => setShowCreateOwnerDialog(true)} size="sm" variant="outline" className="text-xs md:text-sm">
-                    <UserPlus className="w-3 h-3 md:w-4 md:h-4 me-1" />
-                    {isMobile ? 'مالك' : 'إضافة مالك'}
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
+                <div className="flex items-center justify-between w-full sm:w-auto">
+                  <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                    <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0 text-primary">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <span>المستخدمين المسجلين</span>
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                    {filteredOwners.length}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    onClick={() => setShowCreateOwnerDialog(true)}
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 sm:flex-initial h-9 rounded-xl text-xs md:text-sm font-semibold border-border hover:bg-muted"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 me-1.5" />
+                    إضافة مالك
                   </Button>
-                  <Button onClick={() => setShowCreateBossDialog(true)} size="sm" className="text-xs md:text-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
-                    <Crown className="w-3 h-3 md:w-4 md:h-4 me-1" />
-                    {isMobile ? 'Boss' : 'إضافة Boss'}
+                  <Button
+                    onClick={() => setShowCreateBossDialog(true)}
+                    size="sm"
+                    className="flex-1 sm:flex-initial h-9 rounded-xl text-xs md:text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-sm"
+                  >
+                    <Crown className="w-3.5 h-3.5 me-1.5" />
+                    إضافة Boss
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="px-3 md:px-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="space-y-3 md:space-y-4">
                   {filteredOwners.length === 0 ? (
                     <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا يوجد مستخدمين مسجلين</p>
@@ -1234,12 +1265,12 @@ export default function BossPanel() {
                       const isBossUser = owner.role === 'boss';
 
                       return (
-                        <div key={owner.user_id} className={`relative p-3 md:p-4 rounded-lg space-y-2 md:space-y-3 border-s-4 ${
-                          isBossUser ? 'border-s-amber-500 bg-amber-500/5' :
-                          owner.license_revoked ? 'border-s-destructive bg-destructive/5' :
-                          !isLicenseValid ? 'border-s-destructive bg-destructive/5' :
-                          owner.is_trial ? 'border-s-orange-400 bg-orange-400/5' :
-                          'border-s-emerald-500 bg-emerald-500/5'
+                        <div key={owner.user_id} className={`relative p-3.5 md:p-4 rounded-2xl space-y-2.5 md:space-y-3 border border-border/60 transition-all ${
+                          isBossUser ? 'border-s-4 border-s-amber-500 bg-amber-500/5 dark:bg-amber-500/[0.03]' :
+                          owner.license_revoked ? 'border-s-4 border-s-destructive bg-destructive/5' :
+                          !isLicenseValid ? 'border-s-4 border-s-destructive bg-destructive/5' :
+                          owner.is_trial ? 'border-s-4 border-s-orange-400 bg-orange-400/5' :
+                          'border-s-4 border-s-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/[0.03]'
                         }`}>
                           {/* User Header with Action Menu */}
                           <div className="flex items-start justify-between gap-2">
@@ -1505,17 +1536,26 @@ export default function BossPanel() {
 
           {/* Tab 2: Activation Codes */}
           <TabsContent value="codes" className="space-y-4">
-            <Card className="overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Key className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-                  </div>
-                  أكواد التفعيل ({codes.length})
-                </CardTitle>
-                <Button onClick={() => setShowNewCodeDialog(true)} size="sm" className="text-xs md:text-sm">
-                  <Plus className="w-3 h-3 md:w-4 md:h-4 me-1 md:me-2" />
-                  {isMobile ? 'جديد' : 'كود جديد'}
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
+                <div className="flex items-center justify-between w-full sm:w-auto">
+                  <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                    <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0 text-primary">
+                      <Key className="w-4 h-4" />
+                    </div>
+                    <span>أكواد التفعيل</span>
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                    {codes.length}
+                  </Badge>
+                </div>
+                <Button
+                  onClick={() => setShowNewCodeDialog(true)}
+                  size="sm"
+                  className="w-full sm:w-auto h-9 rounded-xl text-xs md:text-sm font-semibold"
+                >
+                  <Plus className="w-3.5 h-3.5 me-1.5" />
+                  إنشاء كود جديد
                 </Button>
               </CardHeader>
               <CardContent className="px-3 md:px-6">
@@ -1605,14 +1645,19 @@ export default function BossPanel() {
 
           {/* Tab 3: License Issues */}
           <TabsContent value="issues" className="space-y-4">
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2 px-3 md:px-6 bg-gradient-to-br from-destructive/5 to-destructive/0">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
-                  </div>
-                  مشاكل التراخيص ({licenseIssueOwners.length})
-                </CardTitle>
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-destructive/8 via-destructive/3 to-transparent border-b border-border/50">
+                <div className="flex items-center justify-between w-full sm:w-auto">
+                  <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold text-destructive">
+                    <div className="w-9 h-9 rounded-xl bg-destructive/15 flex items-center justify-center flex-shrink-0 text-destructive">
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                    <span>مشاكل التراخيص</span>
+                  </CardTitle>
+                  <Badge variant="destructive" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+                    {licenseIssueOwners.length}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent className="px-3 md:px-6">
                 {licenseIssueOwners.length === 0 ? (
