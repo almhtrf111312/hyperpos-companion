@@ -13,6 +13,7 @@ import { BrowserMultiFormatReader } from '@zxing/library';
 import { Camera, ScanLine, X, RotateCcw, Flashlight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { playBeep } from '@/lib/sound-utils';
+import { setScannerTransparency } from './NativeMLKitScanner';
 
 export const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
 
@@ -274,8 +275,11 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
     if (!isOpen) {
       setErrorMessage(null);
       stopCamera();
+      setScannerTransparency(false);
       return;
     }
+
+    setScannerTransparency(true);
 
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
@@ -288,6 +292,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
       clearTimeout(timer);
       mountedRef.current = false;
       stopCamera();
+      setScannerTransparency(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);

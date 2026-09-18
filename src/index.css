@@ -1544,6 +1544,7 @@ html.barcode-scanner-active body {
   --background: transparent !important;
   background: transparent !important;
   --ion-background-color: transparent !important;
+  background-color: transparent !important;
 }
 
 /* Hide the main React app completely */
@@ -1563,10 +1564,11 @@ html.barcode-scanner-active body > *:not(.barcode-scanner-modal):not(.scanner-ui
 }
 
 /* Explicitly hide all dialogs, sheets, overlays, popovers and Radix portal layers */
-html.barcode-scanner-active [role="dialog"],
-html.barcode-scanner-active .dialog-content-layer,
+html.barcode-scanner-active [data-radix-portal]:not(:has(.barcode-scanner-modal)):not(:has(.scanner-ui-overlay)),
+html.barcode-scanner-active [role="dialog"]:not(.barcode-scanner-modal):not(.scanner-ui-overlay),
+html.barcode-scanner-active .dialog-content-layer:not(.barcode-scanner-modal):not(.scanner-ui-overlay),
 html.barcode-scanner-active .dialog-overlay-layer,
-html.barcode-scanner-active [data-state="open"]:not(.barcode-scanner-modal):not(.barcode-scanner-modal *),
+html.barcode-scanner-active [data-state="open"]:not(.barcode-scanner-modal):not(.barcode-scanner-modal *):not(.scanner-ui-overlay):not(.scanner-ui-overlay *),
 html.barcode-scanner-active [data-radix-focus-guard] {
   display: none !important;
   visibility: hidden !important;
@@ -1574,12 +1576,18 @@ html.barcode-scanner-active [data-radix-focus-guard] {
   pointer-events: none !important;
 }
 
-/* Keep the scanner UI itself visible and interactable */
+/* Keep the scanner modal containers visible and interactable */
 html.barcode-scanner-active .barcode-scanner-modal,
-html.barcode-scanner-active .barcode-scanner-modal *,
-html.barcode-scanner-active .scanner-ui-overlay,
-html.barcode-scanner-active .scanner-ui-overlay * {
+html.barcode-scanner-active .scanner-ui-overlay {
   display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure child elements inside the scanner keep natural display and stay visible */
+html.barcode-scanner-active .barcode-scanner-modal *,
+html.barcode-scanner-active .scanner-ui-overlay * {
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
