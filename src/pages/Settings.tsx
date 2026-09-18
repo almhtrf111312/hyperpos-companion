@@ -2036,16 +2036,16 @@ export default function Settings() {
           year: 'numeric', month: 'long', day: 'numeric'
         });
 
-        // Load changelog from build-time injection
+        // Load changelog from build-time injection (limited to latest update fixes only)
         const rawChangelog = (globalThis as any).__APP_CHANGELOG__ ?? (typeof __APP_CHANGELOG__ !== 'undefined' ? __APP_CHANGELOG__ : null);
         const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = Array.isArray(rawChangelog) && rawChangelog.length > 0
-          ? rawChangelog
+          ? rawChangelog.slice(0, 6)
           : [
-            { type: 'fixed', ar: 'إصلاح مشكلة فتح قارئ الباركود مرتين على APK', en: 'Fixed barcode scanner opening twice on APK' },
-            { type: 'improved', ar: 'تحسين واجهة قارئ الباركود', en: 'Improved barcode scanner UI' },
-            { type: 'improved', ar: 'تحسين العمل بدون إنترنت', en: 'Improved offline experience' },
-            { type: 'new', ar: 'إضافة زر التقاط صورة من الكاميرا', en: 'Added camera capture button' },
-            { type: 'improved', ar: 'تحسين تباين المظهر النهاري', en: 'Enhanced light mode contrast' },
+            { type: 'fixed', ar: 'حل مشكلة احتجاب وتشوه كاميرا قارئ الباركود، وإخفاء النوافذ العائمة المنبثقة تلقائياً فور تشغيل الكاميرا وإعادتها فور الانتهاء', en: 'Fixed barcode scanner camera obstruction; floating dialogs now hide during scan and restore automatically' },
+            { type: 'fixed', ar: 'تحسين استجابة وتناسق أبعاد نافذة إضافة فاتورة الشراء وإضافة منتج على شاشات الهواتف ومنع التمدد والتمرير الأفقي', en: 'Enhanced Purchase Invoice and Add Product dialog responsiveness on mobile screens' },
+            { type: 'improved', ar: 'معاينة فورية للغة في شاشة الإعدادات؛ تحديث نصوص أزرار الحفظ والإلغاء واتجاهها مباشرة باللغة المختارة قبل الحفظ', en: 'Real-time language preview in Settings; Save/Cancel button text and layout direction now immediately reflect selected language' },
+            { type: 'improved', ar: 'تفعيل نظام الإشعارات الأصلي لنظام أندرويد مع طلب إذن النظام وإظهار تنبيهات الديون ونفاذ المخزون في شريط إشعارات الهاتف', en: 'Activated native Android notifications with system permission prompt and status bar alerts' },
+            { type: 'fixed', ar: 'تثبيت حالة التطبيق والسلة في الذاكرة (RAM) بدون إعادة تحميل عند التبديل بين التطبيقات', en: 'Preserved POS cart and application state in RAM without refreshing when switching apps' },
           ];
 
         return (
