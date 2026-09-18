@@ -286,7 +286,7 @@
   
             if (product) {
               const oldQty = product.quantity || 0;
-              const oldCost = Number((product as any).cost_price) || 0;
+              const oldCost = Number(product.cost_price) || 0;
               const newQuantity = oldQty + item.quantity;
               // Weighted Average Cost: blend old inventory cost with newly-purchased cost
               const avgCost = newQuantity > 0 && item.quantity > 0
@@ -318,7 +318,8 @@
           }
         } else {
           // Check if product already exists by barcode or name
-          let existingProduct: any = null;
+          interface ProductRow { id: string; quantity: number; cost_price: number; purchase_history: unknown[] }
+          let existingProduct: ProductRow | null = null;
           if (item.barcode?.trim()) {
             const { data } = await supabase
               .from('products')
@@ -375,7 +376,7 @@
               .eq('id', item.id);
           } else {
             // Create new product with safe defaults
-            const newProductData: any = {
+            const newProductData: Record<string, unknown> = {
               user_id: ownerId,
               name: item.product_name,
               barcode: item.barcode || null,
@@ -446,9 +447,10 @@
      // 2. Inventory reversal: Deduct item quantities and remove purchase history
      if (items.length > 0 && !isNoInventoryMode()) {
        for (const item of items) {
-         if (!item.quantity || item.quantity <= 0) continue;
- 
-         let targetProduct: any = null;
+          if (!item.quantity || item.quantity <= 0) continue;
+
+          interface TargetProductRow { id: string; quantity: number; cost_price: number; purchase_history: unknown[] }
+          let targetProduct: TargetProductRow | null = null;
          if (item.product_id) {
            const { data } = await supabase
              .from('products')
@@ -485,7 +487,7 @@
            const oldHistory = Array.isArray(targetProduct.purchase_history)
              ? targetProduct.purchase_history
              : [];
-           const updatedHistory = oldHistory.filter((h: any) =>
+            const updatedHistory = (oldHistory as Array<Record<string, unknown>>).filter((h) =>
              h.invoice_id !== invoiceId &&
              h.invoice_id !== invoice?.invoice_number &&
              h.invoice_number !== invoice?.invoice_number
@@ -523,7 +525,7 @@
          if (rawExpenses) {
            const parsed = JSON.parse(rawExpenses);
            if (Array.isArray(parsed)) {
-             const filtered = parsed.filter((e: any) =>
+              const filtered = (parsed as Array<Record<string, string | undefined>>).filter((e) =>
                !e.notes?.includes(invoice.invoice_number) &&
                !e.description?.includes(invoice.invoice_number) &&
                !e.title?.includes(invoice.invoice_number)
@@ -534,8 +536,10 @@
              }
            }
          }
-       } catch {}
-     }
+        } catch (localErr) {
+          console.warn('[deletePurchaseInvoiceCloud] local expenses cleanup failed:', localErr);
+        }
+      }
  
      // 4. Delete invoice items from cloud
      if (!isOfflineInvoice) {

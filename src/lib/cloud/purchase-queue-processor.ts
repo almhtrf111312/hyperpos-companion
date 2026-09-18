@@ -98,7 +98,19 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       added_at: new Date().toISOString(),
     });
 
-    const updates: Record<string, any> = {
+    interface ProductUpdates {
+      quantity: number;
+      cost_price: number;
+      purchase_history: unknown[];
+      updated_at: string;
+      sale_price?: number;
+      category?: string;
+      barcode?: string;
+      expiry_date?: string;
+      image_url?: string;
+      custom_fields?: Record<string, unknown> | null;
+    }
+    const updates: ProductUpdates = {
       quantity: newQty,
       cost_price: avgCost,
       purchase_history: hist,
@@ -113,7 +125,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       updates.custom_fields = { wholesalePrice: data.wholesalePrice };
     }
 
-    await supabase.from('products').update(updates).eq('id', targetProductId);
+    await supabase.from('products').update(updates as Parameters<ReturnType<typeof supabase.from>['update']>[0]).eq('id', targetProductId);
   } else {
     // Insert new product
     const { data: newProd } = await supabase
