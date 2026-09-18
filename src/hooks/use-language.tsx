@@ -16,7 +16,7 @@ import { subscribeToEvent, EVENTS } from '@/lib/events';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, lang?: Language) => string;
   tDynamic: (key: TerminologyKey) => string;
   storeType: string;
   languages: LanguageInfo[];
@@ -106,8 +106,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
   }, []);
 
-  const t = useCallback((key: TranslationKey) => {
-    return translate(key, language);
+  const t = useCallback((key: TranslationKey, lang?: Language) => {
+    return translate(key, lang || language);
   }, [language]);
 
   const [storeType, setStoreType] = useState(getCurrentStoreType);

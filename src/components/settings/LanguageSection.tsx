@@ -18,7 +18,7 @@ export function LanguageSection() {
 
   const handleSave = () => {
     setLanguage(pendingLanguage);
-    toast.success(t('settings.languageChanged'));
+    toast.success(t('settings.languageChanged', pendingLanguage));
   };
 
   const handleCancel = () => {
@@ -28,7 +28,7 @@ export function LanguageSection() {
   const selectedLanguage = languages.find(l => l.code === pendingLanguage);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-muted-foreground" />
@@ -37,7 +37,7 @@ export function LanguageSection() {
         <Select value={pendingLanguage} onValueChange={handleLanguageSelect}>
           <SelectTrigger className="w-40 h-9">
             <SelectValue>
-              <span className="text-sm">{selectedLanguage?.nativeName}</span>
+              <span className="text-sm font-medium">{selectedLanguage?.nativeName}</span>
             </SelectValue>
           </SelectTrigger>
           <SelectContent 
@@ -60,13 +60,16 @@ export function LanguageSection() {
       </div>
 
       {hasChanges && (
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} className="flex-1 h-8">
-            <Save className="w-3 h-3 ml-1" />
-            {t('common.save')}
+        <div 
+          className="flex gap-2 pt-1 animate-in fade-in-50 duration-200"
+          dir={selectedLanguage?.direction || 'rtl'}
+        >
+          <Button size="sm" onClick={handleSave} className="flex-1 h-9 font-medium shadow-sm">
+            <Save className="w-3.5 h-3.5 mx-1" />
+            {t('common.save', pendingLanguage)}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCancel} className="flex-1 h-8">
-            {t('common.cancel')}
+          <Button variant="outline" size="sm" onClick={handleCancel} className="flex-1 h-9 font-medium">
+            {t('common.cancel', pendingLanguage)}
           </Button>
         </div>
       )}

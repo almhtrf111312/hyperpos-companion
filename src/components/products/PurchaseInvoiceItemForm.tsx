@@ -232,7 +232,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   };
 
   return (
-    <div className="p-4 border rounded-lg bg-card space-y-3">
+    <div className="p-3 sm:p-4 border rounded-lg bg-card space-y-3 max-w-full overflow-hidden">
       <div className="flex items-center justify-between">
         <h3 className="font-medium text-sm">
           {selectedProduct ? t('purchaseInvoice.updateStock') : t('purchaseInvoice.addNewProduct')}
@@ -282,7 +282,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
               setSelectedProduct(null);
             }}
             placeholder="123..."
-            className="flex-1"
+            className="flex-1 min-w-0"
           />
           <Button
             type="button"
@@ -313,42 +313,45 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       </div>
 
       {/* Quantity + Prices */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-sm">{t('products.quantity')} *</Label>
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+        <div className="space-y-1 sm:space-y-1.5 min-w-0">
+          <Label className="text-xs sm:text-sm truncate block">{t('products.quantity')} *</Label>
           <Input
             type="number"
             min="1"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
+            className="h-9 text-xs sm:text-sm px-2"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-sm">{t('products.costPrice')} *</Label>
+        <div className="space-y-1 sm:space-y-1.5 min-w-0">
+          <Label className="text-xs sm:text-sm truncate block">{t('products.costPrice')} *</Label>
           <Input
             type="number"
             step="0.01"
             value={costPrice}
             onChange={(e) => setCostPrice(e.target.value)}
+            className="h-9 text-xs sm:text-sm px-2"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-sm">{t('products.salePrice')}</Label>
+        <div className="space-y-1 sm:space-y-1.5 min-w-0">
+          <Label className="text-xs sm:text-sm truncate block">{t('products.salePrice')}</Label>
           <Input
             type="number"
             step="0.01"
             value={salePrice}
             onChange={(e) => setSalePrice(e.target.value)}
+            className="h-9 text-xs sm:text-sm px-2"
           />
         </div>
       </div>
 
       {/* Dual Unit Settings */}
-      <div className="p-3 bg-muted/50 rounded-lg border border-border space-y-2.5">
-        <Label className="text-sm font-medium">إعدادات الوحدة</Label>
+      <div className="p-2.5 sm:p-3 bg-muted/50 rounded-lg border border-border space-y-2.5 max-w-full overflow-hidden">
+        <Label className="text-xs sm:text-sm font-medium">إعدادات الوحدة</Label>
         <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">وحدة التتبع</Label>
+          <div className="space-y-1 min-w-0">
+            <Label className="text-xs text-muted-foreground truncate block">وحدة التتبع</Label>
             <Select value={trackByUnit} onValueChange={setTrackByUnit}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -359,8 +362,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">معامل التحويل</Label>
+          <div className="space-y-1 min-w-0">
+            <Label className="text-xs text-muted-foreground truncate block">معامل التحويل</Label>
             <Input
               type="number"
               min="1"
@@ -372,8 +375,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">اسم الوحدة الكبيرة</Label>
+          <div className="space-y-1 min-w-0">
+            <Label className="text-xs text-muted-foreground truncate block">اسم الوحدة الكبيرة</Label>
             <Input
               value={bulkUnit}
               onChange={(e) => setBulkUnit(e.target.value)}
@@ -381,8 +384,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
               placeholder="كرتونة"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">اسم الوحدة الصغيرة</Label>
+          <div className="space-y-1 min-w-0">
+            <Label className="text-xs text-muted-foreground truncate block">اسم الوحدة الصغيرة</Label>
             <Input
               value={smallUnit}
               onChange={(e) => setSmallUnit(e.target.value)}
@@ -392,8 +395,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">سعر تكلفة الكرتونة</Label>
+          <div className="space-y-1 min-w-0">
+            <Label className="text-xs text-muted-foreground truncate block">سعر تكلفة الكرتونة</Label>
             <Input
               type="number"
               step="0.01"
@@ -403,8 +406,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
               placeholder="0.00"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">سعر بيع الكرتونة</Label>
+          <div className="space-y-1 min-w-0">
+            <Label className="text-xs text-muted-foreground truncate block">سعر بيع الكرتونة</Label>
             <Input
               type="number"
               step="0.01"

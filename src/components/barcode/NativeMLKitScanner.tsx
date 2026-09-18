@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { BarcodeFormat, BarcodeScanner, Resolution } from '@capacitor-mlkit/barcode-scanning';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { playBeep } from '@/lib/sound-utils';
@@ -283,9 +284,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
 
   const zoomPresets = ZOOM_STEPS.filter(z => z >= minZoom && z <= maxZoom);
 
-  return (
+  return createPortal(
     <div
-      className="barcode-scanner-modal fixed inset-0 z-[120] bg-transparent flex flex-col pointer-events-auto"
+      className="barcode-scanner-modal fixed inset-0 z-[99999] bg-transparent flex flex-col pointer-events-auto"
       onClick={handleScreenTap}
     >
       {/* Top bar */}
@@ -333,9 +334,10 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           </div>
         )}
 
-        {/* Zoom controls overlay - positioned at bottom of viewfinder */}
+        {/* Zoom controls overlay - positioned at bottom of viewfinder (forced LTR for logical order) */}
         {!isStarting && zoomPresets.length > 1 && (
           <div
+            dir="ltr"
             className="absolute bottom-6 inset-x-0 flex items-center justify-center gap-2 z-[9999]"
             onClick={e => e.stopPropagation()}
           >
@@ -378,6 +380,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         <p className="text-sm font-medium text-white">وجّه الكاميرا نحو الباركود</p>
         <p className="text-xs text-white/50 mt-1">انقر مرتين للتبديل بين 1× و 2×</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

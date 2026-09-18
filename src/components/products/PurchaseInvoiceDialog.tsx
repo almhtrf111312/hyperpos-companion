@@ -435,7 +435,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[92vh] p-3 sm:p-6 overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
@@ -444,20 +444,20 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         </DialogHeader>
 
         {/* Step Indicator */}
-        <div className="flex items-center justify-center gap-2 py-4">
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${step === 'header' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 border-b pb-3 mb-2">
+          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium ${step === 'header' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
             <span>1</span>
             <span>{t('purchaseInvoice.headerStep')}</span>
           </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${step === 'items' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground rtl:rotate-180 shrink-0" />
+          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium ${step === 'items' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
             <span>2</span>
             <span>{t('purchaseInvoice.itemsStep')}</span>
           </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${step === 'finalize' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground rtl:rotate-180 shrink-0" />
+          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium ${step === 'finalize' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
             <span>3</span>
             <span>{t('purchases.finalize')}</span>
@@ -552,28 +552,28 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         {step === 'items' && currentInvoice && (
           <div className="space-y-4">
             {/* Progress indicator */}
-            <div className="p-3 bg-muted rounded-lg flex items-center justify-between">
-              <div className="text-sm">
+            <div className="p-2.5 sm:p-3 bg-muted rounded-lg flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs sm:text-sm">
                 <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}:</span>
                 <span className="font-bold mx-1 text-foreground">
                   {invoiceItems.length}
                 </span>
-                <span className="text-muted-foreground mx-2">|</span>
+                <span className="text-muted-foreground mx-1 sm:mx-2">|</span>
                 <span className="text-muted-foreground">{t('common.total')}:</span>
                 <span className="font-bold mx-1 text-foreground">
                   ${currentInvoice.actual_grand_total?.toFixed(2) || '0.00'}
                 </span>
               </div>
-              <Button size="sm" onClick={goToFinalize} disabled={invoiceItems.length === 0}>
+              <Button size="sm" onClick={goToFinalize} disabled={invoiceItems.length === 0} className="h-8 text-xs sm:text-sm">
                 {t('purchases.finalize')}
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-3.5 h-3.5 mr-1.5 rtl:rotate-180" />
               </Button>
             </div>
 
             {/* Items list */}
             {invoiceItems.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="border rounded-lg overflow-x-auto max-w-full">
+                <table className="w-full text-xs sm:text-sm min-w-[300px]">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-2 text-right">{t('products.name')}</th>

@@ -1542,24 +1542,30 @@ html.theme-transitioning *::after {
   display: none !important;
 }
 
-/* Native Scanner Transparency (ML Kit fallback in WebView) */
+/* Native Scanner Transparency (ML Kit in WebView) */
 html.barcode-scanner-active,
-html.barcode-scanner-active body,
-html.barcode-scanner-active #root {
+html.barcode-scanner-active body {
   --background: transparent !important;
   background: transparent !important;
   --ion-background-color: transparent !important;
 }
 
-/* Keep the React scanner controls visible while the native camera is behind the WebView. */
-html.barcode-scanner-active #root {
-  background: transparent !important;
-  visibility: hidden;
+/* Hide the main React app and any open dialogs/portals so camera preview is unobstructed */
+html.barcode-scanner-active #root,
+html.barcode-scanner-active [data-radix-portal] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
+/* Keep the scanner UI itself visible and interactable */
 html.barcode-scanner-active .barcode-scanner-modal,
-html.barcode-scanner-active .barcode-scanner-modal * {
-  visibility: visible;
+html.barcode-scanner-active .barcode-scanner-modal *,
+html.barcode-scanner-active .scanner-ui-overlay,
+html.barcode-scanner-active .scanner-ui-overlay * {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 
