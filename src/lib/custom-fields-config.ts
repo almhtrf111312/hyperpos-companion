@@ -1,6 +1,8 @@
 // Custom Fields Configuration - User-defined fields for products
 
 import { emitEvent, EVENTS } from './events';
+import { supabase } from '@/integrations/supabase/client';
+import { getOwnerIdForInsert } from './supabase-store';
 
 export type CustomFieldType = 'text' | 'number' | 'select';
 
@@ -32,15 +34,67 @@ export const loadCustomFields = (): CustomField[] => {
   return [];
 };
 
-// Save custom fields to storage
-export const saveCustomFields = (fields: CustomField[]): boolean => {
+// Save custom fields to storage and sync to cloud
+export const saveCustomFields = async (fields: CustomField[]): Promise<boolean> => {
   try {
     localStorage.setItem(CUSTOM_FIELDS_STORAGE_KEY, JSON.stringify(fields));
     emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, fields);
+
+    // Sync to cloud
+    const ownerId = await getOwnerIdForInsert();
+    if (ownerId) {
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('sync_settings')
+        .eq('user_id', ownerId)
+        .maybeSingle();
+
+      const existingSync = (storeData?.sync_settings as Record<string, unknown>) || {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('stores')
+        .update({
+          sync_settings: {
+            ...existingSync,
+            customFields: fields,
+          }
+        })
+        .eq('user_id', ownerId);
+    }
     return true;
   } catch (error) {
     console.error('Failed to save custom fields:', error);
     return false;
+  }
+};
+
+// Load custom fields from cloud and sync to localStorage
+export const syncCustomFieldsFromCloud = async (): Promise<CustomField[] | null> => {
+  try {
+    const ownerId = await getOwnerIdForInsert();
+    if (!ownerId) return null;
+
+    const { data, error } = await supabase
+      .from('stores')
+      .select('sync_settings')
+      .eq('user_id', ownerId)
+      .maybeSingle();
+
+    if (error) return null;
+
+    const syncSettings = data?.sync_settings as { customFields?: CustomField[] } | null;
+    const cloudFields = syncSettings?.customFields;
+
+    if (cloudFields && Array.isArray(cloudFields)) {
+      localStorage.setItem(CUSTOM_FIELDS_STORAGE_KEY, JSON.stringify(cloudFields));
+      emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, cloudFields);
+      console.log('[CustomFields] Synced from cloud to localStorage');
+      return cloudFields;
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to sync custom fields from cloud:', error);
+    return null;
   }
 };
 

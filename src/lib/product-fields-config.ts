@@ -2,7 +2,7 @@
 
 import { emitEvent, EVENTS } from './events';
 import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUserId } from './supabase-store';
+import { getCurrentUserId, getOwnerIdForInsert } from './supabase-store';
 
 export interface ProductFieldsConfig {
   expiryDate: boolean;
@@ -109,13 +109,13 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
     emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, config);
 
     // Sync to cloud - merge with existing sync_settings instead of overwriting
-    const userId = getCurrentUserId();
-    if (userId) {
+    const ownerId = await getOwnerIdForInsert();
+    if (ownerId) {
       // First read existing sync_settings
       const { data: storeData } = await supabase
         .from('stores')
         .select('sync_settings')
-        .eq('user_id', userId)
+        .eq('user_id', ownerId)
         .maybeSingle();
 
       const existingSyncSettings = (storeData?.sync_settings as Record<string, unknown>) || {};
@@ -130,7 +130,7 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
             productFieldsConfig: config
           }
         })
-        .eq('user_id', userId);
+        .eq('user_id', ownerId);
 
       if (error) {
         console.error('Failed to sync product fields to cloud:', error);
@@ -149,13 +149,13 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
 // Load product fields from cloud and sync to localStorage
 export const syncProductFieldsFromCloud = async (): Promise<ProductFieldsConfig | null> => {
   try {
-    const userId = getCurrentUserId();
-    if (!userId) return null;
+    const ownerId = await getOwnerIdForInsert();
+    if (!ownerId) return null;
 
     const { data, error } = await supabase
       .from('stores')
       .select('sync_settings')
-      .eq('user_id', userId)
+      .eq('user_id', ownerId)
       .maybeSingle();
 
     if (error) {

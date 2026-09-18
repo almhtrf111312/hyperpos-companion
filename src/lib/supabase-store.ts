@@ -51,14 +51,48 @@ export const setCurrentUserId = (userId: string | null) => {
 };
 
 export const getCurrentUserId = (): string | null => {
-  return currentUserId;
+  if (currentUserId) return currentUserId;
+  try {
+    const cached = localStorage.getItem('hyperpos_session_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed?.user?.id) {
+        currentUserId = parsed.user.id;
+        return currentUserId;
+      }
+    }
+    // Check standard Supabase auth token key in localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.user?.id) {
+            currentUserId = parsed.user.id;
+            return currentUserId;
+          }
+        }
+      }
+    }
+  } catch {}
+  return null;
 };
 
 // Get user role (cached)
 export const getCurrentUserRole = async (): Promise<UserRole | null> => {
   if (currentUserRole) return currentUserRole;
 
-  const userId = getCurrentUserId();
+  let userId = getCurrentUserId();
+  if (!userId) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.id) {
+        userId = data.session.user.id;
+        setCurrentUserId(userId);
+      }
+    } catch {}
+  }
   if (!userId) return null;
 
   try {
@@ -88,7 +122,16 @@ export const getOwnerIdForInsert = async (): Promise<string | null> => {
   // If cached, return cached value
   if (currentOwnerId) return currentOwnerId;
 
-  const userId = getCurrentUserId();
+  let userId = getCurrentUserId();
+  if (!userId) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.id) {
+        userId = data.session.user.id;
+        setCurrentUserId(userId);
+      }
+    } catch {}
+  }
   if (!userId) return null;
 
   try {
@@ -423,15 +466,25 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
     // Check if store exists using owner's ID
     const { data: existing } = await supabase
       .from('stores')
-      .select('id')
+      .select('id, sync_settings')
       .eq('user_id', ownerId)
       .maybeSingle();
 
     if (existing) {
+      // Merge sync_settings if provided so we never wipe existing keys (like customFields, productFieldsConfig)
+      let payloadToSave = { ...settings };
+      if (settings.sync_settings && typeof settings.sync_settings === 'object') {
+        const existingSync = (existing.sync_settings as Record<string, unknown>) || {};
+        payloadToSave.sync_settings = {
+          ...existingSync,
+          ...(settings.sync_settings as Record<string, unknown>),
+        };
+      }
+
       // Update existing
       const { error } = await sb
         .from('stores')
-        .update(settings)
+        .update(payloadToSave)
         .eq('user_id', ownerId);
 
       if (error) {

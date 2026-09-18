@@ -56,6 +56,7 @@ import { LicenseManagement } from '@/components/settings/LicenseManagement';
 import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
 import { ProductFieldsConfig, loadProductFieldsConfig, saveProductFieldsConfig, getDefaultFieldsByStoreType, StoreType } from '@/lib/product-fields-config';
+import { loadCustomFields } from '@/lib/custom-fields-config';
 import { getDefaultCategories } from '@/lib/store-type-config';
 import { saveCategories, Category } from '@/lib/categories-store';
 import DataResetSection from '@/components/settings/DataResetSection';
@@ -505,6 +506,31 @@ export default function Settings() {
     barcodeScanMode: 'search' | 'add';
   } | null>(null);
 
+  // Quick auto-persistence for interactive toggles to ensure immediate offline safety
+  const autoPersistQuickSettings = useCallback((partial: Partial<PersistedSettings>) => {
+    const currentPersisted = loadPersistedSettings() || {};
+    const updated: PersistedSettings = {
+      ...currentPersisted,
+      storeSettings: { ...(currentPersisted.storeSettings || {}), ...storeSettings, ...(partial.storeSettings || {}) },
+      taxEnabled: partial.taxEnabled !== undefined ? partial.taxEnabled : taxEnabled,
+      taxRate: partial.taxRate !== undefined ? partial.taxRate : taxRate,
+      discountPercentEnabled: partial.discountPercentEnabled !== undefined ? partial.discountPercentEnabled : discountPercentEnabled,
+      discountFixedEnabled: partial.discountFixedEnabled !== undefined ? partial.discountFixedEnabled : discountFixedEnabled,
+      hideMaintenanceSection: partial.hideMaintenanceSection !== undefined ? partial.hideMaintenanceSection : hideMaintenanceSection,
+      barcodeScanMode: partial.barcodeScanMode !== undefined ? partial.barcodeScanMode : barcodeScanMode,
+    };
+    savePersistedSettings(updated);
+  }, [storeSettings, taxEnabled, taxRate, discountPercentEnabled, discountFixedEnabled, hideMaintenanceSection, barcodeScanMode]);
+
+  // Quick background sync to cloud for toggle controls
+  const autoSyncToCloud = useCallback(async (partial: Record<string, unknown>) => {
+    try {
+      await saveStoreSettings(partial);
+    } catch (e) {
+      console.warn('[Settings] Quick cloud sync failed:', e);
+    }
+  }, []);
+
   // ✅ Load settings from cloud on mount to ensure persistence across reinstalls/updates
   useEffect(() => {
     const loadFromCloud = async () => {
@@ -550,43 +576,54 @@ export default function Settings() {
         }
 
         // Apply discount settings and additional preferences from sync_settings
-        if (cloudData.sync_settings && typeof cloudData.sync_settings === 'object') {
-          const sync = cloudData.sync_settings as Record<string, unknown>;
-          if (typeof sync.discountPercentEnabled === 'boolean') {
-            setDiscountPercentEnabled(sync.discountPercentEnabled);
-          }
-          if (typeof sync.discountFixedEnabled === 'boolean') {
-            setDiscountFixedEnabled(sync.discountFixedEnabled);
-          }
-          if (sync.barcodeScanMode === 'search' || sync.barcodeScanMode === 'add') {
-            setBarcodeScanMode(sync.barcodeScanMode);
-          }
-          // ✅ Restore hideMaintenanceSection from cloud
-          if (typeof sync.hideMaintenanceSection === 'boolean') {
-            setHideMaintenanceSection(sync.hideMaintenanceSection);
-          }
-          // ✅ Restore currency names from cloud
-          if (sync.currencyNames && typeof sync.currencyNames === 'object') {
-            const cn = sync.currencyNames as Record<string, string>;
-            setCurrencyNames(prev => ({
-              TRY: cn.TRY ?? prev.TRY,
-              SYP: cn.SYP ?? prev.SYP,
-            }));
-          }
-          // ✅ Restore backup settings from cloud
-          if (sync.backupSettings && typeof sync.backupSettings === 'object') {
-            const bs = sync.backupSettings as Record<string, unknown>;
-            setBackupSettings(prev => ({
-              autoBackup: typeof bs.autoBackup === 'boolean' ? bs.autoBackup : prev.autoBackup,
-              interval: typeof bs.interval === 'string' ? bs.interval : prev.interval,
-              keepDays: typeof bs.keepDays === 'string' ? bs.keepDays : String(bs.keepDays ?? prev.keepDays),
-            }));
-          }
+        const syncObj = cloudData.sync_settings && typeof cloudData.sync_settings === 'object' 
+          ? cloudData.sync_settings as Record<string, unknown> : {};
+
+        if (typeof syncObj.discountPercentEnabled === 'boolean') {
+          setDiscountPercentEnabled(syncObj.discountPercentEnabled);
+        }
+        if (typeof syncObj.discountFixedEnabled === 'boolean') {
+          setDiscountFixedEnabled(syncObj.discountFixedEnabled);
+        }
+        if (syncObj.barcodeScanMode === 'search' || syncObj.barcodeScanMode === 'add') {
+          setBarcodeScanMode(syncObj.barcodeScanMode);
+        }
+        // ✅ Restore hideMaintenanceSection from cloud
+        if (typeof syncObj.hideMaintenanceSection === 'boolean') {
+          setHideMaintenanceSection(syncObj.hideMaintenanceSection);
+        }
+        // ✅ Restore currency names from cloud
+        if (syncObj.currencyNames && typeof syncObj.currencyNames === 'object') {
+          const cn = syncObj.currencyNames as Record<string, string>;
+          setCurrencyNames(prev => ({
+            TRY: cn.TRY ?? prev.TRY,
+            SYP: cn.SYP ?? prev.SYP,
+          }));
+        }
+        // ✅ Restore backup settings from cloud
+        if (syncObj.backupSettings && typeof syncObj.backupSettings === 'object') {
+          const bs = syncObj.backupSettings as Record<string, unknown>;
+          setBackupSettings(prev => ({
+            autoBackup: typeof bs.autoBackup === 'boolean' ? bs.autoBackup : prev.autoBackup,
+            interval: typeof bs.interval === 'string' ? bs.interval : prev.interval,
+            keepDays: typeof bs.keepDays === 'string' ? bs.keepDays : String(bs.keepDays ?? prev.keepDays),
+          }));
+        }
+
+        // ✅ Restore productFieldsConfig from cloud if present
+        if (syncObj.productFieldsConfig) {
+          setProductFieldsConfig(syncObj.productFieldsConfig as ProductFieldsConfig);
+          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(syncObj.productFieldsConfig));
+          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, syncObj.productFieldsConfig);
+        }
+
+        // ✅ Restore customFields from cloud if present
+        if (syncObj.customFields && Array.isArray(syncObj.customFields)) {
+          localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncObj.customFields));
+          emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncObj.customFields);
         }
 
         // Persist to localStorage so offline reads stay in sync
-        const syncObj = cloudData.sync_settings && typeof cloudData.sync_settings === 'object' 
-          ? cloudData.sync_settings as Record<string, unknown> : {};
         savePersistedSettings({
           storeSettings: {
             name: cloudData.name ?? '',
@@ -610,6 +647,33 @@ export default function Settings() {
           discountFixedEnabled: syncObj.discountFixedEnabled !== false,
           barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : 'search',
         });
+
+        // ✅ Update snapshot with fresh cloud values so hasUnsavedChanges stays accurate
+        settingsSnapshotRef.current = {
+          storeSettings: {
+            name: cloudData.name ?? storeSettings.name,
+            type: cloudData.store_type ?? storeSettings.type,
+            phone: cloudData.phone ?? storeSettings.phone,
+            email: storeSettings.email,
+            address: cloudData.address ?? storeSettings.address,
+            logo: cloudData.logo_url ?? storeSettings.logo,
+          },
+          exchangeRates: {
+            TRY: (cloudData.exchange_rates as Record<string, number>)?.TRY !== undefined ? String((cloudData.exchange_rates as Record<string, number>).TRY) : exchangeRates.TRY,
+            SYP: (cloudData.exchange_rates as Record<string, number>)?.SYP !== undefined ? String((cloudData.exchange_rates as Record<string, number>).SYP) : exchangeRates.SYP,
+          },
+          currencyNames: (syncObj.currencyNames as Record<string, string>) || currencyNames,
+          notificationSettings: (cloudData.notification_settings as any) || notificationSettings,
+          printSettings: (cloudData.print_settings as any) || printSettings,
+          backupSettings: (syncObj.backupSettings as any) || backupSettings,
+          hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : hideMaintenanceSection,
+          productFieldsConfig: (syncObj.productFieldsConfig as ProductFieldsConfig) || loadProductFieldsConfig(),
+          taxEnabled: typeof cloudData.tax_enabled === 'boolean' ? cloudData.tax_enabled : taxEnabled,
+          taxRate: typeof cloudData.tax_rate === 'number' ? cloudData.tax_rate : taxRate,
+          discountPercentEnabled: typeof syncObj.discountPercentEnabled === 'boolean' ? syncObj.discountPercentEnabled : discountPercentEnabled,
+          discountFixedEnabled: typeof syncObj.discountFixedEnabled === 'boolean' ? syncObj.discountFixedEnabled : discountFixedEnabled,
+          barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : barcodeScanMode,
+        };
 
         console.log('[Settings] Loaded and synced from cloud successfully');
       } catch (err) {
@@ -766,6 +830,12 @@ export default function Settings() {
     mergedSyncSettings.discountPercentEnabled = discountPercentEnabled;
     mergedSyncSettings.discountFixedEnabled = discountFixedEnabled;
     mergedSyncSettings.barcodeScanMode = barcodeScanMode;
+
+    // ✅ Preserve and sync customFields to cloud
+    const existingCustomFields = loadCustomFields();
+    if (existingCustomFields && existingCustomFields.length > 0) {
+      mergedSyncSettings.customFields = existingCustomFields;
+    }
 
     // ✅ Sync additional preferences to cloud
     mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
@@ -1421,7 +1491,11 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={hideMaintenanceSection}
-                      onCheckedChange={setHideMaintenanceSection}
+                      onCheckedChange={(checked) => {
+                        setHideMaintenanceSection(checked);
+                        autoPersistQuickSettings({ hideMaintenanceSection: checked });
+                        autoSyncToCloud({ sync_settings: { hideMaintenanceSection: checked } });
+                      }}
                     />
                   </div>
                 )}
@@ -1437,7 +1511,12 @@ export default function Settings() {
                     <Smartphone className="w-4 h-4 text-muted-foreground" />
                     <h3 className="text-base font-semibold text-foreground">{isRTL ? 'سلوك قراءة الباركود' : 'Barcode scan behavior'}</h3>
                   </div>
-                  <Tabs value={barcodeScanMode} onValueChange={(value) => setBarcodeScanMode(value === 'add' ? 'add' : 'search')}>
+                  <Tabs value={barcodeScanMode} onValueChange={(value) => {
+                    const mode = value === 'add' ? 'add' : 'search';
+                    setBarcodeScanMode(mode);
+                    autoPersistQuickSettings({ barcodeScanMode: mode });
+                    autoSyncToCloud({ sync_settings: { barcodeScanMode: mode } });
+                  }}>
                     <TabsList className="grid h-auto w-full grid-cols-2">
                       <TabsTrigger value="search" className="min-h-10 whitespace-normal text-xs">
                         {isRTL ? 'عرض المنتج' : 'Show product'}
@@ -1450,6 +1529,19 @@ export default function Settings() {
                   <p className="text-xs text-muted-foreground">
                     {isRTL ? 'في وضع الإضافة المباشرة، كل تمرير جديد يزيد الكمية قطعة واحدة.' : 'In direct-add mode, every new scan adds one item.'}
                   </p>
+                </div>
+
+                {/* زر حفظ معلومات المتجر المباشر */}
+                <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground text-center sm:text-start">{isRTL ? 'تظهر هذه البيانات على رأس الفواتير والتقارير' : 'This info appears on invoices & receipts'}</p>
+                  <Button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    className="w-full sm:w-auto gap-2 font-medium"
+                  >
+                    {isSavingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isRTL ? 'حفظ معلومات المتجر' : 'Save Store Info'}
+                  </Button>
                 </div>
               </TabsContent>
 
@@ -1514,7 +1606,15 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={taxEnabled}
-                      onCheckedChange={setTaxEnabled}
+                      onCheckedChange={(checked) => {
+                        setTaxEnabled(checked);
+                        autoPersistQuickSettings({ taxEnabled: checked });
+                        autoSyncToCloud({ tax_enabled: checked });
+                        toast({
+                          title: checked ? '✓ تم تفعيل الضريبة' : 'تم تعطيل الضريبة',
+                          description: 'تم الحفظ والاعتماد بنجاح',
+                        });
+                      }}
                     />
                   </div>
                   {taxEnabled && (
@@ -1525,7 +1625,11 @@ export default function Settings() {
                         <Input
                           type="number"
                           value={taxRate || ''}
-                          onChange={(e) => setTaxRate(Number(e.target.value))}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setTaxRate(val);
+                            autoPersistQuickSettings({ taxRate: val });
+                          }}
                           className="pr-10 bg-muted border-0 h-9 text-sm"
                           placeholder="15"
                           min="0"
@@ -1546,7 +1650,15 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={discountPercentEnabled}
-                      onCheckedChange={setDiscountPercentEnabled}
+                      onCheckedChange={(checked) => {
+                        setDiscountPercentEnabled(checked);
+                        autoPersistQuickSettings({ discountPercentEnabled: checked });
+                        autoSyncToCloud({ sync_settings: { discountPercentEnabled: checked } });
+                        toast({
+                          title: checked ? '✓ تم تفعيل خصم النسبة المئوية' : 'تم تعطيل خصم النسبة المئوية',
+                          description: 'تم الحفظ والاعتماد بنجاح',
+                        });
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between py-1">
@@ -1556,9 +1668,30 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={discountFixedEnabled}
-                      onCheckedChange={setDiscountFixedEnabled}
+                      onCheckedChange={(checked) => {
+                        setDiscountFixedEnabled(checked);
+                        autoPersistQuickSettings({ discountFixedEnabled: checked });
+                        autoSyncToCloud({ sync_settings: { discountFixedEnabled: checked } });
+                        toast({
+                          title: checked ? '✓ تم تفعيل خصم المبلغ الثابت' : 'تم تعطيل خصم المبلغ الثابت',
+                          description: 'تم الحفظ والاعتماد بنجاح',
+                        });
+                      }}
                     />
                   </div>
+                </div>
+
+                {/* زر حفظ إعدادات العملات والضرائب المباشر */}
+                <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground text-center sm:text-start">{isRTL ? 'تُطبق أسعار الصرف ونسب الضريبة والخصومات فوراً في الكاشير' : 'Rates and discounts apply immediately to POS'}</p>
+                  <Button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    className="w-full sm:w-auto gap-2 font-medium"
+                  >
+                    {isSavingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isRTL ? 'حفظ العملات والضرائب والخصومات' : 'Save Finance & Taxes'}
+                  </Button>
                 </div>
               </TabsContent>
             </Tabs>
@@ -2476,35 +2609,54 @@ export default function Settings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Floating Action Buttons (FAB) */}
+      {/* Floating Action Banner */}
       <div
         className={cn(
-          "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
-          isRTL ? "left-6" : "right-6",
+          "fixed bottom-6 z-50 transition-all duration-300 ease-in-out px-4",
+          isRTL ? "left-0 sm:left-6" : "right-0 sm:right-6",
+          "w-full sm:w-auto",
           hasUnsavedChanges
-            ? "scale-100 opacity-100"
-            : "scale-0 opacity-0 pointer-events-none"
+            ? "scale-100 opacity-100 translate-y-0"
+            : "scale-95 opacity-0 translate-y-4 pointer-events-none"
         )}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <Button
-          onClick={handleSaveSettings}
-          disabled={isSavingSettings}
-          className="w-14 h-14 rounded-full shadow-lg p-0"
-        >
-          {isSavingSettings ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            <Save className="w-6 h-6" />
-          )}
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={handleRevert}
-          className="w-14 h-14 rounded-full shadow-lg p-0"
-        >
-          <Undo2 className="w-6 h-6" />
-        </Button>
+        <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-card/95 backdrop-blur-md border border-primary/30 shadow-2xl rounded-2xl">
+          <div className="flex items-center gap-2 px-1 sm:px-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
+            <span className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">
+              {isRTL ? 'تعديلات غير محفوظة' : 'Unsaved changes'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRevert}
+              className="h-9 px-2.5 sm:px-3 text-xs"
+              title={t('settings.revertChanges') || 'تراجع'}
+            >
+              <Undo2 className="w-4 h-4 sm:ml-1" />
+              <span className="hidden sm:inline">{t('common.cancel') || 'تراجع'}</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveSettings}
+              disabled={isSavingSettings}
+              className="h-9 px-3.5 sm:px-4 text-xs font-semibold shadow-md gap-1.5"
+            >
+              {isSavingSettings ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span>{isSavingSettings ? (t('common.saving') || 'جاري الحفظ...') : (isRTL ? 'حفظ التعديلات' : 'Save Changes')}</span>
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* تأكيد تغيير التصنيفات عند تغيير نوع المحل */}

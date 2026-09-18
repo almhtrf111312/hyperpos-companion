@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, GripVertical, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import {
   updateCustomField,
   deleteCustomField,
   saveCustomFields,
+  syncCustomFieldsFromCloud,
 } from '@/lib/custom-fields-config';
 
 interface CustomFieldsManagerProps {
@@ -44,6 +45,14 @@ const fieldTypeLabels: Record<CustomFieldType, string> = {
 
 export function CustomFieldsManager({ onFieldsChange }: CustomFieldsManagerProps) {
   const [fields, setFields] = useState<CustomField[]>(() => loadCustomFields());
+
+  useEffect(() => {
+    syncCustomFieldsFromCloud().then((cloudFields) => {
+      if (cloudFields && cloudFields.length > 0) {
+        setFields(cloudFields);
+      }
+    });
+  }, []);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

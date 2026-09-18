@@ -209,6 +209,18 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
         localStorage.setItem('hyperpos_setup_complete', 'true');
+
+        // ✅ Restore product fields from cloud if available
+        if (syncObj.productFieldsConfig) {
+          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(syncObj.productFieldsConfig));
+          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, syncObj.productFieldsConfig);
+        }
+        // ✅ Restore custom fields from cloud if available
+        if (syncObj.customFields && Array.isArray(syncObj.customFields)) {
+          localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncObj.customFields));
+          emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncObj.customFields);
+        }
+
         emitEvent(EVENTS.SETTINGS_UPDATED);
         emitEvent(EVENTS.STORE_TYPE_CHANGED);
       } else {
@@ -358,6 +370,17 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
         localStorage.setItem('hyperpos_setup_complete', 'true');
+
+        // ✅ Restore product fields from cloud if available
+        if (syncSettingsObj.productFieldsConfig) {
+          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(syncSettingsObj.productFieldsConfig));
+          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, syncSettingsObj.productFieldsConfig);
+        }
+        // ✅ Restore custom fields from cloud if available
+        if (syncSettingsObj.customFields && Array.isArray(syncSettingsObj.customFields)) {
+          localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncSettingsObj.customFields));
+          emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncSettingsObj.customFields);
+        }
       }
 
       emitEvent(EVENTS.PRODUCTS_UPDATED);
