@@ -1,5 +1,20 @@
 [
   {
+    "type": "improved",
+    "ar": "اختبار ميزة تثبيت تطبيق حديث فوق قديم (ترقية مباشرة فوق النسخة السابقة دون أي تعارض)",
+    "en": "Testing in-place app update over previous version without signature conflict"
+  },
+  {
+    "type": "improved",
+    "ar": "تمييز الأيام التي تحتوي على فواتير في التقويم وتظليل الأيام الفارغة لتسهيل البحث",
+    "en": "Highlighted active invoice dates in calendar and dimmed empty dates"
+  },
+  {
+    "type": "fixed",
+    "ar": "ضبط أبعاد أزرار التبديل على أجهزة أندرويد لتطابق تصميم كبسولة تيليجرام ومنع تشوهها إلى دائرة",
+    "en": "Fixed switch dimensions on Android to match Telegram capsule style"
+  },
+  {
     "type": "fixed",
     "ar": "حل مشكلة احتجاب وتشوه كاميرا قارئ الباركود، وإخفاء النوافذ العائمة المنبثقة تلقائياً فور تشغيل الكاميرا وإعادتها فور الانتهاء مع تصحيح ترتيب أزرار الزووم",
     "en": "Fixed barcode scanner camera obstruction and distortion; floating dialogs now immediately hide while scanning and restore upon completion, with normalized LTR zoom controls"
@@ -13,15 +28,5 @@
     "type": "improved",
     "ar": "معاينة فورية للغة في شاشة الإعدادات؛ تحديث نصوص أزرار الحفظ والإلغاء واتجاهها مباشرة باللغة المختارة قبل الحفظ",
     "en": "Real-time language preview in Settings; Save and Cancel button text and layout direction now immediately reflect the selected language"
-  },
-  {
-    "type": "improved",
-    "ar": "تفعيل نظام الإشعارات الأصلي لنظام أندرويد مع طلب إذن النظام وإظهار تنبيهات الديون ونفاذ المخزون في شريط إشعارات الهاتف",
-    "en": "Activated native Android notifications with system permission prompt, stock alerts and debt notifications in device status bar"
-  },
-  {
-    "type": "fixed",
-    "ar": "تثبيت حالة التطبيق والسلة في الذاكرة (RAM) بدون إعادة تحميل عند التبديل بين التطبيقات",
-    "en": "Preserved POS cart and application state in RAM without refreshing when switching between background apps"
   }
 ]

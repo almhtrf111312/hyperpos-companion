@@ -2056,13 +2056,14 @@ export default function Settings() {
         // Load changelog from build-time injection (limited to latest update fixes only)
         const rawChangelog = (globalThis as any).__APP_CHANGELOG__ ?? (typeof __APP_CHANGELOG__ !== 'undefined' ? __APP_CHANGELOG__ : null);
         const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = Array.isArray(rawChangelog) && rawChangelog.length > 0
-          ? rawChangelog.slice(0, 6)
+          ? rawChangelog.slice(0, 8)
           : [
+            { type: 'improved', ar: 'اختبار ميزة تثبيت تطبيق حديث فوق قديم (ترقية مباشرة فوق النسخة السابقة دون أي تعارض)', en: 'Testing in-place app update over previous version without signature conflict' },
+            { type: 'improved', ar: 'تمييز الأيام التي تحتوي على فواتير في التقويم وتظليل الأيام الفارغة لتسهيل البحث', en: 'Highlighted active invoice dates in calendar and dimmed empty dates' },
+            { type: 'fixed', ar: 'ضبط أبعاد أزرار التبديل على أجهزة أندرويد لتطابق تصميم كبسولة تيليجرام ومنع تشوهها إلى دائرة', en: 'Fixed switch dimensions on Android to match Telegram capsule style' },
             { type: 'fixed', ar: 'حل مشكلة احتجاب وتشوه كاميرا قارئ الباركود، وإخفاء النوافذ العائمة المنبثقة تلقائياً فور تشغيل الكاميرا وإعادتها فور الانتهاء', en: 'Fixed barcode scanner camera obstruction; floating dialogs now hide during scan and restore automatically' },
             { type: 'fixed', ar: 'تحسين استجابة وتناسق أبعاد نافذة إضافة فاتورة الشراء وإضافة منتج على شاشات الهواتف ومنع التمدد والتمرير الأفقي', en: 'Enhanced Purchase Invoice and Add Product dialog responsiveness on mobile screens' },
             { type: 'improved', ar: 'معاينة فورية للغة في شاشة الإعدادات؛ تحديث نصوص أزرار الحفظ والإلغاء واتجاهها مباشرة باللغة المختارة قبل الحفظ', en: 'Real-time language preview in Settings; Save/Cancel button text and layout direction now immediately reflect selected language' },
-            { type: 'improved', ar: 'تفعيل نظام الإشعارات الأصلي لنظام أندرويد مع طلب إذن النظام وإظهار تنبيهات الديون ونفاذ المخزون في شريط إشعارات الهاتف', en: 'Activated native Android notifications with system permission prompt and status bar alerts' },
-            { type: 'fixed', ar: 'تثبيت حالة التطبيق والسلة في الذاكرة (RAM) بدون إعادة تحميل عند التبديل بين التطبيقات', en: 'Preserved POS cart and application state in RAM without refreshing when switching apps' },
           ];
 
         return (
