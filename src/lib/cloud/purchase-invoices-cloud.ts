@@ -327,7 +327,7 @@
               .eq('user_id', ownerId)
               .eq('barcode', item.barcode.trim())
               .maybeSingle();
-            existingProduct = data;
+            existingProduct = data as unknown as ProductRow | null;
           }
           if (!existingProduct && item.product_name?.trim()) {
             const { data } = await supabase
@@ -336,7 +336,7 @@
               .eq('user_id', ownerId)
               .ilike('name', item.product_name.trim())
               .maybeSingle();
-            existingProduct = data;
+            existingProduct = data as unknown as ProductRow | null;
           }
 
           if (existingProduct) {
@@ -366,7 +366,7 @@
               .update({
                 quantity: newQuantity,
                 cost_price: avgCost,
-                purchase_history: purchaseHistory
+                purchase_history: purchaseHistory as unknown as import('@/integrations/supabase/types').Json
               })
               .eq('id', existingProduct.id);
 
@@ -398,7 +398,25 @@
 
             const { data: newProduct } = await supabase
               .from('products')
-              .insert(newProductData)
+              .insert({
+                user_id: ownerId,
+                name: item.product_name,
+                barcode: item.barcode || null,
+                category: item.category || null,
+                quantity: noInventory ? 99999 : item.quantity,
+                cost_price: item.cost_price,
+                sale_price: item.sale_price || item.cost_price,
+                min_stock_level: 5,
+                purchase_history: [{
+                  invoice_id: invoiceId,
+                  invoice_number: invoice.invoice_number,
+                  supplier_name: invoice.supplier_name,
+                  date: invoice.invoice_date,
+                  quantity: item.quantity,
+                  cost_price: item.cost_price,
+                  added_at: new Date().toISOString()
+                }] as unknown as import('@/integrations/supabase/types').Json
+              })
               .select()
               .single();
 
@@ -457,7 +475,7 @@
              .select('id, quantity, cost_price, purchase_history')
              .eq('id', item.product_id)
              .maybeSingle();
-           targetProduct = data;
+           targetProduct = data as unknown as TargetProductRow | null;
          }
  
          if (!targetProduct && invoice?.user_id) {
@@ -468,7 +486,7 @@
                .eq('user_id', invoice.user_id)
                .eq('barcode', item.barcode.trim())
                .maybeSingle();
-             targetProduct = data;
+             targetProduct = data as unknown as TargetProductRow | null;
            }
            if (!targetProduct && item.product_name?.trim()) {
              const { data } = await supabase
@@ -477,7 +495,7 @@
                .eq('user_id', invoice.user_id)
                .ilike('name', item.product_name.trim())
                .maybeSingle();
-             targetProduct = data;
+             targetProduct = data as unknown as TargetProductRow | null;
            }
          }
  
@@ -493,13 +511,13 @@
              h.invoice_number !== invoice?.invoice_number
            );
            const lastEntry = updatedHistory.length > 0 ? updatedHistory[updatedHistory.length - 1] : null;
-           const newCostPrice = lastEntry?.cost_price ?? targetProduct.cost_price;
+            const newCostPrice: number = (lastEntry?.cost_price as number | undefined) ?? targetProduct.cost_price;
  
            await supabase
              .from('products')
              .update({
                quantity: newQty,
-               purchase_history: updatedHistory,
+               purchase_history: updatedHistory as unknown as import('@/integrations/supabase/types').Json,
                cost_price: newCostPrice,
                updated_at: new Date().toISOString(),
              })

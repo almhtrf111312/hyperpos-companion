@@ -550,7 +550,7 @@ export const distributeDetailedProfitCloud = async (
         });
         
         // Get or create updated partner
-        let updatedPartner = updatedPartners.get(partner.id) || { ...partner };
+        const updatedPartner = updatedPartners.get(partner.id) || { ...partner };
         
         const profitRecord: ProfitRecord = {
           id: Date.now().toString() + partner.id + category,
@@ -595,7 +595,7 @@ export const distributeDetailedProfitCloud = async (
             percentage: partner.sharePercentage,
           });
           
-          let updatedPartner = updatedPartners.get(partner.id) || { ...partner };
+          const updatedPartner = updatedPartners.get(partner.id) || { ...partner };
           
           const profitRecord: ProfitRecord = {
             id: Date.now().toString() + partner.id + category,

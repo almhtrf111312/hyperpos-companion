@@ -403,7 +403,7 @@ export default function Partners() {
       email: partner.email || '',
       accessAll: partner.accessAll,
       sharesExpenses: partner.sharesExpenses || false,
-      expenseSharePercentage: (partner as any).expenseSharePercentage || 0,
+      expenseSharePercentage: partner.expenseSharePercentage || 0,
       categoryShares: partner.categoryShares.length > 0
         ? partner.categoryShares.map(cs => ({
           ...cs,
