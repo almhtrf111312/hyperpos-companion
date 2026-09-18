@@ -77,11 +77,55 @@ jobs:
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
             pkg.main = 'electron/main.js';
             pkg.version = '1.0.${{ github.run_number }}';
+            pkg.description = 'FlowPOS Pro Point of Sale System';
+            pkg.author = 'FlowPOS Pro';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
 
+      - name: Pre-download Electron Binary with Retry
+        shell: pwsh
+        run: |
+          $electronVersion = "v28.0.0"
+          $electronZip = "electron-$electronVersion-win32-x64.zip"
+          $cacheDirs = @(
+            "$env:LOCALAPPDATA\electron\Cache",
+            "$env:LOCALAPPDATA\electron-builder\Cache\electron"
+          )
+          foreach ($dir in $cacheDirs) {
+            if (-not (Test-Path $dir)) {
+              New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            }
+          }
+          $dest1 = "$env:LOCALAPPDATA\electron\Cache\$electronZip"
+          $dest2 = "$env:LOCALAPPDATA\electron-builder\Cache\electron\$electronZip"
+          $url = "https://github.com/electron/electron/releases/download/$electronVersion/$electronZip"
+          Write-Host "Pre-downloading $url to $dest1..."
+          curl.exe -fL --retry 5 --retry-connrefused --retry-delay 3 -o $dest1 $url
+          if (Test-Path $dest1) {
+            Copy-Item -Path $dest1 -Destination $dest2 -Force
+            Write-Host "Electron binary successfully cached ($((Get-Item $dest1).Length) bytes)."
+          }
+
       - name: Build Windows Installer
-        run: npx electron-builder --win --config electron-builder.json
+        shell: pwsh
+        run: |
+          $maxRetries = 3
+          $attempt = 0
+          $success = $false
+          while ($attempt -lt $maxRetries -and -not $success) {
+            $attempt++
+            Write-Host "=== Build Attempt $attempt of $maxRetries ==="
+            npx electron-builder --win --config electron-builder.json
+            if ($LASTEXITCODE -eq 0) {
+              $success = $true
+            } else {
+              Write-Host "Attempt $attempt failed with exit code $LASTEXITCODE. Waiting 5s before retry..."
+              Start-Sleep -Seconds 5
+            }
+          }
+          if (-not $success) {
+            exit 1
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -11,7 +11,7 @@ const Switch = React.forwardRef<
     dir="ltr"
     className={cn(
       "peer inline-flex h-[24px] w-[44px] min-w-[44px] max-w-[44px] shrink-0 cursor-pointer items-center rounded-full p-[2px] transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
-      "data-[state=checked]:bg-[#2481cc] data-[state=unchecked]:bg-[#c4c9cc] dark:data-[state=unchecked]:bg-[#3f474d]",
+      "data-[state=checked]:bg-primary data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-700/80",
       className,
     )}
     {...props}

@@ -1645,7 +1645,7 @@ export default function Settings() {
               <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-[#2481cc]" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+                    {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
                   </div>
                   <div>
                     <span className="text-sm font-medium text-foreground block">{t('settings.sound')}</span>

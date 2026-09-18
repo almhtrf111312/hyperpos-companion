@@ -2,6 +2,8 @@
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "0.0.0",
+  "description": "FlowPOS Pro Point of Sale System",
+  "author": "FlowPOS Pro",
   "type": "module",
   "scripts": {
     "dev": "vite",
