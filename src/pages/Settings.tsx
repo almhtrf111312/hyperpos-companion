@@ -1635,15 +1635,24 @@ export default function Settings() {
             </div>
 
             {/* خيارات التحكم التفصيلية */}
-            <div className={`bg-muted/30 rounded-xl border border-border/50 p-4 space-y-2 transition-opacity ${
+            <div className={`bg-card/80 dark:bg-card/40 rounded-2xl border border-border/50 divide-y divide-border/40 overflow-hidden transition-opacity ${
               notificationSettings.masterEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'
             }`}>
-              <h2 className="text-base font-bold text-foreground mb-2">{t('settings.notifications')}</h2>
+              <div className="px-4 py-3 bg-muted/20">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('settings.notifications')}</h2>
+              </div>
               {/* الصوت */}
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-2">
-                  {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
-                  <span className="text-sm font-medium">{t('settings.sound')}</span>
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    {notificationSettings.sound ? <Volume2 className="w-4 h-4 text-[#2481cc]" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-foreground block">{t('settings.sound')}</span>
+                    <span className="text-xs text-muted-foreground block">
+                      {notificationSettings.sound ? 'تشغيل نغمة عند وصول التنبيه' : 'كتم الصوت'}
+                    </span>
+                  </div>
                 </div>
                 <Switch
                   checked={notificationSettings.sound}
@@ -1651,23 +1660,31 @@ export default function Settings() {
                 />
               </div>
               {[
-                { key: 'newSale', label: t('settings.newSale'), icon: CheckCircle2 },
-                { key: 'lowStock', label: t('settings.lowStock'), icon: AlertCircle },
-                { key: 'newDebt', label: t('settings.newDebt'), icon: FileText },
-                { key: 'paymentReceived', label: t('settings.paymentReceived'), icon: DollarSign },
-                { key: 'dailyReport', label: t('settings.dailyReport'), icon: Clock },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center justify-between py-2 border-t border-border/50">
-                  <div className="flex items-center gap-2">
-                    <item.icon className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">{item.label}</span>
+                { key: 'newSale', label: t('settings.newSale'), desc: 'إشعار فوري عند تسجيل فاتورة جديدة', icon: CheckCircle2 },
+                { key: 'lowStock', label: t('settings.lowStock'), desc: 'تنبيه عند اقتراب نفاذ كميات الأصناف', icon: AlertCircle },
+                { key: 'newDebt', label: t('settings.newDebt'), desc: 'إشعار عند إضافة دين أو ذمة مالية', icon: FileText },
+                { key: 'paymentReceived', label: t('settings.paymentReceived'), desc: 'إشعار عند تسجيل دفعة أو سداد نقدي', icon: DollarSign },
+                { key: 'dailyReport', label: t('settings.dailyReport'), desc: 'ملخص بالأداء والمبيعات نهاية اليوم', icon: Clock },
+              ].map((item) => {
+                const isChecked = notificationSettings[item.key as keyof NotificationSettingsType] as boolean;
+                return (
+                  <div key={item.key} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
+                        <item.icon className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-foreground block">{item.label}</span>
+                        <span className="text-xs text-muted-foreground block">{isChecked ? 'مفعل' : 'معطل'} • {item.desc}</span>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={isChecked}
+                      onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
+                    />
                   </div>
-                  <Switch
-                    checked={notificationSettings[item.key as keyof NotificationSettingsType] as boolean}
-                    onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

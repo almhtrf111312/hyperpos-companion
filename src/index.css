@@ -1098,10 +1098,6 @@
   color: hsl(var(--foreground)) !important;
 }
 
-/* ── Switch ── */
-.light [data-radix-switch-root] {
-  background-color: hsl(var(--input)) !important;
-}
 
 /* ── Checkbox ── */
 .light [data-radix-checkbox-root] {
