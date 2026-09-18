@@ -30,6 +30,7 @@ import {
   updatePartnerCloud,
   deletePartnerCloud,
   withdrawProfitCloud,
+  withdrawCapitalCloud,
   addCapitalWithCashboxCloud,
   Partner,
 } from '@/lib/cloud/partners-cloud';
@@ -331,17 +332,20 @@ export default function Partners() {
       if (profitToWithdraw > 0) {
         success = await withdrawProfitCloud(selectedPartner.id, profitToWithdraw, withdrawNotes);
         resultMessage = `${t('partners.withdrawnFromProfit')} ${formatCurrency(profitToWithdraw)}`;
+      } else {
+        success = true; // لا يوجد ربح للسحب، ستتم العملية من رأس المال
       }
 
       // إذا كان السحب التلقائي ويحتاج المزيد من رأس المال
       if (withdrawType === 'auto' && withdrawAmount > profitAvailable) {
         const fromCapital = withdrawAmount - profitAvailable;
-        // TODO: إضافة دالة withdrawCapitalCloud
+        const capitalSuccess = await withdrawCapitalCloud(selectedPartner.id, fromCapital, withdrawNotes);
+        success = success && capitalSuccess;
         resultMessage += ` + ${formatCurrency(fromCapital)} ${t('partners.fromCapital')}`;
       }
     } else if (withdrawType === 'capital') {
-      // TODO: إضافة دالة withdrawCapitalCloud
-      success = true;
+      // ✅ سحب من رأس المال مباشرة
+      success = await withdrawCapitalCloud(selectedPartner.id, withdrawAmount, withdrawNotes);
       resultMessage = `${t('partners.withdrawnFromCapital')} ${formatCurrency(withdrawAmount)}`;
     }
 

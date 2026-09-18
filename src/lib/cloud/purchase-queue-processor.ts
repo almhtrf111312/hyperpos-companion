@@ -5,6 +5,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { finalizePurchaseInvoiceCloud } from './purchase-invoices-cloud';
+import { getOwnerIdForInsert } from '@/lib/supabase-store';
 
 interface QuickPurchaseData {
   productName: string;
@@ -43,6 +44,9 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
+  // استخدام owner_id لضمان عزل الصلاحيات
+  const ownerId = await getOwnerIdForInsert() || user.id;
+
   const invoiceNumber = `QP-${Date.now()}`;
   const today = new Date().toISOString().split('T')[0];
 
@@ -53,7 +57,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       const { data: byBarcode } = await supabase
         .from('products')
         .select('id, quantity, cost_price, purchase_history')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .eq('barcode', data.barcode.trim())
         .maybeSingle();
       if (byBarcode) targetProductId = byBarcode.id;
@@ -62,7 +66,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       const { data: byName } = await supabase
         .from('products')
         .select('id, quantity, cost_price, purchase_history')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .ilike('name', data.productName.trim())
         .maybeSingle();
       if (byName) targetProductId = byName.id;
@@ -115,7 +119,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
     const { data: newProd } = await supabase
       .from('products')
       .insert({
-        user_id: user.id,
+        user_id: ownerId,
         name: data.productName,
         barcode: data.barcode || null,
         category: data.category || null,
@@ -146,7 +150,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
     .insert({
-      user_id: user.id,
+      user_id: ownerId,
       invoice_number: invoiceNumber,
       supplier_name: data.productName,
       invoice_date: today,
@@ -188,11 +192,14 @@ export async function processPurchaseInvoiceFromQueue(data: PurchaseInvoiceData)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
+  // استخدام owner_id لضمان عزل الصلاحيات
+  const ownerId = await getOwnerIdForInsert() || user.id;
+
   // Create the invoice
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
     .insert({
-      user_id: user.id,
+      user_id: ownerId,
       invoice_number: data.invoiceNumber,
       supplier_name: data.supplierName,
       supplier_company: data.supplierCompany || null,

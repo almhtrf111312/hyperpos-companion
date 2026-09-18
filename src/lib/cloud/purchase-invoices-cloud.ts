@@ -1,6 +1,7 @@
  import { supabase } from '@/integrations/supabase/client';
  import { isNoInventoryMode } from '@/lib/store-type-config';
  import { emitEvent, EVENTS } from '@/lib/events';
+ import { getOwnerIdForInsert } from '@/lib/supabase-store';
  
  export interface PurchaseInvoice {
    id: string;
@@ -138,10 +139,13 @@
    const { data: { user } } = await supabase.auth.getUser();
    if (!user) return null;
  
+   // استخدام owner_id لضمان عزل الصلاحيات (الكاشير يكتب تحت حساب المالك)
+   const ownerId = await getOwnerIdForInsert() || user.id;
+
    const { data, error } = await supabase
      .from('purchase_invoices')
      .insert({
-       user_id: user.id,
+       user_id: ownerId,
        ...input,
        status: 'draft',
        actual_items_count: 0,
@@ -227,6 +231,9 @@
    const { data: { user } } = await supabase.auth.getUser();
    if (!user) return false;
  
+   // استخدام owner_id لضمان عزل الصلاحيات عند إنشاء منتجات جديدة
+   const ownerId = await getOwnerIdForInsert() || user.id;
+
    // Get invoice and items
    const { invoice, items } = await loadPurchaseInvoiceWithItems(invoiceId);
    if (!invoice || items.length === 0) return false;
@@ -316,7 +323,7 @@
             const { data } = await supabase
               .from('products')
               .select('id, quantity, cost_price, purchase_history')
-              .eq('user_id', user.id)
+              .eq('user_id', ownerId)
               .eq('barcode', item.barcode.trim())
               .maybeSingle();
             existingProduct = data;
@@ -325,7 +332,7 @@
             const { data } = await supabase
               .from('products')
               .select('id, quantity, cost_price, purchase_history')
-              .eq('user_id', user.id)
+              .eq('user_id', ownerId)
               .ilike('name', item.product_name.trim())
               .maybeSingle();
             existingProduct = data;
@@ -369,7 +376,7 @@
           } else {
             // Create new product with safe defaults
             const newProductData: any = {
-              user_id: user.id,
+              user_id: ownerId,
               name: item.product_name,
               barcode: item.barcode || null,
               category: item.category || null,

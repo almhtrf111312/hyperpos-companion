@@ -436,6 +436,54 @@ export const withdrawProfitCloud = async (
   });
 };
 
+// Withdraw capital
+export const withdrawCapitalCloud = async (
+  partnerId: string,
+  amount: number,
+  notes?: string
+): Promise<boolean> => {
+  const partner = await getPartnerByIdCloud(partnerId);
+  if (!partner || amount <= 0) return false;
+
+  if (amount > partner.currentCapital) return false;
+
+  const roundedAmount = Math.round(amount * 100) / 100;
+
+  const withdrawal: Withdrawal = {
+    id: Date.now().toString(),
+    amount: roundedAmount,
+    type: 'capital',
+    date: new Date().toISOString(),
+    notes: notes || 'سحب رأس مال',
+  };
+
+  const capitalTx: CapitalTransaction = {
+    id: Date.now().toString() + '_cap',
+    amount: roundedAmount,
+    type: 'withdrawal',
+    date: new Date().toISOString(),
+    notes: notes || 'سحب رأس مال',
+  };
+
+  const success = await updatePartnerCloud(partnerId, {
+    currentCapital: partner.currentCapital - roundedAmount,
+    totalWithdrawn: partner.totalWithdrawn + roundedAmount,
+    withdrawalHistory: [...partner.withdrawalHistory, withdrawal],
+    capitalHistory: [...partner.capitalHistory, capitalTx],
+  });
+
+  if (success) {
+    try {
+      const { updateCashboxBalance } = await import('../cashbox-store');
+      updateCashboxBalance(roundedAmount, 'withdrawal');
+    } catch (e) {
+      console.warn('[withdrawCapitalCloud] cashbox update failed:', e);
+    }
+  }
+
+  return success;
+};
+
 // Get partners stats
 export const getPartnersStatsCloud = async () => {
   const partners = await loadPartnersCloud();
