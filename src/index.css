@@ -1550,9 +1550,29 @@ html.barcode-scanner-active body {
   --ion-background-color: transparent !important;
 }
 
-/* Hide the main React app and any open dialogs/portals so camera preview is unobstructed */
-html.barcode-scanner-active #root,
-html.barcode-scanner-active [data-radix-portal] {
+/* Hide the main React app completely */
+html.barcode-scanner-active #root {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide all other direct children of body except the scanner portal */
+html.barcode-scanner-active body > *:not(.barcode-scanner-modal):not(.scanner-ui-overlay) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Explicitly hide all dialogs, sheets, overlays, popovers and Radix portal layers */
+html.barcode-scanner-active [role="dialog"],
+html.barcode-scanner-active .dialog-content-layer,
+html.barcode-scanner-active .dialog-overlay-layer,
+html.barcode-scanner-active [data-state="open"]:not(.barcode-scanner-modal):not(.barcode-scanner-modal *),
+html.barcode-scanner-active [data-radix-focus-guard] {
+  display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -1563,6 +1583,7 @@ html.barcode-scanner-active .barcode-scanner-modal,
 html.barcode-scanner-active .barcode-scanner-modal *,
 html.barcode-scanner-active .scanner-ui-overlay,
 html.barcode-scanner-active .scanner-ui-overlay * {
+  display: flex !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;

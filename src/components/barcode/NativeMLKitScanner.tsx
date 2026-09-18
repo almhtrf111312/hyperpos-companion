@@ -36,6 +36,24 @@ const ZOOM_STEPS = [1, 1.5, 2, 3];
 function setScannerTransparency(active: boolean) {
   document.documentElement.classList.toggle('barcode-scanner-active', active);
   document.body.classList.toggle('barcode-scanner-active', active);
+
+  // Directly hide any open dialog/overlay elements in the DOM so native camera is 100% visible
+  const dialogLayers = document.querySelectorAll<HTMLElement>(
+    '[role="dialog"], .dialog-content-layer, .dialog-overlay-layer, [data-state="open"], [data-radix-focus-guard]'
+  );
+  dialogLayers.forEach(el => {
+    if (!el.closest('.barcode-scanner-modal') && !el.closest('.scanner-ui-overlay')) {
+      if (active) {
+        if (!el.dataset.scannerPrevDisplay) {
+          el.dataset.scannerPrevDisplay = el.style.display || 'block';
+        }
+        el.style.setProperty('display', 'none', 'important');
+      } else {
+        el.style.display = el.dataset.scannerPrevDisplay === 'block' ? '' : (el.dataset.scannerPrevDisplay || '');
+        delete el.dataset.scannerPrevDisplay;
+      }
+    }
+  });
 }
 
 export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: NativeMLKitScannerProps) {
@@ -91,7 +109,10 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setScannerTransparency(false);
+      return;
+    }
     if (scanningRef.current) return;
 
     let cancelled = false;
@@ -101,6 +122,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     setIsStarting(true);
     setCurrentZoom(1);
     setTorchOn(false);
+
+    // Immediately hide all dialogs as soon as scan modal is triggered
+    setScannerTransparency(true);
 
     const cleanup = async () => {
       if (autoZoomTimerRef.current) {
