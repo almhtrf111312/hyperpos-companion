@@ -459,12 +459,12 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="sm:max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 text-sm"
+          className="w-[calc(100vw-1.25rem)] sm:w-full sm:max-w-lg max-h-[88vh] overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 text-xs sm:text-sm rounded-2xl"
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="pb-2 border-b">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <ShoppingBag className="w-5 h-5 text-primary" />
+              <ShoppingBag className="w-5 h-5 text-primary shrink-0" />
               <span>{t('purchases.quickAdd') || 'إضافة مشتريات سريعة'}</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -472,7 +472,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-3">
+          <div className="space-y-3.5 sm:space-y-4 pt-2.5 sm:pt-3">
             {/* Existing Product Indicator */}
             {selectedProduct && (
               <div className="flex items-center justify-between p-2.5 bg-primary/10 border border-primary/20 rounded-lg text-xs">
@@ -763,7 +763,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[11px]">معامل التحويل (قطع)</Label>
                     <Input

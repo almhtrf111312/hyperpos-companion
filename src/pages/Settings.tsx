@@ -80,6 +80,17 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { saveStoreSettings, fetchStoreSettings } from '@/lib/supabase-store';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
+import type { TranslationKey } from '@/lib/i18n';
+
+export interface SettingsTabItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+  bossOnly?: boolean;
+  danger?: boolean;
+}
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -218,7 +229,7 @@ export default function Settings() {
     }
   };
 
-  const settingsTabs = [
+  const settingsTabs: SettingsTabItem[] = [
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'store', label: t('settings.store'), icon: Store },
     { id: 'productFields', label: t('settings.productFields'), icon: Package },
@@ -641,7 +652,7 @@ export default function Settings() {
           taxRate: cloudData.tax_rate ?? 0,
           notificationSettings: cloudData.notification_settings ?? undefined,
           printSettings: cloudData.print_settings ?? undefined,
-          backupSettings: syncObj.backupSettings as any,
+          backupSettings: syncObj.backupSettings as BackupSettingsType | undefined,
           hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : undefined,
           discountPercentEnabled: syncObj.discountPercentEnabled !== false,
           discountFixedEnabled: syncObj.discountFixedEnabled !== false,
@@ -662,10 +673,13 @@ export default function Settings() {
             TRY: (cloudData.exchange_rates as Record<string, number>)?.TRY !== undefined ? String((cloudData.exchange_rates as Record<string, number>).TRY) : exchangeRates.TRY,
             SYP: (cloudData.exchange_rates as Record<string, number>)?.SYP !== undefined ? String((cloudData.exchange_rates as Record<string, number>).SYP) : exchangeRates.SYP,
           },
-          currencyNames: (syncObj.currencyNames as Record<string, string>) || currencyNames,
-          notificationSettings: (cloudData.notification_settings as any) || notificationSettings,
-          printSettings: (cloudData.print_settings as any) || printSettings,
-          backupSettings: (syncObj.backupSettings as any) || backupSettings,
+          currencyNames: {
+            TRY: (syncObj.currencyNames as Record<string, string> | undefined)?.TRY ?? currencyNames.TRY,
+            SYP: (syncObj.currencyNames as Record<string, string> | undefined)?.SYP ?? currencyNames.SYP,
+          },
+          notificationSettings: (cloudData.notification_settings as unknown as typeof notificationSettings) || notificationSettings,
+          printSettings: (cloudData.print_settings as unknown as typeof printSettings) || printSettings,
+          backupSettings: (syncObj.backupSettings as unknown as typeof backupSettings) || backupSettings,
           hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : hideMaintenanceSection,
           productFieldsConfig: (syncObj.productFieldsConfig as ProductFieldsConfig) || loadProductFieldsConfig(),
           taxEnabled: typeof cloudData.tax_enabled === 'boolean' ? cloudData.tax_enabled : taxEnabled,
@@ -1078,9 +1092,23 @@ export default function Settings() {
         const fileContent = e.target?.result as string;
 
         // Parse JSON backup
-        let data: any;
+        type BackupPayload = {
+          version?: string;
+          exportedAt?: string;
+          localStorageData?: Record<string, unknown>;
+          settings?: {
+            storeSettings?: typeof storeSettings;
+            exchangeRates?: typeof exchangeRates;
+            syncSettings?: typeof syncSettings;
+            notificationSettings?: typeof notificationSettings;
+            printSettings?: typeof printSettings;
+            backupSettings?: typeof backupSettings;
+          };
+          backups?: BackupData[];
+        };
+        let data: BackupPayload;
         try {
-          data = JSON.parse(fileContent);
+          data = JSON.parse(fileContent) as BackupPayload;
         } catch {
           toast({
             title: t('common.error'),
@@ -2187,7 +2215,7 @@ export default function Settings() {
         });
 
         // Load changelog from build-time injection (limited to latest update fixes only)
-        const rawChangelog = (globalThis as any).__APP_CHANGELOG__ ?? (typeof __APP_CHANGELOG__ !== 'undefined' ? __APP_CHANGELOG__ : null);
+        const rawChangelog = (globalThis as unknown as { __APP_CHANGELOG__?: unknown }).__APP_CHANGELOG__ ?? (typeof __APP_CHANGELOG__ !== 'undefined' ? __APP_CHANGELOG__ : null);
         const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = Array.isArray(rawChangelog) && rawChangelog.length > 0
           ? rawChangelog.slice(0, 8)
           : [
@@ -2303,52 +2331,57 @@ export default function Settings() {
             {settingsTabs
               .filter(tab => {
                 if (isBoss) return true;
-                if (isOwnerAdmin && !(tab as any).bossOnly) return true;
-                return !tab.adminOnly && !(tab as any).bossOnly;
+                if (isOwnerAdmin && !tab.bossOnly) return true;
+                return !tab.adminOnly && !tab.bossOnly;
               })
-              .map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1 p-2 md:p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[88px] overflow-hidden min-w-0",
-                    (tab as any).danger
-                      ? "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 hover:scale-[1.01]"
-                      : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
-                  )}
-                >
-                  <div className={cn(
-                    "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
-                    (tab as any).danger
-                      ? "bg-red-100 text-red-600"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
-                  </div>
-                  <span
+              .map((tab) => {
+                const tooltipKey = (`tooltip.settings.${tab.id}`) as TranslationKey;
+                const tooltipText = t(tooltipKey);
+                const hasTooltip = tooltipText !== `tooltip.settings.${tab.id}`;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "font-medium text-[10px] md:text-[11px] text-center leading-[1.2] w-full",
-                      (tab as any).danger ? "text-red-700" : "text-foreground"
+                      "flex flex-col items-center justify-center gap-1 p-2 md:p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[88px] overflow-hidden min-w-0",
+                      tab.danger
+                        ? "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 hover:scale-[1.01]"
+                        : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
                     )}
-                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', hyphens: 'auto' }}
                   >
-                    {tab.label}
-                  </span>
-                  {/* Tooltip on hover - desktop only */}
-                  {(t(`tooltip.settings.${tab.id}` as any) !== `tooltip.settings.${tab.id}`) && (
                     <div className={cn(
-                      "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
-                      "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
-                      "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
-                      "border border-border min-w-[160px] max-w-[220px] pointer-events-none hidden md:block"
+                      "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
+                      tab.danger
+                        ? "bg-red-100 text-red-600"
+                        : "bg-muted text-muted-foreground"
                     )}>
-                      <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                        {t(`tooltip.settings.${tab.id}` as any)}
-                      </p>
+                      <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
                     </div>
-                  )}
-                </button>
-              ))}
+                    <span
+                      className={cn(
+                        "font-medium text-[10px] md:text-[11px] text-center leading-[1.2] w-full",
+                        tab.danger ? "text-red-700" : "text-foreground"
+                      )}
+                      style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', hyphens: 'auto' }}
+                    >
+                      {tab.label}
+                    </span>
+                    {/* Tooltip on hover - desktop only */}
+                    {hasTooltip && (
+                      <div className={cn(
+                        "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
+                        "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
+                        "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
+                        "border border-border min-w-[160px] max-w-[220px] pointer-events-none hidden md:block"
+                      )}>
+                        <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                          {tooltipText}
+                        </p>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         </>
       ) : (
@@ -2637,7 +2670,7 @@ export default function Settings() {
               size="sm"
               onClick={handleRevert}
               className="h-9 px-2.5 sm:px-3 text-xs"
-              title={t('settings.revertChanges') || 'تراجع'}
+              title={isRTL ? 'تراجع عن التعديلات' : 'Revert Changes'}
             >
               <Undo2 className="w-4 h-4 sm:ml-1" />
               <span className="hidden sm:inline">{t('common.cancel') || 'تراجع'}</span>

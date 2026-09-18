@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
+import type { TranslationKey } from '@/lib/i18n';
 import {
   ProductFieldsConfig,
   loadProductFieldsConfig,
@@ -204,7 +205,7 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
   );
 }
 
-function getStoreTypeName(type: string, t: (key: any) => string): string {
+function getStoreTypeName(type: string, t: (key: TranslationKey) => string): string {
   const names: Record<string, string> = {
     phones: t('productFields.storeType.phones'),
     grocery: t('productFields.storeType.grocery'),

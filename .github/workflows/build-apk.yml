@@ -12,6 +12,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: '256'
+      VERSION_NAME: '1.0.26'
+      FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
         uses: actions/checkout@v4

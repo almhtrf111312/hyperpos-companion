@@ -1,5 +1,6 @@
  import { supabase } from '@/integrations/supabase/client';
  import { isNoInventoryMode } from '@/lib/store-type-config';
+ import { emitEvent, EVENTS } from '@/lib/events';
  
  export interface PurchaseInvoice {
    id: string;
@@ -417,19 +418,152 @@
    }
  }
  
- // Delete purchase invoice
+ // Delete purchase invoice with full inventory deduction and financial reversal
  export async function deletePurchaseInvoiceCloud(invoiceId: string): Promise<boolean> {
-   const { error } = await supabase
-     .from('purchase_invoices')
-     .delete()
-     .eq('id', invoiceId);
+   try {
+     const isOfflineInvoice = invoiceId.startsWith('local_');
  
-   if (error) {
-     console.error('Error deleting purchase invoice:', error);
+     // 1. Load invoice and its items before deleting
+     let invoice: PurchaseInvoice | null = null;
+     let items: PurchaseInvoiceItem[] = [];
+ 
+     if (!isOfflineInvoice) {
+       const result = await loadPurchaseInvoiceWithItems(invoiceId);
+       invoice = result.invoice;
+       items = result.items;
+     } else {
+       const localInvoices = loadPurchaseInvoicesLocally();
+       invoice = localInvoices.find(i => i.id === invoiceId) || null;
+     }
+ 
+     // 2. Inventory reversal: Deduct item quantities and remove purchase history
+     if (items.length > 0 && !isNoInventoryMode()) {
+       for (const item of items) {
+         if (!item.quantity || item.quantity <= 0) continue;
+ 
+         let targetProduct: any = null;
+         if (item.product_id) {
+           const { data } = await supabase
+             .from('products')
+             .select('id, quantity, cost_price, purchase_history')
+             .eq('id', item.product_id)
+             .maybeSingle();
+           targetProduct = data;
+         }
+ 
+         if (!targetProduct && invoice?.user_id) {
+           if (item.barcode?.trim()) {
+             const { data } = await supabase
+               .from('products')
+               .select('id, quantity, cost_price, purchase_history')
+               .eq('user_id', invoice.user_id)
+               .eq('barcode', item.barcode.trim())
+               .maybeSingle();
+             targetProduct = data;
+           }
+           if (!targetProduct && item.product_name?.trim()) {
+             const { data } = await supabase
+               .from('products')
+               .select('id, quantity, cost_price, purchase_history')
+               .eq('user_id', invoice.user_id)
+               .ilike('name', item.product_name.trim())
+               .maybeSingle();
+             targetProduct = data;
+           }
+         }
+ 
+         if (targetProduct) {
+           const currentQty = targetProduct.quantity || 0;
+           const newQty = Math.max(0, currentQty - item.quantity);
+           const oldHistory = Array.isArray(targetProduct.purchase_history)
+             ? targetProduct.purchase_history
+             : [];
+           const updatedHistory = oldHistory.filter((h: any) =>
+             h.invoice_id !== invoiceId &&
+             h.invoice_id !== invoice?.invoice_number &&
+             h.invoice_number !== invoice?.invoice_number
+           );
+           const lastEntry = updatedHistory.length > 0 ? updatedHistory[updatedHistory.length - 1] : null;
+           const newCostPrice = lastEntry?.cost_price ?? targetProduct.cost_price;
+ 
+           await supabase
+             .from('products')
+             .update({
+               quantity: newQty,
+               purchase_history: updatedHistory,
+               cost_price: newCostPrice,
+               updated_at: new Date().toISOString(),
+             })
+             .eq('id', targetProduct.id);
+         }
+       }
+     }
+ 
+     // 3. Financial reversal: Remove any associated expenses
+     if (invoice?.invoice_number) {
+       try {
+         await supabase
+           .from('expenses')
+           .delete()
+           .or(`notes.ilike.%${invoice.invoice_number}%,description.ilike.%${invoice.invoice_number}%`);
+       } catch (e) {
+         console.warn('Could not cleanup cloud expenses for invoice:', e);
+       }
+ 
+       // Cleanup local expenses cache
+       try {
+         const rawExpenses = localStorage.getItem('hyperpos_expenses_v1');
+         if (rawExpenses) {
+           const parsed = JSON.parse(rawExpenses);
+           if (Array.isArray(parsed)) {
+             const filtered = parsed.filter((e: any) =>
+               !e.notes?.includes(invoice.invoice_number) &&
+               !e.description?.includes(invoice.invoice_number) &&
+               !e.title?.includes(invoice.invoice_number)
+             );
+             if (filtered.length !== parsed.length) {
+               localStorage.setItem('hyperpos_expenses_v1', JSON.stringify(filtered));
+               emitEvent(EVENTS.EXPENSES_UPDATED);
+             }
+           }
+         }
+       } catch {}
+     }
+ 
+     // 4. Delete invoice items from cloud
+     if (!isOfflineInvoice) {
+       await supabase
+         .from('purchase_invoice_items')
+         .delete()
+         .eq('invoice_id', invoiceId);
+ 
+       // 5. Delete purchase invoice record
+       const { error } = await supabase
+         .from('purchase_invoices')
+         .delete()
+         .eq('id', invoiceId);
+ 
+       if (error) {
+         console.error('Error deleting purchase invoice:', error);
+         return false;
+       }
+     }
+ 
+     // 6. Update local invoices cache
+     const localInvoices = loadPurchaseInvoicesLocally();
+     const updatedInvoices = localInvoices.filter(i => i.id !== invoiceId);
+     savePurchaseInvoicesLocally(updatedInvoices);
+ 
+     // 7. Emit updates across app
+     emitEvent(EVENTS.PURCHASES_UPDATED);
+     emitEvent(EVENTS.PRODUCTS_UPDATED);
+     emitEvent(EVENTS.EXPENSES_UPDATED);
+ 
+     return true;
+   } catch (error) {
+     console.error('Error in deletePurchaseInvoiceCloud:', error);
      return false;
    }
- 
-   return true;
  }
  
  // Update purchase invoice status

@@ -58,14 +58,21 @@ export default function Purchases() {
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('purchases.title')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{t('purchases.subtitle')}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowQuickDialog(true)}>
-              <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('purchases.quickAdd')}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setShowQuickDialog(true)}
+              className="flex-1 sm:flex-initial h-9 md:h-10 px-2 sm:px-4 text-xs sm:text-sm font-medium whitespace-nowrap shadow-sm min-w-0"
+            >
+              <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
+              <span className="truncate">{t('purchases.quickAdd')}</span>
             </Button>
-            <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowDialog(true)}>
-              <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-              {t('purchases.addNew')}
+            <Button
+              className="flex-1 sm:flex-initial h-9 md:h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold bg-primary hover:bg-primary/90 whitespace-nowrap shadow-sm min-w-0"
+              onClick={() => setShowDialog(true)}
+            >
+              <Plus className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
+              <span className="truncate">{t('purchases.addNew')}</span>
             </Button>
           </div>
         </div>
@@ -102,13 +109,13 @@ export default function Purchases() {
             <Truck className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-1">{t('purchases.noInvoices')}</h3>
             <p className="text-sm text-muted-foreground mb-4">{t('purchases.noInvoicesDesc')}</p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowQuickDialog(true)}>
-                <ShoppingBag className="w-4 h-4 ml-2" />
+            <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-xs mx-auto">
+              <Button variant="outline" className="flex-1 min-w-[130px] text-xs sm:text-sm" onClick={() => setShowQuickDialog(true)}>
+                <ShoppingBag className="w-4 h-4 rtl:ml-2 ltr:mr-2" />
                 {t('purchases.quickAdd')}
               </Button>
-              <Button onClick={() => setShowDialog(true)}>
-                <Plus className="w-4 h-4 ml-2" />
+              <Button className="flex-1 min-w-[130px] bg-primary hover:bg-primary/90 text-xs sm:text-sm" onClick={() => setShowDialog(true)}>
+                <Plus className="w-4 h-4 rtl:ml-2 ltr:mr-2" />
                 {t('purchases.addNew')}
               </Button>
             </div>
