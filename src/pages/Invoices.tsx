@@ -166,6 +166,17 @@ export default function Invoices() {
     return result;
   }, [invoices, debouncedSearch, filterType, filterPayment, dateFilter]);
 
+  // استخراج تواريخ الأيام التي تحتوي على فواتير فعلية لتمييزها في التقويم
+  const salesInvoiceDates = useMemo(() => {
+    const dates = new Set<string>();
+    for (const inv of invoices) {
+      if (inv.status !== 'refunded' && inv.createdAt) {
+        dates.add(inv.createdAt.slice(0, 10));
+      }
+    }
+    return Array.from(dates);
+  }, [invoices]);
+
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setShowViewDialog(true);
@@ -908,6 +919,7 @@ export default function Invoices() {
             onChange={setDateFilter}
             placeholder="التاريخ"
             className="w-full"
+            highlightedDates={salesInvoiceDates}
           />
           {dateFilter && (
             <Button

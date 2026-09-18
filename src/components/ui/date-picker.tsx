@@ -17,6 +17,7 @@ interface DatePickerProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  highlightedDates?: string[]; // array of 'YYYY-MM-DD' dates that have data/invoices
 }
 
 export function DatePicker({
@@ -25,6 +26,7 @@ export function DatePicker({
   placeholder = "اختر التاريخ",
   className,
   disabled = false,
+  highlightedDates,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   
@@ -38,6 +40,24 @@ export function DatePicker({
       setOpen(false);
     }
   };
+
+  const modifiers = React.useMemo(() => {
+    if (!highlightedDates || highlightedDates.length === 0) return undefined;
+    const set = new Set(highlightedDates);
+    return {
+      hasData: (date: Date) => set.has(format(date, "yyyy-MM-dd")),
+      emptyDay: (date: Date) => !set.has(format(date, "yyyy-MM-dd")),
+    };
+  }, [highlightedDates]);
+
+  const modifiersClassNames = React.useMemo(() => {
+    if (!highlightedDates || highlightedDates.length === 0) return undefined;
+    return {
+      hasData:
+        "font-bold text-foreground bg-primary/15 border border-primary/40 rounded-md relative after:content-[''] after:absolute after:bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full",
+      emptyDay: "opacity-35 text-muted-foreground/60 hover:opacity-75",
+    };
+  }, [highlightedDates]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -60,9 +80,23 @@ export function DatePicker({
           mode="single"
           selected={selectedDate}
           onSelect={handleSelect}
+          modifiers={modifiers}
+          modifiersClassNames={modifiersClassNames}
           initialFocus
           className={cn("p-3 pointer-events-auto")}
         />
+        {highlightedDates && highlightedDates.length > 0 && (
+          <div className="px-3 py-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground bg-muted/20">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary inline-block shrink-0" />
+              <span>أيام بها فواتير</span>
+            </div>
+            <div className="flex items-center gap-1.5 opacity-60">
+              <span className="w-2 h-2 rounded-full bg-muted-foreground/40 inline-block shrink-0" />
+              <span>أيام فارغة</span>
+            </div>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

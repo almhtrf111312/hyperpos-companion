@@ -92,6 +92,17 @@ export function PurchaseInvoicesListTab() {
     return list;
   }, [invoices, search, dateFilter]);
 
+  // استخراج تواريخ فواتير الشراء لتمييزها في التقويم
+  const purchaseInvoiceDates = useMemo(() => {
+    const dates = new Set<string>();
+    for (const inv of invoices) {
+      if (inv.invoice_date) {
+        dates.add(inv.invoice_date.slice(0, 10));
+      }
+    }
+    return Array.from(dates);
+  }, [invoices]);
+
   return (
     <div className="space-y-6">
       {/* Stats Cards for Purchases */}
@@ -170,6 +181,7 @@ export function PurchaseInvoicesListTab() {
               onChange={setDateFilter}
               placeholder="تاريخ الشراء"
               className="w-full"
+              highlightedDates={purchaseInvoiceDates}
             />
             {dateFilter && (
               <Button
