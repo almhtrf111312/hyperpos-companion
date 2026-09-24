@@ -12,9 +12,10 @@ interface Props {
   dateRange: { from: string; to: string };
   invoices: Invoice[];
   isLoading: boolean;
+  hideInternalExport?: boolean;
 }
 
-export function CashierPerformanceReport({ dateRange, invoices, isLoading }: Props) {
+export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideInternalExport = false }: Props) {
 
   const data = useMemo(() => {
     const filtered = invoices.filter(inv => {
@@ -115,10 +116,12 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading }: Pro
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />PDF</Button>
-        <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />Excel</Button>
-      </div>
+      {!hideInternalExport && (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />PDF</Button>
+          <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />Excel</Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">

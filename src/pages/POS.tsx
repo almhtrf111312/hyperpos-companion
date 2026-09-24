@@ -709,6 +709,9 @@ export default function POS() {
           onCartClick={() => handleSetCartOpen(true)}
           cartItemsCount={cartItemsCount}
           showCartButton={false}
+          activeMode={activeMode}
+          onModeChange={setActiveMode}
+          hideMaintenance={hideMaintenanceSection}
         />
 
         {/* Mobile menu trigger - same as MainLayout */}
@@ -716,21 +719,37 @@ export default function POS() {
           <MobileMenuTrigger onClick={() => setSidebarOpen(true)} />
         )}
 
-        {/* Mode Tabs - Mobile Only (hidden if maintenance section is hidden) */}
+        {/* Mode Buttons - Mobile Only (fixed, rigid 2-button control with zero scroll) */}
         {isMobile && !hideMaintenanceSection && (
-          <div className="px-3 py-2.5 border-b border-border/70 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md">
-            <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as 'products' | 'maintenance')}>
-              <TabsList className="grid w-full grid-cols-2 h-12 rounded-2xl bg-muted/70 border border-border p-1">
-                <TabsTrigger value="products" className="flex items-center gap-2 rounded-xl text-sm">
-                  <ShoppingCart className="w-4 h-4" />
-                  {tDynamic('products')}
-                </TabsTrigger>
-                <TabsTrigger value="maintenance" className="flex items-center gap-2 rounded-xl text-sm">
-                  <Wrench className="w-4 h-4" />
-                  {t('pos.maintenance')}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="px-3 py-2 border-b border-border/70 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md">
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-muted/80 border border-border shadow-sm">
+              <button
+                type="button"
+                onClick={() => setActiveMode('products')}
+                className={cn(
+                  "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold transition-all duration-200 select-none",
+                  activeMode === 'products'
+                    ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                )}
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>{tDynamic('products')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMode('maintenance')}
+                className={cn(
+                  "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold transition-all duration-200 select-none",
+                  activeMode === 'maintenance'
+                    ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                )}
+              >
+                <Wrench className="w-4 h-4" />
+                <span>{t('pos.maintenance')}</span>
+              </button>
+            </div>
           </div>
         )}
 

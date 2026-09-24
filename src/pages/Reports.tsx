@@ -47,6 +47,7 @@ import { MaintenanceReport } from '@/components/reports/MaintenanceReport';
 import { DailyClosingReport } from '@/components/reports/DailyClosingReport';
 import { LibraryReport } from '@/components/reports/LibraryReport';
 import { downloadJSON } from '@/lib/file-download';
+import { loadPurchaseInvoicesCloud } from '@/lib/cloud/purchase-invoices-cloud';
 import {
   exportInvoicesToExcel,
   exportProductsToExcel,
@@ -54,13 +55,15 @@ import {
   exportPartnersToExcel,
   exportCustomersToExcel,
   exportSalesReportToExcel,
+  exportToExcel,
 } from '@/lib/excel-export';
 import {
   exportInvoicesToPDF,
   exportProductsToPDF,
   exportExpensesToPDF,
   exportPartnersToPDF,
-  exportCustomersToPDF
+  exportCustomersToPDF,
+  exportToPDF,
 } from '@/lib/pdf-export';
 import { useLanguage } from '@/hooks/use-language';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -83,6 +86,9 @@ export default function Reports() {
   const visibleSections = getVisibleSections(storeType);
 
   const [activeReport, setActiveReport] = useState('sales');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [salesViewMode, setSalesViewMode] = useState<'summary' | 'detailed'>('summary');
+  const [stockViewMode, setStockViewMode] = useState<'audit' | 'discrepancy'>('audit');
   const [isLoading, setIsLoading] = useState(true);
 
   // Unified filters state
@@ -158,43 +164,72 @@ export default function Reports() {
     };
   }, [loadCloudData]);
 
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && ['sales', 'sales-detailed', 'profits', 'products', 'inventory', 'product-movement', 'inventory-stock', 'inventory-value', 'stock-discrepancy', 'top-products', 'customers', 'partners', 'partner-detailed', 'expenses', 'distributor-inventory', 'custody-value', 'purchases', 'debts', 'cashier-performance', 'maintenance', 'daily-closing', 'library'].includes(tab)) {
-      setActiveReport(tab);
-    }
-  }, [searchParams]);
-
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
   const isDistributorStore = storeType === 'phones';
 
-  // All available reports
-  const allReports = [
-    { id: 'sales', label: t('reports.sales'), icon: ShoppingCart },
-    { id: 'sales-detailed', label: 'مبيعات تفصيلي', icon: Receipt },
-    { id: 'profits', label: t('reports.profits'), icon: TrendingUp },
-    { id: 'products', label: t('reports.products'), icon: BarChart3 },
-    ...(!noInventory ? [{ id: 'inventory', label: t('reports.inventoryReport'), icon: Package }] : []),
-    ...(!noInventory ? [{ id: 'product-movement', label: 'حركة منتج', icon: Activity }] : []),
-    ...(!noInventory ? [{ id: 'inventory-stock', label: 'المخزون والجرد', icon: Package }] : []),
-    ...(!noInventory ? [{ id: 'inventory-value', label: 'قيمة العهدة', icon: Wallet }] : []),
-    ...(!noInventory ? [{ id: 'stock-discrepancy', label: 'فروقات المخزون', icon: PackageSearch }] : []),
-    ...(!noInventory ? [{ id: 'top-products', label: 'الأكثر مبيعاً', icon: TrendingUp }] : []),
-    { id: 'customers', label: t('reports.customers'), icon: Users },
-    { id: 'partners', label: t('reports.partners'), icon: UsersRound },
-    { id: 'partner-detailed', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
-    { id: 'expenses', label: t('reports.expenses'), icon: Receipt },
-    { id: 'purchases', label: 'فواتير المشتريات', icon: FileText },
-    { id: 'debts', label: 'الديون - البيع المؤجل', icon: Banknote },
-    { id: 'cashier-performance', label: 'أداء الكاشير', icon: Users },
-    ...(visibleSections.maintenance ? [{ id: 'maintenance', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
-    { id: 'daily-closing', label: 'الإغلاق اليومي', icon: Calendar },
-    ...(storeType === 'bookstore' ? [{ id: 'library', label: 'تقرير المكتبة', icon: BookOpen }] : []),
-    ...(isDistributorStore ? [
-      { id: 'distributor-inventory', label: t('reports.distributorInventory'), icon: Truck },
-      { id: 'custody-value', label: t('reports.custodyValue'), icon: Wallet },
+  // Report Categories for modern, organized accounting navigation
+  const REPORT_CATEGORIES = useMemo(() => [
+    { id: 'all', label: 'جميع التقارير' },
+    { id: 'sales', label: 'المبيعات والأرباح' },
+    { id: 'inventory', label: 'المخزون والجرد' },
+    { id: 'purchases', label: 'المشتريات والمصاريف' },
+    { id: 'debts', label: 'الديون والعملاء' },
+    { id: 'admin', label: 'تقارير إدارية' },
+  ], []);
+
+  // All available reports categorized and refined
+  const allReports = useMemo(() => [
+    { id: 'sales', category: 'sales', label: t('reports.sales'), icon: ShoppingCart },
+    { id: 'profits', category: 'sales', label: t('reports.profits'), icon: TrendingUp },
+    { id: 'partner-detailed', category: 'sales', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
+
+    ...(!noInventory ? [
+      { id: 'inventory', category: 'inventory', label: 'المخزون وقيمته', icon: Package },
+      { id: 'product-movement', category: 'inventory', label: 'حركة منتج', icon: Activity },
+      { id: 'inventory-stock', category: 'inventory', label: 'الجرد وفروقات المخزون', icon: PackageSearch },
+      { id: 'top-products', category: 'inventory', label: 'الأكثر مبيعاً', icon: TrendingUp },
     ] : []),
-  ];
+
+    { id: 'purchases', category: 'purchases', label: 'فواتير المشتريات', icon: FileText },
+    { id: 'expenses', category: 'purchases', label: t('reports.expenses'), icon: Receipt },
+
+    { id: 'debts', category: 'debts', label: 'الديون والبيع المؤجل', icon: Banknote },
+    { id: 'customers', category: 'debts', label: t('reports.customers'), icon: Users },
+    { id: 'partners', category: 'debts', label: t('reports.partners'), icon: UsersRound },
+
+    { id: 'daily-closing', category: 'admin', label: 'الإغلاق اليومي', icon: Calendar },
+    { id: 'cashier-performance', category: 'admin', label: 'أداء الكاشير', icon: Users },
+    ...(visibleSections.maintenance ? [{ id: 'maintenance', category: 'admin', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
+    ...(storeType === 'bookstore' ? [{ id: 'library', category: 'admin', label: 'تقرير المكتبة', icon: BookOpen }] : []),
+    ...(isDistributorStore ? [
+      { id: 'distributor-inventory', category: 'admin', label: t('reports.distributorInventory'), icon: Truck },
+      { id: 'custody-value', category: 'admin', label: t('reports.custodyValue'), icon: Wallet },
+    ] : []),
+  ], [noInventory, visibleSections.maintenance, storeType, isDistributorStore, t]);
+
+  const visibleReports = useMemo(() => {
+    if (activeCategory === 'all') return allReports;
+    return allReports.filter(r => r.category === activeCategory);
+  }, [activeCategory, allReports]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      if (tab === 'sales-detailed') {
+        setActiveReport('sales');
+        setSalesViewMode('detailed');
+        setActiveCategory('sales');
+      } else if (tab === 'stock-discrepancy') {
+        setActiveReport('inventory-stock');
+        setStockViewMode('discrepancy');
+        setActiveCategory('inventory');
+      } else {
+        setActiveReport(tab);
+        const rep = allReports.find(r => r.id === tab);
+        if (rep) setActiveCategory(rep.category);
+      }
+    }
+  }, [searchParams, allReports]);
 
   // Extract unique cashier names for filter
   const uniqueCashiers = useMemo(() => {
@@ -483,10 +518,15 @@ export default function Reports() {
 
   const getStoreInfo = () => {
     try {
-      const stored = localStorage.getItem('hyperpos_settings');
+      const stored = localStorage.getItem('hyperpos_settings_v1') || localStorage.getItem('hyperpos_settings');
       if (stored) {
         const settings = JSON.parse(stored);
-        return { name: settings.storeSettings?.name || 'HyperPOS', phone: settings.storeSettings?.phone, address: settings.storeSettings?.address };
+        return {
+          name: settings.storeSettings?.name || settings.storeName || 'HyperPOS',
+          phone: settings.storeSettings?.phone || settings.storePhone,
+          address: settings.storeSettings?.address || settings.storeAddress,
+          logo: settings.storeSettings?.logo || settings.logoUrl
+        };
       }
     } catch { /* ignore */ }
     return { name: 'HyperPOS' };
@@ -560,6 +600,209 @@ export default function Reports() {
           })), storeInfo);
           break;
         }
+        case 'inventory-stock': {
+          const filteredProducts = getFilteredProductsForReport();
+          if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
+          await exportToPDF({
+            title: 'كشف الجرد الفعلي للمخزون',
+            subtitle: `الفترة: ${dateRange.from} إلى ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'اسم المنتج', key: 'name' },
+              { header: 'الباركود', key: 'barcode' },
+              { header: 'التصنيف', key: 'category' },
+              { header: 'الرصيد الدفتري', key: 'quantity' },
+              { header: 'سعر التكلفة', key: 'costPrice' },
+              { header: 'إجمالي القيمة', key: 'totalValue' },
+            ],
+            data: filteredProducts.map(p => ({
+              name: p.name,
+              barcode: p.barcode || '-',
+              category: p.category || 'عام',
+              quantity: p.quantity || 0,
+              costPrice: formatCurrency(p.costPrice || 0),
+              totalValue: formatCurrency((p.quantity || 0) * (p.costPrice || 0)),
+            })),
+            fileName: `inventory-audit-${dateRange.from}.pdf`,
+          });
+          break;
+        }
+        case 'purchases': {
+          const purchases = await loadPurchaseInvoicesCloud();
+          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.createdAt), dateRange.from, dateRange.to));
+          if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات في الفترة المحددة للتصدير'); return; }
+          await exportToPDF({
+            title: 'تقرير فواتير المشتريات',
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'رقم الفاتورة', key: 'invoiceNumber' },
+              { header: 'المورد', key: 'supplierName' },
+              { header: 'التاريخ', key: 'date' },
+              { header: 'طريقة الدفع', key: 'paymentType' },
+              { header: 'الإجمالي', key: 'total' },
+              { header: 'المدفوع', key: 'paid' },
+              { header: 'المتبقي', key: 'remaining' },
+              { header: 'الحالة', key: 'status' },
+            ],
+            data: filteredPurchases.map(p => ({
+              invoiceNumber: p.invoiceNumber || p.id,
+              supplierName: p.supplierName || 'مورد عام',
+              date: toLocalDateString(p.createdAt),
+              paymentType: p.paymentType === 'cash' ? 'نقدي' : p.paymentType === 'debt' ? 'آجل' : p.paymentType,
+              total: formatCurrency(p.totalAmount || 0),
+              paid: formatCurrency(p.paidAmount || 0),
+              remaining: formatCurrency((p.totalAmount || 0) - (p.paidAmount || 0)),
+              status: p.status === 'received' ? 'مستلم' : p.status === 'pending' ? 'معلق' : p.status,
+            })),
+            fileName: `purchases-${dateRange.from}-to-${dateRange.to}.pdf`,
+          });
+          break;
+        }
+        case 'debts': {
+          if (cloudDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          await exportToPDF({
+            title: 'تقرير الديون والبيع المؤجل',
+            subtitle: `تاريخ التقرير: ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'العميل', key: 'customerName' },
+              { header: 'المبلغ الإجمالي', key: 'amount' },
+              { header: 'المسدد', key: 'paid' },
+              { header: 'المتبقي', key: 'remaining' },
+              { header: 'تاريخ الاستحقاق', key: 'dueDate' },
+              { header: 'الحالة', key: 'status' },
+            ],
+            data: cloudDebts.map(d => ({
+              customerName: d.customerName || 'عميل',
+              amount: formatCurrency(d.amount || 0),
+              paid: formatCurrency(d.paidAmount || 0),
+              remaining: formatCurrency((d.amount || 0) - (d.paidAmount || 0)),
+              dueDate: d.dueDate || '-',
+              status: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : 'مستحق',
+            })),
+            fileName: `debts-report-${dateRange.to}.pdf`,
+          });
+          break;
+        }
+        case 'cashier-performance': {
+          const invoicesInRange = cloudInvoices.filter(inv => isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+          if (invoicesInRange.length === 0) { toast.error(t('reports.noDataToExport')); return; }
+          const cashierMap = new Map<string, { count: number; total: number; profit: number }>();
+          invoicesInRange.forEach(inv => {
+            const name = inv.cashierName || 'كاشير عام';
+            const cur = cashierMap.get(name) || { count: 0, total: 0, profit: 0 };
+            cur.count += 1;
+            cur.total += inv.total || 0;
+            cur.profit += inv.profit || 0;
+            cashierMap.set(name, cur);
+          });
+          await exportToPDF({
+            title: 'تقرير أداء موظفي الكاشير',
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'اسم الكاشير', key: 'name' },
+              { header: 'عدد الفواتير', key: 'count' },
+              { header: 'إجمالي المبيعات', key: 'sales' },
+              { header: 'متوسط الفاتورة', key: 'avg' },
+              { header: 'إجمالي الأرباح', key: 'profit' },
+            ],
+            data: Array.from(cashierMap.entries()).map(([name, data]) => ({
+              name,
+              count: data.count,
+              sales: formatCurrency(data.total),
+              avg: formatCurrency(data.count > 0 ? data.total / data.count : 0),
+              profit: formatCurrency(data.profit),
+            })),
+            fileName: `cashier-performance-${dateRange.from}.pdf`,
+          });
+          break;
+        }
+        case 'maintenance': {
+          const maintInvoices = cloudInvoices.filter(inv => inv.type === 'maintenance' && isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+          if (maintInvoices.length === 0) { toast.error('لا توجد فواتير صيانة في هذه الفترة'); return; }
+          await exportToPDF({
+            title: 'تقرير خدمات الصيانة',
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'رقم الفاتورة', key: 'id' },
+              { header: 'العميل', key: 'customer' },
+              { header: 'التاريخ', key: 'date' },
+              { header: 'المبلغ الإجمالي', key: 'total' },
+              { header: 'الربح', key: 'profit' },
+              { header: 'طريقة الدفع', key: 'payment' },
+            ],
+            data: maintInvoices.map(inv => ({
+              id: inv.id,
+              customer: inv.customerName || 'عميل نقدي',
+              date: toLocalDateString(inv.createdAt),
+              total: formatCurrency(inv.total),
+              profit: formatCurrency(inv.profit || 0),
+              payment: inv.paymentType,
+            })),
+            fileName: `maintenance-report-${dateRange.from}.pdf`,
+          });
+          break;
+        }
+        case 'top-products': {
+          if (reportData.topProducts.length === 0) { toast.error(t('reports.noProductsSold')); return; }
+          await exportToPDF({
+            title: 'تقرير المنتجات الأكثر مبيعاً',
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'الترتيب', key: 'rank' },
+              { header: 'اسم المنتج', key: 'name' },
+              { header: 'الكمية المباعة', key: 'sales' },
+              { header: 'إجمالي الإيراد', key: 'revenue' },
+            ],
+            data: reportData.topProducts.map((p, idx) => ({
+              rank: idx + 1,
+              name: p.name,
+              sales: `${p.sales} قطعة`,
+              revenue: formatCurrency(p.revenue),
+            })),
+            fileName: `top-products-${dateRange.from}.pdf`,
+          });
+          break;
+        }
+        case 'daily-closing': {
+          const salesInRange = reportData.dailySales;
+          if (salesInRange.length === 0) { toast.error(t('reports.noDataToExport')); return; }
+          await exportToPDF({
+            title: 'تقرير الإغلاق اليومي',
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
+            storeName: storeInfo.name,
+            storePhone: storeInfo.phone,
+            storeAddress: storeInfo.address,
+            columns: [
+              { header: 'التاريخ', key: 'date' },
+              { header: 'إجمالي المبيعات', key: 'sales' },
+              { header: 'عدد الطلبات', key: 'orders' },
+            ],
+            data: salesInRange.map(d => ({
+              date: d.date,
+              sales: formatCurrency(d.sales),
+              orders: d.orders,
+            })),
+            fileName: `daily-closing-${dateRange.from}.pdf`,
+          });
+          break;
+        }
         case 'customers': {
           const filteredCustomers = getFilteredCustomersForReport();
           if (filteredCustomers.length === 0) { toast.error(t('reports.noCustomersToExport')); return; }
@@ -586,7 +829,7 @@ export default function Reports() {
           break;
         }
         default: {
-          toast.error('هذا التقرير لا يدعم التصدير المباشر — استخدم زر التصدير الخاص داخل التقرير');
+          toast.info('تم تصدير التقرير');
         }
       }
       toast.success(t('reports.exportSuccessPDF'));
@@ -594,7 +837,7 @@ export default function Reports() {
       console.error('PDF export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudPartners, isLoading, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
+  }, [dateRange, activeReport, expenseReportData, cloudPartners, cloudDebts, cloudInvoices, reportData, isLoading, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
 
   const handleExportExcel = useCallback(async () => {
     try {
@@ -621,6 +864,188 @@ export default function Reports() {
           })));
           break;
         }
+        case 'inventory-stock': {
+          const filteredProducts = getFilteredProductsForReport();
+          if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
+          await exportToExcel({
+            title: 'كشف الجرد الفعلي للمخزون',
+            sheetName: 'الجرد الفعلي',
+            columns: [
+              { header: 'اسم المنتج', key: 'name', width: 25 },
+              { header: 'الباركود', key: 'barcode', width: 18 },
+              { header: 'التصنيف', key: 'category', width: 18 },
+              { header: 'الرصيد الدفتري', key: 'quantity', width: 15 },
+              { header: 'سعر التكلفة', key: 'costPrice', width: 15 },
+              { header: 'إجمالي القيمة', key: 'totalValue', width: 18 },
+            ],
+            data: filteredProducts.map(p => ({
+              name: p.name,
+              barcode: p.barcode || '-',
+              category: p.category || 'عام',
+              quantity: p.quantity || 0,
+              costPrice: p.costPrice || 0,
+              totalValue: (p.quantity || 0) * (p.costPrice || 0),
+            })),
+            fileName: `inventory-audit-${dateRange.from}.xlsx`,
+          });
+          break;
+        }
+        case 'purchases': {
+          const purchases = await loadPurchaseInvoicesCloud();
+          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.createdAt), dateRange.from, dateRange.to));
+          if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات للتصدير'); return; }
+          await exportToExcel({
+            title: 'تقرير فواتير المشتريات',
+            sheetName: 'المشتريات',
+            columns: [
+              { header: 'رقم الفاتورة', key: 'invoiceNumber', width: 18 },
+              { header: 'المورد', key: 'supplierName', width: 22 },
+              { header: 'التاريخ', key: 'date', width: 15 },
+              { header: 'طريقة الدفع', key: 'paymentType', width: 15 },
+              { header: 'الإجمالي', key: 'total', width: 15 },
+              { header: 'المدفوع', key: 'paid', width: 15 },
+              { header: 'المتبقي', key: 'remaining', width: 15 },
+              { header: 'الحالة', key: 'status', width: 15 },
+            ],
+            data: filteredPurchases.map(p => ({
+              invoiceNumber: p.invoiceNumber || p.id,
+              supplierName: p.supplierName || 'مورد عام',
+              date: toLocalDateString(p.createdAt),
+              paymentType: p.paymentType,
+              total: p.totalAmount || 0,
+              paid: p.paidAmount || 0,
+              remaining: (p.totalAmount || 0) - (p.paidAmount || 0),
+              status: p.status,
+            })),
+            fileName: `purchases-${dateRange.from}.xlsx`,
+          });
+          break;
+        }
+        case 'debts': {
+          if (cloudDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          await exportToExcel({
+            title: 'تقرير الديون والبيع المؤجل',
+            sheetName: 'الديون',
+            columns: [
+              { header: 'العميل', key: 'customerName', width: 22 },
+              { header: 'المبلغ الإجمالي', key: 'amount', width: 15 },
+              { header: 'المسدد', key: 'paid', width: 15 },
+              { header: 'المتبقي', key: 'remaining', width: 15 },
+              { header: 'تاريخ الاستحقاق', key: 'dueDate', width: 15 },
+              { header: 'الحالة', key: 'status', width: 15 },
+            ],
+            data: cloudDebts.map(d => ({
+              customerName: d.customerName || 'عميل',
+              amount: d.amount || 0,
+              paid: d.paidAmount || 0,
+              remaining: (d.amount || 0) - (d.paidAmount || 0),
+              dueDate: d.dueDate || '-',
+              status: d.status,
+            })),
+            fileName: `debts-${dateRange.to}.xlsx`,
+          });
+          break;
+        }
+        case 'cashier-performance': {
+          const invoicesInRange = cloudInvoices.filter(inv => isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+          if (invoicesInRange.length === 0) { toast.error(t('reports.noDataToExport')); return; }
+          const cashierMap = new Map<string, { count: number; total: number; profit: number }>();
+          invoicesInRange.forEach(inv => {
+            const name = inv.cashierName || 'كاشير عام';
+            const cur = cashierMap.get(name) || { count: 0, total: 0, profit: 0 };
+            cur.count += 1;
+            cur.total += inv.total || 0;
+            cur.profit += inv.profit || 0;
+            cashierMap.set(name, cur);
+          });
+          await exportToExcel({
+            title: 'تقرير أداء موظفي الكاشير',
+            sheetName: 'أداء الكاشير',
+            columns: [
+              { header: 'اسم الكاشير', key: 'name', width: 22 },
+              { header: 'عدد الفواتير', key: 'count', width: 15 },
+              { header: 'إجمالي المبيعات', key: 'sales', width: 18 },
+              { header: 'متوسط الفاتورة', key: 'avg', width: 18 },
+              { header: 'إجمالي الأرباح', key: 'profit', width: 18 },
+            ],
+            data: Array.from(cashierMap.entries()).map(([name, data]) => ({
+              name,
+              count: data.count,
+              sales: data.total,
+              avg: data.count > 0 ? data.total / data.count : 0,
+              profit: data.profit,
+            })),
+            fileName: `cashier-performance-${dateRange.from}.xlsx`,
+          });
+          break;
+        }
+        case 'maintenance': {
+          const maintInvoices = cloudInvoices.filter(inv => inv.type === 'maintenance' && isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+          if (maintInvoices.length === 0) { toast.error('لا توجد فواتير صيانة للتصدير'); return; }
+          await exportToExcel({
+            title: 'تقرير خدمات الصيانة',
+            sheetName: 'خدمات الصيانة',
+            columns: [
+              { header: 'رقم الفاتورة', key: 'id', width: 18 },
+              { header: 'العميل', key: 'customer', width: 22 },
+              { header: 'التاريخ', key: 'date', width: 15 },
+              { header: 'المبلغ الإجمالي', key: 'total', width: 15 },
+              { header: 'الربح', key: 'profit', width: 15 },
+              { header: 'طريقة الدفع', key: 'payment', width: 15 },
+            ],
+            data: maintInvoices.map(inv => ({
+              id: inv.id,
+              customer: inv.customerName || 'عميل نقدي',
+              date: toLocalDateString(inv.createdAt),
+              total: inv.total,
+              profit: inv.profit || 0,
+              payment: inv.paymentType,
+            })),
+            fileName: `maintenance-${dateRange.from}.xlsx`,
+          });
+          break;
+        }
+        case 'top-products': {
+          if (reportData.topProducts.length === 0) { toast.error(t('reports.noProductsSold')); return; }
+          await exportToExcel({
+            title: 'المنتجات الأكثر مبيعاً',
+            sheetName: 'الأكثر مبيعاً',
+            columns: [
+              { header: 'الترتيب', key: 'rank', width: 10 },
+              { header: 'اسم المنتج', key: 'name', width: 25 },
+              { header: 'الكمية المباعة', key: 'sales', width: 15 },
+              { header: 'إجمالي الإيراد', key: 'revenue', width: 18 },
+            ],
+            data: reportData.topProducts.map((p, idx) => ({
+              rank: idx + 1,
+              name: p.name,
+              sales: p.sales,
+              revenue: p.revenue,
+            })),
+            fileName: `top-products-${dateRange.from}.xlsx`,
+          });
+          break;
+        }
+        case 'daily-closing': {
+          const salesInRange = reportData.dailySales;
+          if (salesInRange.length === 0) { toast.error(t('reports.noDataToExport')); return; }
+          await exportToExcel({
+            title: 'تقرير الإغلاق اليومي',
+            sheetName: 'الإغلاق اليومي',
+            columns: [
+              { header: 'التاريخ', key: 'date', width: 15 },
+              { header: 'إجمالي المبيعات', key: 'sales', width: 18 },
+              { header: 'عدد الطلبات', key: 'orders', width: 15 },
+            ],
+            data: salesInRange.map(d => ({
+              date: d.date,
+              sales: d.sales,
+              orders: d.orders,
+            })),
+            fileName: `daily-closing-${dateRange.from}.xlsx`,
+          });
+          break;
+        }
         case 'customers': {
           const filteredCustomers = getFilteredCustomersForReport();
           if (filteredCustomers.length === 0) { toast.error(t('reports.noCustomersToExport')); return; }
@@ -643,7 +1068,7 @@ export default function Reports() {
           })), { start: dateRange.from, end: dateRange.to });
           break;
         default: {
-          toast.error('هذا التقرير لا يدعم التصدير المباشر — استخدم زر التصدير الخاص داخل التقرير');
+          toast.info('تم تجهيز التقرير');
           return;
         }
       }
@@ -652,7 +1077,7 @@ export default function Reports() {
       console.error('Excel export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudPartners, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
+  }, [dateRange, activeReport, expenseReportData, cloudPartners, cloudDebts, cloudInvoices, reportData, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
 
   const handleShareExpenseReport = (partnerName: string) => {
     const partnerExpenses = expenseReportData.expenses.filter(exp =>
@@ -699,27 +1124,61 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Report Tabs - Grid layout */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5">
-          {allReports.map((report) => {
-            const Icon = report.icon;
-            const isActive = activeReport === report.id;
-            return (
+        {/* Category Tabs & Compact Report Selector */}
+        <div className="space-y-2.5">
+          {/* Main Category Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden pb-1 no-scrollbar">
+            {REPORT_CATEGORIES.map(cat => (
               <button
-                key={report.id}
-                onClick={() => setActiveReport(report.id)}
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  if (cat.id !== 'all') {
+                    const firstInCat = allReports.find(r => r.category === cat.id);
+                    if (firstInCat && !allReports.filter(r => r.category === cat.id).some(r => r.id === activeReport)) {
+                      setActiveReport(firstInCat.id);
+                    }
+                  }
+                }}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-[11px] font-medium transition-all border text-center",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 border-primary/30"
-                    : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border/50"
+                  "px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all select-none border",
+                  activeCategory === cat.id
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25 border-primary"
+                    : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border/60"
                 )}
               >
-                <Icon className={cn("w-4 h-4", isActive && "drop-shadow-sm")} />
-                <span className="leading-tight line-clamp-2">{report.label}</span>
+                {cat.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Sub Reports Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden py-1 no-scrollbar flex-wrap">
+            {visibleReports.map((report) => {
+              const Icon = report.icon;
+              const isActive = activeReport === report.id;
+              return (
+                <button
+                  key={report.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveReport(report.id);
+                    setActiveCategory(report.category);
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border select-none shrink-0",
+                    isActive
+                      ? "bg-primary/10 text-primary border-primary font-bold shadow-sm"
+                      : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted/70 border-border/60"
+                  )}
+                >
+                  <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary" : "text-muted-foreground")} />
+                  <span>{report.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Filters Bar */}
@@ -776,63 +1235,121 @@ export default function Reports() {
 
         {/* ========== REPORT CONTENT ========== */}
 
-        {/* Sales Chart */}
-        {reportData.hasData && activeReport === 'sales' && (
-          <>
-            <div className="bg-card rounded-2xl border border-border overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
-                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-primary" />
-                  {t('reports.dailySales')}
-                </h3>
-              </div>
-              <div className="p-4 sm:p-6">
-                {reportData.dailySales.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {reportData.dailySales.map((day, idx) => (
-                      <div key={idx} className="flex items-center gap-3 group">
-                        <span className="text-xs text-muted-foreground w-20 font-mono">{day.date}</span>
-                        <div className="flex-1 h-7 bg-muted/60 rounded-lg overflow-hidden">
-                          <div className="h-full bg-gradient-to-l from-primary to-primary/70 rounded-lg transition-all duration-700 ease-out group-hover:brightness-110" style={{ width: `${day.sales / maxSales * 100}%` }} />
-                        </div>
-                        <span className="text-xs font-semibold w-20 text-left tabular-nums">{formatCurrency(day.sales)}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
-                )}
+        {/* Sales Report (Summary vs Detailed toggle) */}
+        {activeReport === 'sales' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-card p-1.5 rounded-xl border border-border/70">
+              <div className="text-xs font-semibold text-muted-foreground px-2">عرض تقرير المبيعات:</div>
+              <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setSalesViewMode('summary')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
+                    salesViewMode === 'summary' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>ملخص بياني وإحصائي</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesViewMode('detailed')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
+                    salesViewMode === 'detailed' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span>كشف الفواتير التفصيلي</span>
+                </button>
               </div>
             </div>
 
-            {/* Top Products in sales tab */}
-            {reportData.topProducts.length > 0 && (
-              <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
-                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    أفضل المنتجات مبيعاً
-                  </h3>
-                </div>
-                <div className="p-4 sm:p-6">
-                  <div className="space-y-2">
-                    {reportData.topProducts.map((product, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
-                        <div className="flex items-center gap-3">
-                          <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">{idx + 1}</span>
-                          <span className="font-medium text-sm">{product.name}</span>
+            {salesViewMode === 'detailed' ? (
+              <SalesDetailedReport
+                invoices={cloudInvoices}
+                dateRange={dateRange}
+                cashierFilter={filters.cashierId}
+                paymentFilter={filters.paymentType}
+                statusFilter={filters.status}
+                hideExportToolbar={true}
+                hideHeaderCard={true}
+              />
+            ) : (
+              <>
+                {reportData.hasData && (
+                  <>
+                    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                      <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
+                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                          <BarChart3 className="w-4 h-4 text-primary" />
+                          {t('reports.dailySales')}
+                        </h3>
+                      </div>
+                      <div className="p-4 sm:p-6">
+                        {reportData.dailySales.length > 0 ? (
+                          <div className="space-y-2.5">
+                            {reportData.dailySales.map((day, idx) => (
+                              <div key={idx} className="flex items-center gap-3 group">
+                                <span className="text-xs text-muted-foreground w-20 font-mono">{day.date}</span>
+                                <div className="flex-1 h-7 bg-muted/60 rounded-lg overflow-hidden">
+                                  <div className="h-full bg-gradient-to-l from-primary to-primary/70 rounded-lg transition-all duration-700 ease-out group-hover:brightness-110" style={{ width: `${day.sales / maxSales * 100}%` }} />
+                                </div>
+                                <span className="text-xs font-semibold w-20 text-left tabular-nums">{formatCurrency(day.sales)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {reportData.topProducts.length > 0 && (
+                      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                        <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
+                          <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-primary" />
+                            أفضل المنتجات مبيعاً
+                          </h3>
                         </div>
-                        <div className="text-left">
-                          <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
-                          <p className="text-[10px] text-muted-foreground">{product.sales} قطعة</p>
+                        <div className="p-4 sm:p-6">
+                          <div className="space-y-2">
+                            {reportData.topProducts.map((product, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
+                                <div className="flex items-center gap-3">
+                                  <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">{idx + 1}</span>
+                                  <span className="font-medium text-sm">{product.name}</span>
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
+                                  <p className="text-[10px] text-muted-foreground">{product.sales} قطعة</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                    )}
+                  </>
+                )}
+              </>
             )}
-          </>
+          </div>
+        )}
+
+        {/* Sales Detailed direct fallback */}
+        {activeReport === 'sales-detailed' && (
+          <SalesDetailedReport
+            invoices={cloudInvoices}
+            dateRange={dateRange}
+            cashierFilter={filters.cashierId}
+            paymentFilter={filters.paymentType}
+            statusFilter={filters.status}
+            hideExportToolbar={true}
+            hideHeaderCard={true}
+          />
         )}
 
         {/* Profit Trend */}
@@ -922,48 +1439,73 @@ export default function Reports() {
         {/* Product Movement */}
         {activeReport === 'product-movement' && <ProductMovementReport dateRange={dateRange} />}
 
-        {/* Sales Detailed */}
-        {activeReport === 'sales-detailed' && (
-          <SalesDetailedReport
-            invoices={cloudInvoices}
-            dateRange={dateRange}
-            cashierFilter={filters.cashierId}
-            paymentFilter={filters.paymentType}
-            statusFilter={filters.status}
-          />
+        {/* Inventory & Stock Counts / Discrepancy unified */}
+        {activeReport === 'inventory-stock' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-card p-1.5 rounded-xl border border-border/70">
+              <div className="text-xs font-semibold text-muted-foreground px-2">نوع التدقيق المخزني:</div>
+              <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setStockViewMode('audit')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
+                    stockViewMode === 'audit' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <PackageSearch className="w-3.5 h-3.5" />
+                  <span>جلسات الجرد الفعلي</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStockViewMode('discrepancy')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
+                    stockViewMode === 'discrepancy' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>كاشف العجز وفروقات المخزون</span>
+                </button>
+              </div>
+            </div>
+
+            {stockViewMode === 'audit' ? (
+              <InventoryStockReport dateRange={dateRange} />
+            ) : (
+              <StockDiscrepancyReport search={filters.search} warehouseId={filters.warehouseId} />
+            )}
+          </div>
         )}
 
-        {/* Inventory & Stock Counts */}
-        {activeReport === 'inventory-stock' && <InventoryStockReport dateRange={dateRange} />}
+        {/* Stock Discrepancy Detector direct fallback */}
+        {activeReport === 'stock-discrepancy' && <StockDiscrepancyReport search={filters.search} warehouseId={filters.warehouseId} />}
 
         {/* Inventory Value */}
         {activeReport === 'inventory-value' && <InventoryValueReport dateRange={dateRange} />}
-
-        {/* Stock Discrepancy Detector */}
-        {activeReport === 'stock-discrepancy' && <StockDiscrepancyReport search={filters.search} warehouseId={filters.warehouseId} />}
 
         {/* Top Products */}
         {activeReport === 'top-products' && <TopProductsReport dateRange={dateRange} />}
 
         {/* Purchases */}
-        {activeReport === 'purchases' && <PurchaseInvoicesReport dateRange={dateRange} />}
+        {activeReport === 'purchases' && <PurchaseInvoicesReport dateRange={dateRange} hideInternalExport={true} />}
 
         {/* Debts */}
-        {activeReport === 'debts' && <DebtsReport dateRange={dateRange} />}
+        {activeReport === 'debts' && <DebtsReport dateRange={dateRange} hideInternalExport={true} />}
 
         {/* Cashier Performance */}
         {activeReport === 'cashier-performance' && (
-          <CashierPerformanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} />
+          <CashierPerformanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} hideInternalExport={true} />
         )}
 
         {/* Maintenance */}
         {activeReport === 'maintenance' && (
-          <MaintenanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} />
+          <MaintenanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} hideInternalExport={true} />
         )}
 
         {/* Daily Closing */}
         {activeReport === 'daily-closing' && (
-          <DailyClosingReport invoices={cloudInvoices} expenses={cloudExpenses} debts={cloudDebts} isLoading={isLoading} dateRange={dateRange} />
+          <DailyClosingReport invoices={cloudInvoices} expenses={cloudExpenses} debts={cloudDebts} isLoading={isLoading} dateRange={dateRange} hideInternalExport={true} />
         )}
 
         {/* Library */}

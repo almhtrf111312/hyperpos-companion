@@ -127,23 +127,32 @@ let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
 // Load all warehouses
+export const loadWarehousesLocalFirst = (): Warehouse[] => {
+  if (warehousesCache && warehousesCache.length > 0) return warehousesCache;
+  return loadWarehousesLocally() || [];
+};
+
 export const loadWarehousesCloud = async (): Promise<Warehouse[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
+  // Memory cache check
   if (warehousesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
     return warehousesCache;
   }
 
-  // Offline: return local cache
-  if (!navigator.onLine) {
+  // Pre-load from local storage if memory cache is empty
+  if (!warehousesCache) {
     const local = loadWarehousesLocally();
-    if (local) {
+    if (local && local.length > 0) {
       warehousesCache = local;
       cacheTimestamp = Date.now();
-      return local;
     }
-    return [];
+  }
+
+  // Offline: return local cache immediately (0ms)
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return warehousesCache || [];
   }
 
   const warehouses = await fetchFromSupabase<Warehouse>('warehouses', {
@@ -151,11 +160,13 @@ export const loadWarehousesCloud = async (): Promise<Warehouse[]> => {
     ascending: true
   });
 
-  warehousesCache = warehouses;
-  cacheTimestamp = Date.now();
-  saveWarehousesLocally(warehouses);
+  if (warehouses && warehouses.length > 0) {
+    warehousesCache = warehouses;
+    cacheTimestamp = Date.now();
+    saveWarehousesLocally(warehouses);
+  }
 
-  return warehousesCache;
+  return warehousesCache || [];
 };
 
 // Invalidate cache
@@ -594,23 +605,56 @@ export const cancelStockTransferCloud = async (transferId: string): Promise<bool
   return true;
 };
 
-// Fetch all warehouse stocks (for backup)
+const LOCAL_ALL_STOCKS_CACHE_KEY = 'hyperpos_all_warehouse_stocks_cache';
+
+// Load all warehouse stocks locally (0ms, no network)
+export const loadAllWarehouseStocksLocalFirst = (): WarehouseStock[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_ALL_STOCKS_CACHE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Fetch all warehouse stocks (for display & backup) with offline fallback and timeout protection
 export const fetchAllWarehouseStocksCloud = async (): Promise<WarehouseStock[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  const { supabase } = await import('@/integrations/supabase/client');
-
-  const { data, error } = await supabase
-    .from('warehouse_stock')
-    .select('*');
-
-  if (error) {
-    console.error('[WarehouseStock] Fetch all error:', error);
-    return [];
+  // Offline: return local cache immediately (0ms)
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return loadAllWarehouseStocksLocalFirst();
   }
 
-  return (data || []) as WarehouseStock[];
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { withTimeout } = await import('../supabase-store');
+
+    const query = supabase
+      .from('warehouse_stock')
+      .select('*');
+
+    const { data, error } = await withTimeout(
+      Promise.resolve(query),
+      3000,
+      { data: null, error: new Error('Timeout fetching warehouse stock') }
+    );
+
+    if (error || !data) {
+      console.warn('[WarehouseStock] Fetch all error/timeout, serving from local cache:', error);
+      return loadAllWarehouseStocksLocalFirst();
+    }
+
+    const stock = (data || []) as WarehouseStock[];
+    try {
+      localStorage.setItem(LOCAL_ALL_STOCKS_CACHE_KEY, JSON.stringify(stock));
+    } catch { /* ignore */ }
+    return stock;
+  } catch (err) {
+    console.warn('[WarehouseStock] Fetch all exception, serving local cache:', err);
+    return loadAllWarehouseStocksLocalFirst();
+  }
 };
 
 // ==================== Stock Return (استرداد العهدة) ====================

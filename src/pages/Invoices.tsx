@@ -807,18 +807,37 @@ export default function Invoices() {
         </div>
       </div>
 
-      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="sales" className="gap-2 flex-1 sm:flex-initial">
-            <ShoppingCart className="w-4 h-4" />
-            <span>فواتير المبيعات</span>
-          </TabsTrigger>
-          <TabsTrigger value="purchases" className="gap-2 flex-1 sm:flex-initial">
-            <Truck className="w-4 h-4" />
-            <span>فواتير المشتريات</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Fixed 2-button segmented control (strictly non-scrollable) */}
+      <div className="w-full sm:w-auto inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-sm overflow-hidden select-none">
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('sales')}
+          className={cn(
+            "flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex-1 sm:flex-initial",
+            activeMainTab === 'sales'
+              ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+          )}
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>فواتير المبيعات</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('purchases')}
+          className={cn(
+            "flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex-1 sm:flex-initial",
+            activeMainTab === 'purchases'
+              ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+          )}
+        >
+          <Truck className="w-4 h-4" />
+          <span>فواتير المشتريات</span>
+        </button>
+      </div>
 
+      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
         <TabsContent value="sales" className="space-y-6 m-0">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

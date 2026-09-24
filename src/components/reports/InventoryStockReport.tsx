@@ -147,6 +147,7 @@ export function InventoryStockReport({ dateRange }: Props) {
       onExportPDF={() => handleExport('pdf')}
       onExportExcel={() => handleExport('excel')}
       exportDisabled={loading || filtered.length === 0}
+      hideExportToolbar={true}
       filters={
         <div className="space-y-2">
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بالاسم، الباركود، التصنيف..." className="h-9 text-sm" />
@@ -163,6 +164,19 @@ export function InventoryStockReport({ dateRange }: Props) {
         </div>
       }
     >
+      {/* Accounting Guide Banner */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs leading-relaxed text-foreground flex items-start gap-2.5 mb-3">
+        <div className="p-1 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+          <Boxes className="w-4 h-4" />
+        </div>
+        <div>
+          <span className="font-bold text-primary block mb-0.5">دليل الجرد المحاسبي وفروقات المخزون:</span>
+          <span className="text-muted-foreground">
+            الجرد الفعلي هو مطابقة الكميات الموجودة حقيقةً على الرفوف مع الأرصدة المسجلة بالنظام. الفروقات (عجز أو فائض) تكشف التلف، النقص، أخطاء الإدخال، أو العجز المخزني، وتساعدك على تسوية الحسابات وحماية رأس المال بدقة.
+          </span>
+        </div>
+      </div>
+
       {!counting ? (
         <>
           <div className="flex flex-wrap gap-2">

@@ -85,6 +85,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
       onExportPDF={filtered.length ? () => void exportGenericToPDF({ ...exportOptions, fileName: 'stock-discrepancies.pdf' }) : undefined}
       onExportExcel={filtered.length ? () => void exportGenericToExcel({ ...exportOptions, sheetName: 'فروقات المخزون', fileName: 'stock-discrepancies.xlsx' }) : undefined}
       exportDisabled={loading}
+      hideExportToolbar={true}
     >
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} className="h-9 gap-1.5">

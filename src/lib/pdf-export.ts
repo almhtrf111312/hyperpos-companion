@@ -124,7 +124,7 @@ const savePDFNative = async (doc: jsPDF, fileName: string): Promise<void> => {
 // Get store logo from settings
 const getStoreLogo = (): string | null => {
   try {
-    const stored = localStorage.getItem('hyperpos_settings');
+    const stored = localStorage.getItem('hyperpos_settings_v1') || localStorage.getItem('hyperpos_settings');
     if (stored) {
       const settings = JSON.parse(stored);
       return settings.storeSettings?.logo || null;

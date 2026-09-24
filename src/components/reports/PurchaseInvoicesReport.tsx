@@ -10,9 +10,10 @@ import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 
 interface Props {
   dateRange: { from: string; to: string };
+  hideInternalExport?: boolean;
 }
 
-export function PurchaseInvoicesReport({ dateRange }: Props) {
+export function PurchaseInvoicesReport({ dateRange, hideInternalExport = false }: Props) {
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -108,10 +109,12 @@ export function PurchaseInvoicesReport({ dateRange }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />PDF</Button>
-        <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />Excel</Button>
-      </div>
+      {!hideInternalExport && (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />PDF</Button>
+          <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />Excel</Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">

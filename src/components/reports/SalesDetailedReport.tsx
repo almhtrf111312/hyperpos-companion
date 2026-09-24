@@ -14,11 +14,21 @@ interface Props {
   cashierFilter: string;
   paymentFilter: string;
   statusFilter: string;
+  hideExportToolbar?: boolean;
+  hideHeaderCard?: boolean;
 }
 
 type ScopeMode = 'all' | 'customer' | 'cashier' | 'invoice';
 
-export function SalesDetailedReport({ invoices, dateRange, cashierFilter, paymentFilter, statusFilter }: Props) {
+export function SalesDetailedReport({ 
+  invoices, 
+  dateRange, 
+  cashierFilter, 
+  paymentFilter, 
+  statusFilter,
+  hideExportToolbar = false,
+  hideHeaderCard = false
+}: Props) {
   const [scope, setScope] = useState<ScopeMode>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -150,6 +160,8 @@ export function SalesDetailedReport({ invoices, dateRange, cashierFilter, paymen
       onExportPDF={() => handleExport('pdf')}
       onExportExcel={() => handleExport('excel')}
       exportDisabled={rows.length === 0}
+      hideExportToolbar={hideExportToolbar}
+      hideHeaderCard={hideHeaderCard}
       filters={
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-1.5">

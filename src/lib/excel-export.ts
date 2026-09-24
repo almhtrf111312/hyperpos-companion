@@ -39,7 +39,7 @@ const formatLocalDateTime = (): string => {
 // Get store info from settings
 const getStoreInfo = (): { name: string; phone?: string; address?: string } => {
   try {
-    const stored = localStorage.getItem('hyperpos_settings');
+    const stored = localStorage.getItem('hyperpos_settings_v1') || localStorage.getItem('hyperpos_settings');
     if (stored) {
       const settings = JSON.parse(stored);
       return {

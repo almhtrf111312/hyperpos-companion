@@ -174,249 +174,291 @@ export default function HelpPage() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState<'features' | 'faq' | 'ai'>('features');
+  const [faqSearch, setFaqSearch] = useState('');
+
   const askFaqInChat = (question: string) => {
+    setActiveTab('ai');
     setShowChat(true);
     setInput(question);
     setTimeout(() => {
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
       sendMessage();
     }, 100);
   };
 
+  const filteredFaqs = faqs.filter(f => 
+    !faqSearch.trim() || 
+    f.question.toLowerCase().includes(faqSearch.toLowerCase()) || 
+    f.answer.toLowerCase().includes(faqSearch.toLowerCase())
+  );
+
   return (
     <MainLayout>
-      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full">
-            <BookOpen className="w-5 h-5" />
-            <span className="font-semibold">{isAr ? 'التعليمات والميزات' : 'Help & Features'}</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {isAr ? 'دليل استخدام FlowPOS Pro' : 'FlowPOS Pro User Guide'}
-          </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            {isAr ? 'نظام محاسبة شامل لجميع الأنشطة التجارية' : 'Comprehensive accounting system for all business types'}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={() => {
-              try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
-              window.dispatchEvent(new CustomEvent('onboarding:replay'));
-            }}
-          >
-            <Sparkles className="w-4 h-4 me-2" />
-            {isAr ? 'إعادة جولة الشرح' : 'Replay onboarding tour'}
-          </Button>
-        </div>
-
-
-        {/* AI Assistant Hint */}
-        <Card 
-          className="border-primary/20 bg-primary/5 cursor-pointer hover:border-primary/40 transition-colors"
-          onClick={() => {
-            setShowChat(true);
-            document.getElementById('ai-chat-section')?.scrollIntoView({ behavior: 'smooth' });
-          }}
-        >
-          <div className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-5 h-5 text-primary" />
+      <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
+        {/* Compact Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-border p-4 md:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <BookOpen className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-lg md:text-xl font-bold text-foreground">
+                  {isAr ? 'مركز التعليمات والمساعدة' : 'Help & Documentation Center'}
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  {isAr ? 'دليل الاستخدام، الأسئلة الشائعة، والمساعد الذكي' : 'User guide, FAQs, and AI Assistant'}
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-foreground font-medium">
-                {isAr 
-                  ? 'لم تجد إجابة لسؤالك؟ اسأل المساعد الذكي مباشرة!' 
-                  : "Can't find your answer? Ask the AI Assistant directly!"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {isAr ? 'متاح على مدار الساعة للإجابة على جميع استفساراتك' : 'Available 24/7 to answer all your questions'}
-              </p>
-            </div>
-            <ArrowRight className={cn("w-5 h-5 text-primary flex-shrink-0", isRTL && "rotate-180")} />
-          </div>
-        </Card>
-
-        {/* Features Grid */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            {isAr ? 'ميزات النظام' : 'System Features'}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {displayFeatures.map((f, i) => (
-              <Card key={i} className="p-4 hover:border-primary/30 transition-colors">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <f.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm text-foreground">{isAr ? f.titleAr : f.titleEn}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{isAr ? f.descAr : f.descEn}</p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-primary" />
-            {isAr ? 'الأسئلة الشائعة' : 'Frequently Asked Questions'}
-          </h2>
-          <div className="space-y-2">
-            {faqs.map((faq, i) => (
-              <Card 
-                key={i} 
-                className={cn(
-                  "cursor-pointer transition-all",
-                  expandedFaq === i ? "border-primary/30" : "hover:border-border/80"
-                )}
-              >
-                <button
-                  className="w-full p-4 flex items-center justify-between text-start"
-                  onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                >
-                  <span className="font-medium text-sm text-foreground">{faq.question}</span>
-                  {expandedFaq === i ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  )}
-                </button>
-                {expandedFaq === i && (
-                  <div className="px-4 pb-4 pt-0">
-                    <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="mt-2 text-primary text-xs"
-                      onClick={(e) => { e.stopPropagation(); askFaqInChat(faq.question); }}
-                    >
-                      <MessageCircle className="w-3 h-3 me-1" />
-                      {isAr ? 'اسأل المساعد الذكي' : 'Ask AI Assistant'}
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* AI Chat Section */}
-        <div id="ai-chat-section">
-          <Card className="overflow-hidden">
-            <button
-              className="w-full p-4 flex items-center justify-between bg-primary/5"
-              onClick={() => setShowChat(!showChat)}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs shrink-0 self-start sm:self-auto gap-1.5"
+              onClick={() => {
+                try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
+                window.dispatchEvent(new CustomEvent('onboarding:replay'));
+              }}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-primary" />
-                </div>
-                <div className="text-start">
-                  <h3 className="font-semibold text-foreground">{isAr ? 'المساعد الذكي' : 'AI Assistant'}</h3>
-                  <p className="text-xs text-muted-foreground">{isAr ? 'اسأل أي سؤال عن النظام' : 'Ask any question about the system'}</p>
-                </div>
-              </div>
-              <Badge variant="secondary" className="bg-primary/10 text-primary">
-                {isAr ? 'ذكاء اصطناعي' : 'AI'}
-              </Badge>
-            </button>
-
-            {showChat && (
-              <div className="border-t border-border">
-                {/* Messages */}
-                <div ref={scrollRef} className="h-80 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 && (
-                    <div className="text-center text-muted-foreground text-sm py-8">
-                      <Bot className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                      <p>{isAr ? 'مرحباً! كيف يمكنني مساعدتك؟' : 'Hello! How can I help you?'}</p>
-                      <div className="flex flex-wrap gap-2 justify-center mt-4">
-                        {[
-                          isAr ? 'كيف أضيف منتج جديد؟' : 'How to add a product?',
-                          isAr ? 'كيف أطبع فاتورة؟' : 'How to print an invoice?',
-                          isAr ? 'ما هي التقارير المتاحة؟' : 'What reports are available?',
-                        ].map((q, i) => (
-                          <Button 
-                            key={i} 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-xs"
-                            onClick={() => { setInput(q); }}
-                          >
-                            {q}
-                            <ArrowRight className="w-3 h-3 ms-1" />
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {messages.map((msg, i) => (
-                    <div key={i} className={cn("flex gap-2", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                      {msg.role === 'assistant' && (
-                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                          <Bot className="w-4 h-4 text-primary" />
-                        </div>
-                      )}
-                      <div className={cn(
-                        "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                        msg.role === 'user' 
-                          ? "bg-primary text-primary-foreground rounded-br-sm" 
-                          : "bg-muted text-foreground rounded-bl-sm"
-                      )}>
-                        {msg.content}
-                      </div>
-                      {msg.role === 'user' && (
-                        <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
-                          <User className="w-4 h-4 text-secondary-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                    <div className="flex gap-2 justify-start">
-                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <Bot className="w-4 h-4 text-primary animate-pulse" />
-                      </div>
-                      <div className="bg-muted rounded-2xl px-4 py-3 rounded-bl-sm">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Input */}
-                <div className="p-3 border-t border-border flex gap-2">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                    placeholder={isAr ? 'اكتب سؤالك هنا...' : 'Type your question here...'}
-                    disabled={isLoading}
-                    className="text-sm"
-                  />
-                  <Button 
-                    onClick={sendMessage} 
-                    disabled={isLoading || !input.trim()} 
-                    size="icon"
-                    className="flex-shrink-0"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span>{isAr ? 'إعادة جولة الشرح' : 'Replay tour'}</span>
+            </Button>
+          </div>
         </div>
+
+        {/* Modern 3-Button Segmented Navigation Tabs */}
+        <div className="bg-card p-1 rounded-xl border border-border flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('features')}
+            className={cn(
+              "flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 select-none",
+              activeTab === 'features'
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isAr ? 'ميزات النظام' : 'Features'}</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-background/30 text-current">{displayFeatures.length}</Badge>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('faq')}
+            className={cn(
+              "flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 select-none",
+              activeTab === 'faq'
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>{isAr ? 'الأسئلة الشائعة' : 'FAQs'}</span>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-background/30 text-current">{faqs.length}</Badge>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('ai'); setShowChat(true); }}
+            className={cn(
+              "flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 select-none",
+              activeTab === 'ai'
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>{isAr ? 'المساعد الذكي' : 'AI Assistant'}</span>
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          </button>
+        </div>
+
+        {/* Tab 1: Features */}
+        {activeTab === 'features' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {displayFeatures.map((f, i) => (
+                <div key={i} className="bg-card rounded-xl border border-border p-3.5 hover:border-primary/40 transition-all hover:shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <f.icon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xs text-foreground">{isAr ? f.titleAr : f.titleEn}</h3>
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{isAr ? f.descAr : f.descEn}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: FAQ */}
+        {activeTab === 'faq' && (
+          <div className="space-y-3">
+            <div className="relative">
+              <Input
+                value={faqSearch}
+                onChange={e => setFaqSearch(e.target.value)}
+                placeholder={isAr ? 'ابحث في الأسئلة الشائعة...' : 'Search FAQs...'}
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              {filteredFaqs.map((faq, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "bg-card rounded-xl border transition-all overflow-hidden",
+                    expandedFaq === i ? "border-primary/40 shadow-sm" : "border-border hover:border-border/80"
+                  )}
+                >
+                  <button
+                    className="w-full p-3 flex items-center justify-between text-start"
+                    onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                  >
+                    <span className="font-semibold text-xs text-foreground">{faq.question}</span>
+                    {expandedFaq === i ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                    )}
+                  </button>
+                  {expandedFaq === i && (
+                    <div className="px-3 pb-3 pt-0 border-t border-border/40 mt-1 pt-2">
+                      <p className="text-xs text-muted-foreground leading-relaxed">{faq.answer}</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 text-primary text-[11px] h-7 px-2"
+                        onClick={(e) => { e.stopPropagation(); askFaqInChat(faq.question); }}
+                      >
+                        <MessageCircle className="w-3 h-3 me-1" />
+                        {isAr ? 'اسأل المساعد الذكي عن هذا' : 'Ask AI Assistant'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {filteredFaqs.length === 0 && (
+                <p className="text-center text-xs text-muted-foreground py-6">
+                  {isAr ? 'لم يتم العثور على نتائج مطابقة' : 'No matching FAQs found'}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: AI Assistant */}
+        {activeTab === 'ai' && (
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="p-3 bg-muted/40 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-foreground">{isAr ? 'المساعد الذكي لـ HyperPOS' : 'HyperPOS AI Assistant'}</h3>
+                  <p className="text-[10px] text-muted-foreground">{isAr ? 'إجابات فورية مدعومة بالذكاء الاصطناعي' : 'Instant AI-powered answers'}</p>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                Online
+              </Badge>
+            </div>
+
+            {/* Messages Area */}
+            <div ref={scrollRef} className="h-96 overflow-y-auto p-3.5 space-y-3">
+              {messages.length === 0 && (
+                <div className="text-center text-muted-foreground text-xs py-8 space-y-3">
+                  <Bot className="w-10 h-10 mx-auto opacity-30 text-primary" />
+                  <p>{isAr ? 'مرحباً بك! تفضل بطرح أي سؤال وسأساعدك فوراً.' : 'Hello! Ask me any question and I will help you.'}</p>
+                  <div className="flex flex-wrap gap-1.5 justify-center max-w-md mx-auto">
+                    {[
+                      isAr ? 'كيف أضيف منتج جديد؟' : 'How to add a product?',
+                      isAr ? 'كيف أطبع فاتورة بيع؟' : 'How to print an invoice?',
+                      isAr ? 'ما هي طريقة جرد المخزون؟' : 'How to do stock audit?',
+                      isAr ? 'كيف أسجل ديون العملاء؟' : 'How to record customer debt?',
+                    ].map((q, i) => (
+                      <Button
+                        key={i}
+                        variant="outline"
+                        size="sm"
+                        className="text-[11px] h-7 px-2.5 rounded-lg"
+                        onClick={() => { setInput(q); }}
+                      >
+                        {q}
+                        <ArrowRight className="w-3 h-3 ms-1" />
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((msg, i) => (
+                <div key={i} className={cn("flex gap-2", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                  {msg.role === 'assistant' && (
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
+                      <Bot className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                  )}
+                  <div className={cn(
+                    "max-w-[85%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed whitespace-pre-wrap",
+                    msg.role === 'user'
+                      ? "bg-primary text-primary-foreground rounded-br-sm shadow-sm"
+                      : "bg-muted text-foreground rounded-bl-sm border border-border/50"
+                  )}>
+                    {msg.content}
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-1">
+                      <User className="w-3.5 h-3.5 text-secondary-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                <div className="flex gap-2 justify-start">
+                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <Bot className="w-3.5 h-3.5 text-primary animate-pulse" />
+                  </div>
+                  <div className="bg-muted rounded-2xl px-3.5 py-2.5 rounded-bl-sm">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-2.5 border-t border-border flex gap-2 bg-muted/20">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                placeholder={isAr ? 'اكتب سؤالك هنا...' : 'Type your question here...'}
+                disabled={isLoading}
+                className="text-xs h-9 bg-card"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={isLoading || !input.trim()}
+                size="sm"
+                className="h-9 px-3 gap-1 shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isAr ? 'إرسال' : 'Send'}</span>
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );

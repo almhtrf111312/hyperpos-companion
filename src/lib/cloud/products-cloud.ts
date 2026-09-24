@@ -227,12 +227,12 @@ const saveToLocalCache = (products: Product[]) => {
   }
 };
 
-// Load products from IndexedDB first, then localStorage fallback
+// Load products from IndexedDB first, then localStorage fallback (NEVER expires offline)
 const loadFromLocalCache = async (): Promise<Product[] | null> => {
   // Try IndexedDB first (faster, larger capacity)
   try {
     const idbResult = await loadProductsFromIDB<Product>();
-    if (idbResult && idbResult.products.length > 0 && Date.now() - idbResult.timestamp < 86400000) {
+    if (idbResult && idbResult.products && idbResult.products.length > 0) {
       console.log('[ProductsCloud] ✅ Serving from IndexedDB cache (' + idbResult.products.length + ' products)');
       return idbResult.products;
     }
@@ -244,9 +244,9 @@ const loadFromLocalCache = async (): Promise<Product[] | null> => {
   try {
     const cached = localStorage.getItem(LOCAL_PRODUCTS_CACHE_KEY);
     if (cached) {
-      const { products, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < 86400000) {
-        console.log('[ProductsCloud] Serving from localStorage fallback');
+      const { products } = JSON.parse(cached);
+      if (Array.isArray(products) && products.length > 0) {
+        console.log('[ProductsCloud] Serving from localStorage fallback (' + products.length + ' products)');
         return products;
       }
     }
@@ -255,6 +255,42 @@ const loadFromLocalCache = async (): Promise<Product[] | null> => {
   }
   return null;
 };
+
+// Fetch products in chunks of 100 to prevent network stalls and gateway timeouts
+async function fetchProductsInChunks(): Promise<CloudProduct[]> {
+  const CHUNK_SIZE = 100;
+  let from = 0;
+  const allProducts: CloudProduct[] = [];
+  const { withTimeout } = await import('../supabase-store');
+
+  while (true) {
+    const query = sb
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + CHUNK_SIZE - 1);
+
+    const { data, error } = await withTimeout(
+      Promise.resolve(query),
+      4000,
+      { data: null, error: new Error('Timeout fetching products chunk') }
+    );
+
+    if (error || !data || data.length === 0) {
+      break;
+    }
+
+    allProducts.push(...(data as CloudProduct[]));
+
+    if (data.length < CHUNK_SIZE) {
+      break;
+    }
+
+    from += CHUNK_SIZE;
+  }
+
+  return allProducts;
+}
 
 const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promise<Product[]> => {
   const pending = await getPendingStockDeductions();
@@ -280,39 +316,38 @@ const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promi
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
 
-  // If no user, try local cache
-  if (!userId) {
-    const localProducts = await loadFromLocalCache();
-    if (localProducts && localProducts.length > 0) {
-      return localProducts;
+  // 1. Pre-populate memory cache from local IndexedDB immediately if not yet in memory
+  if (!productsCache) {
+    const local = await loadFromLocalCache();
+    if (local && local.length > 0) {
+      productsCache = local;
+      cacheTimestamp = Date.now();
     }
-    return [];
   }
 
-  // Check memory cache first
-  if (productsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return productsCache;
+  // If no user, serve local cache immediately (0ms)
+  if (!userId) {
+    return productsCache || [];
   }
 
-  // Check if we're online
-  const isOnline = navigator.onLine;
+  // 2. Fast check if offline or dead connection
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
   if (!isOnline) {
-    const localProducts = await loadFromLocalCache();
-    if (localProducts && localProducts.length > 0) {
-      productsCache = localProducts;
-      cacheTimestamp = Date.now();
-      console.log('[ProductsCloud] 📴 Offline - serving', localProducts.length, 'products from local cache');
-      return localProducts;
-    }
+    console.log('[ProductsCloud] 📴 Offline - serving', productsCache?.length || 0, 'products from local cache');
     return productsCache || [];
+  }
+
+  // 3. Memory cache TTL check (short 10s TTL)
+  if (productsCache && productsCache.length > 0 && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return productsCache;
   }
 
   try {
     const lastSync = localStorage.getItem(LAST_SYNC_TIMESTAMP_KEY);
 
     if (lastSync && productsCache && productsCache.length > 0) {
-      // ✅ Incremental sync: fetch only updated products since last sync
+      // ✅ Incremental sync: fetch ONLY updated products since last sync
       const updatedProducts = await fetchIncrementalFromSupabase<CloudProduct>('products', lastSync, {
         column: 'updated_at',
         ascending: false
@@ -336,14 +371,15 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
         console.log('[ProductsCloud] ✅ No changes since last sync');
       }
     } else {
-      // Full sync (first time or no cache)
-      console.log('[ProductsCloud] 📥 Full sync...');
-      const cloudProducts = await fetchFromSupabase<CloudProduct>('products', {
-        column: 'created_at',
-        ascending: false
-      });
+      // Full sync: fetch in chunks of 100 for high speed and reliability
+      console.log('[ProductsCloud] 📥 Full sync (chunked batches of 100)...');
+      const cloudProducts = await fetchProductsInChunks();
 
       if (cloudProducts.length === 0) {
+        if (productsCache && productsCache.length > 0) {
+          console.log('[ProductsCloud] ⚠️ Cloud returned empty, keeping local cache');
+          return productsCache;
+        }
         const localProducts = await loadFromLocalCache();
         if (localProducts && localProducts.length > 0) {
           console.log('[ProductsCloud] ⚠️ Cloud returned empty, using local cache');
@@ -351,9 +387,9 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
           cacheTimestamp = Date.now();
           return localProducts;
         }
+      } else {
+        productsCache = await applyPendingDeductionsToCloudProducts(cloudProducts.map(toProduct));
       }
-
-      productsCache = await applyPendingDeductionsToCloudProducts(cloudProducts.map(toProduct));
     }
 
     cacheTimestamp = Date.now();
@@ -361,22 +397,22 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
     // Update last sync timestamp
     localStorage.setItem(LAST_SYNC_TIMESTAMP_KEY, new Date().toISOString());
 
-    // Save to local cache
-    if (productsCache.length > 0) {
+    // Save to local cache (IndexedDB + localStorage)
+    if (productsCache && productsCache.length > 0) {
       saveToLocalCache(productsCache);
     }
 
-    return productsCache;
+    return productsCache || [];
   } catch (error) {
-    console.error('[ProductsCloud] Cloud fetch failed, trying offline cache:', error);
+    console.error('[ProductsCloud] Cloud fetch failed, serving local cache:', error);
+
+    if (productsCache && productsCache.length > 0) {
+      return productsCache;
+    }
 
     const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
       return localProducts;
-    }
-
-    if (productsCache && productsCache.length > 0) {
-      return productsCache;
     }
 
     return [];

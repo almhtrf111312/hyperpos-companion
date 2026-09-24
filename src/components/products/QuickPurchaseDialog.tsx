@@ -242,7 +242,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
 
     setLoading(true);
 
-    const hasInternet = await checkRealInternetAccess(15000);
+    const hasInternet = await checkRealInternetAccess(2500);
 
     // Offline Handling
     if (!hasInternet) {

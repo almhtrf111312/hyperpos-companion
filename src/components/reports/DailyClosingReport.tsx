@@ -17,9 +17,10 @@ interface Props {
   debts: Debt[];
   isLoading: boolean;
   dateRange: { from: string; to: string };
+  hideInternalExport?: boolean;
 }
 
-export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateRange }: Props) {
+export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateRange, hideInternalExport = false }: Props) {
   const [selectedDate, setSelectedDate] = useState('');
 
   // keep selectedDate in sync with the global range; default to "from" so the
@@ -156,8 +157,12 @@ export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateR
             className="w-36 h-7 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
           />
         </div>
-        <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />PDF</Button>
-        <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />Excel</Button>
+        {!hideInternalExport && (
+          <>
+            <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />PDF</Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />Excel</Button>
+          </>
+        )}
       </div>
 
       {/* Main stats */}

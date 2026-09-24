@@ -90,7 +90,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     }
 
     // فحص الاتصال الفعلي بالإنترنت (وليس فقط الشبكة)
-    const hasInternet = await checkRealInternetAccess(15000);
+    const hasInternet = await checkRealInternetAccess(2500);
     if (!hasInternet) {
       const localInvoice: PurchaseInvoice = {
         id: `local_${Date.now()}`,
@@ -333,7 +333,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     setLoading(true);
 
     // If offline or local invoice, queue the entire invoice for later sync
-    const hasInternetForFinalize = isOfflineInvoice ? false : await checkRealInternetAccess(15000);
+    const hasInternetForFinalize = isOfflineInvoice ? false : await checkRealInternetAccess(2500);
     if (isOfflineInvoice || !hasInternetForFinalize) {
       addToQueue('purchase_invoice', {
         invoiceNumber: currentInvoice.invoice_number,

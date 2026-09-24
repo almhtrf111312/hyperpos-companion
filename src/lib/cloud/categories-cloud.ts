@@ -287,23 +287,46 @@ export const deleteCategoryCloud = async (id: string): Promise<boolean> => {
   return success;
 };
 
+// Get local categories immediately (0ms, no network)
+export const getCategoryNamesLocalFirst = (): string[] => {
+  const local = categoriesCache || loadCategoriesLocally();
+  if (local && local.length > 0) {
+    return Array.from(new Set(local.map(c => c.name.trim()).filter(Boolean)));
+  }
+  return getDefaultCategories(getCurrentStoreType());
+};
+
 // Get category names (deduplicated, including categories from products)
 export const getCategoryNamesCloud = async (): Promise<string[]> => {
   const categories = await loadCategoriesCloud();
   const categoryNames = categories.map(c => c.name.trim());
   const normalizedExisting = new Set(categoryNames.map(n => n.toLowerCase()));
 
+  // Fast return if offline - do NOT query supabase
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return Array.from(new Set(categoryNames.filter(Boolean)));
+  }
+
   // ✅ Also include categories that exist on products but not in categories table
   // This ensures products are always visible even if their category was deleted and re-created
   try {
     const userId = getCurrentUserId();
     if (userId) {
-      const { data } = await (await import('@/integrations/supabase/client')).supabase
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { withTimeout } = await import('../supabase-store');
+      
+      const query = supabase
         .from('products')
         .select('category')
         .eq('user_id', userId)
         .not('category', 'is', null)
         .not('archived', 'eq', true);
+
+      const { data } = await withTimeout(
+        Promise.resolve(query),
+        2500,
+        { data: null, error: null }
+      );
       
       if (data) {
         const productCategories = [...new Set(data.map(p => (p.category || '').trim()).filter(Boolean))];

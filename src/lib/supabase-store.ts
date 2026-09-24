@@ -171,12 +171,44 @@ export const getOwnerIdForInsert = async (): Promise<string | null> => {
   }
 };
 
-// Generic fetch function with error handling
+/**
+ * Helper to wrap any async operation with a strict timeout.
+ * Prevents requests from hanging indefinitely on dead VPN connections or severed mobile networks.
+ */
+export async function withTimeout<T>(
+  promise: Promise<T> | PromiseLike<T>,
+  timeoutMs: number = 3800,
+  fallbackValue?: T
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<T>((resolve, reject) => {
+    timer = setTimeout(() => {
+      if (fallbackValue !== undefined) {
+        resolve(fallbackValue);
+      } else {
+        reject(new Error(`[NetworkTimeout] Operation timed out after ${timeoutMs}ms (VPN / dead connection)`));
+      }
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timer!);
+    return result;
+  } catch (err) {
+    clearTimeout(timer!);
+    if (fallbackValue !== undefined) return fallbackValue;
+    throw err;
+  }
+}
+
+// Generic fetch function with error handling and timeout protection
 // ✅ يعتمد على RLS (get_owner_id) لتصفية البيانات تلقائياً
 // لا نضيف فلتر user_id يدوياً لأن الكاشير يجب أن يرى بيانات المالك
 export async function fetchFromSupabase<T = unknown>(
   tableName: string,
-  orderBy?: { column: string; ascending?: boolean }
+  orderBy?: { column: string; ascending?: boolean },
+  timeoutMs: number = 3800
 ): Promise<T[]> {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -184,25 +216,33 @@ export async function fetchFromSupabase<T = unknown>(
     return [];
   }
 
+  // Fast offline check
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return [];
+  }
+
   try {
     // ✅ الاستعلام بدون فلتر user_id - RLS ستتعامل مع التصفية
-    // RLS تستخدم get_owner_id(auth.uid()) للسماح للكاشير برؤية بيانات المالك
     let query = sb.from(tableName).select('*');
 
     if (orderBy) {
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
     }
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(
+      Promise.resolve(query),
+      timeoutMs,
+      { data: null, error: new Error(`Timeout fetching ${tableName}`) }
+    );
 
     if (error) {
-      console.error(`Error fetching ${tableName}:`, error);
+      console.warn(`[Supabase] Warning/timeout fetching ${tableName}:`, error);
       return [];
     }
 
     return (data || []) as T[];
   } catch (error) {
-    console.error(`Error fetching ${tableName}:`, error);
+    console.warn(`[Supabase] Error fetching ${tableName}:`, error);
     return [];
   }
 }
@@ -380,10 +420,16 @@ export async function upsertToSupabase<T = unknown>(
 export async function fetchIncrementalFromSupabase<T = unknown>(
   tableName: string,
   since: string,
-  orderBy?: { column: string; ascending?: boolean }
+  orderBy?: { column: string; ascending?: boolean },
+  timeoutMs: number = 3800
 ): Promise<T[]> {
   const userId = getCurrentUserId();
   if (!userId) return [];
+
+  // Fast offline check
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return [];
+  }
 
   try {
     let query = sb.from(tableName).select('*').gt('updated_at', since);
@@ -392,16 +438,20 @@ export async function fetchIncrementalFromSupabase<T = unknown>(
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
     }
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(
+      Promise.resolve(query),
+      timeoutMs,
+      { data: null, error: new Error(`Timeout incremental fetching ${tableName}`) }
+    );
 
     if (error) {
-      console.error(`Error incremental fetch ${tableName}:`, error);
+      console.warn(`[Supabase] Warning/timeout incremental fetch ${tableName}:`, error);
       return [];
     }
 
     return (data || []) as T[];
   } catch (error) {
-    console.error(`Error incremental fetch ${tableName}:`, error);
+    console.warn(`[Supabase] Error incremental fetch ${tableName}:`, error);
     return [];
   }
 }
@@ -431,26 +481,36 @@ export async function hasCloudData(tableName: string): Promise<boolean> {
 
 // Fetch store settings
 // ✅ Uses getOwnerIdForInsert to fetch owner's store settings for cashiers
-export async function fetchStoreSettings(): Promise<StoreSettingsRow | null> {
+export async function fetchStoreSettings(timeoutMs: number = 3800): Promise<StoreSettingsRow | null> {
   // For reading, use owner ID so cashiers see their owner's settings
   const ownerId = await getOwnerIdForInsert();
   if (!ownerId) return null;
 
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return null;
+  }
+
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from('stores')
       .select('*')
       .eq('user_id', ownerId)
       .maybeSingle();
 
+    const { data, error } = await withTimeout(
+      Promise.resolve(query),
+      timeoutMs,
+      { data: null, error: new Error('Timeout fetching store settings') }
+    );
+
     if (error) {
-      console.error('Error fetching store settings:', error);
+      console.warn('[Supabase] Warning/timeout fetching store settings:', error);
       return null;
     }
 
     return data as StoreSettingsRow | null;
   } catch (error) {
-    console.error('Error fetching store settings:', error);
+    console.warn('[Supabase] Error fetching store settings:', error);
     return null;
   }
 }

@@ -65,18 +65,22 @@ import { UnitSettingsTab } from '@/components/products/UnitSettingsTab';
 import { DualUnitDisplay } from '@/components/products/DualUnitDisplay';
 import {
   loadProductsCloud,
+  loadProductsLocalFirst,
+  refreshProductsFromCloud,
   addProductCloud,
   updateProductCloud,
   deleteProductCloud,
   getStatus,
   Product
 } from '@/lib/cloud/products-cloud';
-import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { getCategoryNamesCloud, getCategoryNamesLocalFirst } from '@/lib/cloud/categories-cloud';
 import { useActionGuard } from '@/hooks/use-action-guard';
 import {
   fetchAllWarehouseStocksCloud,
-  WarehouseStock,
   loadWarehousesCloud,
+  loadWarehousesLocalFirst,
+  loadAllWarehouseStocksLocalFirst,
+  WarehouseStock,
   Warehouse
 } from '@/lib/cloud/warehouses-cloud';
 import { useImageUpload } from '@/hooks/use-image-upload';
@@ -392,23 +396,49 @@ export default function Products() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Load data from cloud
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  // Load data - Local-First (0ms instant display) + non-blocking background refresh
+  const loadData = useCallback(async (isBackground = false) => {
+    // 1. Step 1: Local-first - serve immediately from local cache without waiting for network
+    if (!isBackground) {
+      try {
+        const localProducts = await loadProductsLocalFirst();
+        const localCats = getCategoryNamesLocalFirst();
+        const localWarehouses = loadWarehousesLocalFirst();
+        const localStocks = loadAllWarehouseStocksLocalFirst();
+
+        if (localProducts.length > 0) {
+          setProducts(localProducts);
+          if (localCats.length > 0) setCategoryOptions(localCats);
+          if (localWarehouses.length > 0) setWarehouses(localWarehouses);
+          if (localStocks.length > 0) setWarehouseStocks(localStocks);
+          setIsLoading(false); // ✅ Products displayed in 0ms!
+        } else {
+          setIsLoading(true);
+        }
+      } catch (err) {
+        console.warn('[Products] Local-first load error:', err);
+      }
+    }
+
+    // 2. Step 2: Background refresh / sync from cloud
     try {
       const [cloudProducts, cloudCategories, allWarehouses, allWarehouseStocks] = await Promise.all([
-        loadProductsCloud(),
+        navigator.onLine ? refreshProductsFromCloud() : loadProductsCloud(),
         getCategoryNamesCloud(),
         loadWarehousesCloud(),
         fetchAllWarehouseStocksCloud()
       ]);
-      setProducts(cloudProducts);
-      setCategoryOptions(cloudCategories);
+
+      if (cloudProducts.length > 0) {
+        setProducts(cloudProducts);
+      }
+      if (cloudCategories.length > 0) {
+        setCategoryOptions(cloudCategories);
+      }
       setWarehouses(allWarehouses);
       setWarehouseStocks(allWarehouseStocks);
     } catch (error) {
-      console.error('Error loading products:', error);
-      toast.error(t('products.loadFailed'));
+      console.warn('Error refreshing products from cloud:', error);
     } finally {
       setIsLoading(false);
     }

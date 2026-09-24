@@ -2419,7 +2419,7 @@ export default function Settings() {
 
       {/* User Dialog */}
       <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw] rounded-2xl">
           <DialogHeader>
             <DialogTitle>{selectedUser ? t('settings.editUser') : t('settings.addNewUser')}</DialogTitle>
           </DialogHeader>
@@ -2572,7 +2572,7 @@ export default function Settings() {
 
       {/* Delete User Dialog */}
       <Dialog open={deleteUserDialogOpen} onOpenChange={setDeleteUserDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm w-[95vw] rounded-2xl">
           <DialogHeader>
             <DialogTitle>{t('common.confirmDelete')}</DialogTitle>
           </DialogHeader>

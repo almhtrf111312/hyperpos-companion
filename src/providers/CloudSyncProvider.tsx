@@ -86,7 +86,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     if (isOnline && wasOffline && user) {
       // الشبكة عادت - لكن نفحص الإنترنت الفعلي أولاً
       console.log('[CloudSync] Network restored, checking real internet access...');
-      checkRealInternetAccess(15000).then(hasInternet => {
+      checkRealInternetAccess(2500).then(hasInternet => {
         if (hasInternet) {
           console.log('[CloudSync] Real internet confirmed, starting sync...');
           showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
@@ -108,7 +108,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       if (!hasPendingOperations()) return;
       
       console.log('[CloudSync] Periodic retry: checking for pending operations...');
-      const hasInternet = await checkRealInternetAccess(15000);
+      const hasInternet = await checkRealInternetAccess(2500);
       
       if (hasInternet) {
         console.log('[CloudSync] Periodic retry: internet available, syncing...');
@@ -269,7 +269,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
     // Verify real internet access (network may be on but no internet)
     if (navigator.onLine) {
-      const hasInternet = await checkRealInternetAccess(8000);
+      const hasInternet = await checkRealInternetAccess(2500);
       setHasInternetAccess(hasInternet);
       if (!hasInternet) {
         showToast.error('لا يوجد اتصال إنترنت فعلي', { description: 'يتم استخدام البيانات المحلية' });
