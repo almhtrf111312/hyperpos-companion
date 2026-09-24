@@ -33,8 +33,10 @@ interface CloudSyncContextType {
 }
 
 // Export context for safe usage in components that may render outside provider
+// eslint-disable-next-line react-refresh/only-export-components
 export const CloudSyncContext = createContext<CloudSyncContextType | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCloudSyncContext = () => {
   const context = useContext(CloudSyncContext);
   if (!context) {
@@ -90,7 +92,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (hasInternet) {
           console.log('[CloudSync] Real internet confirmed, starting sync...');
           showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
-          syncNow();
+          syncNowRef.current?.();
         } else {
           console.log('[CloudSync] Network connected but no real internet access, will retry later');
           showToast.error('متصل بالشبكة لكن لا يوجد إنترنت', { description: 'سيتم إعادة المحاولة كل 30 دقيقة' });
@@ -112,7 +114,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       
       if (hasInternet) {
         console.log('[CloudSync] Periodic retry: internet available, syncing...');
-        syncNow();
+        syncNowRef.current?.();
       } else {
         console.log('[CloudSync] Periodic retry: still no internet, will try again in 30 min');
       }
@@ -142,33 +144,6 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     keysToRemove.forEach(key => localStorage.removeItem(key));
     console.log(`[CloudSync] Cleared ${keysToRemove.length} user-specific localStorage keys`);
   }, []);
-
-  // Initialize cloud sync when user is authenticated
-  useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      setCurrentUserId(null);
-      setIsReady(true);
-      return;
-    }
-
-    // Check if user changed - clear old data
-    const lastUserId = localStorage.getItem(LAST_USER_KEY);
-    if (lastUserId && lastUserId !== user.id) {
-      console.log('[CloudSync] User changed, clearing old localStorage data + IndexedDB');
-      clearUserLocalStorage();
-      // ✅ مسح IndexedDB عند تغيير المستخدم
-      import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
-        clearProductsIDB();
-        console.log('[CloudSync] Cleared IndexedDB products cache on user change');
-      });
-    }
-    localStorage.setItem(LAST_USER_KEY, user.id);
-
-    setCurrentUserId(user.id);
-    initializeCloudData();
-  }, [user, authLoading]);
 
   const initializeCloudData = useCallback(async () => {
     if (!user) return;
@@ -260,6 +235,33 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     }
   }, [user]);
 
+  // Initialize cloud sync when user is authenticated
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      setCurrentUserId(null);
+      setIsReady(true);
+      return;
+    }
+
+    // Check if user changed - clear old data
+    const lastUserId = localStorage.getItem(LAST_USER_KEY);
+    if (lastUserId && lastUserId !== user.id) {
+      console.log('[CloudSync] User changed, clearing old localStorage data + IndexedDB');
+      clearUserLocalStorage();
+      // ✅ مسح IndexedDB عند تغيير المستخدم
+      import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
+        clearProductsIDB();
+        console.log('[CloudSync] Cleared IndexedDB products cache on user change');
+      });
+    }
+    localStorage.setItem(LAST_USER_KEY, user.id);
+
+    setCurrentUserId(user.id);
+    initializeCloudData();
+  }, [user, authLoading, clearUserLocalStorage, initializeCloudData]);
+
   const syncNow = useCallback(async () => {
     if (!user || isSyncing) return;
     if (isPaused) {
@@ -293,16 +295,16 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (operation.type === 'invoice_refund') processedRefund = true;
         else processedNonRefund = true;
         if (operation.type === 'debt_sale_bundle') {
-          return await processDebtSaleBundleFromQueue(operation.data as Parameters<typeof processDebtSaleBundleFromQueue>[0]);
+          return await processDebtSaleBundleFromQueue((operation.data as unknown) as Parameters<typeof processDebtSaleBundleFromQueue>[0]);
         }
         if (operation.type === 'invoice_create') {
-          return await processCashSaleBundleFromQueue(operation.data as Parameters<typeof processCashSaleBundleFromQueue>[0]);
+          return await processCashSaleBundleFromQueue((operation.data as unknown) as Parameters<typeof processCashSaleBundleFromQueue>[0]);
         }
         if (operation.type === 'quick_purchase') {
-          return await processQuickPurchaseFromQueue(operation.data as Parameters<typeof processQuickPurchaseFromQueue>[0]);
+          return await processQuickPurchaseFromQueue((operation.data as unknown) as Parameters<typeof processQuickPurchaseFromQueue>[0]);
         }
         if (operation.type === 'purchase_invoice') {
-          return await processPurchaseInvoiceFromQueue(operation.data as Parameters<typeof processPurchaseInvoiceFromQueue>[0]);
+          return await processPurchaseInvoiceFromQueue((operation.data as unknown) as Parameters<typeof processPurchaseInvoiceFromQueue>[0]);
         }
         if (operation.type === 'invoice_refund') {
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');

@@ -1,0 +1,123 @@
+name: Auto Clean Up
+
+on:
+  schedule:
+    # Run every day at 02:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      retain_count:
+        description: 'Number of latest runs to retain per workflow'
+        required: true
+        default: '30'
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  clean-old-runs:
+    name: Clean Old Workflow Runs and Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cleanup Old Runs for PC & Android
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const retainCount = parseInt('${{ inputs.retain_count || 30 }}', 10) || 30;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            core.info(`Starting Auto Clean Up (Retaining latest ${retainCount} runs per workflow)`);
+
+            // Fetch all workflows in the repository
+            let workflows = [];
+            try {
+              const res = await github.rest.actions.listRepoWorkflows({
+                owner,
+                repo,
+                per_page: 100
+              });
+              workflows = res.data.workflows || [];
+            } catch (err) {
+              core.error(`Failed to list workflows: ${err.message}`);
+              return;
+            }
+
+            core.info(`Found ${workflows.length} workflows in repository: ${workflows.map(w => w.name).join(', ')}`);
+
+            for (const workflow of workflows) {
+              core.info(`\n==================================================`);
+              core.info(`Processing workflow: "${workflow.name}" (ID: ${workflow.id}, Path: ${workflow.path})`);
+
+              let runs = [];
+              try {
+                runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                  owner,
+                  repo,
+                  workflow_id: workflow.id,
+                  per_page: 100
+                });
+              } catch (err) {
+                core.warning(`Failed to fetch runs for "${workflow.name}": ${err.message}`);
+                continue;
+              }
+
+              // Exclude active running or in_progress runs so we never disrupt current builds
+              const finishedRuns = runs.filter(r => r.status === 'completed' || r.status === 'cancelled' || r.status === 'failure' || r.status === 'timed_out');
+              
+              // Sort descending by created_at (newest first)
+              finishedRuns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+              core.info(`Total finished runs: ${finishedRuns.length}`);
+
+              if (finishedRuns.length <= retainCount) {
+                core.info(`Finished runs count (${finishedRuns.length}) is within the retain limit (${retainCount}). Nothing to delete.`);
+                continue;
+              }
+
+              const toKeep = finishedRuns.slice(0, retainCount);
+              const toDelete = finishedRuns.slice(retainCount);
+
+              core.info(`Keeping the latest ${toKeep.length} runs (Newest: #${toKeep[0]?.run_number}, Oldest kept: #${toKeep[toKeep.length - 1]?.run_number})`);
+              core.info(`Deleting ${toDelete.length} old runs to free storage...`);
+
+              for (const run of toDelete) {
+                try {
+                  core.info(`Deleting run #${run.run_number} (ID: ${run.id}, Date: ${run.created_at})`);
+                  await github.rest.actions.deleteWorkflowRun({
+                    owner,
+                    repo,
+                    run_id: run.id
+                  });
+                } catch (delErr) {
+                  core.warning(`Failed to delete run #${run.run_number} (${run.id}): ${delErr.message}`);
+                }
+              }
+            }
+
+            core.info(`\n==================================================`);
+            core.info(`Cleaning remaining expired or orphaned artifacts...`);
+            try {
+              const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+                owner,
+                repo,
+                per_page: 100
+              });
+
+              for (const artifact of artifacts) {
+                if (artifact.expired) {
+                  core.info(`Deleting expired artifact: ${artifact.name} (ID: ${artifact.id})`);
+                  await github.rest.actions.deleteArtifact({
+                    owner,
+                    repo,
+                    artifact_id: artifact.id
+                  }).catch(e => core.warning(`Could not delete artifact ${artifact.id}: ${e.message}`));
+                }
+              }
+            } catch (artErr) {
+              core.info(`Artifact cleanup completed with note: ${artErr.message}`);
+            }
+
+            core.info(`\nAuto Clean Up completed successfully!`);

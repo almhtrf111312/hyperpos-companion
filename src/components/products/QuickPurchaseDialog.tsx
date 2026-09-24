@@ -26,6 +26,9 @@ import {
   Barcode
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseSupabase = SupabaseClient<any, 'public', any>;
 import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { checkRealInternetAccess } from '@/hooks/use-network-status';
@@ -57,7 +60,7 @@ interface ExistingProductOption {
 }
 
 export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurchaseDialogProps) {
-  const { t, tDynamic } = useLanguage();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   // Core Product Info
@@ -232,11 +235,11 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
   // Submit Handler
   const handleSubmit = async () => {
     if (!productName.trim()) {
-      toast.error(tDynamic('products.nameRequired', 'يرجى إدخال اسم المنتج'));
+      toast.error(language === 'en' ? 'Product name is required' : 'يرجى إدخال اسم المنتج');
       return;
     }
     if (!costPrice || costNum < 0) {
-      toast.error(tDynamic('products.costPriceRequired', 'يرجى تحديد سعر الشراء بشكل صحيح'));
+      toast.error(language === 'en' ? 'Please specify a valid cost price' : 'يرجى تحديد سعر الشراء بشكل صحيح');
       return;
     }
 
@@ -359,7 +362,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           };
         }
 
-        await (supabase.from('products') as any).update(updates).eq('id', targetProductId);
+        await (supabase as unknown as LooseSupabase).from('products').update(updates).eq('id', targetProductId);
       } else {
         // Create brand new product with all rich fields directly!
         const createdProduct = await addProductCloud({
@@ -596,7 +599,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 <div className="flex gap-1.5">
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger className="h-10 text-sm flex-1">
-                      <SelectValue placeholder={tDynamic('products.selectCategory', 'اختر الفئة')} />
+                      <SelectValue placeholder={t('products.category') || 'اختر الفئة'} />
                     </SelectTrigger>
                     <SelectContent className="max-h-56">
                       {categories.map((cat) => (
@@ -694,7 +697,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
               {/* Grand Total Indicator */}
               <div className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border">
                 <span className="text-xs text-muted-foreground font-medium">
-                  {tDynamic('purchases.invoiceTotal', 'إجمالي تكلفة الشراء')}:
+                  {(t('purchases.totalAmount') || 'إجمالي تكلفة الشراء')}:
                 </span>
                 <span className="text-base font-bold font-mono text-primary">
                   ${totalCost.toFixed(2)}
