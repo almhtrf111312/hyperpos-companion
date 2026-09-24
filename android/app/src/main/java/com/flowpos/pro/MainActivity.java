@@ -60,7 +60,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
+    public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         try {
             if (this.bridge != null && this.bridge.getWebView() != null) {
