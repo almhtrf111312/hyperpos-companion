@@ -141,7 +141,7 @@ export default function Reports() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadCloudData();
@@ -631,7 +631,7 @@ export default function Reports() {
         }
         case 'purchases': {
           const purchases = await loadPurchaseInvoicesCloud();
-          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.createdAt), dateRange.from, dateRange.to));
+          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.created_at || p.invoice_date), dateRange.from, dateRange.to));
           if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات في الفترة المحددة للتصدير'); return; }
           await exportToPDF({
             title: 'تقرير فواتير المشتريات',
@@ -643,21 +643,19 @@ export default function Reports() {
               { header: 'رقم الفاتورة', key: 'invoiceNumber' },
               { header: 'المورد', key: 'supplierName' },
               { header: 'التاريخ', key: 'date' },
-              { header: 'طريقة الدفع', key: 'paymentType' },
-              { header: 'الإجمالي', key: 'total' },
-              { header: 'المدفوع', key: 'paid' },
-              { header: 'المتبقي', key: 'remaining' },
+              { header: 'الإجمالي المتوقع', key: 'expectedTotal' },
+              { header: 'الإجمالي الفعلي', key: 'actualTotal' },
+              { header: 'عدد الأصناف', key: 'itemsCount' },
               { header: 'الحالة', key: 'status' },
             ],
             data: filteredPurchases.map(p => ({
-              invoiceNumber: p.invoiceNumber || p.id,
-              supplierName: p.supplierName || 'مورد عام',
-              date: toLocalDateString(p.createdAt),
-              paymentType: p.paymentType === 'cash' ? 'نقدي' : p.paymentType === 'debt' ? 'آجل' : p.paymentType,
-              total: formatCurrency(p.totalAmount || 0),
-              paid: formatCurrency(p.paidAmount || 0),
-              remaining: formatCurrency((p.totalAmount || 0) - (p.paidAmount || 0)),
-              status: p.status === 'received' ? 'مستلم' : p.status === 'pending' ? 'معلق' : p.status,
+              invoiceNumber: p.invoice_number || p.id,
+              supplierName: p.supplier_name || 'مورد عام',
+              date: toLocalDateString(p.created_at || p.invoice_date),
+              expectedTotal: formatCurrency(p.expected_grand_total || 0),
+              actualTotal: formatCurrency(p.actual_grand_total || p.expected_grand_total || 0),
+              itemsCount: p.actual_items_count || p.expected_items_count || 0,
+              status: p.status === 'finalized' ? 'معتمدة ومكتملة' : p.status === 'reconciled' ? 'تمت المطابقة' : 'مسودة',
             })),
             fileName: `purchases-${dateRange.from}-to-${dateRange.to}.pdf`,
           });
@@ -681,9 +679,9 @@ export default function Reports() {
             ],
             data: cloudDebts.map(d => ({
               customerName: d.customerName || 'عميل',
-              amount: formatCurrency(d.amount || 0),
-              paid: formatCurrency(d.paidAmount || 0),
-              remaining: formatCurrency((d.amount || 0) - (d.paidAmount || 0)),
+              amount: formatCurrency(d.totalDebt || 0),
+              paid: formatCurrency(d.totalPaid || 0),
+              remaining: formatCurrency(d.remainingDebt || (d.totalDebt || 0) - (d.totalPaid || 0)),
               dueDate: d.dueDate || '-',
               status: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : 'مستحق',
             })),
@@ -892,7 +890,7 @@ export default function Reports() {
         }
         case 'purchases': {
           const purchases = await loadPurchaseInvoicesCloud();
-          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.createdAt), dateRange.from, dateRange.to));
+          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.created_at || p.invoice_date), dateRange.from, dateRange.to));
           if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات للتصدير'); return; }
           await exportToExcel({
             title: 'تقرير فواتير المشتريات',
@@ -901,21 +899,19 @@ export default function Reports() {
               { header: 'رقم الفاتورة', key: 'invoiceNumber', width: 18 },
               { header: 'المورد', key: 'supplierName', width: 22 },
               { header: 'التاريخ', key: 'date', width: 15 },
-              { header: 'طريقة الدفع', key: 'paymentType', width: 15 },
-              { header: 'الإجمالي', key: 'total', width: 15 },
-              { header: 'المدفوع', key: 'paid', width: 15 },
-              { header: 'المتبقي', key: 'remaining', width: 15 },
-              { header: 'الحالة', key: 'status', width: 15 },
+              { header: 'الإجمالي المتوقع', key: 'expectedTotal', width: 16 },
+              { header: 'الإجمالي الفعلي', key: 'actualTotal', width: 16 },
+              { header: 'عدد الأصناف', key: 'itemsCount', width: 14 },
+              { header: 'الحالة', key: 'status', width: 16 },
             ],
             data: filteredPurchases.map(p => ({
-              invoiceNumber: p.invoiceNumber || p.id,
-              supplierName: p.supplierName || 'مورد عام',
-              date: toLocalDateString(p.createdAt),
-              paymentType: p.paymentType,
-              total: p.totalAmount || 0,
-              paid: p.paidAmount || 0,
-              remaining: (p.totalAmount || 0) - (p.paidAmount || 0),
-              status: p.status,
+              invoiceNumber: p.invoice_number || p.id,
+              supplierName: p.supplier_name || 'مورد عام',
+              date: toLocalDateString(p.created_at || p.invoice_date),
+              expectedTotal: p.expected_grand_total || 0,
+              actualTotal: p.actual_grand_total || p.expected_grand_total || 0,
+              itemsCount: p.actual_items_count || p.expected_items_count || 0,
+              status: p.status === 'finalized' ? 'معتمدة ومكتملة' : p.status === 'reconciled' ? 'تمت المطابقة' : 'مسودة',
             })),
             fileName: `purchases-${dateRange.from}.xlsx`,
           });
@@ -936,11 +932,11 @@ export default function Reports() {
             ],
             data: cloudDebts.map(d => ({
               customerName: d.customerName || 'عميل',
-              amount: d.amount || 0,
-              paid: d.paidAmount || 0,
-              remaining: (d.amount || 0) - (d.paidAmount || 0),
+              amount: d.totalDebt || 0,
+              paid: d.totalPaid || 0,
+              remaining: d.remainingDebt || (d.totalDebt || 0) - (d.totalPaid || 0),
               dueDate: d.dueDate || '-',
-              status: d.status,
+              status: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : 'مستحق',
             })),
             fileName: `debts-${dateRange.to}.xlsx`,
           });

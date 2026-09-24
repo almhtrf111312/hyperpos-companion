@@ -75,7 +75,9 @@ export const getCurrentUserId = (): string | null => {
         }
       }
     }
-  } catch {}
+  } catch {
+    /* ignore */
+  }
   return null;
 };
 
@@ -91,7 +93,9 @@ export const getCurrentUserRole = async (): Promise<UserRole | null> => {
         userId = data.session.user.id;
         setCurrentUserId(userId);
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
   if (!userId) return null;
 
@@ -130,7 +134,9 @@ export const getOwnerIdForInsert = async (): Promise<string | null> => {
         userId = data.session.user.id;
         setCurrentUserId(userId);
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
   if (!userId) return null;
 
@@ -229,11 +235,13 @@ export async function fetchFromSupabase<T = unknown>(
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
     }
 
-    const { data, error } = await withTimeout(
+    const res = await withTimeout(
       Promise.resolve(query),
       timeoutMs,
-      { data: null, error: new Error(`Timeout fetching ${tableName}`) }
+      { data: null, error: new Error(`Timeout fetching ${tableName}`) } as any
     );
+    const data = res?.data;
+    const error = res?.error;
 
     if (error) {
       console.warn(`[Supabase] Warning/timeout fetching ${tableName}:`, error);
@@ -438,11 +446,13 @@ export async function fetchIncrementalFromSupabase<T = unknown>(
       query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
     }
 
-    const { data, error } = await withTimeout(
+    const res = await withTimeout(
       Promise.resolve(query),
       timeoutMs,
-      { data: null, error: new Error(`Timeout incremental fetching ${tableName}`) }
+      { data: null, error: new Error(`Timeout incremental fetching ${tableName}`) } as any
     );
+    const data = res?.data;
+    const error = res?.error;
 
     if (error) {
       console.warn(`[Supabase] Warning/timeout incremental fetch ${tableName}:`, error);
@@ -497,11 +507,13 @@ export async function fetchStoreSettings(timeoutMs: number = 3800): Promise<Stor
       .eq('user_id', ownerId)
       .maybeSingle();
 
-    const { data, error } = await withTimeout(
+    const res = await withTimeout(
       Promise.resolve(query),
       timeoutMs,
-      { data: null, error: new Error('Timeout fetching store settings') }
+      { data: null, error: new Error('Timeout fetching store settings') } as any
     );
+    const data = res?.data;
+    const error = res?.error;
 
     if (error) {
       console.warn('[Supabase] Warning/timeout fetching store settings:', error);
@@ -532,7 +544,7 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
 
     if (existing) {
       // Merge sync_settings if provided so we never wipe existing keys (like customFields, productFieldsConfig)
-      let payloadToSave = { ...settings };
+      const payloadToSave: Record<string, unknown> = { ...settings };
       if (settings.sync_settings && typeof settings.sync_settings === 'object') {
         const existingSync = (existing.sync_settings as Record<string, unknown>) || {};
         payloadToSave.sync_settings = {

@@ -270,11 +270,13 @@ async function fetchProductsInChunks(): Promise<CloudProduct[]> {
       .order('created_at', { ascending: false })
       .range(from, from + CHUNK_SIZE - 1);
 
-    const { data, error } = await withTimeout(
+    const res = await withTimeout(
       Promise.resolve(query),
       4000,
-      { data: null, error: new Error('Timeout fetching products chunk') }
+      { data: null, error: new Error('Timeout fetching products chunk') } as any
     );
+    const data = res?.data;
+    const error = res?.error;
 
     if (error || !data || data.length === 0) {
       break;

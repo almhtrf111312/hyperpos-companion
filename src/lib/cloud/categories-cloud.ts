@@ -322,11 +322,12 @@ export const getCategoryNamesCloud = async (): Promise<string[]> => {
         .not('category', 'is', null)
         .not('archived', 'eq', true);
 
-      const { data } = await withTimeout(
+      const res = await withTimeout(
         Promise.resolve(query),
         2500,
-        { data: null, error: null }
+        { data: null, error: null } as any
       );
+      const data = res?.data;
       
       if (data) {
         const productCategories = [...new Set(data.map(p => (p.category || '').trim()).filter(Boolean))];

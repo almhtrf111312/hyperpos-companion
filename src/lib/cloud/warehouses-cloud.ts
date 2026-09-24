@@ -516,7 +516,7 @@ export const completeStockTransferCloud = async (transferId: string): Promise<bo
     return false;
   }
 
-  const items = (transfer as any).stock_transfer_items as StockTransferItem[];
+  const items = (transfer as { stock_transfer_items?: StockTransferItem[] }).stock_transfer_items || [];
 
   // ✅ معالجة كل منتج: خصم من المخزون الرئيسي وإضافة لمستودع الوجهة
   for (const item of items) {
@@ -635,11 +635,13 @@ export const fetchAllWarehouseStocksCloud = async (): Promise<WarehouseStock[]> 
       .from('warehouse_stock')
       .select('*');
 
-    const { data, error } = await withTimeout(
+    const res = await withTimeout(
       Promise.resolve(query),
       3000,
-      { data: null, error: new Error('Timeout fetching warehouse stock') }
+      { data: null, error: new Error('Timeout fetching warehouse stock') } as any
     );
+    const data = res?.data;
+    const error = res?.error;
 
     if (error || !data) {
       console.warn('[WarehouseStock] Fetch all error/timeout, serving from local cache:', error);
@@ -747,7 +749,7 @@ export const completeReturnTransferCloud = async (transferId: string): Promise<b
     return false;
   }
 
-  const items = (transfer as any).stock_transfer_items as StockTransferItem[];
+  const items = (transfer as { stock_transfer_items?: StockTransferItem[] }).stock_transfer_items || [];
 
   for (const item of items) {
     // 1. Deduct from distributor's warehouse_stock

@@ -81,7 +81,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setShowItemForm(false);
       clearInvoiceImage();
     }
-  }, [open]);
+  }, [open, clearInvoiceImage]);
 
   const handleCreateInvoice = async () => {
     if (!invoiceNumber || !supplierName) {
@@ -225,7 +225,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
               orderNotes: item.order_notes,
               author: item.author,
               publisher: item.publisher,
-              trackByUnit: item.track_by_unit as any,
+              trackByUnit: item.track_by_unit as 'piece' | 'bulk' | undefined,
               bulkUnit: item.bulk_unit,
               smallUnit: item.small_unit,
               conversionFactor: item.conversion_factor,

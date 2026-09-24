@@ -293,16 +293,16 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (operation.type === 'invoice_refund') processedRefund = true;
         else processedNonRefund = true;
         if (operation.type === 'debt_sale_bundle') {
-          return await processDebtSaleBundleFromQueue(operation.data as { localId: string; bundle: any });
+          return await processDebtSaleBundleFromQueue(operation.data as Parameters<typeof processDebtSaleBundleFromQueue>[0]);
         }
         if (operation.type === 'invoice_create') {
-          return await processCashSaleBundleFromQueue(operation.data as { operationId?: string; bundle: any });
+          return await processCashSaleBundleFromQueue(operation.data as Parameters<typeof processCashSaleBundleFromQueue>[0]);
         }
         if (operation.type === 'quick_purchase') {
-          return await processQuickPurchaseFromQueue(operation.data as any);
+          return await processQuickPurchaseFromQueue(operation.data as Parameters<typeof processQuickPurchaseFromQueue>[0]);
         }
         if (operation.type === 'purchase_invoice') {
-          return await processPurchaseInvoiceFromQueue(operation.data as any);
+          return await processPurchaseInvoiceFromQueue(operation.data as Parameters<typeof processPurchaseInvoiceFromQueue>[0]);
         }
         if (operation.type === 'invoice_refund') {
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');

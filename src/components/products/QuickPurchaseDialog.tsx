@@ -53,11 +53,11 @@ interface ExistingProductOption {
   min_stock_level?: number;
   expiry_date?: string;
   image_url?: string;
-  custom_fields?: Record<string, any>;
+  custom_fields?: Record<string, unknown>;
 }
 
 export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurchaseDialogProps) {
-  const { t } = useLanguage();
+  const { t, tDynamic } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   // Core Product Info
@@ -102,7 +102,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     handleBase64Image,
     handleFileInput,
     clearImage,
-    setImageValue
+    setInitialImage: setImageValue
   } = useImageUpload();
 
   // Load Categories on mount / open
@@ -138,7 +138,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
       setShowCameraPreview(false);
       clearImage();
     }
-  }, [open]);
+  }, [open, clearImage]);
 
   // Live search for existing products by name or barcode
   useEffect(() => {
@@ -232,11 +232,11 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
   // Submit Handler
   const handleSubmit = async () => {
     if (!productName.trim()) {
-      toast.error(t('products.nameRequired') || 'يرجى إدخال اسم المنتج');
+      toast.error(tDynamic('products.nameRequired', 'يرجى إدخال اسم المنتج'));
       return;
     }
     if (!costPrice || costNum < 0) {
-      toast.error(t('products.costPriceRequired') || 'يرجى تحديد سعر الشراء بشكل صحيح');
+      toast.error(tDynamic('products.costPriceRequired', 'يرجى تحديد سعر الشراء بشكل صحيح'));
       return;
     }
 
@@ -340,7 +340,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           added_at: new Date().toISOString(),
         });
 
-        const updates: Record<string, any> = {
+        const updates: Record<string, unknown> = {
           quantity: newQty,
           cost_price: avgCost,
           purchase_history: purchaseHistory,
@@ -354,12 +354,12 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
         if (imageUrl) updates.image_url = imageUrl;
         if (wholesaleNum > 0) {
           updates.custom_fields = {
-            ...(selectedProduct?.custom_fields || {}),
+            ...((selectedProduct?.custom_fields as Record<string, unknown>) || {}),
             wholesalePrice: wholesaleNum,
           };
         }
 
-        await supabase.from('products').update(updates).eq('id', targetProductId);
+        await (supabase.from('products') as any).update(updates).eq('id', targetProductId);
       } else {
         // Create brand new product with all rich fields directly!
         const createdProduct = await addProductCloud({
@@ -596,7 +596,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 <div className="flex gap-1.5">
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger className="h-10 text-sm flex-1">
-                      <SelectValue placeholder={t('products.selectCategory') || 'اختر الفئة'} />
+                      <SelectValue placeholder={tDynamic('products.selectCategory', 'اختر الفئة')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-56">
                       {categories.map((cat) => (
@@ -694,7 +694,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
               {/* Grand Total Indicator */}
               <div className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border">
                 <span className="text-xs text-muted-foreground font-medium">
-                  {t('purchases.invoiceTotal') || 'إجمالي تكلفة الشراء'}:
+                  {tDynamic('purchases.invoiceTotal', 'إجمالي تكلفة الشراء')}:
                 </span>
                 <span className="text-base font-bold font-mono text-primary">
                   ${totalCost.toFixed(2)}

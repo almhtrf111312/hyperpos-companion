@@ -978,7 +978,7 @@ export default function Products() {
   const openBarcodeScannerForForm = () => {
     setScanTarget('form');
     // حفظ scanTarget في localStorage لاستعادته بعد Activity Recreation
-    try { localStorage.setItem('hyperpos_scan_target', 'form'); } catch { }
+    try { localStorage.setItem('hyperpos_scan_target', 'form'); } catch { /* ignore */ }
     setScannerOpen(true);
   };
 
@@ -1141,7 +1141,7 @@ export default function Products() {
                 className="h-10 w-10 flex-shrink-0"
                 onClick={() => {
                   setScanTarget('search');
-                  try { localStorage.setItem('hyperpos_scan_target', 'search'); } catch { }
+                  try { localStorage.setItem('hyperpos_scan_target', 'search'); } catch { /* ignore */ }
                   setScannerOpen(true);
                 }}
               >
