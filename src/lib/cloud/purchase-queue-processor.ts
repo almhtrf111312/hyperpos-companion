@@ -5,7 +5,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { finalizePurchaseInvoiceCloud } from './purchase-invoices-cloud';
-import { getOwnerIdForInsert } from '@/lib/supabase-store';
+import { getOwnerIdForInsert, filterTablePayload } from '@/lib/supabase-store';
+import { extractErrorMessage } from '@/lib/sync-queue';
 
 interface QuickPurchaseData {
   productName: string;
@@ -41,8 +42,10 @@ interface PurchaseInvoiceData {
 }
 
 export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    throw new Error('المستخدم غير مسجل الدخول لمزامنة مشتريات الطابور');
+  }
 
   // استخدام owner_id لضمان عزل الصلاحيات
   const ownerId = await getOwnerIdForInsert() || user.id;
@@ -74,11 +77,15 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
   }
 
   if (targetProductId) {
-    const { data: existingProd } = await supabase
+    const { data: existingProd, error: fetchErr } = await supabase
       .from('products')
       .select('quantity, cost_price, purchase_history')
       .eq('id', targetProductId)
       .single();
+
+    if (fetchErr) {
+      throw new Error(`تعذر جلب المنتج للتحديث: ${extractErrorMessage(fetchErr)}`);
+    }
 
     const curQty = existingProd?.quantity || 0;
     const curCost = Number(existingProd?.cost_price) || 0;
@@ -125,128 +132,161 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       updates.custom_fields = { wholesalePrice: data.wholesalePrice };
     }
 
-    await supabase.from('products').update(updates as Parameters<ReturnType<typeof supabase.from>['update']>[0]).eq('id', targetProductId);
+    const cleanUpdates = filterTablePayload('products', updates as unknown as Record<string, unknown>);
+    const { error: updErr } = await supabase
+      .from('products')
+      .update(cleanUpdates as Parameters<ReturnType<typeof supabase.from>['update']>[0])
+      .eq('id', targetProductId);
+
+    if (updErr) {
+      throw new Error(`فشل تحديث المنتج: ${extractErrorMessage(updErr)}`);
+    }
   } else {
     // Insert new product
-    const { data: newProd } = await supabase
-      .from('products')
-      .insert({
-        user_id: ownerId,
-        name: data.productName,
-        barcode: data.barcode || null,
-        category: data.category || null,
-        cost_price: data.costPrice,
-        sale_price: data.salePrice || data.costPrice,
+    const newProdPayload = filterTablePayload('products', {
+      user_id: ownerId,
+      name: data.productName,
+      barcode: data.barcode || null,
+      category: data.category || null,
+      cost_price: data.costPrice,
+      sale_price: data.salePrice || data.costPrice,
+      quantity: data.quantity,
+      min_stock_level: data.minStockLevel || 5,
+      expiry_date: data.expiryDate || null,
+      image_url: data.imageUrl || null,
+      custom_fields: data.wholesalePrice ? { wholesalePrice: data.wholesalePrice } : null,
+      purchase_history: [{
+        invoice_id: invoiceNumber,
+        invoice_number: invoiceNumber,
+        supplier_name: data.productName,
+        date: today,
         quantity: data.quantity,
-        min_stock_level: data.minStockLevel || 5,
-        expiry_date: data.expiryDate || null,
-        image_url: data.imageUrl || null,
-        custom_fields: data.wholesalePrice ? { wholesalePrice: data.wholesalePrice } : null,
-        purchase_history: [{
-          invoice_id: invoiceNumber,
-          invoice_number: invoiceNumber,
-          supplier_name: data.productName,
-          date: today,
-          quantity: data.quantity,
-          cost_price: data.costPrice,
-          added_at: new Date().toISOString(),
-        }]
-      })
+        cost_price: data.costPrice,
+        added_at: new Date().toISOString(),
+      }]
+    });
+
+    const { data: newProd, error: prodErr } = await supabase
+      .from('products')
+      .insert(newProdPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0])
       .select('id')
       .single();
 
-    if (newProd) targetProductId = newProd.id;
+    if (prodErr || !newProd) {
+      throw new Error(`فشل إنشاء منتج جديد للمشتريات: ${extractErrorMessage(prodErr)}`);
+    }
+
+    targetProductId = newProd.id;
   }
 
   // 2. Create invoice
+  const invoicePayload = filterTablePayload('purchase_invoices', {
+    user_id: ownerId,
+    invoice_number: invoiceNumber,
+    supplier_name: data.productName,
+    invoice_date: today,
+    expected_items_count: 1,
+    expected_total_quantity: data.quantity,
+    expected_grand_total: data.totalCost,
+    actual_items_count: 1,
+    actual_total_quantity: data.quantity,
+    actual_grand_total: data.totalCost,
+    status: 'finalized',
+    image_url: data.imageUrl || null,
+  });
+
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
-    .insert({
-      user_id: ownerId,
-      invoice_number: invoiceNumber,
-      supplier_name: data.productName,
-      invoice_date: today,
-      expected_items_count: 1,
-      expected_total_quantity: data.quantity,
-      expected_grand_total: data.totalCost,
-      actual_items_count: 1,
-      actual_total_quantity: data.quantity,
-      actual_grand_total: data.totalCost,
-      status: 'finalized',
-      image_url: data.imageUrl || null,
-    })
+    .insert(invoicePayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0])
     .select()
     .single();
 
-  if (invError) throw invError;
+  if (invError || !invoice) {
+    throw new Error(`فشل إنشاء فاتورة الشراء: ${extractErrorMessage(invError)}`);
+  }
 
   // 3. Create invoice item
+  const itemPayload = filterTablePayload('purchase_invoice_items', {
+    invoice_id: invoice.id,
+    product_id: targetProductId || null,
+    product_name: data.productName,
+    barcode: data.barcode || null,
+    category: data.category || null,
+    quantity: data.quantity,
+    cost_price: data.costPrice,
+    sale_price: data.salePrice || data.costPrice,
+    total_cost: data.totalCost,
+  });
+
   const { error: itemError } = await supabase
     .from('purchase_invoice_items')
-    .insert({
-      invoice_id: invoice.id,
-      product_id: targetProductId || null,
-      product_name: data.productName,
-      barcode: data.barcode || null,
-      category: data.category || null,
-      quantity: data.quantity,
-      cost_price: data.costPrice,
-      sale_price: data.salePrice || data.costPrice,
-      total_cost: data.totalCost,
-    });
+    .insert(itemPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0]);
 
-  if (itemError) throw itemError;
+  if (itemError) {
+    throw new Error(`فشل حفظ بند فاتورة الشراء: ${extractErrorMessage(itemError)}`);
+  }
 
   return true;
 }
 
 export async function processPurchaseInvoiceFromQueue(data: PurchaseInvoiceData): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    throw new Error('المستخدم غير مسجل الدخول لمزامنة فاتورة المشتريات');
+  }
 
   // استخدام owner_id لضمان عزل الصلاحيات
   const ownerId = await getOwnerIdForInsert() || user.id;
 
   // Create the invoice
+  const invPayload = filterTablePayload('purchase_invoices', {
+    user_id: ownerId,
+    invoice_number: data.invoiceNumber,
+    supplier_name: data.supplierName,
+    supplier_company: data.supplierCompany || null,
+    invoice_date: data.invoiceDate,
+    expected_items_count: 0,
+    expected_total_quantity: 0,
+    expected_grand_total: 0,
+    actual_items_count: data.items.length,
+    actual_total_quantity: data.items.reduce((s, i) => s + i.quantity, 0),
+    actual_grand_total: data.items.reduce((s, i) => s + i.quantity * i.cost_price, 0),
+    status: 'draft',
+    notes: data.notes || null,
+    image_url: data.imageUrl || null,
+  });
+
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
-    .insert({
-      user_id: ownerId,
-      invoice_number: data.invoiceNumber,
-      supplier_name: data.supplierName,
-      supplier_company: data.supplierCompany || null,
-      invoice_date: data.invoiceDate,
-      expected_items_count: 0,
-      expected_total_quantity: 0,
-      expected_grand_total: 0,
-      actual_items_count: data.items.length,
-      actual_total_quantity: data.items.reduce((s, i) => s + i.quantity, 0),
-      actual_grand_total: data.items.reduce((s, i) => s + i.quantity * i.cost_price, 0),
-      status: 'draft',
-      notes: data.notes || null,
-      image_url: data.imageUrl || null,
-    })
+    .insert(invPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0])
     .select()
     .single();
 
-  if (invError) throw invError;
+  if (invError || !invoice) {
+    throw new Error(`فشل إنشاء فاتورة المشتريات: ${extractErrorMessage(invError)}`);
+  }
 
   // Add all items
   for (const item of data.items) {
+    const itemPayload = filterTablePayload('purchase_invoice_items', {
+      invoice_id: invoice.id,
+      product_name: item.product_name,
+      barcode: item.barcode || null,
+      category: item.category || null,
+      quantity: item.quantity,
+      cost_price: item.cost_price,
+      sale_price: item.sale_price || 0,
+      total_cost: item.quantity * item.cost_price,
+      product_id: item.product_id || null,
+    });
+
     const { error } = await supabase
       .from('purchase_invoice_items')
-      .insert({
-        invoice_id: invoice.id,
-        product_name: item.product_name,
-        barcode: item.barcode || null,
-        category: item.category || null,
-        quantity: item.quantity,
-        cost_price: item.cost_price,
-        sale_price: item.sale_price || 0,
-        total_cost: item.quantity * item.cost_price,
-        product_id: item.product_id || null,
-      });
-    if (error) throw error;
+      .insert(itemPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0]);
+
+    if (error) {
+      throw new Error(`فشل إضافة بند الفاتورة (${item.product_name}): ${extractErrorMessage(error)}`);
+    }
   }
 
   // Finalize (updates product stock/history)

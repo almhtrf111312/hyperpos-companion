@@ -32,7 +32,8 @@ export type OperationType =
   | 'debt_writeoff'
   | 'quick_purchase'    // Quick single-item purchase (bakery mode)
   | 'purchase_invoice'  // Full purchase invoice with items
-  | 'invoice_refund';   // Offline invoice refund (restores stock + reverses profit)
+  | 'invoice_refund'    // Offline invoice refund (restores stock + reverses profit)
+  | 'invoice_refund_partial'; // Offline partial invoice refund
 
 export interface QueuedOperation {
   id: string;
@@ -46,6 +47,32 @@ export interface QueuedOperation {
   errorClass?: 'retryable' | 'terminal';
   createdAt: string;
   lastAttempt?: string;
+}
+
+/**
+ * استخراج رسالة الخطأ الحقيقية من Supabase / PostgREST بدقة
+ * يمنع تحويل أخطاء الخادم إلى 'Unknown error'
+ */
+export function extractErrorMessage(error: unknown): string {
+  if (!error) return 'خطأ غير محدد';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) {
+    return error.message || 'خطأ غير معروف في المعالجة';
+  }
+  if (typeof error === 'object') {
+    const err = error as Record<string, unknown>;
+    const code = err.code ? `[كود: ${err.code}] ` : '';
+    const message = (err.message || err.error || err.error_description || '') as string;
+    const details = err.details ? ` (${err.details})` : '';
+    const hint = err.hint ? ` [تلميح: ${err.hint}]` : '';
+    const combined = `${code}${message}${details}${hint}`.trim();
+    if (combined) return combined;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }
 
 const isTerminalSyncError = (message: string): boolean => {
@@ -292,7 +319,7 @@ export const processQueue = async (
           failed++;
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = extractErrorMessage(error);
         const terminal = isTerminalSyncError(errorMessage);
         if (terminal) {
           const queue = loadQueue();
@@ -315,7 +342,7 @@ export const processQueue = async (
         }
         updateHistoryStatus(operation.id, 'failed', errorMessage);
         failed++;
-        console.error(`[SyncQueue] Failed: ${operation.id}`, error);
+        console.error(`[SyncQueue] Failed operation ${operation.id} (${operation.type}):`, errorMessage);
       }
     }
     

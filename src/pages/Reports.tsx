@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   BookOpen,
@@ -13,6 +13,8 @@ import {
   FileText,
   PieChart,
   ArrowUpRight,
+  ArrowRight,
+  RefreshCw,
   Wallet,
   Banknote,
   Receipt,
@@ -79,6 +81,7 @@ import { SalesDetailedReport } from '@/components/reports/SalesDetailedReport';
 import { StockDiscrepancyReport } from '@/components/reports/StockDiscrepancyReport';
 
 export default function Reports() {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const storeType = getCurrentStoreType();
@@ -116,9 +119,20 @@ export default function Reports() {
   const [cloudExpenses, setCloudExpenses] = useState<Expense[]>([]);
   const [cloudDebts, setCloudDebts] = useState<Debt[]>([]);
 
-  const loadCloudData = useCallback(async () => {
-    setIsLoading(true);
+  const loadCloudData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     try {
+      // Local-first products pre-population for instant 0ms report calculations
+      if (cloudProducts.length === 0) {
+        try {
+          const { loadProductsLocalFirst } = await import('@/lib/cloud/products-cloud');
+          const localProds = await loadProductsLocalFirst();
+          if (localProds && localProds.length > 0) setCloudProducts(localProds);
+        } catch {
+          // ignore local load error
+        }
+      }
+
       const [invoices, products, customers, partners, categories, expenses, debts] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
@@ -137,22 +151,21 @@ export default function Reports() {
       setCloudDebts(debts);
     } catch (error) {
       console.error('Error loading cloud data for reports:', error);
-      toast.error(t('reports.loadError'));
+      if (!isSilent) toast.error(t('reports.loadError'));
     } finally {
       setIsLoading(false);
     }
-  }, [t]);
+  }, [t, cloudProducts.length]);
 
   useEffect(() => {
     loadCloudData();
-    const handleUpdate = () => loadCloudData();
+    const handleUpdate = () => loadCloudData(true);
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-    window.addEventListener('focus', loadCloudData);
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
@@ -160,7 +173,6 @@ export default function Reports() {
       window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-      window.removeEventListener('focus', loadCloudData);
     };
   }, [loadCloudData]);
 
@@ -169,12 +181,12 @@ export default function Reports() {
 
   // Report Categories for modern, organized accounting navigation
   const REPORT_CATEGORIES = useMemo(() => [
-    { id: 'all', label: 'جميع التقارير' },
-    { id: 'sales', label: 'المبيعات والأرباح' },
-    { id: 'inventory', label: 'المخزون والجرد' },
-    { id: 'purchases', label: 'المشتريات والمصاريف' },
-    { id: 'debts', label: 'الديون والعملاء' },
-    { id: 'admin', label: 'تقارير إدارية' },
+    { id: 'sales', label: 'المبيعات والأرباح', icon: ShoppingCart },
+    { id: 'inventory', label: 'المخزون والجرد', icon: Package },
+    { id: 'purchases', label: 'المشتريات والمصاريف', icon: FileText },
+    { id: 'debts', label: 'الديون والعملاء', icon: Banknote },
+    { id: 'admin', label: 'تقارير إدارية', icon: Activity },
+    { id: 'all', label: 'جميع التقارير', icon: BarChart3 },
   ], []);
 
   // All available reports categorized and refined
@@ -1098,59 +1110,84 @@ export default function Reports() {
   return (
     <MainLayout>
       <div className="p-3 md:p-6 space-y-4 md:space-y-5">
-        {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-border p-4 md:p-5">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
-          <div className="relative flex items-center justify-between rtl:pr-14 md:rtl:pr-0">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-primary" />
+        {/* Executive Header with Quick Exit */}
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/80 p-4 md:p-5 shadow-sm">
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/pos')}
+                className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl border-border bg-background/80 hover:bg-muted text-foreground font-semibold text-xs shadow-sm transition-all shrink-0"
+              >
+                <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180 text-primary" />
+                <span>الرجوع لنقطة البيع</span>
+              </Button>
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                <BarChart3 className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg md:text-xl font-bold text-foreground">{t('reports.pageTitle')}</h1>
-                <p className="text-xs text-muted-foreground">{t('reports.pageSubtitle')}</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base sm:text-xl font-bold text-foreground">التقارير والإحصائيات الشاملة</h1>
+                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {allReports.find(r => r.id === activeReport)?.label || 'المبيعات'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">تحليل متكامل ومفصل للمبيعات، الأرباح، المخزون، والديون</p>
               </div>
             </div>
-            {isLoading && (
-              <div className="flex items-center gap-1.5 text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span className="text-[10px]">{t('common.loading')}</span>
-              </div>
-            )}
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => loadCloudData(false)}
+                disabled={isLoading}
+                className="h-9 px-3 rounded-xl border-border/70 text-xs font-medium gap-1.5"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-primary")} />
+                <span>تحديث البيانات</span>
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Category Tabs & Compact Report Selector */}
-        <div className="space-y-2.5">
-          {/* Main Category Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden pb-1 no-scrollbar">
-            {REPORT_CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => {
-                  setActiveCategory(cat.id);
-                  if (cat.id !== 'all') {
-                    const firstInCat = allReports.find(r => r.category === cat.id);
-                    if (firstInCat && !allReports.filter(r => r.category === cat.id).some(r => r.id === activeReport)) {
-                      setActiveReport(firstInCat.id);
+        {/* Executive Navigation Hub: Organized by Category */}
+        <div className="bg-card rounded-2xl border border-border/80 p-3 md:p-4 space-y-3 shadow-sm">
+          {/* Main Category Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {REPORT_CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              const isCatActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    if (cat.id !== 'all') {
+                      const firstInCat = allReports.find(r => r.category === cat.id);
+                      if (firstInCat && !allReports.filter(r => r.category === cat.id).some(r => r.id === activeReport)) {
+                        setActiveReport(firstInCat.id);
+                      }
                     }
-                  }
-                }}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all select-none border",
-                  activeCategory === cat.id
-                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25 border-primary"
-                    : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border/60"
-                )}
-              >
-                {cat.label}
-              </button>
-            ))}
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all select-none border",
+                    isCatActive
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 border-primary"
+                      : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted border-border/60"
+                  )}
+                >
+                  <Icon className={cn("w-4 h-4", isCatActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Sub Reports Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden py-1 no-scrollbar flex-wrap">
+          {/* Sub Reports Chips for the active category */}
+          <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar flex-wrap pt-2 border-t border-border/40">
             {visibleReports.map((report) => {
               const Icon = report.icon;
               const isActive = activeReport === report.id;
@@ -1163,13 +1200,13 @@ export default function Reports() {
                     setActiveCategory(report.category);
                   }}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border select-none shrink-0",
+                    "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all border select-none shrink-0",
                     isActive
-                      ? "bg-primary/10 text-primary border-primary font-bold shadow-sm"
-                      : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted/70 border-border/60"
+                      ? "bg-primary/10 text-primary border-primary font-bold shadow-sm ring-1 ring-primary/20"
+                      : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted/70 border-border/60"
                   )}
                 >
-                  <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary" : "text-muted-foreground")} />
+                  <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
                   <span>{report.label}</span>
                 </button>
               );
@@ -1219,8 +1256,8 @@ export default function Reports() {
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && (
+        {/* Loading State - only shown if completely empty on initial load */}
+        {isLoading && cloudInvoices.length === 0 && cloudProducts.length === 0 && (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />

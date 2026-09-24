@@ -129,6 +129,8 @@ type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rat
 // Keys for persistence across app background/foreground cycles
 const CART_STORAGE_KEY = 'hyperpos_temp_cart';
 const CART_OPEN_KEY = 'hyperpos_cart_open';
+const CART_CUSTOMER_KEY = 'hyperpos_cart_customer';
+const CART_DISCOUNT_KEY = 'hyperpos_cart_discount';
 const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
 // Note: PENDING_BARCODE_KEY is also exported from OfflineBarcodeScanner for consistency
 
@@ -164,7 +166,16 @@ export default function POS() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
 
   // ✅ useRef لحفظ آخر قيمة للسلة — يُستخدم في listeners لتجنب stale closures
   const cartRef = useRef<CartItem[]>(cart);
@@ -176,6 +187,8 @@ export default function POS() {
   useEffect(() => {
     if (cart.length > 0) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } else {
+      localStorage.removeItem(CART_STORAGE_KEY);
     }
   }, [cart]);
 
@@ -188,7 +201,7 @@ export default function POS() {
     }
   }, []);
 
-  // استعادة السلة - فقط إذا كانت السلة فارغة حالياً
+  // استعادة السلة - دون حذفها من localStorage حتى لا تضيع عند التبديل المتكرر بين التطبيقات
   const restoreCart = useCallback(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
@@ -196,17 +209,11 @@ export default function POS() {
         const items = JSON.parse(saved);
         if (Array.isArray(items) && items.length > 0) {
           setCart(prev => {
-            if (prev.length > 0) {
-              console.log('[POS] Cart already has items, skipping restore');
-              localStorage.removeItem(CART_STORAGE_KEY);
-              return prev;
-            }
-            showToast.success(`تم استعادة ${items.length} منتج`);
+            if (prev.length > 0) return prev;
             console.log('[POS] Cart restored:', items.length, 'items');
             return items;
           });
         }
-        localStorage.removeItem(CART_STORAGE_KEY);
       }
     } catch (e) {
       console.error('[POS] Failed to restore cart:', e);
@@ -277,7 +284,20 @@ export default function POS() {
     };
   }, [cart, cartOpen, saveCart, restoreCart]);
 
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(CART_DISCOUNT_KEY);
+      if (saved) return Number(saved) || 0;
+    } catch {}
+    return 0;
+  });
+
+  useEffect(() => {
+    try {
+      if (discount > 0) localStorage.setItem(CART_DISCOUNT_KEY, String(discount));
+      else localStorage.removeItem(CART_DISCOUNT_KEY);
+    } catch {}
+  }, [discount]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   // Load products and categories from cloud
@@ -415,7 +435,20 @@ export default function POS() {
   }, []);
 
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => currencies[0]);
-  const [customerName, setCustomerName] = useState('');
+  const [customerName, setCustomerName] = useState<string>(() => {
+    try {
+      return localStorage.getItem(CART_CUSTOMER_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (customerName.trim()) localStorage.setItem(CART_CUSTOMER_KEY, customerName);
+      else localStorage.removeItem(CART_CUSTOMER_KEY);
+    } catch {}
+  }, [customerName]);
 
   const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
     if (!isNoInventoryMode() && product.quantity === 0) {
@@ -646,6 +679,11 @@ export default function POS() {
     setCart([]);
     setDiscount(0);
     setCustomerName('');
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.removeItem(CART_CUSTOMER_KEY);
+      localStorage.removeItem(CART_DISCOUNT_KEY);
+    } catch {}
   };
 
   // Update item price manually (for Boss/Admin discounts)

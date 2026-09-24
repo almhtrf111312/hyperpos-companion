@@ -139,9 +139,12 @@ export function useNetworkStatus(onReconnect?: () => void) {
         verifyAndSetOnline();
       }
 
+      let lastVisibilityProbe = 0;
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && navigator.onLine) {
-          // Quick probe when user switches back to the tab/window
+          const now = Date.now();
+          if (now - lastVisibilityProbe < 10000) return; // Prevent excessive probe triggers on app switch
+          lastVisibilityProbe = now;
           checkRealInternetAccess(2000).then(hasInternet => {
             if (!hasInternet && status.isOnline) {
               handleOffline();

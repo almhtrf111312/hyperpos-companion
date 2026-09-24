@@ -85,7 +85,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
           { namespace: ROLE_NS }
         );
         if (parsed?.role) {
-          return { ...buildStateFromRole(parsed.role, parsed.ownerId || ''), isLoading: true };
+          return { ...buildStateFromRole(parsed.role, parsed.ownerId || ''), isLoading: false };
         }
       } catch { /* ignore */ }
     }
@@ -136,15 +136,20 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { data, error } = await supabase
+      const roleQuery = supabase
         .from('user_roles')
         .select('role, owner_id, is_active')
         .eq('user_id', user.id)
         .single();
 
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 2500)
+      );
+
+      const { data, error } = await Promise.race([roleQuery, timeoutPromise]);
+
       if (error || !data) {
-        console.error('Error fetching role:', error);
-        // If we already have cached data, keep it (offline scenario)
+        console.warn('[UserRole] Could not fetch remote role, falling back to local cache');
         if (!cached) {
           setState(prev => ({ ...prev, isLoading: false, role: null }));
         } else {

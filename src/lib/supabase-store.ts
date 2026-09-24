@@ -255,6 +255,94 @@ export async function fetchFromSupabase<T = unknown>(
   }
 }
 
+// Schema column whitelist for Supabase tables
+// Prevents HTTP 400 Bad Request errors caused by unexpected or computed client fields
+export const TABLE_ALLOWED_COLUMNS: Record<string, string[]> = {
+  invoices: [
+    'id', 'user_id', 'invoice_number', 'invoice_sequence', 'invoice_type', 'date', 'time',
+    'cashier_id', 'cashier_name', 'customer_id', 'customer_name', 'customer_phone',
+    'subtotal', 'discount', 'discount_percentage', 'tax_rate', 'tax_amount', 'total',
+    'profit', 'currency', 'exchange_rate', 'payment_type', 'status', 'debt_paid',
+    'debt_remaining', 'notes', 'operation_id', 'warehouse_id', 'created_at', 'updated_at'
+  ],
+  invoice_items: [
+    'id', 'invoice_id', 'product_id', 'product_name', 'barcode', 'category', 'quantity',
+    'unit_price', 'cost_price', 'amount_original', 'amount_usd', 'profit', 'unit',
+    'conversion_factor', 'stock_warehouse_id', 'created_at'
+  ],
+  products: [
+    'id', 'user_id', 'name', 'barcode', 'category', 'cost_price', 'sale_price',
+    'wholesale_price', 'quantity', 'min_stock_level', 'expiry_date', 'image_url',
+    'custom_fields', 'purchase_history', 'is_taxable', 'tax_rate', 'track_stock',
+    'is_active', 'created_at', 'updated_at'
+  ],
+  profit_records: [
+    'id', 'user_id', 'invoice_id', 'revenue', 'cogs', 'gross_profit', 'currency',
+    'recorded_at', 'is_reversed', 'reversed_at', 'created_at'
+  ],
+  cash_shifts: [
+    'id', 'user_id', 'cashier_id', 'cashier_name', 'opening_cash', 'closing_cash',
+    'actual_cash', 'difference', 'opening_time', 'closing_time', 'status', 'notes',
+    'total_sales', 'total_cash_sales', 'total_debt_sales', 'total_expenses',
+    'total_refunds', 'created_at', 'updated_at'
+  ],
+  shift_transactions: [
+    'id', 'user_id', 'shift_id', 'type', 'amount', 'notes', 'transaction_time',
+    'invoice_id', 'expense_id', 'debt_payment_id', 'created_at'
+  ],
+  purchase_invoices: [
+    'id', 'user_id', 'invoice_number', 'supplier_name', 'supplier_company', 'invoice_date',
+    'expected_items_count', 'expected_total_quantity', 'expected_grand_total',
+    'actual_items_count', 'actual_total_quantity', 'actual_grand_total',
+    'status', 'notes', 'image_url', 'created_at', 'updated_at'
+  ],
+  purchase_invoice_items: [
+    'id', 'invoice_id', 'product_id', 'product_name', 'barcode', 'category',
+    'quantity', 'cost_price', 'sale_price', 'total_cost', 'created_at'
+  ],
+  customers: [
+    'id', 'user_id', 'name', 'phone', 'email', 'address', 'notes', 'balance',
+    'total_spent', 'total_invoices', 'last_purchase_date', 'created_at', 'updated_at'
+  ],
+  debts: [
+    'id', 'user_id', 'customer_id', 'customer_name', 'invoice_id', 'invoice_number',
+    'total_debt', 'remaining_debt', 'status', 'due_date', 'notes', 'created_at', 'updated_at'
+  ],
+  expenses: [
+    'id', 'user_id', 'title', 'amount', 'category', 'date', 'notes', 'payment_method',
+    'cashier_id', 'cashier_name', 'created_at', 'updated_at'
+  ],
+  categories: [
+    'id', 'user_id', 'name', 'color', 'icon', 'parent_id', 'sort_order', 'created_at', 'updated_at'
+  ],
+  partners: [
+    'id', 'user_id', 'name', 'phone', 'email', 'percentage', 'share_percentage', 'notes',
+    'is_active', 'created_at', 'updated_at'
+  ],
+  warehouses: [
+    'id', 'user_id', 'name', 'location', 'type', 'is_default', 'is_active', 'notes',
+    'created_at', 'updated_at'
+  ],
+  warehouse_stock: [
+    'id', 'warehouse_id', 'product_id', 'quantity', 'last_updated', 'created_at'
+  ]
+};
+
+export function filterTablePayload<T extends Record<string, unknown>>(tableName: string, data: T): Record<string, unknown> {
+  const allowed = TABLE_ALLOWED_COLUMNS[tableName];
+  if (!allowed) {
+    const { uniqueKey, _operation, bundle, localId, items, stockItems, ...rest } = data;
+    return rest;
+  }
+  const clean: Record<string, unknown> = {};
+  for (const key of Object.keys(data)) {
+    if (allowed.includes(key)) {
+      clean[key] = data[key];
+    }
+  }
+  return clean;
+}
+
 // Generic insert function
 // ✅ Uses getOwnerIdForInsert to properly set user_id for cashiers
 export async function insertToSupabase<T = unknown>(
@@ -270,17 +358,18 @@ export async function insertToSupabase<T = unknown>(
   }
 
   try {
+    const sanitized = filterTablePayload(tableName, data);
     const { data: inserted, error } = await sb
       .from(tableName)
-      .insert({ ...data, user_id: ownerId })
+      .insert({ ...sanitized, user_id: ownerId })
       .select()
       .single();
 
     if (error) {
-      console.error(`Error inserting to ${tableName}:`, error);
+      console.error(`Error inserting to ${tableName}:`, error.message, error.details || '', error.hint || '');
       // ✅ Only show toast if not silent mode
       if (!options?.silent) {
-        showToast.error('فشل في حفظ البيانات');
+        showToast.error('فشل في حفظ البيانات', { description: error.message });
       }
       return null;
     }
@@ -307,14 +396,15 @@ export async function updateInSupabase(
   }
 
   try {
+    const sanitized = filterTablePayload(tableName, updates);
     const { error } = await sb
       .from(tableName)
-      .update(updates)
+      .update(sanitized)
       .eq('id', id)
       .eq('user_id', ownerId);
 
     if (error) {
-      console.error(`Error updating ${tableName}:`, error);
+      console.error(`Error updating ${tableName}:`, error.message, error.details || '', error.hint || '');
       return false;
     }
 

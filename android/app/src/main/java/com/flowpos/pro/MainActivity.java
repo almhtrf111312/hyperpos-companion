@@ -8,6 +8,7 @@ import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import android.webkit.WebSettings;
 import java.util.Locale;
 
 import com.getcapacitor.BridgeActivity;
@@ -26,10 +27,16 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // Native Android Print Service Integration
         try {
             WebView webView = this.bridge.getWebView();
             if (webView != null) {
+                // Ensure persistent DOM storage and caching for instant offline app experience
+                WebSettings settings = webView.getSettings();
+                settings.setDomStorageEnabled(true);
+                settings.setDatabaseEnabled(true);
+                settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+                // Native Android Print Service Integration
                 webView.addJavascriptInterface(new Object() {
                     @JavascriptInterface
                     public void print() {
@@ -46,6 +53,30 @@ public class MainActivity extends BridgeActivity {
                         });
                     }
                 }, "AndroidPrinter");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        try {
+            if (this.bridge != null && this.bridge.getWebView() != null) {
+                this.bridge.getWebView().saveState(outState);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        try {
+            if (this.bridge != null && this.bridge.getWebView() != null) {
+                this.bridge.getWebView().restoreState(savedInstanceState);
             }
         } catch (Exception e) {
             e.printStackTrace();

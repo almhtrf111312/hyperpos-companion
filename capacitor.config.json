@@ -2,6 +2,15 @@
   "appId": "com.flowpos.pro",
   "appName": "FlowPOS Pro",
   "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
   "plugins": {
     "Camera": {
       "photoGalleryPermission": "لاختيار صور المنتجات",

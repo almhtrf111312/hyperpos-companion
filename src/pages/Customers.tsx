@@ -133,11 +133,9 @@ export default function Customers() {
     // Listen for updates
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
-    window.addEventListener('focus', loadData);
 
     return () => {
       window.removeEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
-      window.removeEventListener('focus', loadData);
     };
   }, [loadData]);
 

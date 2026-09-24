@@ -66,10 +66,8 @@ const getCachedSession = () => {
     const cached = localStorage.getItem(SESSION_CACHE_KEY);
     if (cached) {
       const data = JSON.parse(cached);
-      // Check if cache is less than 1 hour old and not expired
-      const cacheAge = Date.now() - data.cached_at;
-      const isExpired = data.expires_at && Date.now() / 1000 > data.expires_at;
-      if (cacheAge < 3600000 && !isExpired) {
+      // For POS / offline apps, restore user session immediately
+      if (data?.user) {
         return data;
       }
     }
@@ -80,10 +78,16 @@ const getCachedSession = () => {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [cachedInitial] = useState(() => getCachedSession());
+  const [user, setUser] = useState<User | null>(() => cachedInitial?.user || null);
+  const [session, setSession] = useState<Session | null>(() => (cachedInitial as unknown as Session) || null);
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const p = localStorage.getItem('hyperpos_cached_profile');
+      return p ? JSON.parse(p) : null;
+    } catch { return null; }
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(() => !cachedInitial?.user);
   const [isAutoLoginChecking, setIsAutoLoginChecking] = useState(false);
   const [stayLoggedIn, setStayLoggedInState] = useState(getStayLoggedInPreference);
 
@@ -98,6 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error('Error fetching profile:', error);
         return null;
+      }
+      if (data) {
+        try { localStorage.setItem('hyperpos_cached_profile', JSON.stringify(data)); } catch { /* ignore storage error */ }
       }
       return data as Profile | null;
     } catch (err) {
@@ -241,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Check for existing session and verify user still exists
+    // Check for existing session and verify user without blocking UI
     supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
       if (!existingSession) {
         // No session - try device auto-login
@@ -252,47 +259,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
+
+      // Existing session found: activate state immediately in 0ms!
+      setUser(existingSession.user);
+      setSession(existingSession);
+      setIsLoading(false);
+      cacheSession(existingSession);
       
-      // Verify the user still exists in the database
-      // Use a timeout to prevent hanging on slow mobile networks
+      // Verify user in the background with a strict 2.5s race timeout (prevents dead VPN 30s hangs)
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const userPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 2500)
+        );
         
-        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-        clearTimeout(timeout);
+        const { data, error: userError } = await Promise.race([userPromise, timeoutPromise]);
+        const currentUser = data?.user;
         
         if (userError || !currentUser) {
-          // Only sign out if it's a definitive "user not found" error, not a network error
           const isNetworkError = userError?.message?.includes('fetch') || 
                                  userError?.message?.includes('network') ||
                                  userError?.message?.includes('Failed') ||
+                                 userError?.message?.includes('timeout') ||
                                  userError?.message?.includes('abort');
           
           if (isNetworkError) {
-            // Network error - trust the existing session instead of signing out
-            console.log('[Auth] Network error verifying user, trusting existing session');
-            // onAuthStateChange will handle this
+            console.log('[Auth] Network timeout or error verifying user, keeping existing session');
             return;
           }
           
-          // User genuinely doesn't exist anymore, clear session
+          // User genuinely doesn't exist anymore on server
           console.log('User from session does not exist, signing out...');
           await supabase.auth.signOut();
-          
-          // Try device auto-login as fallback
-          const autoLoginSuccess = await attemptDeviceAutoLogin();
-          if (!autoLoginSuccess) {
-            setIsLoading(false);
-            cacheSession(null);
-          }
+          cacheSession(null);
+          setUser(null);
+          setSession(null);
           return;
         }
-      } catch (verifyError) {
-        // Network failure - trust existing session
-        console.log('[Auth] Exception verifying user, trusting existing session:', verifyError);
+      } catch {
+        // Network timeout / dead VPN / offline - trust existing local session!
+        console.log('[Auth] Network probe timeout (e.g. dead VPN), trusting active session');
       }
-      // The onAuthStateChange will handle setting the session
     });
 
     // Periodic session refresh for Android background

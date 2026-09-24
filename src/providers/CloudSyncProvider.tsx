@@ -16,8 +16,8 @@ import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-proces
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
 
-// فترة إعادة المحاولة الدورية: 30 دقيقة
-const PERIODIC_RETRY_INTERVAL_MS = 30 * 60 * 1000;
+// فترة إعادة المحاولة الدورية التلقائية في الخلفية: 45 ثانية عند وجود عمليات معلقة
+const PERIODIC_RETRY_INTERVAL_MS = 45 * 1000;
 
 interface CloudSyncContextType {
   isReady: boolean;
@@ -312,6 +312,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           const result = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
           // An already-refunded invoice is an idempotent success; a real failure retries.
           return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
+        }
+        if (operation.type === 'invoice_refund_partial') {
+          const { refundInvoicePartialCloud } = await import('@/lib/cloud/invoices-cloud');
+          const { invoiceNumber, itemsToRefund } = operation.data as { invoiceNumber: string; itemsToRefund: any[] };
+          const result = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund);
+          return result.success;
         }
         return processGenericQueuedOperation(operation);
       });

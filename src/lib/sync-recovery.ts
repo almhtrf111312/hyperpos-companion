@@ -30,6 +30,7 @@ const TYPE_LABELS: Record<string, string> = {
   invoice_create: 'فاتورة نقدية',
   debt_sale_bundle: 'فاتورة بيع مؤجل',
   invoice_refund: 'استرداد فاتورة',
+  invoice_refund_partial: 'استرداد جزئي للفاتورة',
   quick_purchase: 'شراء سريع',
   purchase_invoice: 'فاتورة شراء',
   expense: 'مصروف',

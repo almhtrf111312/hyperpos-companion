@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, useSearchParams, useNavigate, Outlet } from "react-router-dom";
+import { HashRouter, Routes, Route, useSearchParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
@@ -71,8 +71,39 @@ const PartnersRedirect = () => {
   return null;
 };
 
+const LAST_ROUTE_KEY = 'hyperpos_last_route';
+
+// Redirect to last viewed page on startup (Facebook-style state persistence)
+const IndexRoute = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    try {
+      const savedRoute = localStorage.getItem(LAST_ROUTE_KEY);
+      if (savedRoute && savedRoute !== '/' && savedRoute !== '/login' && savedRoute !== '/signup' && savedRoute !== '/reset-password') {
+        navigate(savedRoute, { replace: true });
+      }
+    } catch {
+      // ignore route restore error
+    }
+  }, [navigate]);
+
+  return <POS />;
+};
+
 const AppContent = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+
+  // Save last active route silently on navigation
+  useEffect(() => {
+    if (location.pathname && location.pathname !== '/' && location.pathname !== '/login' && location.pathname !== '/signup' && location.pathname !== '/reset-password') {
+      try {
+        localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
+      } catch {
+        // ignore route save error
+      }
+    }
+  }, [location]);
   const isSafeMode = searchParams.get('safe') === '1';
   const isDebugClick = searchParams.get('debugclick') === '1';
   const isReset = searchParams.get('reset') === '1';
@@ -257,7 +288,7 @@ const AppContent = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Full-screen protected routes (no MainLayout) */}
-        <Route path="/" element={<ProtectedRoute><POS /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><IndexRoute /></ProtectedRoute>} />
         <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
         <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />

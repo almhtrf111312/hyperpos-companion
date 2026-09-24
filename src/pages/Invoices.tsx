@@ -420,7 +420,31 @@ export default function Invoices() {
     setInvoiceToRefund(null);
 
     if (!isOnline) {
-      toast.error('الاسترداد الجزئي يتطلب الاتصال بالإنترنت حالياً');
+      const refundedTotal = itemsToRefund.reduce((s, it) => s + (it.quantityToRefund * it.unitPrice), 0);
+      const remainingTotal = Math.max(0, (invoice.total || 0) - refundedTotal);
+      const isFull = remainingTotal <= 0;
+
+      addToQueueIfNotExists(
+        'invoice_refund_partial',
+        { invoiceNumber: invoiceLabel, itemsToRefund },
+        `invoice-refund-partial:${invoiceLabel}:${Date.now()}`
+      );
+
+      setInvoices(prev => prev.map(inv => {
+        if (inv.id !== invoiceLabel) return inv;
+        return {
+          ...inv,
+          total: remainingTotal,
+          status: isFull ? ('refunded' as const) : inv.status,
+          notes: (inv.notes ? inv.notes + '\n' : '') + `مرتجع جزئي (${refundedTotal}) أوفلاين بانتظار المزامنة`,
+        };
+      }));
+
+      toast.info(`تمت جدولة الاسترداد الجزئي للفاتورة ${invoiceLabel}`, {
+        id: toastId,
+        description: `قيمة المرتجع: ${formatCurrency(refundedTotal, invoice.currency)} — سيُرفع تلقائياً عند الاتصال`,
+        duration: 4000,
+      });
       return;
     }
 

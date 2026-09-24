@@ -276,7 +276,6 @@ export default function Dashboard() {
     window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
-    window.addEventListener('focus', loadStats);
 
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
@@ -285,7 +284,6 @@ export default function Dashboard() {
       window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
-      window.removeEventListener('focus', loadStats);
     };
   }, [loadStats]);
 

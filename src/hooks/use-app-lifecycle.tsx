@@ -62,12 +62,7 @@ export function useAppLifecycle(options: UseAppLifecycleOptions = {}) {
   }, [onPause, clearSensitiveData]);
 
   const handleResume = useCallback(() => {
-    console.log('[AppLifecycle] App resumed');
-    
-    // Re-validate session when app resumes
-    // This will trigger a re-check of auth state
-    window.dispatchEvent(new Event('focus'));
-    
+    console.log('[AppLifecycle] App resumed — preserving active state in RAM');
     onResume?.();
   }, [onResume]);
 
