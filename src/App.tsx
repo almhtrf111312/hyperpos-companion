@@ -56,6 +56,7 @@ import Help from "./pages/Help";
 import BossPanel from "./pages/BossPanel";
 import LibraryMembers from "./pages/LibraryMembers";
 import { WarehouseProvider } from "./hooks/use-warehouse";
+import { useLicenseReminder } from "./hooks/use-license-reminder";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,9 @@ const AppContent = () => {
 
   // Request camera and storage permissions early on native platforms
   useAppPermissions();
+
+  // License expiration reminder toasts
+  useLicenseReminder();
 
   // Privacy policy acceptance
   const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();

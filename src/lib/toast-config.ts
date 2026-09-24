@@ -68,7 +68,7 @@ export const showToast = {
     
     toast.success(message, {
       position: 'top-right',
-      duration: 1500,
+      duration: 4000,
       description,
     });
   },
@@ -79,7 +79,7 @@ export const showToast = {
     
     toast.error(message, {
       position: 'top-right',
-      duration: options?.persistent ? Infinity : 2500,
+      duration: options?.persistent ? Infinity : 5000,
       closeButton: options?.persistent,
       description: options?.description,
     });
@@ -91,7 +91,7 @@ export const showToast = {
     
     toast.warning(message, {
       position: 'top-right',
-      duration: 2000,
+      duration: 5000,
       description,
     });
   },
@@ -102,7 +102,7 @@ export const showToast = {
     
     toast.info(message, {
       position: 'top-right',
-      duration: 1500,
+      duration: 4000,
       description,
     });
   },
