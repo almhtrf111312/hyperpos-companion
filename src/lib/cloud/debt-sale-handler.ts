@@ -215,7 +215,15 @@ export async function processDebtSaleBundleFromQueue(
     
     throw new Error(result.error || 'Debt sale synchronization failed');
   } catch (error) {
-    console.error('[DebtSale] Failed to process queued bundle:', error);
+    // ✅ استخراج رسالة الخطأ الحقيقية من Supabase
+    const errObj = error as Record<string, unknown>;
+    console.error('[DebtSale] Failed to process queued bundle:', {
+      message: errObj?.message || String(error),
+      details: errObj?.details,
+      hint: errObj?.hint,
+      code: errObj?.code,
+      fullError: error,
+    });
     throw error;
   }
 }

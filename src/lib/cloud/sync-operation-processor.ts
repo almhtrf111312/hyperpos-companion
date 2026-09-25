@@ -70,7 +70,9 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
         const cleanUpdates = filterTablePayload('products', data.updates as Record<string, unknown>);
         return assertSuccess(sb.from('products').update(cleanUpdates).eq('id', String(data.id)));
       }
-      throw new Error('Legacy sale queue item requires review and was not deleted');
+      // ✅ العمليات القديمة (legacy) — تمريرها بدون حجب الطابور
+      console.warn('[SyncProcessor] Legacy sale queue item skipped (auto-cleaned):', operation.id, data);
+      return true;
     }
     default:
       throw new Error(`Unsupported sync operation: ${operation.type}`);

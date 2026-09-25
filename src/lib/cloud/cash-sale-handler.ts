@@ -94,7 +94,15 @@ export async function processCashSaleBundleFromQueue(
     console.log('[CashSale] Bundle synced successfully:', sale.invoiceNumber);
     return true;
   } catch (error) {
-    console.error('[CashSale] Failed to process queued bundle:', error);
+    // ✅ استخراج رسالة الخطأ الحقيقية من Supabase بدقة
+    const errObj = error as Record<string, unknown>;
+    console.error('[CashSale] Failed to process queued bundle:', {
+      message: errObj?.message || String(error),
+      details: errObj?.details,
+      hint: errObj?.hint,
+      code: errObj?.code,
+      fullError: error,
+    });
     throw error;
   }
 }

@@ -47,6 +47,13 @@ export function useAppLifecycle(options: UseAppLifecycleOptions = {}) {
   const handlePause = useCallback(() => {
     console.log('[AppLifecycle] App paused');
     
+    // ✅ حفظ المسار الحالي قبل الخروج للخلفية — يمنع فقدان الشاشة
+    try {
+      const currentPath = window.location.pathname + window.location.search + window.location.hash;
+      sessionStorage.setItem('_hp_last_route', currentPath);
+      console.log('[AppLifecycle] Saved route:', currentPath);
+    } catch { /* noop */ }
+    
     // Clear sensitive session data if requested
     if (clearSensitiveData) {
       SENSITIVE_SESSION_KEYS.forEach(key => {
@@ -63,6 +70,17 @@ export function useAppLifecycle(options: UseAppLifecycleOptions = {}) {
 
   const handleResume = useCallback(() => {
     console.log('[AppLifecycle] App resumed — preserving active state in RAM');
+    
+    // ✅ التحقق من المسار المحفوظ واستعادته إذا تم إعادة تحميل الصفحة
+    try {
+      const savedRoute = sessionStorage.getItem('_hp_last_route');
+      const currentPath = window.location.pathname;
+      if (savedRoute && currentPath === '/' && savedRoute !== '/') {
+        console.log('[AppLifecycle] Restoring route from session:', savedRoute);
+        window.history.replaceState(null, '', savedRoute);
+      }
+    } catch { /* noop */ }
+    
     onResume?.();
   }, [onResume]);
 

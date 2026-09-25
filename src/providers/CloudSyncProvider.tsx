@@ -95,7 +95,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           syncNowRef.current?.();
         } else {
           console.log('[CloudSync] Network connected but no real internet access, will retry later');
-          showToast.error('متصل بالشبكة لكن لا يوجد إنترنت', { description: 'سيتم إعادة المحاولة كل 30 دقيقة' });
+          // ✅ رسالة تنبيه ناعمة بدلاً من خطأ أحمر
+          showToast.info('متصل بالشبكة — في انتظار الإنترنت', 'سيتم المزامنة تلقائياً عند توفر الاتصال');
         }
       });
     }
@@ -274,7 +275,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       const hasInternet = await checkRealInternetAccess(2500);
       setHasInternetAccess(hasInternet);
       if (!hasInternet) {
-        showToast.error('لا يوجد اتصال إنترنت فعلي', { description: 'يتم استخدام البيانات المحلية' });
+        // ✅ كتم الرسالة أثناء الأوفلاين - المزامنة ستحدث تلقائياً
+        console.log('[CloudSync] No real internet access, skipping sync silently');
         return;
       }
     } else {
@@ -402,7 +404,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       setLastSyncTime(new Date().toISOString());
     } catch (error) {
       console.error('Manual sync error:', error);
-      showToast.error('فشل في المزامنة', { description: 'سيتم إعادة المحاولة لاحقاً' });
+      // ✅ عرض رسالة الفشل فقط إذا كان المستخدم متصلاً فعلياً
+      if (navigator.onLine) {
+        showToast.info('تعذرت المزامنة مؤقتاً', 'سيتم إعادة المحاولة تلقائياً');
+      }
     } finally {
       setIsSyncing(false);
     }
