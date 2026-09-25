@@ -76,10 +76,10 @@ jobs:
       - name: Setup release signing key
         shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets['KEYSTORE_BASE64'] }}
+          KEYSTORE_PASSWORD: ${{ secrets['KEYSTORE_PASSWORD'] }}
+          KEY_ALIAS: ${{ secrets['KEY_ALIAS'] }}
+          KEY_PASSWORD: ${{ secrets['KEY_PASSWORD'] }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Using custom repository signing key from secrets..."
