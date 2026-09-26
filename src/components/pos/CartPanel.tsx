@@ -272,7 +272,8 @@ export function CartPanel({
   }, []);
   const storeTaxEnabled = storeSettingsRaw.taxEnabled ?? false;
   const storeTaxValue = Number(storeSettingsRaw.taxRate ?? 0);
-  const safeTaxRate = Number.isFinite(storeTaxValue) ? clampNumber(storeTaxValue, 0, 100) : 0;
+  const storeTaxRate = Number.isFinite(storeTaxValue) ? clampNumber(storeTaxValue, 0, 100) : 0;
+  const safeTaxRate = storeTaxRate;
   const settingsDiscountPercentEnabled = storeSettingsRaw.discountPercentEnabled ?? true;
   const settingsDiscountFixedEnabled = storeSettingsRaw.discountFixedEnabled ?? true;
 
