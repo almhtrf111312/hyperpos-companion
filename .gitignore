@@ -33,3 +33,6 @@ gradle-*/
 keystore_base64.txt
 
 ECC/
+
+ECC/
+.agents/
