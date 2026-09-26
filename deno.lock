@@ -84,7 +84,7 @@
         "npm:globals@^15.15.0",
         "npm:input-otp@^1.4.2",
         "npm:jspdf-autotable@^5.0.7",
-        "npm:jspdf@4",
+        "npm:jspdf@^4.2.1",
         "npm:lovable-tagger@^1.1.13",
         "npm:lucide-react@0.475",
         "npm:next-themes@0.3",
@@ -93,7 +93,7 @@
         "npm:react-dom@^18.3.1",
         "npm:react-hook-form@^7.61.1",
         "npm:react-resizable-panels@^2.1.9",
-        "npm:react-router-dom@^6.30.1",
+        "npm:react-router-dom@^6.30.6",
         "npm:react@^18.3.1",
         "npm:recharts@^2.15.4",
         "npm:sonner@^1.7.4",
@@ -103,10 +103,8 @@
         "npm:typescript-eslint@^8.38.0",
         "npm:typescript@^5.8.3",
         "npm:vaul@~0.9.9",
-        "npm:vite-plugin-pwa@^1.2.0",
+        "npm:vite-plugin-pwa@^1.3.0",
         "npm:vite@^7.3.1",
-        "npm:xlsx-js-style@^1.2.0",
-        "npm:xlsx@~0.18.5",
         "npm:zod@^3.25.76"
       ]
     }
