@@ -1,8 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, Barcode, DollarSign, Box, Layers, X } from 'lucide-react';
+import { Package, Barcode, DollarSign, Box, X, Tag, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface Product {
   id: string;
@@ -33,155 +32,96 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
 
   if (!product) return null;
 
+  const productImage = product.image || (product as any).imageUrl;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto rounded-2xl p-4 [&>button[aria-label='Close']]:hidden">
-        {/* Close Button */}
-        <div className="absolute start-2 top-2 z-10">
+      <DialogContent className="max-w-[360px] mx-4 max-h-[82vh] overflow-y-auto rounded-[28px] border-0 bg-background p-0 shadow-2xl [&>button[aria-label='Close']]:hidden">
+        <div className="relative">
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-colors"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-background"
+            aria-label={t('common.close')}
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
-        </div>
 
-        <DialogHeader className="pt-1">
-          <DialogTitle className="text-base font-bold text-center px-6 leading-tight">{product.name}</DialogTitle>
-        </DialogHeader>
-
-        {/** compute image source once */}
-        {/** Cast to any to access potential imageUrl field from other sources */}
-        {/* add variable just inside component header? Let's add above return if needed */}
-        
-        {/* Tabbed content */}
-        <Tabs defaultValue="general">
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="general" className="text-sm">
-              {t('products.tabGeneral')}
-            </TabsTrigger>
-            <TabsTrigger value="stock" className="text-sm">
-              {t('products.tabStock')}
-            </TabsTrigger>
-            <TabsTrigger value="pricing" className="text-sm">
-              {t('products.tabPricing')}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="general" className="space-y-3">
-            {/** image and basic info */}
-            { (product.image || (product as any).imageUrl) ? (
-              <div className="w-full h-32 rounded-xl overflow-hidden bg-muted">
-                <img
-                  src={product.image || (product as any).imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-full h-24 rounded-xl bg-muted flex items-center justify-center">
-                <Package className="w-10 h-10 text-muted-foreground/50" />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <div>
-                <span className="text-xs text-muted-foreground">{t('products.category')}</span>
-                <p className="font-semibold text-sm">{product.category}</p>
-              </div>
-              {product.description && (
-                <div>
-                  <span className="text-xs text-muted-foreground">{t('products.description')}</span>
-                  <p className="text-sm whitespace-pre-wrap">{product.description}</p>
-                </div>
-              )}
-              {product.barcode && (
-                <div>
-                  <span className="text-xs text-muted-foreground">{t('products.barcode')}</span>
-                  <p className="font-mono text-sm font-semibold">{product.barcode}</p>
-                </div>
-              )}
+          {productImage ? (
+            <div className="h-32 w-full overflow-hidden rounded-t-[28px] bg-muted">
+              <img src={productImage} alt={product.name} className="h-full w-full object-cover" />
             </div>
-          </TabsContent>
-
-          <TabsContent value="stock">
-            <div className="glass-card p-4 rounded-xl">
-              <h4 className="font-semibold mb-2 text-sm">{t('products.stock')}</h4>
-              {product.quantity > 0 ? (
-                <DualUnitDisplayCompact
-                  totalPieces={product.quantity}
-                  conversionFactor={product.conversionFactor || 1}
-                  bulkUnit={product.bulkUnit}
-                  smallUnit={product.smallUnit}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('products.outOfStock')}</p>
-              )}
+          ) : (
+            <div className="flex h-32 w-full items-center justify-center rounded-t-[28px] bg-muted">
+              <Package className="h-12 w-12 text-muted-foreground/50" />
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="pricing">
+          <div className="space-y-4 p-4 pb-5">
+            <div>
+              <DialogHeader className="space-y-2 text-right">
+                <DialogTitle className="text-xl font-bold leading-tight text-foreground">{product.name}</DialogTitle>
+              </DialogHeader>
+            </div>
+
+            <div className="rounded-2xl bg-muted/40 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  <span className="text-xs">{t('products.salePrice')}</span>
+                </div>
+                <span className="text-xl font-black text-green-600">${product.price}</span>
+              </div>
+            </div>
+
             <div className="space-y-3">
-              <div className="glass-card p-3 rounded-xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="w-4 h-4 text-green-500" />
-                  <span className="text-xs text-muted-foreground">{t('products.salePrice')}</span>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Tag className="h-4 w-4" />
+                  <span className="text-xs">{t('products.category')}</span>
                 </div>
-                <p className="font-bold text-sm text-green-600">${product.price}</p>
+                <span className="text-sm font-semibold text-foreground">{product.category || '—'}</span>
               </div>
-              {!!product.bulkSalePrice && product.bulkSalePrice > 0 && (
-                <div className="glass-card p-3 rounded-xl">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Box className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs text-muted-foreground">
-                      {t('products.bulkPrice')} ({product.bulkUnit || t('products.unitCarton')})
-                    </span>
+
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Box className="h-4 w-4" />
+                  <span className="text-xs">{t('products.stock')}</span>
+                </div>
+                <div className="text-right">
+                  {product.quantity > 0 ? (
+                    <DualUnitDisplayCompact
+                      totalPieces={product.quantity}
+                      conversionFactor={product.conversionFactor || 1}
+                      bulkUnit={product.bulkUnit}
+                      smallUnit={product.smallUnit}
+                    />
+                  ) : (
+                    <span className="text-sm font-semibold text-muted-foreground">{t('products.outOfStock')}</span>
+                  )}
+                </div>
+              </div>
+
+              {product.barcode && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Barcode className="h-4 w-4" />
+                    <span className="text-xs">{t('products.barcode')}</span>
                   </div>
-                  <p className="font-bold text-sm text-blue-600">${product.bulkSalePrice}</p>
+                  <span className="font-mono text-xs font-semibold text-foreground">{product.barcode}</span>
                 </div>
               )}
-              {(!!product.costPrice || !!product.bulkCostPrice) && (
-                <div className="glass-card p-4 rounded-xl">
-                  <h4 className="font-semibold mb-2 text-sm">{t('products.costPrice')}</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {!!product.costPrice && (
-                      <div>
-                        <span className="text-muted-foreground">{product.smallUnit || t('products.unitPiece')}: </span>
-                        <span className="font-semibold">${product.costPrice}</span>
-                      </div>
-                    )}
-                    {!!product.bulkCostPrice && product.bulkCostPrice > 0 && (
-                      <div>
-                        <span className="text-muted-foreground">{product.bulkUnit || t('products.unitCarton')}: </span>
-                        <span className="font-semibold">${product.bulkCostPrice}</span>
-                      </div>
-                    )}
+
+              {product.description && (
+                <div className="rounded-xl border border-border/70 bg-card px-3 py-2.5">
+                  <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+                    <ClipboardList className="h-4 w-4" />
+                    <span className="text-xs">{t('products.description')}</span>
                   </div>
-                </div>
-              )}
-              {!!product.costPrice && product.costPrice > 0 && (
-                <div className="glass-card p-4 rounded-xl bg-primary/5">
-                  <h4 className="font-semibold mb-2 text-sm">{t('products.profitMargin')}</h4>
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">{t('products.profitMargin')}: </span>
-                    <span className="font-bold text-primary">
-                      {((((product.price - product.costPrice) / product.costPrice) * 100).toFixed(2))}%
-                    </span>
-                  </div>
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{product.description}</p>
                 </div>
               )}
             </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Footer with Explicit Close Button */}
-        <div className="mt-3 flex justify-center sticky bottom-0 bg-background/95 backdrop-blur py-2 border-t -mx-4 px-4">
-          <button
-            onClick={onClose}
-            className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-2.5 rounded-xl transition-colors"
-          >
-            {t('common.close')}
-          </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
