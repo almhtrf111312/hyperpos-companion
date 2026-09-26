@@ -1266,8 +1266,8 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Quick Access Pill Row — only the four requested financial groups */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar py-0.5">
+        {/* Quick Access Pill Row — no horizontal scroll, always 2-per-row in compact layout */}
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => {
@@ -1275,14 +1275,14 @@ export default function Reports() {
               setViewTab('summary');
             }}
             className={cn(
-              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
               activeReport === 'sales'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
             )}
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-            <span>المبيعات والأرباح</span>
+            <span>المبيعات</span>
           </button>
 
           <button
@@ -1291,14 +1291,14 @@ export default function Reports() {
               setActiveReport('inventory');
             }}
             className={cn(
-              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
               activeReport === 'inventory'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
             )}
           >
             <Package className="w-3.5 h-3.5 text-amber-600" />
-            <span>المخزون والجرد</span>
+            <span>المخزون</span>
           </button>
 
           <button
@@ -1307,14 +1307,14 @@ export default function Reports() {
               setActiveReport('debts');
             }}
             className={cn(
-              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
               activeReport === 'debts'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
             )}
           >
             <Users className="w-3.5 h-3.5 text-blue-600" />
-            <span>الديون والعملاء</span>
+            <span>الديون</span>
           </button>
 
           <button
@@ -1323,7 +1323,7 @@ export default function Reports() {
               setActiveReport('expenses');
             }}
             className={cn(
-              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
               activeReport === 'expenses'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
@@ -1336,7 +1336,7 @@ export default function Reports() {
           <button
             type="button"
             onClick={() => setIsAllReportsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm shrink-0 active:scale-95"
+            className="col-span-2 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm active:scale-95 w-full"
           >
             <span>+ المزيد</span>
           </button>
@@ -1426,24 +1426,24 @@ export default function Reports() {
 
             <Button
               variant="outline"
-              size="icon"
               onClick={handleExportExcel}
               disabled={isLoading}
-              className="h-10 w-10 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 shrink-0 shadow-sm transition-all active:scale-95"
+              className="h-10 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shrink-0 shadow-sm transition-all active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
               title="تصدير Excel"
             >
               <FileSpreadsheet className="w-4 h-4" />
+              <span>Excel</span>
             </Button>
 
             <Button
               variant="outline"
-              size="icon"
               onClick={handleExportPDF}
               disabled={isLoading}
-              className="h-10 w-10 rounded-xl border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 shrink-0 shadow-sm transition-all active:scale-95"
+              className="h-10 px-3 rounded-xl border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 shrink-0 shadow-sm transition-all active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
               title="تصدير PDF"
             >
               <FileText className="w-4 h-4" />
+              <span>PDF</span>
             </Button>
           </div>
 
