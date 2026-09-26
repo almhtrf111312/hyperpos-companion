@@ -19,9 +19,12 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
@@ -46,11 +49,9 @@ jobs:
           fi
 
           RUN_NUM="${{ github.run_number }}"
-          # Dynamic version: e.g. 1.0.26-b38
           VERSION_NAME="${BASE_NAME}-b${RUN_NUM}"
           VERSION_CODE=$(( BASE_CODE + RUN_NUM ))
 
-          # Update version.json so Vite (__APP_VERSION__) and build.gradle both use this build version
           node -e "
             const fs = require('fs');
             const v = JSON.parse(fs.readFileSync('./version.json', 'utf8'));
@@ -103,15 +104,13 @@ jobs:
           APP_VERSION_NAME: ${{ env.VERSION_NAME }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon --warning-mode=all
 
       - name: Prepare single versioned APK
         shell: bash
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
           VERSION="${{ env.VERSION_NAME }}"
-          
-          # Single clean APK with short version name (e.g. FlowPOS-v1.0.26.apk)
           FINAL_APK="FlowPOS-v${VERSION}.apk"
           
           SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
@@ -120,18 +119,14 @@ jobs:
             exit 1
           fi
           
-          echo "Found release APK: $SRC_APK"
           if [ "$SRC_APK" != "$RELEASE_DIR/$FINAL_APK" ]; then
             mv "$SRC_APK" "$RELEASE_DIR/$FINAL_APK"
           fi
           
-          # Ensure strictly only the final APK exists (remove duplicates/extras)
           find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
           
           echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
           echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
-          
-          echo "=== Release directory (guaranteed single APK) ==="
           ls -lh "$RELEASE_DIR"
 
       - name: Upload APK artifact
