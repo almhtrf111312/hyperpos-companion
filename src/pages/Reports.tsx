@@ -1299,12 +1299,18 @@ export default function Reports() {
   return (
     <MainLayout>
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
-        {/* Header: report title only */}
-        <div className="flex items-center justify-between gap-2 pt-1 pb-0.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-              التقارير المالية
-            </h1>
+        {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
+          <div className="relative flex items-center justify-center min-h-[40px]">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-black text-foreground tracking-tight text-center">
+                التقارير المالية
+              </h1>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                مباشر
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1562,22 +1568,26 @@ export default function Reports() {
 
         {/* 2x2 Executive Metrics Cards Grid */}
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
-          {/* Card 1: إجمالي المبيعات (Primary Gradient Card) */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-purple-700 text-white p-3.5 sm:p-4 shadow-lg shadow-indigo-500/20 flex flex-col justify-between min-h-[110px]">
+          {/* Card 1: إجمالي المبيعات - متوافق مع جميع الثيمات */}
+          <div className="relative overflow-hidden rounded-2xl bg-card border-2 border-primary/40 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px] transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-white/80 text-xs font-semibold">إجمالي المبيعات</span>
-              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0">
+              <span className="text-muted-foreground text-xs font-semibold">إجمالي المبيعات</span>
+              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <DollarSign className="w-4 h-4" />
               </div>
             </div>
             <div className="my-1">
-              <p className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <p className="text-xl sm:text-2xl font-black text-primary tracking-tight">
                 {formatCurrency(reportData.summary.totalSales)}
               </p>
             </div>
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-white/90 font-medium">
-              <span>{salesTrend.label}</span>
-              {salesTrend.isUp ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5 text-amber-200" />}
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium">
+              <span className="text-muted-foreground">{salesTrend.label}</span>
+              {salesTrend.isUp ? (
+                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />
+              )}
             </div>
           </div>
 
@@ -1636,8 +1646,8 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* View Mode Segmented Controls */}
-        <div className="bg-muted/50 p-1 rounded-2xl flex items-center justify-around border border-border/50 text-xs">
+        {/* View Mode Segmented Controls — compact and bounded */}
+        <div className="bg-muted/60 p-1 rounded-2xl flex items-center justify-around border border-border/60 text-xs w-full max-w-full overflow-hidden">
           <button
             type="button"
             onClick={() => {
@@ -1645,13 +1655,13 @@ export default function Reports() {
               handleSwitchView('summary');
             }}
             className={cn(
-              "flex-1 py-2 px-2 rounded-xl font-medium transition-all text-center select-none text-xs",
+              "flex-1 py-2 px-1 sm:px-2 rounded-xl font-bold transition-all text-center select-none text-[11px] sm:text-xs truncate",
               activeReport === 'sales' && viewTab === 'summary'
-                ? "bg-card text-primary font-black shadow-sm"
+                ? "bg-card text-primary shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            ملخص بياني وإحصائي
+            ملخص بياني
           </button>
           <button
             type="button"
@@ -1660,13 +1670,13 @@ export default function Reports() {
               handleSwitchView('detailed');
             }}
             className={cn(
-              "flex-1 py-2 px-2 rounded-xl font-medium transition-all text-center select-none text-xs",
+              "flex-1 py-2 px-1 sm:px-2 rounded-xl font-bold transition-all text-center select-none text-[11px] sm:text-xs truncate",
               activeReport === 'sales' && viewTab === 'detailed'
-                ? "bg-card text-primary font-black shadow-sm"
+                ? "bg-card text-primary shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            كشف الفواتير التفصيلي
+            كشف الفواتير
           </button>
           <button
             type="button"
@@ -1675,13 +1685,13 @@ export default function Reports() {
               handleSwitchView('comprehensive');
             }}
             className={cn(
-              "flex-1 py-2 px-2 rounded-xl font-medium transition-all text-center select-none text-xs",
+              "flex-1 py-2 px-1 sm:px-2 rounded-xl font-bold transition-all text-center select-none text-[11px] sm:text-xs truncate",
               activeReport === 'sales' && viewTab === 'comprehensive'
-                ? "bg-card text-primary font-black shadow-sm"
+                ? "bg-card text-primary shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            عرض تقرير شامل
+            عرض شامل
           </button>
         </div>
 
@@ -1761,28 +1771,28 @@ export default function Reports() {
               <>
                 {reportData.hasData && (
                   <>
-                    {/* Daily Sales Bar Chart Card (Screenshot 1) */}
+                    {/* Daily Sales Bar Chart Card */}
                     <div className="bg-card rounded-2xl border border-border/70 p-4 space-y-3.5 shadow-sm">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <h3 className="text-sm font-bold text-foreground">المبيعات اليومية</h3>
                         </div>
-                        <div className="bg-slate-900 text-white dark:bg-slate-800 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
-                          <span>{formatCurrency(activeChartDay.sales).replace('$', '')}$</span>
-                          <span className="text-white/70">|</span>
-                          <span>القيمة: {formatCurrency(activeChartDay.sales)}</span>
+                        <div className="bg-muted text-foreground border border-border/70 text-xs font-bold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-sm">
+                          <span className="text-primary font-black">${formatCurrency(activeChartDay.sales).replace('$', '')}</span>
+                          <span className="text-muted-foreground/50">|</span>
+                          <span className="text-muted-foreground text-[11px]">{activeChartDay.orders} طلب</span>
                         </div>
                       </div>
 
-                      {/* Vertical Bar Chart columns */}
+                      {/* Vertical Bar Chart columns with explicit h-48 height & theme responsiveness */}
                       <div className="pt-4 pb-2">
-                        <div className="grid grid-cols-7 gap-2 items-end h-32 px-1">
+                        <div className="grid grid-cols-7 gap-1.5 sm:gap-3 items-end h-48 min-h-[190px] px-1 pb-1 border-b border-border/50">
                           {chartDays.map((day, idx) => {
                             const isSelected = day.date === activeChartDay.date;
                             const heightPct = day.sales > 0 
-                              ? Math.max(16, (day.sales / maxChartSales) * 100) 
-                              : 6;
+                              ? Math.max(14, (day.sales / maxChartSales) * 100) 
+                              : 8;
 
                             return (
                               <div 
@@ -1790,20 +1800,27 @@ export default function Reports() {
                                 onClick={() => setSelectedDayDate(day.date)}
                                 className="flex flex-col items-center justify-end h-full gap-2 cursor-pointer group"
                               >
+                                {isSelected && day.sales > 0 && (
+                                  <span className="text-[10px] font-black text-primary animate-in fade-in zoom-in-95 duration-200">
+                                    ${Math.round(day.sales)}
+                                  </span>
+                                )}
                                 <div className="w-full flex items-end justify-center h-full">
                                   <div 
                                     className={cn(
-                                      "w-7 sm:w-9 rounded-t-xl transition-all duration-500",
+                                      "w-6 sm:w-9 rounded-t-xl transition-all duration-300",
                                       isSelected
-                                        ? "bg-gradient-to-t from-primary via-indigo-600 to-indigo-400 shadow-md shadow-primary/30"
-                                        : "bg-muted/70 group-hover:bg-muted"
+                                        ? "bg-primary shadow-md shadow-primary/30"
+                                        : day.sales > 0
+                                          ? "bg-primary/40 hover:bg-primary/60"
+                                          : "bg-muted/70 hover:bg-muted"
                                     )}
                                     style={{ height: `${heightPct}%` }}
                                   />
                                 </div>
                                 <span 
                                   className={cn(
-                                    "text-xs font-mono transition-colors",
+                                    "text-[11px] sm:text-xs font-mono transition-colors",
                                     isSelected ? "text-primary font-black" : "text-muted-foreground font-medium"
                                   )}
                                 >
@@ -1816,14 +1833,17 @@ export default function Reports() {
                       </div>
 
                       {/* Chart Footer */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                      <div className="flex items-center justify-between pt-2 text-xs">
                         {activeChartDay.sales > 0 && activeChartDay.date === topChartDay.date ? (
-                          <span className="text-emerald-600 font-bold">أعلى مبيعات للأسبوع</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            أعلى مبيعات للأسبوع (${formatCurrency(activeChartDay.sales).replace('$', '')})
+                          </span>
                         ) : (
-                          <span className="text-muted-foreground">{activeChartDay.orders} طلبات</span>
+                          <span className="text-muted-foreground">{activeChartDay.orders} طلبات مسجلة</span>
                         )}
-                        <span className="text-muted-foreground font-mono">
-                          التاريخ المحدد: {activeChartDay.date}
+                        <span className="text-muted-foreground font-mono text-[11px]">
+                          التاريخ: {activeChartDay.date}
                         </span>
                       </div>
                     </div>
