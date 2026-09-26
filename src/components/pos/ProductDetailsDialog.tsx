@@ -54,7 +54,7 @@ export function ProductDetailsDialog({ product, isOpen, onClose }: ProductDetail
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         dir="rtl"
-        className="mx-2 w-[calc(100vw-16px)] max-w-[380px] overflow-hidden rounded-[28px] border-0 bg-[#f5f5f5] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.26)] dark:bg-[#0f172a] [&>button[aria-label='Close']]:hidden"
+        className="product-details-dialog mx-2 w-[calc(100vw-16px)] max-w-[380px] overflow-hidden rounded-[28px] border-0 bg-[#f5f5f5] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.26)] dark:bg-[#0f172a] [&>button[aria-label='Close']]:hidden"
       >
         <div className="relative bg-[#f4f4f4]">
           <div className="flex items-center justify-between px-3 pt-3">
