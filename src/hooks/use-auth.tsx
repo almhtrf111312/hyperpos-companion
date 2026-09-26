@@ -188,6 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Attempt device auto-login function
     const attemptDeviceAutoLogin = async () => {
+      const AUTO_LOGIN_TIMEOUT_MS = 3000;
+
       try {
         // Check if we already attempted auto-login recently
         const alreadyAttempted = sessionStorage.getItem(AUTO_LOGIN_ATTEMPTED_KEY);
@@ -198,13 +200,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('[AutoLogin] Starting device auto-login...');
         setIsAutoLoginChecking(true);
-        
+
         const deviceId = await getDeviceId();
         console.log('[AutoLogin] Device ID:', deviceId);
 
-        const { data, error } = await supabase.functions.invoke('device-auto-login', {
+        const invokePromise = supabase.functions.invoke('device-auto-login', {
           body: { device_id: deviceId }
         });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('AUTO_LOGIN_TIMEOUT')), AUTO_LOGIN_TIMEOUT_MS);
+        });
+
+        const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
 
         if (error) {
           console.error('[AutoLogin] Edge function error:', error);
@@ -239,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return false;
       } catch (err) {
-        console.error('[AutoLogin] Exception:', err);
+        console.error('[AutoLogin] Exception / timeout:', err);
         return false;
       } finally {
         setIsAutoLoginChecking(false);

@@ -1,4 +1,27 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, Component, ReactNode } from 'react';
+
+class SafeCartBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err: any) { console.error('[POS Cart Error]', err); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-950/20 border border-red-500/30 rounded-xl text-center text-red-400">
+          <p className="text-sm font-bold">تعذر عرض السلة مؤقتاً</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false })}
+            className="mt-2 text-xs bg-red-500/20 px-3 py-1 rounded-lg text-red-300 hover:bg-red-500/30"
+          >
+            إعادة تحميل السلة
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { POSHeader } from '@/components/pos/POSHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -821,21 +844,23 @@ export default function POS() {
           {/* Cart Panel - Desktop Only (not tablet) */}
           {!isMobile && !isTablet && (
             <div className="w-80 flex-shrink-0" data-tour="cart-panel">
-              <CartPanel
-                cart={cart}
-                currencies={currencies}
-                selectedCurrency={selectedCurrency}
-                discount={discount}
-                customerName={customerName}
-                onUpdateQuantity={updateQuantity}
-                onRemoveItem={removeItem}
-                onClearCart={clearCart}
-                onCurrencyChange={setSelectedCurrency}
-                onDiscountChange={setDiscount}
-                onCustomerNameChange={setCustomerName}
-                onToggleUnit={toggleCartItemUnit}
-                onUpdateItemPrice={updateItemPrice}
-              />
+              <SafeCartBoundary>
+                <CartPanel
+                  cart={cart}
+                  currencies={currencies}
+                  selectedCurrency={selectedCurrency}
+                  discount={discount}
+                  customerName={customerName}
+                  onUpdateQuantity={updateQuantity}
+                  onRemoveItem={removeItem}
+                  onClearCart={clearCart}
+                  onCurrencyChange={setSelectedCurrency}
+                  onDiscountChange={setDiscount}
+                  onCustomerNameChange={setCustomerName}
+                  onToggleUnit={toggleCartItemUnit}
+                  onUpdateItemPrice={updateItemPrice}
+                />
+              </SafeCartBoundary>
             </div>
           )}
         </div>
@@ -844,23 +869,25 @@ export default function POS() {
       {/* Cart Sheet - Mobile */}
       <Sheet open={cartOpen} onOpenChange={handleSetCartOpen}>
         <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden">
-          <CartPanel
-            cart={cart}
-            currencies={currencies}
-            selectedCurrency={selectedCurrency}
-            discount={discount}
-            customerName={customerName}
-            onUpdateQuantity={updateQuantity}
-            onRemoveItem={removeItem}
-            onClearCart={clearCart}
-            onCurrencyChange={setSelectedCurrency}
-            onDiscountChange={setDiscount}
-            onCustomerNameChange={setCustomerName}
-            onToggleUnit={toggleCartItemUnit}
-            onUpdateItemPrice={updateItemPrice}
-            onClose={() => handleSetCartOpen(false)}
-            isMobile
-          />
+          <SafeCartBoundary>
+            <CartPanel
+              cart={cart}
+              currencies={currencies}
+              selectedCurrency={selectedCurrency}
+              discount={discount}
+              customerName={customerName}
+              onUpdateQuantity={updateQuantity}
+              onRemoveItem={removeItem}
+              onClearCart={clearCart}
+              onCurrencyChange={setSelectedCurrency}
+              onDiscountChange={setDiscount}
+              onCustomerNameChange={setCustomerName}
+              onToggleUnit={toggleCartItemUnit}
+              onUpdateItemPrice={updateItemPrice}
+              onClose={() => handleSetCartOpen(false)}
+              isMobile
+            />
+          </SafeCartBoundary>
         </SheetContent>
       </Sheet>
 

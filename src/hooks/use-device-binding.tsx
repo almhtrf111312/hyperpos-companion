@@ -139,6 +139,22 @@ export function useDeviceBinding() {
     checkDeviceBinding();
   }, [checkDeviceBinding]);
 
+  // Safety timeout: release loading screen after 3.5s even if server hasn't responded.
+  // Prevents infinite black screen on clean installs with slow/no network.
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setState(prev => {
+        if (prev.isChecking) {
+          console.warn('[DeviceBinding] Safety timeout reached, releasing loading screen');
+          return { ...prev, isChecking: false };
+        }
+        return prev;
+      });
+    }, 3500);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   return {
     ...state,
     refreshDeviceBinding: checkDeviceBinding,

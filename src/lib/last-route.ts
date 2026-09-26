@@ -1,44 +1,29 @@
 export const LAST_ROUTE_KEY = 'hyperpos_last_route';
 
-const SKIP_PATHS = new Set(['/', '/login', '/signup', '/reset-password', '/reports']);
-
-function hashToRoute(): string {
+export function getCurrentAppRoute(): string {
   const hash = window.location.hash.replace(/^#/, '');
   if (hash.startsWith('/')) return hash;
-  return window.location.pathname + window.location.search + window.location.hash;
-}
-
-export function getCurrentAppRoute(): string {
-  return hashToRoute();
+  return window.location.pathname;
 }
 
 export function saveLastRoute(route?: string): void {
-  const path = route ?? getCurrentAppRoute();
-  const pathname = path.split('?')[0];
-  if (!pathname || SKIP_PATHS.has(pathname)) return;
-  try {
-    localStorage.setItem(LAST_ROUTE_KEY, path);
-  } catch {
-    // ignore quota / private-mode errors
-  }
+  // لا نحفظ المسار إذا كان الهدف دائماً فتح نقطة البيع عند التشغيل الجديد
 }
 
 /**
- * Restore the last screen only on a real document load (WebView start URL).
- * Does nothing if the hash already points at a real page — no resume redirect.
+ * عند التشغيل النظيف للتطبيق، التوجيه الافتراضي يكون دائماً إلى نقطة البيع /pos
  */
 export function restoreLastRouteIfNeeded(): void {
   try {
-    const saved = localStorage.getItem(LAST_ROUTE_KEY);
-    if (!saved || SKIP_PATHS.has(saved.split('?')[0])) return;
-
+    localStorage.removeItem(LAST_ROUTE_KEY);
     const hash = window.location.hash.replace(/^#/, '');
     const currentPath = (hash.startsWith('/') ? hash : '/').split('?')[0];
-    if (currentPath !== '/') return;
 
-    const next = saved.startsWith('/') ? saved : `/${saved}`;
-    window.location.hash = next;
+    // إذا فتح التطبيق على الجذر أو لم يكن هناك مسار محدد، وجّهه إلى نقطة البيع مباشرة
+    if (currentPath === '/' || !currentPath) {
+      window.location.hash = '/pos';
+    }
   } catch {
-    // ignore restore errors
+    // Ignore errors
   }
 }

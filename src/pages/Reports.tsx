@@ -13,6 +13,7 @@ import {
   FileText,
   PieChart,
   ArrowUpRight,
+  ArrowDownRight,
   ArrowRight,
   RefreshCw,
   Wallet,
@@ -384,7 +385,9 @@ export default function Reports() {
         if (!productSalesMap[key]) productSalesMap[key] = { name: item.name, sales: 0, revenue: 0, profit: 0 };
         productSalesMap[key].sales += item.quantity;
         productSalesMap[key].revenue += item.total;
-        const itemProfit = item.profit ?? (item.costPrice !== undefined ? Math.max(0, item.price - item.costPrice) * item.quantity : item.total * 0.4);
+        const catalogProduct = cloudProducts.find(p => p.id === item.id || p.name === item.name);
+        const actualCost = item.costPrice ?? catalogProduct?.costPrice;
+        const itemProfit = item.profit ?? (actualCost !== undefined ? Math.max(0, item.price - actualCost) * item.quantity : 0);
         productSalesMap[key].profit += itemProfit;
       });
     });
@@ -411,7 +414,7 @@ export default function Reports() {
       dailySales, allDailySales, topProducts, allProducts, topCustomers, allCustomers,
       hasData: filteredInvoices.length > 0,
     };
-  }, [dateRange, filters.status, filters.cashierId, filters.paymentType, cloudInvoices, t]);
+  }, [dateRange, filters.status, filters.cashierId, filters.paymentType, cloudInvoices, cloudProducts, t]);
 
   // Partner report data
   const partnerReportData = useMemo(() => {
@@ -1200,6 +1203,45 @@ export default function Reports() {
     return '0.0';
   }, [reportData.summary.totalProfit, reportData.summary.totalSales]);
 
+  // حساب المبيعات للفترة السابقة المماثلة لمقارنة النمو الحقيقي
+  const previousPeriodSales = useMemo(() => {
+    try {
+      const fromDate = new Date(dateRange.from);
+      const toDate = new Date(dateRange.to);
+      const durationMs = Math.max(86400000, toDate.getTime() - fromDate.getTime());
+      const prevToDate = new Date(fromDate.getTime() - 86400000);
+      const prevFromDate = new Date(prevToDate.getTime() - durationMs);
+      const prevFromStr = prevFromDate.toISOString().split('T')[0];
+      const prevToStr = prevToDate.toISOString().split('T')[0];
+
+      return cloudInvoices
+        .filter(inv => {
+          const invDate = toLocalDateString(inv.createdAt);
+          return (inv.type === 'sale' || inv.type === 'maintenance') &&
+            inv.status !== 'refunded' &&
+            isDateInRange(invDate, prevFromStr, prevToStr);
+        })
+        .reduce((sum, inv) => sum + inv.total, 0);
+    } catch {
+      return 0;
+    }
+  }, [dateRange, cloudInvoices]);
+
+  const salesTrend = useMemo(() => {
+    if (previousPeriodSales <= 0) {
+      if (reportData.summary.totalSales > 0) {
+        return { isUp: true, label: `${reportData.summary.totalOrders} مبيعات في الفترة` };
+      }
+      return { isUp: true, label: '0% عن الفترة السابقة' };
+    }
+    const diff = ((reportData.summary.totalSales - previousPeriodSales) / previousPeriodSales) * 100;
+    const isUp = diff >= 0;
+    return {
+      isUp,
+      label: `${isUp ? '+' : ''}${diff.toFixed(1)}% عن الفترة السابقة`,
+    };
+  }, [reportData.summary.totalSales, reportData.summary.totalOrders, previousPeriodSales]);
+
   const storeInfo = useMemo(() => getStoreInfo(), []);
 
   const handleSwitchView = (tab: 'summary' | 'detailed' | 'comprehensive') => {
@@ -1534,8 +1576,8 @@ export default function Reports() {
               </p>
             </div>
             <div className="flex items-center gap-1 text-[10px] sm:text-xs text-white/90 font-medium">
-              <span>+12.4% عن الفترة السابقة</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>{salesTrend.label}</span>
+              {salesTrend.isUp ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5 text-amber-200" />}
             </div>
           </div>
 
@@ -1571,7 +1613,7 @@ export default function Reports() {
               </p>
             </div>
             <p className="text-muted-foreground text-[10px] sm:text-xs">
-              لكل عميل مسجل
+              {reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل في هذه الفترة` : 'لكل طلب مسجل'}
             </p>
           </div>
 
@@ -1589,7 +1631,7 @@ export default function Reports() {
               </p>
             </div>
             <p className="text-muted-foreground text-[10px] sm:text-xs">
-              مكتملة بنجاح 100%
+              {reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات مسجلة'}
             </p>
           </div>
         </div>

@@ -91,16 +91,19 @@ export function ProductGrid({
   };
 
   const touchMovedRef = useRef(false);
+  const longPressTriggeredRef = useRef(false);
 
   const handleLongPressStart = (product: Product) => {
     touchMovedRef.current = false;
+    longPressTriggeredRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       if (!touchMovedRef.current) {
+        longPressTriggeredRef.current = true;
         setSelectedProduct(product);
         setDetailsDialogOpen(true);
         if (navigator.vibrate) navigator.vibrate(50);
       }
-    }, 1000);
+    }, 500);
   };
 
   const handleLongPressEnd = () => {
@@ -117,6 +120,10 @@ export function ProductGrid({
 
   const handleProductClick = (product: Product) => {
     handleLongPressEnd();
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
     onProductClick(product);
   };
 
