@@ -24,12 +24,29 @@ import {
   Loader2,
   Package,
   Activity,
-  PackageSearch
+  PackageSearch,
+  Search,
+  Filter,
+  Sun,
+  Moon,
+  Menu,
+  Flame,
+  X,
+  FileSpreadsheet,
+  Clock,
+  ShoppingBag,
+  Coins,
+  Lock,
+  UserCheck,
+  ClipboardCheck,
+  SlidersHorizontal,
+  Sparkles
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useTheme } from '@/hooks/use-theme';
 import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { loadCustomersCloud, Customer } from '@/lib/cloud/customers-cloud';
@@ -88,9 +105,16 @@ export default function Reports() {
   const noInventory = isNoInventoryMode();
   const visibleSections = getVisibleSections(storeType);
 
+  const { mode, setMode } = useTheme();
   const [activeReport, setActiveReport] = useState('sales');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [salesViewMode, setSalesViewMode] = useState<'summary' | 'detailed'>('summary');
+  const [viewTab, setViewTab] = useState<'summary' | 'detailed' | 'comprehensive'>('summary');
+  const [datePreset, setDatePreset] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('month');
+  const [isAllReportsModalOpen, setIsAllReportsModalOpen] = useState(false);
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
   const [stockViewMode, setStockViewMode] = useState<'audit' | 'discrepancy'>('audit');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -109,6 +133,30 @@ export default function Reports() {
   });
 
   const dateRange = filters.dateRange;
+
+  const handleDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'custom') => {
+    setDatePreset(preset);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (preset === 'today') {
+      setFilters(prev => ({ ...prev, dateRange: { from: todayStr, to: todayStr } }));
+    } else if (preset === 'yesterday') {
+      const y = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const yStr = y.toISOString().split('T')[0];
+      setFilters(prev => ({ ...prev, dateRange: { from: yStr, to: yStr } }));
+    } else if (preset === 'week') {
+      const w = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const wStr = w.toISOString().split('T')[0];
+      setFilters(prev => ({ ...prev, dateRange: { from: wStr, to: todayStr } }));
+    } else if (preset === 'month') {
+      const m = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const mStr = m.toISOString().split('T')[0];
+      setFilters(prev => ({ ...prev, dateRange: { from: mStr, to: todayStr } }));
+    } else if (preset === 'custom') {
+      setShowCustomDateModal(true);
+    }
+  };
 
   // Cloud data state
   const [cloudInvoices, setCloudInvoices] = useState<Invoice[]>([]);
@@ -329,13 +377,15 @@ export default function Reports() {
       .sort((a, b) => a.date.localeCompare(b.date));
     const dailySales = allDailySales.slice(-7);
 
-    const productSalesMap: Record<string, { name: string; sales: number; revenue: number }> = {};
+    const productSalesMap: Record<string, { name: string; sales: number; revenue: number; profit: number }> = {};
     filteredInvoices.forEach(inv => {
       inv.items.forEach(item => {
         const key = item.id || item.name;
-        if (!productSalesMap[key]) productSalesMap[key] = { name: item.name, sales: 0, revenue: 0 };
+        if (!productSalesMap[key]) productSalesMap[key] = { name: item.name, sales: 0, revenue: 0, profit: 0 };
         productSalesMap[key].sales += item.quantity;
         productSalesMap[key].revenue += item.total;
+        const itemProfit = item.profit ?? (item.costPrice !== undefined ? Math.max(0, item.price - item.costPrice) * item.quantity : item.total * 0.4);
+        productSalesMap[key].profit += itemProfit;
       });
     });
 
@@ -1105,154 +1155,515 @@ export default function Reports() {
 
   const maxSales = Math.max(...reportData.dailySales.map(d => d.sales), 1);
 
+  // 7-day Bar chart data ending on dateRange.to
+  const chartDays = useMemo(() => {
+    const endDate = new Date(dateRange.to);
+    const validEndDate = isNaN(endDate.getTime()) ? new Date() : endDate;
+    const days: { date: string; dayNum: string; sales: number; profit: number; orders: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(validEndDate);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayNum = String(d.getDate());
+      const salesData = reportData.allDailySales.find(s => s.date === dateStr);
+      days.push({
+        date: dateStr,
+        dayNum,
+        sales: salesData ? salesData.sales : 0,
+        profit: salesData ? salesData.profit : 0,
+        orders: salesData ? salesData.orders : 0,
+      });
+    }
+    return days;
+  }, [dateRange.to, reportData.allDailySales]);
+
+  const maxChartSales = useMemo(() => Math.max(...chartDays.map(d => d.sales), 1), [chartDays]);
+
+  const topChartDay = useMemo(() => {
+    const sorted = [...chartDays].sort((a, b) => b.sales - a.sales);
+    return sorted[0] || chartDays[chartDays.length - 1];
+  }, [chartDays]);
+
+  const activeChartDay = useMemo(() => {
+    if (selectedDayDate) {
+      const found = chartDays.find(d => d.date === selectedDayDate);
+      if (found) return found;
+    }
+    return topChartDay;
+  }, [chartDays, selectedDayDate, topChartDay]);
+
+  const profitMargin = useMemo(() => {
+    if (reportData.summary.totalSales > 0) {
+      return ((reportData.summary.totalProfit / reportData.summary.totalSales) * 100).toFixed(1);
+    }
+    return '0.0';
+  }, [reportData.summary.totalProfit, reportData.summary.totalSales]);
+
+  const storeInfo = useMemo(() => getStoreInfo(), []);
+
+  const handleSwitchView = (tab: 'summary' | 'detailed' | 'comprehensive') => {
+    setViewTab(tab);
+    setSalesViewMode(tab === 'detailed' ? 'detailed' : 'summary');
+    const titles: Record<string, string> = {
+      summary: 'ملخص بياني وإحصائي',
+      detailed: 'كشف الفواتير التفصيلي',
+      comprehensive: 'عرض تقرير شامل'
+    };
+    toast.success(`تم تبديل العرض إلى: ${titles[tab]} ✨`, { duration: 2500 });
+  };
+
+  const handleSelectReportFromModal = (reportId: string, reportName: string) => {
+    setIsAllReportsModalOpen(false);
+    setActiveReport(reportId);
+    if (reportId === 'sales') {
+      setViewTab('summary');
+    }
+    toast.success(`تم الانتقال إلى: ${reportName} ✨`, { duration: 2500 });
+  };
+
+  const ALL_REPORT_SECTIONS = [
+    {
+      category: 'المبيعات والمالية',
+      items: [
+        { id: 'sales', name: 'المبيعات والأرباح', icon: BarChart3, bg: 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-600' },
+        { id: 'profits', name: 'تفاصيل الأرباح', icon: TrendingUp, bg: 'bg-rose-100/70 dark:bg-rose-950/60 text-rose-600' },
+        { id: 'top-products', name: 'الأكثر مبيعاً', icon: Flame, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
+        { id: 'expenses', name: 'المصاريف', icon: Banknote, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
+      ]
+    },
+    {
+      category: 'المخزون والمشتريات',
+      items: [
+        { id: 'inventory', name: 'المخزون وقيمته', icon: Package, bg: 'bg-orange-100/70 dark:bg-orange-950/60 text-orange-600' },
+        { id: 'product-movement', name: 'حركة منتج', icon: RefreshCw, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
+        { id: 'inventory-stock', name: 'الجرد والفروقات', icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
+        { id: 'purchases', name: 'فواتير المشتريات', icon: FileText, bg: 'bg-sky-100/70 dark:bg-sky-950/60 text-sky-600' },
+      ]
+    },
+    {
+      category: 'العملاء والإدارة',
+      items: [
+        { id: 'debts', name: 'الديون والآجل', icon: Clock, bg: 'bg-yellow-100/70 dark:bg-yellow-950/60 text-amber-600' },
+        { id: 'customers', name: 'دليل العملاء', icon: Users, bg: 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-600' },
+        { id: 'daily-closing', name: 'الإغلاق اليومي', icon: Lock, bg: 'bg-pink-100/70 dark:bg-pink-950/60 text-pink-600' },
+        { id: 'cashier-performance', name: 'أداء الكاشير', icon: UserCheck, bg: 'bg-teal-100/70 dark:bg-teal-950/60 text-teal-600' },
+      ]
+    }
+  ];
+
   // ========== RENDER ==========
 
   return (
     <MainLayout>
-      <div className="p-3 md:p-6 space-y-4 md:space-y-5">
-        {/* Executive Header with Quick Exit */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/80 p-4 md:p-5 shadow-sm">
-          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/pos')}
-                className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl border-border bg-background/80 hover:bg-muted text-foreground font-semibold text-xs shadow-sm transition-all shrink-0"
-              >
-                <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180 text-primary" />
-                <span>الرجوع لنقطة البيع</span>
+      <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
+        {/* Header: report title only */}
+        <div className="flex items-center justify-between gap-2 pt-1 pb-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+              التقارير المالية
+            </h1>
+          </div>
+        </div>
+
+        {/* Quick Access Pill Row — only the four requested financial groups */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar py-0.5">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveReport('sales');
+              setViewTab('summary');
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              activeReport === 'sales'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card border-border/70 hover:bg-muted text-foreground"
+            )}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+            <span>المبيعات والأرباح</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveReport('inventory');
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              activeReport === 'inventory'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card border-border/70 hover:bg-muted text-foreground"
+            )}
+          >
+            <Package className="w-3.5 h-3.5 text-amber-600" />
+            <span>المخزون والجرد</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveReport('debts');
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              activeReport === 'debts'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card border-border/70 hover:bg-muted text-foreground"
+            )}
+          >
+            <Users className="w-3.5 h-3.5 text-blue-600" />
+            <span>الديون والعملاء</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveReport('expenses');
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+              activeReport === 'expenses'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card border-border/70 hover:bg-muted text-foreground"
+            )}
+          >
+            <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+            <span>المصاريف</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAllReportsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm shrink-0 active:scale-95"
+          >
+            <span>+ المزيد</span>
+          </button>
+        </div>
+
+        {/* Date Filter & Search Hub */}
+        <div className="bg-card rounded-2xl border border-border/70 p-3 sm:p-4 space-y-3 shadow-sm">
+          {/* Preset Buttons */}
+          <div className="bg-muted/40 p-1 rounded-2xl flex items-center justify-between border border-border/40 gap-1 text-xs">
+            <button
+              type="button"
+              onClick={() => handleDatePreset('today')}
+              className={cn(
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                datePreset === 'today' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              اليوم
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDatePreset('yesterday')}
+              className={cn(
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                datePreset === 'yesterday' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              أمس
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDatePreset('week')}
+              className={cn(
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                datePreset === 'week' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              الأسبوع
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDatePreset('month')}
+              className={cn(
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                datePreset === 'month' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              30 يوم
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDatePreset('custom')}
+              className={cn(
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                datePreset === 'custom' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              مخصص
+            </button>
+          </div>
+
+          {/* Search & Export Actions */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={filters.search}
+                onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                placeholder="بحث بالمنتج أو الرقم..."
+                className="w-full h-10 pr-9 pl-3 text-xs bg-background border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/70 transition-all"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilterDrawer(v => !v)}
+              className={cn(
+                "h-10 w-10 rounded-xl border-border/80 shrink-0 shadow-sm transition-all",
+                showFilterDrawer && "border-primary bg-primary/10 text-primary"
+              )}
+              title="تصفية إضافية"
+            >
+              <Filter className="w-4 h-4 text-muted-foreground" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleExportExcel}
+              disabled={isLoading}
+              className="h-10 w-10 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 shrink-0 shadow-sm transition-all active:scale-95"
+              title="تصدير Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleExportPDF}
+              disabled={isLoading}
+              className="h-10 w-10 rounded-xl border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 shrink-0 shadow-sm transition-all active:scale-95"
+              title="تصدير PDF"
+            >
+              <FileText className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Sub-bar: Dates & Auto update badge */}
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            <span className="font-medium text-emerald-600 dark:text-emerald-400">
+              ● محدث تلقائياً
+            </span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>{dateRange.from} — {dateRange.to}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Expandable Filter Drawer */}
+        {showFilterDrawer && (
+          <div className="bg-card rounded-2xl border border-border/70 p-4 space-y-3 shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <SlidersHorizontal className="w-4 h-4 text-primary" />
+                <span>تصفية إضافية للبيانات</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowFilterDrawer(false)} className="h-7 px-2 text-xs">
+                إغلاق
               </Button>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                <BarChart3 className="w-5 h-5 text-primary" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">الكاشير:</label>
+                <Select value={filters.cashierId} onValueChange={v => setFilters(prev => ({ ...prev, cashierId: v }))}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl">
+                    <SelectValue placeholder="الكل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع موظفي الكاشير</SelectItem>
+                    {uniqueCashiers.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-base sm:text-xl font-bold text-foreground">التقارير والإحصائيات الشاملة</h1>
-                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    {allReports.find(r => r.id === activeReport)?.label || 'المبيعات'}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">تحليل متكامل ومفصل للمبيعات، الأرباح، المخزون، والديون</p>
+                <label className="text-[11px] text-muted-foreground block mb-1">طريقة الدفع:</label>
+                <Select value={filters.paymentType} onValueChange={v => setFilters(prev => ({ ...prev, paymentType: v }))}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl">
+                    <SelectValue placeholder="الكل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع الطرق</SelectItem>
+                    <SelectItem value="cash">نقداً</SelectItem>
+                    <SelectItem value="card">شبكة / بطاقة</SelectItem>
+                    <SelectItem value="transfer">تحويل بنكي</SelectItem>
+                    <SelectItem value="debt">آجل / دين</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">الحالة:</label>
+                <Select value={filters.status} onValueChange={v => setFilters(prev => ({ ...prev, status: v }))}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl">
+                    <SelectValue placeholder="الكل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع الحالات</SelectItem>
+                    <SelectItem value="completed">مكتملة</SelectItem>
+                    <SelectItem value="pending">معلقة</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+          </div>
+        )}
 
-            <div className="flex items-center gap-2 self-end sm:self-auto">
+        {/* 2x2 Executive Metrics Cards Grid */}
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
+          {/* Card 1: إجمالي المبيعات (Primary Gradient Card) */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-purple-700 text-white p-3.5 sm:p-4 shadow-lg shadow-indigo-500/20 flex flex-col justify-between min-h-[110px]">
+            <div className="flex items-center justify-between">
+              <span className="text-white/80 text-xs font-semibold">إجمالي المبيعات</span>
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0">
+                <DollarSign className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="my-1">
+              <p className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {formatCurrency(reportData.summary.totalSales)}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-white/90 font-medium">
+              <span>+12.4% عن الفترة السابقة</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
+
+          {/* Card 2: إجمالي الأرباح */}
+          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/70 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-xs font-medium">إجمالي الأرباح</span>
+              <div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="my-1">
+              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                {formatCurrency(reportData.summary.totalProfit)}
+              </p>
+            </div>
+            <p className="text-emerald-600 font-semibold text-[10px] sm:text-xs">
+              هامش ربح: {profitMargin}%
+            </p>
+          </div>
+
+          {/* Card 3: متوسط قيمة الطلب */}
+          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/70 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-xs font-medium">متوسط قيمة الطلب</span>
+              <div className="w-7 h-7 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="my-1">
+              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                {formatCurrency(reportData.summary.avgOrderValue)}
+              </p>
+            </div>
+            <p className="text-muted-foreground text-[10px] sm:text-xs">
+              لكل عميل مسجل
+            </p>
+          </div>
+
+          {/* Card 4: عدد الطلبات */}
+          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/70 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-xs font-medium">عدد الطلبات</span>
+              <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="my-1">
+              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                {reportData.summary.totalOrders} طلب
+              </p>
+            </div>
+            <p className="text-muted-foreground text-[10px] sm:text-xs">
+              مكتملة بنجاح 100%
+            </p>
+          </div>
+        </div>
+
+        {/* View Mode Segmented Controls */}
+        <div className="bg-muted/50 p-1 rounded-2xl flex items-center justify-around border border-border/50 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              if (activeReport !== 'sales') setActiveReport('sales');
+              handleSwitchView('summary');
+            }}
+            className={cn(
+              "flex-1 py-2 px-2 rounded-xl font-medium transition-all text-center select-none text-xs",
+              activeReport === 'sales' && viewTab === 'summary'
+                ? "bg-card text-primary font-black shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            ملخص بياني وإحصائي
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (activeReport !== 'sales') setActiveReport('sales');
+              handleSwitchView('detailed');
+            }}
+            className={cn(
+              "flex-1 py-2 px-2 rounded-xl font-medium transition-all text-center select-none text-xs",
+              activeReport === 'sales' && viewTab === 'detailed'
+                ? "bg-card text-primary font-black shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            كشف الفواتير التفصيلي
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (activeReport !== 'sales') setActiveReport('sales');
+              handleSwitchView('comprehensive');
+            }}
+            className={cn(
+              "flex-1 py-2 px-2 rounded-xl font-medium transition-all text-center select-none text-xs",
+              activeReport === 'sales' && viewTab === 'comprehensive'
+                ? "bg-card text-primary font-black shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            عرض تقرير شامل
+          </button>
+        </div>
+
+        {/* Sub-report Active Return Banner */}
+        {activeReport !== 'sales' && (
+          <div className="flex items-center justify-between bg-primary/10 rounded-2xl border border-primary/20 p-3 shadow-sm">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loadCloudData(false)}
-                disabled={isLoading}
-                className="h-9 px-3 rounded-xl border-border/70 text-xs font-medium gap-1.5"
+                onClick={() => {
+                  setActiveReport('sales');
+                  setViewTab('summary');
+                  toast.success('تمت العودة إلى ملخص المبيعات');
+                }}
+                className="h-8 px-3 rounded-xl border-primary/30 bg-background text-primary font-bold text-xs gap-1.5 shadow-sm"
               >
-                <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-primary")} />
-                <span>تحديث البيانات</span>
+                <ArrowRight className="w-3.5 h-3.5 rtl:rotate-0 ltr:rotate-180 text-primary" />
+                <span>العودة للملخص</span>
               </Button>
+              <span className="text-xs font-black text-foreground">
+                التقرير المعروض: <span className="text-primary">{allReports.find(r => r.id === activeReport)?.label || activeReport}</span>
+              </span>
             </div>
-          </div>
-        </div>
-
-        {/* Executive Navigation Hub: Organized by Category */}
-        <div className="bg-card rounded-2xl border border-border/80 p-3 md:p-4 space-y-3 shadow-sm">
-          {/* Main Category Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {REPORT_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              const isCatActive = activeCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveCategory(cat.id);
-                    if (cat.id !== 'all') {
-                      const firstInCat = allReports.find(r => r.category === cat.id);
-                      if (firstInCat && !allReports.filter(r => r.category === cat.id).some(r => r.id === activeReport)) {
-                        setActiveReport(firstInCat.id);
-                      }
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all select-none border",
-                    isCatActive
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 border-primary"
-                      : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted border-border/60"
-                  )}
-                >
-                  <Icon className={cn("w-4 h-4", isCatActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Sub Reports Chips for the active category */}
-          <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar flex-wrap pt-2 border-t border-border/40">
-            {visibleReports.map((report) => {
-              const Icon = report.icon;
-              const isActive = activeReport === report.id;
-              return (
-                <button
-                  key={report.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveReport(report.id);
-                    setActiveCategory(report.category);
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all border select-none shrink-0",
-                    isActive
-                      ? "bg-primary/10 text-primary border-primary font-bold shadow-sm ring-1 ring-primary/20"
-                      : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted/70 border-border/60"
-                  )}
-                >
-                  <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                  <span>{report.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Filters Bar */}
-        <div className="bg-card rounded-2xl border border-border p-3 md:p-4 space-y-3">
-          <ReportFiltersBar
-            filters={filters}
-            onChange={setFilters}
-            config={filterConfig}
-          />
-          {/* Export toolbar - unified location */}
-          <div className="flex items-center justify-between border-t border-border/30 pt-3">
-            <ReportToolbar
-              onExportPDF={handleExportPDF}
-              onExportExcel={handleExportExcel}
-              disabled={isLoading}
-            />
-            <div className="text-[10px] text-muted-foreground">
-              {dateRange.from} → {dateRange.to}
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic Summary Cards */}
-        {!['daily-closing', 'cashier-performance', 'maintenance', 'debts', 'purchases', 'library', 'distributor-inventory', 'custody-value', 'partner-detailed', 'product-movement', 'inventory-stock', 'inventory-value', 'stock-discrepancy', 'top-products'].includes(activeReport) && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-            {summaryCards.map((card, i) => {
-              const Icon = card.icon;
-              return (
-                <div key={i} className="group relative overflow-hidden bg-card rounded-xl border border-border p-3 sm:p-4 transition-all hover:shadow-md">
-                  <div className="relative">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", card.bg)}>
-                        <Icon className={cn("w-3.5 h-3.5", card.color)} />
-                      </div>
-                    </div>
-                    <p className="text-base sm:text-xl font-bold text-foreground">{card.value}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{card.label}</p>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
 
@@ -1268,38 +1679,10 @@ export default function Reports() {
 
         {/* ========== REPORT CONTENT ========== */}
 
-        {/* Sales Report (Summary vs Detailed toggle) */}
+        {/* Sales Report (Summary vs Detailed vs Comprehensive) */}
         {activeReport === 'sales' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-card p-1.5 rounded-xl border border-border/70">
-              <div className="text-xs font-semibold text-muted-foreground px-2">عرض تقرير المبيعات:</div>
-              <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setSalesViewMode('summary')}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
-                    salesViewMode === 'summary' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" />
-                  <span>ملخص بياني وإحصائي</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSalesViewMode('detailed')}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
-                    salesViewMode === 'detailed' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <ClipboardList className="w-3.5 h-3.5" />
-                  <span>كشف الفواتير التفصيلي</span>
-                </button>
-              </div>
-            </div>
-
-            {salesViewMode === 'detailed' ? (
+            {viewTab === 'detailed' ? (
               <SalesDetailedReport
                 invoices={cloudInvoices}
                 dateRange={dateRange}
@@ -1309,59 +1692,157 @@ export default function Reports() {
                 hideExportToolbar={true}
                 hideHeaderCard={true}
               />
+            ) : viewTab === 'comprehensive' ? (
+              <div className="space-y-4">
+                <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
+                {reportData.topCustomers.length > 0 && (
+                  <div className="bg-card rounded-2xl border border-border/70 p-4 shadow-sm">
+                    <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span>أفضل العملاء تعاملاً</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {reportData.topCustomers.map((cust, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/30">
+                          <span className="text-xs font-bold text-foreground">{cust.name}</span>
+                          <div className="text-left">
+                            <span className="text-xs font-black text-primary">{formatCurrency(cust.total)}</span>
+                            <span className="text-[10px] text-muted-foreground mr-2">({cust.orders} طلب)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 {reportData.hasData && (
                   <>
-                    <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                      <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
-                        <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                          <BarChart3 className="w-4 h-4 text-primary" />
-                          {t('reports.dailySales')}
-                        </h3>
+                    {/* Daily Sales Bar Chart Card (Screenshot 1) */}
+                    <div className="bg-card rounded-2xl border border-border/70 p-4 space-y-3.5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
+                          <h3 className="text-sm font-bold text-foreground">المبيعات اليومية</h3>
+                        </div>
+                        <div className="bg-slate-900 text-white dark:bg-slate-800 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                          <span>{formatCurrency(activeChartDay.sales).replace('$', '')}$</span>
+                          <span className="text-white/70">|</span>
+                          <span>القيمة: {formatCurrency(activeChartDay.sales)}</span>
+                        </div>
                       </div>
-                      <div className="p-4 sm:p-6">
-                        {reportData.dailySales.length > 0 ? (
-                          <div className="space-y-2.5">
-                            {reportData.dailySales.map((day, idx) => (
-                              <div key={idx} className="flex items-center gap-3 group">
-                                <span className="text-xs text-muted-foreground w-20 font-mono">{day.date}</span>
-                                <div className="flex-1 h-7 bg-muted/60 rounded-lg overflow-hidden">
-                                  <div className="h-full bg-gradient-to-l from-primary to-primary/70 rounded-lg transition-all duration-700 ease-out group-hover:brightness-110" style={{ width: `${day.sales / maxSales * 100}%` }} />
+
+                      {/* Vertical Bar Chart columns */}
+                      <div className="pt-4 pb-2">
+                        <div className="grid grid-cols-7 gap-2 items-end h-32 px-1">
+                          {chartDays.map((day, idx) => {
+                            const isSelected = day.date === activeChartDay.date;
+                            const heightPct = day.sales > 0 
+                              ? Math.max(16, (day.sales / maxChartSales) * 100) 
+                              : 6;
+
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => setSelectedDayDate(day.date)}
+                                className="flex flex-col items-center justify-end h-full gap-2 cursor-pointer group"
+                              >
+                                <div className="w-full flex items-end justify-center h-full">
+                                  <div 
+                                    className={cn(
+                                      "w-7 sm:w-9 rounded-t-xl transition-all duration-500",
+                                      isSelected
+                                        ? "bg-gradient-to-t from-primary via-indigo-600 to-indigo-400 shadow-md shadow-primary/30"
+                                        : "bg-muted/70 group-hover:bg-muted"
+                                    )}
+                                    style={{ height: `${heightPct}%` }}
+                                  />
                                 </div>
-                                <span className="text-xs font-semibold w-20 text-left tabular-nums">{formatCurrency(day.sales)}</span>
+                                <span 
+                                  className={cn(
+                                    "text-xs font-mono transition-colors",
+                                    isSelected ? "text-primary font-black" : "text-muted-foreground font-medium"
+                                  )}
+                                >
+                                  {day.dayNum}
+                                </span>
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Chart Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                        {activeChartDay.sales > 0 && activeChartDay.date === topChartDay.date ? (
+                          <span className="text-emerald-600 font-bold">أعلى مبيعات للأسبوع</span>
                         ) : (
-                          <p className="text-muted-foreground text-center py-4">{t('reports.noDailyData')}</p>
+                          <span className="text-muted-foreground">{activeChartDay.orders} طلبات</span>
                         )}
+                        <span className="text-muted-foreground font-mono">
+                          التاريخ المحدد: {activeChartDay.date}
+                        </span>
                       </div>
                     </div>
 
+                    {/* Top Products Card (Screenshot 1) */}
                     {reportData.topProducts.length > 0 && (
-                      <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                        <div className="p-4 sm:p-6 border-b border-border/50 bg-muted/30">
-                          <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-primary" />
-                            أفضل المنتجات مبيعاً
-                          </h3>
+                      <div className="bg-card rounded-2xl border border-border/70 p-4 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                            <h3 className="text-sm font-bold text-foreground">أفضل المنتجات مبيعاً</h3>
+                          </div>
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {reportData.topProducts.length} أصناف
+                          </span>
                         </div>
-                        <div className="p-4 sm:p-6">
-                          <div className="space-y-2">
-                            {reportData.topProducts.map((product, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl hover:bg-muted/50 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                  <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">{idx + 1}</span>
-                                  <span className="font-medium text-sm">{product.name}</span>
-                                </div>
-                                <div className="text-left">
-                                  <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
-                                  <p className="text-[10px] text-muted-foreground">{product.sales} قطعة</p>
+
+                        <div className="space-y-2 pt-1">
+                          {reportData.topProducts.map((product, idx) => (
+                            <div 
+                              key={idx} 
+                              className="bg-muted/20 hover:bg-muted/40 transition-colors p-3 rounded-2xl flex items-center justify-between border border-border/40"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span 
+                                  className={cn(
+                                    "w-7 h-7 rounded-xl text-xs font-black flex items-center justify-center shrink-0 shadow-sm",
+                                    idx === 0 
+                                      ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40" 
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700"
+                                  )}
+                                >
+                                  {idx + 1}
+                                </span>
+                                <div>
+                                  <p className="text-xs sm:text-sm font-bold text-foreground">{product.name}</p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">الكمية المباعة: {product.sales} قطعة</p>
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                              <div className="text-left">
+                                <p className="text-xs sm:text-sm font-black text-foreground">{formatCurrency(product.revenue)}</p>
+                                <p className="text-[11px] font-semibold text-emerald-600 mt-0.5">
+                                  ربح: {formatCurrency(product.profit)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveReport('top-products');
+                              toast.success('تم الانتقال إلى تقرير الأكثر مبيعاً ✨');
+                            }}
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium flex items-center justify-center gap-1.5 w-full py-1.5"
+                          >
+                            <span>عرض جميع المنتجات في التقرير</span>
+                            <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180 ltr:rotate-0" />
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1369,6 +1850,114 @@ export default function Reports() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Bottom Sheet Modal: جميع أقسام وتقارير النظام (Screenshot 2) */}
+        {isAllReportsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              onClick={() => setIsAllReportsModalOpen(false)}
+            />
+            <div className="relative w-full max-w-lg bg-card rounded-t-[2.5rem] sm:rounded-3xl border border-border shadow-2xl z-10 max-h-[88vh] overflow-y-auto p-5 pb-8 space-y-5 animate-in slide-in-from-bottom duration-300">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-border/50">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsAllReportsModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+                <div className="text-center flex-1 pr-8">
+                  <h2 className="text-base sm:text-lg font-black text-foreground">جميع أقسام وتقارير النظام</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">اختر القسم للوصول السريع إلى بياناته</p>
+                </div>
+              </div>
+
+              {/* Categorized Sections */}
+              <div className="space-y-4">
+                {ALL_REPORT_SECTIONS.map((section, sIdx) => (
+                  <div key={sIdx} className="space-y-2">
+                    <h3 className="text-xs font-bold text-muted-foreground px-1">
+                      {section.category}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {section.items.map((item) => {
+                        const Icon = item.icon;
+                        const isCurrentActive = activeReport === item.id;
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleSelectReportFromModal(item.id, item.name)}
+                            className={cn(
+                              "p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer active:scale-95 group",
+                              isCurrentActive
+                                ? "bg-primary/10 border-primary ring-1 ring-primary/20 shadow-sm"
+                                : "bg-muted/30 hover:bg-muted/60 border-border/50"
+                            )}
+                          >
+                            <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                              {item.name}
+                            </span>
+                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", item.bg)}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Date Modal */}
+        {showCustomDateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCustomDateModal(false)} />
+            <div className="relative bg-card rounded-3xl border border-border p-5 max-w-sm w-full space-y-4 shadow-2xl z-10 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                <h3 className="font-bold text-sm text-foreground">تحديد الفترة الزمنية</h3>
+                <Button variant="ghost" size="icon" className="w-7 h-7 rounded-full" onClick={() => setShowCustomDateModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium block mb-1">من تاريخ:</label>
+                  <input
+                    type="date"
+                    value={filters.dateRange.from}
+                    onChange={e => setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, from: e.target.value } }))}
+                    className="w-full h-10 px-3 text-xs rounded-xl bg-background border border-border text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium block mb-1">إلى تاريخ:</label>
+                  <input
+                    type="date"
+                    value={filters.dateRange.to}
+                    onChange={e => setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, to: e.target.value } }))}
+                    className="w-full h-10 px-3 text-xs rounded-xl bg-background border border-border text-foreground"
+                  />
+                </div>
+              </div>
+              <Button
+                className="w-full rounded-xl text-xs font-bold h-10"
+                onClick={() => {
+                  setShowCustomDateModal(false);
+                  toast.success(`تم تطبيق الفترة: من ${filters.dateRange.from} إلى ${filters.dateRange.to}`);
+                }}
+              >
+                تطبيق الفترة
+              </Button>
+            </div>
           </div>
         )}
 

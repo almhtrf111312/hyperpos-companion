@@ -17,6 +17,11 @@ export function addCurrency(...amounts: number[]): number {
   return roundCurrency(sum);
 }
 
+export function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
 // Safe subtraction for currency values
 export function subtractCurrency(a: number, b: number): number {
   return roundCurrency((a || 0) - (b || 0));

@@ -1,6 +1,6 @@
 export const LAST_ROUTE_KEY = 'hyperpos_last_route';
 
-const SKIP_PATHS = new Set(['/', '/login', '/signup', '/reset-password']);
+const SKIP_PATHS = new Set(['/', '/login', '/signup', '/reset-password', '/reports']);
 
 function hashToRoute(): string {
   const hash = window.location.hash.replace(/^#/, '');

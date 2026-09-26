@@ -491,7 +491,30 @@ export const deductProductsLocalCache = async (
     items: Array.from(requestedByProduct, ([productId, quantity]) => ({ productId, quantity })),
     createdAt: new Date().toISOString(),
   });
-  if (!persisted) return { success: true, insufficientItems: [] };
+  if (!persisted) {
+    console.warn('[ProductsCloud] Pending stock deduction save failed; updating in-memory cache to keep UI consistent', {
+      operationId,
+      warehouseId,
+      items: Array.from(requestedByProduct, ([productId, quantity]) => ({ productId, quantity })),
+    });
+
+    if (warehouseId) {
+      emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+      return { success: true, insufficientItems: [] };
+    }
+
+    const updatedProducts = products.map(product => {
+      const requested = requestedByProduct.get(product.id);
+      if (!requested) return product;
+      const quantity = Math.max(0, product.quantity - requested);
+      return { ...product, quantity, status: getStatus(quantity, product.minStockLevel) };
+    });
+    productsCache = updatedProducts;
+    cacheTimestamp = Date.now();
+    saveToLocalCache(updatedProducts);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, updatedProducts);
+    return { success: true, insufficientItems: [] };
+  }
 
   if (warehouseId) {
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);

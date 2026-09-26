@@ -21,7 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency, clampNumber } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -250,11 +250,15 @@ export function CartPanel({
 
   // Calculate discount based on type
   // For fixed discounts in foreign currencies, convert to USD first
-  const fixedDiscountInUSD = discountType === 'fixed' && selectedCurrency.rate > 1
-    ? discount / selectedCurrency.rate
-    : discount;
+  const safeDiscountValue = Number.isFinite(discount) ? Number(discount) : 0;
+  const safeDiscountRate = discountType === 'percent'
+    ? clampNumber(safeDiscountValue, 0, 100)
+    : clampNumber(safeDiscountValue, 0, subtotal || 0);
+  const fixedDiscountInUSD = discountType === 'fixed' && Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 1
+    ? safeDiscountRate / selectedCurrency.rate
+    : safeDiscountRate;
   const discountAmount = discountType === 'percent'
-    ? (subtotal * discount) / 100
+    ? (subtotal * safeDiscountRate) / 100
     : Math.min(fixedDiscountInUSD, subtotal); // Fixed amount converted to USD, must not exceed subtotal
 
   const taxableAmount = Math.max(0, subtotal - discountAmount);
@@ -267,11 +271,12 @@ export function CartPanel({
     } catch { return {}; }
   }, []);
   const storeTaxEnabled = storeSettingsRaw.taxEnabled ?? false;
-  const storeTaxRate = storeSettingsRaw.taxRate ?? 0;
+  const storeTaxValue = Number(storeSettingsRaw.taxRate ?? 0);
+  const safeTaxRate = Number.isFinite(storeTaxValue) ? clampNumber(storeTaxValue, 0, 100) : 0;
   const settingsDiscountPercentEnabled = storeSettingsRaw.discountPercentEnabled ?? true;
   const settingsDiscountFixedEnabled = storeSettingsRaw.discountFixedEnabled ?? true;
 
-  const effectiveTaxRate = storeTaxEnabled ? storeTaxRate : 0;
+  const effectiveTaxRate = storeTaxEnabled ? safeTaxRate : 0;
   const taxAmount = taxMode === 'gross'
     ? (taxableAmount * effectiveTaxRate) / (100 + effectiveTaxRate)
     : (taxableAmount * effectiveTaxRate) / 100;

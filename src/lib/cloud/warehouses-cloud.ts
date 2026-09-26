@@ -96,7 +96,12 @@ export const adjustWarehouseStockLocalCache = (
   for (const item of items) totals.set(item.productId, (totals.get(item.productId) || 0) + item.quantity);
 
   // لا يوجد كاش محلي لهذا المستودع → لا نمنع البيع، الخادم هو المرجع النهائي
+  // لكن نُسجّل التحذير حتى لا يُفهم الأمر كتحقق ناجح دون تأكيد.
   if (!cached || cached.length === 0) {
+    console.warn('[WarehousesCloud] No local warehouse cache; allowing offline sale and deferring server validation.', {
+      warehouseId,
+      itemCount: items.length,
+    });
     return { success: true, insufficientItems: [] };
   }
 
