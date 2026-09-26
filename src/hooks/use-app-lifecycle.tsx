@@ -1,7 +1,7 @@
-// Fix #20: App Lifecycle Management for Capacitor
+// App lifecycle: persist the current route on background. Never redirect on resume.
 import { useEffect, useCallback } from 'react';
+import { saveLastRoute } from '@/lib/last-route';
 
-// Types for Capacitor App plugin
 interface AppStateChangeEvent {
   isActive: boolean;
 }
@@ -22,7 +22,6 @@ interface CapacitorWindow {
   };
 }
 
-// Callback types
 type LifecycleCallback = () => void;
 
 interface UseAppLifecycleOptions {
@@ -32,86 +31,58 @@ interface UseAppLifecycleOptions {
   clearSensitiveData?: boolean;
 }
 
-// Sensitive data keys that should be cleared on pause
 const SENSITIVE_SESSION_KEYS = [
-  '_hpdk', // Device key from secure storage
+  '_hpdk',
 ];
 
-/**
- * Hook to manage app lifecycle events for Capacitor apps
- * Handles pause/resume events and clears sensitive data when app goes to background
- */
 export function useAppLifecycle(options: UseAppLifecycleOptions = {}) {
   const { onPause, onResume, onStateChange, clearSensitiveData = false } = options;
 
   const handlePause = useCallback(() => {
-    console.log('[AppLifecycle] App paused');
-    
-    // ✅ حفظ المسار الحالي قبل الخروج للخلفية — يمنع فقدان الشاشة
-    try {
-      const currentPath = window.location.pathname + window.location.search + window.location.hash;
-      sessionStorage.setItem('_hp_last_route', currentPath);
-      console.log('[AppLifecycle] Saved route:', currentPath);
-    } catch { /* noop */ }
-    
-    // Clear sensitive session data if requested
+    saveLastRoute();
+
     if (clearSensitiveData) {
       SENSITIVE_SESSION_KEYS.forEach(key => {
         try {
           sessionStorage.removeItem(key);
-        } catch (e) {
-          console.warn('Failed to clear session key:', key);
+        } catch {
+          // ignore
         }
       });
     }
-    
+
     onPause?.();
   }, [onPause, clearSensitiveData]);
 
   const handleResume = useCallback(() => {
-    console.log('[AppLifecycle] App resumed — preserving active state in RAM');
-    
-    // ✅ التحقق من المسار المحفوظ واستعادته إذا تم إعادة تحميل الصفحة
-    try {
-      const savedRoute = sessionStorage.getItem('_hp_last_route');
-      const currentPath = window.location.pathname;
-      if (savedRoute && currentPath === '/' && savedRoute !== '/') {
-        console.log('[AppLifecycle] Restoring route from session:', savedRoute);
-        window.history.replaceState(null, '', savedRoute);
-      }
-    } catch { /* noop */ }
-    
+    // Keep the in-memory React tree as-is. No navigation reset on resume.
     onResume?.();
   }, [onResume]);
 
   const handleStateChange = useCallback((isActive: boolean) => {
-    console.log('[AppLifecycle] State changed:', isActive ? 'active' : 'inactive');
-    
     if (isActive) {
       handleResume();
     } else {
       handlePause();
     }
-    
     onStateChange?.(isActive);
   }, [handlePause, handleResume, onStateChange]);
 
   useEffect(() => {
     const windowWithCapacitor = window as unknown as CapacitorWindow;
     const isNative = windowWithCapacitor.Capacitor?.isNativePlatform?.();
-    
+
     let cleanup: (() => void) | null = null;
 
     const setupListeners = async () => {
       if (isNative && windowWithCapacitor.Capacitor?.Plugins?.App) {
         const App = windowWithCapacitor.Capacitor.Plugins.App;
-        
+
         try {
-          // Listen for app state changes
           const stateListener = await App.addListener('appStateChange', (state) => {
             handleStateChange(state.isActive);
           });
-          
+
           cleanup = () => {
             stateListener.remove();
           };
@@ -119,25 +90,14 @@ export function useAppLifecycle(options: UseAppLifecycleOptions = {}) {
           console.warn('[AppLifecycle] Failed to setup Capacitor listeners:', error);
         }
       } else {
-        // Fallback for web: use visibility API
         const handleVisibilityChange = () => {
-          const isActive = document.visibilityState === 'visible';
-          handleStateChange(isActive);
+          handleStateChange(document.visibilityState === 'visible');
         };
-        
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        
-        // Also handle window blur/focus for tab switching
-        const handleBlur = () => handlePause();
-        const handleFocus = () => handleResume();
-        
-        window.addEventListener('blur', handleBlur);
-        window.addEventListener('focus', handleFocus);
-        
+
         cleanup = () => {
           document.removeEventListener('visibilitychange', handleVisibilityChange);
-          window.removeEventListener('blur', handleBlur);
-          window.removeEventListener('focus', handleFocus);
         };
       }
     };
@@ -147,32 +107,24 @@ export function useAppLifecycle(options: UseAppLifecycleOptions = {}) {
     return () => {
       cleanup?.();
     };
-  }, [handleStateChange, handlePause, handleResume]);
+  }, [handleStateChange]);
 }
 
-/**
- * Hook specifically for auth session management on app lifecycle
- */
 export function useAuthLifecycle(refreshSession: () => Promise<void>) {
   useAppLifecycle({
     onResume: () => {
-      // Refresh session when app resumes
       refreshSession().catch(err => {
         console.error('[AuthLifecycle] Failed to refresh session:', err);
       });
     },
-    clearSensitiveData: false, // Don't clear auth data, just refresh
+    clearSensitiveData: false,
   });
 }
 
-/**
- * Hook to handle orientation changes
- * Useful for closing overlays and preventing UI blocking during rotation
- */
 export function useOrientationChange(callback: (isPortrait: boolean) => void) {
   useEffect(() => {
     let lastOrientation = window.innerHeight > window.innerWidth;
-    
+
     const handleOrientationChange = () => {
       const isPortrait = window.innerHeight > window.innerWidth;
       if (isPortrait !== lastOrientation) {
@@ -181,10 +133,7 @@ export function useOrientationChange(callback: (isPortrait: boolean) => void) {
       }
     };
 
-    // Listen to orientation change event
     window.addEventListener('orientationchange', handleOrientationChange);
-    
-    // Also listen to resize as fallback
     window.addEventListener('resize', handleOrientationChange);
 
     return () => {

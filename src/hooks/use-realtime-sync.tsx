@@ -137,17 +137,13 @@ export function useRealtimeSync() {
 
     setupChannel();
 
-    // ✅ Listen for online/resume events to refresh data
+    // Refresh only when the device actually comes back online — not on every app resume/focus.
     const handleOnline = () => refreshData('ONLINE');
-    const handleFocus = () => refreshData('FOCUS');
-
     window.addEventListener('online', handleOnline);
-    window.addEventListener('focus', handleFocus);
 
     return () => {
       isMounted = false;
       window.removeEventListener('online', handleOnline);
-      window.removeEventListener('focus', handleFocus);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

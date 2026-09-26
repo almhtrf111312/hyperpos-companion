@@ -26,6 +26,7 @@ import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { checkSettingsVersion } from "./lib/settings-version";
 import { EVENTS } from "./lib/events";
+import { saveLastRoute } from "./lib/last-route";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
@@ -58,7 +59,14 @@ import LibraryMembers from "./pages/LibraryMembers";
 import { WarehouseProvider } from "./hooks/use-warehouse";
 import { useLicenseReminder } from "./hooks/use-license-reminder";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 // Redirect components for merged routes
 const DebtsRedirect = () => {
@@ -72,38 +80,15 @@ const PartnersRedirect = () => {
   return null;
 };
 
-const LAST_ROUTE_KEY = 'hyperpos_last_route';
-
-// Redirect to last viewed page on startup (Facebook-style state persistence)
-const IndexRoute = () => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    try {
-      const savedRoute = localStorage.getItem(LAST_ROUTE_KEY);
-      if (savedRoute && savedRoute !== '/' && savedRoute !== '/login' && savedRoute !== '/signup' && savedRoute !== '/reset-password') {
-        navigate(savedRoute, { replace: true });
-      }
-    } catch {
-      // ignore route restore error
-    }
-  }, [navigate]);
-
-  return <POS />;
-};
+const IndexRoute = () => <POS />;
 
 const AppContent = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
-  // Save last active route silently on navigation
+  // Save last active route silently on navigation (used only on cold start restore)
   useEffect(() => {
-    if (location.pathname && location.pathname !== '/' && location.pathname !== '/login' && location.pathname !== '/signup' && location.pathname !== '/reset-password') {
-      try {
-        localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
-      } catch {
-        // ignore route save error
-      }
-    }
+    saveLastRoute(location.pathname + location.search);
   }, [location]);
   const isSafeMode = searchParams.get('safe') === '1';
   const isDebugClick = searchParams.get('debugclick') === '1';

@@ -38,13 +38,14 @@ export function mapSystemLanguage(systemLang: string): 'ar' | 'en' | 'tr' | 'fa'
  * @param callback - Function to call with new language
  */
 export function setupSystemLanguageListener(callback: (lang: string) => void) {
-  // Listen to app state changes (when user returns from Settings)
+  let lastMapped: string | null = null;
   App.addListener('appStateChange', async ({ isActive }) => {
-    if (isActive) {
-      const systemLang = await getSystemLanguage();
-      const mappedLang = mapSystemLanguage(systemLang);
-      callback(mappedLang);
-    }
+    if (!isActive) return;
+    const systemLang = await getSystemLanguage();
+    const mappedLang = mapSystemLanguage(systemLang);
+    if (mappedLang === lastMapped) return;
+    lastMapped = mappedLang;
+    callback(mappedLang);
   });
 }
 

@@ -1,42 +1,43 @@
 package com.flowpos.pro;
 
-import android.os.Bundle;
-import android.content.res.Configuration;
 import android.content.Context;
+import android.content.Intent;
+import android.content.res.Configuration;
+import android.os.Bundle;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
 import android.webkit.JavascriptInterface;
-import android.webkit.WebView;
 import android.webkit.WebSettings;
+import android.webkit.WebView;
 import java.util.Locale;
 
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        // Force English/US locale to prevent Arabic/Hindi digit substitution
+    protected void attachBaseContext(Context newBase) {
+        // Apply locale before the Activity is created so we do not trigger a
+        // configuration-change recreate (which reloads the WebView).
         Locale locale = new Locale("en", "US");
         Locale.setDefault(locale);
-
-        Configuration config = getBaseContext().getResources().getConfiguration();
+        Configuration config = new Configuration(newBase.getResources().getConfiguration());
         config.setLocale(locale);
-        getBaseContext().getResources().updateConfiguration(config,
-                getBaseContext().getResources().getDisplayMetrics());
+        super.attachBaseContext(newBase.createConfigurationContext(config));
+    }
 
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         try {
             WebView webView = this.bridge.getWebView();
             if (webView != null) {
-                // Ensure persistent DOM storage and caching for instant offline app experience
                 WebSettings settings = webView.getSettings();
                 settings.setDomStorageEnabled(true);
                 settings.setDatabaseEnabled(true);
                 settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-                // Native Android Print Service Integration
                 webView.addJavascriptInterface(new Object() {
                     @JavascriptInterface
                     public void print() {
@@ -60,26 +61,8 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        try {
-            if (this.bridge != null && this.bridge.getWebView() != null) {
-                this.bridge.getWebView().saveState(outState);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        try {
-            if (this.bridge != null && this.bridge.getWebView() != null) {
-                this.bridge.getWebView().restoreState(savedInstanceState);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
     }
 }

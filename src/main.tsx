@@ -1,8 +1,12 @@
 import { createRoot } from "react-dom/client";
 import { registerSW } from 'virtual:pwa-register';
 import { Capacitor } from '@capacitor/core';
+import { restoreLastRouteIfNeeded } from "./lib/last-route";
 import App from "./App.tsx";
 import "./index.css";
+
+// Cold-start only: if the WebView opened at "/", put the user back on the last screen.
+restoreLastRouteIfNeeded();
 
 // Register Service Worker for offline support — as early as possible
 const updateSW = Capacitor.isNativePlatform() ? null : registerSW({

@@ -260,14 +260,6 @@ export default function Products() {
     window.addEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
     window.addEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
 
-    // ✅ FIX: Use visibilitychange instead of 'focus' to avoid triggering
-    // reloadFieldsConfig when Android returns from the camera Activity.
-    const handleVisibilityChangeForFields = () => {
-      if (document.visibilityState === 'visible') reloadFieldsConfig();
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChangeForFields);
-
-    // Reload on storage change (different tabs)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key?.includes('hyperpos_product_fields') || e.key?.includes('hyperpos_custom_fields')) {
         reloadFieldsConfig();
@@ -275,13 +267,11 @@ export default function Products() {
     };
     window.addEventListener('storage', handleStorageChange);
 
-    // Initial load
     reloadFieldsConfig();
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
       window.removeEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
-      document.removeEventListener('visibilitychange', handleVisibilityChangeForFields);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);

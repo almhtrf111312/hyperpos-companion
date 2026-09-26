@@ -77,8 +77,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     dataEncrypted: isDataEncrypted(),
   });
 
-  const backgroundCheckRef = useRef(false);
-
   const prevUserIdRef = useRef<string | null>(null);
 
   const checkLicense = useCallback(async () => {
@@ -242,12 +240,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const lastCheckedUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!authLoading && !backgroundCheckRef.current) {
-      backgroundCheckRef.current = true;
-      checkLicense().finally(() => { backgroundCheckRef.current = false; });
-    }
-  }, [user, authLoading, checkLicense]);
+    if (authLoading) return;
+    const userId = user?.id ?? null;
+    if (lastCheckedUserIdRef.current === userId) return;
+    lastCheckedUserIdRef.current = userId;
+    checkLicense();
+  }, [user?.id, authLoading, checkLicense]);
 
   return (
     <LicenseContext.Provider value={{ ...state, checkLicense, activateCode, startTrial }}>
