@@ -757,34 +757,34 @@ export default function POS() {
           <MobileMenuTrigger onClick={() => setSidebarOpen(true)} />
         )}
 
-        {/* Mode Buttons - Mobile Only (fixed, rigid 2-button control with zero scroll) */}
+        {/* Mode Buttons - Compact Segmented Pill */}
         {isMobile && !hideMaintenanceSection && (
-          <div className="px-3 py-2 border-b border-border/70 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md">
-            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-muted/80 border border-border shadow-sm">
+          <div className="px-3 py-1.5 border-b border-border/50 bg-background/90 backdrop-blur-sm flex justify-center">
+            <div className="inline-flex items-center p-0.5 rounded-xl bg-muted/70 border border-border/60 shadow-xs">
               <button
                 type="button"
                 onClick={() => setActiveMode('products')}
                 className={cn(
-                  "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold transition-all duration-200 select-none",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all",
                   activeMode === 'products'
-                    ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingCart className="w-3.5 h-3.5" />
                 <span>{tDynamic('products')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveMode('maintenance')}
                 className={cn(
-                  "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold transition-all duration-200 select-none",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all",
                   activeMode === 'maintenance'
-                    ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Wrench className="w-4 h-4" />
+                <Wrench className="w-3.5 h-3.5" />
                 <span>{t('pos.maintenance')}</span>
               </button>
             </div>

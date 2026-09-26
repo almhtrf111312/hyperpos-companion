@@ -16,12 +16,22 @@ interface Product {
   name: string;
   price: number;
   quantity: number;
-  category: string;
+  category?: string;
   image?: string;
+  imageUrl?: string;
+  description?: string;
   barcode?: string;
   conversionFactor?: number;
   bulkUnit?: string;
   smallUnit?: string;
+  costPrice?: number;
+  bulkCostPrice?: number;
+  bulkSalePrice?: number;
+  wholesalePrice?: number;
+  location?: string;
+  supplier?: string;
+  warranty?: string;
+  minStockLevel?: number;
 }
 
 interface ProductGridProps {
@@ -307,6 +317,11 @@ export function ProductGrid({
         product={selectedProduct}
         isOpen={detailsDialogOpen}
         onClose={() => { setDetailsDialogOpen(false); setSelectedProduct(null); }}
+        onAddToCart={(prod, quantity) => {
+          for (let i = 0; i < quantity; i++) {
+            onProductClick(prod);
+          }
+        }}
       />
     </div>
   );
