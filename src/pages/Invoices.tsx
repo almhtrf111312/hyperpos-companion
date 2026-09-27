@@ -100,6 +100,18 @@ export default function Invoices() {
   const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
   const [refundMode, setRefundMode] = useState<'full' | 'partial'>('full');
   const [partialRefundQuantities, setPartialRefundQuantities] = useState<Record<string, number>>({});
+  const [showRefunded, setShowRefunded] = useState(false);
+  const [refundCondition, setRefundCondition] = useState<'good' | 'damaged'>('good');
+  const [refundMeta, setRefundMeta] = useState<Record<string, { condition: 'good' | 'damaged'; at: string; mode: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem('hyperpos_refund_meta_v1') || '{}'); } catch { return {}; }
+  });
+  const saveRefundMeta = (invoiceId: string) => {
+    setRefundMeta(prev => {
+      const next = { ...prev, [invoiceId]: { condition: refundCondition, at: new Date().toISOString(), mode: refundMode } };
+      try { localStorage.setItem('hyperpos_refund_meta_v1', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
   const refundGuard = useActionGuard();
   const markPaidGuard = useActionGuard();
@@ -137,9 +149,11 @@ export default function Invoices() {
   }, []);
 
   // Memoized filtered invoices for performance
-  // ✅ Hide refunded invoices - they only appear in archive
+  // Refunded invoices appear only in the "فواتير مستردة" view (full or partial refunds)
   const filteredInvoices = useMemo(() => {
-    let result = invoices.filter(inv => inv.status !== 'refunded');
+    let result = showRefunded
+      ? invoices.filter(inv => inv.status === 'refunded' || !!refundMeta[inv.id])
+      : invoices.filter(inv => inv.status !== 'refunded');
 
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
@@ -292,6 +306,7 @@ export default function Invoices() {
   const confirmRefund = () => refundGuard.run(async () => {
     if (!invoiceToRefund) return;
     const invoice = invoiceToRefund;
+    saveRefundMeta(invoice.id);
     // Snapshot invoice-specific data BEFORE running so notifications reflect this exact invoice
     const invoiceLabel = invoice.id;
     const invoiceTotal = invoice.totalInCurrency || invoice.total || 0;
@@ -394,6 +409,7 @@ export default function Invoices() {
   const confirmPartialRefund = () => refundGuard.run(async () => {
     if (!invoiceToRefund) return;
     const invoice = invoiceToRefund;
+    saveRefundMeta(invoice.id);
     const invoiceLabel = invoice.id;
     const toastId = `refund-${invoiceLabel}`;
 
@@ -947,6 +963,15 @@ export default function Invoices() {
             <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant={showRefunded ? 'default' : 'outline'}
+          className="w-full sm:w-auto gap-1.5"
+          onClick={() => setShowRefunded(v => !v)}
+        >
+          <Undo2 className="w-4 h-4" />
+          فواتير مستردة
+        </Button>
         <Select
           value={filterPayment}
           onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}
@@ -1037,6 +1062,11 @@ export default function Invoices() {
                           <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
                             <Undo2 className="w-3 h-3 ml-1" />
                             مسترجعة
+                          </Badge>
+                        )}
+                        {refundMeta[invoice.id] && (
+                          <Badge variant={refundMeta[invoice.id].condition === 'damaged' ? 'destructive' : 'outline'} className="text-[10px]">
+                            {refundMeta[invoice.id].condition === 'damaged' ? 'معيب' : 'سليم'} • {new Date(refundMeta[invoice.id].at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
                           </Badge>
                         )}
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
@@ -1493,6 +1523,25 @@ export default function Invoices() {
                 </div>
               </div>
             )}
+
+            {/* Returned goods condition */}
+            <div className="space-y-1.5 text-right">
+              <span className="text-xs font-medium text-muted-foreground">حالة البضاعة المرتجعة:</span>
+              <div className="grid grid-cols-2 gap-2">
+                {(['good', 'damaged'] as const).map((c) => (
+                  <Button
+                    key={c}
+                    type="button"
+                    size="sm"
+                    variant={refundCondition === c ? (c === 'good' ? 'default' : 'destructive') : 'outline'}
+                    className="h-9 text-xs"
+                    onClick={() => setRefundCondition(c)}
+                  >
+                    {c === 'good' ? 'سليم' : 'معيب'}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="p-4 border-t bg-muted/20 gap-2 flex-row justify-end">
