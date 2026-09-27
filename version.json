@@ -1,8 +1,14 @@
 {
-  "versionCode": 269,
-  "versionName": "1.0.39",
-  "lastUpdated": "2026-09-27T10:30:00.000Z",
+  "versionCode": 270,
+  "versionName": "1.0.40",
+  "lastUpdated": "2026-09-27T12:45:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 270,
+      "versionName": "1.0.40",
+      "date": "2026-09-27",
+      "description": "v1.0.40 - Added the Flow POS Financial Core skill: a financial rulebook (tax is not profit, server-authoritative values, atomic and idempotent operations, no destructive deletes, offline sync safety) that guides all future financial changes"
+    },
     {
       "versionCode": 269,
       "versionName": "1.0.39",
