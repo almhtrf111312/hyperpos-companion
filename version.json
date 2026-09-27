@@ -1,8 +1,14 @@
 {
-  "versionCode": 268,
-  "versionName": "1.0.38",
-  "lastUpdated": "2026-09-27T09:30:00.000Z",
+  "versionCode": 269,
+  "versionName": "1.0.39",
+  "lastUpdated": "2026-09-27T10:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 269,
+      "versionName": "1.0.39",
+      "date": "2026-09-27",
+      "description": "v1.0.39 - Atomic debt payments on the server: debt and linked invoice always updated together, remaining = total - paid, no double payment, customer debt stays in sync"
+    },
     {
       "versionCode": 268,
       "versionName": "1.0.38",

@@ -36,7 +36,8 @@ import {
   getDebtsStatsCloud,
   deleteDebtCloud,
   getNextManualDebtId,
-  Debt
+  Debt,
+  invalidateDebtsCache,
 } from '@/lib/cloud/debts-cloud';
 import { getInvoiceByIdCloud, InvoiceItem } from '@/lib/cloud/invoices-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
@@ -79,6 +80,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const [showAddDebtDialog, setShowAddDebtDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const paymentBusyRef = useRef(false);
+  const paymentOpIdRef = useRef(`debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
@@ -213,7 +216,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
         console.warn('[openPaymentDialog] Could not verify invoice status:', err);
       }
     }
-    setSelectedDebt(debt);
+    let fresh = debt;
+    try {
+      invalidateDebtsCache();
+      const list = await loadDebtsCloud();
+      setDebts(list);
+      fresh = list.find(d => d.id === debt.id) || debt;
+    } catch { /* use cached */ }
+    paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    setSelectedDebt(fresh);
     setPaymentAmount(0);
     setShowPaymentDialog(true);
   };
@@ -257,20 +268,37 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   };
 
   const handlePayment = async () => {
+    if (paymentBusyRef.current) return;
     if (!selectedDebt || paymentAmount <= 0) {
       toast.error(t('debts.enterValidAmount'));
       return;
     }
 
-    if (paymentAmount > selectedDebt.remainingDebt) {
+    // اقرأ الرصيد الحقيقي من الخادم قبل التحقق
+    invalidateDebtsCache();
+    const latestList = await loadDebtsCloud();
+    const latest = latestList.find(d => d.id === selectedDebt.id) || selectedDebt;
+    const remainingNow = Math.round(latest.remainingDebt * 100) / 100;
+
+    if (Math.round(paymentAmount * 100) / 100 > remainingNow) {
+      setDebts(latestList);
+      setSelectedDebt(latest);
       toast.error(t('debts.amountExceedsRemaining'));
       return;
     }
 
-    // Calculate payment ratio for partial profit confirmation
-    const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
+    const paymentRatio = remainingNow > 0 ? paymentAmount / remainingNow : 1;
 
-    await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount);
+    paymentBusyRef.current = true;
+    try {
+      await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount, paymentOpIdRef.current);
+    } catch (err) {
+      paymentBusyRef.current = false;
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      return;
+    }
+    paymentBusyRef.current = false;
+    paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     // ✅ إضافة المبلغ للصندوق تلقائياً (الترابط الجديد)
     processDebtPayment(
@@ -718,7 +746,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => setPaymentAmount(Math.round(selectedDebt.remainingDebt / 2))}
+                    onClick={() => setPaymentAmount(Math.round((selectedDebt.remainingDebt / 2) * 100) / 100)}
                   >
                     {t('debts.payHalf')}
                   </Button>

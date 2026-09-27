@@ -261,93 +261,43 @@ export const addDebtFromInvoiceCloud = async (
   });
 };
 
-// Record payment
+// Record payment — atomic on the server (debt + linked invoice updated together, idempotent)
 export const recordPaymentCloud = async (
   debtId: string,
-  amount: number
+  amount: number,
+  operationId?: string
 ): Promise<Debt | null> => {
-  const debts = await loadDebtsCloud();
-  const debt = debts.find(d => d.id === debtId);
-
-  if (!debt) return null;
-
-  const newTotalPaid = debt.totalPaid + amount;
-  const newRemainingDebt = debt.totalDebt - newTotalPaid;
-
-  let newStatus: DebtStatus = debt.status;
-  if (newRemainingDebt <= 0) {
-    newStatus = 'fully_paid';
-  } else if (newTotalPaid > 0) {
-    newStatus = 'partially_paid';
-  }
-
-  const success = await updateInSupabase('debts', debtId, {
-    total_paid: newTotalPaid,
-    remaining_debt: Math.max(0, newRemainingDebt),
-    status: newStatus,
+  const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const { data, error } = await sb.rpc('record_debt_payment_atomic', {
+    _debt_id: debtId,
+    _amount: Math.round(amount * 100) / 100,
+    _operation_id: opId,
   });
-
-  if (success) {
-    invalidateDebtsCache();
-    emitEvent(EVENTS.DEBTS_UPDATED, null);
-
-    return {
-      ...debt,
-      totalPaid: newTotalPaid,
-      remainingDebt: Math.max(0, newRemainingDebt),
-      status: newStatus,
-      updatedAt: new Date().toISOString(),
-    };
+  if (error) {
+    throw new Error(error.message || 'فشل تسجيل الدفعة');
   }
-
-  return null;
+  const res = (data || {}) as Record<string, unknown>;
+  invalidateDebtsCache();
+  emitEvent(EVENTS.DEBTS_UPDATED, null);
+  emitEvent(EVENTS.INVOICES_UPDATED, null);
+  const debts = await loadDebtsCloud();
+  const fresh = debts.find(d => d.id === debtId);
+  if (fresh) return fresh;
+  return {
+    id: debtId,
+    totalDebt: Number(res.total_debt) || 0,
+    totalPaid: Number(res.total_paid) || 0,
+    remainingDebt: Number(res.remaining_debt) || 0,
+    status: (res.status as DebtStatus) || 'due',
+  } as Debt;
 };
 
-// Record payment with invoice sync
+// Kept for existing callers — the server now syncs the invoice itself
 export const recordPaymentWithInvoiceSyncCloud = async (
   debtId: string,
-  amount: number
-): Promise<Debt | null> => {
-  const debt = await recordPaymentCloud(debtId, amount);
-  if (!debt) return null;
-
-  // Sync with invoice - استخدام invoice_number للتحديث
-  if (!debt.isCashDebt && debt.invoiceId) {
-    // البحث عن الفاتورة بـ invoice_number أو UUID
-    const userId = getCurrentUserId();
-    if (userId) {
-      try {
-        // تحديث الفاتورة مباشرة باستخدام invoice_number
-        const updateData = debt.status === 'fully_paid'
-          ? {
-            status: 'paid',
-            payment_type: 'cash',
-            debt_paid: debt.totalDebt,
-            debt_remaining: 0
-          }
-          : {
-            debt_paid: debt.totalPaid,
-            debt_remaining: debt.remainingDebt
-          };
-
-        // محاولة التحديث بـ invoice_number أولاً
-        const { error } = await sb
-          .from('invoices')
-          .update(updateData)
-          .or(`invoice_number.eq.${debt.invoiceId},id.eq.${debt.invoiceId}`)
-          .eq('user_id', userId);
-
-        if (!error) {
-          emitEvent(EVENTS.INVOICES_UPDATED, null);
-        }
-      } catch (e) {
-        console.error('[recordPaymentWithInvoiceSyncCloud] Failed to sync invoice:', e);
-      }
-    }
-  }
-
-  return debt;
-};
+  amount: number,
+  operationId?: string
+): Promise<Debt | null> => recordPaymentCloud(debtId, amount, operationId);
 
 // Delete debt by invoice ID - يدعم البحث بـ invoice_number أو UUID
 // ⚠️ ملاحظة: لا نستخدم user_id فلتر هنا لأن getCurrentUserId() قد يُرجع cashier_id
