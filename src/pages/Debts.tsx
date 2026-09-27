@@ -36,7 +36,7 @@ import {
   getDebtsStatsCloud,
   deleteDebtCloud,
   getNextManualDebtId,
-  Debt
+  Debt,
   invalidateDebtsCache,
 } from '@/lib/cloud/debts-cloud';
 import { getInvoiceByIdCloud, InvoiceItem } from '@/lib/cloud/invoices-cloud';
