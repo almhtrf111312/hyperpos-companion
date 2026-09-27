@@ -1273,7 +1273,7 @@ export default function Invoices() {
                             </td>
                             <td className="px-3 py-2 text-center">{item.quantity}</td>
                             <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
-                            <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
+                            <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.refunded ? 0 : (item.price * item.quantity))}</td>
                           </tr>
                         ))}
                       </tbody>
