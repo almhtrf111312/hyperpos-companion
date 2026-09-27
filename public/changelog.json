@@ -1,5 +1,10 @@
 [
   {
+    "type": "improvement",
+    "ar": "تحديث أدوات بناء التطبيق (APK وWindows) إلى أحدث الإصدارات وإزالة تحذيرات Node.js 20",
+    "en": "Build workflows updated to latest actions; Node 20 deprecation warnings removed"
+  },
+  {
     "type": "fix",
     "ar": "الاسترداد الجزئي يخصم المبلغ فعليًا من إجمالي الفاتورة وربحها ودينها، ويعرض القيمة الجديدة داخل الفاتورة وخارجها وفي الطباعة",
     "en": "Partial refund now reduces invoice total, profit and debt everywhere"
