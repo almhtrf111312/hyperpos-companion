@@ -1,5 +1,15 @@
 [
   {
+    "type": "fix",
+    "ar": "التطبيق الجديد يتثبت فوق القديم مباشرة (نفس توقيع التطبيق دائمًا)",
+    "en": "New APK always installs over the old one (same signing key)"
+  },
+  {
+    "type": "fix",
+    "ar": "إصلاح التعليق على شاشة جاري التحميل عند أول فتح للتطبيق",
+    "en": "Fixed app stuck on loading screen on first launch"
+  },
+  {
     "type": "improvement",
     "ar": "تحديث أدوات بناء التطبيق (APK وWindows) إلى أحدث الإصدارات وإزالة تحذيرات Node.js 20",
     "en": "Build workflows updated to latest actions; Node 20 deprecation warnings removed"

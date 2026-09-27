@@ -1,8 +1,14 @@
 {
-  "versionCode": 265,
-  "versionName": "1.0.35",
-  "lastUpdated": "2026-09-27T06:00:00.000Z",
+  "versionCode": 266,
+  "versionName": "1.0.36",
+  "lastUpdated": "2026-09-27T07:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 266,
+      "versionName": "1.0.36",
+      "date": "2026-09-27",
+      "description": "v1.0.36 - APK always signed with the same key (installs over old version), no more endless loading screen on first launch"
+    },
     {
       "versionCode": 265,
       "versionName": "1.0.35",
