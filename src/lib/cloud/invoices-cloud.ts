@@ -283,18 +283,31 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
       cloudInvoices = cloudInvoices.filter(inv => inv.cashier_id === userId);
     }
 
-    // Load invoice items for each invoice
+    // Load invoice items in batches (avoids one request per invoice / N+1)
+    const itemsByInvoice = new Map<string, Record<string, unknown>[]>();
+    const ids = cloudInvoices.map(c => c.id);
+    const BATCH = 150;
+    const batches: string[][] = [];
+    for (let i = 0; i < ids.length; i += BATCH) batches.push(ids.slice(i, i + BATCH));
+    const batchResults = await Promise.all(batches.map(async (batch) => {
+      const { data, error } = await sb.from('invoice_items').select('*').in('invoice_id', batch);
+      if (error) throw error;
+      return (data || []) as Record<string, unknown>[];
+    }));
+    for (const rows of batchResults) {
+      for (const row of rows) {
+        const key = row.invoice_id as string;
+        const list = itemsByInvoice.get(key);
+        if (list) list.push(row); else itemsByInvoice.set(key, [row]);
+      }
+    }
+
     const invoicesWithItems = await Promise.all(
       cloudInvoices.map(async (cloud) => {
         const invoice = toInvoice(cloud);
+        const items = itemsByInvoice.get(cloud.id) || [];
 
-        // Fetch items
-        const { data: items } = await sb
-          .from('invoice_items')
-          .select('*')
-          .eq('invoice_id', cloud.id);
-
-        invoice.items = (items || []).map((item: Record<string, unknown>) => {
+        invoice.items = items.map((item: Record<string, unknown>) => {
           const rawQty = item.quantity == null ? 1 : Number(item.quantity);
           const qty = Number.isFinite(rawQty) ? rawQty : 1;
           return {

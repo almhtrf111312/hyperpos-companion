@@ -144,14 +144,24 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
       <div className="flex flex-wrap gap-2 items-center">
         {/* Search */}
         {config.showSearch !== false && (
-          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <div className="relative flex-1 min-w-[200px] w-full sm:max-w-[360px]">
+            <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="بحث..."
+              placeholder="ابحث بالاسم أو الرقم أو الباركود..."
               value={filters.search}
               onChange={(e) => update({ search: e.target.value })}
-              className="h-8 text-xs pr-8 rounded-lg"
+              className="h-10 text-sm pr-9 pl-11 rounded-lg"
             />
+            {filters.search && (
+              <button
+                type="button"
+                aria-label="مسح البحث"
+                onClick={() => update({ search: '' })}
+                className="absolute left-0 top-0 h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
 

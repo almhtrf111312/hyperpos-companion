@@ -30,6 +30,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import { isNoInventoryMode } from '@/lib/store-type-config';
 
+const DASHBOARD_CACHE_KEY = 'hyperpos_dashboard_stats_cache_v1';
+
 export default function Dashboard() {
   const { t, language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
