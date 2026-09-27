@@ -1,6 +1,11 @@
 [
   {
     "type": "fixed",
+    "ar": "إصلاح أعطال كانت توقف الصندوق والاسترداد والطباعة بسبب أجزاء ناقصة في التعديلات الخارجية",
+    "en": "Fixed crashes in cash box, refunds and printing caused by missing pieces from external edits"
+  },
+  {
+    "type": "fixed",
     "ar": "إصلاح بقاء شاشة التحميل بلا نهاية بعد مسح بيانات التطبيق، الآن تظهر شاشة تسجيل الدخول",
     "en": "Fixed endless loading screen after clearing app data; login screen now opens"
   },
