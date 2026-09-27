@@ -1,3 +1,4 @@
+// ⛔ DISABLED — FROZEN FEATURE (Warehouses / Stock Transfer). موقوف حاليًا — لا تعدّل هذا الملف حتى يطلب المالك إعادة التفعيل.
 // Cloud Warehouses Store - Supabase-backed warehouse management
 import {
   fetchFromSupabase,

@@ -38,7 +38,6 @@ interface FeatureItem {
 const features: FeatureItem[] = [
   { icon: Barcode, titleAr: 'باركود متعدد', titleEn: 'Multi-Barcode', descAr: 'دعم حتى 3 باركودات لكل منتج لتسهيل الجرد والبيع', descEn: 'Support up to 3 barcodes per product for easy inventory and sales' },
   { icon: Package, titleAr: 'نظام الأصناف المرن', titleEn: 'Flexible Variants', descAr: 'إضافة خيارات متعددة (حجم، لون، نوع) بأسعار وكميات مختلفة', descEn: 'Add multiple options (size, color, type) with different prices and quantities' },
-  { icon: Warehouse, titleAr: 'مستودعات متعددة', titleEn: 'Multi-Warehouse', descAr: 'إدارة مخازن رئيسية ومخازن موزعين مع تحويل العهدة', descEn: 'Manage main warehouses and distributor stores with stock transfers', adminOnly: true },
   { icon: BarChart3, titleAr: 'تقارير ذكية', titleEn: 'Smart Reports', descAr: 'تقارير جرد ومبيعات وأرباح تفصيلية مع فلترة متقدمة', descEn: 'Detailed inventory, sales, and profit reports with advanced filtering', adminOnly: true },
   { icon: Shield, titleAr: 'أمان البيانات', titleEn: 'Data Security', descAr: 'نسخ احتياطي محلي وسحابي مع تشفير وربط بالجهاز', descEn: 'Local and cloud backup with encryption and device binding' },
   { icon: Users, titleAr: 'إدارة العملاء', titleEn: 'Customer Management', descAr: 'سجل عملاء متكامل مع تتبع المشتريات والديون', descEn: 'Complete customer records with purchase and debt tracking' },
@@ -64,7 +63,6 @@ const faqsEn: FAQItem[] = [
   { question: 'How do I differentiate variants of the same product?', answer: 'Use the "Variant/Description" field to distinguish each variant (e.g., large size, red color). When scanning a shared barcode, a variant picker will appear with price and quantity.' },
   { question: 'How do I export sales reports?', answer: 'From Reports page, choose the report type and select the date range, then click "Export" to download as Excel or PDF.', adminOnly: true },
   { question: 'How do I ensure backup safety?', answer: 'From Settings > Backup, enable automatic cloud backup. Data is encrypted before upload. You can also create a local backup.' },
-  { question: 'How do I manage multiple warehouses?', answer: 'From Warehouses page, add main warehouses and distributor stores. Use "Stock Transfer" to move goods between warehouses with a receipt.', adminOnly: true },
   { question: 'How do I record a customer debt?', answer: 'When selling in POS, choose "Credit" payment and enter customer details. Or from Debts page, add a "Cash Debt" without an invoice.' },
   { question: 'How do I change the app language?', answer: 'From Settings > Language, choose between Arabic and English. The interface direction will change automatically.' },
   { question: 'What\'s the difference between Admin and Cashier?', answer: 'Admin has full access (products, reports, settings). Cashier is limited to POS, invoices, and customers.' },

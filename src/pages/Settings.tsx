@@ -2506,8 +2506,6 @@ export default function Settings() {
                   { key: 'products', label: isRTL ? 'المنتجات (عرض فقط)' : 'Products (view only)' },
                   { key: 'partners', label: t('nav.partners') },
                   { key: 'reports', label: t('nav.reports') },
-                  { key: 'warehouses', label: t('nav.warehouses') },
-                  { key: 'stock-transfer', label: t('nav.stockTransfer') },
                   { key: 'settings', label: t('nav.settings') },
                 ].map(page => (
                   <label key={page.key} className="flex items-center gap-2 text-sm cursor-pointer p-1.5 rounded-lg hover:bg-muted">

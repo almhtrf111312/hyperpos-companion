@@ -1,3 +1,4 @@
+// ⛔ DISABLED — FROZEN FEATURE (Warehouses / Stock Transfer). موقوف حاليًا — لا تعدّل هذا الملف حتى يطلب المالك إعادة التفعيل.
 import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

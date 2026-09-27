@@ -317,6 +317,7 @@ export default function Products() {
         isAdd: showAddDialog,
         isEdit: showEditDialog,
         selectedProductId: selectedProduct?.id,
+        cameraPending: (() => { try { return !!JSON.parse(localStorage.getItem(FORM_STORAGE_KEY) || '{}').cameraPending; } catch { return false; } })(),
         timestamp: Date.now()
       };
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
@@ -339,7 +340,8 @@ export default function Products() {
         const parsed = JSON.parse(savedState);
         const hour = 60 * 60 * 1000;
 
-        if (Date.now() - parsed.timestamp < hour) {
+        // Only restore after Android killed the app during camera capture — never after normal navigation
+        if (parsed.cameraPending && Date.now() - parsed.timestamp < hour) {
           console.log('Restoring persisted form state...', parsed);
 
           // Check if there is a temporarily-persisted restored image
@@ -586,6 +588,7 @@ export default function Products() {
         isAdd: showAddDialog,
         isEdit: showEditDialog,
         selectedProductId: selectedProduct?.id,
+        cameraPending: true,
         timestamp: Date.now()
       };
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(stateToSave));
@@ -1724,7 +1727,7 @@ export default function Products() {
         </div>
 
         {/* Add Product Dialog */}
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe text-sm" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
@@ -1740,7 +1743,7 @@ export default function Products() {
                   <Input
                     placeholder={t('products.exampleName')}
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
                 {!noInventory && !isRestaurant && (
@@ -1751,7 +1754,7 @@ export default function Products() {
                         <Input
                           placeholder={t('products.exampleBarcode')}
                           value={formData.barcode}
-                          onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                          onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
                         />
                         <Button variant="outline" size="icon" onClick={() => {
                           setScanTarget('barcode1');
@@ -1774,7 +1777,7 @@ export default function Products() {
                           <Input
                             placeholder={t('products.exampleBarcode')}
                             value={formData.barcode2}
-                            onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
+                            onChange={(e) => setFormData(prev => ({ ...prev, barcode2: e.target.value }))}
                           />
                           <Button variant="outline" size="icon" onClick={() => {
                             setScanTarget('barcode2');
@@ -1788,7 +1791,7 @@ export default function Products() {
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData({ ...formData, barcode2: '' });
+                            setFormData(prev => ({ ...prev, barcode2: '' }));
                             setShowBarcode2(false);
                           }} className="text-destructive">
                             <X className="w-4 h-4" />
@@ -1804,7 +1807,7 @@ export default function Products() {
                           <Input
                             placeholder={t('products.exampleBarcode')}
                             value={formData.barcode3}
-                            onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                            onChange={(e) => setFormData(prev => ({ ...prev, barcode3: e.target.value }))}
                           />
                           <Button variant="outline" size="icon" onClick={() => {
                             setScanTarget('barcode3');
@@ -1813,7 +1816,7 @@ export default function Products() {
                             <Barcode className="w-4 h-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData({ ...formData, barcode3: '' });
+                            setFormData(prev => ({ ...prev, barcode3: '' }));
                             setShowBarcode3(false);
                           }} className="text-destructive">
                             <X className="w-4 h-4" />
@@ -1827,7 +1830,7 @@ export default function Products() {
                       <Input
                         placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
                         value={formData.variantLabel}
-                        onChange={(e) => setFormData({ ...formData, variantLabel: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
                       />
                       <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
                     </div>
@@ -1838,7 +1841,7 @@ export default function Products() {
                   <select
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                   >
                     {categoryOptions.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -1941,7 +1944,7 @@ export default function Products() {
                     <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
                     <DatePicker
                       value={formData.expiryDate}
-                      onChange={(date) => setFormData({ ...formData, expiryDate: date })}
+                      onChange={(date) => setFormData(prev => ({ ...prev, expiryDate: date }))}
                       placeholder={t('products.selectExpiryDate')}
                     />
                   </div>
@@ -1952,7 +1955,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.batchNumber')}
                       value={formData.batchNumber}
-                      onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
                     />
                   </div>
                 )}
@@ -1962,7 +1965,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.exampleSerial')}
                       value={formData.serialNumber}
-                      onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
                     />
                   </div>
                 )}
@@ -1972,7 +1975,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.exampleWarranty')}
                       value={formData.warranty}
-                      onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, warranty: e.target.value }))}
                     />
                   </div>
                 )}
@@ -1985,7 +1988,7 @@ export default function Products() {
                       className="text-right"
                       placeholder="0"
                       value={formData.wholesalePrice || ''}
-                      onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, wholesalePrice: Number(e.target.value) }))}
                     />
                   </div>
                 )}
@@ -2001,7 +2004,7 @@ export default function Products() {
                             onClick={() => {
                               const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
                               const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
-                              setFormData({ ...formData, size: updated.join(', ') });
+                              setFormData(prev => ({ ...prev, size: updated.join(', ') }));
                             }}
                             className={cn(
                               "px-2.5 py-1 rounded-md text-xs font-medium border transition-all",
@@ -2017,7 +2020,7 @@ export default function Products() {
                       <Input
                         placeholder={t('products.exampleSize')}
                         value={formData.size}
-                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value }))}
                         className="text-xs"
                       />
                     </div>
@@ -2035,7 +2038,7 @@ export default function Products() {
                             onClick={() => {
                               const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
                               const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
-                              setFormData({ ...formData, color: updated.join(', ') });
+                              setFormData(prev => ({ ...prev, color: updated.join(', ') }));
                             }}
                             className={cn(
                               "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-all",
@@ -2052,7 +2055,7 @@ export default function Products() {
                       <Input
                         placeholder={t('products.exampleColor')}
                         value={formData.color}
-                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
                         className="text-xs"
                       />
                     </div>
@@ -2064,7 +2067,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.weight')}
                       value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2074,7 +2077,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.fabricType')}
                       value={formData.fabricType}
-                      onChange={(e) => setFormData({ ...formData, fabricType: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fabricType: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2084,7 +2087,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.tableNumber')}
                       value={formData.tableNumber}
-                      onChange={(e) => setFormData({ ...formData, tableNumber: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tableNumber: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2094,7 +2097,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.orderNotes')}
                       value={formData.orderNotes}
-                      onChange={(e) => setFormData({ ...formData, orderNotes: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, orderNotes: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2104,7 +2107,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.author')}
                       value={formData.author}
-                      onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2114,7 +2117,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.publisher')}
                       value={formData.publisher}
-                      onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2127,7 +2130,7 @@ export default function Products() {
                       className="text-right"
                       placeholder="5"
                       value={formData.minStockLevel || ''}
-                      onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, minStockLevel: Number(e.target.value) }))}
                     />
                   </div>
                 )}
@@ -2188,7 +2191,7 @@ export default function Products() {
                         </div>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImagePreviewBase64(''); setImageLoadError(false); }}
+                          onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, image: '' })); setImagePreviewBase64(''); setImageLoadError(false); }}
                           className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
                         >
                           <X className="w-3 h-3" />
@@ -2246,7 +2249,7 @@ export default function Products() {
         </Dialog>
 
         {/* Edit Product Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) clearPersistedState(); }}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe text-sm" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
@@ -2261,7 +2264,7 @@ export default function Products() {
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                   <Input
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
                 {!isRestaurant && (
@@ -2271,7 +2274,7 @@ export default function Products() {
                       <div className="flex gap-2">
                         <Input
                           value={formData.barcode}
-                          onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                          onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
                         />
                         <Button variant="outline" size="icon" onClick={() => {
                           setScanTarget('barcode1');
@@ -2294,7 +2297,7 @@ export default function Products() {
                           <Input
                             placeholder={t('products.exampleBarcode')}
                             value={formData.barcode2}
-                            onChange={(e) => setFormData({ ...formData, barcode2: e.target.value })}
+                            onChange={(e) => setFormData(prev => ({ ...prev, barcode2: e.target.value }))}
                           />
                           <Button variant="outline" size="icon" onClick={() => {
                             setScanTarget('barcode2');
@@ -2308,7 +2311,7 @@ export default function Products() {
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData({ ...formData, barcode2: '' });
+                            setFormData(prev => ({ ...prev, barcode2: '' }));
                             setShowBarcode2(false);
                           }} className="text-destructive">
                             <X className="w-4 h-4" />
@@ -2324,7 +2327,7 @@ export default function Products() {
                           <Input
                             placeholder={t('products.exampleBarcode')}
                             value={formData.barcode3}
-                            onChange={(e) => setFormData({ ...formData, barcode3: e.target.value })}
+                            onChange={(e) => setFormData(prev => ({ ...prev, barcode3: e.target.value }))}
                           />
                           <Button variant="outline" size="icon" onClick={() => {
                             setScanTarget('barcode3');
@@ -2333,7 +2336,7 @@ export default function Products() {
                             <Barcode className="w-4 h-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData({ ...formData, barcode3: '' });
+                            setFormData(prev => ({ ...prev, barcode3: '' }));
                             setShowBarcode3(false);
                           }} className="text-destructive">
                             <X className="w-4 h-4" />
@@ -2349,7 +2352,7 @@ export default function Products() {
                   <Input
                     placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
                     value={formData.variantLabel}
-                    onChange={(e) => setFormData({ ...formData, variantLabel: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
                   />
                   <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
                 </div>
@@ -2358,7 +2361,7 @@ export default function Products() {
                   <select
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                   >
                     {categoryOptions.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -2436,7 +2439,7 @@ export default function Products() {
                     <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
                     <DatePicker
                       value={formData.expiryDate}
-                      onChange={(date) => setFormData({ ...formData, expiryDate: date })}
+                      onChange={(date) => setFormData(prev => ({ ...prev, expiryDate: date }))}
                       placeholder={t('products.selectExpiryDate')}
                     />
                   </div>
@@ -2447,7 +2450,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.batchNumber')}
                       value={formData.batchNumber}
-                      onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2457,7 +2460,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.exampleSerial')}
                       value={formData.serialNumber}
-                      onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2467,7 +2470,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.exampleWarranty')}
                       value={formData.warranty}
-                      onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, warranty: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2480,7 +2483,7 @@ export default function Products() {
                       className="text-right"
                       placeholder="0"
                       value={formData.wholesalePrice || ''}
-                      onChange={(e) => setFormData({ ...formData, wholesalePrice: Number(e.target.value) })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, wholesalePrice: Number(e.target.value) }))}
                     />
                   </div>
                 )}
@@ -2496,7 +2499,7 @@ export default function Products() {
                             onClick={() => {
                               const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
                               const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
-                              setFormData({ ...formData, size: updated.join(', ') });
+                              setFormData(prev => ({ ...prev, size: updated.join(', ') }));
                             }}
                             className={cn(
                               "px-2.5 py-1 rounded-md text-xs font-medium border transition-all",
@@ -2512,7 +2515,7 @@ export default function Products() {
                       <Input
                         placeholder={t('products.exampleSize')}
                         value={formData.size}
-                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value }))}
                         className="text-xs"
                       />
                     </div>
@@ -2530,7 +2533,7 @@ export default function Products() {
                             onClick={() => {
                               const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
                               const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
-                              setFormData({ ...formData, color: updated.join(', ') });
+                              setFormData(prev => ({ ...prev, color: updated.join(', ') }));
                             }}
                             className={cn(
                               "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-all",
@@ -2547,7 +2550,7 @@ export default function Products() {
                       <Input
                         placeholder={t('products.exampleColor')}
                         value={formData.color}
-                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
                         className="text-xs"
                       />
                     </div>
@@ -2559,7 +2562,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.weight')}
                       value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2569,7 +2572,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.fabricType')}
                       value={formData.fabricType}
-                      onChange={(e) => setFormData({ ...formData, fabricType: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fabricType: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2579,7 +2582,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.tableNumber')}
                       value={formData.tableNumber}
-                      onChange={(e) => setFormData({ ...formData, tableNumber: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tableNumber: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2589,7 +2592,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.orderNotes')}
                       value={formData.orderNotes}
-                      onChange={(e) => setFormData({ ...formData, orderNotes: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, orderNotes: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2599,7 +2602,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.author')}
                       value={formData.author}
-                      onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2609,7 +2612,7 @@ export default function Products() {
                     <Input
                       placeholder={t('products.publisher')}
                       value={formData.publisher}
-                      onChange={(e) => setFormData({ ...formData, publisher: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
                     />
                   </div>
                 )}
@@ -2622,7 +2625,7 @@ export default function Products() {
                       className="text-right"
                       placeholder="5"
                       value={formData.minStockLevel || ''}
-                      onChange={(e) => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, minStockLevel: Number(e.target.value) }))}
                     />
                   </div>
                 )}
@@ -2684,7 +2687,7 @@ export default function Products() {
                         </div>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setFormData({ ...formData, image: '' }); setImagePreviewBase64(''); setImageLoadError(false); }}
+                          onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, image: '' })); setImagePreviewBase64(''); setImageLoadError(false); }}
                           className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
                         >
                           <X className="w-3 h-3" />

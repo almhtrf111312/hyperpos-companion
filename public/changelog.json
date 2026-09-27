@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "نافذة إضافة المنتج لا تعود للفتح بعد إغلاقها، واسم المنتج لم يعد يختفي أثناء الكتابة، وإيقاف المستودعات وتحويل العهدة مؤقتًا",
+    "en": "Add-product dialog no longer reopens after closing, product name no longer disappears, warehouses & stock transfer temporarily disabled"
+  },
+  {
+    "type": "fix",
     "ar": "إضافة المنتج بالاسم والسعر فقط، حفظ المبلغ المقبوض الأقل كخصم، حساب الربح من التكلفة الحقيقية، وتسجيل أي تغيير في الأسعار",
     "en": "Add product with name and price only, received-amount shortfall saved as discount, profit from real cost, price change audit"
   },
