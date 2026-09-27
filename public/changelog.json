@@ -1,6 +1,16 @@
 [
   {
     "type": "fix",
+    "ar": "إصلاح عدم احتساب الأصناف المحددة في الاسترداد الجزئي («يرجى تحديد كمية…»)",
+    "en": "Fixed selected items ignored in partial refund"
+  },
+  {
+    "type": "security",
+    "ar": "الاسترداد الجزئي مقيّد بفواتير متجرك فقط، ومنع الزوار من دوال التحقق",
+    "en": "Partial refund scoped to own store; helpers blocked for anonymous"
+  },
+  {
+    "type": "fix",
     "ar": "إصلاح فشل الاسترداد الجزئي (الكمية تتجاوز المتبقي): إرسال معرف المنتج ومطابقة مرنة لأسماء الأصناف في الخادم",
     "en": "Fixed partial refund failure: product ID fallback and flexible item-name matching on server"
   },
