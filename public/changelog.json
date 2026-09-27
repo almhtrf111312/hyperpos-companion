@@ -1,6 +1,16 @@
 [
   {
     "type": "new",
+    "ar": "قسم فواتير مستردة مع وقت الاسترداد وحالة البضاعة (سليم/معيب)",
+    "en": "Refunded invoices view with refund time and goods condition (good/damaged)"
+  },
+  {
+    "type": "fixed",
+    "ar": "الإشعارات تظهر دائمًا في الأعلى ولم تعد تمنع اللمس، وتصغير الخط العام وإزالة شارة مباشر",
+    "en": "Toasts always on top and no longer block touch; smaller global font; removed Live badge"
+  },
+  {
+    "type": "new",
     "ar": "استرداد جزئي آمن: إرجاع أي كمية من أي صنف مع تعديل المخزون والأرباح والدين والصندوق في عملية واحدة لا تتكرر",
     "en": "Safe partial refunds: return any quantity of any item with stock, profit, debt and cash adjusted in one non-duplicating operation"
   },
