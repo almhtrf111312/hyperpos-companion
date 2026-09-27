@@ -1643,7 +1643,7 @@ export default function Reports() {
         </div>
 
         {/* View Mode Segmented Controls — compact and bounded */}
-        <div className="bg-muted/60 p-1 rounded-2xl flex items-center justify-around border border-border/60 text-xs w-full max-w-full overflow-hidden">
+        <div className="grid grid-cols-3 gap-1.5 w-full">
           <button
             type="button"
             onClick={() => {
@@ -1651,10 +1651,10 @@ export default function Reports() {
               handleSwitchView('summary');
             }}
             className={cn(
-              "flex-1 py-2 px-1 sm:px-2 rounded-xl font-bold transition-all text-center select-none text-[11px] sm:text-xs truncate",
+              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-all text-center select-none shadow-sm whitespace-normal",
               activeReport === 'sales' && viewTab === 'summary'
-                ? "bg-card text-primary shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-md"
+                : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
             ملخص بياني
@@ -1666,10 +1666,10 @@ export default function Reports() {
               handleSwitchView('detailed');
             }}
             className={cn(
-              "flex-1 py-2 px-1 sm:px-2 rounded-xl font-bold transition-all text-center select-none text-[11px] sm:text-xs truncate",
+              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-all text-center select-none shadow-sm whitespace-normal",
               activeReport === 'sales' && viewTab === 'detailed'
-                ? "bg-card text-primary shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-md"
+                : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
             كشف الفواتير
@@ -1681,10 +1681,10 @@ export default function Reports() {
               handleSwitchView('comprehensive');
             }}
             className={cn(
-              "flex-1 py-2 px-1 sm:px-2 rounded-xl font-bold transition-all text-center select-none text-[11px] sm:text-xs truncate",
+              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-all text-center select-none shadow-sm whitespace-normal",
               activeReport === 'sales' && viewTab === 'comprehensive'
-                ? "bg-card text-primary shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-md"
+                : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
             عرض شامل

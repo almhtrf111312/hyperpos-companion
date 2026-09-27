@@ -1419,7 +1419,7 @@ export default function Invoices() {
                 </div>
 
                 <div className="border rounded-lg divide-y max-h-56 overflow-y-auto bg-card">
-                  {invoiceToRefund?.items?.map((item) => {
+                  {invoiceToRefund?.items?.filter(i => !i.refunded && i.quantity > 0).map((item) => {
                     const key = item.productId || item.name;
                     const currentQty = partialRefundQuantities[key] || 0;
                     const isSelected = currentQty > 0;
