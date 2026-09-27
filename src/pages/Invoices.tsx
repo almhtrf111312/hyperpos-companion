@@ -1321,26 +1321,21 @@ export default function Invoices() {
                 </Badge>
               )}
             </DialogTitle>
-            <DialogDescription className="text-right pt-1">
-              إرجاع منتجات الفاتورة للمخزون وتسوية الحسابات المالية ووردية الكاشير.
-            </DialogDescription>
+            <DialogDescription className="sr-only">استرداد الفاتورة</DialogDescription>
           </DialogHeader>
 
-          {/* Mode Switcher if Sale Invoice */}
           {invoiceToRefund?.type === 'sale' && invoiceToRefund.items && invoiceToRefund.items.length > 0 && (
-            <div className="px-6 pt-1 pb-2">
-              <Tabs value={refundMode} onValueChange={(v) => setRefundMode(v as 'full' | 'partial')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="full" className="flex items-center gap-2 text-xs">
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    استرداد كلي للفاتورة
-                  </TabsTrigger>
-                  <TabsTrigger value="partial" className="flex items-center gap-2 text-xs">
-                    <Layers className="w-3.5 h-3.5" />
-                    استرداد جزئي (تحديد بنود)
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+            <div className="sticky top-0 z-10 bg-background px-6 pt-1 pb-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant={refundMode === 'full' ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal text-xs gap-1.5" onClick={() => setRefundMode('full')}>
+                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                  استرداد كلي
+                </Button>
+                <Button type="button" variant={refundMode === 'partial' ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal text-xs gap-1.5" onClick={() => setRefundMode('partial')}>
+                  <Layers className="w-3.5 h-3.5 shrink-0" />
+                  استرداد جزئي
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1382,21 +1377,6 @@ export default function Invoices() {
                     )
                   )}
                 </p>
-              </div>
-            )}
-
-            {/* Cash specific notice */}
-            {invoiceToRefund?.paymentType === 'cash' && (
-              <div className="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/20 p-3 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2 text-right">
-                <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-semibold">تسوية درج الكاشير والوردية النشطة:</span>
-                  <p className="leading-relaxed text-muted-foreground dark:text-slate-300">
-                    {refundMode === 'full'
-                      ? `سيتم تسليم ${formatCurrency(invoiceToRefund.totalInCurrency || invoiceToRefund.total, invoiceToRefund.currency)} نقداً للعميل وخصمها فوراً من مبيعات ودرج الوردية الحالية لمنع حدوث عجز وهمي.`
-                      : `سيتم تسليم ${formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund.currency)} نقداً للعميل وخصمها فوراً من الوردية الحالية.`}
-                  </p>
-                </div>
               </div>
             )}
 
