@@ -76,26 +76,13 @@ jobs:
 
       - name: Setup release signing key
         shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets['KEYSTORE_BASE64'] }}
-          KEYSTORE_PASSWORD: ${{ secrets['KEYSTORE_PASSWORD'] }}
-          KEY_ALIAS: ${{ secrets['KEY_ALIAS'] }}
-          KEY_PASSWORD: ${{ secrets['KEY_PASSWORD'] }}
+        # Always sign with the SAME committed key so new APKs install over old ones
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "Using custom repository signing key from secrets..."
-            echo "$KEYSTORE_BASE64" | base64 -d > android/app/flowpos-release.keystore
-            echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-          else
-            echo "Using persistent repository release signing key..."
-            echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASSWORD=flowpos123" >> "$GITHUB_ENV"
-            echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=flowpos123" >> "$GITHUB_ENV"
-          fi
+          test -f android/app/flowpos-release.keystore || { echo "Missing keystore"; exit 1; }
+          echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=flowpos123" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=flowpos123" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         working-directory: android

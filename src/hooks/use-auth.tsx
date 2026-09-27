@@ -334,6 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 60000); // Check every minute
 
     return () => {
+      clearTimeout(loadingSafetyTimer);
       subscription.unsubscribe();
       clearInterval(refreshInterval);
     };
