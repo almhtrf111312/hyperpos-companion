@@ -1,8 +1,14 @@
 {
-  "versionCode": 267,
-  "versionName": "1.0.37",
-  "lastUpdated": "2026-09-27T08:00:00.000Z",
+  "versionCode": 268,
+  "versionName": "1.0.38",
+  "lastUpdated": "2026-09-27T09:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 268,
+      "versionName": "1.0.38",
+      "date": "2026-09-27",
+      "description": "v1.0.38 - Add-product dialog no longer reopens after manual close, product name no longer disappears while typing, warehouses & stock transfer temporarily disabled"
+    },
     {
       "versionCode": 267,
       "versionName": "1.0.37",
