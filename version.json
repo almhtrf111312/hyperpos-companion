@@ -1,8 +1,13 @@
 {
-  "versionCode": 259,
-  "versionName": "1.0.29",
-  "lastUpdated": "2026-09-27T01:10:00.000Z",
+  "versionCode": 260,
+  "versionName": "1.0.30",
+  "lastUpdated": "2026-09-27T01:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 260,
+      "date": "2026-09-27T01:30:00.000Z",
+      "description": "v1.0.30 - Clear full/partial refund buttons, removed refund settlement text, larger lowered notifications"
+    },
     {
       "versionCode": 258,
       "date": "2026-09-27T01:00:00.000Z",
