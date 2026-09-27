@@ -1,5 +1,15 @@
 [
   {
+    "type": "fixed",
+    "ar": "إصلاح بقاء شاشة التحميل بلا نهاية بعد مسح بيانات التطبيق، الآن تظهر شاشة تسجيل الدخول",
+    "en": "Fixed endless loading screen after clearing app data; login screen now opens"
+  },
+  {
+    "type": "fixed",
+    "ar": "إيقاف مسار الحفظ البديل الذي كان يحفظ الفاتورة دون خصم المخزون؛ الفواتير المتعثرة تبقى في طابور المزامنة لإعادة المحاولة",
+    "en": "Disabled unsafe fallback that saved invoices without deducting stock; failed sales stay queued for retry"
+  },
+  {
     "type": "improved",
     "ar": "اختبار ميزة تثبيت تطبيق حديث فوق قديم (ترقية مباشرة فوق النسخة السابقة دون أي تعارض)",
     "en": "Testing in-place app update over previous version without signature conflict"
