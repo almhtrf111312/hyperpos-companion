@@ -1,5 +1,25 @@
 [
   {
+    "type": "fix",
+    "ar": "البنود المستردة تظهر «مُسترد» في تفاصيل الفاتورة ولا تُطبع",
+    "en": "Refunded lines marked in details and excluded from print"
+  },
+  {
+    "type": "improvement",
+    "ar": "فلاتر الفواتير جنبًا إلى جنب مع عناوين واضحة (نوع الفاتورة، طريقة البيع)",
+    "en": "Labeled side-by-side invoice filters"
+  },
+  {
+    "type": "fix",
+    "ar": "منع حفظ فواتير شراء فارغة وسحب قيمتها من رأس المال إن وُجد",
+    "en": "Block empty purchase invoices; deduct from capital when tracked"
+  },
+  {
+    "type": "improvement",
+    "ar": "أزرار التقارير أوضح بدون قص",
+    "en": "Clearer report view buttons"
+  },
+  {
     "type": "improvement",
     "ar": "أزرار استرداد كلي/جزئي ثابتة وواضحة وحذف شرح تسوية الوردية",
     "en": "Fixed, clear full/partial refund buttons; removed settlement text"
