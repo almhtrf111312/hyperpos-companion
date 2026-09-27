@@ -1,5 +1,10 @@
 [
   {
+    "type": "security",
+    "ar": "إصلاحات أمنية: إيقاف الدخول التلقائي بمعرّف الجهاز، حماية إيصال الصيانة، منع التلاعب بحذف مصاريف فواتير الشراء، تحييد صيغ Excel في تقرير الشركاء، تقوية مساعد المساعدة، وحصر رفع صور المنتجات بمجلد المستخدم",
+    "en": "v1.0.42 - Security fixes: device-ID auto-login disabled, maintenance receipt escaped, purchase-invoice expense cleanup safe, spreadsheet formulas neutralized in partner export, help assistant hardened, product photo uploads limited to own folder"
+  },
+  {
     "type": "improvement",
     "ar": "تسريع الفواتير ولوحة التحكم: تحميل أصناف الفواتير دفعة واحدة، فهارس جديدة، عرض آخر أرقام فورًا مع حالة تحديث واضحة وزر إعادة المحاولة، وزر مسح يعمل في بحث التقارير",
     "en": "v1.0.41 - Faster invoices/dashboard: invoice items loaded in batches instead of one request per invoice, new database indexes, dashboard shows last results instantly with clear updating/error state and retry, fewer full reloads, working clear button in report search"

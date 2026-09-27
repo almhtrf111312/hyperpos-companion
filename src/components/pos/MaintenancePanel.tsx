@@ -287,6 +287,7 @@ export function MaintenancePanel({
 
   const handlePrint = () => {
     if (!validateForm()) return;
+    const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
     const storeSettings = getStoreSettings();
     const printSettings = getPrintSettings();
@@ -315,20 +316,20 @@ export function MaintenancePanel({
         </head>
         <body>
           <div class="header">
-            ${printSettings.showLogo && storeSettings.logo ? `<img src="${storeSettings.logo}" alt="شعار المحل" class="logo" />` : ''}
-            <div class="store-name">${storeSettings.name}</div>
-            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${storeSettings.address}</div>` : ''}
-            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
+            ${printSettings.showLogo && storeSettings.logo ? `<img src="${esc(storeSettings.logo)}" alt="شعار المحل" class="logo" />` : ''}
+            <div class="store-name">${esc(storeSettings.name)}</div>
+            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${esc(storeSettings.address)}</div>` : ''}
+            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${esc(storeSettings.phone)}</div>` : ''}
             <div class="date-time">${currentDate} - ${currentTime}</div>
           </div>
-          <div class="info"><span class="info-label">${t('maintenance.customer')}:</span> ${getEffectiveCustomerName()}</div>
-          ${customerPhone ? `<div class="info"><span class="info-label">${t('maintenance.phoneNumber')}:</span> ${customerPhone}</div>` : ''}
-          ${fullDescription ? `<div class="info"><span class="info-label">${t('maintenance.serviceType')}:</span> ${fullDescription}</div>` : ''}
+          <div class="info"><span class="info-label">${t('maintenance.customer')}:</span> ${esc(getEffectiveCustomerName())}</div>
+          ${customerPhone ? `<div class="info"><span class="info-label">${t('maintenance.phoneNumber')}:</span> ${esc(customerPhone)}</div>` : ''}
+          ${fullDescription ? `<div class="info"><span class="info-label">${t('maintenance.serviceType')}:</span> ${esc(fullDescription)}</div>` : ''}
           <div class="total">
             <strong>${t('maintenance.total')}:</strong> ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)}
           </div>
           <div class="footer">
-            <p>${printSettings.footer}</p>
+            <p>${esc(printSettings.footer)}</p>
           </div>
         </body>
       </html>

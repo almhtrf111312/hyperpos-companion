@@ -198,7 +198,11 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => {
+        let v = String(cell ?? '');
+        if (/^[=+\-@\t\r]/.test(v) && !/^-?\d+(\.\d+)?$/.test(v)) v = `'${v}`;
+        return `"${v.replace(/"/g, '""')}"`;
+      }).join(','))
     ].join('\n');
 
     const BOM = '\uFEFF';
