@@ -29,6 +29,7 @@ export interface InvoiceItem {
   productId?: string;
   costPrice?: number; // ✅ سعر التكلفة لحظة البيع
   profit?: number;    // ✅ الربح لكل عنصر
+  refunded?: boolean; // ✅ بند مُسترد بالكامل (كمية 0 بعد استرداد جزئي)
 }
 
 export interface CloudInvoice {
@@ -293,15 +294,20 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
           .select('*')
           .eq('invoice_id', cloud.id);
 
-        invoice.items = (items || []).map((item: Record<string, unknown>) => ({
-          id: (item.product_id as string) || (item.id as string),
-          name: item.product_name as string,
-          price: Number(item.unit_price) || 0,
-          quantity: Number(item.quantity) || 1,
-          total: Number(item.amount_original) || 0,
-          costPrice: Number(item.cost_price) || 0,
-          profit: Number(item.profit) || 0,
-        }));
+        invoice.items = (items || []).map((item: Record<string, unknown>) => {
+          const rawQty = item.quantity == null ? 1 : Number(item.quantity);
+          const qty = Number.isFinite(rawQty) ? rawQty : 1;
+          return {
+            id: (item.product_id as string) || (item.id as string),
+            name: item.product_name as string,
+            price: Number(item.unit_price) || 0,
+            quantity: qty,
+            total: Number(item.amount_original) || 0,
+            costPrice: Number(item.cost_price) || 0,
+            profit: Number(item.profit) || 0,
+            refunded: qty <= 0,
+          };
+        });
 
         return invoice;
       })
