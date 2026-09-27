@@ -83,6 +83,10 @@ import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getCurrentUserRole } from '@/lib/supabase-store';
 import { PurchaseInvoicesListTab } from '@/components/purchases/PurchaseInvoicesListTab';
 
+// مفتاح موحّد لبنود الاسترداد (يُستخدم في الاختيار والإرسال معًا)
+const refundKey = (item: { productId?: string; name: string }): string =>
+  item.productId || (item as unknown as { id?: string }).id || item.name;
+
 export default function Invoices() {
   const { t } = useLanguage();
   const navigate = useNavigate();
