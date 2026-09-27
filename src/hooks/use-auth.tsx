@@ -255,8 +255,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Hard safety net: never keep the app stuck on the loading screen (APK first launch / slow network)
+    const loadingSafetyTimer = setTimeout(() => {
+      setIsAutoLoginChecking(false);
+      setIsLoading(false);
+    }, 6000);
+
     // Check for existing session and verify user without blocking UI
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+    const sessionPromise = supabase.auth.getSession();
+    const sessionTimeout = new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 4000)
+    );
+    Promise.race([sessionPromise, sessionTimeout]).then(async ({ data: { session: existingSession } }) => {
       if (!existingSession) {
         // No session - try device auto-login
         const autoLoginSuccess = await attemptDeviceAutoLogin();
