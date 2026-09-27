@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "إضافة المنتج بالاسم والسعر فقط، حفظ المبلغ المقبوض الأقل كخصم، حساب الربح من التكلفة الحقيقية، وتسجيل أي تغيير في الأسعار",
+    "en": "Add product with name and price only, received-amount shortfall saved as discount, profit from real cost, price change audit"
+  },
+  {
+    "type": "fix",
     "ar": "التطبيق الجديد يتثبت فوق القديم مباشرة (نفس توقيع التطبيق دائمًا)",
     "en": "New APK always installs over the old one (same signing key)"
   },
