@@ -527,6 +527,7 @@ export type Database = {
           unit_price: number | null
           variant_id: string | null
           variant_name: string | null
+          warranty_until: string | null
         }
         Insert: {
           amount_original?: number | null
@@ -546,6 +547,7 @@ export type Database = {
           unit_price?: number | null
           variant_id?: string | null
           variant_name?: string | null
+          warranty_until?: string | null
         }
         Update: {
           amount_original?: number | null
@@ -565,6 +567,7 @@ export type Database = {
           unit_price?: number | null
           variant_id?: string | null
           variant_name?: string | null
+          warranty_until?: string | null
         }
         Relationships: [
           {
@@ -876,19 +879,23 @@ export type Database = {
       products: {
         Row: {
           archived: boolean | null
+          author: string | null
           barcode: string | null
           barcode2: string | null
           barcode3: string | null
+          batch_number: string | null
           bulk_cost_price: number | null
           bulk_sale_price: number | null
           bulk_unit: string | null
           category: string | null
+          color: string | null
           conversion_factor: number | null
           cost_price: number | null
           created_at: string | null
           custom_fields: Json | null
           description: string | null
           expiry_date: string | null
+          fabric_type: string | null
           id: string
           image_url: string | null
           labor_cost: number | null
@@ -896,32 +903,44 @@ export type Database = {
           min_stock_level: number | null
           name: string
           notes: string | null
+          order_notes: string | null
+          publisher: string | null
           purchase_history: Json | null
           quantity: number | null
           sale_price: number | null
+          serial_number: string | null
+          size: string | null
           small_unit: string | null
           supplier: string | null
+          table_number: string | null
           track_by_unit: string | null
           unit: string | null
           updated_at: string | null
           user_id: string
           variant_label: string | null
+          warranty_months: number | null
+          weight: string | null
+          wholesale_price: number | null
         }
         Insert: {
           archived?: boolean | null
+          author?: string | null
           barcode?: string | null
           barcode2?: string | null
           barcode3?: string | null
+          batch_number?: string | null
           bulk_cost_price?: number | null
           bulk_sale_price?: number | null
           bulk_unit?: string | null
           category?: string | null
+          color?: string | null
           conversion_factor?: number | null
           cost_price?: number | null
           created_at?: string | null
           custom_fields?: Json | null
           description?: string | null
           expiry_date?: string | null
+          fabric_type?: string | null
           id?: string
           image_url?: string | null
           labor_cost?: number | null
@@ -929,32 +948,44 @@ export type Database = {
           min_stock_level?: number | null
           name: string
           notes?: string | null
+          order_notes?: string | null
+          publisher?: string | null
           purchase_history?: Json | null
           quantity?: number | null
           sale_price?: number | null
+          serial_number?: string | null
+          size?: string | null
           small_unit?: string | null
           supplier?: string | null
+          table_number?: string | null
           track_by_unit?: string | null
           unit?: string | null
           updated_at?: string | null
           user_id: string
           variant_label?: string | null
+          warranty_months?: number | null
+          weight?: string | null
+          wholesale_price?: number | null
         }
         Update: {
           archived?: boolean | null
+          author?: string | null
           barcode?: string | null
           barcode2?: string | null
           barcode3?: string | null
+          batch_number?: string | null
           bulk_cost_price?: number | null
           bulk_sale_price?: number | null
           bulk_unit?: string | null
           category?: string | null
+          color?: string | null
           conversion_factor?: number | null
           cost_price?: number | null
           created_at?: string | null
           custom_fields?: Json | null
           description?: string | null
           expiry_date?: string | null
+          fabric_type?: string | null
           id?: string
           image_url?: string | null
           labor_cost?: number | null
@@ -962,16 +993,24 @@ export type Database = {
           min_stock_level?: number | null
           name?: string
           notes?: string | null
+          order_notes?: string | null
+          publisher?: string | null
           purchase_history?: Json | null
           quantity?: number | null
           sale_price?: number | null
+          serial_number?: string | null
+          size?: string | null
           small_unit?: string | null
           supplier?: string | null
+          table_number?: string | null
           track_by_unit?: string | null
           unit?: string | null
           updated_at?: string | null
           user_id?: string
           variant_label?: string | null
+          warranty_months?: number | null
+          weight?: string | null
+          wholesale_price?: number | null
         }
         Relationships: []
       }
@@ -1868,6 +1907,10 @@ export type Database = {
           invoice_number: string
           success: boolean
         }[]
+      }
+      recalc_pos_invoice_profit: {
+        Args: { _invoice_id: string }
+        Returns: undefined
       }
       refund_invoice_atomic: {
         Args: { _invoice_number: string; _source?: string }

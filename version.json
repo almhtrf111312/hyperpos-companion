@@ -1,8 +1,14 @@
 {
-  "versionCode": 266,
-  "versionName": "1.0.36",
-  "lastUpdated": "2026-09-27T07:00:00.000Z",
+  "versionCode": 267,
+  "versionName": "1.0.37",
+  "lastUpdated": "2026-09-27T08:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 267,
+      "versionName": "1.0.37",
+      "date": "2026-09-27",
+      "description": "v1.0.37 - Add product with name+price only (auto barcode), typed product field storage with validation, amount-received shortfall saved as discount, server-side profit from real product cost, price change audit log, form no longer resets while typing"
+    },
     {
       "versionCode": 266,
       "versionName": "1.0.36",

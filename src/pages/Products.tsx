@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -477,15 +477,22 @@ export default function Products() {
   }, [loadData]);
 
   // Auto-open add dialog from URL params
+  // ✅ يُنفَّذ مرة واحدة فقط لكل طلب فتح، حتى لا يُمسح ما يكتبه المستخدم عند تحديث الفئات
+  const autoOpenHandledRef = useRef(false);
   useEffect(() => {
-    if (searchParams.get('action') === 'new') {
-      setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-      setShowAddDialog(true);
-      // إزالة الـ param بعد فتح الـ dialog
-      searchParams.delete('action');
-      setSearchParams(searchParams, { replace: true });
+    if (searchParams.get('action') !== 'new') {
+      autoOpenHandledRef.current = false;
+      return;
     }
-  }, [searchParams, categoryOptions, setSearchParams]);
+    if (autoOpenHandledRef.current) return;
+    autoOpenHandledRef.current = true;
+    setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+    setShowAddDialog(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('action');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   // ✅ استعادة الباركود المعلق بعد إعادة بناء Activity على Android
   useEffect(() => {
@@ -696,11 +703,15 @@ export default function Products() {
     // ✅ منع النقر المتعدد
     if (isSaving) return;
 
-    // In bakery/restaurant mode, barcode is auto-generated; otherwise required
-    const shouldAutoBarcode = noInventory || isRestaurant;
-    const effectiveBarcode = shouldAutoBarcode ? (formData.barcode || `AUTO${Date.now()}`) : formData.barcode;
-    if (!formData.name || (!shouldAutoBarcode && !effectiveBarcode)) {
-      toast.error(t('products.fillRequired'));
+    // ✅ المطلوب فقط: الاسم وسعر البيع. الباركود يُولَّد تلقائيًا إذا كان فارغًا
+    const trimmedBarcode = (formData.barcode || '').trim();
+    const effectiveBarcode = trimmedBarcode || `AUTO${Date.now()}`;
+    if (!formData.name || !formData.name.trim()) {
+      toast.error('يرجى كتابة اسم المنتج');
+      return;
+    }
+    if (!(Number(formData.salePrice) > 0) && !(Number(formData.bulkSalePrice) > 0)) {
+      toast.error('يرجى كتابة سعر البيع');
       return;
     }
 
