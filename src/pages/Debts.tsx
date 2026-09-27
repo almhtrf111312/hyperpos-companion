@@ -294,7 +294,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount, paymentOpIdRef.current);
     } catch (err) {
       paymentBusyRef.current = false;
-      toast.error(err instanceof Error ? err.message : t('debts.paymentFailed'));
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
       return;
     }
     paymentBusyRef.current = false;
