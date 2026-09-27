@@ -317,9 +317,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         }
         if (operation.type === 'invoice_refund_partial') {
           const { refundInvoicePartialCloud } = await import('@/lib/cloud/invoices-cloud');
-          const { invoiceNumber, itemsToRefund } = operation.data as { invoiceNumber: string; itemsToRefund: any[] };
-          const result = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund);
-          return result.success;
+          const { invoiceNumber, itemsToRefund, operationId } = operation.data as { invoiceNumber: string; itemsToRefund: any[]; operationId?: string };
+          const result = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund, operationId || `legacy-${operation.id}`);
+          if (!result.success) throw new Error(result.error || 'فشل الاسترداد الجزئي');
+          return true;
         }
         return processGenericQueuedOperation(operation);
       });

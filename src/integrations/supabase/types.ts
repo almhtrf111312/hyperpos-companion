@@ -1884,6 +1884,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      refund_invoice_partial_atomic: {
+        Args: { _invoice_number: string; _items: Json; _operation_id: string }
+        Returns: Json
+      }
       reset_user_device: { Args: { _target_user_id: string }; Returns: boolean }
       revoke_license: {
         Args: { _license_id: string; _reason?: string }
