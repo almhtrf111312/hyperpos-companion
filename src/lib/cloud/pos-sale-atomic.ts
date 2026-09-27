@@ -134,10 +134,11 @@ export async function processPosSaleAtomic(
       invoiceNumber: row.invoice_number,
     };
   } catch (rpcError) {
-    // ✅ المحاولة الثانية: Fallback Insert — إدراج مباشر في invoices + invoice_items
-    console.warn('[AtomicSale] RPC failed, attempting fallback direct insert:', rpcError);
-    
-    return await fallbackDirectInsert(operationId, paymentType, bundle, rpcItems, rpcError);
+    // ⚠️ تم تعطيل الإدراج البديل المباشر: كان يحفظ الفاتورة بدون خصم مخزون
+    // (يستدعي دالة غير موجودة) وبأعمدة غير صحيحة للبنود. العملية الذرية آمنة
+    // للتكرار، لذا نترك العملية في طابور المزامنة لإعادة المحاولة.
+    console.warn('[AtomicSale] RPC failed, keeping operation queued for retry:', rpcError);
+    throw rpcError instanceof Error ? rpcError : new Error(String(rpcError));
   }
 }
 
