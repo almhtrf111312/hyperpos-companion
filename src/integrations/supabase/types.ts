@@ -373,6 +373,36 @@ export type Database = {
         }
         Relationships: []
       }
+      debt_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          debt_id: string
+          id: string
+          operation_id: string
+          paid_by: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          debt_id: string
+          id?: string
+          operation_id: string
+          paid_by?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          debt_id?: string
+          id?: string
+          operation_id?: string
+          paid_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       debt_writeoffs: {
         Row: {
           amount: number
@@ -1911,6 +1941,10 @@ export type Database = {
       recalc_pos_invoice_profit: {
         Args: { _invoice_id: string }
         Returns: undefined
+      }
+      record_debt_payment_atomic: {
+        Args: { _amount: number; _debt_id: string; _operation_id: string }
+        Returns: Json
       }
       refund_invoice_atomic: {
         Args: { _invoice_number: string; _source?: string }
