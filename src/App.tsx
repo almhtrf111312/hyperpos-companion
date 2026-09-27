@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, useSearchParams, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { HashRouter, Routes, Route, useSearchParams, useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
@@ -45,8 +45,6 @@ import InvoiceTracking from "./pages/InvoiceTracking";
 import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
 import CashShifts from "./pages/CashShifts";
-import Warehouses from "./pages/Warehouses";
-import StockTransfer from "./pages/StockTransfer";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Purchases from "./pages/Purchases";
@@ -303,8 +301,9 @@ const AppContent = () => {
           <Route path="/products/*" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
           <Route path="/purchases" element={<RoleGuard allowedRoles={['boss', 'admin']}><Purchases /></RoleGuard>} />
           <Route path="/partners" element={<RoleGuard allowedRoles={['boss', 'admin']}><PartnersRedirect /></RoleGuard>} />
-          <Route path="/warehouses" element={<RoleGuard allowedRoles={['boss', 'admin']}><Warehouses /></RoleGuard>} />
-          <Route path="/stock-transfer" element={<RoleGuard allowedRoles={['boss', 'admin']}><StockTransfer /></RoleGuard>} />
+          {/* FROZEN: warehouses & stock transfer disabled — redirect home */}
+          <Route path="/warehouses" element={<Navigate to="/" replace />} />
+          <Route path="/stock-transfer" element={<Navigate to="/" replace />} />
           <Route path="/reports" element={<RoleGuard allowedRoles={['boss', 'admin']}><Reports /></RoleGuard>} />
           <Route path="/settings" element={<RoleGuard allowedRoles={['boss', 'admin']}><Settings /></RoleGuard>} />
         </Route>

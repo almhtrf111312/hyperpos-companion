@@ -1,3 +1,4 @@
+// ⛔ DISABLED — FROZEN FEATURE (Warehouses / Stock Transfer). موقوف حاليًا — لا تعدّل هذا الملف حتى يطلب المالك إعادة التفعيل.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
