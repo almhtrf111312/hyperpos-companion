@@ -1,8 +1,13 @@
 {
-  "versionCode": 260,
-  "versionName": "1.0.30",
-  "lastUpdated": "2026-09-27T01:30:00.000Z",
+  "versionCode": 261,
+  "versionName": "1.0.31",
+  "lastUpdated": "2026-09-27T01:40:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 261,
+      "date": "2026-09-27T01:40:00.000Z",
+      "description": "v1.0.31 - Refunded lines marked in invoice/print, labeled side-by-side invoice filters, no empty purchase invoices + capital deduction, tidier report buttons"
+    },
     {
       "versionCode": 260,
       "date": "2026-09-27T01:30:00.000Z",
