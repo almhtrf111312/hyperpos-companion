@@ -26,6 +26,7 @@ import {
   addPurchaseInvoiceCloud,
   addPurchaseInvoiceItemCloud,
   finalizePurchaseInvoiceCloud,
+  deletePurchaseInvoiceCloud,
   loadPurchaseInvoiceWithItems,
   deletePurchaseInvoiceItemCloud,
   PurchaseInvoice,
