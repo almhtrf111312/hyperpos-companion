@@ -1,5 +1,15 @@
 [
   {
+    "type": "improvement",
+    "ar": "أزرار استرداد كلي/جزئي ثابتة وواضحة وحذف شرح تسوية الوردية",
+    "en": "Fixed, clear full/partial refund buttons; removed settlement text"
+  },
+  {
+    "type": "improvement",
+    "ar": "إشعارات أكبر وأنزل عن أعلى الشاشة",
+    "en": "Larger notifications placed lower from the top"
+  },
+  {
     "type": "new",
     "ar": "قسم فواتير مستردة مع وقت الاسترداد وحالة البضاعة (سليم/معيب)",
     "en": "Refunded invoices view with refund time and goods condition (good/damaged)"
