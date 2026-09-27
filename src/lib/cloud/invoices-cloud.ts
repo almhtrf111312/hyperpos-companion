@@ -754,7 +754,7 @@ export const refundInvoicePartialCloud = async (
     debtReduced,
     restoredItemsCount: Number(r.restored_items) || 0,
     restoredUnitsCount: Number(r.restored_units) || 0,
-    isFullyRefunded: r.is_fully_refunded === true,
+    isFullyRefunded: r.is_full_refund === true || r.is_fully_refunded === true,
     newInvoiceTotal: Number(r.new_total) || 0,
   };
 };
