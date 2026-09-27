@@ -30,11 +30,20 @@ import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import { isNoInventoryMode } from '@/lib/store-type-config';
 
+const DASHBOARD_CACHE_KEY = 'hyperpos_dashboard_stats_cache_v1';
+
 export default function Dashboard() {
   const { t, language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const noInventory = isNoInventoryMode();
-  const [stats, setStats] = useState({
+  // Display-only cache of last successful stats (never used for financial operations)
+  const cached = (() => {
+    try { const raw = localStorage.getItem(DASHBOARD_CACHE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  })();
+  const [hasData, setHasData] = useState<boolean>(!!cached);
+  const [loadError, setLoadError] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(cached?.at ?? null);
+  const [stats, setStats] = useState(cached?.stats ?? {
     todaySales: 0,
     weekSales: 0,
     monthSales: 0,
@@ -223,7 +232,7 @@ export default function Dashboard() {
         })
         .reduce((sum, inv) => sum + inv.total, 0);
 
-      setStats({
+      const nextStats = {
         todaySales,
         weekSales,
         monthSales,
@@ -257,9 +266,16 @@ export default function Dashboard() {
         dailyRefunds,
         weekDailySales,
         monthWeeklySales,
-      });
+      };
+      setStats(nextStats);
+      setHasData(true);
+      setLoadError(false);
+      const now = Date.now();
+      setLastUpdated(now);
+      try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ stats: nextStats, at: now })); } catch { /* quota */ }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -268,22 +284,18 @@ export default function Dashboard() {
   useEffect(() => {
     loadStats();
 
-    const handleUpdate = () => loadStats();
-
-    window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
+    // Debounce bursts of update events (realtime/sync) into a single reload
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const handleUpdate = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => loadStats(), 800);
+    };
+    const evts = [EVENTS.INVOICES_UPDATED, EVENTS.PRODUCTS_UPDATED, EVENTS.PARTNERS_UPDATED, EVENTS.EXPENSES_UPDATED, EVENTS.CASHBOX_UPDATED, EVENTS.CAPITAL_UPDATED];
+    evts.forEach(e => window.addEventListener(e, handleUpdate));
 
     return () => {
-      window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.CASHBOX_UPDATED, handleUpdate);
-      window.removeEventListener(EVENTS.CAPITAL_UPDATED, handleUpdate);
+      if (timer) clearTimeout(timer);
+      evts.forEach(e => window.removeEventListener(e, handleUpdate));
     };
   }, [loadStats]);
 
@@ -295,10 +307,21 @@ export default function Dashboard() {
           <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{today}</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/10 border border-success/20">
-          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
-        </div>
+        {loadError ? (
+          <button onClick={() => loadStats()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-medium text-destructive">
+            تعذّر التحديث — إعادة المحاولة
+          </button>
+        ) : isLoading ? (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted border border-border">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs font-medium text-muted-foreground">{hasData ? 'جارٍ التحديث...' : 'جارٍ الحساب...'}</span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl bg-success/10 border border-success/20">
+            <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
+            {lastUpdated && <span className="text-[10px] text-muted-foreground" dir="ltr">{new Date(lastUpdated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
+          </div>
+        )}
       </div>
 
       {/* Quick Actions - Compact Toolbar */}

@@ -33,7 +33,9 @@ export function useRealtimeSync() {
   // Helper to refresh all data safely (debounced to avoid loops)
   const refreshData = async (reason: string) => {
     const now = Date.now();
-    if (now - lastRefreshRef.current < 2000) return; // Ignore if refreshed in last 2s
+    // Channel (re)subscriptions happen often on mobile; avoid full reloads within 60s
+    const minGap = reason === 'SUBSCRIBED' ? 60000 : 2000;
+    if (now - lastRefreshRef.current < minGap) return;
     lastRefreshRef.current = now;
     
     console.log(`[Realtime] Triggering global refresh due to: ${reason}`);
