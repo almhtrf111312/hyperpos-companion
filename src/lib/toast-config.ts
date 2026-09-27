@@ -67,7 +67,6 @@ export const showToast = {
     if (!shouldShowToast(key)) return;
     
     toast.success(message, {
-      position: 'top-right',
       duration: 4000,
       description,
     });
@@ -78,7 +77,6 @@ export const showToast = {
     if (!shouldShowToast(key)) return;
     
     toast.error(message, {
-      position: 'top-right',
       duration: options?.persistent ? Infinity : 5000,
       closeButton: options?.persistent,
       description: options?.description,
@@ -90,7 +88,6 @@ export const showToast = {
     if (!shouldShowToast(key)) return;
     
     toast.warning(message, {
-      position: 'top-right',
       duration: 5000,
       description,
     });
@@ -101,7 +98,6 @@ export const showToast = {
     if (!shouldShowToast(key)) return;
     
     toast.info(message, {
-      position: 'top-right',
       duration: 4000,
       description,
     });

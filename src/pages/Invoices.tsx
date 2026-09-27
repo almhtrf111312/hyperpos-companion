@@ -178,7 +178,7 @@ export default function Invoices() {
     }
 
     return result;
-  }, [invoices, debouncedSearch, filterType, filterPayment, dateFilter]);
+  }, [invoices, debouncedSearch, filterType, filterPayment, dateFilter, showRefunded, refundMeta]);
 
   // استخراج تواريخ الأيام التي تحتوي على فواتير فعلية لتمييزها في التقويم
   const salesInvoiceDates = useMemo(() => {

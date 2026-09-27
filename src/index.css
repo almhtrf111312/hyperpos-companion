@@ -1795,3 +1795,9 @@ html, body, #root {
   max-width: 100vw;
 }
 
+
+/* Global smaller type scale */
+html { font-size: 14px; }
+/* Toasts must never block touches on the rest of the app */
+[data-sonner-toaster] { pointer-events: none !important; }
+[data-sonner-toaster] [data-sonner-toast] { pointer-events: auto !important; }
