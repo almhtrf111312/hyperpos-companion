@@ -353,7 +353,14 @@ export function CartPanel({
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
-    const totalSnapshot = total;
+    // ✅ المبلغ المقبوض أقل من الإجمالي (بيع نقدي عادي) = الفرق يُعتبر خصمًا
+    const rateForReceived = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
+    const receivedUSD = receivedAmount > 0 ? receivedAmount / rateForReceived : 0;
+    const shortfallUSD = !wholesaleMode && receivedUSD > 0 && receivedUSD < total
+      ? roundCurrency(total - receivedUSD)
+      : 0;
+    const effectiveDiscountAmount = roundCurrency(discountAmount + shortfallUSD);
+    const totalSnapshot = roundCurrency(total - shortfallUSD);
     const customerNameSnapshot = customerName;
     const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -430,7 +437,7 @@ export function CartPanel({
         };
       });
 
-      const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+      const discountRatio = subtotal > 0 ? Math.min(1, effectiveDiscountAmount / subtotal) : 0;
       const discountedProfit = roundCurrency(totalProfit * (1 - discountRatio));
 
       const stockItemsLocal = cartSnapshot.map(item => ({
@@ -456,12 +463,12 @@ export function CartPanel({
           customerName: customerNameSnapshot || 'عميل نقدي',
           items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit * (1 - discountRatio)) })),
           subtotal,
-          discount,
-          discountPercentage: discountType === 'percent' ? discount : 0,
+          discount: effectiveDiscountAmount,
+          discountPercentage: discountType === 'percent' && shortfallUSD === 0 ? discount : 0,
           taxRate: effectiveTaxRate,
           taxAmount,
           total: totalSnapshot,
-          totalInCurrency,
+          totalInCurrency: roundCurrency(totalSnapshot * rateForReceived),
           currency: selectedCurrency.code,
           currencySymbol: selectedCurrency.symbol,
           profit: discountedProfit,
