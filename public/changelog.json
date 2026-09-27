@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "تسديد الديون أصبح عملية واحدة على الخادم: الدين والفاتورة يتحدثان معًا، الرصيد ينقص فقط ولا يقفز، منع تسجيل الدفعة مرتين، ودين العميل يتطابق",
+    "en": "Debt payments are atomic: debt and invoice update together, balance never jumps, no double payments, customer debt stays in sync"
+  },
+  {
+    "type": "fix",
     "ar": "نافذة إضافة المنتج لا تعود للفتح بعد إغلاقها، واسم المنتج لم يعد يختفي أثناء الكتابة، وإيقاف المستودعات وتحويل العهدة مؤقتًا",
     "en": "Add-product dialog no longer reopens after closing, product name no longer disappears, warehouses & stock transfer temporarily disabled"
   },
