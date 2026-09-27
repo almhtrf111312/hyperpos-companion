@@ -258,7 +258,10 @@ export default function Invoices() {
       }
     });
 
-    totalRefundAmount = roundCurrency(totalRefundAmount);
+    // توزيع الخصم/الضريبة على مستوى الفاتورة بشكل نسبي (مطابق للخادم)
+    const sub = Number(invoiceToRefund.subtotal) || 0;
+    const ratio = sub > 0 ? (Number(invoiceToRefund.total) || 0) / sub : 1;
+    totalRefundAmount = roundCurrency(totalRefundAmount * ratio);
 
     let cashToReturn = 0;
     let debtReduction = 0;
@@ -418,16 +421,17 @@ export default function Invoices() {
 
     setShowRefundDialog(false);
     setInvoiceToRefund(null);
+    const operationId = crypto.randomUUID();
 
     if (!isOnline) {
-      const refundedTotal = itemsToRefund.reduce((s, it) => s + (it.quantityToRefund * it.unitPrice), 0);
+      const refundedTotal = partialRefundStats.totalRefundAmount;
       const remainingTotal = Math.max(0, (invoice.total || 0) - refundedTotal);
       const isFull = remainingTotal <= 0;
 
       addToQueueIfNotExists(
         'invoice_refund_partial',
-        { invoiceNumber: invoiceLabel, itemsToRefund },
-        `invoice-refund-partial:${invoiceLabel}:${Date.now()}`
+        { invoiceNumber: invoiceLabel, itemsToRefund, operationId },
+        `invoice-refund-partial:${operationId}`
       );
 
       setInvoices(prev => prev.map(inv => {
@@ -450,7 +454,7 @@ export default function Invoices() {
 
     toast.loading(`جاري الاسترداد الجزئي للفاتورة ${invoiceLabel}...`, { id: toastId });
     try {
-      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund);
+      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund, operationId);
       if (!result.success) {
         toast.error(`فشل الاسترداد الجزئي: ${result.error}`, { id: toastId, duration: 5000 });
         return;
