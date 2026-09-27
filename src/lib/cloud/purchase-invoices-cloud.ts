@@ -530,10 +530,10 @@
      // 3. Financial reversal: Remove any associated expenses
      if (invoice?.invoice_number) {
        try {
-         await supabase
-           .from('expenses')
-           .delete()
-           .or(`notes.ilike.%${invoice.invoice_number}%,description.ilike.%${invoice.invoice_number}%`);
+         // Bind the invoice number as a parameter (no filter-string interpolation)
+         const safe = String(invoice.invoice_number).replace(/[\\%_]/g, (c) => `\\${c}`);
+         await supabase.from('expenses').delete().ilike('notes', `%${safe}%`);
+         await supabase.from('expenses').delete().ilike('description', `%${safe}%`);
        } catch (e) {
          console.warn('Could not cleanup cloud expenses for invoice:', e);
        }
