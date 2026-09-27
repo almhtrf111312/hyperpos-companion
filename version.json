@@ -1,8 +1,14 @@
 {
-  "versionCode": 264,
-  "versionName": "1.0.34",
-  "lastUpdated": "2026-09-27T05:00:00.000Z",
+  "versionCode": 265,
+  "versionName": "1.0.35",
+  "lastUpdated": "2026-09-27T06:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 265,
+      "versionName": "1.0.35",
+      "date": "2026-09-27",
+      "description": "v1.0.35 - GitHub Actions workflows modernized: checkout@v5, setup-java@v5, setup-node@v6, upload-artifact@v5, setup-gradle@v5, pinned ubuntu-24.04, Node 22 on Windows build"
+    },
     {
       "versionCode": 264,
       "versionName": "1.0.34",
