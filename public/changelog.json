@@ -1,6 +1,16 @@
 [
   {
     "type": "fix",
+    "ar": "الاسترداد الجزئي يخصم المبلغ فعليًا من إجمالي الفاتورة وربحها ودينها، ويعرض القيمة الجديدة داخل الفاتورة وخارجها وفي الطباعة",
+    "en": "Partial refund now reduces invoice total, profit and debt everywhere"
+  },
+  {
+    "type": "fix",
+    "ar": "إرجاع المخزون للمستودع الأصلي وتسجيل حركة الاسترداد الجزئي وتصحيح الفواتير السابقة",
+    "en": "Stock returns to source warehouse; past invoices corrected"
+  },
+  {
+    "type": "fix",
     "ar": "إصلاح عدم احتساب الأصناف المحددة في الاسترداد الجزئي («يرجى تحديد كمية…»)",
     "en": "Fixed selected items ignored in partial refund"
   },
