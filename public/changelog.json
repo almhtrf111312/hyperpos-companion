@@ -1,5 +1,10 @@
 [
   {
+    "type": "improvement",
+    "ar": "إضافة «الدستور المالي» للمشروع: قواعد ثابتة توجّه أي تعديل مالي مستقبلي (الضريبة ليست ربحًا، القيم الحساسة من الخادم فقط، عمليات ذرّية بلا تكرار، ممنوع حذف السجلات المالية، أمان المزامنة دون اتصال)",
+    "en": "Added the Flow POS Financial Core rulebook: standing rules guiding all future financial changes (tax is not profit, server-authoritative values, atomic idempotent operations, no destructive deletes, offline sync safety)"
+  },
+  {
     "type": "fix",
     "ar": "تسديد الديون أصبح عملية واحدة على الخادم: الدين والفاتورة يتحدثان معًا، الرصيد ينقص فقط ولا يقفز، منع تسجيل الدفعة مرتين، ودين العميل يتطابق",
     "en": "Debt payments are atomic: debt and invoice update together, balance never jumps, no double payments, customer debt stays in sync"
