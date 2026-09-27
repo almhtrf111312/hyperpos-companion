@@ -11,7 +11,7 @@ interface VariantProduct {
   id: string;
   name: string;
   price: number;
-  category: string;
+  category?: string;
   quantity: number;
   image?: string;
   barcode?: string;

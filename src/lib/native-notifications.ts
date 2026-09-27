@@ -35,7 +35,7 @@ export async function checkNotificationPermissionNative(): Promise<'granted' | '
   if (Capacitor.isNativePlatform()) {
     try {
       const status = await LocalNotifications.checkPermissions();
-      return status.display;
+      return status.display === 'granted' || status.display === 'denied' ? status.display : 'prompt';
     } catch (e) {
       console.warn('[Notifications] Check permission failed:', e);
       return 'prompt';

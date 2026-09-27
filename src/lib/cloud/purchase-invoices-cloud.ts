@@ -7,6 +7,7 @@
    id: string;
    user_id: string;
    invoice_number: string;
+  image_url?: string | null;
    supplier_name: string;
    supplier_company?: string;
    invoice_date: string;

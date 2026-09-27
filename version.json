@@ -1,8 +1,13 @@
 {
-  "versionCode": 256,
-  "versionName": "1.0.26",
-  "lastUpdated": "2026-09-18T00:00:00.000Z",
+  "versionCode": 257,
+  "versionName": "1.0.27",
+  "lastUpdated": "2026-09-27T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 257,
+      "date": "2026-09-27T00:00:00.000Z",
+      "description": "v1.0.27 - Fixed endless loading screen after clearing app data (login now opens), disabled unsafe fallback sale path that saved invoices without deducting stock (failed sales stay in the retry queue)"
+    },
     {
       "versionCode": 256,
       "date": "2026-09-18T00:00:00.000Z",

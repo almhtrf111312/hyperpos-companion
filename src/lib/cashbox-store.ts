@@ -3,6 +3,8 @@
 // SECURITY FIX: الثابتة القديمة كانت hyperpos_cashbox_v1 / hyperpos_shifts_v1
 // ولم تتضمن userId مما يتسبب في مسح ورديات الكاشير الأول عند تسجيل دخول آخر.
 import { getCurrentUserId } from './supabase-store';
+import { emitEvent, EVENTS } from './events';
+import { roundCurrency, addCurrency, subtractCurrency } from './utils';
 
 // المفاتيح القديمة (للتوافق مع البيانات المخزنة سابقاً — تُقرأ كـ fallback)
 const LEGACY_CASHBOX_KEY = 'hyperpos_cashbox_v1';

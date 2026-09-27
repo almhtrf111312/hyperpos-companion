@@ -312,7 +312,7 @@ export async function printHTML(htmlContent: string): Promise<boolean> {
 
   // 3. Fallback للأندرويد في حال عدم توفر خدمة الطباعة
   if (Capacitor.isNativePlatform()) {
-    return printOnNative(htmlContent);
+    return false;
   }
 
   return false;

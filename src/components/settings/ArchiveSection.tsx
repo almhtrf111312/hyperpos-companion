@@ -186,7 +186,7 @@ export function ArchiveSection() {
                             <span className="text-xs font-mono text-muted-foreground">#{invoice.id.slice(-6)}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            المبلغ: {invoice.currencySymbol || '$'}{formatNumber(invoice.totalInCurrency ?? invoice.finalTotal)} • {new Date(invoice.createdAt).toLocaleDateString('ar-SA')}
+                            المبلغ: {invoice.currencySymbol || '$'}{formatNumber(invoice.totalInCurrency ?? invoice.total)} • {new Date(invoice.createdAt).toLocaleDateString('ar-SA')}
                           </p>
                         </div>
                         <span className={cn(
