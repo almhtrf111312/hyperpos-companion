@@ -438,7 +438,8 @@ export function CartPanel({
       });
 
       const discountRatio = subtotal > 0 ? Math.min(1, effectiveDiscountAmount / subtotal) : 0;
-      const discountedProfit = roundCurrency(totalProfit * (1 - discountRatio));
+      // الربح = المجموع − الخصم − التكلفة
+      const discountedProfit = roundCurrency(totalProfit - effectiveDiscountAmount);
 
       const stockItemsLocal = cartSnapshot.map(item => ({
         productId: item.id,
@@ -461,7 +462,7 @@ export function CartPanel({
         operationId,
         bundle: {
           customerName: customerNameSnapshot || 'عميل نقدي',
-          items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit * (1 - discountRatio)) })),
+          items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit - i.total * discountRatio) })),
           subtotal,
           discount: effectiveDiscountAmount,
           discountPercentage: discountType === 'percent' && shortfallUSD === 0 ? discount : 0,
