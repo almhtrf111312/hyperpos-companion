@@ -415,11 +415,13 @@ export default function Invoices() {
 
     const itemsToRefund: PartialRefundItem[] = [];
     invoice.items?.forEach(item => {
-      const key = item.productId || item.name;
+      // ✅ معرف المنتج قد يكون في productId أو id حسب مصدر البيانات
+      const pid = item.productId || (item as unknown as { id?: string }).id;
+      const key = pid || item.name;
       const qty = partialRefundQuantities[key] || 0;
       if (qty > 0) {
         itemsToRefund.push({
-          productId: item.productId,
+          productId: pid,
           productName: item.name,
           quantityToRefund: qty,
           quantity: qty,
