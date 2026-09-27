@@ -38,6 +38,7 @@ import { addToQueue } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { checkRealInternetAccess } from '@/hooks/use-network-status';
 import { addProductCloud } from '@/lib/cloud/products-cloud';
+import { loadCapitalState, withdrawCapital } from '@/lib/capital-store';
 
 interface PurchaseInvoiceDialogProps {
   open: boolean;
@@ -327,8 +328,36 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     }
   };
 
+  // يسحب قيمة فاتورة الشراء من رأس المال فقط إذا كان المحل يتتبع رأس مال
+  const deductFromCapital = () => {
+    try {
+      const state = loadCapitalState();
+      const tracksCapital = state.transactions.length > 0 || state.initialCapital > 0;
+      if (!tracksCapital || !currentInvoice) return;
+      const total = invoiceItems.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.cost_price) || 0), 0);
+      if (total <= 0) return;
+      const tx = withdrawCapital(total, `فاتورة شراء ${currentInvoice.invoice_number} - ${currentInvoice.supplier_name}`, 'system');
+      if (!tx) toast.warning('رأس المال غير كافٍ لتغطية فاتورة الشراء، لم يتم السحب منه');
+    } catch { /* ignore */ }
+  };
+
+  // إغلاق الحوار: حذف المسودة الفارغة حتى لا تُحفظ فواتير شراء بقيمة صفر
+  const handleOpenChange = (next: boolean) => {
+    if (!next && currentInvoice && invoiceItems.length === 0 && currentInvoice.status === 'draft') {
+      if (!currentInvoice.id.startsWith('local_')) {
+        deletePurchaseInvoiceCloud(currentInvoice.id).then(() => emitEvent(EVENTS.PURCHASES_UPDATED)).catch(() => {});
+      }
+      setCurrentInvoice(null);
+    }
+    onOpenChange(next);
+  };
+
   const handleFinalize = async () => {
     if (!currentInvoice) return;
+    if (invoiceItems.length === 0) {
+      toast.error('أضف صنفاً واحداً على الأقل قبل حفظ الفاتورة');
+      return;
+    }
 
     setLoading(true);
 
@@ -353,6 +382,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         })),
       });
       setLoading(false);
+      deductFromCapital();
       toast.success(t('purchaseInvoice.finalized') + ' (offline)', { icon: '📴' });
       emitEvent(EVENTS.PURCHASES_UPDATED);
       emitEvent(EVENTS.PRODUCTS_UPDATED);
@@ -374,6 +404,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
       setLoading(false);
 
       if (success) {
+        deductFromCapital();
         toast.success(t('purchaseInvoice.finalized'));
         emitEvent(EVENTS.PURCHASES_UPDATED);
         emitEvent(EVENTS.PRODUCTS_UPDATED);
@@ -403,6 +434,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
         })),
       });
       setLoading(false);
+      deductFromCapital();
       toast.success(t('purchaseInvoice.finalized') + ' (queued)', { icon: '📴' });
       emitEvent(EVENTS.PURCHASES_UPDATED);
       emitEvent(EVENTS.PRODUCTS_UPDATED);
@@ -434,7 +466,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[92vh] p-3 sm:p-6 overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -537,7 +569,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 {t('common.cancel')}
               </Button>
               <Button onClick={handleCreateInvoice} disabled={loading}>
