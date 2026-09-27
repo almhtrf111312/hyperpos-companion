@@ -1,8 +1,13 @@
 {
-  "versionCode": 261,
-  "versionName": "1.0.31",
-  "lastUpdated": "2026-09-27T01:40:00.000Z",
+  "versionCode": 262,
+  "versionName": "1.0.32",
+  "lastUpdated": "2026-09-27T04:40:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 262,
+      "date": "2026-09-27T04:40:00.000Z",
+      "description": "v1.0.32 - Fixed partial refund failure (quantity exceeds remaining): product ID fallback in refund payload and trimmed name matching in server function"
+    },
     {
       "versionCode": 261,
       "date": "2026-09-27T01:40:00.000Z",

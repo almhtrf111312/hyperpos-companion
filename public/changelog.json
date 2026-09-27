@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "إصلاح فشل الاسترداد الجزئي (الكمية تتجاوز المتبقي): إرسال معرف المنتج ومطابقة مرنة لأسماء الأصناف في الخادم",
+    "en": "Fixed partial refund failure: product ID fallback and flexible item-name matching on server"
+  },
+  {
+    "type": "fix",
     "ar": "البنود المستردة تظهر «مُسترد» في تفاصيل الفاتورة ولا تُطبع",
     "en": "Refunded lines marked in details and excluded from print"
   },
