@@ -580,7 +580,7 @@ export default function Invoices() {
 
     // ✅ جميع القيم المُدخَلة من المستخدم تمر عبر escapeHtml() لمنع XSS
     const itemsHtml = invoice.type === 'sale'
-      ? invoice.items.map(item => `
+      ? invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => `
           <tr>
             <td style="padding: 5px; border-bottom: 1px solid #eee;">${escapeHtml(item.name)}</td>
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
@@ -813,7 +813,7 @@ export default function Invoices() {
       customerName: invoice.customerName,
       customerPhone: invoice.customerPhone,
       date,
-      items: invoice.items.map(item => ({
+      items: invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => ({
         name: item.name,
         quantity: item.quantity,
         unitPrice: item.price,
@@ -940,8 +940,8 @@ export default function Invoices() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="space-y-2">
+        <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder={t('invoices.searchPlaceholder')}
@@ -950,59 +950,58 @@ export default function Invoices() {
             className="pr-10"
           />
         </div>
-        <Select
-          value={filterType}
-          onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder={t('invoices.invoiceType')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('common.all')}</SelectItem>
-            <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
-            <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant={showRefunded ? 'default' : 'outline'}
-          className="w-full sm:w-auto gap-1.5"
-          onClick={() => setShowRefunded(v => !v)}
-        >
-          <Undo2 className="w-4 h-4" />
-          فواتير مستردة
-        </Button>
-        <Select
-          value={filterPayment}
-          onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder={t('invoices.paymentMethod')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('common.all')}</SelectItem>
-            <SelectItem value="cash">{t('invoices.cash')}</SelectItem>
-            <SelectItem value="debt">{t('invoices.credit')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2 flex-shrink-0 sm:w-40">
-          <DatePicker
-            value={dateFilter}
-            onChange={setDateFilter}
-            placeholder="التاريخ"
-            className="w-full"
-            highlightedDates={salesInvoiceDates}
-          />
-          {dateFilter && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="space-y-1">
+            <span className="text-[11px] font-medium text-muted-foreground">نوع الفاتورة</span>
+            <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
+                <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[11px] font-medium text-muted-foreground">طريقة البيع</span>
+            <Select value={filterPayment} onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">نقدي ومؤجل</SelectItem>
+                <SelectItem value="cash">نقدي</SelectItem>
+                <SelectItem value="debt">بيع مؤجل</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[11px] font-medium text-muted-foreground">التاريخ</span>
+            <div className="flex items-center gap-1">
+              <DatePicker
+                value={dateFilter}
+                onChange={setDateFilter}
+                placeholder="كل التواريخ"
+                className="w-full"
+                highlightedDates={salesInvoiceDates}
+              />
+              {dateFilter && (
+                <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0" onClick={() => setDateFilter('')}>
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[11px] font-medium text-muted-foreground">المرتجعات</span>
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 flex-shrink-0"
-              onClick={() => setDateFilter('')}
+              type="button"
+              variant={showRefunded ? 'default' : 'outline'}
+              className="h-9 w-full gap-1.5 text-xs"
+              onClick={() => setShowRefunded(v => !v)}
             >
-              <X className="w-4 h-4" />
+              <Undo2 className="w-4 h-4" />
+              فواتير مستردة
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -1259,8 +1258,13 @@ export default function Invoices() {
                       </thead>
                       <tbody>
                         {selectedInvoice.items.map((item, idx) => (
-                          <tr key={idx} className="border-t border-muted/50">
-                            <td className="px-3 py-2">{item.name}</td>
+                          <tr key={idx} className={cn("border-t border-muted/50", item.refunded && "opacity-60")}>
+                            <td className="px-3 py-2">
+                              <span className={cn(item.refunded && "line-through")}>{item.name}</span>
+                              {item.refunded && (
+                                <span className="mr-2 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">مُسترد</span>
+                              )}
+                            </td>
                             <td className="px-3 py-2 text-center">{item.quantity}</td>
                             <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
                             <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.total)}</td>
