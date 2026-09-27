@@ -217,7 +217,7 @@ export default function Invoices() {
       const initialQty: Record<string, number> = {};
       if (invoice.items && invoice.items.length > 0) {
         invoice.items.forEach(item => {
-          const key = item.productId || item.name;
+          const key = refundKey(item);
           initialQty[key] = 0;
         });
       }
@@ -238,7 +238,7 @@ export default function Invoices() {
     if (!invoiceToRefund?.items) return;
     const allMax: Record<string, number> = {};
     invoiceToRefund.items.forEach(item => {
-      const key = item.productId || item.name;
+      const key = refundKey(item);
       allMax[key] = item.quantity;
     });
     setPartialRefundQuantities(allMax);
@@ -248,7 +248,7 @@ export default function Invoices() {
     if (!invoiceToRefund?.items) return;
     const allZero: Record<string, number> = {};
     invoiceToRefund.items.forEach(item => {
-      const key = item.productId || item.name;
+      const key = refundKey(item);
       allZero[key] = 0;
     });
     setPartialRefundQuantities(allZero);
@@ -263,7 +263,7 @@ export default function Invoices() {
     let itemsCount = 0;
 
     invoiceToRefund.items.forEach(item => {
-      const key = item.productId || item.name;
+      const key = refundKey(item);
       const qty = partialRefundQuantities[key] || 0;
       if (qty > 0) {
         unitsCount += qty;
@@ -417,7 +417,7 @@ export default function Invoices() {
     invoice.items?.forEach(item => {
       // ✅ معرف المنتج قد يكون في productId أو id حسب مصدر البيانات
       const pid = item.productId || (item as unknown as { id?: string }).id;
-      const key = pid || item.name;
+      const key = refundKey(item);
       const qty = partialRefundQuantities[key] || 0;
       if (qty > 0) {
         itemsToRefund.push({
@@ -1422,7 +1422,7 @@ export default function Invoices() {
 
                 <div className="border rounded-lg divide-y max-h-56 overflow-y-auto bg-card">
                   {invoiceToRefund?.items?.filter(i => !i.refunded && i.quantity > 0).map((item) => {
-                    const key = item.productId || item.name;
+                    const key = refundKey(item);
                     const currentQty = partialRefundQuantities[key] || 0;
                     const isSelected = currentQty > 0;
                     return (
