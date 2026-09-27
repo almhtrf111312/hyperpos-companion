@@ -240,7 +240,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const lastCheckedUserIdRef = useRef<string | null>(null);
+  // undefined = never checked (so a signed-out cold start still runs the check
+  // and releases the loading screen after app data is cleared)
+  const lastCheckedUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (authLoading) return;
