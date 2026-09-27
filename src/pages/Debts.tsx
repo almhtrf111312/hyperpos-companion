@@ -257,20 +257,37 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   };
 
   const handlePayment = async () => {
+    if (paymentBusyRef.current) return;
     if (!selectedDebt || paymentAmount <= 0) {
       toast.error(t('debts.enterValidAmount'));
       return;
     }
 
-    if (paymentAmount > selectedDebt.remainingDebt) {
+    // اقرأ الرصيد الحقيقي من الخادم قبل التحقق
+    invalidateDebtsCache();
+    const latestList = await loadDebtsCloud();
+    const latest = latestList.find(d => d.id === selectedDebt.id) || selectedDebt;
+    const remainingNow = Math.round(latest.remainingDebt * 100) / 100;
+
+    if (Math.round(paymentAmount * 100) / 100 > remainingNow) {
+      setDebts(latestList);
+      setSelectedDebt(latest);
       toast.error(t('debts.amountExceedsRemaining'));
       return;
     }
 
-    // Calculate payment ratio for partial profit confirmation
-    const paymentRatio = paymentAmount / selectedDebt.remainingDebt;
+    const paymentRatio = remainingNow > 0 ? paymentAmount / remainingNow : 1;
 
-    await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount);
+    paymentBusyRef.current = true;
+    try {
+      await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount, paymentOpIdRef.current);
+    } catch (err) {
+      paymentBusyRef.current = false;
+      toast.error(err instanceof Error ? err.message : t('debts.paymentFailed'));
+      return;
+    }
+    paymentBusyRef.current = false;
+    paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     // ✅ إضافة المبلغ للصندوق تلقائياً (الترابط الجديد)
     processDebtPayment(
