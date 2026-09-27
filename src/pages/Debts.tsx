@@ -37,6 +37,7 @@ import {
   deleteDebtCloud,
   getNextManualDebtId,
   Debt
+  invalidateDebtsCache,
 } from '@/lib/cloud/debts-cloud';
 import { getInvoiceByIdCloud, InvoiceItem } from '@/lib/cloud/invoices-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
@@ -79,6 +80,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const [showAddDebtDialog, setShowAddDebtDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const paymentBusyRef = useRef(false);
+  const paymentOpIdRef = useRef(`debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
@@ -213,7 +216,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
         console.warn('[openPaymentDialog] Could not verify invoice status:', err);
       }
     }
-    setSelectedDebt(debt);
+    let fresh = debt;
+    try {
+      invalidateDebtsCache();
+      const list = await loadDebtsCloud();
+      setDebts(list);
+      fresh = list.find(d => d.id === debt.id) || debt;
+    } catch { /* use cached */ }
+    paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    setSelectedDebt(fresh);
     setPaymentAmount(0);
     setShowPaymentDialog(true);
   };
@@ -735,7 +746,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => setPaymentAmount(Math.round(selectedDebt.remainingDebt / 2))}
+                    onClick={() => setPaymentAmount(Math.round((selectedDebt.remainingDebt / 2) * 100) / 100)}
                   >
                     {t('debts.payHalf')}
                   </Button>
