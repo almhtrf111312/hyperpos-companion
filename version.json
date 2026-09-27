@@ -1,8 +1,14 @@
 {
-  "versionCode": 270,
-  "versionName": "1.0.40",
-  "lastUpdated": "2026-09-27T12:45:00.000Z",
+  "versionCode": 271,
+  "versionName": "1.0.41",
+  "lastUpdated": "2026-09-27T13:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 271,
+      "versionName": "1.0.41",
+      "date": "2026-09-27",
+      "description": "v1.0.41 - Faster invoices/dashboard: invoice items loaded in batches instead of one request per invoice, new database indexes, dashboard shows last results instantly with clear updating/error state and retry, fewer full reloads, working clear button in report search"
+    },
     {
       "versionCode": 270,
       "versionName": "1.0.40",
