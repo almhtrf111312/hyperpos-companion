@@ -135,7 +135,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
     const cleanUpdates = filterTablePayload('products', updates as unknown as Record<string, unknown>);
     const { error: updErr } = await supabase
       .from('products')
-      .update(cleanUpdates as Parameters<ReturnType<typeof supabase.from>['update']>[0])
+      .update(cleanUpdates as never)
       .eq('id', targetProductId);
 
     if (updErr) {
@@ -168,7 +168,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
 
     const { data: newProd, error: prodErr } = await supabase
       .from('products')
-      .insert(newProdPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0])
+      .insert(newProdPayload as never)
       .select('id')
       .single();
 
@@ -197,7 +197,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
 
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
-    .insert(invoicePayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0])
+    .insert(invoicePayload as never)
     .select()
     .single();
 
@@ -220,7 +220,7 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
 
   const { error: itemError } = await supabase
     .from('purchase_invoice_items')
-    .insert(itemPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0]);
+    .insert(itemPayload as never);
 
   if (itemError) {
     throw new Error(`فشل حفظ بند فاتورة الشراء: ${extractErrorMessage(itemError)}`);
@@ -258,7 +258,7 @@ export async function processPurchaseInvoiceFromQueue(data: PurchaseInvoiceData)
 
   const { data: invoice, error: invError } = await supabase
     .from('purchase_invoices')
-    .insert(invPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0])
+    .insert(invPayload as never)
     .select()
     .single();
 
@@ -282,7 +282,7 @@ export async function processPurchaseInvoiceFromQueue(data: PurchaseInvoiceData)
 
     const { error } = await supabase
       .from('purchase_invoice_items')
-      .insert(itemPayload as Parameters<ReturnType<typeof supabase.from>['insert']>[0]);
+      .insert(itemPayload as never);
 
     if (error) {
       throw new Error(`فشل إضافة بند الفاتورة (${item.product_name}): ${extractErrorMessage(error)}`);

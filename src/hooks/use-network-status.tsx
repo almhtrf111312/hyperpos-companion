@@ -239,7 +239,7 @@ export async function checkRealInternetAccess(timeoutMs: number = 2500): Promise
   };
 
   try {
-    await Promise.any([
+    await (Promise as unknown as { any: <T>(p: Promise<T>[]) => Promise<T> }).any([
       fetchProbe('https://connectivitycheck.gstatic.com/generate_204'),
       fetchProbe('https://www.cloudflare.com/cdn-cgi/trace'),
       fetchProbe('https://1.1.1.1/cdn-cgi/trace'),

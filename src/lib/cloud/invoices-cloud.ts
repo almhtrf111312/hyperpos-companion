@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
+import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
 
 export type InvoiceType = 'sale' | 'maintenance';
@@ -25,6 +26,7 @@ export interface InvoiceItem {
   price: number;
   quantity: number;
   total: number;
+  productId?: string;
   costPrice?: number; // ✅ سعر التكلفة لحظة البيع
   profit?: number;    // ✅ الربح لكل عنصر
 }
@@ -1002,7 +1004,7 @@ export const refundInvoicePartialCloud = async (
   try {
     const { addActivityLog } = await import('../activity-log');
     addActivityLog(
-      'invoice_refund',
+      'invoice_refunded',
       userId,
       cloudInvoice.cashier_name || 'كاشير',
       `تم استرداد جزئي للفاتورة ${invoiceNumber}: ${restoredItemsCount} أصناف بقيمة ${totalRefundedAmount}`,

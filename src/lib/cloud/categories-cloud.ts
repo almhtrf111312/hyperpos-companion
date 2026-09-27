@@ -330,7 +330,7 @@ export const getCategoryNamesCloud = async (): Promise<string[]> => {
       const data = res?.data;
       
       if (data) {
-        const productCategories = [...new Set(data.map(p => (p.category || '').trim()).filter(Boolean))];
+        const productCategories = [...new Set((data as Array<{ category?: string | null }>).map(p => String(p.category || '').trim()).filter(Boolean))];
         for (const cat of productCategories) {
           const lower = cat.toLowerCase();
           if (!normalizedExisting.has(lower)) {
