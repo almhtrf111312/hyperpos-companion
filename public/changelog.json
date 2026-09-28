@@ -1,5 +1,10 @@
 [
   {
+    "type": "improvement",
+    "ar": "تصغير بطاقات ملخص الفواتير وعناصر البحث والتصفية بنسبة تقارب 40% لتنظيم العرض على الهاتف والموقع، دون تغيير الأرقام أو عمل التصفية",
+    "en": "v1.0.43 - Compact invoice summary and filters by roughly 40% for cleaner mobile and desktop layouts; figures and filtering behavior unchanged"
+  },
+  {
     "type": "security",
     "ar": "إصلاحات أمنية: إيقاف الدخول التلقائي بمعرّف الجهاز، حماية إيصال الصيانة، منع التلاعب بحذف مصاريف فواتير الشراء، تحييد صيغ Excel في تقرير الشركاء، تقوية مساعد المساعدة، وحصر رفع صور المنتجات بمجلد المستخدم",
     "en": "v1.0.42 - Security fixes: device-ID auto-login disabled, maintenance receipt escaped, purchase-invoice expense cleanup safe, spreadsheet formulas neutralized in partner export, help assistant hardened, product photo uploads limited to own folder"
