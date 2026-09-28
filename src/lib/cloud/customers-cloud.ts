@@ -271,6 +271,22 @@ export const updateCustomerCloud = async (
   if (data.invoiceCount !== undefined) updates.invoice_count = data.invoiceCount;
   if (data.lastPurchase !== undefined) updates.last_purchase = data.lastPurchase || null;
 
+  // أوفلاين: طبّق التعديل محلياً وأودعه الطابور
+  if (!navigator.onLine) {
+    const { addUniqueOperation } = await import('../sync-queue');
+    addUniqueOperation(
+      'customer_update',
+      { id, ...updates },
+      `customer_update_${id}_${Date.now()}`,
+    );
+    const currentList = customersCache || loadCustomersLocally() || [];
+    customersCache = currentList.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c);
+    cacheTimestamp = Date.now();
+    saveCustomersLocally(customersCache);
+    emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+    return true;
+  }
+
   const success = await updateInSupabase('customers', id, updates);
   
   if (success) {
