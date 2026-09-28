@@ -1,8 +1,14 @@
 {
-  "versionCode": 279,
-  "versionName": "1.0.49",
-  "lastUpdated": "2026-09-28T13:10:00.000Z",
+  "versionCode": 280,
+  "versionName": "1.0.50",
+  "lastUpdated": "2026-09-28T15:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 280,
+      "versionName": "1.0.50",
+      "date": "2026-09-28",
+      "description": "v1.0.50 - Boss panel redesign: five clear tabs with contact channels at top level, tidy activation code cards, codes reserved to one account and single-use, who used each code, direct activation without a code, and a default trial period applied to new accounts only"
+    },
     {
       "versionCode": 279,
       "versionName": "1.0.49",
