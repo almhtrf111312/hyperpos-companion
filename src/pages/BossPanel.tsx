@@ -1988,6 +1988,54 @@ export default function BossPanel() {
           </TabsContent>
         </Tabs>
 
+        {/* Direct activation without generating a code */}
+        <Dialog open={!!directActivateDialog} onOpenChange={() => setDirectActivateDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>تفعيل مباشر بدون كود</DialogTitle>
+              <DialogDescription>
+                {directActivateDialog?.owner.full_name || directActivateDialog?.owner.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>مدة الترخيص (أيام)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={directActivateDays}
+                  onChange={(e) => setDirectActivateDays(e.target.value)}
+                  className="h-11 rounded-xl text-center font-bold"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[30, 90, 180, 365].map((d) => (
+                    <Button
+                      key={d}
+                      type="button"
+                      variant={directActivateDays === String(d) ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-8 rounded-lg text-xs"
+                      onClick={() => setDirectActivateDays(String(d))}
+                    >
+                      {d} يوم
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                يبدأ الترخيص من اليوم وينتهي بعد المدة المحددة، دون الحاجة لإنشاء كود أو إرساله.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDirectActivateDialog(null)}>إلغاء</Button>
+              <Button onClick={handleDirectActivate} disabled={isDirectActivating}>
+                {isDirectActivating ? 'جارٍ التفعيل...' : 'تفعيل الآن'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* All Dialogs remain the same */}
         <Dialog open={showNewCodeDialog} onOpenChange={setShowNewCodeDialog}>
           <DialogContent>
