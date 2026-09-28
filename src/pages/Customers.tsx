@@ -167,7 +167,13 @@ export default function Customers() {
   const handleAddCustomer = async () => {
     if (isSaving || savingRef.current) return;
 
-    if (!formData.name || !formData.phone) {
+    if (!formData.name?.trim() || !formData.phone?.trim()) {
+      console.log('Validation Errors - Customers Page:', {
+        name: formData.name,
+        phone: formData.phone,
+        nameEmpty: !formData.name?.trim(),
+        phoneEmpty: !formData.phone?.trim()
+      });
       toast.error(t('customers.fillRequired'));
       return;
     }

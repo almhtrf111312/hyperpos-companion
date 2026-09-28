@@ -18,6 +18,16 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     const isNumeric = type === "number";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Remove invisible RTL/LTR marks and zero-width spaces
+      let val = e.target.value;
+      if (val) {
+        val = val.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '');
+      }
+      
+      if (val !== e.target.value) {
+        e.target.value = val;
+      }
+
       if (isNumeric || type === "tel") {
         const normalized = normalizeDigits(e.target.value);
         if (normalized !== e.target.value) {

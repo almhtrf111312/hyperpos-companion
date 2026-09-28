@@ -744,7 +744,13 @@ export function CartPanel({
     // ✅ منع التكرار عند الضغط المتعدد
     if (isAddingCustomer || addCustomerRef.current) return;
 
-    if (!newCustomer.name || !newCustomer.phone) {
+    if (!newCustomer.name?.trim() || !newCustomer.phone?.trim()) {
+      console.log('Validation Errors - New Customer:', { 
+        name: newCustomer.name, 
+        phone: newCustomer.phone,
+        nameEmpty: !newCustomer.name?.trim(),
+        phoneEmpty: !newCustomer.phone?.trim()
+      });
       showToast.error(t('pos.fillRequired'));
       return;
     }
