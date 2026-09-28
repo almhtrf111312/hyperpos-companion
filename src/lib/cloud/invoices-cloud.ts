@@ -247,6 +247,20 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     return invoicesCache;
   }
 
+  // Instant open: on the first load after app start, serve the saved copy
+  // immediately and refresh from the server in the background (display only).
+  if (!coldStartServed && !invoicesCache && navigator.onLine) {
+    coldStartServed = true;
+    const localInvoices = loadInvoicesFromLocalCache();
+    if (localInvoices && localInvoices.length > 0) {
+      void fetchInvoicesFromCloud(userId).then((fresh) => {
+        emitEvent(EVENTS.INVOICES_UPDATED, fresh);
+      }).catch(() => { /* keep saved copy */ });
+      return localInvoices;
+    }
+  }
+  coldStartServed = true;
+
   // Check if offline
   if (!navigator.onLine) {
     const localInvoices = loadInvoicesFromLocalCache();
@@ -258,6 +272,12 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     return invoicesCache || [];
   }
 
+  return fetchInvoicesFromCloud(userId);
+};
+
+let coldStartServed = false;
+
+const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
   try {
     // Check if user is cashier
     const isCashier = await isCashierUser();

@@ -1,8 +1,14 @@
 {
-  "versionCode": 274,
-  "versionName": "1.0.44",
-  "lastUpdated": "2026-09-28T12:25:00.000Z",
+  "versionCode": 275,
+  "versionName": "1.0.45",
+  "lastUpdated": "2026-09-28T12:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 275,
+      "versionName": "1.0.45",
+      "date": "2026-09-28",
+      "description": "v1.0.45 - Faster app reopen: invoices open instantly from the saved copy and refresh silently in the background; no accounting logic changed"
+    },
     {
       "versionCode": 274,
       "versionName": "1.0.44",
