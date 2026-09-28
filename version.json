@@ -1,8 +1,14 @@
 {
-  "versionCode": 273,
-  "versionName": "1.0.43",
-  "lastUpdated": "2026-09-28T11:25:00.000Z",
+  "versionCode": 274,
+  "versionName": "1.0.44",
+  "lastUpdated": "2026-09-28T12:25:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 274,
+      "versionName": "1.0.44",
+      "date": "2026-09-28",
+      "description": "v1.0.44 - Product cards: larger edit/delete buttons and photo, localized unit badge (piece/carton); saved wholesale prices stay visible in the product form even if the field is hidden"
+    },
     {
       "versionCode": 273,
       "versionName": "1.0.43",
