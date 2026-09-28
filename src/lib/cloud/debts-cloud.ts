@@ -127,34 +127,9 @@ export const getNextManualDebtId = async (): Promise<string> => {
   return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
 };
 
-// Load debts
+// جلب الديون من السحابة (التحميل الأول + التحديث الخلفي)
 // ✅ Owners see all debts, cashiers see only their own
-export const loadDebtsCloud = async (): Promise<Debt[]> => {
-  let userId = getCurrentUserId();
-  if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      userId = user.id;
-      setCurrentUserId(user.id);
-    }
-  }
-  if (!userId) return [];
-
-  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return debtsCache;
-  }
-
-  // Offline: return local cache
-  if (!navigator.onLine) {
-    const local = loadDebtsLocally();
-    if (local) {
-      debtsCache = local;
-      cacheTimestamp = Date.now();
-      return local;
-    }
-    return [];
-  }
-
+const fetchDebtsFromCloud = async (userId: string): Promise<Debt[]> => {
   // Check if current user is a cashier
   const isCashier = await isCashierUser();
 
