@@ -1774,7 +1774,6 @@ export default function BossPanel() {
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
-                            </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-1 md:gap-2">
                             <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">{code.is_active ? 'نشط' : 'معطل'}</Badge>
