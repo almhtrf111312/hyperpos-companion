@@ -1,56 +1,48 @@
 import * as React from "react";
-
 import { cn } from "@/lib/utils";
 
-// Convert Arabic/Hindi numerals to English
-const normalizeDigits = (value: string): string => {
-  const arabicMap = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
-  const hindiMap = [/۰/g, /۱/g, /۲/g, /۳/g, /۴/g, /۵/g, /۶/g, /۷/g, /۸/g, /۹/g];
-  let result = value;
-  for (let i = 0; i < 10; i++) {
-    result = result.replace(arabicMap[i], i.toString()).replace(hindiMap[i], i.toString());
-  }
-  return result;
-};
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, onChange, inputMode, pattern, ...props }, ref) => {
-    const isNumeric = type === "number";
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, onChange, ...props }, ref) => {
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      let val = e.target.value;
-
-      // Only clean if invisible zero-width or directional marks are actually present
-      if (val && /[\u200B-\u200D\uFEFF\u200E\u200F]/.test(val)) {
-        val = val.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '');
-        e.target.value = val;
-      }
-
-      // Convert Arabic/Eastern digits for numeric and telephone inputs
-      if ((isNumeric || type === "tel") && val && /[٠-٩۰-۹]/.test(val)) {
-        const normalized = normalizeDigits(val);
-        e.target.value = normalized;
-      }
-
-      onChange?.(e);
+    // ✅ Fix: Android IME Composition Bug in Capacitor WebView
+    // When user types on Android keyboard, the IME enters "composition mode"
+    // which adds invisible characters to the input buffer.
+    // onCompositionEnd fires when the user finishes composing (lifts finger/confirms word)
+    // and forces React to sync with the actual DOM value.
+    const handleCompositionEnd = (
+      e: React.CompositionEvent<HTMLInputElement>
+    ) => {
+      const target = e.target as HTMLInputElement;
+      const syntheticEvent = {
+        ...e,
+        target,
+        currentTarget: target,
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      onChange?.(syntheticEvent);
     };
 
     return (
       <input
         type={type}
-        inputMode={inputMode || (isNumeric ? "decimal" : undefined)}
-        pattern={pattern || (isNumeric ? "[0-9]*" : undefined)}
         className={cn(
           "flex h-11 w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-all duration-200",
-          className,
+          className
         )}
-        onChange={handleChange}
         ref={ref}
+        onChange={onChange}
+        onCompositionEnd={handleCompositionEnd}
+        autoComplete={props.autoComplete ?? "off"}
+        autoCorrect={props.autoCorrect ?? "off"}
+        spellCheck={props.spellCheck ?? false}
         {...props}
       />
     );
-  },
+  }
 );
+
 Input.displayName = "Input";
 
 export { Input };
