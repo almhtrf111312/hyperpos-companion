@@ -122,6 +122,10 @@ interface ActivationCode {
   license_tier: string;
   note: string | null;
   created_at: string;
+  assigned_user_id?: string | null;
+  assigned_email?: string | null;
+  used_by?: string | null;
+  used_at?: string | null;
 }
 
 export default function BossPanel() {
