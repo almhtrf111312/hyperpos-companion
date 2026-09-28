@@ -1720,7 +1720,28 @@ export default function BossPanel() {
                             <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses} استخدام</Badge>
                             <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers} كاشير</Badge>
                             <Badge variant="outline" className="text-[10px] md:text-xs">{code.license_tier}</Badge>
+                            {code.assigned_user_id && (
+                              <Badge className="text-[10px] md:text-xs bg-primary/15 text-primary hover:bg-primary/20">مخصص لحساب واحد</Badge>
+                            )}
                           </div>
+                          {(assignedOwner || code.assigned_email) && (
+                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-primary/10 text-primary rounded-lg px-2 py-1.5">
+                              <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <span className="break-all">
+                                مخصص لـ: {assignedOwner?.full_name || code.assigned_email || 'حساب محدد'}
+                                {assignedOwner?.email && <span className="font-mono opacity-80"> ({assignedOwner.email})</span>}
+                              </span>
+                            </div>
+                          )}
+                          {(usedOwner || code.used_at) && (
+                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg px-2 py-1.5">
+                              <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <span className="break-all">
+                                فُعِّل بواسطة: {usedOwner?.full_name || usedOwner?.email || 'حساب'}
+                                {code.used_at && <span className="opacity-80"> — {new Date(code.used_at).toLocaleDateString('ar-EG')}</span>}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
