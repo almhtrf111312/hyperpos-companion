@@ -977,6 +977,36 @@ export default function Products() {
     setScannerOpen(true);
   };
 
+  // دالة توحيد وترجمة الوحدات حسب لغة النظام
+  const getLocalizedUnit = (rawUnit: string | undefined, isBulk: boolean = false): string => {
+    if (!rawUnit) {
+      return isBulk ? t('products.unitCarton') : t('products.unitPiece');
+    }
+    const normalized = rawUnit.trim().toLowerCase();
+    // فحص الكرتونة ومشتقاتها (Carton, Cartony, Karton, Koli, كرتونة, كرتون)
+    if (
+      isBulk ||
+      normalized.includes('carton') ||
+      normalized.includes('karton') ||
+      normalized.includes('koli') ||
+      normalized.includes('كرتون')
+    ) {
+      return t('products.unitCarton');
+    }
+    // فحص القطعة ومشتقاتها (Piece, Pieces, Adet, قطعة, حبة)
+    if (
+      normalized.includes('piece') ||
+      normalized.includes('adet') ||
+      normalized.includes('قطعة') ||
+      normalized.includes('حبه') ||
+      normalized.includes('حبة')
+    ) {
+      return t('products.unitPiece');
+    }
+    // وحدة مخصصة (كغ، لتر، متر…) تُعرض كما هي
+    return rawUnit;
+  };
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header - Fixed */}
@@ -1409,40 +1439,46 @@ export default function Products() {
                 );
               }
 
-              // Grid view - البطاقة المطورة المطابقة للتصميم
+              // Grid view - البطاقة المطورة بالأحجام المكبرة والوحدات المعربة
               return (
                 <div
                   key={product.id}
                   className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-sm hover:shadow-md transition-shadow fade-in"
                   style={{ animationDelay: `${index * 25}ms` }}
                 >
-                  {/* القسم العلوي: أزرار التحكم + البيانات + الصورة */}
+                  {/* القسم العلوي: أزرار + شارة الوحدة + البيانات + الصورة المكبرة */}
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    {/* 1. أزرار التعديل والحذف على أقصى اليسار */}
-                    {canAddProducts ? (
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                          onClick={() => openDeleteDialog(product)}
-                          title="حذف المنتج"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                          onClick={() => openEditDialog(product)}
-                          title="تعديل المنتج"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="w-8" />
-                    )}
+                    {/* 1. أزرار التحكم المكبرة + شارة الوحدة المترجمة بجانبهم */}
+                    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                      {canAddProducts && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all active:scale-95 border border-border/40"
+                            onClick={() => openDeleteDialog(product)}
+                            title="حذف المنتج"
+                          >
+                            <Trash2 className="w-5 h-5 text-destructive/80" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all active:scale-95 border border-border/40"
+                            onClick={() => openEditDialog(product)}
+                            title="تعديل المنتج"
+                          >
+                            <Edit className="w-5 h-5 text-primary/80" />
+                          </Button>
+                        </>
+                      )}
+                      {/* شارة الوحدة المترجمة ديناميكياً */}
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-bold rounded-lg bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+                        {(product.conversionFactor && product.conversionFactor > 1)
+                          ? getLocalizedUnit(product.bulkUnit, true)
+                          : getLocalizedUnit(product.smallUnit, false)}
+                      </span>
+                    </div>
 
                     {/* 2. اسم المنتج + الباركود والشارة في المنتصف */}
                     <div className="flex-1 min-w-0 text-right">
@@ -1454,14 +1490,13 @@ export default function Products() {
                         {product.name}
                       </h3>
 
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap justify-end">
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap justify-end">
                         {/* شارة التوفر */}
                         {!noInventory && (
                           <span className={cn("px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap", status.color)}>
                             {status.label}
                           </span>
                         )}
-
                         {/* شريحة الباركود القابلة للنسخ */}
                         {(product.barcode || product.category) && (
                           <button
@@ -1472,38 +1507,32 @@ export default function Products() {
                                 toast.success(`تم نسخ الباركود: ${product.barcode}`);
                               }
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-muted/40 hover:bg-muted border border-border/80 text-xs font-mono text-muted-foreground transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 hover:bg-muted border border-border/80 text-[11px] font-mono text-muted-foreground transition-colors"
                             title="انقر لنسخ الباركود"
                           >
-                            <span>{product.barcode || product.category}</span>
-                            {product.barcode && <Copy className="w-3 h-3 text-muted-foreground/70" />}
+                            <span className="truncate max-w-[110px]">{product.barcode || product.category}</span>
+                            {product.barcode && <Copy className="w-3 h-3 text-muted-foreground/70 flex-shrink-0" />}
                           </button>
                         )}
                       </div>
 
                       {/* Size/Color badges */}
                       {fieldsConfig.sizeColor && (product.size || product.color) && (
-                        <div className="flex flex-wrap gap-1 mt-1.5 justify-end">
-                          {product.size && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">{product.size}</span>}
-                          {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-md">{product.color}</span>}
+                        <div className="flex flex-wrap gap-1 mt-1 justify-end">
+                          {product.size && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">{product.size}</span>}
+                          {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{product.color}</span>}
                         </div>
                       )}
                     </div>
 
-                    {/* 3. صورة المنتج مع بادج الوحدة على أقصى اليمين */}
-                    <div className="relative flex-shrink-0">
+                    {/* 3. صورة المنتج مكبرة (96px → 112px) بدون بادج معلق */}
+                    <div className="flex-shrink-0">
                       <ProductImage
                         imageUrl={product.image}
                         alt={product.name}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-muted/40 border border-border/50 object-cover"
-                        iconClassName="w-8 h-8 text-muted-foreground/50"
+                        className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-muted/40 border border-border/60 object-cover shadow-sm"
+                        iconClassName="w-10 h-10 text-muted-foreground/40"
                       />
-                      {/* بادج الوحدة: كرتونة للمتعدد، قطعة للمفرد */}
-                      <span className="absolute -bottom-1.5 -left-1.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm border border-background whitespace-nowrap">
-                        {(product.conversionFactor && product.conversionFactor > 1)
-                          ? (product.bulkUnit || 'كرتونة')
-                          : (product.smallUnit || 'قطعة')}
-                      </span>
                     </div>
                   </div>
 
