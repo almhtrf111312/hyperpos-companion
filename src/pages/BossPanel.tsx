@@ -452,17 +452,24 @@ export default function BossPanel() {
       return;
     }
 
+    const assignedOwner = newCode.assigned_user_id
+      ? owners.find(o => o.user_id === newCode.assigned_user_id)
+      : null;
+
     try {
       const { error } = await supabase
         .from('activation_codes')
         .insert({
           code: newCode.code.toUpperCase(),
           duration_days: newCode.duration_days,
-          max_uses: newCode.max_uses,
+          // A code reserved for one account is always single-use
+          max_uses: assignedOwner ? 1 : newCode.max_uses,
           max_cashiers: newCode.max_cashiers,
           license_tier: newCode.license_tier,
           note: newCode.note || null,
           is_active: true,
+          assigned_user_id: assignedOwner ? assignedOwner.user_id : null,
+          assigned_email: assignedOwner ? (assignedOwner.email || assignedOwner.full_name) : null,
         });
 
       if (error) {
@@ -483,6 +490,7 @@ export default function BossPanel() {
         max_cashiers: 1,
         license_tier: 'basic',
         note: '',
+        assigned_user_id: '',
       });
       fetchData();
     } catch (error) {
