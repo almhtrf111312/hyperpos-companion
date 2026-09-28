@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       activation_codes: {
         Row: {
+          assigned_email: string | null
+          assigned_user_id: string | null
           code: string
           created_at: string | null
           created_by: string | null
@@ -28,8 +30,12 @@ export type Database = {
           max_cashiers: number | null
           max_uses: number | null
           note: string | null
+          used_at: string | null
+          used_by: string | null
         }
         Insert: {
+          assigned_email?: string | null
+          assigned_user_id?: string | null
           code: string
           created_at?: string | null
           created_by?: string | null
@@ -42,8 +48,12 @@ export type Database = {
           max_cashiers?: number | null
           max_uses?: number | null
           note?: string | null
+          used_at?: string | null
+          used_by?: string | null
         }
         Update: {
+          assigned_email?: string | null
+          assigned_user_id?: string | null
           code?: string
           created_at?: string | null
           created_by?: string | null
@@ -56,6 +66,8 @@ export type Database = {
           max_cashiers?: number | null
           max_uses?: number | null
           note?: string | null
+          used_at?: string | null
+          used_by?: string | null
         }
         Relationships: []
       }
