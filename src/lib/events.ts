@@ -2,6 +2,8 @@
 export const EVENTS = {
   // Sync Queue Events
   SYNC_QUEUE_UPDATED: 'syncQueueUpdated',
+  // تُطلق فور إضافة عملية جديدة للطابور لتشغيل مزامنة فورية إن توفر الإنترنت
+  SYNC_OPERATION_QUEUED: 'hyperpos:sync-operation-queued',
   PRODUCTS_UPDATED: 'hyperpos:products-updated',
   CATEGORIES_UPDATED: 'hyperpos:categories-updated',
   CUSTOMERS_UPDATED: 'hyperpos:customers-updated',
