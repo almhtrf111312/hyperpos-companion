@@ -1,6 +1,11 @@
 [
   {
     "type": "feature",
+    "ar": "المصاريف والديون ودفعات الديون تعمل بدون إنترنت وتُرفع تلقائيًا عند عودة الاتصال دون تكرار؛ حصص الشركاء من المصروف تُخصم على الخادم في خطوة واحدة",
+    "en": "v1.0.48 - Offline expenses, debts and debt payments with safe auto-sync"
+  },
+  {
+    "type": "feature",
     "ar": "إضافة وتعديل وحذف العملاء بدون إنترنت؛ تُحفظ على الجهاز وتُرفع تلقائيًا عند عودة الاتصال دون تكرار",
     "en": "v1.0.47 - Offline customer add/edit/delete with automatic sync"
   },

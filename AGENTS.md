@@ -97,3 +97,5 @@ See `.xgrok/BEST_PRACTICES.md` and `.xgrok/SECURITY.md`.
 
 ## Frozen features (do not touch)
 - Warehouses & Stock Transfer (custody) are DISABLED: pages `src/pages/Warehouses.tsx`, `src/pages/StockTransfer.tsx`, `src/lib/cloud/warehouses-cloud.ts`. Routes redirect to `/`, menu entries commented out. Do not read, audit, or edit these files unless the owner explicitly asks to re-enable them — saves credits. (`use-warehouse.tsx` stays active because POS depends on it.)
+
+- Offline writes (customers, expenses, debts, debt payments) queue via sync-queue with client UUIDs; expenses go through the add_expense_atomic RPC. Why: queue-first UI with retry-safe, duplicate-free sync.
