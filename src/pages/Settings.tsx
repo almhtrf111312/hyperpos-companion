@@ -427,6 +427,19 @@ export default function Settings() {
   const [productFieldsConfig, setProductFieldsConfig] = useState<ProductFieldsConfig | null>(() => loadProductFieldsConfig());
   const [productFieldsChanged, setProductFieldsChanged] = useState(false);
 
+  // Floating action banner success state
+  const [isSaveSuccess, setIsSaveSuccess] = useState(false);
+  const saveSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up success banner timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveSuccessTimeoutRef.current) {
+        clearTimeout(saveSuccessTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Store type change confirmation
   const [storeTypeConfirmOpen, setStoreTypeConfirmOpen] = useState(false);
   const [pendingStoreType, setPendingStoreType] = useState<string | null>(null);
@@ -746,6 +759,10 @@ export default function Settings() {
     setDiscountPercentEnabled(snap.discountPercentEnabled);
     setDiscountFixedEnabled(snap.discountFixedEnabled);
     setBarcodeScanMode(snap.barcodeScanMode);
+    setIsSaveSuccess(false);
+    if (saveSuccessTimeoutRef.current) {
+      clearTimeout(saveSuccessTimeoutRef.current);
+    }
     toast({
       title: t('common.success'),
       description: t('settings.changesReverted'),
@@ -883,6 +900,15 @@ export default function Settings() {
         discountFixedEnabled,
         barcodeScanMode,
       };
+
+      // Activate interactive save success state in floating action banner
+      setIsSaveSuccess(true);
+      if (saveSuccessTimeoutRef.current) {
+        clearTimeout(saveSuccessTimeoutRef.current);
+      }
+      saveSuccessTimeoutRef.current = setTimeout(() => {
+        setIsSaveSuccess(false);
+      }, 1800);
 
       if (cloudSuccess) {
         toast({
@@ -2603,53 +2629,80 @@ export default function Settings() {
       {/* Floating Action Banner */}
       <div
         className={cn(
-          "fixed bottom-4 sm:bottom-6 z-50 transition-all duration-300 ease-in-out px-3 sm:px-4",
-          isRTL ? "left-0 sm:left-6" : "right-0 sm:right-6",
-          "w-full sm:w-auto",
-          hasUnsavedChanges
+          "fixed bottom-4 sm:bottom-6 z-50 transition-all duration-300 ease-in-out",
+          "left-1/2 -translate-x-1/2",
+          "w-[calc(100%-1.5rem)] max-w-md sm:w-auto sm:max-w-none",
+          (hasUnsavedChanges || isSaveSuccess)
             ? "scale-100 opacity-100 translate-y-0"
             : "scale-95 opacity-0 translate-y-4 pointer-events-none"
         )}
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-card/95 backdrop-blur-md border border-primary/30 shadow-2xl rounded-2xl max-w-lg mx-auto sm:max-w-none">
-          <div className="flex items-center gap-2 px-1 sm:px-2 shrink-0">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-            </span>
-            <span className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">
-              {isRTL ? 'تعديلات غير محفوظة' : 'Unsaved changes'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleRevert}
-              disabled={isSavingSettings}
-              className="h-9 px-3 text-xs font-medium gap-1.5 shrink-0"
-              title={isRTL ? 'تراجع عن التعديلات' : 'Revert Changes'}
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-              <span>{isRTL ? 'تراجع' : (t('common.cancel') || 'Cancel')}</span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSaveSettings}
-              disabled={isSavingSettings}
-              className="h-9 px-3.5 sm:px-4 text-xs font-semibold shadow-md gap-1.5 shrink-0"
-            >
-              {isSavingSettings ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
+        <div
+          className={cn(
+            "p-2 sm:p-2.5 gap-1.5 sm:gap-2.5 bg-card/95 backdrop-blur-md border shadow-2xl rounded-2xl flex items-center justify-between sm:justify-start transition-all duration-300",
+            isSaveSuccess
+              ? "border-emerald-500/50 shadow-emerald-500/10"
+              : "border-primary/30"
+          )}
+        >
+          <div className="flex items-center gap-1.5 sm:gap-2 px-1 shrink-0">
+            {isSaveSuccess ? (
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm shadow-emerald-500/40 shrink-0 animate-in zoom-in-75 duration-200">
+                <Check className="h-3 w-3 stroke-[3]" />
+              </div>
+            ) : (
+              <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-full w-full bg-amber-500"></span>
+              </span>
+            )}
+            <span
+              className={cn(
+                "text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors duration-200",
+                isSaveSuccess ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-foreground"
               )}
-              <span>{isSavingSettings ? (t('common.saving') || (isRTL ? 'جاري الحفظ...' : 'Saving...')) : (isRTL ? 'حفظ التعديلات' : 'Save Changes')}</span>
-            </Button>
+            >
+              {isSaveSuccess
+                ? (isRTL ? '✓ تم حفظ التعديلات بنجاح' : 'Changes saved successfully')
+                : (isRTL ? 'تعديلات غير محفوظة' : 'Unsaved changes')}
+            </span>
           </div>
+
+          {!isSaveSuccess && (
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 animate-in fade-in duration-200">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRevert}
+                disabled={isSavingSettings}
+                className="h-8 px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-medium gap-1 shrink-0"
+                title={isRTL ? 'تراجع عن التعديلات' : 'Revert Changes'}
+              >
+                <Undo2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>{isRTL ? 'تراجع' : (t('common.cancel') || 'Cancel')}</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveSettings}
+                disabled={isSavingSettings}
+                className="h-8 px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-semibold shadow-md gap-1 shrink-0"
+              >
+                {isSavingSettings ? (
+                  <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                )}
+                <span>
+                  {isSavingSettings
+                    ? (t('common.saving') || (isRTL ? 'جاري الحفظ...' : 'Saving...'))
+                    : (isRTL ? 'حفظ التعديلات' : 'Save Changes')}
+                </span>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
