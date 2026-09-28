@@ -149,7 +149,18 @@ export default function BossPanel() {
     max_cashiers: 1,
     license_tier: 'basic',
     note: '',
+    assigned_user_id: '',
   });
+
+  // Default trial period for NEW accounts (existing licenses are never shortened)
+  const [defaultTrialDays, setDefaultTrialDays] = useState<number>(30);
+  const [trialDaysInput, setTrialDaysInput] = useState<string>('30');
+  const [isSavingTrialDays, setIsSavingTrialDays] = useState(false);
+
+  // Direct activation (no code) dialog
+  const [directActivateDialog, setDirectActivateDialog] = useState<{ owner: Owner } | null>(null);
+  const [directActivateDays, setDirectActivateDays] = useState<string>('90');
+  const [isDirectActivating, setIsDirectActivating] = useState(false);
 
   // Edit Code Dialog
   const [editCodeDialog, setEditCodeDialog] = useState<ActivationCode | null>(null);
@@ -335,10 +346,89 @@ export default function BossPanel() {
     }
   };
 
+  // Read the default trial period used for new accounts
+  const fetchTrialSetting = async () => {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'default_trial_days')
+        .maybeSingle();
+      const parsed = parseInt(data?.value ?? '', 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setDefaultTrialDays(parsed);
+        setTrialDaysInput(String(parsed));
+      }
+    } catch (err) {
+      console.error('Failed to fetch trial setting:', err);
+    }
+  };
+
+  const handleSaveTrialDays = async () => {
+    const parsed = parseInt(trialDaysInput, 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 3650) {
+      toast.error('أدخل عدد أيام صحيح بين 1 و 3650');
+      return;
+    }
+    setIsSavingTrialDays(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: 'default_trial_days', value: String(parsed), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (error) throw error;
+      setDefaultTrialDays(parsed);
+      toast.success(`تم ضبط الفترة التجريبية على ${parsed} يوم للحسابات الجديدة فقط`);
+    } catch (err) {
+      console.error('Error saving trial days:', err);
+      toast.error('فشل في حفظ مدة الفترة التجريبية');
+    } finally {
+      setIsSavingTrialDays(false);
+    }
+  };
+
+  // Activate / extend a license directly, without issuing a code
+  const handleDirectActivate = async () => {
+    if (!directActivateDialog) return;
+    const days = parseInt(directActivateDays, 10);
+    if (!Number.isFinite(days) || days < 1 || days > 3650) {
+      toast.error('أدخل عدد أيام صحيح');
+      return;
+    }
+    setIsDirectActivating(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+      const owner = directActivateDialog.owner;
+      const response = await supabase.functions.invoke('remote-activate-user', {
+        body: {
+          target_user_id: owner.user_id,
+          duration_days: days,
+          max_cashiers: owner.max_cashiers || 1,
+          license_tier: owner.license_tier || 'basic',
+        },
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+      if (response.error) throw new Error(response.error.message || 'Failed');
+
+      toast.success(`تم تفعيل "${owner.full_name || owner.email}" لمدة ${days} يوم`);
+      setDirectActivateDialog(null);
+      fetchData();
+    } catch (err) {
+      console.error('Direct activation failed:', err);
+      toast.error('فشل التفعيل المباشر');
+    } finally {
+      setIsDirectActivating(false);
+    }
+  };
+
   useEffect(() => {
     if (isBoss) {
       fetchData();
       fetchContactLinksSettings();
+      fetchTrialSetting();
     }
   }, [isBoss]);
 
