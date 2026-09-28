@@ -987,29 +987,64 @@ export default function Products() {
             <h1 className="text-xl md:text-3xl font-bold text-foreground">{tDynamic('pageTitle')}</h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">{tDynamic('pageSubtitle')}</p>
           </div>
-          {/* Mobile: stacked buttons for better small-screen layout */}
-          <div className="sm:hidden flex flex-col gap-2 w-full min-w-0">
-            {canAddProducts && (
-              <Button className="w-full h-10 text-[11px] px-3 bg-primary hover:bg-primary/90 truncate" onClick={() => {
-                setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-                setImagePreviewBase64('');
-                setShowAddDialog(true);
-              }}>
-                <Plus className="w-4 h-4 ml-1 flex-shrink-0" />
-                <span className="truncate">{tDynamic('addProduct')}</span>
+          {/* Mobile: compact 2-row layout */}
+          <div className="sm:hidden flex flex-col gap-1.5 w-full min-w-0">
+            {/* Row 1: إضافة منتج + فاتورة شراء جنب بعض */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {canAddProducts && (
+                <Button className="h-8 text-[11px] px-2 bg-primary hover:bg-primary/90 truncate" onClick={() => {
+                  setFieldsConfig(getEffectiveFieldsConfig());
+                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                  setImagePreviewBase64('');
+                  setShowAddDialog(true);
+                }}>
+                  <Plus className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
+                  <span className="truncate">{tDynamic('addProduct')}</span>
+                </Button>
+              )}
+              {!noInventory ? (
+                <Button variant="outline" className="h-8 text-[11px] px-2 truncate" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                  <FileText className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
+                  <span className="truncate">فاتورة شراء</span>
+                </Button>
+              ) : (
+                canAddProducts ? null : <div />
+              )}
+            </div>
+            {/* Row 2: التصنيفات + نظام العرض */}
+            <div className="flex gap-1.5">
+              <Button variant="outline" className="h-8 text-[11px] px-2 flex-1" onClick={() => setShowCategoryManager(true)}>
+                <Tag className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
+                <span className="truncate">{t('products.categories')}</span>
               </Button>
-            )}
-            {!noInventory && (
-              <Button variant="outline" className="w-full h-10 text-[11px] px-3 truncate" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                <FileText className="w-4 h-4 ml-1 flex-shrink-0" />
-                <span className="truncate">{t('purchaseInvoice.addPurchaseInvoice')}</span>
-              </Button>
-            )}
-            <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setShowCategoryManager(true)}>
-              <Tag className="w-4 h-4 ml-1" />
-              {t('products.categories')}
-            </Button>
+              {/* View Mode Buttons */}
+              <div className="flex bg-muted rounded-lg p-0.5 flex-shrink-0">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setViewMode('compact')}
+                >
+                  <AlignJustify className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
           </div>
           {/* Desktop: Original layout */}
           <div className="hidden sm:flex gap-2">
@@ -1142,6 +1177,25 @@ export default function Products() {
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             )}
+            {/* زر التاريخ المضغوط - للموبايل فقط */}
+            <div className="md:hidden flex items-center flex-shrink-0">
+              <DatePicker
+                value={dateFilter}
+                onChange={setDateFilter}
+                placeholder="التاريخ"
+                className="w-[76px] h-10 text-[11px] px-2 justify-center"
+              />
+              {dateFilter && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-7 flex-shrink-0"
+                  onClick={() => setDateFilter('')}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
             <div className="hidden md:flex items-center gap-1 flex-shrink-0">
               <DatePicker
                 value={dateFilter}
@@ -1160,8 +1214,8 @@ export default function Products() {
                 </Button>
               )}
             </div>
-            {/* View Mode Buttons */}
-            <div className="flex bg-muted rounded-lg p-0.5 lg:hidden">
+            {/* View Mode Buttons - Desktop only */}
+            <div className="hidden sm:flex bg-muted rounded-lg p-0.5">
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="icon"
@@ -1187,25 +1241,6 @@ export default function Products() {
                 <AlignJustify className="w-4 h-4" />
               </Button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2 md:hidden">
-            <DatePicker
-              value={dateFilter}
-              onChange={setDateFilter}
-              placeholder={t('products.dateLabel')}
-              className="flex-1"
-            />
-            {dateFilter && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 flex-shrink-0"
-                onClick={() => setDateFilter('')}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            )}
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
