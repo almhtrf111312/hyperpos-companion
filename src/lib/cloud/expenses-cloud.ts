@@ -126,26 +126,8 @@ let expensesCache: Expense[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
-// Load expenses - cashiers see only their expenses, owners see all
-export const loadExpensesCloud = async (): Promise<Expense[]> => {
-  const userId = getCurrentUserId();
-  if (!userId) return [];
-
-  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return expensesCache;
-  }
-
-  // محلي أولاً: اعرض النسخة المحفوظة فوراً وحدّثها في الخلفية
-  const local = loadExpensesLocally();
-  if (local && local.length > 0) {
-    expensesCache = local;
-    cacheTimestamp = Date.now();
-    if (navigator.onLine) refreshExpensesInBackground();
-    return local;
-  }
-
-  if (!navigator.onLine) return local || [];
-
+// جلب المصاريف من السحابة (يُستخدم للتحميل الأول وللتحديث الخلفي)
+const fetchExpensesFromCloud = async (userId: string): Promise<Expense[]> => {
   // Check if user is cashier for filtering
   const isCashier = await isCashierUser();
   
