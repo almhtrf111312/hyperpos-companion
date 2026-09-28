@@ -1,8 +1,14 @@
 {
-  "versionCode": 280,
-  "versionName": "1.0.50",
-  "lastUpdated": "2026-09-28T15:00:00.000Z",
+  "versionCode": 281,
+  "versionName": "1.0.51",
+  "lastUpdated": "2026-09-28T16:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 281,
+      "versionName": "1.0.51",
+      "date": "2026-09-28",
+      "description": "v1.0.51 - Unified Settings saving: consolidated save/revert actions into a single floating action bar with clear undo/save controls, removed duplicate save buttons in store info, finance and product fields sections, and ensured clean change tracking without immediate auto-save"
+    },
     {
       "versionCode": 280,
       "versionName": "1.0.50",

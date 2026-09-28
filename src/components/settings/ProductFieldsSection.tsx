@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Package, RotateCcw, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings2, Package, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 import type { TranslationKey } from '@/lib/i18n';
 import {
   ProductFieldsConfig,
   loadProductFieldsConfig,
-  saveProductFieldsConfig,
   syncProductFieldsFromCloud,
   getDefaultFieldsByStoreType,
   FIELD_LABELS,
@@ -25,15 +23,22 @@ interface ProductFieldsSectionProps {
 
 export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig }: ProductFieldsSectionProps) {
   const { t } = useLanguage();
-  const [isSaving, setIsSaving] = useState(false);
   const [showOtherFields, setShowOtherFields] = useState(false);
   const [config, setConfig] = useState<ProductFieldsConfig>(() => {
+    if (pendingConfig) return pendingConfig;
     const userConfig = loadProductFieldsConfig();
     if (userConfig) return userConfig;
     return getDefaultFieldsByStoreType(storeType as StoreType);
   });
 
   useEffect(() => {
+    if (pendingConfig) {
+      setConfig(pendingConfig);
+    }
+  }, [pendingConfig]);
+
+  useEffect(() => {
+    if (pendingConfig) return;
     const syncFromCloud = async () => {
       const cloudConfig = await syncProductFieldsFromCloud();
       if (cloudConfig) {
@@ -46,49 +51,22 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
       }
     };
     syncFromCloud();
-  }, [storeType]);
+  }, [storeType, pendingConfig]);
 
-  useEffect(() => {
-    if (pendingConfig) {
-      setConfig(pendingConfig);
-    }
-  }, [pendingConfig]);
-
-  const handleToggle = async (field: keyof ProductFieldsConfig) => {
+  const handleToggle = (field: keyof ProductFieldsConfig) => {
     const newConfig = { ...config, [field]: !config[field] };
     setConfig(newConfig);
     if (onConfigChange) {
       onConfigChange(newConfig);
     }
-    setIsSaving(true);
-    await saveProductFieldsConfig(newConfig);
-    setIsSaving(false);
-    toast.success(newConfig[field]
-      ? `✓ تم تفعيل حقل "${FIELD_LABELS[field].name}"`
-      : `تم إخفاء حقل "${FIELD_LABELS[field].name}"`
-    );
   };
 
-  const handleManualSave = async () => {
-    setIsSaving(true);
-    await saveProductFieldsConfig(config);
-    if (onConfigChange) {
-      onConfigChange(config);
-    }
-    setIsSaving(false);
-    toast.success('✓ تم حفظ إعدادات حقول المنتجات بنجاح');
-  };
-
-  const handleReset = async () => {
+  const handleReset = () => {
     const defaults = getDefaultFieldsByStoreType(storeType as StoreType);
     setConfig(defaults);
     if (onConfigChange) {
       onConfigChange(defaults);
     }
-    setIsSaving(true);
-    await saveProductFieldsConfig(defaults);
-    setIsSaving(false);
-    toast.success(t('productFields.resetSuccess'));
   };
 
   const defaults = getDefaultFieldsByStoreType(storeType as StoreType);
@@ -99,15 +77,10 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-border">
-        <Button variant="outline" size="sm" onClick={handleReset} disabled={isSaving}>
+      <div className="flex items-center justify-between gap-2 pb-4 border-b border-border">
+        <Button variant="outline" size="sm" onClick={handleReset}>
           <RotateCcw className="w-4 h-4 ml-2" />
           {t('productFields.resetDefault')}
-        </Button>
-
-        <Button size="sm" onClick={handleManualSave} disabled={isSaving} className="gap-1.5 font-medium">
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          حفظ إعدادات الحقول
         </Button>
       </div>
 

@@ -1,5 +1,10 @@
 [
   {
+    "type": "improvement",
+    "ar": "توحيد تجربة الحفظ في الإعدادات: إزالة أزرار الحفظ المكررة في معلومات المتجر والعملات والضرائب وحقول المنتجات، واعتماد زر عائم موحد لحفظ كافة التعديلات دفعة واحدة مع إمكانية التراجع الكامل عند وجود تغييرات غير محفوظة",
+    "en": "v1.0.51 - Unified Settings saving experience: single floating action bar with undo/save for all settings and product fields, removing duplicate section save buttons"
+  },
+  {
     "type": "feature",
     "ar": "إعادة تصميم لوحة الإدارة: خمسة تبويبات واضحة مع «التواصل» في الأعلى، بطاقات أكواد مرتبة بلا تداخل، إمكانية تخصيص الكود لحساب واحد ولمرة واحدة مع إظهار من فعّله، تفعيل مباشر بدون كود، وضبط المدة الافتراضية للفترة التجريبية للحسابات الجديدة فقط دون التأثير على التراخيص الحالية",
     "en": "v1.0.50 - Boss panel redesign, account-locked single-use codes, direct activation, configurable default trial for new accounts"
