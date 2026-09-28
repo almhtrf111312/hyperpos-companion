@@ -7,6 +7,7 @@ import { useLicense } from '@/hooks/use-license';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/integrations/supabase/client';
+import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 
 export function ActivationScreen() {
   const { activateCode, isTrial, isExpired } = useLicense();
@@ -160,10 +161,13 @@ export function ActivationScreen() {
 
           <div className="pt-4 border-t space-y-3">
             <p className="text-sm text-muted-foreground text-center">{t('license.getCodeContact')}</p>
+            <ContactLinksSection />
             {developerPhone && (
               <Button variant="outline" className="w-full gap-2" onClick={handleContactDeveloper}>
                 <MessageCircle className="w-4 h-4" />
                 {t('license.contactDeveloper')}
+              </Button>
+            )}
               </Button>
             )}
             <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground gap-2" onClick={handleSignOut} disabled={isSigningOut}>
