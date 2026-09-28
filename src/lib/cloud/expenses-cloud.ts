@@ -184,6 +184,39 @@ const fetchExpensesFromCloud = async (userId: string): Promise<Expense[]> => {
   return expensesCache;
 };
 
+let bgRefreshingExpenses = false;
+const refreshExpensesInBackground = (userId: string) => {
+  if (bgRefreshingExpenses || !navigator.onLine) return;
+  bgRefreshingExpenses = true;
+  fetchExpensesFromCloud(userId)
+    .then(() => emitEvent(EVENTS.EXPENSES_UPDATED, null))
+    .catch(e => console.warn('[expenses-cloud] background refresh failed:', e))
+    .finally(() => { bgRefreshingExpenses = false; });
+};
+
+// Load expenses — محلي أولاً: النسخة المحفوظة فوراً ثم تحديث صامت في الخلفية
+export const loadExpensesCloud = async (): Promise<Expense[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) return loadExpensesLocally() || [];
+
+  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return expensesCache;
+  }
+
+  const local = loadExpensesLocally();
+  if (local && local.length > 0) {
+    expensesCache = local;
+    cacheTimestamp = Date.now();
+    refreshExpensesInBackground(userId);
+    return local;
+  }
+
+  if (!navigator.onLine) return local || [];
+
+  return fetchExpensesFromCloud(userId);
+};
+
+
 export const invalidateExpensesCache = () => {
   expensesCache = null;
   cacheTimestamp = 0;
