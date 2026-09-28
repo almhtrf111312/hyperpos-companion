@@ -112,6 +112,15 @@ Deno.serve(async (req) => {
     
     console.log('Found activation code:', activationCode.id)
 
+    // Code reserved for a specific account: only that account may use it
+    if (activationCode.assigned_user_id && activationCode.assigned_user_id !== user.id) {
+      console.log('Code assigned to another user:', activationCode.id)
+      return new Response(
+        JSON.stringify({ success: false, error: 'هذا الكود مخصص لحساب آخر ولا يمكن استخدامه' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Check if code has expired
     if (activationCode.expires_at && new Date(activationCode.expires_at) < new Date()) {
       return new Response(

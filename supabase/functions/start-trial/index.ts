@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         expiresAt: trialExpiresAt.toISOString(),
-        daysRemaining: TRIAL_DAYS,
+        daysRemaining: trialDays,
         isTrial: true,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
