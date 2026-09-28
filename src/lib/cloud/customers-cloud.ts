@@ -194,6 +194,39 @@ export const addCustomerCloud = async (
     cashierId = user?.id || null;
   }
   
+  // أوفلاين: أنشئ العميل محلياً وأودعه الطابور ليُرفع تلقائياً عند عودة الإنترنت
+  if (!navigator.onLine) {
+    const { getOwnerIdForInsert } = await import('../supabase-store');
+    const { addUniqueOperation } = await import('../sync-queue');
+    const ownerId = (await getOwnerIdForInsert()) || cashierId;
+    const localId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const payload = {
+      id: localId,
+      user_id: ownerId,
+      name: normalizedName,
+      phone: customer.phone || null,
+      email: customer.email || null,
+      address: customer.address || null,
+      total_purchases: 0,
+      total_debt: 0,
+      invoice_count: 0,
+      cashier_id: cashierId,
+      created_at: now,
+      updated_at: now,
+    };
+    addUniqueOperation('customer_add', payload, `customer_${localId}`);
+
+    const localCustomer = toCustomer(payload as unknown as CloudCustomer);
+    const currentList = customersCache || loadCustomersLocally() || [];
+    customersCache = [localCustomer, ...currentList];
+    cacheTimestamp = Date.now();
+    saveCustomersLocally(customersCache);
+    emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+    return localCustomer;
+  }
+
   const inserted = await insertToSupabase<CloudCustomer>('customers', {
     name: normalizedName,
     phone: customer.phone || null,
@@ -204,6 +237,7 @@ export const addCustomerCloud = async (
     invoice_count: 0,
     cashier_id: cashierId, // ✅ حفظ من أضاف العميل
   });
+  
   
   if (inserted) {
     const newCustomer = toCustomer(inserted);
