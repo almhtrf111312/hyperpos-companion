@@ -102,7 +102,8 @@ export default function Appearance() {
         <Button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-14 h-14 rounded-full shadow-lg p-0"
+          className="w-14 h-14 rounded-full shadow-2xl p-0 bg-primary text-primary-foreground hover:scale-105 active:scale-95 transition-transform"
+          title={t('common.save')}
         >
           {isSaving ? (
             <Loader2 className="w-6 h-6 animate-spin" />
@@ -113,7 +114,8 @@ export default function Appearance() {
         <Button
           variant="secondary"
           onClick={handleRevert}
-          className="w-14 h-14 rounded-full shadow-lg p-0"
+          className="w-14 h-14 rounded-full shadow-2xl p-0 hover:scale-105 active:scale-95 transition-transform"
+          title={t('common.cancel')}
         >
           <Undo2 className="w-6 h-6" />
         </Button>

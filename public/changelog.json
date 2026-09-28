@@ -1,5 +1,10 @@
 [
   {
+    "type": "improvement",
+    "ar": "إعادة تفعيل الشفافية والبلور (Glassmorphism) في الوضعين الداكن والفاتح بحرية كاملة، توحيد أزرار الحفظ والتراجع العائمة (FAB الدائرية الأنيقة) في الإعدادات لتطابق شاشة المظهر تماماً، حصر خيار الخطوط داخل صفحة «المظهر والخطوط» مع تطبيق فوري بلمسة واحدة، وتحديث مسمى التبويب والسايدبار إلى «المظهر والخطوط».",
+    "en": "v1.0.54 - Fully re-enabled Glassmorphism and transparency in both Dark & Light modes, unified circular floating action buttons (FAB) across Settings and Appearance, kept font selector exclusively in Appearance & Fonts with instant one-tap switching, and updated navigation labels to 'Appearance & Fonts'."
+  },
+  {
     "type": "feature",
     "ar": "إضافة 5 خطوط عربية مدمجة تعمل بالكامل أوفلاين بدون إنترنت (كايرو، تجوّل، آي بي إم بليكس، المراعي، ريديكس برو) مع معاينة حية وتبديل فوري، وحماية مطلقة لبقاء الأرقام إنجليزية (0-9) دائماً في كافة الشاشات والفواتير والعمليات المالية، ومزامنة خيار الخط مع إعدادات السحابة",
     "en": "v1.0.53 - 5 embedded offline Arabic fonts (Cairo, Tajawal, IBM Plex Sans Arabic, Almarai, Readex Pro) with live preview, instant zero-reload switching, strict Western numerals protection (0-9) across POS/invoices, and cloud sync"

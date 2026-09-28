@@ -1074,7 +1074,7 @@ export const translations = {
     'settings.changeLanguage': 'تغيير اللغة',
     'settings.selectLanguage': 'اختر اللغة',
     'settings.languageChanged': 'تم تغيير اللغة',
-    'settings.theme': 'المظهر',
+    'settings.theme': 'المظهر والخطوط',
     'settings.lightMode': 'الوضع النهاري',
     'settings.darkMode': 'الوضع الليلي',
     'settings.colorTheme': 'لون التطبيق',
@@ -2078,7 +2078,7 @@ export const translations = {
     'tooltip.stockTransfer': 'نقل المنتجات بين المستودعات',
     'tooltip.reports': 'تقارير تفصيلية: المبيعات، الأرباح، المخزون، الديون',
     'tooltip.settings': 'إعدادات المتجر، المستخدمين، الطباعة، النسخ الاحتياطي',
-    'tooltip.appearance': 'تغيير مظهر التطبيق والألوان',
+    'tooltip.appearance': 'تغيير مظهر التطبيق والألوان والخطوط',
     'tooltip.help': 'المساعدة والأسئلة الشائعة',
 
     // Settings tab tooltips
@@ -3104,7 +3104,7 @@ export const translations = {
     'settings.changeLanguage': 'Change Language',
     'settings.selectLanguage': 'Select Language',
     'settings.languageChanged': 'Language changed',
-    'settings.theme': 'Theme',
+    'settings.theme': 'Appearance & Fonts',
     'settings.lightMode': 'Light Mode',
     'settings.darkMode': 'Dark Mode',
     'settings.colorTheme': 'Color Theme',
@@ -3738,7 +3738,7 @@ export const translations = {
     'tooltip.stockTransfer': 'Transfer products between warehouses',
     'tooltip.reports': 'Detailed reports: sales, profits, stock, debts',
     'tooltip.settings': 'Store settings, users, printing, backups',
-    'tooltip.appearance': 'Change app theme and colors',
+    'tooltip.appearance': 'Change app theme, colors and fonts',
     'tooltip.help': 'Help and FAQ',
 
     // Settings tab tooltips
@@ -4367,7 +4367,7 @@ export const translations = {
     'settings.changeLanguage': 'Dil Değiştir',
     'settings.selectLanguage': 'Dil Seçin',
     'settings.languageChanged': 'Dil değiştirildi',
-    'settings.theme': 'Tema',
+    'settings.theme': 'Görünüm ve Yazı Tipleri',
     'settings.lightMode': 'Açık Mod',
     'settings.darkMode': 'Koyu Mod',
     'settings.colorTheme': 'Uygulama Rengi',

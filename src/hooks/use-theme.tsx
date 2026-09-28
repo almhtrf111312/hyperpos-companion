@@ -334,46 +334,31 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number 
   const root = document.documentElement;
   if (enabled && transparency > 0) {
     root.classList.add('blur-theme');
-    const t = transparency / 100; // 0.1 to 0.9
-
-    // Smooth easing curve for more natural feel
-    const easedT = t * t * (3 - 2 * t); // smoothstep
+    const alpha = Math.max(0.2, (100 - transparency) / 100);
+    root.style.setProperty('--glass-opacity', `${alpha}`);
+    root.style.setProperty('--glass-bg', mode === 'dark' ? `rgba(18, 18, 18, ${alpha})` : `rgba(255, 255, 255, ${alpha})`);
+    root.style.setProperty('--blur-intensity', `${Math.min(24, 8 + (transparency / 5))}px`);
 
     if (mode === 'dark') {
-      // Dark mode: use card variable to match theme hue
-      const bgAlpha = 0.88 - easedT * 0.33; // 0.88 → 0.55
-      const borderAlpha = 0.10 + easedT * 0.15; // stronger white borders
-      const highlightAlpha = 0.03 + easedT * 0.05;
-
-      root.style.setProperty('--glass-bg', `hsl(var(--card) / ${bgAlpha})`);
-      root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${borderAlpha})`);
-      root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, ${highlightAlpha})`);
-      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, ${0.20 + easedT * 0.15})`);
+      root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${0.08 + (transparency / 100) * 0.12})`);
+      root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, 0.05)`);
+      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, 0.35)`);
     } else {
-      // Light mode: use card variable to match theme hue
-      const bgAlpha = 0.82 - easedT * 0.42; // 0.82 → 0.40
-      const borderAlpha = 0.08 + easedT * 0.10;
-      const highlightAlpha = 0.4 + easedT * 0.2;
-
-      root.style.setProperty('--glass-bg', `hsl(var(--card) / ${bgAlpha})`);
-      root.style.setProperty('--glass-border', `rgba(0, 0, 0, ${borderAlpha})`);
-      root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, ${highlightAlpha})`);
-      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, ${0.06 + easedT * 0.08})`);
+      root.style.setProperty('--glass-border', `rgba(0, 0, 0, ${0.06 + (transparency / 100) * 0.08})`);
+      root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, 0.4)`);
+      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, 0.08)`);
     }
-
     root.style.setProperty('--glass-inset-shadow', `inset 0 1px 0 var(--glass-highlight)`);
-    // Blur increases with transparency for legibility
-    const blurPx = 12 + easedT * 16; // 12px → 28px
-    root.style.setProperty('--blur-intensity', `${blurPx}px`);
   } else {
     root.classList.remove('blur-theme');
-    // Reset all glass CSS variables so they don't linger as inline styles
+    // Reset all glass CSS variables
     root.style.removeProperty('--glass-bg');
+    root.style.removeProperty('--glass-opacity');
+    root.style.removeProperty('--blur-intensity');
     root.style.removeProperty('--glass-border');
     root.style.removeProperty('--glass-highlight');
     root.style.removeProperty('--glass-shadow');
     root.style.removeProperty('--glass-inset-shadow');
-    root.style.removeProperty('--blur-intensity');
   }
 }
 

@@ -1,8 +1,14 @@
 {
-  "versionCode": 283,
-  "versionName": "1.0.53",
-  "lastUpdated": "2026-09-28T17:17:00.000Z",
+  "versionCode": 284,
+  "versionName": "1.0.54",
+  "lastUpdated": "2026-09-28T18:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 284,
+      "versionName": "1.0.54",
+      "date": "2026-09-28",
+      "description": "v1.0.54 - Re-enabled Transparency & Glassmorphism in Dark/Light modes, unified circular floating action buttons (FAB) across Settings and Appearance, moved font selection exclusively to Appearance & Fonts, and renamed navigation to Appearance & Fonts"
+    },
     {
       "versionCode": 283,
       "versionName": "1.0.53",

@@ -48,7 +48,6 @@ import {
 import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile, DownloadResult } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
-import { FontSelector } from '@/components/settings/FontSelector';
 import { isValidAppFontId, setStoredAppFont, APP_FONT_STORAGE_KEY } from '@/lib/app-font-config';
 // ThemeSection integrated as a tab
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
@@ -1391,14 +1390,7 @@ export default function Settings() {
           />
         );
       case 'language':
-        return (
-          <div className="space-y-6">
-            <div className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
-              <LanguageSection />
-            </div>
-            <FontSelector />
-          </div>
-        );
+        return <LanguageSection />;
       // تم نقل theme إلى صفحة /appearance
       case 'activity':
         return <ActivityLogSection />;
@@ -1565,11 +1557,6 @@ export default function Settings() {
                 {/* Language Section */}
                 <div className="border-t border-border pt-2">
                   <LanguageSection />
-                </div>
-
-                {/* Font Selector */}
-                <div className="border-t border-border pt-4">
-                  <FontSelector showCardContainer={false} />
                 </div>
 
                 {/* Barcode behavior */}
@@ -2646,84 +2633,37 @@ export default function Settings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Floating Action Banner */}
+      {/* Floating Action Buttons (FAB) موحد ومطابق للمظهر */}
       <div
         className={cn(
-          "fixed bottom-4 sm:bottom-6 z-50 transition-all duration-300 ease-in-out",
-          "left-1/2 -translate-x-1/2",
-          "w-[calc(100%-1.5rem)] max-w-md sm:w-auto sm:max-w-none",
-          (hasUnsavedChanges || isSaveSuccess)
-            ? "scale-100 opacity-100 translate-y-0"
-            : "scale-95 opacity-0 translate-y-4 pointer-events-none"
+          "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
+          isRTL ? "left-6" : "right-6",
+          hasUnsavedChanges
+            ? "scale-100 opacity-100"
+            : "scale-0 opacity-0 pointer-events-none"
         )}
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div
-          className={cn(
-            "p-2 sm:p-2.5 gap-1.5 sm:gap-2.5 bg-card/95 backdrop-blur-md border shadow-2xl rounded-2xl flex items-center justify-between sm:justify-start transition-all duration-300",
-            isSaveSuccess
-              ? "border-emerald-500/50 shadow-emerald-500/10"
-              : "border-primary/30"
-          )}
+        <Button
+          onClick={handleSaveSettings}
+          disabled={isSavingSettings}
+          className="w-14 h-14 rounded-full shadow-2xl p-0 bg-primary text-primary-foreground hover:scale-105 active:scale-95 transition-transform"
+          title={t('common.save') || (isRTL ? 'حفظ' : 'Save')}
         >
-          <div className="flex items-center gap-1.5 sm:gap-2 px-1 shrink-0">
-            {isSaveSuccess ? (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm shadow-emerald-500/40 shrink-0 animate-in zoom-in-75 duration-200">
-                <Check className="h-3 w-3 stroke-[3]" />
-              </div>
-            ) : (
-              <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-full w-full bg-amber-500"></span>
-              </span>
-            )}
-            <span
-              className={cn(
-                "text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors duration-200",
-                isSaveSuccess ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-foreground"
-              )}
-            >
-              {isSaveSuccess
-                ? (isRTL ? '✓ تم حفظ التعديلات بنجاح' : 'Changes saved successfully')
-                : (isRTL ? 'تعديلات غير محفوظة' : 'Unsaved changes')}
-            </span>
-          </div>
-
-          {!isSaveSuccess && (
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 animate-in fade-in duration-200">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRevert}
-                disabled={isSavingSettings}
-                className="h-8 px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-medium gap-1 shrink-0"
-                title={isRTL ? 'تراجع عن التعديلات' : 'Revert Changes'}
-              >
-                <Undo2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>{isRTL ? 'تراجع' : (t('common.cancel') || 'Cancel')}</span>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSaveSettings}
-                disabled={isSavingSettings}
-                className="h-8 px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-semibold shadow-md gap-1 shrink-0"
-              >
-                {isSavingSettings ? (
-                  <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                )}
-                <span>
-                  {isSavingSettings
-                    ? (t('common.saving') || (isRTL ? 'جاري الحفظ...' : 'Saving...'))
-                    : (isRTL ? 'حفظ التعديلات' : 'Save Changes')}
-                </span>
-              </Button>
-            </div>
+          {isSavingSettings ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <Save className="w-6 h-6" />
           )}
-        </div>
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={handleRevert}
+          className="w-14 h-14 rounded-full shadow-2xl p-0 hover:scale-105 active:scale-95 transition-transform"
+          title={t('common.cancel') || (isRTL ? 'تراجع' : 'Cancel')}
+        >
+          <Undo2 className="w-6 h-6" />
+        </Button>
       </div>
 
       {/* تأكيد تغيير التصنيفات عند تغيير نوع المحل */}
