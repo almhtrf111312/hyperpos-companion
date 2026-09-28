@@ -1920,26 +1920,18 @@ export default function BossPanel() {
             </Card>
           </TabsContent>
 
-          {/* Tab 4: System */}
-          <TabsContent value="system" className="space-y-4">
-            {/* System Diagnostics */}
-            <Card>
-              <CardContent className="p-4 md:p-6">
-                <SystemDiagnostics />
-              </CardContent>
-            </Card>
-
-            {/* Contact Links Settings */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+          {/* Tab 4: Contact channels */}
+          <TabsContent value="contact" className="space-y-4">
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
+                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0 text-primary">
+                    <MessageCircle className="w-4 h-4" />
                   </div>
                   إعدادات التواصل
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-3 md:px-6">
+              <CardContent className="p-4 md:px-6">
                 <p className="text-sm text-muted-foreground mb-3">
                   إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
                 </p>
