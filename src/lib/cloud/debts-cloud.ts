@@ -319,6 +319,34 @@ export const recordPaymentCloud = async (
   operationId?: string
 ): Promise<Debt | null> => {
   const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const paid = Math.round(amount * 100) / 100;
+
+  // أوفلاين: أودع الدفعة الطابور بمفتاح ثابت (الخادم يبقى المرجع النهائي عند المزامنة)
+  if (!navigator.onLine) {
+    const { addUniqueOperation } = await import('../sync-queue');
+    addUniqueOperation('debt_payment', { debtId, amount: paid, operationId: opId }, opId);
+
+    const currentList = debtsCache || loadDebtsLocally() || [];
+    let projected: Debt | null = null;
+    debtsCache = currentList.map(d => {
+      if (d.id !== debtId) return d;
+      const totalPaid = Math.round((d.totalPaid + paid) * 100) / 100;
+      const remainingDebt = Math.round((d.totalDebt - totalPaid) * 100) / 100;
+      projected = {
+        ...d,
+        totalPaid,
+        remainingDebt: remainingDebt > 0 ? remainingDebt : 0,
+        status: remainingDebt <= 0 ? 'paid' : d.status,
+        updatedAt: new Date().toISOString(),
+      } as Debt;
+      return projected;
+    });
+    cacheTimestamp = Date.now();
+    saveDebtsLocally(debtsCache);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return projected;
+  }
+
   const { data, error } = await sb.rpc('record_debt_payment_atomic', {
     _debt_id: debtId,
     _amount: Math.round(amount * 100) / 100,
