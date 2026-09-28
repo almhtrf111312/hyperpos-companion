@@ -36,6 +36,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { useUserRole } from '@/hooks/use-user-role';
 import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
+import { supabase } from '@/integrations/supabase/client';
+import { MessageCircle } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { SyncStatusMenu } from './SyncStatusMenu';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
