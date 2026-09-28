@@ -179,6 +179,9 @@ export const addToQueue = (
   
   console.log(`[SyncQueue] Added operation: ${type}`, operation.id);
 
+  // مزامنة فورية: أعلم مزوّد المزامنة بوجود عملية جديدة ليرفعها حال توفر الإنترنت
+  emitEvent(EVENTS.SYNC_OPERATION_QUEUED, { id: operation.id, type });
+
   return operation;
 };
 
