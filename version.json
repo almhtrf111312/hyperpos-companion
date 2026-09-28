@@ -1,8 +1,14 @@
 {
-  "versionCode": 275,
-  "versionName": "1.0.45",
-  "lastUpdated": "2026-09-28T12:30:00.000Z",
+  "versionCode": 276,
+  "versionName": "1.0.46",
+  "lastUpdated": "2026-09-28T12:40:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 276,
+      "versionName": "1.0.46",
+      "date": "2026-09-28",
+      "description": "v1.0.46 - Expenses and debts open instantly from the saved copy after reopening the app and refresh silently in the background; no accounting logic changed"
+    },
     {
       "versionCode": 275,
       "versionName": "1.0.45",

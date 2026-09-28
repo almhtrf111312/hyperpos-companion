@@ -127,7 +127,7 @@ let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
 // Load expenses - cashiers see only their expenses, owners see all
-export const loadExpensesCloud = async (): Promise<Expense[]> => {
+const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
@@ -200,6 +200,27 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
   saveExpensesLocally(expensesCache);
   
   return expensesCache;
+};
+
+
+// Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
+let bootServed_loadExpensesCloud = false;
+export const loadExpensesCloud = async (): Promise<Expense[]> => {
+  if (!bootServed_loadExpensesCloud) {
+    bootServed_loadExpensesCloud = true;
+    const local = loadExpensesLocally();
+    if (local && local.length > 0 && getCurrentUserId()) {
+      expensesCache = local; cacheTimestamp = Date.now();
+      if (navigator.onLine) {
+        setTimeout(() => {
+          expensesCache = null; cacheTimestamp = 0;
+          fetchFresh_loadExpensesCloud().then(() => emitEvent(EVENTS.EXPENSES_UPDATED, null)).catch(() => {});
+        }, 0);
+      }
+      return local;
+    }
+  }
+  return fetchFresh_loadExpensesCloud();
 };
 
 export const invalidateExpensesCache = () => {
