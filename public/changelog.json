@@ -1,6 +1,11 @@
 [
   {
     "type": "improvement",
+    "ar": "فتح أسرع بعد إغلاق التطبيق: الفواتير تظهر فورًا من النسخة المحفوظة وتتحدث بصمت في الخلفية، دون أي تغيير في الحسابات",
+    "en": "v1.0.45 - Faster reopen: invoices shown instantly from saved copy, refreshed silently in background"
+  },
+  {
+    "type": "improvement",
     "ar": "بطاقات المنتجات: تكبير زري التعديل والحذف والصورة، شارة وحدة معرّبة (قطعة/كرتونة)، وبقاء سعر الجملة المحفوظ ظاهرًا في نموذج المنتج حتى لو أُخفي الحقل",
     "en": "v1.0.44 - Product cards: larger edit/delete buttons and photo, localized unit badge (piece/carton); saved wholesale prices stay visible in the product form even if the field is hidden"
   },
