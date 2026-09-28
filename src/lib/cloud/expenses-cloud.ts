@@ -126,26 +126,8 @@ let expensesCache: Expense[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
-// Load expenses - cashiers see only their expenses, owners see all
-export const loadExpensesCloud = async (): Promise<Expense[]> => {
-  const userId = getCurrentUserId();
-  if (!userId) return [];
-
-  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return expensesCache;
-  }
-
-  // Offline: return local cache
-  if (!navigator.onLine) {
-    const local = loadExpensesLocally();
-    if (local) {
-      expensesCache = local;
-      cacheTimestamp = Date.now();
-      return local;
-    }
-    return [];
-  }
-
+// جلب المصاريف من السحابة (يُستخدم للتحميل الأول وللتحديث الخلفي)
+const fetchExpensesFromCloud = async (userId: string): Promise<Expense[]> => {
   // Check if user is cashier for filtering
   const isCashier = await isCashierUser();
   
@@ -202,6 +184,39 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
   return expensesCache;
 };
 
+let bgRefreshingExpenses = false;
+const refreshExpensesInBackground = (userId: string) => {
+  if (bgRefreshingExpenses || !navigator.onLine) return;
+  bgRefreshingExpenses = true;
+  fetchExpensesFromCloud(userId)
+    .then(() => emitEvent(EVENTS.EXPENSES_UPDATED, null))
+    .catch(e => console.warn('[expenses-cloud] background refresh failed:', e))
+    .finally(() => { bgRefreshingExpenses = false; });
+};
+
+// Load expenses — محلي أولاً: النسخة المحفوظة فوراً ثم تحديث صامت في الخلفية
+export const loadExpensesCloud = async (): Promise<Expense[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) return loadExpensesLocally() || [];
+
+  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return expensesCache;
+  }
+
+  const local = loadExpensesLocally();
+  if (local && local.length > 0) {
+    expensesCache = local;
+    cacheTimestamp = Date.now();
+    refreshExpensesInBackground(userId);
+    return local;
+  }
+
+  if (!navigator.onLine) return local || [];
+
+  return fetchExpensesFromCloud(userId);
+};
+
+
 export const invalidateExpensesCache = () => {
   expensesCache = null;
   cacheTimestamp = 0;
@@ -255,7 +270,38 @@ export const addExpenseCloud = async (expenseData: {
   }
   
   const userId = getCurrentUserId();
-  
+
+  // أوفلاين: احفظ المصروف محلياً وأودعه الطابور ليُرفع تلقائياً عند عودة الإنترنت
+  if (!navigator.onLine) {
+    const { getOwnerIdForInsert } = await import('../supabase-store');
+    const { addUniqueOperation } = await import('../sync-queue');
+    const ownerId = (await getOwnerIdForInsert()) || userId;
+    const localId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+
+    const payload = {
+      id: localId,
+      user_id: ownerId,
+      expense_type: expenseData.type,
+      amount: Math.round(expenseData.amount * 100) / 100,
+      description: expenseData.customType || null,
+      date: expenseData.date,
+      notes: expenseData.notes || null,
+      distributions,
+      cashier_id: userId,
+      created_at: createdAt,
+    };
+    addUniqueOperation('expense', payload, `expense_${localId}`);
+
+    const localExpense = toExpense({ ...payload, cashier_id: userId } as unknown as CloudExpense);
+    const currentList = expensesCache || loadExpensesLocally() || [];
+    expensesCache = [localExpense, ...currentList];
+    cacheTimestamp = Date.now();
+    saveExpensesLocally(expensesCache);
+    emitEvent(EVENTS.EXPENSES_UPDATED, null);
+    return localExpense;
+  }
+
   const inserted = await insertToSupabase<CloudExpense>('expenses', {
     expense_type: expenseData.type,
     amount: expenseData.amount,

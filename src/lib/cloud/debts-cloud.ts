@@ -127,34 +127,9 @@ export const getNextManualDebtId = async (): Promise<string> => {
   return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
 };
 
-// Load debts
+// جلب الديون من السحابة (التحميل الأول + التحديث الخلفي)
 // ✅ Owners see all debts, cashiers see only their own
-export const loadDebtsCloud = async (): Promise<Debt[]> => {
-  let userId = getCurrentUserId();
-  if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      userId = user.id;
-      setCurrentUserId(user.id);
-    }
-  }
-  if (!userId) return [];
-
-  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return debtsCache;
-  }
-
-  // Offline: return local cache
-  if (!navigator.onLine) {
-    const local = loadDebtsLocally();
-    if (local) {
-      debtsCache = local;
-      cacheTimestamp = Date.now();
-      return local;
-    }
-    return [];
-  }
-
+const fetchDebtsFromCloud = async (userId: string): Promise<Debt[]> => {
   // Check if current user is a cashier
   const isCashier = await isCashierUser();
 
@@ -197,6 +172,45 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
   return debtsCache;
 };
 
+let bgRefreshingDebts = false;
+const refreshDebtsInBackground = (userId: string) => {
+  if (bgRefreshingDebts || !navigator.onLine) return;
+  bgRefreshingDebts = true;
+  fetchDebtsFromCloud(userId)
+    .then(() => emitEvent(EVENTS.DEBTS_UPDATED, null))
+    .catch(e => console.warn('[debts-cloud] background refresh failed:', e))
+    .finally(() => { bgRefreshingDebts = false; });
+};
+
+// Load debts — محلي أولاً: النسخة المحفوظة فوراً ثم تحديث صامت في الخلفية
+export const loadDebtsCloud = async (): Promise<Debt[]> => {
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      userId = user.id;
+      setCurrentUserId(user.id);
+    }
+  }
+  if (!userId) return loadDebtsLocally() || [];
+
+  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return debtsCache;
+  }
+
+  const local = loadDebtsLocally();
+  if (local && local.length > 0) {
+    debtsCache = local;
+    cacheTimestamp = Date.now();
+    refreshDebtsInBackground(userId);
+    return local;
+  }
+
+  if (!navigator.onLine) return local || [];
+
+  return fetchDebtsFromCloud(userId);
+};
+
 export const invalidateDebtsCache = () => {
   debtsCache = null;
   cacheTimestamp = 0;
@@ -214,6 +228,43 @@ export const addDebtCloud = async (
     const { data: { user } } = await supabase.auth.getUser();
     cashierId = user?.id || null;
     console.log('[addDebtCloud] Fallback to supabase.auth.getUser:', cashierId);
+  }
+
+  // أوفلاين: احفظ الدين محلياً وأودعه الطابور ليُرفع تلقائياً عند عودة الإنترنت
+  if (!navigator.onLine) {
+    const { getOwnerIdForInsert } = await import('../supabase-store');
+    const { addUniqueOperation } = await import('../sync-queue');
+    const ownerId = (await getOwnerIdForInsert()) || cashierId;
+    const localId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const amount = Math.round((debtData.totalDebt || 0) * 100) / 100;
+
+    const payload = {
+      id: localId,
+      user_id: ownerId,
+      invoice_id: debtData.invoiceId || null,
+      customer_name: debtData.customerName,
+      customer_phone: debtData.customerPhone || null,
+      total_debt: amount,
+      total_paid: 0,
+      remaining_debt: amount,
+      due_date: debtData.dueDate || null,
+      status: debtData.dueDate && debtData.dueDate < today ? 'overdue' : 'due',
+      notes: debtData.notes || null,
+      is_cash_debt: debtData.isCashDebt || false,
+      cashier_id: cashierId,
+      created_at: now,
+      updated_at: now,
+    };
+    addUniqueOperation('debt', payload, `debt_${localId}`);
+
+    const localDebt = toDebt(payload as unknown as CloudDebt);
+    const currentList = debtsCache || loadDebtsLocally() || [];
+    debtsCache = [localDebt, ...currentList];
+    cacheTimestamp = Date.now();
+    saveDebtsLocally(debtsCache);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return localDebt;
   }
 
   const inserted = await insertToSupabase<CloudDebt>('debts', {
@@ -268,6 +319,34 @@ export const recordPaymentCloud = async (
   operationId?: string
 ): Promise<Debt | null> => {
   const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const paid = Math.round(amount * 100) / 100;
+
+  // أوفلاين: أودع الدفعة الطابور بمفتاح ثابت (الخادم يبقى المرجع النهائي عند المزامنة)
+  if (!navigator.onLine) {
+    const { addUniqueOperation } = await import('../sync-queue');
+    addUniqueOperation('debt_payment', { debtId, amount: paid, operationId: opId }, opId);
+
+    const currentList = debtsCache || loadDebtsLocally() || [];
+    let projected: Debt | null = null;
+    debtsCache = currentList.map(d => {
+      if (d.id !== debtId) return d;
+      const totalPaid = Math.round((d.totalPaid + paid) * 100) / 100;
+      const remainingDebt = Math.round((d.totalDebt - totalPaid) * 100) / 100;
+      projected = {
+        ...d,
+        totalPaid,
+        remainingDebt: remainingDebt > 0 ? remainingDebt : 0,
+        status: remainingDebt <= 0 ? 'paid' : d.status,
+        updatedAt: new Date().toISOString(),
+      } as Debt;
+      return projected;
+    });
+    cacheTimestamp = Date.now();
+    saveDebtsLocally(debtsCache);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return projected;
+  }
+
   const { data, error } = await sb.rpc('record_debt_payment_atomic', {
     _debt_id: debtId,
     _amount: Math.round(amount * 100) / 100,

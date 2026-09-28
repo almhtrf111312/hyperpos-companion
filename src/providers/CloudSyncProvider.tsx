@@ -417,6 +417,24 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   // expose latest syncNow to refs (for resume callback)
   useEffect(() => { syncNowRef.current = syncNow; }, [syncNow]);
 
+  // مزامنة فورية عند إضافة أي عملية للطابور (دين، سداد، عميل، مصروف، منتج، بيع)
+  useEffect(() => {
+    if (!user) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const handler = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!navigator.onLine) return;
+        syncNowRef.current?.().catch(() => { /* ستُعاد المحاولة تلقائياً */ });
+      }, 800);
+    };
+    window.addEventListener(EVENTS.SYNC_OPERATION_QUEUED, handler);
+    return () => {
+      window.removeEventListener(EVENTS.SYNC_OPERATION_QUEUED, handler);
+      if (timer) clearTimeout(timer);
+    };
+  }, [user]);
+
   const syncImmediately = useCallback(() => {
     if (!user || isPaused) return;
     setTimeout(() => {
