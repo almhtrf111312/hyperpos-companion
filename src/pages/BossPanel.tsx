@@ -1163,6 +1163,10 @@ export default function BossPanel() {
 
   const availableCodes = codes.filter(c => c.is_active && c.current_uses < c.max_uses);
 
+  // Quick lookup of an account by id (used to label assigned/used codes)
+  const ownerById = new Map<string, Owner>();
+  for (const owner of owners) ownerById.set(owner.user_id, owner);
+
   // Build a map of activation_code_id -> owner email for codes section
   const codeToOwnerMap = new Map<string, { email: string | null; name: string | null }>();
   for (const owner of owners) {
