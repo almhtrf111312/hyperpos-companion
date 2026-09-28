@@ -1218,43 +1218,48 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <div className="w-full overflow-x-auto scrollbar-none pb-1">
-            <TabsList className="flex md:grid md:grid-cols-4 w-full min-w-full h-auto p-1.5 bg-muted/70 backdrop-blur-md rounded-2xl border border-border/80 gap-1.5 shadow-sm">
-              <TabsTrigger
-                value="users"
-                className="flex-1 min-w-[85px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
-              >
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>المستخدمين</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="codes"
-                className="flex-1 min-w-[85px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
-              >
-                <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>أكواد التفعيل</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="issues"
-                className="flex-1 min-w-[95px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 relative"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>مشاكل التراخيص</span>
-                {licenseIssueOwners.length > 0 && (
-                  <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                    {licenseIssueOwners.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger
-                value="system"
-                className="flex-1 min-w-[75px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
-              >
-                <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>النظام</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
+            <TabsTrigger
+              value="users"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">المستخدمين</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="codes"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Key className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">الأكواد</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="issues"
+              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">التراخيص</span>
+              {licenseIssueOwners.length > 0 && (
+                <span className="absolute top-1 end-1 sm:static w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {licenseIssueOwners.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="contact"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <MessageCircle className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">التواصل</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="system"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Wrench className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">النظام</span>
+            </TabsTrigger>
+          </TabsList>
 
           {/* Tab 1: Users */}
           <TabsContent value="users" className="space-y-4">
