@@ -1889,7 +1889,18 @@ export default function BossPanel() {
                                 </p>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
+                              <Button
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => {
+                                  setDirectActivateDialog({ owner });
+                                  setDirectActivateDays('90');
+                                }}
+                              >
+                                <CheckCircle className="w-3 h-3 me-1" />
+                                تفعيل مباشر
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1897,7 +1908,7 @@ export default function BossPanel() {
                                 onClick={() => setActivationDialog({ owner })}
                               >
                                 <Ticket className="w-3 h-3 me-1" />
-                                تفعيل
+                                بكود
                               </Button>
                               <Button
                                 size="sm"
