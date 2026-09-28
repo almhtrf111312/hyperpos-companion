@@ -23,7 +23,6 @@ export type OperationType =
   | 'debt_sale_bundle' // Atomic debt sale operation (invoice + debt + stock + customer)
   | 'stock_update' 
   | 'customer_update'
-  | 'customer_add'
   | 'invoice_create'
   | 'profit_record'
   | 'profit_reverse'
@@ -178,9 +177,6 @@ export const addToQueue = (
   addToHistory(operation.id, type);
   
   console.log(`[SyncQueue] Added operation: ${type}`, operation.id);
-
-  // مزامنة فورية: أعلم مزوّد المزامنة بوجود عملية جديدة ليرفعها حال توفر الإنترنت
-  emitEvent(EVENTS.SYNC_OPERATION_QUEUED, { id: operation.id, type });
 
   return operation;
 };

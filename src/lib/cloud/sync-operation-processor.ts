@@ -52,24 +52,6 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
       const cleanData = filterTablePayload('debts', data);
       return assertSuccess(sb.from('debts').insert(cleanData));
     }
-    case 'debt_payment': {
-      // السداد يتم عبر دالة ذرّية على الخادم مع مفتاح عملية يمنع التكرار
-      const debtId = String(data.debtId || data.debt_id || '');
-      const amount = Number(data.amount) || 0;
-      const opId = String(data.operationId || data.uniqueKey || '');
-      if (!debtId || amount <= 0 || !opId) throw new Error('Invalid debt payment operation');
-      const { error } = await sb.rpc('record_debt_payment_atomic', {
-        _debt_id: debtId,
-        _amount: Math.round(amount * 100) / 100,
-        _operation_id: opId,
-      });
-      if (error) throw new Error(error.message || 'فشل تسجيل الدفعة');
-      return true;
-    }
-    case 'customer_add': {
-      const cleanData = filterTablePayload('customers', data);
-      return assertSuccess(sb.from('customers').insert(cleanData));
-    }
     case 'customer_update': {
       const { id, ...updates } = data;
       if (!id) throw new Error('Missing customer id');
