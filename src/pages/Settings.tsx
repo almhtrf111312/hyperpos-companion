@@ -48,6 +48,8 @@ import {
 import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile, DownloadResult } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
 import { LanguageSection } from '@/components/settings/LanguageSection';
+import { FontSelector } from '@/components/settings/FontSelector';
+import { isValidAppFontId, setStoredAppFont, APP_FONT_STORAGE_KEY } from '@/lib/app-font-config';
 // ThemeSection integrated as a tab
 import { ActivityLogSection } from '@/components/settings/ActivityLogSection';
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
@@ -610,6 +612,11 @@ export default function Settings() {
           }));
         }
 
+        // ✅ Restore app font from cloud sync if present
+        if (typeof syncObj.appFont === 'string' && isValidAppFontId(syncObj.appFont)) {
+          setStoredAppFont(syncObj.appFont);
+        }
+
         // ✅ Restore productFieldsConfig from cloud if present
         if (syncObj.productFieldsConfig) {
           setProductFieldsConfig(syncObj.productFieldsConfig as ProductFieldsConfig);
@@ -861,6 +868,7 @@ export default function Settings() {
       mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
       mergedSyncSettings.currencyNames = currencyNames;
       mergedSyncSettings.backupSettings = backupSettings;
+      mergedSyncSettings.appFont = localStorage.getItem(APP_FONT_STORAGE_KEY) || 'cairo';
 
       // Save to cloud with merged sync_settings
       const cloudSuccess = await saveStoreSettings({
@@ -1383,7 +1391,14 @@ export default function Settings() {
           />
         );
       case 'language':
-        return <LanguageSection />;
+        return (
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
+              <LanguageSection />
+            </div>
+            <FontSelector />
+          </div>
+        );
       // تم نقل theme إلى صفحة /appearance
       case 'activity':
         return <ActivityLogSection />;
@@ -1550,6 +1565,11 @@ export default function Settings() {
                 {/* Language Section */}
                 <div className="border-t border-border pt-2">
                   <LanguageSection />
+                </div>
+
+                {/* Font Selector */}
+                <div className="border-t border-border pt-4">
+                  <FontSelector showCardContainer={false} />
                 </div>
 
                 {/* Barcode behavior */}

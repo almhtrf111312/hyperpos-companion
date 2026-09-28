@@ -1,8 +1,14 @@
 {
-  "versionCode": 282,
-  "versionName": "1.0.52",
-  "lastUpdated": "2026-09-28T16:05:00.000Z",
+  "versionCode": 283,
+  "versionName": "1.0.53",
+  "lastUpdated": "2026-09-28T17:17:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 283,
+      "versionName": "1.0.53",
+      "date": "2026-09-28",
+      "description": "v1.0.53 - Embedded App Fonts (5 offline fonts): Cairo, Tajawal, IBM Plex Sans Arabic, Almarai, Readex Pro with guaranteed Western numerals protection (Inter Digits), instant switching, and cloud sync"
+    },
     {
       "versionCode": 282,
       "versionName": "1.0.52",

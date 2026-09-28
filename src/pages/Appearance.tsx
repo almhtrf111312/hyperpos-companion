@@ -6,6 +6,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { FontSelector } from '@/components/settings/FontSelector';
 
 // Error Boundary to catch ThemeSection render crashes
 class ThemeErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
@@ -81,6 +82,11 @@ export default function Appearance() {
           resetSignal={resetSignal}
         />
       </ThemeErrorBoundary>
+
+      {/* Embedded App Fonts Selector */}
+      <div className="mt-6">
+        <FontSelector />
+      </div>
 
       {/* Floating Action Buttons (FAB) */}
       <div

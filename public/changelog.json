@@ -1,5 +1,10 @@
 [
   {
+    "type": "feature",
+    "ar": "إضافة 5 خطوط عربية مدمجة تعمل بالكامل أوفلاين بدون إنترنت (كايرو، تجوّل، آي بي إم بليكس، المراعي، ريديكس برو) مع معاينة حية وتبديل فوري، وحماية مطلقة لبقاء الأرقام إنجليزية (0-9) دائماً في كافة الشاشات والفواتير والعمليات المالية، ومزامنة خيار الخط مع إعدادات السحابة",
+    "en": "v1.0.53 - 5 embedded offline Arabic fonts (Cairo, Tajawal, IBM Plex Sans Arabic, Almarai, Readex Pro) with live preview, instant zero-reload switching, strict Western numerals protection (0-9) across POS/invoices, and cloud sync"
+  },
+  {
     "type": "improvement",
     "ar": "تحسين الشريط العائم للإعدادات: توسيط الشريط أفقياً وضبط هوامشه وأحجام الأزرار لمنع الخروج عن حواف شاشات الهواتف، مع إضافة مؤشر نجاح تفاعلي (أيقونة خضراء ورسالة تأكيد) يظهر لـ 1.8 ثانية بعد الحفظ قبل الاختفاء السلس",
     "en": "v1.0.52 - Mobile-fit Settings floating banner: centered horizontally without overflowing phone screens, with an interactive emerald success confirmation before smooth fade-out"

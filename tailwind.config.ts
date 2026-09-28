@@ -14,7 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        cairo: ['Inter Digits', 'Cairo', 'sans-serif'],
+        cairo: ['Inter Digits', 'var(--app-font-family)', 'sans-serif'],
+        sans: ['Inter Digits', 'var(--app-font-family)', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
