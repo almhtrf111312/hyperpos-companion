@@ -9,6 +9,15 @@ import {
 import { emitEvent, EVENTS } from '../events';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
+import { addToQueue } from '../sync-queue';
+
+const isOfflineNow = () => typeof navigator !== 'undefined' && !navigator.onLine;
+const commitLocal = (list: Customer[]) => {
+  customersCache = list;
+  cacheTimestamp = Date.now();
+  saveCustomersLocally(list);
+  emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+};
 
 export interface CloudCustomer {
   id: string;
@@ -194,6 +203,20 @@ export const addCustomerCloud = async (
     cashierId = user?.id || null;
   }
   
+  // Offline: save on device now, upload automatically when internet returns
+  if (isOfflineNow()) {
+    const nowIso = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const payload = {
+      id, name: normalizedName, phone: customer.phone || null, email: customer.email || null,
+      address: customer.address || null, total_purchases: 0, total_debt: 0, invoice_count: 0, cashier_id: cashierId,
+    };
+    addToQueue('customer_create', payload, 10);
+    const local = toCustomer({ ...payload, user_id: '', last_purchase: null, created_at: nowIso, updated_at: nowIso } as unknown as CloudCustomer);
+    commitLocal([local, ...(customersCache || loadCustomersLocally() || [])]);
+    return local;
+  }
+
   const inserted = await insertToSupabase<CloudCustomer>('customers', {
     name: normalizedName,
     phone: customer.phone || null,
@@ -237,6 +260,13 @@ export const updateCustomerCloud = async (
   if (data.invoiceCount !== undefined) updates.invoice_count = data.invoiceCount;
   if (data.lastPurchase !== undefined) updates.last_purchase = data.lastPurchase || null;
 
+  if (isOfflineNow()) {
+    addToQueue('customer_update', { id, ...updates }, 10);
+    const currentList = customersCache || loadCustomersLocally() || [];
+    commitLocal(currentList.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c));
+    return true;
+  }
+
   const success = await updateInSupabase('customers', id, updates);
   
   if (success) {
@@ -253,6 +283,12 @@ export const updateCustomerCloud = async (
 
 // Delete customer
 export const deleteCustomerCloud = async (id: string): Promise<boolean> => {
+  if (isOfflineNow()) {
+    addToQueue('customer_delete', { id }, 10);
+    commitLocal((customersCache || loadCustomersLocally() || []).filter(c => c.id !== id));
+    return true;
+  }
+
   const success = await deleteFromSupabase('customers', id);
   
   if (success) {

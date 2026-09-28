@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { QueuedOperation } from '@/lib/sync-queue';
-import { filterTablePayload } from '@/lib/supabase-store';
+import { filterTablePayload, getOwnerIdForInsert } from '@/lib/supabase-store';
 
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
@@ -51,6 +51,17 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
     case 'debt': {
       const cleanData = filterTablePayload('debts', data);
       return assertSuccess(sb.from('debts').insert(cleanData));
+    }
+    case 'customer_create': {
+      const ownerId = await getOwnerIdForInsert();
+      if (!ownerId) throw new Error('No owner id');
+      const cleanData = filterTablePayload('customers', data);
+      // Idempotent: same client UUID never inserted twice
+      return assertSuccess(sb.from('customers').upsert({ ...cleanData, user_id: ownerId }, { onConflict: 'id', ignoreDuplicates: true }));
+    }
+    case 'customer_delete': {
+      if (!data.id) throw new Error('Missing customer id');
+      return assertSuccess(sb.from('customers').delete().eq('id', String(data.id)));
     }
     case 'customer_update': {
       const { id, ...updates } = data;

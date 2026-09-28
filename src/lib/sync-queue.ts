@@ -23,6 +23,8 @@ export type OperationType =
   | 'debt_sale_bundle' // Atomic debt sale operation (invoice + debt + stock + customer)
   | 'stock_update' 
   | 'customer_update'
+  | 'customer_create'
+  | 'customer_delete'
   | 'invoice_create'
   | 'profit_record'
   | 'profit_reverse'

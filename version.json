@@ -1,8 +1,14 @@
 {
-  "versionCode": 276,
-  "versionName": "1.0.46",
-  "lastUpdated": "2026-09-28T12:40:00.000Z",
+  "versionCode": 277,
+  "versionName": "1.0.47",
+  "lastUpdated": "2026-09-28T12:50:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 277,
+      "versionName": "1.0.47",
+      "date": "2026-09-28",
+      "description": "v1.0.47 - Customers can be added, edited and deleted without internet; changes wait in the sync queue and upload automatically (no duplicates) when the connection returns"
+    },
     {
       "versionCode": 276,
       "versionName": "1.0.46",
