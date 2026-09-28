@@ -20,7 +20,9 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-const TRIAL_DAYS = 30;
+// Fallback only. The active default is stored in app_settings.default_trial_days
+// and applies to NEW trials only — already-issued licenses keep their own expiry date.
+const FALLBACK_TRIAL_DAYS = 30;
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -119,9 +121,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Read the currently configured default trial period (new trials only)
+    let trialDays = FALLBACK_TRIAL_DAYS
+    const { data: trialSetting } = await supabaseAdmin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'default_trial_days')
+      .maybeSingle()
+
+    const parsedTrialDays = parseInt(trialSetting?.value ?? '', 10)
+    if (Number.isFinite(parsedTrialDays) && parsedTrialDays > 0 && parsedTrialDays <= 3650) {
+      trialDays = parsedTrialDays
+    }
+
     // Calculate trial expiry
     const trialExpiresAt = new Date()
-    trialExpiresAt.setDate(trialExpiresAt.getDate() + TRIAL_DAYS)
+    trialExpiresAt.setDate(trialExpiresAt.getDate() + trialDays)
 
     // Create or update license as TRIAL
     // Server-side enforces is_trial: true - cannot be overridden by client
@@ -173,7 +188,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         expiresAt: trialExpiresAt.toISOString(),
-        daysRemaining: TRIAL_DAYS,
+        daysRemaining: trialDays,
         isTrial: true,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

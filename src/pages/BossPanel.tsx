@@ -122,6 +122,10 @@ interface ActivationCode {
   license_tier: string;
   note: string | null;
   created_at: string;
+  assigned_user_id?: string | null;
+  assigned_email?: string | null;
+  used_by?: string | null;
+  used_at?: string | null;
 }
 
 export default function BossPanel() {
@@ -145,7 +149,18 @@ export default function BossPanel() {
     max_cashiers: 1,
     license_tier: 'basic',
     note: '',
+    assigned_user_id: '',
   });
+
+  // Default trial period for NEW accounts (existing licenses are never shortened)
+  const [defaultTrialDays, setDefaultTrialDays] = useState<number>(30);
+  const [trialDaysInput, setTrialDaysInput] = useState<string>('30');
+  const [isSavingTrialDays, setIsSavingTrialDays] = useState(false);
+
+  // Direct activation (no code) dialog
+  const [directActivateDialog, setDirectActivateDialog] = useState<{ owner: Owner } | null>(null);
+  const [directActivateDays, setDirectActivateDays] = useState<string>('90');
+  const [isDirectActivating, setIsDirectActivating] = useState(false);
 
   // Edit Code Dialog
   const [editCodeDialog, setEditCodeDialog] = useState<ActivationCode | null>(null);
@@ -331,10 +346,89 @@ export default function BossPanel() {
     }
   };
 
+  // Read the default trial period used for new accounts
+  const fetchTrialSetting = async () => {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'default_trial_days')
+        .maybeSingle();
+      const parsed = parseInt(data?.value ?? '', 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setDefaultTrialDays(parsed);
+        setTrialDaysInput(String(parsed));
+      }
+    } catch (err) {
+      console.error('Failed to fetch trial setting:', err);
+    }
+  };
+
+  const handleSaveTrialDays = async () => {
+    const parsed = parseInt(trialDaysInput, 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 3650) {
+      toast.error('أدخل عدد أيام صحيح بين 1 و 3650');
+      return;
+    }
+    setIsSavingTrialDays(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: 'default_trial_days', value: String(parsed), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (error) throw error;
+      setDefaultTrialDays(parsed);
+      toast.success(`تم ضبط الفترة التجريبية على ${parsed} يوم للحسابات الجديدة فقط`);
+    } catch (err) {
+      console.error('Error saving trial days:', err);
+      toast.error('فشل في حفظ مدة الفترة التجريبية');
+    } finally {
+      setIsSavingTrialDays(false);
+    }
+  };
+
+  // Activate / extend a license directly, without issuing a code
+  const handleDirectActivate = async () => {
+    if (!directActivateDialog) return;
+    const days = parseInt(directActivateDays, 10);
+    if (!Number.isFinite(days) || days < 1 || days > 3650) {
+      toast.error('أدخل عدد أيام صحيح');
+      return;
+    }
+    setIsDirectActivating(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('يرجى تسجيل الدخول مرة أخرى');
+        return;
+      }
+      const owner = directActivateDialog.owner;
+      const response = await supabase.functions.invoke('remote-activate-user', {
+        body: {
+          target_user_id: owner.user_id,
+          duration_days: days,
+          max_cashiers: owner.max_cashiers || 1,
+          license_tier: owner.license_tier || 'basic',
+        },
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+      if (response.error) throw new Error(response.error.message || 'Failed');
+
+      toast.success(`تم تفعيل "${owner.full_name || owner.email}" لمدة ${days} يوم`);
+      setDirectActivateDialog(null);
+      fetchData();
+    } catch (err) {
+      console.error('Direct activation failed:', err);
+      toast.error('فشل التفعيل المباشر');
+    } finally {
+      setIsDirectActivating(false);
+    }
+  };
+
   useEffect(() => {
     if (isBoss) {
       fetchData();
       fetchContactLinksSettings();
+      fetchTrialSetting();
     }
   }, [isBoss]);
 
@@ -358,17 +452,24 @@ export default function BossPanel() {
       return;
     }
 
+    const assignedOwner = newCode.assigned_user_id
+      ? owners.find(o => o.user_id === newCode.assigned_user_id)
+      : null;
+
     try {
       const { error } = await supabase
         .from('activation_codes')
         .insert({
           code: newCode.code.toUpperCase(),
           duration_days: newCode.duration_days,
-          max_uses: newCode.max_uses,
+          // A code reserved for one account is always single-use
+          max_uses: assignedOwner ? 1 : newCode.max_uses,
           max_cashiers: newCode.max_cashiers,
           license_tier: newCode.license_tier,
           note: newCode.note || null,
           is_active: true,
+          assigned_user_id: assignedOwner ? assignedOwner.user_id : null,
+          assigned_email: assignedOwner ? (assignedOwner.email || assignedOwner.full_name) : null,
         });
 
       if (error) {
@@ -389,6 +490,7 @@ export default function BossPanel() {
         max_cashiers: 1,
         license_tier: 'basic',
         note: '',
+        assigned_user_id: '',
       });
       fetchData();
     } catch (error) {
@@ -1061,6 +1163,10 @@ export default function BossPanel() {
 
   const availableCodes = codes.filter(c => c.is_active && c.current_uses < c.max_uses);
 
+  // Quick lookup of an account by id (used to label assigned/used codes)
+  const ownerById = new Map<string, Owner>();
+  for (const owner of owners) ownerById.set(owner.user_id, owner);
+
   // Build a map of activation_code_id -> owner email for codes section
   const codeToOwnerMap = new Map<string, { email: string | null; name: string | null }>();
   for (const owner of owners) {
@@ -1112,43 +1218,48 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <div className="w-full overflow-x-auto scrollbar-none pb-1">
-            <TabsList className="flex md:grid md:grid-cols-4 w-full min-w-full h-auto p-1.5 bg-muted/70 backdrop-blur-md rounded-2xl border border-border/80 gap-1.5 shadow-sm">
-              <TabsTrigger
-                value="users"
-                className="flex-1 min-w-[85px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
-              >
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>المستخدمين</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="codes"
-                className="flex-1 min-w-[85px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
-              >
-                <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>أكواد التفعيل</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="issues"
-                className="flex-1 min-w-[95px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 relative"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>مشاكل التراخيص</span>
-                {licenseIssueOwners.length > 0 && (
-                  <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                    {licenseIssueOwners.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger
-                value="system"
-                className="flex-1 min-w-[75px] sm:min-w-0 py-2 sm:py-2.5 px-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
-              >
-                <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span>النظام</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
+            <TabsTrigger
+              value="users"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">المستخدمين</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="codes"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Key className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">الأكواد</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="issues"
+              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">التراخيص</span>
+              {licenseIssueOwners.length > 0 && (
+                <span className="absolute top-1 end-1 sm:static w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {licenseIssueOwners.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="contact"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <MessageCircle className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">التواصل</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="system"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Wrench className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">النظام</span>
+            </TabsTrigger>
+          </TabsList>
 
           {/* Tab 1: Users */}
           <TabsContent value="users" className="space-y-4">
@@ -1364,6 +1475,13 @@ export default function BossPanel() {
                                     <Pencil className="w-4 h-4 me-2" />
                                     تعديل التفعيل
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    setDirectActivateDialog({ owner });
+                                    setDirectActivateDays('90');
+                                  }}>
+                                    <CheckCircle className="w-4 h-4 me-2" />
+                                    تفعيل مباشر بدون كود
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setActivationDialog({ owner })}>
                                     <Ticket className="w-4 h-4 me-2" />
                                     تفعيل عن بعد
@@ -1537,6 +1655,61 @@ export default function BossPanel() {
 
           {/* Tab 2: Activation Codes */}
           <TabsContent value="codes" className="space-y-4">
+            {/* Default trial period — applies to new accounts only */}
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-border/50">
+                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0 text-emerald-600 dark:text-emerald-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <span>المدة الافتراضية للفترة التجريبية</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 md:px-6 space-y-3">
+                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                  تُطبَّق هذه المدة على الحسابات الجديدة فقط. الحسابات المفعّلة سابقاً تحتفظ بتاريخ انتهائها ولا يتأثر ترخيصها عند التغيير.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={trialDaysInput}
+                      onChange={(e) => setTrialDaysInput(e.target.value)}
+                      className="h-10 w-28 rounded-xl text-center font-bold"
+                    />
+                    <span className="text-sm text-muted-foreground">يوم</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[30, 60, 90, 180].map((d) => (
+                      <Button
+                        key={d}
+                        type="button"
+                        variant={trialDaysInput === String(d) ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-8 rounded-lg text-xs"
+                        onClick={() => setTrialDaysInput(String(d))}
+                      >
+                        {d} يوم
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={handleSaveTrialDays}
+                    disabled={isSavingTrialDays}
+                    size="sm"
+                    className="h-10 rounded-xl sm:ms-auto font-semibold"
+                  >
+                    {isSavingTrialDays ? 'جارٍ الحفظ...' : 'حفظ المدة'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  المدة الحالية المعتمدة: <span className="font-bold text-foreground">{defaultTrialDays} يوم</span>
+                </p>
+              </CardContent>
+            </Card>
+
             <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
                 <div className="flex items-center justify-between w-full sm:w-auto">
@@ -1571,21 +1744,24 @@ export default function BossPanel() {
                         ? Math.ceil((new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                         : null;
 
+                      const assignedOwner = code.assigned_user_id ? ownerById.get(code.assigned_user_id) : null;
+                      const usedOwner = code.used_by ? ownerById.get(code.used_by) : null;
+
                       return (
-                        <div key={code.id} className={`p-2 md:p-3 rounded-lg space-y-2 border-s-4 ${
+                        <div key={code.id} className={`p-3 rounded-xl space-y-2.5 border border-border/60 border-s-4 bg-card/50 ${
                           !code.is_active ? 'border-s-muted bg-muted/30' :
-                          code.current_uses >= code.max_uses ? 'border-s-orange-400 bg-orange-400/5' :
-                          'border-s-emerald-500 bg-emerald-500/5'
+                          code.current_uses >= code.max_uses ? 'border-s-orange-400' :
+                          'border-s-emerald-500'
                         }`}>
-                          <div className="flex items-center justify-between gap-2">
-                            <button
-                              onClick={() => copyToClipboard(code.code)}
-                              className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
-                            >
-                              {isMobile ? code.code.slice(0, 12) + '...' : code.code}
-                              <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
-                            </button>
-                            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                          {/* Code on its own full-width row so it never overlaps the actions */}
+                          <button
+                            onClick={() => copyToClipboard(code.code)}
+                            className="w-full flex items-center justify-between gap-2 font-mono text-xs md:text-sm bg-background px-2.5 py-2 rounded-lg border hover:bg-muted transition-colors text-start"
+                          >
+                            <span className="truncate tracking-wider">{code.code}</span>
+                            <Copy className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                          </button>
+                          <div className="flex items-center justify-end gap-1 md:gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                                 setEditCodeDialog(code);
                                 setEditCodeForm({ duration_days: code.duration_days, max_uses: code.max_uses, max_cashiers: code.max_cashiers, license_tier: code.license_tier, note: code.note || '' });
@@ -1598,7 +1774,6 @@ export default function BossPanel() {
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteConfirm({ type: 'code', id: code.id, name: code.code })}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
-                            </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-1 md:gap-2">
                             <Badge variant={code.is_active ? 'default' : 'secondary'} className="text-[10px] md:text-xs">{code.is_active ? 'نشط' : 'معطل'}</Badge>
@@ -1606,7 +1781,28 @@ export default function BossPanel() {
                             <Badge variant="outline" className="text-[10px] md:text-xs">{code.current_uses}/{code.max_uses} استخدام</Badge>
                             <Badge variant="outline" className="text-[10px] md:text-xs">{code.max_cashiers} كاشير</Badge>
                             <Badge variant="outline" className="text-[10px] md:text-xs">{code.license_tier}</Badge>
+                            {code.assigned_user_id && (
+                              <Badge className="text-[10px] md:text-xs bg-primary/15 text-primary hover:bg-primary/20">مخصص لحساب واحد</Badge>
+                            )}
                           </div>
+                          {(assignedOwner || code.assigned_email) && (
+                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-primary/10 text-primary rounded-lg px-2 py-1.5">
+                              <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <span className="break-all">
+                                مخصص لـ: {assignedOwner?.full_name || code.assigned_email || 'حساب محدد'}
+                                {assignedOwner?.email && <span className="font-mono opacity-80"> ({assignedOwner.email})</span>}
+                              </span>
+                            </div>
+                          )}
+                          {(usedOwner || code.used_at) && (
+                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg px-2 py-1.5">
+                              <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <span className="break-all">
+                                فُعِّل بواسطة: {usedOwner?.full_name || usedOwner?.email || 'حساب'}
+                                {code.used_at && <span className="opacity-80"> — {new Date(code.used_at).toLocaleDateString('ar-EG')}</span>}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -1692,7 +1888,18 @@ export default function BossPanel() {
                                 </p>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
+                              <Button
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => {
+                                  setDirectActivateDialog({ owner });
+                                  setDirectActivateDays('90');
+                                }}
+                              >
+                                <CheckCircle className="w-3 h-3 me-1" />
+                                تفعيل مباشر
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1700,7 +1907,7 @@ export default function BossPanel() {
                                 onClick={() => setActivationDialog({ owner })}
                               >
                                 <Ticket className="w-3 h-3 me-1" />
-                                تفعيل
+                                بكود
                               </Button>
                               <Button
                                 size="sm"
@@ -1730,26 +1937,18 @@ export default function BossPanel() {
             </Card>
           </TabsContent>
 
-          {/* Tab 4: System */}
-          <TabsContent value="system" className="space-y-4">
-            {/* System Diagnostics */}
-            <Card>
-              <CardContent className="p-4 md:p-6">
-                <SystemDiagnostics />
-              </CardContent>
-            </Card>
-
-            {/* Contact Links Settings */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2 px-3 md:px-6 bg-gradient-to-br from-primary/5 to-primary/0">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+          {/* Tab 4: Contact channels */}
+          <TabsContent value="contact" className="space-y-4">
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
+                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0 text-primary">
+                    <MessageCircle className="w-4 h-4" />
                   </div>
                   إعدادات التواصل
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-3 md:px-6">
+              <CardContent className="p-4 md:px-6">
                 <p className="text-sm text-muted-foreground mb-3">
                   إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
                 </p>
@@ -1777,7 +1976,64 @@ export default function BossPanel() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Tab 5: System */}
+          <TabsContent value="system" className="space-y-4">
+            <Card className="border border-border/80 shadow-sm rounded-2xl">
+              <CardContent className="p-4 md:p-6">
+                <SystemDiagnostics />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Direct activation without generating a code */}
+        <Dialog open={!!directActivateDialog} onOpenChange={() => setDirectActivateDialog(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>تفعيل مباشر بدون كود</DialogTitle>
+              <DialogDescription>
+                {directActivateDialog?.owner.full_name || directActivateDialog?.owner.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>مدة الترخيص (أيام)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={directActivateDays}
+                  onChange={(e) => setDirectActivateDays(e.target.value)}
+                  className="h-11 rounded-xl text-center font-bold"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[30, 90, 180, 365].map((d) => (
+                    <Button
+                      key={d}
+                      type="button"
+                      variant={directActivateDays === String(d) ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-8 rounded-lg text-xs"
+                      onClick={() => setDirectActivateDays(String(d))}
+                    >
+                      {d} يوم
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                يبدأ الترخيص من اليوم وينتهي بعد المدة المحددة، دون الحاجة لإنشاء كود أو إرساله.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDirectActivateDialog(null)}>إلغاء</Button>
+              <Button onClick={handleDirectActivate} disabled={isDirectActivating}>
+                {isDirectActivating ? 'جارٍ التفعيل...' : 'تفعيل الآن'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* All Dialogs remain the same */}
         <Dialog open={showNewCodeDialog} onOpenChange={setShowNewCodeDialog}>
@@ -1820,8 +2076,34 @@ export default function BossPanel() {
                     value={newCode.max_uses}
                     onChange={(e) => setNewCode(prev => ({ ...prev, max_uses: parseInt(e.target.value) || 1 }))}
                     min={1}
+                    disabled={!!newCode.assigned_user_id}
                   />
                 </div>
+              </div>
+              {/* Reserve this code for one specific account */}
+              <div className="space-y-2">
+                <Label>تخصيص الكود لحساب معيّن (اختياري)</Label>
+                <Select
+                  value={newCode.assigned_user_id || 'none'}
+                  onValueChange={(value) => setNewCode(prev => ({ ...prev, assigned_user_id: value === 'none' ? '' : value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="متاح لأي حساب" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">متاح لأي حساب</SelectItem>
+                    {owners.filter(o => o.role !== 'boss').map((o) => (
+                      <SelectItem key={o.user_id} value={o.user_id}>
+                        {o.full_name || 'بدون اسم'} {o.email ? `— ${o.email}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {newCode.assigned_user_id && (
+                  <p className="text-[11px] text-muted-foreground">
+                    سيُقبل هذا الكود من هذا الحساب فقط، ولمرة واحدة.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
