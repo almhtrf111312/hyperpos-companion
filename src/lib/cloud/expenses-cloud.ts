@@ -135,16 +135,16 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
     return expensesCache;
   }
 
-  // Offline: return local cache
-  if (!navigator.onLine) {
-    const local = loadExpensesLocally();
-    if (local) {
-      expensesCache = local;
-      cacheTimestamp = Date.now();
-      return local;
-    }
-    return [];
+  // محلي أولاً: اعرض النسخة المحفوظة فوراً وحدّثها في الخلفية
+  const local = loadExpensesLocally();
+  if (local && local.length > 0) {
+    expensesCache = local;
+    cacheTimestamp = Date.now();
+    if (navigator.onLine) refreshExpensesInBackground();
+    return local;
   }
+
+  if (!navigator.onLine) return local || [];
 
   // Check if user is cashier for filtering
   const isCashier = await isCashierUser();
