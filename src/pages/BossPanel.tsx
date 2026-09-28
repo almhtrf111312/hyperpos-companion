@@ -1475,6 +1475,13 @@ export default function BossPanel() {
                                     <Pencil className="w-4 h-4 me-2" />
                                     تعديل التفعيل
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    setDirectActivateDialog({ owner });
+                                    setDirectActivateDays('90');
+                                  }}>
+                                    <CheckCircle className="w-4 h-4 me-2" />
+                                    تفعيل مباشر بدون كود
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setActivationDialog({ owner })}>
                                     <Ticket className="w-4 h-4 me-2" />
                                     تفعيل عن بعد
