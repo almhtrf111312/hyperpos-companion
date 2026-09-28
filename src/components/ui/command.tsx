@@ -49,10 +49,8 @@ const CommandInput = React.forwardRef<
       )}
       onChange={(e) => {
         let val = e.target.value;
-        if (val) {
+        if (val && /[\u200B-\u200D\uFEFF\u200E\u200F]/.test(val)) {
           val = val.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '');
-        }
-        if (val !== e.target.value) {
           e.target.value = val;
         }
         onChange?.(e);

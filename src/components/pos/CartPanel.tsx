@@ -703,30 +703,35 @@ export function CartPanel({
     }
   };
 
-  // Smart customer search handler - using Cloud API
-  const handleCustomerSearch = async (value: string) => {
+  // Normalize Arabic letters and characters for flawless instant search
+  const normalizeArabicSearch = (text: string): string => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .replace(/[أإآٱ]/g, 'ا')
+      .replace(/[ة]/g, 'ه')
+      .replace(/[ى]/g, 'ي')
+      .replace(/[\u064B-\u065F\u0670ـ]/g, '') // remove Arabic tashkeel & tatweel
+      .replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '') // remove zero-width / bidi marks
+      .trim();
+  };
+
+  // Smart instant customer search handler - uses fast memory & local cache with zero latency
+  const handleCustomerSearch = (value: string) => {
     onCustomerNameChange(value);
-    if (value.length >= 2) {
-      try {
-        // Use cloud API instead of local storage
-        const customers = await loadCustomersCloud();
-        const matches = customers.filter(c =>
-          c.name.toLowerCase().includes(value.toLowerCase()) ||
-          (c.phone && c.phone.includes(value))
-        ).slice(0, 5); // Max 5 results
-        setCustomerSuggestions(matches);
-        setShowSuggestions(matches.length > 0);
-      } catch (error) {
-        console.error('Failed to load customers:', error);
-        // Fallback to local storage
-        const localCustomers = loadCustomers();
-        const matches = localCustomers.filter(c =>
-          c.name.toLowerCase().includes(value.toLowerCase()) ||
-          (c.phone && c.phone.includes(value))
-        ).slice(0, 5);
-        setCustomerSuggestions(matches);
-        setShowSuggestions(matches.length > 0);
-      }
+    const cleanSearch = normalizeArabicSearch(value);
+
+    if (cleanSearch.length >= 1) {
+      const sourceList = allCustomers.length > 0 ? allCustomers : loadCustomers();
+      const matches = sourceList.filter(c => {
+        const cleanName = normalizeArabicSearch(c.name);
+        const cleanPhone = (c.phone || '').replace(/\D/g, '');
+        const searchDigits = value.replace(/\D/g, '');
+        return cleanName.includes(cleanSearch) || (searchDigits.length >= 2 && cleanPhone.includes(searchDigits));
+      }).slice(0, 8);
+
+      setCustomerSuggestions(matches);
+      setShowSuggestions(matches.length > 0);
     } else {
       setShowSuggestions(false);
       setCustomerSuggestions([]);
@@ -1013,40 +1018,43 @@ export function CartPanel({
                 value={customerName}
                 onChange={(e) => handleCustomerSearch(e.target.value)}
                 onFocus={() => {
-                  if (customerName.length >= 2 && customerSuggestions.length > 0) {
+                  if (customerName.trim().length >= 1 && customerSuggestions.length > 0) {
                     setShowSuggestions(true);
                   }
                 }}
                 onBlur={() => {
-                  // Delay hiding to allow click on suggestions
-                  setTimeout(() => setShowSuggestions(false), 200);
+                  setTimeout(() => setShowSuggestions(false), 250);
                 }}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 className="pr-9 bg-muted border-0 h-9 md:h-10 text-sm"
               />
               {/* Customer Suggestions Dropdown */}
               {showSuggestions && customerSuggestions.length > 0 && (
-                <div className="absolute top-full right-0 left-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-                  <Command className="bg-transparent">
-                    <CommandList>
-                      <CommandGroup>
-                        {customerSuggestions.map((customer) => (
-                          <CommandItem
-                            key={customer.id}
-                            onSelect={() => selectCustomer(customer)}
-                            className="cursor-pointer px-3 py-2 hover:bg-muted flex items-center justify-between"
-                          >
-                            <div className="flex items-center gap-2">
-                              <User className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span className="font-medium text-sm">{customer.name}</span>
-                            </div>
-                            {customer.phone && (
-                              <span className="text-xs text-muted-foreground">{customer.phone}</span>
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
+                <div 
+                  className="absolute top-full right-0 left-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  <div className="p-1 space-y-0.5">
+                    {customerSuggestions.map((customer) => (
+                      <div
+                        key={customer.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => selectCustomer(customer)}
+                        className="cursor-pointer px-3 py-2.5 hover:bg-muted active:bg-muted/80 rounded-md flex items-center justify-between transition-colors text-foreground select-none"
+                      >
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium text-sm">{customer.name}</span>
+                        </div>
+                        {customer.phone && (
+                          <span className="text-xs text-muted-foreground font-mono">{customer.phone}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

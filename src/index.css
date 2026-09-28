@@ -7,7 +7,10 @@
 /* Force Western/English numerals across the entire app */
 * {
   font-variant-numeric: lining-nums tabular-nums;
-  unicode-bidi: plaintext;
+}
+
+input, textarea {
+  unicode-bidi: normal !important;
 }
 
 /* Override toLocaleString Arabic numerals */
@@ -1690,7 +1693,7 @@ html.barcode-scanner-active .product-details-dialog * {
   [data-sonner-toaster] {
     right: 8px !important;
     left: 8px !important;
-    top: 12px !important;
+    top: calc(env(safe-area-inset-top, 0px) + 56px) !important;
   }
 
   [data-sonner-toast] {
