@@ -1648,6 +1648,61 @@ export default function BossPanel() {
 
           {/* Tab 2: Activation Codes */}
           <TabsContent value="codes" className="space-y-4">
+            {/* Default trial period — applies to new accounts only */}
+            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-border/50">
+                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0 text-emerald-600 dark:text-emerald-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <span>المدة الافتراضية للفترة التجريبية</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 md:px-6 space-y-3">
+                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                  تُطبَّق هذه المدة على الحسابات الجديدة فقط. الحسابات المفعّلة سابقاً تحتفظ بتاريخ انتهائها ولا يتأثر ترخيصها عند التغيير.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={trialDaysInput}
+                      onChange={(e) => setTrialDaysInput(e.target.value)}
+                      className="h-10 w-28 rounded-xl text-center font-bold"
+                    />
+                    <span className="text-sm text-muted-foreground">يوم</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[30, 60, 90, 180].map((d) => (
+                      <Button
+                        key={d}
+                        type="button"
+                        variant={trialDaysInput === String(d) ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-8 rounded-lg text-xs"
+                        onClick={() => setTrialDaysInput(String(d))}
+                      >
+                        {d} يوم
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={handleSaveTrialDays}
+                    disabled={isSavingTrialDays}
+                    size="sm"
+                    className="h-10 rounded-xl sm:ms-auto font-semibold"
+                  >
+                    {isSavingTrialDays ? 'جارٍ الحفظ...' : 'حفظ المدة'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  المدة الحالية المعتمدة: <span className="font-bold text-foreground">{defaultTrialDays} يوم</span>
+                </p>
+              </CardContent>
+            </Card>
+
             <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
                 <div className="flex items-center justify-between w-full sm:w-auto">
