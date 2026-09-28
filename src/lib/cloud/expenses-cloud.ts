@@ -205,7 +205,7 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
 
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadExpensesCloud = false;
-export const loadExpensesCloud = async (): Promise<Expense[][]> => {
+export const loadExpensesCloud = async (): Promise<Expense[]> => {
   if (!bootServed_loadExpensesCloud) {
     bootServed_loadExpensesCloud = true;
     const local = loadExpensesLocally();

@@ -200,7 +200,7 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
 
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadDebtsCloud = false;
-export const loadDebtsCloud = async (): Promise<Debt[][]> => {
+export const loadDebtsCloud = async (): Promise<Debt[]> => {
   if (!bootServed_loadDebtsCloud) {
     bootServed_loadDebtsCloud = true;
     const local = loadDebtsLocally();
