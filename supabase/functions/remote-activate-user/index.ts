@@ -120,14 +120,26 @@ Deno.serve(async (req) => {
         )
       }
 
+      // Code reserved for another account
+      if (codeData.assigned_user_id && codeData.assigned_user_id !== target_user_id) {
+        return new Response(
+          JSON.stringify({ error: 'هذا الكود مخصص لحساب آخر' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       finalDurationDays = codeData.duration_days
       finalMaxCashiers = codeData.max_cashiers
       finalLicenseTier = codeData.license_tier
 
-      // Increment code usage
+      // Increment code usage and record who consumed it
       await adminClient
         .from('activation_codes')
-        .update({ current_uses: codeData.current_uses + 1 })
+        .update({
+          current_uses: codeData.current_uses + 1,
+          used_by: codeData.used_by || target_user_id,
+          used_at: codeData.used_at || new Date().toISOString(),
+        })
         .eq('id', activation_code_id)
     }
 

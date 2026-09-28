@@ -234,6 +234,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Remember which account consumed this code (shown in the Boss panel)
+    await supabaseAdmin
+      .from('activation_codes')
+      .update({ used_by: user.id, used_at: new Date().toISOString() })
+      .eq('id', activationCode.id)
+      .is('used_by', null)
+
     console.log('License activated successfully for user:', user.id)
 
     return new Response(
