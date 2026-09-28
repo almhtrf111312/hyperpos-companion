@@ -2011,8 +2011,34 @@ export default function BossPanel() {
                     value={newCode.max_uses}
                     onChange={(e) => setNewCode(prev => ({ ...prev, max_uses: parseInt(e.target.value) || 1 }))}
                     min={1}
+                    disabled={!!newCode.assigned_user_id}
                   />
                 </div>
+              </div>
+              {/* Reserve this code for one specific account */}
+              <div className="space-y-2">
+                <Label>تخصيص الكود لحساب معيّن (اختياري)</Label>
+                <Select
+                  value={newCode.assigned_user_id || 'none'}
+                  onValueChange={(value) => setNewCode(prev => ({ ...prev, assigned_user_id: value === 'none' ? '' : value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="متاح لأي حساب" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">متاح لأي حساب</SelectItem>
+                    {owners.filter(o => o.role !== 'boss').map((o) => (
+                      <SelectItem key={o.user_id} value={o.user_id}>
+                        {o.full_name || 'بدون اسم'} {o.email ? `— ${o.email}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {newCode.assigned_user_id && (
+                  <p className="text-[11px] text-muted-foreground">
+                    سيُقبل هذا الكود من هذا الحساب فقط، ولمرة واحدة.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
