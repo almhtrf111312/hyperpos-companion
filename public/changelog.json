@@ -1,6 +1,11 @@
 [
   {
     "type": "improvement",
+    "ar": "عمل بلا إنترنت للديون والعملاء والمصاريف: الشاشات تفتح فورًا من النسخة المحفوظة، وأي دين أو سداد أو عميل أو مصروف يُحفظ على الجهاز ويدخل الطابور ويُرفع تلقائيًا لحظة عودة الإنترنت، مع بقاء تسوية السداد على الخادم",
+    "en": "v1.0.46 - Offline-first debts, customers and expenses: instant screens from saved copy, local save + queue, automatic upload when internet returns; debt payments still settle atomically on the server"
+  },
+  {
+    "type": "improvement",
     "ar": "فتح أسرع بعد إغلاق التطبيق: الفواتير تظهر فورًا من النسخة المحفوظة وتتحدث بصمت في الخلفية، دون أي تغيير في الحسابات",
     "en": "v1.0.45 - Faster reopen: invoices shown instantly from saved copy, refreshed silently in background"
   },
