@@ -1,8 +1,14 @@
 {
-  "versionCode": 275,
-  "versionName": "1.0.45",
-  "lastUpdated": "2026-09-28T12:30:00.000Z",
+  "versionCode": 276,
+  "versionName": "1.0.46",
+  "lastUpdated": "2026-09-28T12:31:56.705085Z",
   "buildHistory": [
+    {
+      "versionCode": 276,
+      "versionName": "1.0.46",
+      "date": "2026-09-28",
+      "description": "v1.0.46 - Offline-first debts, customers and expenses: screens open instantly from the saved copy, new debts/payments/customers/expenses are saved locally and queued, and upload automatically the moment internet returns; debt payments still settle atomically on the server"
+    },
     {
       "versionCode": 275,
       "versionName": "1.0.45",
