@@ -270,7 +270,38 @@ export const addExpenseCloud = async (expenseData: {
   }
   
   const userId = getCurrentUserId();
-  
+
+  // أوفلاين: احفظ المصروف محلياً وأودعه الطابور ليُرفع تلقائياً عند عودة الإنترنت
+  if (!navigator.onLine) {
+    const { getOwnerIdForInsert } = await import('../supabase-store');
+    const { addUniqueOperation } = await import('../sync-queue');
+    const ownerId = (await getOwnerIdForInsert()) || userId;
+    const localId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+
+    const payload = {
+      id: localId,
+      user_id: ownerId,
+      expense_type: expenseData.type,
+      amount: Math.round(expenseData.amount * 100) / 100,
+      description: expenseData.customType || null,
+      date: expenseData.date,
+      notes: expenseData.notes || null,
+      distributions,
+      cashier_id: userId,
+      created_at: createdAt,
+    };
+    addUniqueOperation('expense', payload, `expense_${localId}`);
+
+    const localExpense = toExpense({ ...payload, cashier_id: userId } as unknown as CloudExpense);
+    const currentList = expensesCache || loadExpensesLocally() || [];
+    expensesCache = [localExpense, ...currentList];
+    cacheTimestamp = Date.now();
+    saveExpensesLocally(expensesCache);
+    emitEvent(EVENTS.EXPENSES_UPDATED, null);
+    return localExpense;
+  }
+
   const inserted = await insertToSupabase<CloudExpense>('expenses', {
     expense_type: expenseData.type,
     amount: expenseData.amount,
