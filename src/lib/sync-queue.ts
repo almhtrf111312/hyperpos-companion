@@ -24,6 +24,7 @@ export type OperationType =
   | 'stock_update' 
   | 'customer_update'
   | 'customer_create'
+  | 'expense_atomic'
   | 'customer_delete'
   | 'invoice_create'
   | 'profit_record'

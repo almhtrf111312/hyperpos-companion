@@ -50,7 +50,26 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
     }
     case 'debt': {
       const cleanData = filterTablePayload('debts', data);
+      if (cleanData.id) {
+        const ownerId = await getOwnerIdForInsert();
+        if (!ownerId) throw new Error('No owner id');
+        return assertSuccess(sb.from('debts').upsert({ ...cleanData, user_id: ownerId }, { onConflict: 'id', ignoreDuplicates: true }));
+      }
       return assertSuccess(sb.from('debts').insert(cleanData));
+    }
+    case 'expense_atomic': {
+      const { uniqueKey: _u, ...args } = data;
+      const { error } = await sb.rpc('add_expense_atomic', args);
+      if (error) throw new Error(error.message);
+      return true;
+    }
+    case 'debt_payment': {
+      if (!data.debtId || !data.operationId) throw new Error('Invalid debt payment');
+      const { error } = await sb.rpc('record_debt_payment_atomic', {
+        _debt_id: String(data.debtId), _amount: Number(data.amount), _operation_id: String(data.operationId),
+      });
+      if (error) throw new Error(error.message);
+      return true;
     }
     case 'customer_create': {
       const ownerId = await getOwnerIdForInsert();

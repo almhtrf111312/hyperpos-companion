@@ -1,8 +1,14 @@
 {
-  "versionCode": 277,
-  "versionName": "1.0.47",
-  "lastUpdated": "2026-09-28T12:50:00.000Z",
+  "versionCode": 278,
+  "versionName": "1.0.48",
+  "lastUpdated": "2026-09-28T13:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 278,
+      "versionName": "1.0.48",
+      "date": "2026-09-28",
+      "description": "v1.0.48 - Offline expenses (server saves expense and partner shares together, no duplicates), offline manual debts and debt payments with automatic safe sync"
+    },
     {
       "versionCode": 277,
       "versionName": "1.0.47",

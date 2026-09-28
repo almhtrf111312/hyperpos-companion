@@ -1841,6 +1841,17 @@ export type Database = {
       }
     }
     Functions: {
+      add_expense_atomic: {
+        Args: {
+          _amount: number
+          _date: string
+          _description: string
+          _expense_type: string
+          _notes: string
+          _operation_id: string
+        }
+        Returns: Json
+      }
       add_product_quantity: {
         Args: { _amount: number; _product_id: string }
         Returns: number

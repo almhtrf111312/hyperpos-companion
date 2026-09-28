@@ -12,6 +12,7 @@ import { emitEvent, EVENTS } from '../events';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { updateInvoiceCloud } from './invoices-cloud';
 import { supabase } from '@/integrations/supabase/client';
+import { addToQueue } from '../sync-queue';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -237,6 +238,25 @@ export const addDebtCloud = async (
     console.log('[addDebtCloud] Fallback to supabase.auth.getUser:', cashierId);
   }
 
+  // Offline: keep on device, upload automatically later (idempotent by client UUID)
+  if (!navigator.onLine) {
+    const id = crypto.randomUUID();
+    const nowIso = new Date().toISOString();
+    const row = {
+      id, invoice_id: debtData.invoiceId || null, customer_name: debtData.customerName,
+      customer_phone: debtData.customerPhone || null, total_debt: debtData.totalDebt, total_paid: 0,
+      remaining_debt: debtData.totalDebt, due_date: debtData.dueDate || null,
+      status: debtData.dueDate && debtData.dueDate < today ? 'overdue' : 'due',
+      notes: debtData.notes || null, is_cash_debt: debtData.isCashDebt || false, cashier_id: cashierId,
+    };
+    addToQueue('debt', row, 10);
+    const local = toDebt({ ...row, user_id: '', created_at: nowIso, updated_at: nowIso } as CloudDebt);
+    const list = [local, ...(debtsCache || loadDebtsLocally() || [])];
+    debtsCache = list; cacheTimestamp = Date.now(); saveDebtsLocally(list);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return local;
+  }
+
   const inserted = await insertToSupabase<CloudDebt>('debts', {
     invoice_id: debtData.invoiceId || null,
     customer_name: debtData.customerName,
@@ -289,6 +309,20 @@ export const recordPaymentCloud = async (
   operationId?: string
 ): Promise<Debt | null> => {
   const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const amt = Math.round(amount * 100) / 100;
+  const queuePayment = (): Debt | null => {
+    addToQueue('debt_payment', { debtId, amount: amt, operationId: opId }, 10);
+    const list = (debtsCache || loadDebtsLocally() || []).map(d => {
+      if (d.id !== debtId) return d;
+      const totalPaid = Math.round((d.totalPaid + amt) * 100) / 100;
+      const remainingDebt = Math.max(0, Math.round((d.totalDebt - totalPaid) * 100) / 100);
+      return { ...d, totalPaid, remainingDebt, status: (remainingDebt <= 0 ? 'fully_paid' : 'partially_paid') as DebtStatus };
+    });
+    debtsCache = list; cacheTimestamp = Date.now(); saveDebtsLocally(list);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return list.find(d => d.id === debtId) || null;
+  };
+  if (!navigator.onLine) return queuePayment();
   const { data, error } = await sb.rpc('record_debt_payment_atomic', {
     _debt_id: debtId,
     _amount: Math.round(amount * 100) / 100,
