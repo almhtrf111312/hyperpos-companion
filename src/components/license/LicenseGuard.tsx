@@ -6,6 +6,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { ActivationScreen } from './ActivationScreen';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
 import { DataEncryptedScreen } from './DataEncryptedScreen';
+import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { Loader2, MessageCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -156,6 +157,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <Button variant="outline" className="w-full" onClick={() => checkLicense()}>{t('license.recheck')}</Button>
+            <ContactLinksSection />
             <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => { await supabase.auth.signOut(); }}>{t('license.signOut')}</Button>
           </CardContent>
         </Card>

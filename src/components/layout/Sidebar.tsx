@@ -36,6 +36,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { useUserRole } from '@/hooks/use-user-role';
 import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
+import { supabase } from '@/integrations/supabase/client';
+import { MessageCircle } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { SyncStatusMenu } from './SyncStatusMenu';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
@@ -53,6 +55,7 @@ interface NavItem {
   hideInNoInventory?: boolean;
   requiresBakeryMode?: boolean;
   requiresBookstore?: boolean;
+  requiresContactSidebar?: boolean;
   tourId?: string;
   tooltipKey?: TranslationKey;
 }
@@ -73,6 +76,7 @@ const navItems: NavItem[] = [
   { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true, tourId: 'reports', tooltipKey: 'tooltip.reports' as TranslationKey },
   { icon: Palette, translationKey: 'settings.theme', path: '/appearance', tourId: 'appearance', tooltipKey: 'tooltip.appearance' as TranslationKey },
   { icon: HelpCircle, translationKey: 'nav.help', path: '/help', tourId: 'help', tooltipKey: 'tooltip.help' as TranslationKey },
+  { icon: MessageCircle, translationKey: 'license.contactDeveloper' as TranslationKey, path: '/contact', requiresContactSidebar: true, tourId: 'contact', tooltipKey: 'license.contactDeveloper' as TranslationKey },
   { icon: Settings, translationKey: 'nav.settings', path: '/settings', adminOnly: true, tourId: 'settings', tooltipKey: 'tooltip.settings' as TranslationKey },
 ];
 
@@ -161,6 +165,22 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   const noInventory = isNoInventoryMode(storeType);
   const allowedPages = profile?.allowed_pages as string[] | null;
 
+  const [showContactInSidebar, setShowContactInSidebar] = useState(() => {
+    try { return localStorage.getItem('hyperpos_contact_sidebar') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('app_settings').select('value').eq('key', 'contact_links').maybeSingle().then(({ data }) => {
+      if (cancelled || !data?.value) return;
+      try {
+        const show = JSON.parse(data.value)._show_in_sidebar === 'true';
+        setShowContactInSidebar(show);
+        localStorage.setItem('hyperpos_contact_sidebar', String(show));
+      } catch { /* ignore */ }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const filteredNavItems = navItems.filter(item => {
     if (item.adminOnly && !(isBoss || isAdmin)) {
       if (allowedPages && allowedPages.length > 0) {
@@ -174,6 +194,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     if (item.hideInNoInventory && noInventory) return false;
     if (item.requiresBakeryMode && !noInventory) return false;
     if (item.requiresBookstore && storeType !== 'bookstore') return false;
+    if (item.requiresContactSidebar && !showContactInSidebar) return false;
     return true;
   });
 

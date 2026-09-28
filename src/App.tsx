@@ -52,6 +52,7 @@ import Signup from "./pages/Signup";
 import Appearance from "./pages/Appearance";
 import NotFound from "./pages/NotFound";
 import Help from "./pages/Help";
+import ContactDeveloper from "./pages/ContactDeveloper";
 import BossPanel from "./pages/BossPanel";
 import LibraryMembers from "./pages/LibraryMembers";
 import { WarehouseProvider } from "./hooks/use-warehouse";
@@ -294,6 +295,7 @@ const AppContent = () => {
           <Route path="/cash-shifts" element={<CashShifts />} />
           <Route path="/appearance" element={<Appearance />} />
           <Route path="/library" element={<LibraryMembers />} />
+          <Route path="/contact" element={<ContactDeveloper />} />
 
           {/* Admin/Boss only */}
           <Route path="/dashboard" element={<RoleGuard allowedRoles={['boss', 'admin']}><Dashboard /></RoleGuard>} />

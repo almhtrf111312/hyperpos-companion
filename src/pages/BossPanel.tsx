@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Switch } from '@/components/ui/switch';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useUserRole } from '@/hooks/use-user-role';
@@ -157,7 +158,7 @@ export default function BossPanel() {
   });
 
   // Delete Confirmation
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'code'; id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'cashier' | 'code'; id: string; name: string } | null>(null);
 
   // Edit Name Dialog
   const [editNameDialog, setEditNameDialog] = useState<{ owner: Owner } | null>(null);
@@ -1463,8 +1464,8 @@ export default function BossPanel() {
                                       'bg-muted text-muted-foreground';
 
                                     return (
-                                      <div key={cashier.user_id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <div key={cashier.user_id} className="flex items-start justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                                        <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
                                           <div className="flex flex-col min-w-0">
                                             <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
                                             {cashier.email && (
@@ -1510,7 +1511,7 @@ export default function BossPanel() {
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
-                                              onClick={() => setDeleteConfirm({ type: 'owner', id: cashier.user_id, name: cashier.full_name || 'هذا الحساب' })}
+                                              onClick={() => setDeleteConfirm({ type: 'cashier', id: cashier.user_id, name: cashier.full_name || 'هذا الحساب' })}
                                               className="text-destructive focus:text-destructive"
                                             >
                                               <Trash2 className="w-4 h-4 me-2" />
@@ -1753,7 +1754,7 @@ export default function BossPanel() {
                   إدارة قنوات التواصل التي تظهر للمستخدمين في الإعدادات وشاشات التفعيل
                 </p>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {Object.entries(contactLinks).filter(([, v]) => v?.trim()).map(([key]) => (
+                  {Object.entries(contactLinks).filter(([k, v]) => !k.startsWith('_') && v?.trim()).map(([key]) => (
                     <Badge key={key} variant="secondary" className="text-xs">
                       {key === 'whatsapp' ? '💬 واتساب' :
                        key === 'facebook' ? '📘 فيسبوك' :
@@ -1765,7 +1766,7 @@ export default function BossPanel() {
                        key === 'olx' ? '🛒 OLX' : key}
                     </Badge>
                   ))}
-                  {!Object.values(contactLinks).some(v => v?.trim()) && (
+                  {!Object.entries(contactLinks).some(([k, v]) => !k.startsWith('_') && v?.trim()) && (
                     <span className="text-xs text-muted-foreground">لم يتم إضافة أي قناة بعد</span>
                   )}
                 </div>
@@ -2132,7 +2133,9 @@ export default function BossPanel() {
               <AlertDialogDescription>
                 {deleteConfirm?.type === 'owner'
                   ? `هل أنت متأكد من حذف "${deleteConfirm.name}"؟ سيتم حذف جميع بياناته وكاشيراته نهائياً.`
-                  : `هل أنت متأكد من حذف الكود "${deleteConfirm?.name}"؟`
+                  : deleteConfirm?.type === 'cashier'
+                    ? `هل أنت متأكد من حذف الحساب التابع "${deleteConfirm.name}"؟ لن تتأثر بيانات المتجر.`
+                    : `هل أنت متأكد من حذف الكود "${deleteConfirm?.name}"؟`
                 }
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -2143,6 +2146,8 @@ export default function BossPanel() {
                 onClick={() => {
                   if (deleteConfirm?.type === 'owner') {
                     handleDeleteOwner(deleteConfirm.id);
+                  } else if (deleteConfirm?.type === 'cashier') {
+                    handleDeleteCashier(deleteConfirm.id, deleteConfirm.name);
                   } else if (deleteConfirm?.type === 'code') {
                     handleDeleteCode(deleteConfirm.id);
                   }
@@ -2528,6 +2533,27 @@ export default function BossPanel() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">العرض في القائمة الجانبية</p>
+                    <p className="text-xs text-muted-foreground">يضيف صفحة «التواصل مع المطور» بعد التعليمات</p>
+                  </div>
+                  <Switch checked={contactLinks._show_in_sidebar === 'true'} onCheckedChange={(v) => setContactLinks(prev => ({ ...prev, _show_in_sidebar: v ? 'true' : 'false' }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>اسم المطور / الجهة</Label>
+                  <Input value={contactLinks._developer_name || ''} onChange={(e) => setContactLinks(prev => ({ ...prev, _developer_name: e.target.value }))} placeholder="مثال: فريق Flow POS" />
+                </div>
+                <div className="space-y-2">
+                  <Label>رقم الهاتف</Label>
+                  <Input value={contactLinks._phone || ''} onChange={(e) => setContactLinks(prev => ({ ...prev, _phone: e.target.value }))} placeholder="+963..." dir="ltr" className="font-mono" />
+                </div>
+                <div className="space-y-2">
+                  <Label>رابط الموقع</Label>
+                  <Input value={contactLinks._website || ''} onChange={(e) => setContactLinks(prev => ({ ...prev, _website: e.target.value }))} placeholder="https://..." dir="ltr" />
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">💬 رقم واتساب</Label>
                 <Input value={contactLinks.whatsapp} onChange={(e) => setContactLinks(prev => ({ ...prev, whatsapp: e.target.value }))} placeholder="+970599000000" dir="ltr" className="font-mono" />
