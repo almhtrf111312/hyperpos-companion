@@ -1682,21 +1682,24 @@ export default function BossPanel() {
                         ? Math.ceil((new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                         : null;
 
+                      const assignedOwner = code.assigned_user_id ? ownerById.get(code.assigned_user_id) : null;
+                      const usedOwner = code.used_by ? ownerById.get(code.used_by) : null;
+
                       return (
-                        <div key={code.id} className={`p-2 md:p-3 rounded-lg space-y-2 border-s-4 ${
+                        <div key={code.id} className={`p-3 rounded-xl space-y-2.5 border border-border/60 border-s-4 bg-card/50 ${
                           !code.is_active ? 'border-s-muted bg-muted/30' :
-                          code.current_uses >= code.max_uses ? 'border-s-orange-400 bg-orange-400/5' :
-                          'border-s-emerald-500 bg-emerald-500/5'
+                          code.current_uses >= code.max_uses ? 'border-s-orange-400' :
+                          'border-s-emerald-500'
                         }`}>
-                          <div className="flex items-center justify-between gap-2">
-                            <button
-                              onClick={() => copyToClipboard(code.code)}
-                              className="font-mono text-xs md:text-sm bg-background px-2 py-1 rounded border hover:bg-muted transition-colors truncate max-w-[140px] md:max-w-none"
-                            >
-                              {isMobile ? code.code.slice(0, 12) + '...' : code.code}
-                              <Copy className="w-3 h-3 inline ms-1 md:ms-2 text-muted-foreground" />
-                            </button>
-                            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                          {/* Code on its own full-width row so it never overlaps the actions */}
+                          <button
+                            onClick={() => copyToClipboard(code.code)}
+                            className="w-full flex items-center justify-between gap-2 font-mono text-xs md:text-sm bg-background px-2.5 py-2 rounded-lg border hover:bg-muted transition-colors text-start"
+                          >
+                            <span className="truncate tracking-wider">{code.code}</span>
+                            <Copy className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                          </button>
+                          <div className="flex items-center justify-end gap-1 md:gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                                 setEditCodeDialog(code);
                                 setEditCodeForm({ duration_days: code.duration_days, max_uses: code.max_uses, max_cashiers: code.max_cashiers, license_tier: code.license_tier, note: code.note || '' });
