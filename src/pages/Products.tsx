@@ -21,7 +21,8 @@ import {
   FileText,
   LayoutGrid,
   List,
-  AlignJustify
+  AlignJustify,
+  Copy
 } from 'lucide-react';
 import { cn, toWesternNumerals, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -1408,91 +1409,161 @@ export default function Products() {
                 );
               }
 
-              // Grid view - full cards (default)
+              // Grid view - البطاقة المطورة المطابقة للتصميم
               return (
                 <div
                   key={product.id}
-                  className="bg-card rounded-xl border border-border p-4 fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
+                  className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-sm hover:shadow-md transition-shadow fade-in"
+                  style={{ animationDelay: `${index * 25}ms` }}
                 >
-                  <div className="flex items-start gap-3 mb-3">
-                    <ProductImage
-                      imageUrl={product.image}
-                      alt={product.name}
-                      className="w-14 h-14 rounded-xl flex-shrink-0"
-                      iconClassName="w-7 h-7"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground text-sm line-clamp-2 leading-tight" title={product.name}>{product.name}</h3>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5" title={product.barcode}>{noInventory ? product.category : (product.barcode || product.category)}</p>
-                    </div>
-                    {!noInventory && (
-                      <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap", status.color)}>
-                        {status.label}
-                      </span>
+                  {/* القسم العلوي: أزرار التحكم + البيانات + الصورة */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    {/* 1. أزرار التعديل والحذف على أقصى اليسار */}
+                    {canAddProducts ? (
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                          onClick={() => openDeleteDialog(product)}
+                          title="حذف المنتج"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                          onClick={() => openEditDialog(product)}
+                          title="تعديل المنتج"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="w-8" />
                     )}
-                  </div>
 
-                  {noInventory ? (
-                    <div className={cn("grid gap-2 text-center mb-3", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
-                      {isRepairMode ? (
-                        <>
-                          <div>
-                            <p className="text-xs text-muted-foreground">تكلفة القطعة</p>
-                            <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">تكلفة العمالة</p>
-                            <p className="font-semibold text-sm">${formatNumber(product.laborCost || 0, 2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">المجموع</p>
-                            <p className="font-semibold text-sm text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <p className="text-xs text-muted-foreground">البيع</p>
-                            <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">{t('products.wholesalePrice')}</p>
-                            <p className="font-semibold text-sm">${formatNumber(product.wholesalePrice || 0, 2)}</p>
-                          </div>
-                        </>
+                    {/* 2. اسم المنتج + الباركود والشارة في المنتصف */}
+                    <div className="flex-1 min-w-0 text-right">
+                      <h3
+                        className="font-bold text-foreground text-sm sm:text-base line-clamp-1 leading-snug cursor-pointer hover:text-primary transition-colors"
+                        title={product.name}
+                        onClick={() => openEditDialog(product)}
+                      >
+                        {product.name}
+                      </h3>
+
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap justify-end">
+                        {/* شارة التوفر */}
+                        {!noInventory && (
+                          <span className={cn("px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap", status.color)}>
+                            {status.label}
+                          </span>
+                        )}
+
+                        {/* شريحة الباركود القابلة للنسخ */}
+                        {(product.barcode || product.category) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (product.barcode) {
+                                navigator.clipboard.writeText(product.barcode);
+                                toast.success(`تم نسخ الباركود: ${product.barcode}`);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-muted/40 hover:bg-muted border border-border/80 text-xs font-mono text-muted-foreground transition-colors"
+                            title="انقر لنسخ الباركود"
+                          >
+                            <span>{product.barcode || product.category}</span>
+                            {product.barcode && <Copy className="w-3 h-3 text-muted-foreground/70" />}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Size/Color badges */}
+                      {fieldsConfig.sizeColor && (product.size || product.color) && (
+                        <div className="flex flex-wrap gap-1 mt-1.5 justify-end">
+                          {product.size && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">{product.size}</span>}
+                          {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-md">{product.color}</span>}
+                        </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground">الشراء</p>
-                        <p className="font-semibold text-sm">${formatNumber(product.costPrice, 2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">البيع</p>
-                        <p className="font-semibold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">الربح</p>
-                        <p className="font-semibold text-sm text-success">${formatNumber(profit, 2)}</p>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Size/Color badges for clothing mode */}
-                  {fieldsConfig.sizeColor && (product.size || product.color) && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {product.size && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">{product.size}</span>}
-                      {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-md">{product.color}</span>}
+                    {/* 3. صورة المنتج مع بادج الوحدة على أقصى اليمين */}
+                    <div className="relative flex-shrink-0">
+                      <ProductImage
+                        imageUrl={product.image}
+                        alt={product.name}
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-muted/40 border border-border/50 object-cover"
+                        iconClassName="w-8 h-8 text-muted-foreground/50"
+                      />
+                      {/* بادج الوحدة مثبت في زاوية الصورة */}
+                      <span className="absolute -bottom-1.5 -left-1.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm border border-background whitespace-nowrap">
+                        {product.smallUnit || (product.bulkUnit ? product.bulkUnit : 'قطعة')}
+                      </span>
                     </div>
-                  )}
+                  </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-border">
-                    <div className="flex items-center gap-3">
-                      {!noInventory && (
-                        <>
-                          <div className="text-sm">
+                  {/* خط فاصل + القسم السفلي */}
+                  <div className="border-t border-border/60 pt-2.5">
+                    {noInventory ? (
+                      <div className={cn("grid gap-2 text-center", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
+                        {isRepairMode ? (
+                          <>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground font-medium">تكلفة القطعة</p>
+                              <p className="font-bold text-sm text-foreground">${formatNumber(product.costPrice, 2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground font-medium">تكلفة العمالة</p>
+                              <p className="font-bold text-sm text-foreground">${formatNumber(product.laborCost || 0, 2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground font-medium">المجموع</p>
+                              <p className="font-bold text-sm text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground font-medium">البيع</p>
+                              <p className="font-bold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground font-medium">{t('products.wholesalePrice')}</p>
+                              <p className="font-bold text-sm text-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      // شبكة الأربعة أعمدة: الشراء، البيع، الربح، المخزون
+                      <div className="grid grid-cols-4 gap-1 text-center divide-x divide-x-reverse divide-border/40">
+                        <div className="px-1">
+                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">الشراء</p>
+                          <p className="font-bold text-xs sm:text-sm text-foreground">
+                            ${formatNumber(product.costPrice, 2)}
+                          </p>
+                        </div>
+                        <div className="px-1">
+                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">البيع</p>
+                          <p className="font-bold text-xs sm:text-sm text-primary">
+                            ${formatNumber(product.salePrice, 2)}
+                          </p>
+                        </div>
+                        <div className="px-1">
+                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">الربح</p>
+                          <p className={cn(
+                            "font-bold text-xs sm:text-sm",
+                            profit > 0 ? "text-emerald-600 dark:text-emerald-400" : profit < 0 ? "text-destructive" : "text-muted-foreground"
+                          )}>
+                            {profit > 0 ? `+$${formatNumber(profit, 2)}` : `$${formatNumber(profit, 2)}`}
+                          </p>
+                        </div>
+                        <div className="px-1">
+                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">المخزون</p>
+                          <p className="font-bold text-xs sm:text-sm text-foreground">
                             <DualUnitDisplay
                               totalPieces={product.quantity}
                               conversionFactor={product.conversionFactor || 1}
@@ -1501,34 +1572,20 @@ export default function Products() {
                               showTotal={false}
                               size="sm"
                             />
-                          </div>
+                          </p>
                           {(() => {
                             const custodyQty = getCustodyQuantity(product.id);
                             if (custodyQty > 0) {
                               return (
-                                <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-1 rounded-full">
-                                  <Truck className="w-3 h-3 text-primary" />
-                                  <span className="text-primary font-medium">{custodyQty}</span>
-                                  <span className="text-muted-foreground">عهدة</span>
+                                <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                                  <Truck className="w-2.5 h-2.5 text-primary" />
+                                  <span className="text-[10px] text-primary font-medium">{custodyQty} عهدة</span>
                                 </div>
                               );
                             }
                             return null;
                           })()}
-                        </>
-                      )}
-                      {noInventory && (
-                        <span className="text-xs text-muted-foreground">{product.category}</span>
-                      )}
-                    </div>
-                    {canAddProducts && (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]" onClick={() => openEditDialog(product)}>
-                          <Edit className="w-5 h-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px] text-destructive" onClick={() => openDeleteDialog(product)}>
-                          <Trash2 className="w-5 h-5" />
-                        </Button>
+                        </div>
                       </div>
                     )}
                   </div>
