@@ -168,8 +168,6 @@ export function ActivationScreen() {
                 {t('license.contactDeveloper')}
               </Button>
             )}
-              </Button>
-            )}
             <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground gap-2" onClick={handleSignOut} disabled={isSigningOut}>
               {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
               <span className="ms-2">{t('license.signOutOther')}</span>
