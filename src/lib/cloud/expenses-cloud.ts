@@ -213,7 +213,7 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
       expensesCache = local; cacheTimestamp = Date.now();
       if (navigator.onLine) {
         setTimeout(() => {
-          REexpensesCache = local; cacheTimestamp = Date.now();
+          expensesCache = null; cacheTimestamp = 0;
           fetchFresh_loadExpensesCloud().then(() => emitEvent(EVENTS.EXPENSES_UPDATED, null)).catch(() => {});
         }, 0);
       }

@@ -208,7 +208,7 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
       debtsCache = local; cacheTimestamp = Date.now();
       if (navigator.onLine) {
         setTimeout(() => {
-          REdebtsCache = local; cacheTimestamp = Date.now();
+          debtsCache = null; cacheTimestamp = 0;
           fetchFresh_loadDebtsCloud().then(() => emitEvent(EVENTS.DEBTS_UPDATED, null)).catch(() => {});
         }, 0);
       }
