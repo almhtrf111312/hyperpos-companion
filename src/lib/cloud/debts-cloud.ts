@@ -172,6 +172,45 @@ const fetchDebtsFromCloud = async (userId: string): Promise<Debt[]> => {
   return debtsCache;
 };
 
+let bgRefreshingDebts = false;
+const refreshDebtsInBackground = (userId: string) => {
+  if (bgRefreshingDebts || !navigator.onLine) return;
+  bgRefreshingDebts = true;
+  fetchDebtsFromCloud(userId)
+    .then(() => emitEvent(EVENTS.DEBTS_UPDATED, null))
+    .catch(e => console.warn('[debts-cloud] background refresh failed:', e))
+    .finally(() => { bgRefreshingDebts = false; });
+};
+
+// Load debts — محلي أولاً: النسخة المحفوظة فوراً ثم تحديث صامت في الخلفية
+export const loadDebtsCloud = async (): Promise<Debt[]> => {
+  let userId = getCurrentUserId();
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      userId = user.id;
+      setCurrentUserId(user.id);
+    }
+  }
+  if (!userId) return loadDebtsLocally() || [];
+
+  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return debtsCache;
+  }
+
+  const local = loadDebtsLocally();
+  if (local && local.length > 0) {
+    debtsCache = local;
+    cacheTimestamp = Date.now();
+    refreshDebtsInBackground(userId);
+    return local;
+  }
+
+  if (!navigator.onLine) return local || [];
+
+  return fetchDebtsFromCloud(userId);
+};
+
 export const invalidateDebtsCache = () => {
   debtsCache = null;
   cacheTimestamp = 0;
