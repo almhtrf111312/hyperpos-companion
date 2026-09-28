@@ -1,5 +1,10 @@
 [
   {
+    "type": "feature",
+    "ar": "إضافة وتعديل وحذف العملاء بدون إنترنت؛ تُحفظ على الجهاز وتُرفع تلقائيًا عند عودة الاتصال دون تكرار",
+    "en": "v1.0.47 - Offline customer add/edit/delete with automatic sync"
+  },
+  {
     "type": "improvement",
     "ar": "المصاريف والديون تظهر فورًا بعد فتح التطبيق من النسخة المحفوظة وتتحدث بصمت في الخلفية، دون تغيير الحسابات",
     "en": "v1.0.46 - Expenses and debts shown instantly from saved copy, refreshed silently"
