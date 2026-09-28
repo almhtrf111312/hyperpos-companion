@@ -2103,7 +2103,7 @@ export default function Products() {
                     />
                   </div>
                 )}
-                {fieldsConfig.wholesalePrice && (
+                {(fieldsConfig.wholesalePrice || (formData.wholesalePrice || 0) > 0) && (
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
                     <Input
@@ -2598,7 +2598,7 @@ export default function Products() {
                     />
                   </div>
                 )}
-                {fieldsConfig.wholesalePrice && (
+                {(fieldsConfig.wholesalePrice || (formData.wholesalePrice || 0) > 0) && (
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
                     <Input
