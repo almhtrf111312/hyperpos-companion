@@ -1,6 +1,11 @@
 [
   {
     "type": "improvement",
+    "ar": "المصاريف والديون تظهر فورًا بعد فتح التطبيق من النسخة المحفوظة وتتحدث بصمت في الخلفية، دون تغيير الحسابات",
+    "en": "v1.0.46 - Expenses and debts shown instantly from saved copy, refreshed silently"
+  },
+  {
+    "type": "improvement",
     "ar": "فتح أسرع بعد إغلاق التطبيق: الفواتير تظهر فورًا من النسخة المحفوظة وتتحدث بصمت في الخلفية، دون أي تغيير في الحسابات",
     "en": "v1.0.45 - Faster reopen: invoices shown instantly from saved copy, refreshed silently in background"
   },

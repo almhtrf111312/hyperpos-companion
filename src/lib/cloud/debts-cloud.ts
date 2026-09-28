@@ -129,7 +129,7 @@ export const getNextManualDebtId = async (): Promise<string> => {
 
 // Load debts
 // ✅ Owners see all debts, cashiers see only their own
-export const loadDebtsCloud = async (): Promise<Debt[]> => {
+const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
   let userId = getCurrentUserId();
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -195,6 +195,27 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
   saveDebtsLocally(debtsCache);
 
   return debtsCache;
+};
+
+
+// Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
+let bootServed_loadDebtsCloud = false;
+export const loadDebtsCloud = async (): Promise<Debt[][]> => {
+  if (!bootServed_loadDebtsCloud) {
+    bootServed_loadDebtsCloud = true;
+    const local = loadDebtsLocally();
+    if (local && local.length > 0 && getCurrentUserId()) {
+      debtsCache = local; cacheTimestamp = Date.now();
+      if (navigator.onLine) {
+        setTimeout(() => {
+          REdebtsCache = local; cacheTimestamp = Date.now();
+          fetchFresh_loadDebtsCloud().then(() => emitEvent(EVENTS.DEBTS_UPDATED, null)).catch(() => {});
+        }, 0);
+      }
+      return local;
+    }
+  }
+  return fetchFresh_loadDebtsCloud();
 };
 
 export const invalidateDebtsCache = () => {
