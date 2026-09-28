@@ -1959,6 +1959,15 @@ export default function BossPanel() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Tab 5: System */}
+          <TabsContent value="system" className="space-y-4">
+            <Card className="border border-border/80 shadow-sm rounded-2xl">
+              <CardContent className="p-4 md:p-6">
+                <SystemDiagnostics />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
         {/* All Dialogs remain the same */}
