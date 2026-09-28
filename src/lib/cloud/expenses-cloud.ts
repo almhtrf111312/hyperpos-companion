@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
+import { addToQueue } from '../sync-queue';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
 
@@ -236,65 +237,45 @@ export const addExpenseCloud = async (expenseData: {
   notes?: string;
   date: string;
 }): Promise<Expense | null> => {
-  const partners = await loadPartnersCloud();
-  const distributions: ExpenseDistribution[] = [];
-  
-  // Get partners who share expenses
-  const expensePartners = partners.filter(p => p.sharesExpenses);
-  
-  if (expensePartners.length > 0) {
-    const totalExpenseShare = expensePartners.reduce((sum, p) => 
-      sum + (p.expenseSharePercentage ?? p.sharePercentage), 0);
-    
-    for (const partner of expensePartners) {
-      const partnerExpenseShare = partner.expenseSharePercentage ?? partner.sharePercentage;
-      const partnerRatio = totalExpenseShare > 0 ? partnerExpenseShare / totalExpenseShare : 0;
-      const partnerAmount = expenseData.amount * partnerRatio;
-      
-      if (partnerAmount > 0) {
-        distributions.push({
-          partnerId: partner.id,
-          partnerName: partner.name,
-          amount: partnerAmount,
-          percentage: partnerRatio * 100,
-        });
-        
-        // Deduct from partner's balance
-        await updatePartnerCloud(partner.id, {
-          currentBalance: partner.currentBalance - partnerAmount,
-          expenseHistory: [...partner.expenseHistory, {
-            expenseId: `EXP-${Date.now()}`,
-            type: getExpenseTypeLabel(expenseData.type),
-            amount: partnerAmount,
-            date: expenseData.date,
-            notes: expenseData.notes,
-            createdAt: new Date().toISOString(),
-          }],
-        });
-      }
-    }
-  }
-  
-  const userId = getCurrentUserId();
-  
-  const inserted = await insertToSupabase<CloudExpense>('expenses', {
-    expense_type: expenseData.type,
-    amount: expenseData.amount,
-    description: expenseData.customType || null,
-    date: expenseData.date,
-    notes: expenseData.notes || null,
-    distributions,
-    cashier_id: userId, // ✅ Track which user created this expense
-  });
-  
-  if (inserted) {
-    invalidateExpensesCache();
+  // Server does expense + partner shares together, idempotent by operation UUID.
+  const operationId = crypto.randomUUID();
+  const payload = {
+    _operation_id: operationId,
+    _expense_type: expenseData.type,
+    _amount: Math.round(expenseData.amount * 100) / 100,
+    _description: expenseData.customType || null,
+    _date: expenseData.date,
+    _notes: expenseData.notes || null,
+  };
+  const nowIso = new Date().toISOString();
+  const localExpense = toExpense({
+    id: operationId, user_id: '', expense_type: expenseData.type, amount: payload._amount,
+    description: payload._description, date: expenseData.date, notes: payload._notes,
+    distributions: [], created_at: nowIso, cashier_id: getCurrentUserId(),
+  } as unknown as CloudExpense);
+
+  const queueIt = () => {
+    addToQueue('expense_atomic', payload, 10);
+    const list = [localExpense, ...(expensesCache || loadExpensesLocally() || [])];
+    expensesCache = list; cacheTimestamp = Date.now(); saveExpensesLocally(list);
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
-    triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
-    return toExpense(inserted);
+    return localExpense;
+  };
+
+  if (!navigator.onLine) return queueIt();
+
+  const { error } = await sb.rpc('add_expense_atomic', payload);
+  if (error) {
+    const msg = (error.message || '').toLowerCase();
+    if (msg.includes('fetch') || msg.includes('network')) return queueIt();
+    console.error('[addExpenseCloud] failed:', error);
+    return null;
   }
-  
-  return null;
+  invalidateExpensesCache();
+  emitEvent(EVENTS.EXPENSES_UPDATED, null);
+  emitEvent(EVENTS.PARTNERS_UPDATED, null);
+  triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
+  return localExpense;
 };
 
 // Delete expense
