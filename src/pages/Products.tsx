@@ -1498,9 +1498,11 @@ export default function Products() {
                         className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-muted/40 border border-border/50 object-cover"
                         iconClassName="w-8 h-8 text-muted-foreground/50"
                       />
-                      {/* بادج الوحدة مثبت في زاوية الصورة */}
+                      {/* بادج الوحدة: كرتونة للمتعدد، قطعة للمفرد */}
                       <span className="absolute -bottom-1.5 -left-1.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm border border-background whitespace-nowrap">
-                        {product.smallUnit || (product.bulkUnit ? product.bulkUnit : 'قطعة')}
+                        {(product.conversionFactor && product.conversionFactor > 1)
+                          ? (product.bulkUnit || 'كرتونة')
+                          : (product.smallUnit || 'قطعة')}
                       </span>
                     </div>
                   </div>
@@ -1512,27 +1514,27 @@ export default function Products() {
                         {isRepairMode ? (
                           <>
                             <div>
-                              <p className="text-[11px] text-muted-foreground font-medium">تكلفة القطعة</p>
-                              <p className="font-bold text-sm text-foreground">${formatNumber(product.costPrice, 2)}</p>
+                              <p className="text-[14px] text-muted-foreground font-medium">تكلفة القطعة</p>
+                              <p className="font-bold text-base text-foreground">${formatNumber(product.costPrice, 2)}</p>
                             </div>
                             <div>
-                              <p className="text-[11px] text-muted-foreground font-medium">تكلفة العمالة</p>
-                              <p className="font-bold text-sm text-foreground">${formatNumber(product.laborCost || 0, 2)}</p>
+                              <p className="text-[14px] text-muted-foreground font-medium">تكلفة العمالة</p>
+                              <p className="font-bold text-base text-foreground">${formatNumber(product.laborCost || 0, 2)}</p>
                             </div>
                             <div>
-                              <p className="text-[11px] text-muted-foreground font-medium">المجموع</p>
-                              <p className="font-bold text-sm text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
+                              <p className="text-[14px] text-muted-foreground font-medium">المجموع</p>
+                              <p className="font-bold text-base text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
                             </div>
                           </>
                         ) : (
                           <>
                             <div>
-                              <p className="text-[11px] text-muted-foreground font-medium">البيع</p>
-                              <p className="font-bold text-sm text-primary">${formatNumber(product.salePrice, 2)}</p>
+                              <p className="text-[14px] text-muted-foreground font-medium">البيع</p>
+                              <p className="font-bold text-base text-primary">${formatNumber(product.salePrice, 2)}</p>
                             </div>
                             <div>
-                              <p className="text-[11px] text-muted-foreground font-medium">{t('products.wholesalePrice')}</p>
-                              <p className="font-bold text-sm text-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</p>
+                              <p className="text-[14px] text-muted-foreground font-medium">{t('products.wholesalePrice')}</p>
+                              <p className="font-bold text-base text-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</p>
                             </div>
                           </>
                         )}
@@ -1541,29 +1543,30 @@ export default function Products() {
                       // شبكة الأربعة أعمدة: الشراء، البيع، الربح، المخزون
                       <div className="grid grid-cols-4 gap-1 text-center divide-x divide-x-reverse divide-border/40">
                         <div className="px-1">
-                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">الشراء</p>
-                          <p className="font-bold text-xs sm:text-sm text-foreground">
+                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">الشراء</p>
+                          <p className="font-bold text-sm sm:text-base text-foreground">
                             ${formatNumber(product.costPrice, 2)}
                           </p>
                         </div>
                         <div className="px-1">
-                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">البيع</p>
-                          <p className="font-bold text-xs sm:text-sm text-primary">
+                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">البيع</p>
+                          <p className="font-bold text-sm sm:text-base text-primary">
                             ${formatNumber(product.salePrice, 2)}
                           </p>
                         </div>
                         <div className="px-1">
-                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">الربح</p>
+                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">الربح</p>
                           <p className={cn(
-                            "font-bold text-xs sm:text-sm",
+                            "font-bold text-sm sm:text-base",
                             profit > 0 ? "text-emerald-600 dark:text-emerald-400" : profit < 0 ? "text-destructive" : "text-muted-foreground"
                           )}>
                             {profit > 0 ? `+$${formatNumber(profit, 2)}` : `$${formatNumber(profit, 2)}`}
                           </p>
                         </div>
                         <div className="px-1">
-                          <p className="text-[11px] text-muted-foreground font-medium mb-0.5">المخزون</p>
-                          <p className="font-bold text-xs sm:text-sm text-foreground">
+                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">المخزون</p>
+                          {/* بدون لون أبيض يخفي نص DualUnitDisplay */}
+                          <div className="font-bold text-sm sm:text-base">
                             <DualUnitDisplay
                               totalPieces={product.quantity}
                               conversionFactor={product.conversionFactor || 1}
@@ -1572,7 +1575,7 @@ export default function Products() {
                               showTotal={false}
                               size="sm"
                             />
-                          </p>
+                          </div>
                           {(() => {
                             const custodyQty = getCustodyQuantity(product.id);
                             if (custodyQty > 0) {
