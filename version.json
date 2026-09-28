@@ -1,8 +1,14 @@
 {
-  "versionCode": 272,
-  "versionName": "1.0.42",
-  "lastUpdated": "2026-09-27T13:45:00.000Z",
+  "versionCode": 273,
+  "versionName": "1.0.43",
+  "lastUpdated": "2026-09-28T11:25:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 273,
+      "versionName": "1.0.43",
+      "date": "2026-09-28",
+      "description": "v1.0.43 - Compact invoice summary and filters by roughly 40% for cleaner mobile and desktop layouts; invoice amounts and filtering behavior unchanged"
+    },
     {
       "versionCode": 272,
       "versionName": "1.0.42",

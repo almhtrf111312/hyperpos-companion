@@ -888,57 +888,57 @@ export default function Invoices() {
       </div>
 
       <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
-        <TabsContent value="sales" className="space-y-6 m-0">
+        <TabsContent value="sales" className="space-y-3 m-0">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <FileText className="w-5 h-5 text-primary" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Card className="rounded-lg">
+          <CardContent className="p-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-md bg-primary/10 shrink-0">
+                <FileText className="w-4 h-4 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t('invoices.totalInvoices')}</p>
-                <p className="text-xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success/10">
-                <DollarSign className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t('invoices.todaySales')}</p>
-                <p className="text-xl font-bold">{formatCurrency(stats.todaySales)}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.totalInvoices')}</p>
+                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums">{stats.total}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-warning/10">
-                <CreditCard className="w-5 h-5 text-warning" />
+        <Card className="rounded-lg">
+          <CardContent className="p-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-md bg-success/10 shrink-0">
+                <DollarSign className="w-4 h-4 text-success" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t('invoices.pendingDebts')}</p>
-                <p className="text-xl font-bold">{stats.pendingDebts}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.todaySales')}</p>
+                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all">{formatCurrency(stats.todaySales)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <Banknote className="w-5 h-5 text-accent" />
+        <Card className="rounded-lg">
+          <CardContent className="p-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-md bg-warning/10 shrink-0">
+                <CreditCard className="w-4 h-4 text-warning" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t('invoices.totalProfit')}</p>
-                <p className="text-xl font-bold">{formatCurrency(stats.totalProfit)}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.pendingDebts')}</p>
+                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums">{stats.pendingDebts}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-lg">
+          <CardContent className="p-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 rounded-md bg-accent/10 shrink-0">
+                <Banknote className="w-4 h-4 text-accent" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.totalProfit')}</p>
+                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all">{formatCurrency(stats.totalProfit)}</p>
               </div>
             </div>
           </CardContent>
@@ -946,21 +946,21 @@ export default function Invoices() {
       </div>
 
       {/* Filters */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             placeholder={t('invoices.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10"
+            className="h-9 pr-8 text-sm"
           />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div className="space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground">نوع الفاتورة</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="min-w-0 space-y-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">نوع الفاتورة</span>
             <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
-              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 px-2 text-[11px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل الأنواع</SelectItem>
                 <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
@@ -968,10 +968,10 @@ export default function Invoices() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground">طريقة البيع</span>
+          <div className="min-w-0 space-y-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">طريقة البيع</span>
             <Select value={filterPayment} onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}>
-              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 px-2 text-[11px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">نقدي ومؤجل</SelectItem>
                 <SelectItem value="cash">نقدي</SelectItem>
@@ -979,32 +979,32 @@ export default function Invoices() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground">التاريخ</span>
-            <div className="flex items-center gap-1">
+          <div className="min-w-0 space-y-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">التاريخ</span>
+            <div className="flex items-center gap-1 min-w-0">
               <DatePicker
                 value={dateFilter}
                 onChange={setDateFilter}
                 placeholder="كل التواريخ"
-                className="w-full"
+                className="w-full min-w-0 h-8 px-2 text-[11px] gap-1 [&_svg]:size-3"
                 highlightedDates={salesInvoiceDates}
               />
               {dateFilter && (
-                <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0" onClick={() => setDateFilter('')}>
-                  <X className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setDateFilter('')}>
+                  <X className="w-3.5 h-3.5" />
                 </Button>
               )}
             </div>
           </div>
-          <div className="space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground">المرتجعات</span>
+          <div className="min-w-0 space-y-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">المرتجعات</span>
             <Button
               type="button"
               variant={showRefunded ? 'default' : 'outline'}
-              className="h-9 w-full gap-1.5 text-xs"
+              className="h-8 w-full gap-1 px-1 text-[11px] [&_svg]:size-3"
               onClick={() => setShowRefunded(v => !v)}
             >
-              <Undo2 className="w-4 h-4" />
+              <Undo2 className="w-3 h-3" />
               فواتير مستردة
             </Button>
           </div>
