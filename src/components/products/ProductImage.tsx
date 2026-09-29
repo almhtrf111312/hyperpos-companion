@@ -11,20 +11,52 @@ interface ProductImageProps {
   iconClassName?: string;
 }
 
+// كاش في الذاكرة للروابط الموقعة لتجنب إعادة طلب التوقيع لنفس الصورة
+const signedUrlMemo = new Map<string, { url: string; at: number }>();
+const SIGNED_TTL = 50 * 60 * 1000;
+
+async function resolveSigned(path: string): Promise<string | null> {
+  const hit = signedUrlMemo.get(path);
+  if (hit && Date.now() - hit.at < SIGNED_TTL) return hit.url;
+  const signed = await getSignedImageUrl(path);
+  if (signed) signedUrlMemo.set(path, { url: signed, at: Date.now() });
+  return signed;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p, new Promise<null>(r => setTimeout(() => r(null), ms))]);
+}
+
 /**
- * مكون مشترك لعرض صور المنتجات
- * يتعامل مع المسارات القصيرة و signed URLs القديمة
- * ✅ يدعم التخزين المؤقت المحلي (Cache-First) للعمل أوفلاين
+ * عرض صور المنتجات — لا يبدأ أي جلب إلا عند اقتراب البطاقة من الظهور على الشاشة.
+ * أيقونة فورية كبديل، ومهلة قصيرة كي لا تتأخر الواجهة.
  */
 export function ProductImage({ imageUrl, alt, className, iconClassName }: ProductImageProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
-  // تنظيف blob URLs عند unmount أو تغيير الصورة
+  // مراقبة الظهور
+  useEffect(() => {
+    if (visible) return;
+    const el = containerRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') { setVisible(true); return; }
+    const obs = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) {
+        setVisible(true);
+        obs.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [visible]);
+
   useEffect(() => {
     return () => {
-      if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
+      if (blobUrlRef.current?.startsWith('blob:')) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
       }
@@ -32,68 +64,38 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
   }, [imageUrl]);
 
   useEffect(() => {
-    if (!imageUrl) {
-      setResolvedUrl(null);
-      setError(false);
-      return;
-    }
-
-    // إذا كانت data URL (base64 مضغوطة) أو blob — عرضها مباشرة
+    if (!imageUrl) { setResolvedUrl(null); setError(false); return; }
     if (imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')) {
-      setResolvedUrl(imageUrl);
-      setError(false);
-      return;
+      setResolvedUrl(imageUrl); setError(false); return;
     }
+    if (!visible) return;
 
     let cancelled = false;
-
-    const resolveImage = async () => {
+    (async () => {
       try {
-        let finalUrl: string;
-
-        if (imageUrl.startsWith('http')) {
-          // رابط كامل — جلبه مباشرة مع كاش
-          finalUrl = imageUrl;
-        } else {
-          // مسار تخزين قصير — نحتاج signed URL أولاً
-          const signed = await getSignedImageUrl(imageUrl);
-          if (!signed || cancelled) return;
-          finalUrl = signed;
-        }
-
-        // ✅ استخدام Cache-First: يبحث محلياً أولاً، ثم يجلب ويحفظ
-        const cachedBlobUrl = await fetchWithCache(finalUrl);
-        if (cancelled) return;
-
-        if (cachedBlobUrl) {
-          // تنظيف blob URL السابق
-          if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
-            URL.revokeObjectURL(blobUrlRef.current);
-          }
-          blobUrlRef.current = cachedBlobUrl;
-          setResolvedUrl(cachedBlobUrl);
+        const finalUrl = imageUrl.startsWith('http') ? imageUrl : await withTimeout(resolveSigned(imageUrl), 4000);
+        if (!finalUrl || cancelled) { if (!cancelled) setError(true); return; }
+        const blobUrl = await fetchWithCache(finalUrl);
+        if (cancelled) { if (blobUrl?.startsWith('blob:')) URL.revokeObjectURL(blobUrl); return; }
+        if (blobUrl) {
+          if (blobUrlRef.current?.startsWith('blob:')) URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = blobUrl;
+          setResolvedUrl(blobUrl);
           setError(false);
         } else {
-          // لم يتمكن من الجلب أو الكاش — عرض أيقونة المنتج
           setResolvedUrl(null);
           setError(true);
         }
       } catch {
-        if (!cancelled) {
-          setResolvedUrl(null);
-          setError(true);
-        }
+        if (!cancelled) { setResolvedUrl(null); setError(true); }
       }
-    };
-
-    resolveImage();
-
+    })();
     return () => { cancelled = true; };
-  }, [imageUrl]);
+  }, [imageUrl, visible]);
 
   if (!imageUrl || error || !resolvedUrl) {
     return (
-      <div className={cn("flex items-center justify-center bg-muted", className)}>
+      <div ref={containerRef} className={cn("flex items-center justify-center bg-muted", className)}>
         <Package className={cn("text-muted-foreground/50", iconClassName || "w-6 h-6")} />
       </div>
     );
@@ -106,6 +108,7 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       className={cn("object-cover", className)}
       onError={() => setError(true)}
       loading="lazy"
+      decoding="async"
     />
   );
 }
