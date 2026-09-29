@@ -1,8 +1,14 @@
 {
-  "versionCode": 285,
-  "versionName": "1.0.55",
-  "lastUpdated": "2026-09-29T09:45:00.000Z",
+  "versionCode": 286,
+  "versionName": "1.0.56",
+  "lastUpdated": "2026-09-29T10:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 286,
+      "versionName": "1.0.56",
+      "date": "2026-09-29",
+      "description": "v1.0.56 - Product images load only when visible (IntersectionObserver + signed URL memo); connectivity check probes app backend first with 4s timeout to fix false offline on VPN"
+    },
     {
       "versionCode": 285,
       "versionName": "1.0.55",

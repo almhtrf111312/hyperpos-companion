@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "تسريع ظهور المنتجات: الصور تُحمَّل فقط عند ظهورها على الشاشة، وإصلاح ظهور «غير متصل» خطأً عند استخدام VPN.",
+    "en": "v1.0.56 - Faster product lists (lazy images) and fixed false offline status with VPN."
+  },
+  {
+    "type": "fix",
     "ar": "إصلاح مشكلة الكتابة والبحث على أندرويد: ظهور النتائج فوراً أثناء الكتابة وعدم الحاجة لضغط الحذف عدة مرات.",
     "en": "v1.0.55 - Fixed Android typing/search: instant results and normal backspace."
   },

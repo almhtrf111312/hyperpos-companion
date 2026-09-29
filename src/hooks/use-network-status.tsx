@@ -223,34 +223,47 @@ export async function checkRealInternetAccess(timeoutMs: number = 2500): Promise
     return false;
   }
 
-  // 3. فحص متوازي فائق السرعة عبر سباق Promise.any
-  // أي نقطة ترد بنجاح تؤكد وجود إنترنت حقيقي فوراً (خلال 100-300ms عادة)
+  // 3. فحص متوازي: خادم التطبيق أولاً (يعمل عبر VPN)، ثم مسارات احتياطية
+  const effectiveTimeout = Math.max(timeoutMs, 4000);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), effectiveTimeout);
 
-  const fetchProbe = async (url: string) => {
-    const res = await fetch(url, {
-      method: 'HEAD',
+  const fetchProbe = async (url: string, init?: RequestInit) => {
+    return fetch(url, {
+      method: 'GET',
       mode: 'no-cors',
       cache: 'no-store',
       signal: controller.signal,
+      ...init,
     });
-    return res;
   };
 
+  const probes: Promise<unknown>[] = [];
+  const backendUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+  if (backendUrl) {
+    // أي استجابة HTTP (حتى 401/404) تعني أن الخادم وصل = متصل
+    probes.push(fetch(`${backendUrl}/auth/v1/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: anonKey ? { apikey: anonKey } : undefined,
+    }));
+  }
+  probes.push(
+    fetchProbe('https://connectivitycheck.gstatic.com/generate_204'),
+    fetchProbe('https://www.cloudflare.com/cdn-cgi/trace'),
+    fetchProbe('https://dns.google/resolve?name=example.com'),
+  );
+
   try {
-    await (Promise as unknown as { any: <T>(p: Promise<T>[]) => Promise<T> }).any([
-      fetchProbe('https://connectivitycheck.gstatic.com/generate_204'),
-      fetchProbe('https://www.cloudflare.com/cdn-cgi/trace'),
-      fetchProbe('https://1.1.1.1/cdn-cgi/trace'),
-    ]);
+    await (Promise as unknown as { any: <T>(p: Promise<T>[]) => Promise<T> }).any(probes);
     clearTimeout(timer);
     globalProbeResult = { isOnline: true, timestamp: Date.now() };
     return true;
   } catch {
     clearTimeout(timer);
-    // إذا فشلت جميع المحاولات أو انتهت المهلة (2.5 ثانية)، فهذا يعني أن الإنترنت مقطوع أو الـ VPN معطل
-    console.warn(`[Network] ⚠️ Dead VPN / Ghost network detected! Probe failed within ${timeoutMs}ms.`);
+    console.warn(`[Network] ⚠️ No server reachable within ${effectiveTimeout}ms.`);
     globalProbeResult = { isOnline: false, timestamp: Date.now() };
     return false;
   }
