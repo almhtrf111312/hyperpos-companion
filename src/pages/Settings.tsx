@@ -430,7 +430,7 @@ export default function Settings() {
 
   // Floating action banner success state
   const [isSaveSuccess, setIsSaveSuccess] = useState(false);
-  const saveSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clean up success banner timeout on unmount
   useEffect(() => {

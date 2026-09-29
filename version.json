@@ -1,8 +1,14 @@
 {
-  "versionCode": 284,
-  "versionName": "1.0.54",
-  "lastUpdated": "2026-09-28T18:00:00.000Z",
+  "versionCode": 285,
+  "versionName": "1.0.55",
+  "lastUpdated": "2026-09-29T09:45:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 285,
+      "versionName": "1.0.55",
+      "date": "2026-09-29",
+      "description": "v1.0.55 - Fixed Android keyboard search/backspace bug: removed captureInput, restored plain controlled inputs, removed synthetic composition events and DOM value mutation"
+    },
     {
       "versionCode": 284,
       "versionName": "1.0.54",

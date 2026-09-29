@@ -4,26 +4,11 @@ import { cn } from "@/lib/utils";
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
+// Plain controlled input. Android IME handling is left to the browser:
+// no synthetic composition events and no DOM value mutation (both caused
+// stale search results and "ghost" backspaces in the Android app).
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, onChange, ...props }, ref) => {
-
-    // ✅ Fix: Android IME Composition Bug in Capacitor WebView
-    // When user types on Android keyboard, the IME enters "composition mode"
-    // which adds invisible characters to the input buffer.
-    // onCompositionEnd fires when the user finishes composing (lifts finger/confirms word)
-    // and forces React to sync with the actual DOM value.
-    const handleCompositionEnd = (
-      e: React.CompositionEvent<HTMLInputElement>
-    ) => {
-      const target = e.target as HTMLInputElement;
-      const syntheticEvent = {
-        ...e,
-        target,
-        currentTarget: target,
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      onChange?.(syntheticEvent);
-    };
-
+  ({ className, type, ...props }, ref) => {
     return (
       <input
         type={type}
@@ -32,11 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
-        onChange={onChange}
-        onCompositionEnd={handleCompositionEnd}
         autoComplete={props.autoComplete ?? "off"}
-        autoCorrect={props.autoCorrect ?? "off"}
-        spellCheck={props.spellCheck ?? false}
         {...props}
       />
     );
