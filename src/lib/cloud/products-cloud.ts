@@ -764,40 +764,33 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   return success;
 };
 
-// Delete product from cloud (with cascading delete of related records)
+// Archive product (soft delete) — يحافظ على كامل السجل المالي والتاريخي المرتبط بالمنتج
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
 
   try {
-    // ✅ المرحلة 1: حذف السجلات المرتبطة أولاً (بسبب المفاتيح الأجنبية)
+    // ❌ لا حذف فيزيائي: الحذف الفيزيائي يكسر الفواتير وحركات المخزون التاريخية
+    // ✅ أرشفة ناعمة: المنتج يختفي من الواجهات لكن تبقى بياناته مرجعاً للتقارير
+    const { error } = await sb
+      .from('products')
+      .update({ archived: true, updated_at: new Date().toISOString() })
+      .eq('id', id);
 
-    // حذف من stock_transfer_items
-    await sb
-      .from('stock_transfer_items')
-      .delete()
-      .eq('product_id', id);
-
-    // حذف من warehouse_stock
-    await sb
-      .from('warehouse_stock')
-      .delete()
-      .eq('product_id', id);
-
-    // ✅ المرحلة 2: حذف المنتج نفسه
-    const success = await deleteFromSupabase('products', id);
-
-    if (success) {
-      invalidateProductsCache();
-      emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    if (error) {
+      console.error('[deleteProductCloud] Archive failed:', error.message);
+      return false;
     }
 
-    return success;
+    invalidateProductsCache();
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return true;
   } catch (error) {
     console.error('[deleteProductCloud] Error:', error);
     return false;
   }
 };
+
 
 // Get product by ID
 export const getProductByIdCloud = async (id: string): Promise<Product | null> => {
