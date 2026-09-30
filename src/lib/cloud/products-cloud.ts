@@ -267,8 +267,10 @@ async function fetchProductsInChunks(): Promise<CloudProduct[]> {
     const query = sb
       .from('products')
       .select('*')
+      .or('archived.is.null,archived.eq.false')
       .order('created_at', { ascending: false })
       .range(from, from + CHUNK_SIZE - 1);
+
 
     const res = await withTimeout(
       Promise.resolve(query),
