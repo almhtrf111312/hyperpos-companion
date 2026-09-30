@@ -81,7 +81,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     saveArchivedToStorage(archivedNotifications);
   }, [archivedNotifications]);
 
-  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>, silent = false) => {
     setNotifications(prev => {
       const exists = prev.some(n => {
         if (n.type !== notification.type) return false;
