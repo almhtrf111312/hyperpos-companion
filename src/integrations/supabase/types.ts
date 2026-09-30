@@ -1944,6 +1944,7 @@ export type Database = {
           _customer_phone: string
           _discount: number
           _discount_percentage: number
+          _down_payment?: number
           _items: Json
           _operation_id: string
           _payment_type: string
