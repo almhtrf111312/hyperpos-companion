@@ -37,7 +37,7 @@ interface NotificationsContextType {
   restoreNotification: (id: string) => void;
   deleteArchivedNotification: (id: string) => void;
   clearAllArchived: () => void;
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>, silent?: boolean) => void;
   refreshNotifications: () => void;
   checkLicenseStatus: (expiresAt: string | null, remainingDays: number | null, isTrial?: boolean) => void;
 }
