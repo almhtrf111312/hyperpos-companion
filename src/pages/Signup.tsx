@@ -56,10 +56,31 @@ export default function Signup() {
     const { error } = await signUp(email, password, fullName, phone);
 
     if (error) {
-      toast.error('حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+      // 🔎 إظهار السبب الحقيقي بدل الرسالة العامة التي كانت تخفي المشكلة
+      const raw = (error as { message?: string })?.message || '';
+      console.error('[Signup] فشل إنشاء الحساب:', error);
+
+      let friendly = raw || 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.';
+      const lower = raw.toLowerCase();
+      if (lower.includes('already registered') || lower.includes('user already')) {
+        friendly = 'هذا البريد الإلكتروني مسجل مسبقاً. جرّب تسجيل الدخول أو استخدم بريداً آخر.';
+      } else if (lower.includes('invalid email')) {
+        friendly = 'صيغة البريد الإلكتروني غير صحيحة.';
+      } else if (lower.includes('password')) {
+        friendly = 'كلمة المرور ضعيفة أو مرفوضة: ' + raw;
+      } else if (lower.includes('rate limit') || lower.includes('too many')) {
+        friendly = 'محاولات كثيرة خلال وقت قصير. انتظر قليلاً ثم أعد المحاولة.';
+      } else if (lower.includes('network') || lower.includes('fetch')) {
+        friendly = 'تعذر الاتصال بالخادم. تحقق من الإنترنت ثم أعد المحاولة.';
+      } else if (lower.includes('database') || lower.includes('constraint')) {
+        friendly = 'رُفض إنشاء الحساب من قاعدة البيانات: ' + raw;
+      }
+
+      toast.error('فشل إنشاء الحساب', { description: friendly, duration: 8000 });
       setIsLoading(false);
       return;
     }
+
 
     try {
       sessionStorage.setItem('hyperpos_just_signed_up', 'true');
