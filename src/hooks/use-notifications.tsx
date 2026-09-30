@@ -250,65 +250,82 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // 🛡️ تُضاف كل التنبيهات بصمت (silent) لمنع انهمار عشرات الـ toast عند الإقلاع
+      let alertsCount = 0;
+
       debts.forEach(debt => {
         if (debt.remainingDebt > 0 && debt.dueDate) {
           const dueDate = new Date(debt.dueDate);
           dueDate.setHours(0, 0, 0, 0);
           const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDays < 0) {
+            alertsCount++;
             addNotification({
               type: 'debt_overdue', title: 'دين متأخر',
               message: `الدين المستحق من ${debt.customerName} بقيمة $${debt.remainingDebt} متأخر عن موعد السداد`,
               data: { customerId: debt.id, customerName: debt.customerName, amount: debt.remainingDebt },
-            });
+            }, true);
           } else if (diffDays === 0) {
+            alertsCount++;
             addNotification({
               type: 'debt_due_today', title: 'دين مستحق اليوم',
               message: `الدين المستحق من ${debt.customerName} بقيمة $${debt.remainingDebt} يستحق اليوم`,
               data: { customerId: debt.id, customerName: debt.customerName, amount: debt.remainingDebt },
-            });
+            }, true);
           }
         }
       });
 
       products.filter(p => p.status === 'low_stock').forEach(product => {
+        alertsCount++;
         addNotification({
           type: 'low_stock', title: 'مخزون منخفض',
           message: `المنتج "${product.name}" لديه كمية منخفضة (${product.quantity} فقط)`,
           data: { productId: product.id, productName: product.name, quantity: product.quantity },
-        });
+        }, true);
       });
 
       products.filter(p => p.status === 'out_of_stock').forEach(product => {
+        alertsCount++;
         addNotification({
           type: 'out_of_stock', title: 'نفذ المخزون',
           message: `المنتج "${product.name}" نفذ من المخزون`,
           data: { productId: product.id, productName: product.name, quantity: 0 },
-        });
+        }, true);
       });
 
       products.forEach(product => {
         if (product.expiryDate) {
           const status = getExpiryStatus(product.expiryDate);
           if (status === 'expired') {
+            alertsCount++;
             addNotification({
               type: 'expired', title: 'منتج منتهي الصلاحية ⚠️',
               message: `المنتج "${product.name}" انتهت صلاحيته في ${product.expiryDate}`,
               data: { productId: product.id, productName: product.name, expiryDate: product.expiryDate },
-            });
+            }, true);
           } else if (status === 'expiring_soon') {
+            alertsCount++;
             addNotification({
               type: 'expiring_soon', title: 'صلاحية قريبة الانتهاء',
               message: `المنتج "${product.name}" ستنتهي صلاحيته في ${product.expiryDate}`,
               data: { productId: product.id, productName: product.name, expiryDate: product.expiryDate },
-            });
+            }, true);
           }
         }
       });
+
+      // إشعار مُجمّع واحد فقط بدل عشرات الإشعارات المتتالية
+      if (alertsCount > 0) {
+        toast.warning('تنبيهات جديدة', {
+          description: `لديك ${alertsCount} تنبيه بحاجة للمراجعة. افتح قائمة الإشعارات للتفاصيل.`,
+        });
+      }
     } catch (error) {
       console.error('Failed to check alerts:', error);
     }
   }, [addNotification]);
+
 
   const refreshNotifications = useCallback(() => {
     setNotifications(prev => prev.filter(n => n.persistent));
