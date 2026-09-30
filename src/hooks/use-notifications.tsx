@@ -103,7 +103,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       return [newNotification, ...prev];
     });
 
-    if (notification.type !== 'license_status') {
+    if (!silent && notification.type !== 'license_status') {
       const toastType = notification.type.includes('overdue') ||
                        notification.type === 'out_of_stock' ||
                        notification.type === 'expired'
