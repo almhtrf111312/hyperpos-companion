@@ -15,6 +15,7 @@ const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
+import { logActivity } from '../activity-log';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -499,6 +500,47 @@ export const updateInvoiceCloud = async (
 };
 
 // Delete invoice
+const buildInvoiceSnapshot = (invoice: Invoice) => ({
+  invoiceNumber: invoice.id,
+  customerName: invoice.customerName,
+  customerPhone: invoice.customerPhone || '',
+  paymentType: invoice.paymentType,
+  subtotal: invoice.subtotal,
+  discount: invoice.discount,
+  total: invoice.total,
+  cashierName: invoice.cashierName || '',
+  createdAt: invoice.createdAt,
+  items: invoice.items.map(it => ({
+    name: it.name,
+    quantity: it.quantity,
+    price: it.price,
+    costPrice: it.costPrice ?? 0,
+    total: it.total,
+  })),
+});
+
+const logInvoiceDeleted = (invoice: Invoice) => {
+  logActivity('invoice_deleted', `حذف فاتورة: ${invoice.id} بقيمة $${roundCurrency(invoice.total)}`, {
+    entityType: 'invoice',
+    entityId: invoice.id,
+    entityName: invoice.customerName,
+    snapshot: buildInvoiceSnapshot(invoice),
+  }).catch(() => undefined);
+};
+
+const findLoadedInvoice = async (id: string): Promise<Invoice | null> =>
+  (await loadInvoicesCloud()).find(inv => inv.id === id) || null;
+
+const refreshCustomerStatsAfterDelete = async (customerId: string | null) => {
+  if (!customerId) return;
+  try {
+    const { updateCustomerStatsCloud } = await import('./customers-cloud');
+    await updateCustomerStatsCloud(customerId);
+  } catch (e) {
+    console.warn('[deleteInvoiceCloud] failed to refresh customer stats:', e);
+  }
+};
+
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   // Find by invoice_number
   const { data: cloudInvoice } = await sb
@@ -510,21 +552,15 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   if (!cloudInvoice) return false;
 
+  const invoiceBeforeDelete = await findLoadedInvoice(id);
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
 
   if (success) {
+    if (invoiceBeforeDelete) logInvoiceDeleted(invoiceBeforeDelete);
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
-
     // ✅ إعادة احتساب أرقام العميل بدون هذه الفاتورة
-    if (cloudInvoice.customer_id) {
-      try {
-        const { updateCustomerStatsCloud } = await import('./customers-cloud');
-        await updateCustomerStatsCloud(cloudInvoice.customer_id);
-      } catch (e) {
-        console.warn('[deleteInvoiceCloud] failed to refresh customer stats:', e);
-      }
-    }
+    await refreshCustomerStatsAfterDelete(cloudInvoice.customer_id);
   }
 
   return success;

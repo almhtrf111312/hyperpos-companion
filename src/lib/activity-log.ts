@@ -86,6 +86,16 @@ const getDeviceInfo = (): DeviceInfo => {
   };
 };
 
+export type FieldChanges = Record<string, { from: unknown; to: unknown }>;
+
+export const diffFields = <T extends object>(before: T, after: T, keys: (keyof T)[]): FieldChanges => {
+  const changes: FieldChanges = {};
+  for (const key of keys) {
+    if (before[key] !== after[key]) changes[String(key)] = { from: before[key], to: after[key] };
+  }
+  return changes;
+};
+
 export function loadActivityLogs(): ActivityLog[] {
   try {
     const logs = secureGet<ActivityLog[]>(ACTIVITY_LOG_KEY, { namespace: STORAGE_NAMESPACE });

@@ -334,7 +334,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
         user.id,
         profile?.full_name || user.email || t('common.user'),
         `${t('debts.paymentRecorded')} ${formatCurrency(paymentAmount)} - ${selectedDebt.customerName}`,
-        { debtId: selectedDebt.id, amount: paymentAmount, customerName: selectedDebt.customerName }
+        {
+          debtId: selectedDebt.id,
+          invoiceId: selectedDebt.invoiceId,
+          customerName: selectedDebt.customerName,
+          amount: paymentAmount,
+          totalDebt: latest.totalDebt,
+          remainingBefore: remainingNow,
+          remainingAfter: Math.max(0, Math.round((remainingNow - paymentAmount) * 100) / 100),
+        }
       );
     }
 
