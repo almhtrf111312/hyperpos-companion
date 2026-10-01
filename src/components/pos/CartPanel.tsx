@@ -1504,10 +1504,17 @@ export function CartPanel({
                 <span>عدد المنتجات:</span>
                 <span className="font-semibold">{cart.length}</span>
               </div>
+              {receivedUSD > 0 && (
+                <div className="flex justify-between text-sm text-success font-semibold">
+                  <span>دفعة أولى مقبوضة:</span>
+                  <span>{selectedCurrency.symbol}{formatNumber(roundCurrency(Math.min(receivedUSD, total) * activeRate))}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>مبلغ الدين:</span>
-                <span>{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
+                <span>{selectedCurrency.symbol}{formatNumber(roundCurrency(Math.max(0, total - Math.min(receivedUSD, total)) * activeRate))}</span>
               </div>
+
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowDebtDialog(false)} disabled={isSaving}>
