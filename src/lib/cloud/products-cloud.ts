@@ -359,18 +359,24 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
       if (updatedProducts.length > 0) {
         console.log('[ProductsCloud] 🔄 Delta sync:', updatedProducts.length, 'updated products');
-        const updatedWithPending = await applyPendingDeductionsToCloudProducts(updatedProducts.map(toProduct));
+        const archivedIds = new Set(
+          updatedProducts.filter(p => p.archived === true).map(p => p.id)
+        );
+        const activeCloudProducts = updatedProducts.filter(p => !p.archived);
+        const updatedWithPending = await applyPendingDeductionsToCloudProducts(activeCloudProducts.map(toProduct));
         const updatedMap = new Map(updatedWithPending.map(p => [p.id, p]));
-        
-        // Merge: replace existing or add new
-        productsCache = productsCache.map(p => updatedMap.get(p.id) || p);
-        // Add truly new products (not in existing cache)
+
+        // Merge: drop archived, replace existing, add new
+        productsCache = productsCache
+          .filter(p => !archivedIds.has(p.id))
+          .map(p => updatedMap.get(p.id) || p);
         const existingIds = new Set(productsCache.map(p => p.id));
         for (const [id, product] of updatedMap) {
           if (!existingIds.has(id)) {
             productsCache.unshift(product);
           }
         }
+        saveToLocalCache(productsCache);
       } else {
         console.log('[ProductsCloud] ✅ No changes since last sync');
       }
@@ -784,8 +790,14 @@ export const deleteProductCloud = async (id: string): Promise<boolean> => {
       return false;
     }
 
-    invalidateProductsCache();
-    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    const cached = productsCache ?? await loadFromLocalCache();
+    if (cached) {
+      productsCache = cached.filter(p => p.id !== id);
+      cacheTimestamp = Date.now();
+      saveToLocalCache(productsCache);
+    }
+
+    emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
     return true;
   } catch (error) {
     console.error('[deleteProductCloud] Error:', error);
