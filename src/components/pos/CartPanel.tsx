@@ -287,16 +287,21 @@ export function CartPanel({
     : taxableAmount + taxAmount;
   const totalInCurrency = roundCurrency(total * selectedCurrency.rate);
 
+  // 💱 المبلغ المقبوض يُدخل بعملة العرض المختارة ⇒ نحوّله للدولار قبل أي حساب مالي
+  const activeRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
+  const receivedUSD = roundCurrency(receivedAmount > 0 ? receivedAmount / activeRate : 0);
+
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
   const wholesaleCOGS = roundCurrency(cart.reduce((sum, item) => {
     const costPrice = item.costPrice || 0;
     return sum + costPrice * item.quantity;
   }, 0));
 
-  // ✅ الربح = المبلغ المستلم - رأس المال
+  // ✅ الربح = المبلغ المستلم (بالدولار) - رأس المال
   const wholesaleProfit = wholesaleMode
-    ? roundCurrency((receivedAmount > 0 ? receivedAmount : subtotal) - wholesaleCOGS)
+    ? roundCurrency((receivedUSD > 0 ? receivedUSD : subtotal) - wholesaleCOGS)
     : undefined;
+
 
   // ✅ حفظ لقطة من البيع الحالي قبل تفريغ السلة
   const saveSaleSnapshot = (cartData: CartItem[], custName: string) => {
@@ -353,14 +358,20 @@ export function CartPanel({
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
-    // ✅ المبلغ المقبوض أقل من الإجمالي (بيع نقدي عادي) = الفرق يُعتبر خصمًا
-    const rateForReceived = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
-    const receivedUSD = receivedAmount > 0 ? receivedAmount / rateForReceived : 0;
-    const shortfallUSD = !wholesaleMode && receivedUSD > 0 && receivedUSD < total
-      ? roundCurrency(total - receivedUSD)
-      : 0;
-    const effectiveDiscountAmount = roundCurrency(discountAmount + shortfallUSD);
-    const totalSnapshot = roundCurrency(total - shortfallUSD);
+    // 🛡️ لا يُحوَّل نقص المقبوض إلى خصم صامت بعد اليوم.
+    // البيع النقدي يُسجَّل بقيمته الكاملة؛ النقص يُعالج كخصم صريح أو كبيع مؤجل.
+    if (!wholesaleMode && receivedUSD > 0 && receivedUSD < roundCurrency(total) - 0.01) {
+      savingRef.current = false;
+      setIsSaving(false);
+      setShowCashDialog(false);
+      showToast.error(
+        `المبلغ المقبوض (${formatCurrency(receivedUSD)}) أقل من إجمالي الفاتورة (${formatCurrency(total)}). استخدم خصماً صريحاً أو سجّلها بيعاً مؤجلاً.`
+      );
+      return;
+    }
+    const effectiveDiscountAmount = roundCurrency(discountAmount);
+    const totalSnapshot = roundCurrency(total);
+
     const customerNameSnapshot = customerName;
     const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -465,11 +476,12 @@ export function CartPanel({
           items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit - i.total * discountRatio) })),
           subtotal,
           discount: effectiveDiscountAmount,
-          discountPercentage: discountType === 'percent' && shortfallUSD === 0 ? discount : 0,
+          discountPercentage: discountType === 'percent' ? discount : 0,
           taxRate: effectiveTaxRate,
           taxAmount,
           total: totalSnapshot,
-          totalInCurrency: roundCurrency(totalSnapshot * rateForReceived),
+          totalInCurrency: roundCurrency(totalSnapshot * activeRate),
+
           currency: selectedCurrency.code,
           currencySymbol: selectedCurrency.symbol,
           profit: discountedProfit,
@@ -532,9 +544,13 @@ export function CartPanel({
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
-    const totalSnapshot = total;
+    const totalSnapshot = roundCurrency(total);
+    // 💵 الدفعة الأولى المقبوضة عند البيع المؤجل (محوّلة للدولار) — تُخصم من الدين
+    const downPaymentSnapshot = roundCurrency(Math.max(0, Math.min(receivedUSD, totalSnapshot)));
+    const debtRemainingSnapshot = roundCurrency(totalSnapshot - downPaymentSnapshot);
     const customerNameSnapshot = customerName;
     const customerPhoneSnapshot = customerPhone;
+
     const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
@@ -642,7 +658,9 @@ export function CartPanel({
         ),
         stockItems: stockItemsLocal,
         warehouseId: stockWarehouseId,
+        downPayment: downPaymentSnapshot,
       };
+
 
       // Validate local stock availability before queuing (unless no-inventory mode)
       if (!noInventory) {
@@ -676,9 +694,12 @@ export function CartPanel({
           'debt_created',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
-          { amount: totalSnapshot, customerName: customerNameSnapshot }
+          downPaymentSnapshot > 0
+            ? `تم إنشاء دين للعميل ${customerNameSnapshot} بقيمة $${formatNumber(debtRemainingSnapshot)} بعد دفعة أولى $${formatNumber(downPaymentSnapshot)}`
+            : `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
+          { amount: debtRemainingSnapshot, downPayment: downPaymentSnapshot, customerName: customerNameSnapshot }
         );
+
       }
 
       // ✅ إغلاق الواجهة فوراً
@@ -1282,7 +1303,7 @@ export function CartPanel({
             )} />
             <Input
               type="number"
-              placeholder={t('pos.receivedAmount') || 'المبلغ المقبوض'}
+              placeholder={`${t('pos.receivedAmount') || 'المبلغ المقبوض'} (${selectedCurrency.symbol})`}
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
@@ -1291,7 +1312,15 @@ export function CartPanel({
               )}
               min="0"
             />
+            {/* 💱 توضيح عملة المبلغ المقبوض لمنع الخلط بين الدولار والعملة المحلية */}
+            <span className={cn(
+              "flex items-center justify-center min-w-[20px] h-5 px-1 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+              receivedAmount > 0
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted/50 text-muted-foreground border border-border/60"
+            )}>{selectedCurrency.symbol}</span>
           </label>
+
 
           {/* Row 4: Info summary + Total */}
           <div className="space-y-1">
@@ -1313,11 +1342,17 @@ export function CartPanel({
                     ض. {effectiveTaxRate}%: ${formatNumber(taxAmount)}
                   </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedAmount >= total && (
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                    باقي: {formatCurrency(roundCurrency(receivedAmount - total))}
+                    باقي للعميل: {formatCurrency(roundCurrency(receivedUSD - total))}
                   </span>
                 )}
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total && (
+                  <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold">
+                    مقبوض: {formatCurrency(receivedUSD)} — متبقٍ: {formatCurrency(roundCurrency(total - receivedUSD))}
+                  </span>
+                )}
+
                 {receivedAmount > 0 && wholesaleMode && (
                   <span className={cn("px-1.5 py-0.5 rounded font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                     ربح: {formatCurrency(wholesaleProfit || 0)}
@@ -1469,10 +1504,17 @@ export function CartPanel({
                 <span>عدد المنتجات:</span>
                 <span className="font-semibold">{cart.length}</span>
               </div>
+              {receivedUSD > 0 && (
+                <div className="flex justify-between text-sm text-success font-semibold">
+                  <span>دفعة أولى مقبوضة:</span>
+                  <span>{selectedCurrency.symbol}{formatNumber(roundCurrency(Math.min(receivedUSD, total) * activeRate))}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>مبلغ الدين:</span>
-                <span>{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
+                <span>{selectedCurrency.symbol}{formatNumber(roundCurrency(Math.max(0, total - Math.min(receivedUSD, total)) * activeRate))}</span>
               </div>
+
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowDebtDialog(false)} disabled={isSaving}>
