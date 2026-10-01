@@ -354,20 +354,25 @@ export const recordPaymentWithInvoiceSyncCloud = async (
   operationId?: string
 ): Promise<Debt | null> => recordPaymentCloud(debtId, amount, operationId);
 
-// Settle every open debt linked to an invoice via the atomic payment RPC; returns the total amount paid
-export const settleDebtsByInvoiceIdCloud = async (invoiceId: string): Promise<number> => {
+const roundMoney = (n: number) => Math.round(n * 100) / 100;
+
+const fetchOpenDebtsByInvoiceId = async (invoiceId: string): Promise<Array<{ id: string; remaining: number }>> => {
   const { data, error } = await sb
     .from('debts')
     .select('id, remaining_debt')
     .eq('invoice_id', invoiceId);
   if (error) throw new Error(error.message || 'فشل تحميل الدين');
+  return ((data || []) as Array<{ id: string; remaining_debt: number | null }>)
+    .map(d => ({ id: d.id, remaining: roundMoney(Number(d.remaining_debt) || 0) }))
+    .filter(d => d.remaining > 0);
+};
 
+// Settle every open debt linked to an invoice via the atomic payment RPC; returns the total amount paid
+export const settleDebtsByInvoiceIdCloud = async (invoiceId: string): Promise<number> => {
   let paid = 0;
-  for (const debt of (data || []) as Array<{ id: string; remaining_debt: number | null }>) {
-    const remaining = Math.round((Number(debt.remaining_debt) || 0) * 100) / 100;
-    if (remaining <= 0) continue;
-    await recordPaymentCloud(debt.id, remaining);
-    paid = Math.round((paid + remaining) * 100) / 100;
+  for (const debt of await fetchOpenDebtsByInvoiceId(invoiceId)) {
+    await recordPaymentCloud(debt.id, debt.remaining);
+    paid = roundMoney(paid + debt.remaining);
   }
   return paid;
 };
