@@ -891,6 +891,7 @@ export default function Products() {
     try {
       const success = await deleteProductCloud(productSnapshot.id);
       if (success) {
+        setProducts(prev => prev.filter(p => p.id !== productSnapshot.id));
         if (user) {
           addActivityLog(
             'product_deleted',
@@ -901,7 +902,6 @@ export default function Products() {
           );
         }
         toast.success(t('products.deleteSuccess'), { id: toastId });
-        loadData();
       } else {
         toast.error(t('products.deleteFailed'), { id: toastId });
       }
