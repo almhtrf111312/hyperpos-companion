@@ -658,7 +658,9 @@ export function CartPanel({
         ),
         stockItems: stockItemsLocal,
         warehouseId: stockWarehouseId,
+        downPayment: downPaymentSnapshot,
       };
+
 
       // Validate local stock availability before queuing (unless no-inventory mode)
       if (!noInventory) {
