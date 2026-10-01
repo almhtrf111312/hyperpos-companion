@@ -287,16 +287,21 @@ export function CartPanel({
     : taxableAmount + taxAmount;
   const totalInCurrency = roundCurrency(total * selectedCurrency.rate);
 
+  // 💱 المبلغ المقبوض يُدخل بعملة العرض المختارة ⇒ نحوّله للدولار قبل أي حساب مالي
+  const activeRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
+  const receivedUSD = roundCurrency(receivedAmount > 0 ? receivedAmount / activeRate : 0);
+
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
   const wholesaleCOGS = roundCurrency(cart.reduce((sum, item) => {
     const costPrice = item.costPrice || 0;
     return sum + costPrice * item.quantity;
   }, 0));
 
-  // ✅ الربح = المبلغ المستلم - رأس المال
+  // ✅ الربح = المبلغ المستلم (بالدولار) - رأس المال
   const wholesaleProfit = wholesaleMode
-    ? roundCurrency((receivedAmount > 0 ? receivedAmount : subtotal) - wholesaleCOGS)
+    ? roundCurrency((receivedUSD > 0 ? receivedUSD : subtotal) - wholesaleCOGS)
     : undefined;
+
 
   // ✅ حفظ لقطة من البيع الحالي قبل تفريغ السلة
   const saveSaleSnapshot = (cartData: CartItem[], custName: string) => {
