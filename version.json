@@ -1,14 +1,21 @@
 {
-  "versionCode": 286,
-  "versionName": "1.0.56",
-  "lastUpdated": "2026-09-29T10:30:00.000Z",
+  "versionCode": 287,
+  "versionName": "1.0.57",
+  "lastUpdated": "2026-09-29T12:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 287,
+      "versionName": "1.0.57",
+      "date": "2026-09-29",
+      "description": "v1.0.57 - Product delete is now safe archiving (history preserved), signup shows the real rejection reason, startup alerts collapsed into one summary toast, received amount is read in the selected currency, cash shortfall is no longer booked as a silent discount, and a deferred sale can record a down payment that reduces the debt"
+    },
     {
       "versionCode": 286,
       "versionName": "1.0.56",
       "date": "2026-09-29",
       "description": "v1.0.56 - Product images load only when visible (IntersectionObserver + signed URL memo); connectivity check probes app backend first with 4s timeout to fix false offline on VPN"
     },
+
     {
       "versionCode": 285,
       "versionName": "1.0.55",
