@@ -694,9 +694,12 @@ export function CartPanel({
           'debt_created',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
-          { amount: totalSnapshot, customerName: customerNameSnapshot }
+          downPaymentSnapshot > 0
+            ? `تم إنشاء دين للعميل ${customerNameSnapshot} بقيمة $${formatNumber(debtRemainingSnapshot)} بعد دفعة أولى $${formatNumber(downPaymentSnapshot)}`
+            : `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
+          { amount: debtRemainingSnapshot, downPayment: downPaymentSnapshot, customerName: customerNameSnapshot }
         );
+
       }
 
       // ✅ إغلاق الواجهة فوراً
