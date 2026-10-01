@@ -63,6 +63,11 @@ const isEmptyValue = (value: unknown) => value === null || value === undefined |
 const formatNumberValue = (key: string, value: number) =>
   MONEY_KEYS.has(key) ? `$${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : value.toLocaleString('en-US');
 
+const typeFormatters: Record<string, (value: unknown, key: string) => string> = {
+  number: (value, key) => formatNumberValue(key, value as number),
+  boolean: value => (value ? 'نعم' : 'لا'),
+};
+
 const specialFormatters: Record<string, (value: unknown) => string> = {
   paymentType: value => (value === 'debt' ? 'دين' : 'نقدي'),
   createdAt: value => new Date(String(value)).toLocaleString('ar-SA'),
@@ -70,10 +75,8 @@ const specialFormatters: Record<string, (value: unknown) => string> = {
 
 const formatDetailValue = (key: string, value: unknown): string => {
   if (isEmptyValue(value)) return '—';
-  if (typeof value === 'number') return formatNumberValue(key, value);
-  if (typeof value === 'boolean') return value ? 'نعم' : 'لا';
-  const special = specialFormatters[key];
-  return special ? special(value) : String(value);
+  const formatter = specialFormatters[key] ?? typeFormatters[typeof value];
+  return formatter ? formatter(value, key) : String(value);
 };
 
 const primitiveEntries = (source: Details | null) =>
@@ -84,48 +87,44 @@ const getDetailItems = (details: Details): DetailItem[] => {
   return Array.isArray(items) ? (items as DetailItem[]) : [];
 };
 
-const hasDetails = (details?: Details) =>
-  !!details && (primitiveEntries(details).length > 0 || !!asRecord(details.snapshot) || Object.keys(asRecord(details.changes) || {}).length > 0);
+const hasDetails = (details?: Details): details is Details => {
+  if (!details) return false;
+  const changeCount = Object.keys(asRecord(details.changes) || {}).length;
+  return primitiveEntries(details).length > 0 || asRecord(details.snapshot) !== null || changeCount > 0;
+};
 
-function DetailItemsTable({ items }: { items: DetailItem[] }) {
-  return (
-    <table className="w-full text-[11px] mt-2 border border-border/40 rounded-lg overflow-hidden">
-      <thead className="bg-muted/60 text-muted-foreground">
-        <tr><th className="p-1.5 text-start">المنتج</th><th className="p-1.5">الكمية</th><th className="p-1.5">السعر</th><th className="p-1.5">الإجمالي</th></tr>
-      </thead>
-      <tbody>
-        {items.map((item, i) => (
-          <tr key={`${item.name}-${i}`} className="border-t border-border/40">
-            <td className="p-1.5">{item.name}</td>
-            <td className="p-1.5 text-center">{formatDetailValue('quantity', item.quantity)}</td>
-            <td className="p-1.5 text-center">{formatDetailValue('price', item.price)}</td>
-            <td className="p-1.5 text-center">{formatDetailValue('total', item.total)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+const DetailItemsTable = ({ items }: { items: DetailItem[] }) => (
+  <table className="w-full text-[11px] mt-2 border border-border/40 rounded-lg overflow-hidden">
+    <thead className="bg-muted/60 text-muted-foreground">
+      <tr><th className="p-1.5 text-start">المنتج</th><th className="p-1.5">الكمية</th><th className="p-1.5">السعر</th><th className="p-1.5">الإجمالي</th></tr>
+    </thead>
+    <tbody>
+      {items.map(item => (
+        <tr key={`${item.name}-${item.quantity}-${item.price}-${item.total}`} className="border-t border-border/40">
+          <td className="p-1.5">{item.name}</td>
+          <td className="p-1.5 text-center">{formatDetailValue('quantity', item.quantity)}</td>
+          <td className="p-1.5 text-center">{formatDetailValue('price', item.price)}</td>
+          <td className="p-1.5 text-center">{formatDetailValue('total', item.total)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
 
-function DetailChanges({ changes }: { changes: Details }) {
-  return (
-    <div className="mt-2 space-y-1">
-      {Object.entries(changes).map(([key, change]) => {
-        const c = asRecord(change);
-        return (
-          <div key={key} className="flex flex-wrap items-center gap-1.5 text-[11px]">
-            <span className="text-muted-foreground">{detailLabels[key] || key}:</span>
-            <span className="line-through text-red-500">{formatDetailValue(key, c?.from)}</span>
-            <span>←</span>
-            <span className="text-green-600 font-medium">{formatDetailValue(key, c?.to)}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const DetailChanges = ({ changes }: { changes: Details }) => (
+  <div className="mt-2 space-y-1">
+    {Object.entries(changes).map(([key, change]) => (
+      <div key={key} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <span className="text-muted-foreground">{detailLabels[key] || key}:</span>
+        <span className="line-through text-red-500">{formatDetailValue(key, asRecord(change)?.from)}</span>
+        <span>←</span>
+        <span className="text-green-600 font-medium">{formatDetailValue(key, asRecord(change)?.to)}</span>
+      </div>
+    ))}
+  </div>
+);
 
-function ActivityLogDetails({ details }: { details: Details }) {
+const ActivityLogDetails = ({ details }: { details: Details }) => {
   const fields = [...primitiveEntries(details), ...primitiveEntries(asRecord(details.snapshot))];
   const items = getDetailItems(details);
   const changes = asRecord(details.changes);
@@ -143,7 +142,7 @@ function ActivityLogDetails({ details }: { details: Details }) {
       {items.length > 0 && <DetailItemsTable items={items} />}
     </div>
   );
-}
+};
 
 export function ActivityLogSection() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
