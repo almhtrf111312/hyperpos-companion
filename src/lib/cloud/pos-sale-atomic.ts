@@ -108,7 +108,11 @@ export async function processPosSaleAtomic(
       _currency: bundle.currency,
       _warehouse_id: bundle.warehouseId || null,
       _items: rpcItems,
+      _down_payment: paymentType === 'debt'
+        ? Math.max(0, Math.min(Number(bundle.downPayment || 0), Number(bundle.total || 0)))
+        : 0,
     });
+
 
     if (error) {
       // ✅ سجّل الخطأ الكامل من Supabase للتشخيص
