@@ -30,7 +30,10 @@ export interface AtomicSaleBundle {
   currency: string;
   profit: number;
   warehouseId?: string;
+  /** دفعة أولى مقبوضة نقداً عند البيع المؤجل (بالدولار) — تُخصم من الدين */
+  downPayment?: number;
 }
+
 
 export interface AtomicSaleResult {
   success: boolean;
