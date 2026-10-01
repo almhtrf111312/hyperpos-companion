@@ -94,15 +94,11 @@ export async function processCashSaleBundleFromQueue(
     console.log('[CashSale] Bundle synced successfully:', sale.invoiceNumber);
     return true;
   } catch (error) {
-    // ✅ استخراج رسالة الخطأ الحقيقية من Supabase بدقة
-    const errObj = error as Record<string, unknown>;
-    console.error('[CashSale] Failed to process queued bundle:', {
-      message: errObj?.message || String(error),
-      details: errObj?.details,
-      hint: errObj?.hint,
-      code: errObj?.code,
-      fullError: error,
-    });
-    throw error;
+    // ✅ استخراج رسالة الخطأ الحقيقية بدقة لضمان تسجيلها في حقل error بطابور sync_queue
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : ((error as Record<string, unknown>)?.message as string || (error as Record<string, unknown>)?.details as string || String(error));
+    console.error('[CashSale] Failed to process queued bundle:', errorMessage, error);
+    throw error instanceof Error ? error : new Error(String(errorMessage));
   }
 }

@@ -5,7 +5,7 @@ import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/s
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
-import { processQueue, hasPendingOperations, getQueueStatus } from '@/lib/sync-queue';
+import { processQueue, hasPendingOperations, getQueueStatus, getFailedOperations, loadQueue } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
 import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '@/lib/cloud/purchase-queue-processor';
@@ -88,7 +88,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     if (isOnline && wasOffline && user) {
       // الشبكة عادت - لكن نفحص الإنترنت الفعلي أولاً
       console.log('[CloudSync] Network restored, checking real internet access...');
-      checkRealInternetAccess(2500).then(hasInternet => {
+      checkRealInternetAccess(6000).then(hasInternet => {
         if (hasInternet) {
           console.log('[CloudSync] Real internet confirmed, starting sync...');
           showToast.info('جاري المزامنة...', 'جاري رفع البيانات المعلقة');
@@ -111,7 +111,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       if (!hasPendingOperations()) return;
       
       console.log('[CloudSync] Periodic retry: checking for pending operations...');
-      const hasInternet = await checkRealInternetAccess(2500);
+      const hasInternet = await checkRealInternetAccess(6000);
       
       if (hasInternet) {
         console.log('[CloudSync] Periodic retry: internet available, syncing...');
@@ -272,7 +272,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
     // Verify real internet access (network may be on but no internet)
     if (navigator.onLine) {
-      const hasInternet = await checkRealInternetAccess(2500);
+      const hasInternet = await checkRealInternetAccess(6000);
       setHasInternetAccess(hasInternet);
       if (!hasInternet) {
         // ✅ كتم الرسالة أثناء الأوفلاين - المزامنة ستحدث تلقائياً
@@ -341,7 +341,13 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
             `نجحت ${result.processed} — فشلت ${result.failed} (ستُعاد المحاولة)`
           );
         } else if (result.failed > 0 && result.processed === 0) {
-          showToast.error('فشلت المزامنة', { description: `${result.failed} عملية تحتاج إعادة محاولة` });
+          const failedOps = getFailedOperations();
+          const allQueue = loadQueue();
+          const lastError = failedOps[0]?.error || allQueue.find(op => !!op.error)?.error || 'خطأ في معالجة العملية';
+          showToast.error('فشلت المزامنة', {
+            description: `${result.failed} عملية معلقة: ${lastError}`,
+            duration: 6000
+          });
         }
       }
 

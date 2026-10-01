@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "حل مشكلة فحص الإنترنت والـ VPN: إعطاء الأولوية لفحص خادم التطبيق Supabase، رفع المهلة إلى 6 ثوانٍ، التعامل بتفاؤل مع اتصال النظام، تفصيل أسباب فشل طابور المزامنة مع إمكانية إعادة المحاولة، وتوثيق استرداد وتعديل الفواتير وعرض الأرشيف سحابياً.",
+    "en": "v1.0.58 - Fixed VPN connectivity probe using Supabase ping and adaptive timeout, detailed sync queue error diagnostics with manual retry, invoice refund/update activity logging, and cloud archive sync."
+  },
+  {
+    "type": "fix",
     "ar": "إصلاحات محاسبية وتشغيلية: حذف المنتج صار أرشفة آمنة تحفظ كل السجل المالي، إنشاء الحساب يعرض السبب الحقيقي للرفض، تنبيهات بدء التشغيل صارت إشعاراً واحداً مُجمّعاً، المبلغ المقبوض يُقرأ بعملة العرض المختارة، نقص المبلغ النقدي لم يعد يُسجَّل كخصم صامت، والبيع المؤجل يقبل دفعة أولى تُخصم من الدين.",
     "en": "v1.0.57 - Safe product archiving, real signup error reasons, single grouped startup alert, currency-aware received amount, no silent cash discount, and down payments on deferred sales."
   },

@@ -15,7 +15,7 @@ const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
-import { logActivity } from '../activity-log';
+import { logActivity, diffFields } from '../activity-log';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -491,6 +491,19 @@ export const updateInvoiceCloud = async (
   const success = await updateInSupabase('invoices', cloudInvoice.id, cloudUpdates);
 
   if (success) {
+    const diff = diffFields(
+      invoice,
+      { ...invoice, ...updates },
+      ['status', 'paymentType', 'debtPaid', 'debtRemaining']
+    );
+    if (Object.keys(diff).length > 0) {
+      void logActivity('invoice_updated', `تعديل فاتورة: ${invoice.id} - ${invoice.customerName}`, {
+        entityType: 'invoice',
+        entityId: invoice.id,
+        entityName: invoice.customerName,
+        changes: diff,
+      });
+    }
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
     return { ...invoice, ...updates, updatedAt: new Date().toISOString() };

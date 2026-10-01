@@ -405,6 +405,26 @@ export default function Invoices() {
           description: lines.join(' • '),
           duration: 4500,
         });
+
+        void logActivity('invoice_refunded', `استرداد كامل للفاتورة: ${invoiceLabel} بقيمة $${roundCurrency(refundedTotal)}`, {
+          entityType: 'invoice',
+          entityId: invoice.id,
+          entityName: invoice.customerName,
+          snapshot: {
+            invoiceNumber: invoice.id,
+            customerName: invoice.customerName,
+            total: refundedTotal,
+            paymentType: invoice.paymentType,
+            cashToRefund: (typeof result === 'object' && (result as RefundResult).cashToRefund) || 0,
+            deletedDebt: (typeof result === 'object' && (result as RefundResult).deletedDebtAmount) || 0,
+            items: invoice.items.map(it => ({
+              name: it.name,
+              quantity: it.quantity,
+              price: it.price,
+              total: it.total,
+            })),
+          },
+        });
       } catch (err) {
         console.error('[confirmRefund] background error:', err);
         toast.error(`فشل في استرداد ${invoiceLabel}`, { id: toastId, duration: 3500 });
@@ -517,6 +537,29 @@ export default function Invoices() {
         id: toastId,
         description: lines.join(' • '),
         duration: 5000,
+      });
+
+      void logActivity('invoice_refunded', `استرداد جزئي للفاتورة: ${invoiceLabel} بقيمة $${roundCurrency(result.refundedAmount)}`, {
+        entityType: 'invoice',
+        entityId: invoice.id,
+        entityName: invoice.customerName,
+        snapshot: {
+          invoiceNumber: invoice.id,
+          customerName: invoice.customerName,
+          refundedAmount: result.refundedAmount,
+          cashToRefund: result.cashToRefund,
+          debtReduced: result.debtReduced,
+          items: itemsToRefund.map(it => {
+            const qty = it.quantityToRefund ?? it.quantity ?? 1;
+            const price = it.unitPrice ?? 0;
+            return {
+              name: it.productName,
+              quantity: qty,
+              price: price,
+              total: roundCurrency(price * qty),
+            };
+          }),
+        },
       });
     } catch (err) {
       console.error('[confirmPartialRefund] error:', err);

@@ -63,9 +63,8 @@ function buildRpcItems(bundle: AtomicSaleBundle) {
       throw new Error(`Invalid stock quantity for ${item.name}`);
     }
 
-    // ✅ التأكد من أن product_id هو UUID صالح
-    // إذا لم يكن UUID (صنف حر أو مؤقت)، نتركه كما هو ونترك الـ RPC يتعامل معه
-    const productId = stockItem.productId;
+    // ✅ التأكد من فحص stockItem.productId، وإذا لم يكن UUID صالحاً تجنب تمرير نص خاطئ يكسر تحويل uuid في قاعدة البيانات
+    const productId = isValidUUID(stockItem.productId) ? stockItem.productId : null;
 
     return {
       product_id: productId,
@@ -106,23 +105,18 @@ export async function processPosSaleAtomic(
       _total: bundle.total,
       _profit: bundle.profit,
       _currency: bundle.currency,
-      _warehouse_id: bundle.warehouseId || null,
+      _warehouse_id: (bundle.warehouseId && isValidUUID(bundle.warehouseId)) ? bundle.warehouseId : null,
       _items: rpcItems,
       _down_payment: paymentType === 'debt'
         ? Math.max(0, Math.min(Number(bundle.downPayment || 0), Number(bundle.total || 0)))
         : 0,
     });
 
-
     if (error) {
-      // ✅ سجّل الخطأ الكامل من Supabase للتشخيص
-      console.error('[AtomicSale] RPC error:', {
-        message: error.message,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        code: (error as any).code,
-      });
-      throw new Error(error.message || 'Atomic sale failed');
+      const errorObj = error as Record<string, unknown>;
+      const detailedMsg = error.message || (typeof errorObj?.details === 'string' ? errorObj.details : '') || 'فشل تنفيذ البيع الذري';
+      console.error('[AtomicSale] RPC error:', detailedMsg, error);
+      throw new Error(detailedMsg);
     }
 
     const row = Array.isArray(data) ? data[0] : data;

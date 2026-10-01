@@ -12,19 +12,20 @@ interface NetworkStatus {
 
 // Global cached probe result to prevent hammering probes while providing instant checks
 let globalProbeResult: { isOnline: boolean; timestamp: number } | null = null;
-const PROBE_CACHE_TTL = 4000; // 4 seconds cache
+const PROBE_CACHE_TTL = 4000; // 4 seconds positive cache
+const NEGATIVE_PROBE_CACHE_TTL = 1500; // 1.5 seconds negative cache for immediate recovery
 
 /**
  * Hook to track network connectivity status
  * Uses Capacitor Network plugin on mobile for reliable detection
  * Falls back to browser events on web
  * Triggers callback when coming back online
- * Proactively verifies WAN connectivity to detect dead VPN connections (tun0 ghost networks)
+ * Proactively verifies WAN connectivity with optimistic online fallback
  */
 export function useNetworkStatus(onReconnect?: () => void) {
   const [status, setStatus] = useState<NetworkStatus>(() => {
     const rawOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-    if (globalProbeResult && Date.now() - globalProbeResult.timestamp < PROBE_CACHE_TTL) {
+    if (globalProbeResult && Date.now() - globalProbeResult.timestamp < (globalProbeResult.isOnline ? PROBE_CACHE_TTL : NEGATIVE_PROBE_CACHE_TTL)) {
       return {
         isOnline: globalProbeResult.isOnline,
         wasOffline: !globalProbeResult.isOnline,
@@ -48,10 +49,12 @@ export function useNetworkStatus(onReconnect?: () => void) {
   }, [onReconnect]);
 
   const verifyAndSetOnline = useCallback(async () => {
-    // Check if network is connected, then verify real internet access (catches dead VPN)
-    const hasRealInternet = await checkRealInternetAccess(2500);
-    if (!hasRealInternet) {
-      console.warn('[Network] ⚠️ Network reports connected, but dead VPN / no WAN detected. Staying offline.');
+    // Optimistic Online: طالما أن نظام أندرويد/Capacitor يؤكد الاتصال، لا نجبر التطبيق على وضع offline فوراً
+    const hasRealInternet = await checkRealInternetAccess(6000);
+    const systemConnected = await getNetworkStatus();
+
+    if (!hasRealInternet && !systemConnected) {
+      console.warn('[Network] ⚠️ Network disconnected. Staying offline.');
       wasOfflineRef.current = true;
       setStatus(prev => ({
         ...prev,
@@ -61,7 +64,20 @@ export function useNetworkStatus(onReconnect?: () => void) {
       return;
     }
 
-    console.log('[Network] ✅ Real internet confirmed');
+    if (!hasRealInternet && systemConnected) {
+      console.warn('[Network] ⚠️ Probe was slow or failed, but system network is connected. Keeping optimistic online.');
+      // لا نحظر واجهة المستخدم أو نظهر شريط عدم الاتصال ما دام اتصال النظام قائماً
+      // نكرر المحاولة بهدوء في الخلفية
+      setTimeout(() => {
+        checkRealInternetAccess(6000).then(retryOk => {
+          if (retryOk) {
+            console.log('[Network] ✅ Background retry confirmed real internet');
+          }
+        }).catch(() => {});
+      }, 3000);
+    }
+
+    console.log('[Network] ✅ Connection confirmed (Optimistic or verified)');
     const wasOffline = wasOfflineRef.current;
     
     setStatus({
@@ -97,7 +113,7 @@ export function useNetworkStatus(onReconnect?: () => void) {
   }, []);
 
   useEffect(() => {
-    let appResumeListener: { remove: () => void } | null = null;
+    const appResumeListener: { remove: () => void } | null = null;
 
     if (isNativePlatform) {
       console.log('[Network] Using Capacitor Network plugin with dead VPN detection');
@@ -175,7 +191,7 @@ export function isNetworkOnline(): boolean {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return false;
   }
-  if (globalProbeResult && !globalProbeResult.isOnline && (Date.now() - globalProbeResult.timestamp < 10000)) {
+  if (globalProbeResult && !globalProbeResult.isOnline && (Date.now() - globalProbeResult.timestamp < NEGATIVE_PROBE_CACHE_TTL)) {
     return false;
   }
   return true;
@@ -201,20 +217,23 @@ export async function getNetworkStatus(): Promise<boolean> {
 }
 
 /**
- * فحص فوري وفعلي للاتصال بالإنترنت (يكتشف فوراً الـ VPN المعطل والشبكات الوهمية)
- * ينفذ فحص متوازي وسريع (Parallel Race) لعدة مسارات خلال 2.5 ثانية كحد أقصى
- * @param timeoutMs مهلة الفحص بالمللي ثانية (الافتراضي: 2500 مللي ثانية)
+ * فحص فوري وفعلي للاتصال بالإنترنت (متوافق مع شبكات VPN والمسارات المحولة)
+ * ينفذ فحصاً متوازياً: الأولوية لخادم التطبيق (Supabase REST ping) ومسارات بديلة خفيفة
+ * @param timeoutMs مهلة الفحص بالمللي ثانية (الافتراضي: 6000 مللي ثانية لمنح الـ VPN مهلة كافية)
  */
-export async function checkRealInternetAccess(timeoutMs: number = 2500): Promise<boolean> {
+export async function checkRealInternetAccess(timeoutMs: number = 6000): Promise<boolean> {
   // 1. تحقق فوري من واجهة النظام
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     globalProbeResult = { isOnline: false, timestamp: Date.now() };
     return false;
   }
 
-  // 2. استخدام الكاش اللحظي إن كان حديثاً (< 4 ثواني) لتجنب حرق طلبات الشبكة
-  if (globalProbeResult && (Date.now() - globalProbeResult.timestamp < PROBE_CACHE_TTL)) {
-    return globalProbeResult.isOnline;
+  // 2. استخدام الكاش اللحظي: الكاش الإيجابي 4 ثوانٍ، والسلبي 1.5 ثانية للتعافي السريع
+  if (globalProbeResult) {
+    const ttl = globalProbeResult.isOnline ? PROBE_CACHE_TTL : NEGATIVE_PROBE_CACHE_TTL;
+    if (Date.now() - globalProbeResult.timestamp < ttl) {
+      return globalProbeResult.isOnline;
+    }
   }
 
   const networkOnline = await getNetworkStatus();
@@ -223,8 +242,8 @@ export async function checkRealInternetAccess(timeoutMs: number = 2500): Promise
     return false;
   }
 
-  // 3. فحص متوازي: خادم التطبيق أولاً (يعمل عبر VPN)، ثم مسارات احتياطية
-  const effectiveTimeout = Math.max(timeoutMs, 4000);
+  // 3. فحص متوازي: خادم التطبيق أولاً (يعمل عبر VPN)، ثم مسارات بديلة خفيفة وموثوقة
+  const effectiveTimeout = Math.max(timeoutMs, 6000);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), effectiveTimeout);
 
@@ -241,19 +260,27 @@ export async function checkRealInternetAccess(timeoutMs: number = 2500): Promise
   const probes: Promise<unknown>[] = [];
   const backendUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+
   if (backendUrl) {
-    // أي استجابة HTTP (حتى 401/404) تعني أن الخادم وصل = متصل
-    probes.push(fetch(`${backendUrl}/auth/v1/health`, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal,
-      headers: anonKey ? { apikey: anonKey } : undefined,
-    }));
+    // أي استجابة من خادم التطبيق (حتى 401 أو 404 أو 200) دليل قاطع على اتصال حقيقي وفعّال
+    probes.push(
+      fetch(`${backendUrl}/auth/v1/health`, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal,
+        headers: anonKey ? { apikey: anonKey } : undefined,
+      }).then(res => {
+        if (res.status >= 200 && res.status < 600) return true;
+        throw new Error(`HTTP ${res.status}`);
+      })
+    );
   }
+
+  // روابط بديلة خفيفة تعمل في معظم الدول ولا تحجبها شبكات الـ VPN
   probes.push(
-    fetchProbe('https://connectivitycheck.gstatic.com/generate_204'),
-    fetchProbe('https://www.cloudflare.com/cdn-cgi/trace'),
-    fetchProbe('https://dns.google/resolve?name=example.com'),
+    fetchProbe('https://1.1.1.1/cdn-cgi/trace'),
+    fetchProbe('https://msftconnecttest.com/connecttest.txt'),
+    fetchProbe('https://captive.apple.com/hotspot-detect.html'),
   );
 
   try {

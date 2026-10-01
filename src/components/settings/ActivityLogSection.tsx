@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { loadActivityLogs, clearActivityLogs, ActivityLog, ActivityType, activityTypeLabels } from '@/lib/activity-log';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 const activityIcons: Record<ActivityType, typeof Activity> = {
   login: LogIn, logout: LogOut, sale: ShoppingCart, maintenance: Wrench,
@@ -45,7 +46,7 @@ type Details = Record<string, unknown>;
 type DetailItem = { name?: string; quantity?: number; price?: number; costPrice?: number; total?: number };
 
 const HIDDEN_KEYS = new Set(['entityType', 'entityId', 'entityName', 'productId', 'debtId', 'snapshot', 'changes', 'items', 'type', 'txKind']);
-const MONEY_KEYS = new Set(['amount', 'total', 'subtotal', 'discount', 'price', 'salePrice', 'costPrice', 'totalDebt', 'remainingBefore', 'remainingAfter']);
+const MONEY_KEYS = new Set(['amount', 'total', 'subtotal', 'discount', 'price', 'salePrice', 'costPrice', 'totalDebt', 'remainingBefore', 'remainingAfter', 'refundedAmount', 'cashToRefund', 'deletedDebt', 'debtReduced']);
 
 const detailLabels: Record<string, string> = {
   name: 'الاسم', barcode: 'الباركود', category: 'التصنيف', salePrice: 'سعر البيع', costPrice: 'سعر التكلفة',
@@ -53,6 +54,7 @@ const detailLabels: Record<string, string> = {
   amount: 'المبلغ', customerName: 'العميل', customerPhone: 'الهاتف', invoiceNumber: 'رقم الفاتورة', invoiceId: 'رقم الفاتورة',
   paymentType: 'طريقة الدفع', cashierName: 'الكاشير', createdAt: 'تاريخ الفاتورة', totalDebt: 'إجمالي الدين',
   remainingBefore: 'المتبقي قبل', remainingAfter: 'المتبقي بعد', isCashDebt: 'دين نقدي',
+  refundedAmount: 'قيمة المرتجع', cashToRefund: 'المبلغ المسترد نقداً', deletedDebt: 'الدين المسترد', debtReduced: 'تخفيض الدين',
 };
 
 const asRecord = (value: unknown): Details | null =>
@@ -189,7 +191,49 @@ export function ActivityLogSection() {
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  useEffect(() => { setLogs(loadActivityLogs()); }, []);
+  useEffect(() => {
+    setLogs(loadActivityLogs());
+
+    // جلب الأرشيف المحفوظ على Supabase لعرضه ومزامنته عبر كل الأجهزة
+    const fetchCloudLogs = async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: cloudRows, error } = await (supabase as any)
+          .from('activity_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (!error && Array.isArray(cloudRows) && cloudRows.length > 0) {
+          const cloudLogs: ActivityLog[] = cloudRows.map(row => ({
+            id: row.id,
+            type: row.action_type as ActivityType,
+            userId: row.actor_id || row.user_id,
+            userName: row.actor_name || 'مستخدم',
+            description: row.description || '',
+            details: (row.metadata as Record<string, unknown>) || {},
+            timestamp: row.created_at,
+          }));
+
+          setLogs(prev => {
+            const existingIds = new Set(prev.map(l => l.id));
+            const existingKeys = new Set(prev.map(l => `${l.type}_${l.description}_${l.timestamp.slice(0, 16)}`));
+            const newFromCloud = cloudLogs.filter(cl => 
+              !existingIds.has(cl.id) && !existingKeys.has(`${cl.type}_${cl.description}_${cl.timestamp.slice(0, 16)}`)
+            );
+            const combined = [...prev, ...newFromCloud].sort(
+              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+            return combined;
+          });
+        }
+      } catch (err) {
+        console.warn('[ActivityLogSection] Failed to load cloud logs:', err);
+      }
+    };
+
+    fetchCloudLogs();
+  }, []);
 
   const filteredLogs = filter === 'all' ? logs : logs.filter(log => log.type === filter);
 
@@ -208,9 +252,14 @@ export function ActivityLogSection() {
   };
 
   const handleClearLogs = () => { clearActivityLogs(); setLogs([]); setClearDialogOpen(false); };
-  const getActivityLabel = (type: ActivityType) => activityTypeLabels[type].ar;
+  const getActivityLabel = (type: ActivityType) => activityTypeLabels[type]?.ar || type;
 
-  const activityTypes: (ActivityType | 'all')[] = ['all', 'login', 'logout', 'sale', 'maintenance', 'debt_created', 'debt_paid', 'invoice_created', 'invoice_deleted', 'product_updated', 'product_deleted'];
+  const activityTypes: (ActivityType | 'all')[] = [
+    'all', 'login', 'logout', 'sale', 'maintenance', 
+    'debt_created', 'debt_paid', 
+    'invoice_created', 'invoice_updated', 'invoice_refunded', 'invoice_deleted', 
+    'product_updated', 'product_deleted'
+  ];
 
   return (
     <div className="space-y-4 max-w-full overflow-hidden">
