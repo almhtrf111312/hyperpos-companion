@@ -358,14 +358,20 @@ export function CartPanel({
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
-    // ✅ المبلغ المقبوض أقل من الإجمالي (بيع نقدي عادي) = الفرق يُعتبر خصمًا
-    const rateForReceived = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
-    const receivedUSD = receivedAmount > 0 ? receivedAmount / rateForReceived : 0;
-    const shortfallUSD = !wholesaleMode && receivedUSD > 0 && receivedUSD < total
-      ? roundCurrency(total - receivedUSD)
-      : 0;
-    const effectiveDiscountAmount = roundCurrency(discountAmount + shortfallUSD);
-    const totalSnapshot = roundCurrency(total - shortfallUSD);
+    // 🛡️ لا يُحوَّل نقص المقبوض إلى خصم صامت بعد اليوم.
+    // البيع النقدي يُسجَّل بقيمته الكاملة؛ النقص يُعالج كخصم صريح أو كبيع مؤجل.
+    if (!wholesaleMode && receivedUSD > 0 && receivedUSD < roundCurrency(total) - 0.01) {
+      savingRef.current = false;
+      setIsSaving(false);
+      setShowCashDialog(false);
+      showToast.error(
+        `المبلغ المقبوض (${formatCurrency(receivedUSD)}) أقل من إجمالي الفاتورة (${formatCurrency(total)}). استخدم خصماً صريحاً أو سجّلها بيعاً مؤجلاً.`
+      );
+      return;
+    }
+    const effectiveDiscountAmount = roundCurrency(discountAmount);
+    const totalSnapshot = roundCurrency(total);
+
     const customerNameSnapshot = customerName;
     const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
