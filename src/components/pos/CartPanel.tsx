@@ -1342,11 +1342,17 @@ export function CartPanel({
                     ض. {effectiveTaxRate}%: ${formatNumber(taxAmount)}
                   </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedAmount >= total && (
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                    باقي: {formatCurrency(roundCurrency(receivedAmount - total))}
+                    باقي للعميل: {formatCurrency(roundCurrency(receivedUSD - total))}
                   </span>
                 )}
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total && (
+                  <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold">
+                    مقبوض: {formatCurrency(receivedUSD)} — متبقٍ: {formatCurrency(roundCurrency(total - receivedUSD))}
+                  </span>
+                )}
+
                 {receivedAmount > 0 && wholesaleMode && (
                   <span className={cn("px-1.5 py-0.5 rounded font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                     ربح: {formatCurrency(wholesaleProfit || 0)}
