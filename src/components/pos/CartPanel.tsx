@@ -1303,7 +1303,7 @@ export function CartPanel({
             )} />
             <Input
               type="number"
-              placeholder={t('pos.receivedAmount') || 'المبلغ المقبوض'}
+              placeholder={`${t('pos.receivedAmount') || 'المبلغ المقبوض'} (${selectedCurrency.symbol})`}
               value={receivedAmount || ''}
               onChange={(e) => setReceivedAmount(Number(e.target.value))}
               className={cn(
@@ -1312,7 +1312,15 @@ export function CartPanel({
               )}
               min="0"
             />
+            {/* 💱 توضيح عملة المبلغ المقبوض لمنع الخلط بين الدولار والعملة المحلية */}
+            <span className={cn(
+              "flex items-center justify-center min-w-[20px] h-5 px-1 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+              receivedAmount > 0
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted/50 text-muted-foreground border border-border/60"
+            )}>{selectedCurrency.symbol}</span>
           </label>
+
 
           {/* Row 4: Info summary + Total */}
           <div className="space-y-1">
