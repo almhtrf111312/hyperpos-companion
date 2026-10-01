@@ -772,6 +772,14 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   return success;
 };
 
+const removeProductFromLocalCache = async (id: string) => {
+  const cached = productsCache ?? await loadFromLocalCache();
+  if (!cached) return;
+  productsCache = cached.filter(p => p.id !== id);
+  cacheTimestamp = Date.now();
+  saveToLocalCache(productsCache);
+};
+
 // Archive product (soft delete) — يحافظ على كامل السجل المالي والتاريخي المرتبط بالمنتج
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
@@ -790,13 +798,7 @@ export const deleteProductCloud = async (id: string): Promise<boolean> => {
       return false;
     }
 
-    const cached = productsCache ?? await loadFromLocalCache();
-    if (cached) {
-      productsCache = cached.filter(p => p.id !== id);
-      cacheTimestamp = Date.now();
-      saveToLocalCache(productsCache);
-    }
-
+    await removeProductFromLocalCache(id);
     emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
     return true;
   } catch (error) {
