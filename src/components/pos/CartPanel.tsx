@@ -248,18 +248,15 @@ export function CartPanel({
     cart.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0)
   );
 
-  // Calculate discount based on type
-  // For fixed discounts in foreign currencies, convert to USD first
+  // Discount is entered in the selected currency (fixed) or as a percent; discountAmount is always USD
+  const activeRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
   const safeDiscountValue = Number.isFinite(discount) ? Number(discount) : 0;
-  const safeDiscountRate = discountType === 'percent'
-    ? clampNumber(safeDiscountValue, 0, 100)
-    : clampNumber(safeDiscountValue, 0, subtotal || 0);
-  const fixedDiscountInUSD = discountType === 'fixed' && Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 1
-    ? safeDiscountRate / selectedCurrency.rate
-    : safeDiscountRate;
   const discountAmount = discountType === 'percent'
-    ? (subtotal * safeDiscountRate) / 100
-    : Math.min(fixedDiscountInUSD, subtotal); // Fixed amount converted to USD, must not exceed subtotal
+    ? roundCurrency((subtotal * clampNumber(safeDiscountValue, 0, 100)) / 100)
+    : Math.min(
+        subtotal,
+        clampNumber(safeDiscountValue, 0, roundCurrency(subtotal * activeRate)) / activeRate
+      );
 
   const taxableAmount = Math.max(0, subtotal - discountAmount);
 
@@ -288,7 +285,6 @@ export function CartPanel({
   const totalInCurrency = roundCurrency(total * selectedCurrency.rate);
 
   // 💱 المبلغ المقبوض يُدخل بعملة العرض المختارة ⇒ نحوّله للدولار قبل أي حساب مالي
-  const activeRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0 ? selectedCurrency.rate : 1;
   const receivedUSD = roundCurrency(receivedAmount > 0 ? receivedAmount / activeRate : 0);
 
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
@@ -642,7 +638,7 @@ export function CartPanel({
         customerPhone: customerPhoneSnapshot || '',
         items: localItems,
         subtotal,
-        discount,
+        discount: discountAmount,
         discountAmount,
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate: effectiveTaxRate,
