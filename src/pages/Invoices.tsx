@@ -78,6 +78,7 @@ import { settleDebtsByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
 import { confirmPendingProfit } from '@/lib/partners-store';
 import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
 import { processDebtPayment } from '@/lib/unified-transactions';
+import { logActivity } from '@/lib/activity-log';
 import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
@@ -536,6 +537,12 @@ export default function Invoices() {
     await updateInvoiceCloud(invoice.id, { status: 'paid', debtPaid: invoice.total, debtRemaining: 0 });
     if (paidAmount > 0) {
       processDebtPayment(paidAmount);
+      void logActivity('debt_paid', `تسديد كامل لفاتورة ${invoice.id} بقيمة $${paidAmount} - ${invoice.customerName}`, {
+        invoiceId: invoice.id,
+        customerName: invoice.customerName,
+        amount: paidAmount,
+        remainingAfter: 0,
+      });
       confirmPendingProfit(invoice.id);
       await confirmPendingProfitCloud(invoice.id).catch(err => console.warn('[handleMarkPaid] confirm profit failed:', err));
     }

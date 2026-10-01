@@ -85,7 +85,7 @@ import {
   Warehouse
 } from '@/lib/cloud/warehouses-cloud';
 import { useImageUpload } from '@/hooks/use-image-upload';
-import { addActivityLog } from '@/lib/activity-log';
+import { addActivityLog, diffFields } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserRole } from '@/hooks/use-user-role';
 import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fields-config';
@@ -855,7 +855,15 @@ export default function Products() {
           user.id,
           profile?.full_name || user.email || t('products.defaultUser'),
           `تم تعديل منتج: ${formData.name}`,
-          { productId: selectedProduct.id, name: formData.name }
+          {
+            productId: selectedProduct.id,
+            name: formData.name,
+            changes: diffFields(
+              selectedProduct,
+              { ...selectedProduct, ...productData },
+              ['name', 'barcode', 'category', 'salePrice', 'costPrice', 'quantity']
+            ),
+          }
         );
       }
 
@@ -898,7 +906,18 @@ export default function Products() {
             user.id,
             profile?.full_name || user.email || t('products.defaultUser'),
             `تم حذف منتج: ${productSnapshot.name}`,
-            { productId: productSnapshot.id, name: productSnapshot.name }
+            {
+              productId: productSnapshot.id,
+              name: productSnapshot.name,
+              snapshot: {
+                name: productSnapshot.name,
+                barcode: productSnapshot.barcode,
+                category: productSnapshot.category,
+                salePrice: productSnapshot.salePrice,
+                costPrice: productSnapshot.costPrice,
+                quantity: productSnapshot.quantity,
+              },
+            }
           );
         }
         toast.success(t('products.deleteSuccess'), { id: toastId });

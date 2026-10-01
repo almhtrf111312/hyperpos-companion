@@ -15,6 +15,7 @@ const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
+import { logActivity } from '../activity-log';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -499,6 +500,34 @@ export const updateInvoiceCloud = async (
 };
 
 // Delete invoice
+const buildInvoiceSnapshot = (invoice: Invoice) => ({
+  invoiceNumber: invoice.id,
+  customerName: invoice.customerName,
+  customerPhone: invoice.customerPhone || '',
+  paymentType: invoice.paymentType,
+  subtotal: invoice.subtotal,
+  discount: invoice.discount,
+  total: invoice.total,
+  cashierName: invoice.cashierName || '',
+  createdAt: invoice.createdAt,
+  items: invoice.items.map(it => ({
+    name: it.name,
+    quantity: it.quantity,
+    price: it.price,
+    costPrice: it.costPrice ?? 0,
+    total: it.total,
+  })),
+});
+
+const logInvoiceDeleted = (invoice: Invoice) => {
+  void logActivity('invoice_deleted', `حذف فاتورة: ${invoice.id} بقيمة $${roundCurrency(invoice.total)}`, {
+    entityType: 'invoice',
+    entityId: invoice.id,
+    entityName: invoice.customerName,
+    snapshot: buildInvoiceSnapshot(invoice),
+  });
+};
+
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
   // Find by invoice_number
   const { data: cloudInvoice } = await sb
@@ -510,9 +539,11 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   if (!cloudInvoice) return false;
 
+  const invoiceBeforeDelete = await getInvoiceByIdCloud(id);
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
 
   if (success) {
+    if (invoiceBeforeDelete) logInvoiceDeleted(invoiceBeforeDelete);
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
 

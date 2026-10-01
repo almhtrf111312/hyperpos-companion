@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, User, Filter, Trash2, LogIn, LogOut, ShoppingCart, Wrench, CreditCard, Package, Users, Settings, UserPlus, UserMinus, Key, Database, FileText, FileX, Clock, DollarSign, Wallet, TrendingUp } from 'lucide-react';
+import { Activity, User, Filter, Trash2, LogIn, LogOut, ShoppingCart, Wrench, CreditCard, Package, Users, Settings, UserPlus, UserMinus, Key, Database, FileText, FileX, Clock, DollarSign, Wallet, TrendingUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loadActivityLogs, clearActivityLogs, ActivityLog, ActivityType, activityTypeLabels } from '@/lib/activity-log';
 import { cn } from '@/lib/utils';
@@ -41,10 +41,115 @@ const activityColors: Record<ActivityType, string> = {
   partner_deleted: 'bg-red-500/20 text-red-500', partner_withdrawal: 'bg-orange-500/20 text-orange-500',
 };
 
+type Details = Record<string, unknown>;
+type DetailItem = { name?: string; quantity?: number; price?: number; costPrice?: number; total?: number };
+
+const HIDDEN_KEYS = new Set(['entityType', 'entityId', 'entityName', 'productId', 'debtId', 'snapshot', 'changes', 'items', 'type', 'txKind']);
+const MONEY_KEYS = new Set(['amount', 'total', 'subtotal', 'discount', 'price', 'salePrice', 'costPrice', 'totalDebt', 'remainingBefore', 'remainingAfter']);
+
+const detailLabels: Record<string, string> = {
+  name: 'الاسم', barcode: 'الباركود', category: 'التصنيف', salePrice: 'سعر البيع', costPrice: 'سعر التكلفة',
+  quantity: 'الكمية', price: 'السعر', total: 'الإجمالي', subtotal: 'المجموع الفرعي', discount: 'الخصم',
+  amount: 'المبلغ', customerName: 'العميل', customerPhone: 'الهاتف', invoiceNumber: 'رقم الفاتورة', invoiceId: 'رقم الفاتورة',
+  paymentType: 'طريقة الدفع', cashierName: 'الكاشير', createdAt: 'تاريخ الفاتورة', totalDebt: 'إجمالي الدين',
+  remainingBefore: 'المتبقي قبل', remainingAfter: 'المتبقي بعد', isCashDebt: 'دين نقدي',
+};
+
+const asRecord = (value: unknown): Details | null =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Details) : null;
+
+const isEmptyValue = (value: unknown) => value === null || value === undefined || value === '';
+
+const formatNumberValue = (key: string, value: number) =>
+  MONEY_KEYS.has(key) ? `$${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : value.toLocaleString('en-US');
+
+const specialFormatters: Record<string, (value: unknown) => string> = {
+  paymentType: value => (value === 'debt' ? 'دين' : 'نقدي'),
+  createdAt: value => new Date(String(value)).toLocaleString('ar-SA'),
+};
+
+const formatDetailValue = (key: string, value: unknown): string => {
+  if (isEmptyValue(value)) return '—';
+  if (typeof value === 'number') return formatNumberValue(key, value);
+  if (typeof value === 'boolean') return value ? 'نعم' : 'لا';
+  const special = specialFormatters[key];
+  return special ? special(value) : String(value);
+};
+
+const primitiveEntries = (source: Details | null) =>
+  Object.entries(source || {}).filter(([key, value]) => !HIDDEN_KEYS.has(key) && (value === null || typeof value !== 'object'));
+
+const getDetailItems = (details: Details): DetailItem[] => {
+  const items = asRecord(details.snapshot)?.items;
+  return Array.isArray(items) ? (items as DetailItem[]) : [];
+};
+
+const hasDetails = (details?: Details) =>
+  !!details && (primitiveEntries(details).length > 0 || !!asRecord(details.snapshot) || Object.keys(asRecord(details.changes) || {}).length > 0);
+
+function DetailItemsTable({ items }: { items: DetailItem[] }) {
+  return (
+    <table className="w-full text-[11px] mt-2 border border-border/40 rounded-lg overflow-hidden">
+      <thead className="bg-muted/60 text-muted-foreground">
+        <tr><th className="p-1.5 text-start">المنتج</th><th className="p-1.5">الكمية</th><th className="p-1.5">السعر</th><th className="p-1.5">الإجمالي</th></tr>
+      </thead>
+      <tbody>
+        {items.map((item, i) => (
+          <tr key={`${item.name}-${i}`} className="border-t border-border/40">
+            <td className="p-1.5">{item.name}</td>
+            <td className="p-1.5 text-center">{formatDetailValue('quantity', item.quantity)}</td>
+            <td className="p-1.5 text-center">{formatDetailValue('price', item.price)}</td>
+            <td className="p-1.5 text-center">{formatDetailValue('total', item.total)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function DetailChanges({ changes }: { changes: Details }) {
+  return (
+    <div className="mt-2 space-y-1">
+      {Object.entries(changes).map(([key, change]) => {
+        const c = asRecord(change);
+        return (
+          <div key={key} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className="text-muted-foreground">{detailLabels[key] || key}:</span>
+            <span className="line-through text-red-500">{formatDetailValue(key, c?.from)}</span>
+            <span>←</span>
+            <span className="text-green-600 font-medium">{formatDetailValue(key, c?.to)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ActivityLogDetails({ details }: { details: Details }) {
+  const fields = [...primitiveEntries(details), ...primitiveEntries(asRecord(details.snapshot))];
+  const items = getDetailItems(details);
+  const changes = asRecord(details.changes);
+  return (
+    <div className="mt-2 p-2.5 rounded-lg bg-background/60 border border-border/40">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+        {fields.map(([key, value]) => (
+          <div key={key} className="flex justify-between gap-2 text-[11px]">
+            <span className="text-muted-foreground">{detailLabels[key] || key}</span>
+            <span className="font-medium break-all">{formatDetailValue(key, value)}</span>
+          </div>
+        ))}
+      </div>
+      {changes && Object.keys(changes).length > 0 && <DetailChanges changes={changes} />}
+      {items.length > 0 && <DetailItemsTable items={items} />}
+    </div>
+  );
+}
+
 export function ActivityLogSection() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [filter, setFilter] = useState<ActivityType | 'all'>('all');
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   useEffect(() => { setLogs(loadActivityLogs()); }, []);
 
@@ -67,7 +172,7 @@ export function ActivityLogSection() {
   const handleClearLogs = () => { clearActivityLogs(); setLogs([]); setClearDialogOpen(false); };
   const getActivityLabel = (type: ActivityType) => activityTypeLabels[type].ar;
 
-  const activityTypes: (ActivityType | 'all')[] = ['all', 'login', 'logout', 'sale', 'maintenance', 'debt_created', 'debt_paid', 'invoice_created'];
+  const activityTypes: (ActivityType | 'all')[] = ['all', 'login', 'logout', 'sale', 'maintenance', 'debt_created', 'debt_paid', 'invoice_created', 'invoice_deleted', 'product_updated', 'product_deleted'];
 
   return (
     <div className="space-y-4 max-w-full overflow-hidden">
@@ -125,10 +230,23 @@ export function ActivityLogSection() {
                     <span className="text-[11px] text-muted-foreground font-mono shrink-0">{formatDate(log.timestamp)}</span>
                   </div>
                   <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed break-words">{log.description}</p>
-                  <div className="flex items-center gap-1 mt-1.5 text-muted-foreground text-[11px]">
-                    <User className="w-3 h-3" />
-                    <span>{log.userName}</span>
+                  <div className="flex items-center justify-between gap-2 mt-1.5">
+                    <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                      <User className="w-3 h-3" />
+                      <span>{log.userName}</span>
+                    </div>
+                    {hasDetails(log.details) && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                        className="flex items-center gap-0.5 text-[11px] text-primary hover:underline"
+                      >
+                        <span>{expandedLogId === log.id ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</span>
+                        <ChevronDown className={cn("w-3 h-3 transition-transform", expandedLogId === log.id && "rotate-180")} />
+                      </button>
+                    )}
                   </div>
+                  {expandedLogId === log.id && log.details && <ActivityLogDetails details={log.details} />}
                 </div>
               </div>
             );
