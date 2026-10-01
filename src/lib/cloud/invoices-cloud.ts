@@ -520,12 +520,25 @@ const buildInvoiceSnapshot = (invoice: Invoice) => ({
 });
 
 const logInvoiceDeleted = (invoice: Invoice) => {
-  void logActivity('invoice_deleted', `حذف فاتورة: ${invoice.id} بقيمة $${roundCurrency(invoice.total)}`, {
+  logActivity('invoice_deleted', `حذف فاتورة: ${invoice.id} بقيمة $${roundCurrency(invoice.total)}`, {
     entityType: 'invoice',
     entityId: invoice.id,
     entityName: invoice.customerName,
     snapshot: buildInvoiceSnapshot(invoice),
-  });
+  }).catch(() => undefined);
+};
+
+const findLoadedInvoice = async (id: string): Promise<Invoice | null> =>
+  (await loadInvoicesCloud()).find(inv => inv.id === id) || null;
+
+const refreshCustomerStatsAfterDelete = async (customerId: string | null) => {
+  if (!customerId) return;
+  try {
+    const { updateCustomerStatsCloud } = await import('./customers-cloud');
+    await updateCustomerStatsCloud(customerId);
+  } catch (e) {
+    console.warn('[deleteInvoiceCloud] failed to refresh customer stats:', e);
+  }
 };
 
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
@@ -539,23 +552,15 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 
   if (!cloudInvoice) return false;
 
-  const invoiceBeforeDelete = await getInvoiceByIdCloud(id);
+  const invoiceBeforeDelete = await findLoadedInvoice(id);
   const success = await deleteFromSupabase('invoices', cloudInvoice.id);
 
   if (success) {
     if (invoiceBeforeDelete) logInvoiceDeleted(invoiceBeforeDelete);
     invalidateInvoicesCache();
     emitEvent(EVENTS.INVOICES_UPDATED, null);
-
     // ✅ إعادة احتساب أرقام العميل بدون هذه الفاتورة
-    if (cloudInvoice.customer_id) {
-      try {
-        const { updateCustomerStatsCloud } = await import('./customers-cloud');
-        await updateCustomerStatsCloud(cloudInvoice.customer_id);
-      } catch (e) {
-        console.warn('[deleteInvoiceCloud] failed to refresh customer stats:', e);
-      }
-    }
+    await refreshCustomerStatsAfterDelete(cloudInvoice.customer_id);
   }
 
   return success;

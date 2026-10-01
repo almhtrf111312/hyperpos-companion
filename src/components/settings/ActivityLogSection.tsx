@@ -144,6 +144,45 @@ const ActivityLogDetails = ({ details }: { details: Details }) => {
   );
 };
 
+const DetailsToggle = ({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) => (
+  <button type="button" onClick={onToggle} className="flex items-center gap-0.5 text-[11px] text-primary hover:underline">
+    <span>{expanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</span>
+    <ChevronDown className={cn("w-3 h-3 transition-transform", expanded && "rotate-180")} />
+  </button>
+);
+
+interface ActivityLogItemProps {
+  log: ActivityLog;
+  label: string;
+  dateText: string;
+  expanded: boolean;
+  onToggle: () => void;
+}
+
+const ActivityLogItem = ({ log, label, dateText, expanded, onToggle }: ActivityLogItemProps) => {
+  const Icon = activityIcons[log.type] || Activity;
+  const showDetails = hasDetails(log.details);
+  return (
+    <div className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/40">
+      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5", activityColors[log.type])}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold text-foreground text-xs sm:text-sm">{label}</span>
+          <span className="text-[11px] text-muted-foreground font-mono shrink-0">{dateText}</span>
+        </div>
+        <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed break-words">{log.description}</p>
+        <div className="flex items-center justify-between gap-2 mt-1.5 text-muted-foreground text-[11px]">
+          <span className="flex items-center gap-1"><User className="w-3 h-3" />{log.userName}</span>
+          {showDetails && <DetailsToggle expanded={expanded} onToggle={onToggle} />}
+        </div>
+        {expanded && showDetails && <ActivityLogDetails details={log.details as Details} />}
+      </div>
+    </div>
+  );
+};
+
 export function ActivityLogSection() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [filter, setFilter] = useState<ActivityType | 'all'>('all');
@@ -216,40 +255,16 @@ export function ActivityLogSection() {
             <p className="text-sm font-medium">لا توجد نشاطات مسجلة</p>
           </div>
         ) : (
-          filteredLogs.map(log => {
-            const Icon = activityIcons[log.type] || Activity;
-            return (
-              <div key={log.id} className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/40">
-                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5", activityColors[log.type])}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-foreground text-xs sm:text-sm">{getActivityLabel(log.type)}</span>
-                    <span className="text-[11px] text-muted-foreground font-mono shrink-0">{formatDate(log.timestamp)}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-foreground/90 mt-1 leading-relaxed break-words">{log.description}</p>
-                  <div className="flex items-center justify-between gap-2 mt-1.5">
-                    <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
-                      <User className="w-3 h-3" />
-                      <span>{log.userName}</span>
-                    </div>
-                    {hasDetails(log.details) && (
-                      <button
-                        type="button"
-                        onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
-                        className="flex items-center gap-0.5 text-[11px] text-primary hover:underline"
-                      >
-                        <span>{expandedLogId === log.id ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</span>
-                        <ChevronDown className={cn("w-3 h-3 transition-transform", expandedLogId === log.id && "rotate-180")} />
-                      </button>
-                    )}
-                  </div>
-                  {expandedLogId === log.id && log.details && <ActivityLogDetails details={log.details} />}
-                </div>
-              </div>
-            );
-          })
+          filteredLogs.map(log => (
+            <ActivityLogItem
+              key={log.id}
+              log={log}
+              label={getActivityLabel(log.type)}
+              dateText={formatDate(log.timestamp)}
+              expanded={expandedLogId === log.id}
+              onToggle={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+            />
+          ))
         )}
       </div>
 

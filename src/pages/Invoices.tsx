@@ -537,12 +537,12 @@ export default function Invoices() {
     await updateInvoiceCloud(invoice.id, { status: 'paid', debtPaid: invoice.total, debtRemaining: 0 });
     if (paidAmount > 0) {
       processDebtPayment(paidAmount);
-      void logActivity('debt_paid', `تسديد كامل لفاتورة ${invoice.id} بقيمة $${paidAmount} - ${invoice.customerName}`, {
+      logActivity('debt_paid', `تسديد كامل لفاتورة ${invoice.id} بقيمة $${paidAmount} - ${invoice.customerName}`, {
         invoiceId: invoice.id,
         customerName: invoice.customerName,
         amount: paidAmount,
         remainingAfter: 0,
-      });
+      }).catch(() => undefined);
       confirmPendingProfit(invoice.id);
       await confirmPendingProfitCloud(invoice.id).catch(err => console.warn('[handleMarkPaid] confirm profit failed:', err));
     }
