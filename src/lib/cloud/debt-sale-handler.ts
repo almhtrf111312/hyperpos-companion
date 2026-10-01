@@ -59,6 +59,10 @@ export interface DebtSaleBundle {
   // Stock data
   stockItems: Array<{ productId: string; productName: string; quantity: number }>;
   warehouseId?: string;
+
+  /** دفعة أولى مقبوضة نقداً عند البيع (بالدولار) — تُخصم من الدين */
+  downPayment?: number;
+
   
   // Metadata
   cashierId?: string;
