@@ -544,9 +544,13 @@ export function CartPanel({
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
-    const totalSnapshot = total;
+    const totalSnapshot = roundCurrency(total);
+    // 💵 الدفعة الأولى المقبوضة عند البيع المؤجل (محوّلة للدولار) — تُخصم من الدين
+    const downPaymentSnapshot = roundCurrency(Math.max(0, Math.min(receivedUSD, totalSnapshot)));
+    const debtRemainingSnapshot = roundCurrency(totalSnapshot - downPaymentSnapshot);
     const customerNameSnapshot = customerName;
     const customerPhoneSnapshot = customerPhone;
+
     const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
