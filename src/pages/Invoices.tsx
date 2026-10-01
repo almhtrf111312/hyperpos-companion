@@ -74,7 +74,10 @@ import {
 } from '@/lib/cloud/invoices-cloud';
 import { invalidateProductsCache, refreshProductsFromCloud } from '@/lib/cloud/products-cloud';
 import { emitEvent, EVENTS as PROD_EVENTS } from '@/lib/events';
-import { deleteDebtByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
+import { settleDebtsByInvoiceIdCloud } from '@/lib/cloud/debts-cloud';
+import { confirmPendingProfit } from '@/lib/partners-store';
+import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
+import { processDebtPayment } from '@/lib/unified-transactions';
 import { printHTML } from '@/lib/native-print';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
@@ -523,8 +526,19 @@ export default function Invoices() {
   });
 
   const handleMarkPaid = (invoice: Invoice) => markPaidGuard.run(async () => {
+    let paidAmount = 0;
+    try {
+      paidAmount = await settleDebtsByInvoiceIdCloud(invoice.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
+      return;
+    }
     await updateInvoiceCloud(invoice.id, { status: 'paid', debtPaid: invoice.total, debtRemaining: 0 });
-    await deleteDebtByInvoiceIdCloud(invoice.id);
+    if (paidAmount > 0) {
+      processDebtPayment(paidAmount);
+      confirmPendingProfit(invoice.id);
+      await confirmPendingProfitCloud(invoice.id).catch(err => console.warn('[handleMarkPaid] confirm profit failed:', err));
+    }
     const invoicesData = await loadInvoicesCloud();
     setInvoices(invoicesData);
     toast.success(t('invoices.statusUpdated'));
