@@ -1,4 +1,9 @@
 name: Build FlowPOS Pro APK
+# 
+# SECURITY: This workflow requires GitHub Secrets for release signing.
+# Repository admins must configure: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+# See the "Setup release signing key" step below for detailed instructions.
+#
 
 on:
   push:
@@ -76,13 +81,39 @@ jobs:
 
       - name: Setup release signing key
         shell: bash
-        # Always sign with the SAME committed key so new APKs install over old ones
+        # Decode keystore from GitHub Secrets to ensure signing key is never committed
+        # Repository admins must configure secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
         run: |
-          test -f android/app/flowpos-release.keystore || { echo "Missing keystore"; exit 1; }
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Error: KEYSTORE_BASE64 secret is not configured."
+            echo "Repository admins must add the following secrets to GitHub:"
+            echo "  - KEYSTORE_BASE64: Base64-encoded keystore file"
+            echo "  - KEYSTORE_PASSWORD: Keystore password"
+            echo "  - KEY_ALIAS: Key alias"
+            echo "  - KEY_PASSWORD: Key password"
+            echo ""
+            echo "To generate a new keystore and encode it:"
+            echo "  keytool -genkeypair -v -keystore flowpos-release.keystore -alias flowpos \\"
+            echo "    -keyalg RSA -keysize 2048 -validity 10000 \\"
+            echo "    -storepass YOUR_STORE_PASSWORD -keypass YOUR_KEY_PASSWORD"
+            echo "  base64 -i flowpos-release.keystore | pbcopy  # or use 'base64 -w 0' on Linux"
+            exit 1
+          fi
+          
+          # Decode keystore from base64 secret
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/flowpos-release.keystore
+          
+          # Verify keystore was created successfully
+          if [ ! -f android/app/flowpos-release.keystore ]; then
+            echo "Error: Failed to decode keystore from KEYSTORE_BASE64 secret"
+            exit 1
+          fi
+          
+          # Set environment variables from secrets
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
-          echo "KEYSTORE_PASSWORD=flowpos123" >> "$GITHUB_ENV"
-          echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=flowpos123" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         working-directory: android
