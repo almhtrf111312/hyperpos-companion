@@ -1957,14 +1957,35 @@ export type Database = {
         }
         Returns: {
           already_processed: boolean
+          cogs: number
+          debt_paid: number
+          debt_remaining: number
+          discount: number
           invoice_id: string
           invoice_number: string
+          profit: number
+          stock_shortage: boolean
+          subtotal: number
           success: boolean
+          tax_amount: number
+          total: number
         }[]
       }
       recalc_pos_invoice_profit: {
         Args: { _invoice_id: string }
         Returns: undefined
+      }
+      receive_stock_wac: {
+        Args: {
+          _product_id: string
+          _quantity: number
+          _reference?: string
+          _unit_cost: number
+        }
+        Returns: {
+          new_cost: number
+          new_quantity: number
+        }[]
       }
       record_debt_payment_atomic: {
         Args: { _amount: number; _debt_id: string; _operation_id: string }
