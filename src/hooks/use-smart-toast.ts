@@ -4,9 +4,15 @@ export interface SmartToastData {
   id: string;
   title: string;
   subtitle?: string;
-  type: 'success' | 'warning' | 'error' | 'info';
+  type: 'success' | 'warning' | 'error' | 'info' | 'purple';
+  time?: string;
   details?: React.ReactNode;
   duration?: number;
+  primaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  onDismiss?: () => void;
 }
 
 // Global emitter
