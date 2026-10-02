@@ -153,6 +153,13 @@ export async function uploadProductImage(base64Image: string): Promise<string | 
     }
 
     console.log('[Image Upload] ✅ Uploaded to cloud:', filePath);
+    // ✅ حفظ فوري للصورة في الكاش الدائم (IndexedDB) حتى لا تحتاج لإعادة تحميلها إطلاقاً
+    try {
+      const { saveProductImageToCache } = await import('./offline-image-store');
+      await saveProductImageToCache(filePath, compressedImage);
+    } catch (cacheErr) {
+      console.warn('[Image Upload] Could not cache to IndexedDB:', cacheErr);
+    }
     return filePath;
   } catch (error) {
     console.error('[Image Upload] Fatal error:', error);
