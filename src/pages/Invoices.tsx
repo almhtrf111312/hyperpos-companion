@@ -406,7 +406,13 @@ export default function Invoices() {
           duration: 4500,
         });
 
-        void logActivity('invoice_refunded', `استرداد كامل للفاتورة: ${invoiceLabel} بقيمة $${roundCurrency(refundedTotal)}`, {
+        const cashRefunded = (typeof result === 'object' && (result as RefundResult).cashToRefund) || 0;
+        const debtDeleted = (typeof result === 'object' && (result as RefundResult).deletedDebtAmount) || 0;
+        const detailedRefundDesc = debtDeleted > 0
+          ? `استرداد فاتورة ${invoiceLabel}: تم تخفيض دين العميل بقيمة $${formatNumber(debtDeleted)}${cashRefunded > 0 ? ` وتم تسليمه نقداً $${formatNumber(cashRefunded)} من الصندوق` : ''}`
+          : `استرداد نقدي كامل للفاتورة: ${invoiceLabel} بقيمة $${roundCurrency(refundedTotal)} من الصندوق`;
+
+        void logActivity('invoice_refunded', detailedRefundDesc, {
           entityType: 'invoice',
           entityId: invoice.id,
           entityName: invoice.customerName,
@@ -415,8 +421,8 @@ export default function Invoices() {
             customerName: invoice.customerName,
             total: refundedTotal,
             paymentType: invoice.paymentType,
-            cashToRefund: (typeof result === 'object' && (result as RefundResult).cashToRefund) || 0,
-            deletedDebt: (typeof result === 'object' && (result as RefundResult).deletedDebtAmount) || 0,
+            cashToRefund: cashRefunded,
+            deletedDebt: debtDeleted,
             items: invoice.items.map(it => ({
               name: it.name,
               quantity: it.quantity,
@@ -539,7 +545,9 @@ export default function Invoices() {
         duration: 5000,
       });
 
-      void logActivity('invoice_refunded', `استرداد جزئي للفاتورة: ${invoiceLabel} بقيمة $${roundCurrency(result.refundedAmount)}`, {
+      const partialRefundDesc = `استرداد جزئي للفاتورة ${invoiceLabel}: بقيمة $${roundCurrency(result.refundedAmount)} ${result.debtReduced > 0 ? `(تخفيض دين: $${formatNumber(result.debtReduced)})` : ''} ${result.cashToRefund > 0 ? `(إرجاع نقدي: $${formatNumber(result.cashToRefund)})` : ''}`;
+
+      void logActivity('invoice_refunded', partialRefundDesc, {
         entityType: 'invoice',
         entityId: invoice.id,
         entityName: invoice.customerName,

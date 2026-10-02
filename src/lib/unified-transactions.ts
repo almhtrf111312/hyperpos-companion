@@ -220,25 +220,32 @@ export const processDebtPayment = (
   amount: number,
   customerId?: string,
   userId?: string,
-  userName?: string
+  userName?: string,
+  currency: 'USD' | 'TRY' | 'SYP' = 'USD',
+  currencyAmount?: number,
+  method: 'cash' | 'transfer' = 'cash'
 ): TransactionResult => {
   try {
-    // Step 1: إضافة المبلغ المدفوع للصندوق
-    addDepositToShift(roundCurrency(amount));
+    // Step 1: إضافة المبلغ المدفوع للصندوق إذا كانت طريقة الدفع كاش
+    if (method === 'cash') {
+      addDepositToShift(roundCurrency(amount), currency, currencyAmount);
+    }
 
     // Step 2: تسجيل النشاط (نوع debt_payment محدد بدلاً من deposit عام)
     if (userId && userName) {
+      const methodLabel = method === 'cash' ? 'نقداً (كاش)' : 'تحويل بنكي / إلكتروني';
+      const currText = currencyAmount ? `${formatNumber(currencyAmount)} ${currency} ($${formatNumber(amount)})` : `$${formatNumber(amount)}`;
       addActivityLog(
         'debt_payment',
         userId,
         userName,
-        `تسديد دين بقيمة $${formatNumber(amount)}`,
-        { amount, customerId, type: 'debt_payment', txKind: 'debt_payment' }
+        `تسديد دين بقيمة ${currText} بطريقة ${methodLabel}`,
+        { amount, customerId, type: 'debt_payment', txKind: 'debt_payment', currency, currencyAmount, method }
       );
     }
 
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'debt_payment', amount });
-    emitEvent(EVENTS.CASHBOX_UPDATED, { added: amount, kind: 'debt_payment' });
+    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'debt_payment', amount, currency, currencyAmount, method });
+    emitEvent(EVENTS.CASHBOX_UPDATED, { added: method === 'cash' ? amount : 0, kind: 'debt_payment', method });
 
     return { success: true };
   } catch (error) {

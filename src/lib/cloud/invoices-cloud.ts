@@ -676,20 +676,29 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     };
   }
 
-  // تحديث فوري لكميات المنتجات في الكاش المحلي (ذاكرة و IndexedDB)
+  // تحديث فوري لكميات المنتجات في الكاش المحلي (ذاكرة و IndexedDB ومستودع)
   try {
     const { data: invItems } = await sb
       .from('invoice_items')
       .select('product_id, quantity')
       .eq('invoice_id', atomic.invoice_id || id);
     if (invItems && invItems.length > 0) {
+      const validItems = invItems.filter(it => it.product_id).map(it => ({
+        productId: it.product_id,
+        quantity: Number(it.quantity) || 0,
+        deltaQuantity: Number(it.quantity) || 0
+      }));
+
       const { updateProductsQuantitiesInCache } = await import('./products-cloud');
-      updateProductsQuantitiesInCache(
-        invItems.filter(it => it.product_id).map(it => ({
-          productId: it.product_id,
-          deltaQuantity: Number(it.quantity) || 0
-        }))
-      );
+      updateProductsQuantitiesInCache(validItems);
+
+      // ✅ إعادة الكميات للمستودع المحدد في الفاتورة
+      if (targetInvoice?.warehouseId) {
+        try {
+          const { adjustWarehouseStockLocalCache } = await import('./warehouses-cloud');
+          adjustWarehouseStockLocalCache(targetInvoice.warehouseId, validItems, 'restore');
+        } catch { /* ignore */ }
+      }
     }
   } catch (err) {
     console.warn('[refundInvoiceCloud] Error updating cache for refunded items:', err);
@@ -854,6 +863,22 @@ export const refundInvoicePartialCloud = async (
           deltaQuantity: Number(it.quantityToRefund ?? it.quantity) || 0
         }))
       );
+
+      // ✅ إعادة الكميات للمستودع المحدد
+      const warehouseId = itemsToRefund.find(it => it.warehouseId)?.warehouseId;
+      if (warehouseId) {
+        try {
+          const { adjustWarehouseStockLocalCache } = await import('./warehouses-cloud');
+          adjustWarehouseStockLocalCache(
+            warehouseId,
+            itemsWithProduct.map(it => ({
+              productId: it.productId!,
+              quantity: Number(it.quantityToRefund ?? it.quantity) || 0
+            })),
+            'restore'
+          );
+        } catch { /* ignore */ }
+      }
     } catch { /* silent */ }
   }
 

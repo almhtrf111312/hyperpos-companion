@@ -72,7 +72,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const [searchParams, setSearchParams] = useSearchParams();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState('active');
 
   // Dialogs
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -86,6 +86,9 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>('USD');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+  const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
   const [debtItems, setDebtItems] = useState<InvoiceItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
@@ -106,11 +109,12 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   };
 
   const filterOptions = [
+    { key: 'active', label: 'الديون النشطة' },
+    { key: 'fully_paid', label: 'الديون المسددة' },
     { key: 'all', label: t('common.all') },
     { key: 'due', label: t('debts.statusDue') },
     { key: 'partially_paid', label: t('debts.statusPartiallyPaid') },
     { key: 'overdue', label: t('debts.statusOverdue') },
-    { key: 'fully_paid', label: t('debts.statusFullyPaid') },
   ];
 
   // Load debts from store
@@ -189,7 +193,16 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     const matchesSearch = debt.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       debt.customerPhone.includes(searchQuery) ||
       debt.invoiceId.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || debt.status === selectedFilter;
+    
+    let matchesFilter = true;
+    if (selectedFilter === 'active') {
+      matchesFilter = debt.remainingDebt > 0 && debt.status !== 'fully_paid';
+    } else if (selectedFilter === 'fully_paid') {
+      matchesFilter = debt.remainingDebt <= 0 || debt.status === 'fully_paid';
+    } else if (selectedFilter !== 'all') {
+      matchesFilter = debt.status === selectedFilter;
+    }
+
     return matchesSearch && matchesFilter;
   });
 
@@ -198,6 +211,36 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   useEffect(() => {
     getDebtsStatsCloud().then(setStats);
   }, [debts]);
+
+  const exchangeRates = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('hyperpos_settings_v1');
+      if (!raw) return { TRY: 32, SYP: 14500 };
+      const parsed = JSON.parse(raw);
+      const ex = parsed?.exchangeRates;
+      return {
+        TRY: Number(ex?.TRY ?? 32) || 32,
+        SYP: Number(ex?.SYP ?? 14500) || 14500,
+      };
+    } catch {
+      return { TRY: 32, SYP: 14500 };
+    }
+  }, []);
+
+  const currentRate = paymentCurrency === 'USD' ? 1 : exchangeRates[paymentCurrency];
+
+  const amountUSD = useMemo(() => {
+    const val = parseFloat(paymentAmountInput) || 0;
+    if (val <= 0) return 0;
+    if (paymentCurrency === 'USD') return Math.round(val * 100) / 100;
+    return Math.round((val / currentRate) * 100) / 100;
+  }, [paymentAmountInput, paymentCurrency, currentRate]);
+
+  const maxInCurrency = useMemo(() => {
+    if (!selectedDebt) return 0;
+    if (paymentCurrency === 'USD') return selectedDebt.remainingDebt;
+    return Math.round(selectedDebt.remainingDebt * currentRate * 100) / 100;
+  }, [selectedDebt, paymentCurrency, currentRate]);
 
   const openPaymentDialog = async (debt: Debt) => {
     // ✅ منع تسديد دين مرتبط بفاتورة مستردة
@@ -225,6 +268,9 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     } catch { /* use cached */ }
     paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     setSelectedDebt(fresh);
+    setPaymentCurrency('USD');
+    setPaymentMethod('cash');
+    setPaymentAmountInput('');
     setPaymentAmount(0);
     setShowPaymentDialog(true);
   };
@@ -269,7 +315,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
   const handlePayment = async () => {
     if (paymentBusyRef.current) return;
-    if (!selectedDebt || paymentAmount <= 0) {
+    if (!selectedDebt || amountUSD <= 0) {
       toast.error(t('debts.enterValidAmount'));
       return;
     }
@@ -280,18 +326,23 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     const latest = latestList.find(d => d.id === selectedDebt.id) || selectedDebt;
     const remainingNow = Math.round(latest.remainingDebt * 100) / 100;
 
-    if (Math.round(paymentAmount * 100) / 100 > remainingNow) {
-      setDebts(latestList);
-      setSelectedDebt(latest);
-      toast.error(t('debts.amountExceedsRemaining'));
-      return;
+    let finalPaymentUSD = amountUSD;
+    if (finalPaymentUSD > remainingNow) {
+      if (finalPaymentUSD - remainingNow <= 0.05) {
+        finalPaymentUSD = remainingNow;
+      } else {
+        setDebts(latestList);
+        setSelectedDebt(latest);
+        toast.error(t('debts.amountExceedsRemaining'));
+        return;
+      }
     }
 
-    const paymentRatio = remainingNow > 0 ? paymentAmount / remainingNow : 1;
+    const paymentRatio = remainingNow > 0 ? finalPaymentUSD / remainingNow : 1;
 
     paymentBusyRef.current = true;
     try {
-      await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, paymentAmount, paymentOpIdRef.current);
+      await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, finalPaymentUSD, paymentOpIdRef.current);
     } catch (err) {
       paymentBusyRef.current = false;
       toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
@@ -300,23 +351,27 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     paymentBusyRef.current = false;
     paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // ✅ إضافة المبلغ للصندوق تلقائياً (الترابط الجديد)
+    // ✅ إضافة المبلغ للصندوق وتحديث الوردية بالعملة وطريقة القبض
     processDebtPayment(
-      paymentAmount,
-      undefined,
+      finalPaymentUSD,
+      selectedDebt.customerId,
       user?.id,
-      profile?.full_name || user?.email || t('common.user')
+      profile?.full_name || user?.email || t('common.user'),
+      paymentCurrency,
+      parseFloat(paymentAmountInput) || finalPaymentUSD,
+      paymentMethod
     );
 
     // Confirm pending profits proportionally to payment (محلياً + سحابياً)
     confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
     confirmPendingProfitCloud(selectedDebt.invoiceId, paymentRatio);
 
-    // ✅ إعادة احتساب أرقام العميل من الفواتير النشطة بعد السداد
+    // ✅ إعادة احتساب أرقام العميل من الفواتير النشطة بعد السداد فورياً
     try {
-      const { loadCustomersCloud } = await import('@/lib/cloud/customers-cloud');
+      const { loadCustomersCloud, updateCustomerStatsCloud, invalidateCustomersCache } = await import('@/lib/cloud/customers-cloud');
       const { invalidateInvoicesCache } = await import('@/lib/cloud/invoices-cloud');
       invalidateInvoicesCache();
+      invalidateCustomersCache();
       const customers = await loadCustomersCloud();
       const customer = customers.find(c =>
         c.name.trim().toLowerCase() === (selectedDebt.customerName || '').trim().toLowerCase() ||
@@ -326,22 +381,31 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     } catch (err) {
       console.warn('[Debts] Failed to update customer stats cloud:', err);
     }
+    emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
 
     // Log activity
     if (user) {
+      const methodLabel = paymentMethod === 'cash' ? 'نقداً (كاش)' : 'تحويل إلكتروني / بنكي';
+      const currDesc = paymentCurrency !== 'USD'
+        ? `${paymentAmountInput} ${paymentCurrency} (يعادل $${formatNumber(finalPaymentUSD)} بسعر صرف ${currentRate})`
+        : `$${formatNumber(finalPaymentUSD)}`;
       addActivityLog(
         'debt_paid',
         user.id,
         profile?.full_name || user.email || t('common.user'),
-        `${t('debts.paymentRecorded')} ${formatCurrency(paymentAmount)} - ${selectedDebt.customerName}`,
+        `${t('debts.paymentRecorded')} ${currDesc} بطريقة ${methodLabel} - ${selectedDebt.customerName}`,
         {
           debtId: selectedDebt.id,
           invoiceId: selectedDebt.invoiceId,
           customerName: selectedDebt.customerName,
-          amount: paymentAmount,
+          amountUSD: finalPaymentUSD,
+          amountInCurrency: parseFloat(paymentAmountInput) || finalPaymentUSD,
+          currency: paymentCurrency,
+          rate: currentRate,
+          paymentMethod,
           totalDebt: latest.totalDebt,
           remainingBefore: remainingNow,
-          remainingAfter: Math.max(0, Math.round((remainingNow - paymentAmount) * 100) / 100),
+          remainingAfter: Math.max(0, Math.round((remainingNow - finalPaymentUSD) * 100) / 100),
         }
       );
     }
@@ -351,6 +415,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
     setShowPaymentDialog(false);
     setSelectedDebt(null);
+    setPaymentAmountInput('');
     setPaymentAmount(0);
     toast.success(t('debts.paymentSuccess'));
   };
@@ -728,33 +793,150 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 </div>
                 <div className="flex justify-between pt-2 border-t">
                   <span className="text-muted-foreground">{t('debts.remaining')}</span>
-                  <span className="font-bold text-destructive">{formatCurrency(selectedDebt.remainingDebt)}</span>
+                  <div className="text-left">
+                    <span className="font-bold text-destructive block">{formatCurrency(selectedDebt.remainingDebt)}</span>
+                    {paymentCurrency !== 'USD' && (
+                      <span className="text-xs text-muted-foreground block font-mono">
+                        ≈ {formatNumber(maxInCurrency)} {paymentCurrency === 'TRY' ? '₺' : 'ل.س'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* اختيار عملة السداد */}
               <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('debts.paymentAmount')} ($)</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">عملة الدفع المستلمة</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentCurrency('USD');
+                      setPaymentAmountInput('');
+                    }}
+                    className={cn(
+                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      paymentCurrency === 'USD'
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                    )}
+                  >
+                    💵 دولار ($)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentCurrency('TRY');
+                      setPaymentAmountInput('');
+                    }}
+                    className={cn(
+                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      paymentCurrency === 'TRY'
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                    )}
+                  >
+                    ₺ تركي (TRY)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentCurrency('SYP');
+                      setPaymentAmountInput('');
+                    }}
+                    className={cn(
+                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      paymentCurrency === 'SYP'
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                    )}
+                  >
+                    ل.س سوري (SYP)
+                  </button>
+                </div>
+                {paymentCurrency !== 'USD' && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
+                    <span>سعر الصرف المعتمد:</span>
+                    <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {paymentCurrency}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* طريقة القبض */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">طريقة القبض</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cash')}
+                    className={cn(
+                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      paymentMethod === 'cash'
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                    )}
+                  >
+                    💵 نقداً (يضاف للصندوق)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('transfer')}
+                    className={cn(
+                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      paymentMethod === 'transfer'
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                    )}
+                  >
+                    🏦 تحويل بنكي / إلكتروني
+                  </button>
+                </div>
+              </div>
+
+              {/* حقل إدخال المبلغ */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-sm font-medium">
+                    مبلغ الدفعة ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
+                  </label>
+                  {paymentCurrency !== 'USD' && amountUSD > 0 && (
+                    <span className="text-xs font-bold text-success font-mono">
+                      ≈ ${formatNumber(amountUSD)}
+                    </span>
+                  )}
+                </div>
                 <Input
                   type="number"
-                  placeholder="0"
-                  value={paymentAmount || ''}
-                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                  max={selectedDebt.remainingDebt}
+                  placeholder="0.00"
+                  value={paymentAmountInput}
+                  onChange={(e) => setPaymentAmountInput(e.target.value)}
+                  max={maxInCurrency}
+                  step={paymentCurrency === 'USD' ? "0.01" : "1"}
+                  className="text-lg font-bold"
                 />
+
+                {/* المعادل بالدولار إذا كانت العملة أجنبية */}
+                {paymentCurrency !== 'USD' && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">المبلغ المعادل بالدولار المخصوم من الدين:</span>
+                    <span className="font-bold text-primary text-sm font-mono">${formatNumber(amountUSD)}</span>
+                  </div>
+                )}
+
                 <div className="flex gap-2 mt-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => setPaymentAmount(selectedDebt.remainingDebt)}
+                    className="flex-1 text-xs"
+                    onClick={() => setPaymentAmountInput(String(maxInCurrency))}
                   >
-                    {t('debts.payFull')}
+                    {t('debts.payFull')} ({maxInCurrency} {paymentCurrency})
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => setPaymentAmount(Math.round((selectedDebt.remainingDebt / 2) * 100) / 100)}
+                    className="flex-1 text-xs"
+                    onClick={() => setPaymentAmountInput(String(Math.round((maxInCurrency / 2) * 100) / 100))}
                   >
                     {t('debts.payHalf')}
                   </Button>
@@ -765,7 +947,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 <Button variant="outline" className="flex-1" onClick={() => setShowPaymentDialog(false)}>
                   {t('common.cancel')}
                 </Button>
-                <Button className="flex-1 bg-success hover:bg-success/90" onClick={handlePayment}>
+                <Button className="flex-1 bg-success hover:bg-success/90" onClick={handlePayment} disabled={amountUSD <= 0}>
                   <Save className="w-4 h-4 ml-2" />
                   {t('debts.confirmPayment')}
                 </Button>

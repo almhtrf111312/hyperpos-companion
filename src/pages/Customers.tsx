@@ -16,9 +16,12 @@ import {
   Loader2,
   FileText,
   ShoppingCart,
-  Wrench
+  Wrench,
+  Printer
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
+import { printHTML, getStoreSettings } from '@/lib/native-print';
+import { loadDebtsCloud, Debt } from '@/lib/cloud/debts-cloud';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -87,6 +90,7 @@ export default function Customers() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerInvoices, setCustomerInvoices] = useState<Invoice[]>([]);
+  const [customerDebts, setCustomerDebts] = useState<Debt[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
 
   // Form state
@@ -274,18 +278,155 @@ export default function Customers() {
   const openViewDialog = async (customer: Customer) => {
     setSelectedCustomer(customer);
     setCustomerInvoices([]);
+    setCustomerDebts([]);
     setShowViewDialog(true);
 
-    // ✅ تحميل فواتير العميل الحية (غير المستردة)
+    // ✅ تحميل فواتير وديون العميل الحية (غير المستردة)
     setLoadingInvoices(true);
     try {
-      const allInvoices = await loadInvoicesCloud();
-      setCustomerInvoices(filterCustomerInvoices(allInvoices, { id: customer.id, name: customer.name }));
+      const [allInvoices, allDebts] = await Promise.all([
+        loadInvoicesCloud(),
+        loadDebtsCloud().catch(() => []),
+      ]);
+      const matchedInvoices = filterCustomerInvoices(allInvoices, { id: customer.id, name: customer.name });
+      const matchedDebts = allDebts.filter(d =>
+        (customer.id && d.customerId === customer.id) ||
+        (d.customerName && d.customerName.trim().toLowerCase() === customer.name.trim().toLowerCase()) ||
+        (customer.phone && d.customerPhone === customer.phone)
+      );
+      setCustomerInvoices(matchedInvoices);
+      setCustomerDebts(matchedDebts);
     } catch (e) {
-      console.error('Error loading customer invoices:', e);
+      console.error('Error loading customer invoices and debts:', e);
     } finally {
       setLoadingInvoices(false);
     }
+  };
+
+  const handlePrintStatement = () => {
+    if (!selectedCustomer) return;
+    const store = getStoreSettings();
+    const totalPurchases = customerInvoices.reduce((s, i) => s + i.total, 0);
+    const totalDebt = customerInvoices.reduce((s, i) => s + remainingDebtOf(i), 0) +
+      customerDebts.filter(d => d.isCashDebt).reduce((s, d) => s + d.remainingDebt, 0);
+    const totalPaid = Math.max(0, totalPurchases - totalDebt);
+
+    const statementRows = [
+      ...customerInvoices.map(inv => {
+        const remaining = remainingDebtOf(inv);
+        const paid = Math.max(0, inv.total - remaining);
+        return {
+          id: inv.id,
+          date: inv.createdAt,
+          type: inv.paymentType === 'cash' ? 'بيع نقدي' : 'بيع آجل',
+          total: inv.total,
+          paid,
+          remaining,
+          status: remaining <= 0 ? 'مسدد' : (paid > 0 ? 'مسدد جزئياً' : 'مستحق'),
+        };
+      }),
+      ...customerDebts.filter(d => d.isCashDebt).map(d => ({
+        id: d.invoiceId,
+        date: d.createdAt,
+        type: 'دين نقدي (سلفة)',
+        total: d.totalDebt,
+        paid: d.totalPaid,
+        remaining: d.remainingDebt,
+        status: d.remainingDebt <= 0 ? 'مسدد' : (d.totalPaid > 0 ? 'مسدد جزئياً' : 'مستحق'),
+      }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const rowsHtml = statementRows.map(row => `
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 8px 10px; font-family: monospace; font-size: 12px;">${row.id}</td>
+        <td style="padding: 8px 10px; font-size: 12px;">${new Date(row.date).toLocaleDateString('ar-SA')}</td>
+        <td style="padding: 8px 10px; font-size: 12px;">${row.type}</td>
+        <td style="padding: 8px 10px; font-size: 12px; font-weight: bold; text-align: left;">$${formatNumber(row.total)}</td>
+        <td style="padding: 8px 10px; font-size: 12px; color: #16a34a; text-align: left;">$${formatNumber(row.paid)}</td>
+        <td style="padding: 8px 10px; font-size: 12px; color: ${row.remaining > 0 ? '#dc2626' : '#16a34a'}; font-weight: bold; text-align: left;">$${formatNumber(row.remaining)}</td>
+        <td style="padding: 8px 10px; font-size: 12px; text-align: center;">${row.status}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>كشف حساب - ${selectedCustomer.name}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif; margin: 20px; color: #1e293b; line-height: 1.5; }
+          .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
+          .store-name { font-size: 22px; font-weight: bold; color: #0284c7; margin-bottom: 4px; }
+          .doc-title { font-size: 18px; font-weight: bold; margin-top: 10px; }
+          .cust-info { display: flex; justify-content: space-between; background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+          .summary-cards { display: flex; gap: 12px; margin-bottom: 20px; }
+          .card { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center; }
+          .card-title { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+          .card-value { font-size: 18px; font-weight: bold; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th { background: #0284c7; color: white; padding: 10px; font-size: 12px; font-weight: 600; }
+          .footer { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="store-name">${store.name || 'FlowPOS'}</div>
+          ${store.phone ? `<div>هاتف المتجر: ${store.phone}</div>` : ''}
+          <div class="doc-title">كشف حساب عميل تفصيلي</div>
+        </div>
+
+        <div class="cust-info">
+          <div>
+            <strong>اسم العميل:</strong> ${selectedCustomer.name}<br>
+            <strong>رقم الهاتف:</strong> ${selectedCustomer.phone}
+          </div>
+          <div style="text-align: left;">
+            <strong>تاريخ الإصدار:</strong> ${new Date().toLocaleDateString('ar-SA')}<br>
+            <strong>عدد العمليات:</strong> ${statementRows.length}
+          </div>
+        </div>
+
+        <div class="summary-cards">
+          <div class="card">
+            <div class="card-title">إجمالي التعاملات</div>
+            <div class="card-value" style="color: #0284c7;">$${formatNumber(totalPurchases)}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">إجمالي المسدد</div>
+            <div class="card-value" style="color: #16a34a;">$${formatNumber(totalPaid)}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">الرصيد المتبقي (الديون)</div>
+            <div class="card-value" style="color: ${totalDebt > 0 ? '#dc2626' : '#16a34a'};">$${formatNumber(totalDebt)}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: right;">رقم المستند</th>
+              <th style="text-align: right;">التاريخ</th>
+              <th style="text-align: right;">النوع</th>
+              <th style="text-align: left;">الإجمالي</th>
+              <th style="text-align: left;">المدفوع</th>
+              <th style="text-align: left;">المتبقي</th>
+              <th style="text-align: center;">الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="7" style="text-align: center; padding: 20px;">لا توجد حركات مسجلة لهذا العميل</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          تم إنشاء كشف الحساب بتاريخ ${new Date().toLocaleString('ar-SA')} بواسطة نظام FlowPOS Pro
+        </div>
+      </body>
+      </html>
+    `;
+
+    printHTML(html);
   };
 
   const openDeleteDialog = (customer: Customer) => {
@@ -606,106 +747,179 @@ export default function Customers() {
         </DialogContent>
       </Dialog>
 
-      {/* View Customer Dialog */}
+      {/* View Customer Dialog - كشف حساب تفصيلي */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
               <User className="w-5 h-5 text-primary" />
-              {t('customers.details')}
+              كشف حساب: {selectedCustomer?.name}
             </DialogTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-primary/50 text-primary hover:bg-primary/10 gap-1.5"
+              onClick={handlePrintStatement}
+            >
+              <Printer className="w-4 h-4" />
+              طباعة كشف الحساب / PDF
+            </Button>
           </DialogHeader>
           {selectedCustomer && (
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
                   <span className="text-xl font-bold text-primary-foreground">
                     {selectedCustomer.name.charAt(0)}
                   </span>
                 </div>
                 <div>
                   <h3 className="text-lg font-bold">{selectedCustomer.name}</h3>
-                  <p className="text-sm text-muted-foreground">{customerInvoices.length} فاتورة نشطة</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 bg-muted rounded-lg p-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span>{selectedCustomer.phone}</span>
-                </div>
-                {selectedCustomer.email && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedCustomer.email}</span>
+                  <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" />
+                      {selectedCustomer.phone}
+                    </span>
+                    {selectedCustomer.address && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {selectedCustomer.address}
+                      </span>
+                    )}
                   </div>
-                )}
-                {selectedCustomer.address && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedCustomer.address}</span>
+                </div>
+              </div>
+
+              {/* ✅ إحصائيات حية محسوبة من الفواتير والديون */}
+              {(() => {
+                const totalPurchases = customerInvoices.reduce((s, i) => s + i.total, 0);
+                const totalDebt = customerInvoices.reduce((s, i) => s + remainingDebtOf(i), 0) +
+                  customerDebts.filter(d => d.isCashDebt).reduce((s, d) => s + d.remainingDebt, 0);
+                const totalPaid = Math.max(0, totalPurchases - totalDebt);
+
+                return (
+                  <div className="grid grid-cols-3 gap-2 md:gap-3">
+                    <div className="bg-muted rounded-xl p-3 text-center">
+                      <p className="text-[11px] md:text-xs text-muted-foreground">إجمالي المشتريات</p>
+                      <p className="text-base md:text-xl font-bold text-primary">
+                        {formatCurrency(totalPurchases)}
+                      </p>
+                    </div>
+                    <div className="bg-muted rounded-xl p-3 text-center">
+                      <p className="text-[11px] md:text-xs text-muted-foreground">إجمالي المسدد</p>
+                      <p className="text-base md:text-xl font-bold text-success">
+                        {formatCurrency(totalPaid)}
+                      </p>
+                    </div>
+                    <div className="bg-muted rounded-xl p-3 text-center">
+                      <p className="text-[11px] md:text-xs text-muted-foreground">الديون المستحقة</p>
+                      <p className={cn(
+                        "text-base md:text-xl font-bold",
+                        totalDebt > 0 ? "text-destructive" : "text-success"
+                      )}>
+                        {formatCurrency(totalDebt)}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
-              {/* ✅ إحصائيات حية محسوبة من الفواتير */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">إجمالي المشتريات</p>
-                  <p className="text-xl font-bold text-primary">
-                    {formatCurrency(customerInvoices.reduce((s, i) => s + i.total, 0))}
-                  </p>
-                </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">الديون المستحقة</p>
-                  <p className={cn(
-                    "text-xl font-bold",
-                    customerInvoices.reduce((s, i) => s + remainingDebtOf(i), 0) > 0
-                      ? "text-destructive" : "text-success"
-                  )}>
-                    {formatCurrency(customerInvoices.reduce((s, i) => s + remainingDebtOf(i), 0))}
-                  </p>
-                </div>
-              </div>
-
-              {/* ✅ قائمة الفواتير الحية */}
+              {/* ✅ جدول كشف الحساب التفصيلي */}
               <div>
-                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  الفواتير النشطة
-                  {loadingInvoices && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                <h4 className="text-sm font-semibold mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    كشف الحساب التفصيلي (الفواتير والديون)
+                  </span>
+                  {loadingInvoices && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
                 </h4>
-                {!loadingInvoices && customerInvoices.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4 bg-muted rounded-lg">لا توجد فواتير نشطة</p>
-                ) : (
-                  <div className="space-y-2 max-h-56 overflow-y-auto">
-                    {customerInvoices.map(inv => (
-                      <div key={inv.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          {inv.type === 'sale'
-                            ? <ShoppingCart className="w-3.5 h-3.5 text-primary" />
-                            : <Wrench className="w-3.5 h-3.5 text-warning" />
-                          }
-                          <div>
-                            <p className="font-medium text-xs">{inv.id}</p>
-                            <p className="text-xs text-muted-foreground">{formatDateTime(new Date(inv.createdAt))}</p>
+
+                {(() => {
+                  const statementItems = [
+                    ...customerInvoices.map(inv => {
+                      const remaining = remainingDebtOf(inv);
+                      const paid = Math.max(0, inv.total - remaining);
+                      return {
+                        id: inv.id,
+                        date: inv.createdAt,
+                        type: inv.paymentType === 'cash' ? 'بيع نقدي' : 'بيع آجل',
+                        paymentType: inv.paymentType,
+                        total: inv.total,
+                        paid,
+                        remaining,
+                        status: remaining <= 0 ? 'fully_paid' : (paid > 0 ? 'partially_paid' : 'due'),
+                      };
+                    }),
+                    ...customerDebts.filter(d => d.isCashDebt).map(d => ({
+                      id: d.invoiceId,
+                      date: d.createdAt,
+                      type: 'سلفة نقدية',
+                      paymentType: 'cash_debt',
+                      total: d.totalDebt,
+                      paid: d.totalPaid,
+                      remaining: d.remainingDebt,
+                      status: d.remainingDebt <= 0 ? 'fully_paid' : (d.totalPaid > 0 ? 'partially_paid' : 'due'),
+                    }))
+                  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                  if (!loadingInvoices && statementItems.length === 0) {
+                    return (
+                      <p className="text-sm text-muted-foreground text-center py-6 bg-muted rounded-xl">
+                        لا توجد حركات مسجلة لهذا العميل
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2 max-h-72 overflow-y-auto border rounded-xl divide-y">
+                      {statementItems.map((item, idx) => (
+                        <div key={`${item.id}-${idx}`} className="p-3 bg-card hover:bg-muted/40 transition-colors text-xs flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-foreground">{item.id}</span>
+                              <Badge
+                                variant={item.paymentType === 'cash' ? 'default' : 'destructive'}
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                {item.type}
+                              </Badge>
+                            </div>
+                            <span className="text-muted-foreground" dir="ltr">
+                              {formatDateTime(new Date(item.date))}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 pt-1 text-center bg-muted/50 rounded-lg p-1.5">
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block">الإجمالي</span>
+                              <span className="font-bold text-foreground">{formatCurrency(item.total)}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block">المدفوع</span>
+                              <span className="font-bold text-success">{formatCurrency(item.paid)}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block">المتبقي</span>
+                              <span className={cn(
+                                "font-bold",
+                                item.remaining > 0 ? "text-destructive" : "text-success"
+                              )}>
+                                {formatCurrency(item.remaining)}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-left">
-                          <Badge variant={inv.paymentType === 'cash' ? 'default' : 'destructive'} className="text-[10px] px-1.5 py-0">
-                            {inv.paymentType === 'cash' ? 'نقدي' : 'آجل'}
-                          </Badge>
-                          <span className="font-bold text-xs">{formatCurrency(inv.total)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
-              <div className="text-xs text-muted-foreground text-center">
-                آخر عملية شراء: {selectedCustomer.lastPurchase}
-              </div>
+              {selectedCustomer.lastPurchase && (
+                <div className="text-xs text-muted-foreground text-center pt-1">
+                  آخر عملية شراء: {selectedCustomer.lastPurchase}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

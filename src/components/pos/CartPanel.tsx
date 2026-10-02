@@ -600,7 +600,13 @@ export function CartPanel({
         );
       }
 
-      addSalesToShift(totalSnapshot, discountedProfit, totalCOGS);
+      addSalesToShift(
+        totalSnapshot,
+        discountedProfit,
+        totalCOGS,
+        (receivedCurrencyCode as any) || 'USD',
+        receivedAmountSnapshot || (totalSnapshot * (activeReceivedCurrency.rate || 1))
+      );
       recordActivity();
 
       // ✅ إغلاق الواجهة فوراً (< 100ms من الضغط على "بيع")
@@ -782,7 +788,13 @@ export function CartPanel({
         const cashRatio = totalSnapshot > 0 ? downPaymentSnapshot / totalSnapshot : 1;
         const downPaymentProfit = roundCurrency(discountedProfit * cashRatio);
         const downPaymentCOGS = roundCurrency(totalCOGS * cashRatio);
-        addSalesToShift(downPaymentSnapshot, downPaymentProfit, downPaymentCOGS);
+        addSalesToShift(
+          downPaymentSnapshot,
+          downPaymentProfit,
+          downPaymentCOGS,
+          (receivedCurrencyCode as any) || 'USD',
+          downPaymentSnapshot * (activeReceivedCurrency.rate || 1)
+        );
       }
 
       // ✅ تسجيل الربح محلياً فوراً

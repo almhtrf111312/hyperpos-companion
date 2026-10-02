@@ -40,6 +40,21 @@ export interface ShiftAdjustment {
   createdAt: string;
 }
 
+export type ShiftCurrency = 'USD' | 'TRY' | 'SYP';
+
+export interface CurrencyShiftTotals {
+  opening: number;
+  sales: number;
+  expenses: number;
+  deposits: number;
+  withdrawals: number;
+  closing?: number;
+  expected?: number;
+  discrepancy?: number;
+}
+
+export type ShiftCurrenciesMap = Record<ShiftCurrency, CurrencyShiftTotals>;
+
 export interface Shift {
   id: string;
   openedAt: string;
@@ -60,6 +75,8 @@ export interface Shift {
   // ✅ حقول جديدة لتتبع COGS والربح الإجمالي
   cogsTotal: number;             // إجمالي تكلفة البضاعة المباعة
   grossProfitTotal: number;      // إجمالي الربح الإجمالي (المبيعات - التكلفة)
+  // ✅ تفصيل النقدية بالوردية حسب العملة
+  currencies?: ShiftCurrenciesMap;
 }
 
 export interface CashboxState {
@@ -128,11 +145,40 @@ export const getActiveShift = (): Shift | null => {
   return shifts.find(s => s.status === 'open') || null;
 };
 
+// Helper to initialize multi-currency shift totals
+export const initShiftCurrencies = (
+  openingUSD: number = 0,
+  currencyOpenings?: { USD?: number; TRY?: number; SYP?: number }
+): ShiftCurrenciesMap => ({
+  USD: {
+    opening: roundCurrency(currencyOpenings?.USD ?? openingUSD),
+    sales: 0,
+    expenses: 0,
+    deposits: 0,
+    withdrawals: 0,
+  },
+  TRY: {
+    opening: roundCurrency(currencyOpenings?.TRY ?? 0),
+    sales: 0,
+    expenses: 0,
+    deposits: 0,
+    withdrawals: 0,
+  },
+  SYP: {
+    opening: roundCurrency(currencyOpenings?.SYP ?? 0),
+    sales: 0,
+    expenses: 0,
+    deposits: 0,
+    withdrawals: 0,
+  },
+});
+
 // Open a new shift
 export const openShift = (
   openingCash: number,
   userId: string,
-  userName: string
+  userName: string,
+  currencyOpenings?: { USD?: number; TRY?: number; SYP?: number }
 ): Shift => {
   const shifts = loadShifts();
 
@@ -156,6 +202,7 @@ export const openShift = (
     withdrawalsTotal: 0,
     cogsTotal: 0,           // ✅ جديد
     grossProfitTotal: 0,    // ✅ جديد
+    currencies: initShiftCurrencies(openingCash, currencyOpenings),
   };
 
   shifts.unshift(newShift);
@@ -174,7 +221,8 @@ export const openShift = (
 // Close the current shift
 export const closeShift = (
   closingCash: number,
-  notes?: string
+  notes?: string,
+  currencyCounts?: { USD?: number; TRY?: number; SYP?: number }
 ): { shift: Shift; discrepancy: number } | null => {
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
@@ -191,6 +239,22 @@ export const closeShift = (
   );
 
   const discrepancy = roundCurrency(closingCash - expectedCash);
+
+  // Multi-currency calculation on shift close
+  if (!shift.currencies) {
+    shift.currencies = initShiftCurrencies(shift.openingCash);
+  }
+
+  (['USD', 'TRY', 'SYP'] as const).forEach(code => {
+    const c = shift.currencies![code];
+    if (c) {
+      c.expected = roundCurrency(c.opening + c.sales + c.deposits - c.expenses - c.withdrawals);
+      if (currencyCounts && currencyCounts[code] !== undefined) {
+        c.closing = roundCurrency(currencyCounts[code]!);
+        c.discrepancy = roundCurrency(c.closing - c.expected);
+      }
+    }
+  });
 
   shift.closedAt = new Date().toISOString();
   shift.closingCash = roundCurrency(closingCash);
@@ -228,12 +292,15 @@ export const closeShift = (
  */
 export const updateCashboxBalance = (
   amount: number,
-  type: 'deposit' | 'withdrawal' | 'sale' | 'expense' | 'refund'
+  type: 'deposit' | 'withdrawal' | 'sale' | 'expense' | 'refund',
+  currency: ShiftCurrency = 'USD',
+  currencyAmount?: number
 ): void => {
   const roundedAmount = roundCurrency(amount);
+  const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
   const state = loadCashboxState();
 
-  // تحديث رصيد الصندوق
+  // تحديث رصيد الصندوق (بالدولار الأساسي)
   if (type === 'deposit' || type === 'sale') {
     state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
   } else {
@@ -248,40 +315,55 @@ export const updateCashboxBalance = (
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
   if (activeIndex !== -1) {
+    const shift = shifts[activeIndex];
+    if (!shift.currencies) {
+      shift.currencies = initShiftCurrencies(shift.openingCash);
+    }
+    const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
+
     switch (type) {
       case 'sale':
-        shifts[activeIndex].salesTotal = addCurrency(shifts[activeIndex].salesTotal, roundedAmount);
+        shift.salesTotal = addCurrency(shift.salesTotal, roundedAmount);
+        currMap.sales = addCurrency(currMap.sales, roundedCurrAmount);
         break;
       case 'refund':
-        shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
+        shift.salesTotal = Math.max(0, subtractCurrency(shift.salesTotal, roundedAmount));
+        currMap.sales = Math.max(0, subtractCurrency(currMap.sales, roundedCurrAmount));
         break;
       case 'expense':
-        shifts[activeIndex].expensesTotal = addCurrency(shifts[activeIndex].expensesTotal, roundedAmount);
+        shift.expensesTotal = addCurrency(shift.expensesTotal, roundedAmount);
+        currMap.expenses = addCurrency(currMap.expenses, roundedCurrAmount);
         break;
       case 'deposit':
-        shifts[activeIndex].depositsTotal = addCurrency(shifts[activeIndex].depositsTotal, roundedAmount);
+        shift.depositsTotal = addCurrency(shift.depositsTotal, roundedAmount);
+        currMap.deposits = addCurrency(currMap.deposits, roundedCurrAmount);
         break;
       case 'withdrawal':
-        shifts[activeIndex].withdrawalsTotal = addCurrency(shifts[activeIndex].withdrawalsTotal, roundedAmount);
+        shift.withdrawalsTotal = addCurrency(shift.withdrawalsTotal, roundedAmount);
+        currMap.withdrawals = addCurrency(currMap.withdrawals, roundedCurrAmount);
         break;
     }
+    shift.currencies[currency] = currMap;
     saveShifts(shifts);
     emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
   }
 };
 
 /**
- * Add sales to current shift مع بيانات الربح
- * ✅ يعمل بدون وردية الآن، ويسجل COGS والربح الإجمالي
+ * Add sales to current shift مع بيانات الربح والعملة
+ * ✅ يعمل بدون وردية الآن، ويسجل COGS والربح الإجمالي وتفصيل العملات
  */
 export const addSalesToShift = (
   amount: number,
   grossProfit: number = 0,
-  cogs: number = 0
+  cogs: number = 0,
+  currency: ShiftCurrency = 'USD',
+  currencyAmount?: number
 ): void => {
   const roundedAmount = roundCurrency(amount);
   const roundedProfit = roundCurrency(grossProfit);
   const roundedCogs = roundCurrency(cogs);
+  const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
 
   const state = loadCashboxState();
 
@@ -294,9 +376,17 @@ export const addSalesToShift = (
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
   if (activeIndex !== -1) {
-    shifts[activeIndex].salesTotal = addCurrency(shifts[activeIndex].salesTotal, roundedAmount);
-    shifts[activeIndex].grossProfitTotal = addCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit);
-    shifts[activeIndex].cogsTotal = addCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs);
+    const shift = shifts[activeIndex];
+    if (!shift.currencies) {
+      shift.currencies = initShiftCurrencies(shift.openingCash);
+    }
+    const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
+    currMap.sales = addCurrency(currMap.sales, roundedCurrAmount);
+    shift.currencies[currency] = currMap;
+
+    shift.salesTotal = addCurrency(shift.salesTotal, roundedAmount);
+    shift.grossProfitTotal = addCurrency(shift.grossProfitTotal || 0, roundedProfit);
+    shift.cogsTotal = addCurrency(shift.cogsTotal || 0, roundedCogs);
     saveShifts(shifts);
     emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
   }
@@ -310,12 +400,15 @@ export const recordRefundInShift = (
   amount: number,
   grossProfit: number = 0,
   cogs: number = 0,
-  invoiceNumber?: string
+  invoiceNumber?: string,
+  currency: ShiftCurrency = 'USD',
+  currencyAmount?: number
 ): void => {
   if (amount <= 0) return;
   const roundedAmount = roundCurrency(amount);
   const roundedProfit = roundCurrency(grossProfit);
   const roundedCogs = roundCurrency(cogs);
+  const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
 
   const state = loadCashboxState();
   state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
@@ -325,6 +418,14 @@ export const recordRefundInShift = (
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');
   if (activeIndex !== -1) {
+    const shift = shifts[activeIndex];
+    if (!shift.currencies) {
+      shift.currencies = initShiftCurrencies(shift.openingCash);
+    }
+    const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
+    currMap.sales = Math.max(0, subtractCurrency(currMap.sales, roundedCurrAmount));
+    shift.currencies[currency] = currMap;
+
     shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
     shifts[activeIndex].grossProfitTotal = Math.max(0, subtractCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
     shifts[activeIndex].cogsTotal = Math.max(0, subtractCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs));
@@ -347,18 +448,18 @@ export const recordRefundInShift = (
 };
 
 // Add expenses to current shift (يعمل بدون وردية الآن)
-export const addExpensesToShift = (amount: number): void => {
-  updateCashboxBalance(amount, 'expense');
+export const addExpensesToShift = (amount: number, currency: ShiftCurrency = 'USD', currencyAmount?: number): void => {
+  updateCashboxBalance(amount, 'expense', currency, currencyAmount);
 };
 
 // Add deposit to current shift (partner capital, etc.) - يعمل بدون وردية الآن
-export const addDepositToShift = (amount: number): void => {
-  updateCashboxBalance(amount, 'deposit');
+export const addDepositToShift = (amount: number, currency: ShiftCurrency = 'USD', currencyAmount?: number): void => {
+  updateCashboxBalance(amount, 'deposit', currency, currencyAmount);
 };
 
 // Add withdrawal from current shift (يعمل بدون وردية الآن)
-export const addWithdrawalFromShift = (amount: number): void => {
-  updateCashboxBalance(amount, 'withdrawal');
+export const addWithdrawalFromShift = (amount: number, currency: ShiftCurrency = 'USD', currencyAmount?: number): void => {
+  updateCashboxBalance(amount, 'withdrawal', currency, currencyAmount);
 };
 
 // Get shift statistics
