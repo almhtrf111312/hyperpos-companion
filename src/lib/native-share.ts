@@ -108,7 +108,9 @@ export interface InvoiceShareData {
   discount?: number;
   total: number;
   currencySymbol: string;
-  paymentType: 'cash' | 'debt';
+  paymentType: 'cash' | 'debt' | 'split';
+  downPayment?: number;
+  debtRemaining?: number;
   serviceDescription?: string;
   type: 'sale' | 'maintenance';
   taxAmount?: number;
@@ -129,6 +131,8 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
     total,
     currencySymbol,
     paymentType,
+    downPayment,
+    debtRemaining,
     serviceDescription,
     type,
   } = data;
@@ -139,7 +143,11 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
     ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
-  const paymentLabel = paymentType === 'cash' ? '💵 نقدي' : '📋 آجل';
+  const paymentLabel = paymentType === 'cash' 
+    ? '💵 نقدي' 
+    : paymentType === 'split'
+      ? '🔀 بيع مركب (نقدي + دين)'
+      : '📋 آجل';
 
   return `────────────────
 ${storeName}
@@ -159,6 +167,7 @@ ${itemsList}
 ────────────────
 ${type === 'sale' && items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${currencySymbol}${formatNumber(data.taxAmount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
 💳 طريقة الدفع: ${paymentLabel}
+${paymentType === 'split' && downPayment ? `💵 المقبوض نقداً: ${currencySymbol}${formatNumber(downPayment)}\n📋 المتبقي كدين: ${currencySymbol}${formatNumber(debtRemaining || 0)}\n` : ''}
 
 ────────────────
 ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}

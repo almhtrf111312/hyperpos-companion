@@ -197,6 +197,8 @@ export function CartPanel({
   // Wholesale mode
   const [wholesaleMode, setWholesaleMode] = useState(false);
   const [receivedAmount, setReceivedAmount] = useState<number>(0);
+  const [receivedCurrencyCode, setReceivedCurrencyCode] = useState<'USD' | 'TRY' | 'SYP'>(() => selectedCurrency.code);
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
 
   // Smart customer search feature
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
@@ -215,6 +217,9 @@ export function CartPanel({
     selectedCurrency: Currency;
     taxAmount: number;
     effectiveTaxRate: number;
+    paymentType?: 'cash' | 'debt' | 'split';
+    downPayment?: number;
+    debtRemaining?: number;
   } | null>(null);
 
 
@@ -284,8 +289,35 @@ export function CartPanel({
     : taxableAmount + taxAmount;
   const totalInCurrency = roundCurrency(total * selectedCurrency.rate);
 
-  // 💱 المبلغ المقبوض يُدخل بعملة العرض المختارة ⇒ نحوّله للدولار قبل أي حساب مالي
-  const receivedUSD = roundCurrency(receivedAmount > 0 ? receivedAmount / activeRate : 0);
+  // Active currency object for received amount
+  const activeReceivedCurrency = useMemo(() => {
+    return currencies.find(c => c.code === receivedCurrencyCode) || selectedCurrency;
+  }, [currencies, receivedCurrencyCode, selectedCurrency]);
+
+  const receivedRate = Number.isFinite(activeReceivedCurrency.rate) && activeReceivedCurrency.rate > 0
+    ? activeReceivedCurrency.rate
+    : 1;
+
+  // 💱 المبلغ المقبوض يُحوّل للدولار بناءً على عملة القبض المختارة
+  const receivedUSD = roundCurrency(
+    receivedAmount > 0
+      ? (activeReceivedCurrency.code === 'USD' ? receivedAmount : receivedAmount / receivedRate)
+      : 0
+  );
+
+  // إجمالي الفاتورة بعملة المقبوض
+  const totalInReceivedCurrency = roundCurrency(total * receivedRate);
+
+  // الباقي للزبون (Change)
+  const changeInReceivedCurrency = roundCurrency(Math.max(0, receivedAmount - totalInReceivedCurrency));
+  const changeUSD = roundCurrency(Math.max(0, receivedUSD - total));
+
+  // المتبقي كدين أو عجز
+  const remainingInReceivedCurrency = roundCurrency(Math.max(0, totalInReceivedCurrency - receivedAmount));
+  const remainingUSD = roundCurrency(Math.max(0, total - receivedUSD));
+
+  // هل تنطبق شروط الدفع المركب (مقبوض جزئي أكبر من 0 وأقل من الإجمالي)
+  const isSplitEligible = receivedUSD > 0 && receivedUSD < roundCurrency(total) - 0.01;
 
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
   const wholesaleCOGS = roundCurrency(cart.reduce((sum, item) => {
@@ -298,9 +330,21 @@ export function CartPanel({
     ? roundCurrency((receivedUSD > 0 ? receivedUSD : subtotal) - wholesaleCOGS)
     : undefined;
 
+  // هل العميل محدد ومسجل وليس عاماً
+  const isRealCustomerSelected = (name?: string) => {
+    if (!name) return false;
+    const clean = name.trim();
+    return clean.length > 0 && clean !== 'عميل نقدي' && clean !== 'زبون عام';
+  };
 
   // ✅ حفظ لقطة من البيع الحالي قبل تفريغ السلة
-  const saveSaleSnapshot = (cartData: CartItem[], custName: string) => {
+  const saveSaleSnapshot = (
+    cartData: CartItem[],
+    custName: string,
+    paymentType: 'cash' | 'debt' | 'split' = 'cash',
+    downPayment: number = 0,
+    debtRemaining: number = 0
+  ) => {
     setLastSale({
       cart: [...cartData],
       customerName: custName,
@@ -312,18 +356,35 @@ export function CartPanel({
       selectedCurrency,
       taxAmount,
       effectiveTaxRate,
+      paymentType,
+      downPayment,
+      debtRemaining,
     });
   };
 
   const handleCashSale = () => {
     if (cart.length === 0) return;
+
+    // إذا كان هناك عجز في المقبوض وعميل مسجل، نفتح البيع المركب مباشرة
+    if (!wholesaleMode && isSplitEligible) {
+      if (isRealCustomerSelected(customerName)) {
+        handleSplitSale();
+        return;
+      } else {
+        showToast.error(
+          `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من إجمالي الفاتورة (${activeReceivedCurrency.symbol}${formatNumber(totalInReceivedCurrency)}). يرجى إدخال المبلغ كاملاً، أو تحديد عميل لإتمام العملية كدفع مركب.`
+        );
+        return;
+      }
+    }
+
     setShowCashDialog(true);
   };
 
   const handleDebtSale = () => {
     if (cart.length === 0) return;
-    if (!customerName) {
-      showToast.error(t('pos.enterCustomerName'));
+    if (!isRealCustomerSelected(customerName)) {
+      showToast.error(t('pos.enterCustomerName') || 'يرجى تحديد عميل مسجل لتسجيل الدين');
       return;
     }
 
@@ -343,7 +404,35 @@ export function CartPanel({
       setCustomerPhone('');
     }
 
-    setShowDebtDialog(true);
+    if (isSplitEligible) {
+      setShowSplitDialog(true);
+    } else {
+      setShowDebtDialog(true);
+    }
+  };
+
+  const handleSplitSale = () => {
+    if (cart.length === 0) return;
+    if (!isRealCustomerSelected(customerName)) {
+      showToast.error('لا يمكن تسجيل دفع مركب بدون تحديد عميل مسجل لترحيل المتبقي كدين.');
+      return;
+    }
+
+    const existingCustomer = allCustomers.find(c =>
+      c.name.toLowerCase().trim() === customerName.toLowerCase().trim()
+    );
+
+    if (existingCustomer) {
+      setIsNewCustomer(false);
+      setCustomerPhone(existingCustomer.phone || customerPhone || '');
+    } else if (customerPhone && customerPhone.trim()) {
+      setIsNewCustomer(false);
+    } else {
+      setIsNewCustomer(true);
+      setCustomerPhone('');
+    }
+
+    setShowSplitDialog(true);
   };
 
   const confirmCashSale = async () => {
@@ -355,13 +444,17 @@ export function CartPanel({
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
     // 🛡️ لا يُحوَّل نقص المقبوض إلى خصم صامت بعد اليوم.
-    // البيع النقدي يُسجَّل بقيمته الكاملة؛ النقص يُعالج كخصم صريح أو كبيع مؤجل.
+    // البيع النقدي يُسجَّل بقيمته الكاملة؛ النقص يُعالج كخصم صريح أو كبيع مركب مع عميل.
     if (!wholesaleMode && receivedUSD > 0 && receivedUSD < roundCurrency(total) - 0.01) {
       savingRef.current = false;
       setIsSaving(false);
       setShowCashDialog(false);
+      if (isRealCustomerSelected(customerName)) {
+        setShowSplitDialog(true);
+        return;
+      }
       showToast.error(
-        `المبلغ المقبوض (${formatCurrency(receivedUSD)}) أقل من إجمالي الفاتورة (${formatCurrency(total)}). استخدم خصماً صريحاً أو سجّلها بيعاً مؤجلاً.`
+        `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من إجمالي الفاتورة (${activeReceivedCurrency.symbol}${formatNumber(totalInReceivedCurrency)}). حدد عميلاً مسجلاً لإتمام العملية كدفع مركب، أو أدخل المبلغ كاملاً.`
       );
       return;
     }
@@ -511,7 +604,7 @@ export function CartPanel({
       recordActivity();
 
       // ✅ إغلاق الواجهة فوراً (< 100ms من الضغط على "بيع")
-      saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي');
+      saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash');
       onClearCart();
       playSaleComplete();
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
@@ -532,16 +625,22 @@ export function CartPanel({
     }
   };
 
-  const confirmDebtSale = async () => {
+  const confirmDebtSale = async (isSplitSale: boolean = false) => {
     // ✅ حماية مزدوجة: state + ref لمنع التكرارات
     if (isSaving || savingRef.current) return;
+
+    if (!isRealCustomerSelected(customerName)) {
+      showToast.error('لا يمكن اعتماد الفاتورة كدين أو بيع مركب بدون تحديد عميل مسجل.');
+      return;
+    }
+
     savingRef.current = true;
     setIsSaving(true);
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
     const totalSnapshot = roundCurrency(total);
-    // 💵 الدفعة الأولى المقبوضة عند البيع المؤجل (محوّلة للدولار) — تُخصم من الدين
+    // 💵 الدفعة الأولى المقبوضة عند البيع المؤجل أو المركب (محوّلة للدولار) — تُخصم من الدين وتدخل الصندوق
     const downPaymentSnapshot = roundCurrency(Math.max(0, Math.min(receivedUSD, totalSnapshot)));
     const debtRemainingSnapshot = roundCurrency(totalSnapshot - downPaymentSnapshot);
     const customerNameSnapshot = customerName;
@@ -552,7 +651,13 @@ export function CartPanel({
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     setShowDebtDialog(false);
-    startSync('جاري إنشاء فاتورة البيع المؤجل...', false);
+    setShowSplitDialog(false);
+    startSync(
+      downPaymentSnapshot > 0 
+        ? 'جاري حفظ البيع المركب...' 
+        : 'جاري إنشاء فاتورة البيع المؤجل...', 
+      false
+    );
 
     try {
       // ============================================================
@@ -672,6 +777,14 @@ export function CartPanel({
 
       addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
 
+      // ✅ تسجيل الدفعة النقدية المقبوضة في الصندوق والوردية النشطة فوراً
+      if (downPaymentSnapshot > 0) {
+        const cashRatio = totalSnapshot > 0 ? downPaymentSnapshot / totalSnapshot : 1;
+        const downPaymentProfit = roundCurrency(discountedProfit * cashRatio);
+        const downPaymentCOGS = roundCurrency(totalCOGS * cashRatio);
+        addSalesToShift(downPaymentSnapshot, downPaymentProfit, downPaymentCOGS);
+      }
+
       // ✅ تسجيل الربح محلياً فوراً
       const tempInvoiceId = `local_debt_${Date.now()}`;
       addGrossProfit(tempInvoiceId, discountedProfit, totalCOGS, totalSnapshot);
@@ -683,8 +796,17 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع مؤجل بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
-          { total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot, paymentType: 'debt' }
+          downPaymentSnapshot > 0
+            ? `عملية بيع مركب بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)}) - المنتجات: ${itemsDescription}`
+            : `عملية بيع مؤجل بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+          { 
+            total: totalSnapshot, 
+            itemsCount: cartSnapshot.length, 
+            customerName: customerNameSnapshot, 
+            paymentType: downPaymentSnapshot > 0 ? 'split' : 'debt',
+            downPayment: downPaymentSnapshot,
+            debtRemaining: debtRemainingSnapshot
+          }
         );
         addActivityLog(
           'debt_created',
@@ -699,11 +821,25 @@ export function CartPanel({
       }
 
       // ✅ إغلاق الواجهة فوراً
-      saveSaleSnapshot(cartSnapshot, customerNameSnapshot);
+      saveSaleSnapshot(
+        cartSnapshot,
+        customerNameSnapshot,
+        downPaymentSnapshot > 0 ? 'split' : 'debt',
+        downPaymentSnapshot,
+        debtRemainingSnapshot
+      );
       onClearCart();
-      playDebtRecorded();
+      if (downPaymentSnapshot > 0) {
+        playSaleComplete();
+      } else {
+        playDebtRecorded();
+      }
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
-      showToast.success('تم حفظ فاتورة البيع المؤجل ✓');
+      if (downPaymentSnapshot > 0) {
+        showToast.success(`تم حفظ البيع المركب بنجاح ✓ (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)})`);
+      } else {
+        showToast.success('تم حفظ فاتورة البيع المؤجل ✓');
+      }
 
       // ✅ مزامنة فورية في الخلفية
       if (isOnline) {
@@ -901,10 +1037,17 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${printDiscount > 0 ? `<div style="text-align: left; color: #c00;">خصم ${printDiscount}%: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
+          ${printDiscount > 0 ? `<div style="text-align: left; color: #c00;">خصم: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
           <div class="total">
             الإجمالي: ${printCurrency.symbol}${formatNumber(printTotalInCurrency)}
           </div>
+          ${data?.paymentType === 'split' && data?.downPayment ? `
+            <div style="margin-top: 8px; font-size: 0.9em; text-align: center; border-top: 1px dashed #333; padding-top: 6px;">
+              <div>طريقة الدفع: <strong>بيع مركب</strong></div>
+              <div>المقبوض نقداً: <strong>${printCurrency.symbol}${formatNumber(roundCurrency(data.downPayment * printCurrency.rate))}</strong></div>
+              <div style="color: #c00;">المتبقي كدين: <strong>${printCurrency.symbol}${formatNumber(roundCurrency((data.debtRemaining || 0) * printCurrency.rate))}</strong></div>
+            </div>
+          ` : ''}
           <div class="footer">${footer}</div>
         </body>
       </html>
@@ -923,6 +1066,9 @@ export function CartPanel({
     const shareTotalInCurrency = data ? data.totalInCurrency : totalInCurrency;
     const shareSubtotal = data ? data.subtotal : subtotal;
     const shareDiscountAmount = data ? data.discountAmount : discountAmount;
+    const sharePaymentType = data?.paymentType || 'cash';
+    const shareDownPayment = data?.downPayment ? roundCurrency(data.downPayment * shareCurrency.rate) : undefined;
+    const shareDebtRemaining = data?.debtRemaining ? roundCurrency(data.debtRemaining * shareCurrency.rate) : undefined;
 
     if (shareCart.length === 0) return;
 
@@ -947,7 +1093,9 @@ export function CartPanel({
       discount: shareDiscountAmount,
       total: shareTotalInCurrency,
       currencySymbol: shareCurrency.symbol,
-      paymentType: 'cash',
+      paymentType: sharePaymentType,
+      downPayment: shareDownPayment,
+      debtRemaining: shareDebtRemaining,
       type: 'sale',
     };
 
@@ -1286,37 +1434,63 @@ export function CartPanel({
             </div>
           )}
 
-          {/* Row 3: Received Amount - matches discount pill design */}
-          <label className={cn(
-            "box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
-            receivedAmount > 0
-              ? "bg-primary/5 border-primary/40"
-              : "bg-muted/40 border-border/40 hover:border-border/60"
-          )}>
-            <Banknote className={cn(
-              "w-3.5 h-3.5 flex-shrink-0",
-              wholesaleMode ? "text-warning" : receivedAmount > 0 ? "text-primary" : "text-muted-foreground"
-            )} />
-            <Input
-              type="number"
-              placeholder={`${t('pos.receivedAmount') || 'المبلغ المقبوض'} (${selectedCurrency.symbol})`}
-              value={receivedAmount || ''}
-              onChange={(e) => setReceivedAmount(Number(e.target.value))}
-              className={cn(
-                "box-border h-full min-w-0 w-0 flex-1 border-0 bg-transparent p-0 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
-                wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
-              )}
-              min="0"
-            />
-            {/* 💱 توضيح عملة المبلغ المقبوض لمنع الخلط بين الدولار والعملة المحلية */}
-            <span className={cn(
-              "flex items-center justify-center min-w-[20px] h-5 px-1 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+          {/* Row 3: Received Amount with Currency Selector */}
+          <div className="space-y-1">
+            <div className={cn(
+              "box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
               receivedAmount > 0
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted/50 text-muted-foreground border border-border/60"
-            )}>{selectedCurrency.symbol}</span>
-          </label>
+                ? "bg-primary/5 border-primary/40"
+                : "bg-muted/40 border-border/40 hover:border-border/60"
+            )}>
+              <Banknote className={cn(
+                "w-3.5 h-3.5 flex-shrink-0",
+                wholesaleMode ? "text-warning" : receivedAmount > 0 ? "text-primary" : "text-muted-foreground"
+              )} />
+              <Input
+                type="number"
+                placeholder={`${t('pos.receivedAmount') || 'المبلغ المقبوض'} (${activeReceivedCurrency.symbol})`}
+                value={receivedAmount || ''}
+                onChange={(e) => setReceivedAmount(Number(e.target.value))}
+                className={cn(
+                  "box-border h-full min-w-0 w-0 flex-1 border-0 bg-transparent p-0 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
+                  wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
+                )}
+                min="0"
+              />
+              
+              {/* أزرار اختيار عملة المبلغ المقبوض (USD أو العملات الثانوية) */}
+              <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-md flex-shrink-0">
+                {currencies.map((currency) => (
+                  <button
+                    key={currency.code}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setReceivedCurrencyCode(currency.code);
+                    }}
+                    className={cn(
+                      "px-1.5 py-0.5 text-[9px] font-bold rounded transition-all leading-none",
+                      activeReceivedCurrency.code === currency.code
+                        ? "bg-primary text-primary-foreground shadow-sm scale-105"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    title={`القبض بـ ${currency.name}`}
+                  >
+                    {currency.symbol} {currency.code}
+                  </button>
+                ))}
+              </div>
+            </div>
 
+            {/* بيان توضيحي لقيمة المقبوض بالدولار إذا أُدخل بعملة ثانوية */}
+            {receivedAmount > 0 && activeReceivedCurrency.code !== 'USD' && (
+              <div className="flex justify-between items-center text-[10px] text-muted-foreground px-1">
+                <span>المعادل بالدولار:</span>
+                <span className="font-semibold text-foreground">${formatNumber(receivedUSD)} (سعر الصرف: {formatNumber(receivedRate)})</span>
+              </div>
+            )}
+          </div>
 
           {/* Row 4: Info summary + Total */}
           <div className="space-y-1">
@@ -1338,14 +1512,16 @@ export function CartPanel({
                     ض. {effectiveTaxRate}%: ${formatNumber(taxAmount)}
                   </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total && (
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                    باقي للعميل: {formatCurrency(roundCurrency(receivedUSD - total))}
+                    باقي للعميل: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
+                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(changeUSD)})`}
                   </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total && (
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total - 0.001 && (
                   <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold">
-                    مقبوض: {formatCurrency(receivedUSD)} — متبقٍ: {formatCurrency(roundCurrency(total - receivedUSD))}
+                    مقبوض: {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)} — متبقٍ: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
+                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
                   </span>
                 )}
 
@@ -1385,6 +1561,21 @@ export function CartPanel({
               <Banknote className="w-4 h-4 ml-1.5" />
               {t('pos.cash')}
             </Button>
+
+            {/* زر بيع مركب صريح يظهر عند وجود مقبوض جزئي */}
+            {isSplitEligible && (
+              <Button
+                variant="outline"
+                className="flex-1 h-11 border-2 border-indigo-500/70 text-indigo-400 hover:bg-indigo-500/10 text-sm font-bold transition-all active:scale-95 rounded-xl bg-indigo-500/5 shadow-sm"
+                disabled={cart.length === 0}
+                onClick={handleSplitSale}
+                title="دفع مركب: جزء نقدي وجزء دين"
+              >
+                <Repeat className="w-4 h-4 ml-1.5" />
+                بيع مركب
+              </Button>
+            )}
+
             <Button
               data-tour="debt-btn"
               variant="outline"
@@ -1441,12 +1632,32 @@ export function CartPanel({
               </div>
               <div className="flex justify-between text-sm">
                 <span>العميل:</span>
-                <span className="font-semibold">{customerName || 'بدون اسم'}</span>
+                <span className="font-semibold">{customerName || 'عميل نقدي'}</span>
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
                 <span>الإجمالي:</span>
                 <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
               </div>
+              {receivedAmount > 0 && (
+                <div className="space-y-1.5 border-t border-border/50 pt-2 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>المبلغ المقبوض:</span>
+                    <span className="font-semibold text-foreground">
+                      {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
+                      {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
+                    </span>
+                  </div>
+                  {changeInReceivedCurrency > 0 && (
+                    <div className="flex justify-between text-success font-bold bg-success/10 p-2 rounded-lg">
+                      <span>الباقي للعميل:</span>
+                      <span>
+                        {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
+                        {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(changeUSD)})`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowCashDialog(false)} disabled={isSaving}>
@@ -1500,17 +1711,22 @@ export function CartPanel({
                 <span>عدد المنتجات:</span>
                 <span className="font-semibold">{cart.length}</span>
               </div>
-              {receivedUSD > 0 && (
-                <div className="flex justify-between text-sm text-success font-semibold">
-                  <span>دفعة أولى مقبوضة:</span>
-                  <span>{selectedCurrency.symbol}{formatNumber(roundCurrency(Math.min(receivedUSD, total) * activeRate))}</span>
+              {receivedAmount > 0 && (
+                <div className="flex justify-between text-sm text-success font-semibold bg-success/10 p-2 rounded-lg">
+                  <span>دفعة أولى مقبوضة (كاش):</span>
+                  <span>
+                    {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
+                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>مبلغ الدين:</span>
-                <span>{selectedCurrency.symbol}{formatNumber(roundCurrency(Math.max(0, total - Math.min(receivedUSD, total)) * activeRate))}</span>
+                <span>
+                  {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
+                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
+                </span>
               </div>
-
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowDebtDialog(false)} disabled={isSaving}>
@@ -1525,11 +1741,102 @@ export function CartPanel({
                     showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
                     return;
                   }
-                  confirmDebtSale();
+                  confirmDebtSale(false);
                 }}
               >
                 <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
                 {isSaving ? 'جاري الحفظ...' : 'تأكيد البيع المؤجل'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Split Payment Dialog (بيع مركب: نقدي + دين) */}
+      <Dialog open={showSplitDialog} onOpenChange={setShowSplitDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-indigo-500">
+              <Repeat className="w-5 h-5" />
+              تأكيد البيع المركب (نقدي + دين)
+            </DialogTitle>
+            <DialogDescription>
+              دفع جزء نقداً وإضافة المبلغ المتبقي كدين على العميل
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-muted rounded-lg p-4 space-y-2.5">
+              <div className="flex justify-between text-sm">
+                <span>العميل:</span>
+                <span className="font-semibold text-foreground">{customerName}</span>
+              </div>
+              {isNewCustomer && (
+                <div className="mt-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <label htmlFor="cart-split-customer-phone" className="text-sm font-medium mb-1.5 block text-warning">
+                    رقم الهاتف * (مطلوب لعميل جديد)
+                  </label>
+                  <Input
+                    id="cart-split-customer-phone"
+                    type="tel"
+                    inputMode="tel"
+                    dir="ltr"
+                    placeholder="+963 xxx xxx xxx"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
+                    className="bg-background border-warning text-left"
+                  />
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span>عدد المنتجات:</span>
+                <span className="font-semibold">{cart.length}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-border/50 pt-2 font-medium">
+                <span>إجمالي الفاتورة:</span>
+                <span className="font-bold text-foreground">
+                  {activeReceivedCurrency.symbol}{formatNumber(totalInReceivedCurrency)}
+                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(total)})`}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm text-success font-semibold bg-success/10 p-2 rounded-lg">
+                <span className="flex items-center gap-1">
+                  <Banknote className="w-4 h-4" />
+                  المقبوض نقداً (يدخل الصندوق):
+                </span>
+                <span>
+                  {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
+                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm text-warning font-semibold bg-warning/10 p-2 rounded-lg">
+                <span className="flex items-center gap-1">
+                  <CreditCard className="w-4 h-4" />
+                  المتبقي كدين (يُرحّل للعميل):
+                </span>
+                <span>
+                  {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
+                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowSplitDialog(false)} disabled={isSaving}>
+                إلغاء
+              </Button>
+              <Button
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                disabled={isSaving}
+                aria-busy={isSaving}
+                onClick={() => {
+                  if (isNewCustomer && !customerPhone.trim()) {
+                    showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
+                    return;
+                  }
+                  confirmDebtSale(true);
+                }}
+              >
+                <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
+                {isSaving ? 'جاري الحفظ...' : 'تأكيد البيع المركب'}
               </Button>
             </div>
           </div>
