@@ -18,6 +18,8 @@ import {
   saveProductsToIDB,
   loadProductsFromIDB,
   getProductByBarcodeIDB,
+  deleteProductFromIDB,
+  updateProductInIDB,
   getPendingStockDeductions,
   savePendingStockDeduction,
   removePendingStockDeduction,
@@ -94,6 +96,7 @@ export interface Product {
   bulkCostPrice?: number;
   bulkSalePrice?: number;
   trackByUnit?: 'piece' | 'bulk';
+  archived?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -137,15 +140,16 @@ function toProduct(cloud: CloudProduct): Product {
       )
     ) : undefined,
     // Unit settings
-    laborCost: Number(cloud.labor_cost) || 0,
-    bulkUnit: cloud.bulk_unit || 'كرتونة',
-    smallUnit: cloud.small_unit || 'قطعة',
-    conversionFactor: cloud.conversion_factor || 1,
-    bulkCostPrice: Number(cloud.bulk_cost_price) || 0,
-    bulkSalePrice: Number(cloud.bulk_sale_price) || 0,
-    trackByUnit: cloud.track_by_unit || 'piece',
+    laborCost: Number((cloud as any).labor_cost ?? cloud.labor_cost) || 0,
+    bulkUnit: (cloud as any).bulk_unit || cloud.bulk_unit || 'كرتونة',
+    smallUnit: (cloud as any).small_unit || cloud.small_unit || 'قطعة',
+    conversionFactor: (cloud as any).conversion_factor || cloud.conversion_factor || 1,
+    bulkCostPrice: Number((cloud as any).bulk_cost_price ?? cloud.bulk_cost_price) || 0,
+    bulkSalePrice: Number((cloud as any).bulk_sale_price ?? cloud.bulk_sale_price) || 0,
+    trackByUnit: (cloud as any).track_by_unit || cloud.track_by_unit || 'piece',
     createdAt: cloud.created_at || undefined,
     updatedAt: cloud.updated_at || undefined,
+    archived: cloud.archived === true,
   };
 }
 
@@ -182,7 +186,7 @@ function toCloudProduct(product: Omit<Product, 'id' | 'status'>): Record<string,
     expiry_date: product.expiryDate || null,
     image_url: product.image || null,
     custom_fields: Object.keys(mergedCustomFields).length > 0 ? mergedCustomFields : null,
-    archived: false,
+    archived: product.archived ?? false,
     // Labor cost (workshop mode)
     labor_cost: product.laborCost || 0,
     // Unit settings
@@ -227,14 +231,15 @@ const saveToLocalCache = (products: Product[]) => {
   }
 };
 
-// Load products from IndexedDB first, then localStorage fallback (NEVER expires offline)
-const loadFromLocalCache = async (): Promise<Product[] | null> => {
+// Load products from IndexedDB first, then localStorage fallback (strictly excludes archived, never expires offline)
+export const loadFromLocalCache = async (): Promise<Product[] | null> => {
   // Try IndexedDB first (faster, larger capacity)
   try {
     const idbResult = await loadProductsFromIDB<Product>();
     if (idbResult && idbResult.products && idbResult.products.length > 0) {
-      console.log('[ProductsCloud] ✅ Serving from IndexedDB cache (' + idbResult.products.length + ' products)');
-      return idbResult.products;
+      const activeProducts = idbResult.products.filter(p => !p.archived);
+      console.log('[ProductsCloud] ✅ Serving from IndexedDB cache (' + activeProducts.length + ' products)');
+      return activeProducts;
     }
   } catch (e) {
     console.warn('[ProductsCloud] IDB load failed:', e);
@@ -244,10 +249,12 @@ const loadFromLocalCache = async (): Promise<Product[] | null> => {
   try {
     const cached = localStorage.getItem(LOCAL_PRODUCTS_CACHE_KEY);
     if (cached) {
-      const { products } = JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      const products = parsed.products;
       if (Array.isArray(products) && products.length > 0) {
-        console.log('[ProductsCloud] Serving from localStorage fallback (' + products.length + ' products)');
-        return products;
+        const activeProducts = (products as Product[]).filter(p => !p.archived);
+        console.log('[ProductsCloud] Serving from localStorage fallback (' + activeProducts.length + ' products)');
+        return activeProducts;
       }
     }
   } catch (e) {
@@ -316,6 +323,119 @@ const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promi
   });
 };
 
+/**
+ * تحميل فوري للمنتجات من الكاش المحلي (الذاكرة أولاً ثم IndexedDB ثم localStorage)
+ * يستبعد أي منتج مؤرشف ويعيد البيانات فوراً (<0.5 ثانية) دون انتظار الشبكة
+ */
+export const loadProductsLocalFirst = async (): Promise<Product[]> => {
+  // 1. فحص كاش الذاكرة أولاً
+  if (productsCache && productsCache.length > 0) {
+    const activeCache = productsCache.filter(p => !p.archived);
+    productsCache = activeCache;
+    return activeCache;
+  }
+
+  // 2. فحص الكاش المحلي المسبق (IndexedDB ثم localStorage)
+  const localProducts = await loadFromLocalCache();
+  if (localProducts && localProducts.length > 0) {
+    const activeLocal = localProducts.filter(p => !p.archived);
+    productsCache = activeLocal;
+    cacheTimestamp = Date.now();
+    return activeLocal;
+  }
+
+  // 3. إذا كان الكاش فارغاً تماماً لأول مرة، التحميل من السحابة
+  return loadProductsCloud();
+};
+
+/**
+ * حذف فوري لمنتج من جميع طبقات الكاش المحلي (الذاكرة، localStorage، و IndexedDB)
+ * مع إطلاق حدث التحديث فوراً
+ */
+export const removeProductFromLocalCache = (id: string): void => {
+  // 1. مصفوفة الذاكرة
+  if (productsCache) {
+    productsCache = productsCache.filter(p => p.id !== id);
+  }
+
+  // 2. localStorage
+  try {
+    const cached = localStorage.getItem(LOCAL_PRODUCTS_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && Array.isArray(parsed.products)) {
+        parsed.products = parsed.products.filter((p: Product) => p.id !== id);
+        parsed.timestamp = Date.now();
+        localStorage.setItem(LOCAL_PRODUCTS_CACHE_KEY, JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.warn('[ProductsCloud] Failed to remove product from localStorage:', e);
+  }
+
+  // 3. IndexedDB
+  deleteProductFromIDB(id).catch(e => console.warn('[ProductsCloud] Failed to delete from IDB:', e));
+
+  // 4. إطلاق حدث التحديث فوراً
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+};
+
+/**
+ * تحديث كمية منتج محلياً في الكاش فور الاسترداد أو البيع لضمان التزامن اللحظي
+ */
+export const updateProductQuantityInCache = (productId: string, deltaQuantity: number): Product | null => {
+  if (!productsCache) return null;
+  const index = productsCache.findIndex(p => p.id === productId);
+  if (index === -1) return null;
+
+  const current = productsCache[index];
+  const newQty = Math.max(0, (current.quantity || 0) + deltaQuantity);
+  const updated: Product = {
+    ...current,
+    quantity: newQty,
+    status: getStatus(newQty, current.minStockLevel)
+  };
+
+  productsCache[index] = updated;
+  cacheTimestamp = Date.now();
+  saveToLocalCache(productsCache);
+  updateProductInIDB(productId, { quantity: newQty, status: updated.status }).catch(() => {});
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  return updated;
+};
+
+/**
+ * تحديث كميات عدة منتجات محلياً دفعة واحدة في الكاش فور الاسترداد أو البيع
+ */
+export const updateProductsQuantitiesInCache = (
+  items: { productId: string; deltaQuantity: number }[]
+): void => {
+  if (!productsCache || items.length === 0) return;
+  let modified = false;
+
+  for (const item of items) {
+    const index = productsCache.findIndex(p => p.id === item.productId);
+    if (index !== -1) {
+      const current = productsCache[index];
+      const newQty = Math.max(0, (current.quantity || 0) + item.deltaQuantity);
+      const updatedStatus = getStatus(newQty, current.minStockLevel);
+      productsCache[index] = {
+        ...current,
+        quantity: newQty,
+        status: updatedStatus
+      };
+      updateProductInIDB(item.productId, { quantity: newQty, status: updatedStatus }).catch(() => {});
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    cacheTimestamp = Date.now();
+    saveToLocalCache(productsCache);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  }
+};
+
 // Load products from cloud with incremental sync (delta sync)
 export const loadProductsCloud = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
@@ -331,20 +451,27 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
   // If no user, serve local cache immediately (0ms)
   if (!userId) {
-    return productsCache || [];
+    return (productsCache || []).filter(p => !p.archived);
   }
 
   // 2. Fast check if offline or dead connection
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
   if (!isOnline) {
+    const localProducts = await loadFromLocalCache();
+    if (localProducts && localProducts.length > 0) {
+      productsCache = localProducts.filter(p => !p.archived);
+      cacheTimestamp = Date.now();
+      console.log('[ProductsCloud] 📴 Offline - serving', productsCache.length, 'products from local cache');
+      return productsCache;
+    }
     console.log('[ProductsCloud] 📴 Offline - serving', productsCache?.length || 0, 'products from local cache');
-    return productsCache || [];
+    return (productsCache || []).filter(p => !p.archived);
   }
 
   // 3. Memory cache TTL check (short 10s TTL)
   if (productsCache && productsCache.length > 0 && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return productsCache;
+    return productsCache.filter(p => !p.archived);
   }
 
   try {
@@ -368,11 +495,12 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
         // Merge: drop archived, replace existing, add new
         productsCache = productsCache
-          .filter(p => !archivedIds.has(p.id))
+          .filter(p => !archivedIds.has(p.id) && !p.archived)
           .map(p => updatedMap.get(p.id) || p);
+
         const existingIds = new Set(productsCache.map(p => p.id));
-        for (const [id, product] of updatedMap) {
-          if (!existingIds.has(id)) {
+        for (const product of updatedWithPending) {
+          if (!existingIds.has(product.id)) {
             productsCache.unshift(product);
           }
         }
@@ -393,15 +521,16 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
         const localProducts = await loadFromLocalCache();
         if (localProducts && localProducts.length > 0) {
           console.log('[ProductsCloud] ⚠️ Cloud returned empty, using local cache');
-          productsCache = localProducts;
+          productsCache = localProducts.filter(p => !p.archived);
           cacheTimestamp = Date.now();
-          return localProducts;
+          return productsCache;
         }
       } else {
         productsCache = await applyPendingDeductionsToCloudProducts(cloudProducts.map(toProduct));
       }
     }
 
+    productsCache = (productsCache || []).filter(p => !p.archived);
     cacheTimestamp = Date.now();
 
     // Update last sync timestamp
@@ -417,12 +546,12 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
     console.error('[ProductsCloud] Cloud fetch failed, serving local cache:', error);
 
     if (productsCache && productsCache.length > 0) {
-      return productsCache;
+      return productsCache.filter(p => !p.archived);
     }
 
     const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
-      return localProducts;
+      return localProducts.filter(p => !p.archived);
     }
 
     return [];
@@ -738,10 +867,12 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
 
   // === OFFLINE SUPPORT ===
   if (!navigator.onLine) {
-    // Update in local cache immediately
-    if (productsCache) {
+    if (data.archived === true) {
+      removeProductFromLocalCache(id);
+    } else if (productsCache) {
+      // Update in local cache immediately
       productsCache = productsCache.map(p =>
-        p.id === id ? { ...p, ...data } : p
+        p.id === id ? { ...p, ...data, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
       );
       cacheTimestamp = Date.now();
       saveToLocalCache(productsCache);
@@ -764,7 +895,16 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   const success = await updateInSupabase('products', id, updates);
 
   if (success) {
-    invalidateProductsCache();
+    if (data.archived === true) {
+      removeProductFromLocalCache(id);
+    } else if (productsCache) {
+      productsCache = productsCache.map(p =>
+        p.id === id ? { ...p, ...data, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
+      );
+      cacheTimestamp = Date.now();
+      saveToLocalCache(productsCache);
+      updateProductInIDB(id, data).catch(() => {});
+    }
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
     triggerAutoBackup(`تعديل منتج: ${id}`);
   }
@@ -772,18 +912,13 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   return success;
 };
 
-const removeProductFromLocalCache = async (id: string) => {
-  const cached = productsCache ?? await loadFromLocalCache();
-  if (!cached) return;
-  productsCache = cached.filter(p => p.id !== id);
-  cacheTimestamp = Date.now();
-  saveToLocalCache(productsCache);
-};
-
 // Archive product (soft delete) — يحافظ على كامل السجل المالي والتاريخي المرتبط بالمنتج
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
+
+  // ✅ الحذف الفوري من الكاش المحلي وإطلاق الحدث فوراً
+  removeProductFromLocalCache(id);
 
   try {
     // ❌ لا حذف فيزيائي: الحذف الفيزيائي يكسر الفواتير وحركات المخزون التاريخية
@@ -798,7 +933,6 @@ export const deleteProductCloud = async (id: string): Promise<boolean> => {
       return false;
     }
 
-    await removeProductFromLocalCache(id);
     emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
     return true;
   } catch (error) {
@@ -819,7 +953,7 @@ export const getProductByBarcodeCloud = async (barcode: string): Promise<Product
   // Try IDB first for instant result (even offline)
   try {
     const idbResult = await getProductByBarcodeIDB<Product>(barcode);
-    if (idbResult) {
+    if (idbResult && !idbResult.archived) {
       console.log('[ProductsCloud] ⚡ Barcode found in IDB:', barcode);
       return idbResult;
     }
@@ -828,18 +962,21 @@ export const getProductByBarcodeCloud = async (barcode: string): Promise<Product
   }
 
   // Fallback to memory cache / cloud
-  const products = await loadProductsCloud();
+  const products = await loadProductsLocalFirst();
   return products.find(p =>
-    p.barcode === barcode ||
-    p.barcode2 === barcode ||
-    p.barcode3 === barcode
+    !p.archived && (
+      p.barcode === barcode ||
+      p.barcode2 === barcode ||
+      p.barcode3 === barcode
+    )
   ) || null;
 };
 
 // Get low stock products
 export const getLowStockProductsCloud = async (): Promise<Product[]> => {
-  const products = await loadProductsCloud();
+  const products = await loadProductsLocalFirst();
   return products.filter(p => {
+    if (p.archived) return false;
     const threshold = p.minStockLevel ?? 5;
     return p.quantity <= threshold;
   });
@@ -847,12 +984,16 @@ export const getLowStockProductsCloud = async (): Promise<Product[]> => {
 
 // Deduct stock
 export const deductStockCloud = async (productId: string, quantity: number): Promise<boolean> => {
-  const products = await loadProductsCloud();
-  const product = products.find(p => p.id === productId);
+  let product = productsCache?.find(p => p.id === productId);
+  if (!product) {
+    const local = await loadProductsLocalFirst();
+    product = local.find(p => p.id === productId);
+  }
 
   if (!product) return false;
 
-  const newQuantity = Math.max(0, product.quantity - quantity);
+  const newQuantity = Math.max(0, (product.quantity || 0) - quantity);
+  updateProductQuantityInCache(productId, -quantity);
   return updateProductCloud(productId, { quantity: newQuantity });
 };
 
@@ -862,6 +1003,11 @@ export const deductStockBatchCloud = async (
 ): Promise<{ success: boolean; deducted: number; failed: number }> => {
   let deducted = 0;
   let failed = 0;
+
+  // تحديث محلي فوري للكاش
+  updateProductsQuantitiesInCache(
+    items.map(it => ({ productId: it.productId, deltaQuantity: -it.quantity }))
+  );
 
   for (const item of items) {
     const success = await deductStockCloud(item.productId, item.quantity);
@@ -874,12 +1020,16 @@ export const deductStockBatchCloud = async (
 
 // Restore stock for refunds
 export const restoreStockCloud = async (productId: string, quantity: number): Promise<boolean> => {
-  const products = await loadProductsCloud();
-  const product = products.find(p => p.id === productId);
+  let product = productsCache?.find(p => p.id === productId);
+  if (!product) {
+    const local = await loadProductsLocalFirst();
+    product = local.find(p => p.id === productId);
+  }
 
   if (!product) return false;
 
-  const newQuantity = product.quantity + quantity;
+  const newQuantity = (product.quantity || 0) + quantity;
+  updateProductQuantityInCache(productId, quantity);
   return updateProductCloud(productId, { quantity: newQuantity });
 };
 
@@ -889,6 +1039,11 @@ export const restoreStockBatchCloud = async (
 ): Promise<{ success: boolean; restored: number; failed: number }> => {
   let restored = 0;
   let failed = 0;
+
+  // تحديث محلي فوري للكاش
+  updateProductsQuantitiesInCache(
+    items.map(it => ({ productId: it.productId, deltaQuantity: it.quantity }))
+  );
 
   for (const item of items) {
     const success = await restoreStockCloud(item.productId, item.quantity);

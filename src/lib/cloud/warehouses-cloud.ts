@@ -79,7 +79,7 @@ const saveWarehouseStockLocally = (warehouseId: string, stock: WarehouseStock[])
   } catch { /* ignore */ }
 };
 
-const loadWarehouseStockLocally = (warehouseId: string): WarehouseStock[] | null => {
+export const loadWarehouseStockLocally = (warehouseId: string): WarehouseStock[] | null => {
   try {
     const data = localStorage.getItem(`hyperpos_warehouse_stock_cache_${warehouseId}`);
     return data ? JSON.parse(data) : null;

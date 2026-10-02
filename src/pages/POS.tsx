@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { loadProductsCloud, loadProductsLocalFirst, refreshProductsFromCloud, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
+import { loadProductsCloud, loadProductsLocalFirst, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
@@ -314,15 +314,11 @@ export default function POS() {
   const [showLoanDialog, setShowLoanDialog] = useState(false);
   const [loanProduct, setLoanProduct] = useState<POSProduct | null>(null);
 
-  // Load products and categories — local-first ثم تحديث من السحابة في الخلفية
-  const loadData = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
-    if (profile === undefined) {
-      console.log('[POS] Profile not loaded yet, waiting...');
-      return;
-    }
-
-    const transformAndSet = async (cloudProducts: Product[], cloudCategories: string[]) => {
-      const allPosProducts: POSProduct[] = cloudProducts.map(p => ({
+  // دالة مساعدة لتحويل المنتجات إلى صيغة نقطة البيع مع استبعاد المؤرشف بشكل قطعي
+  const formatPosProducts = useCallback((productList: Product[]): POSProduct[] => {
+    return productList
+      .filter(p => !p.archived)
+      .map(p => ({
         id: p.id,
         name: p.name,
         price: p.salePrice,
@@ -344,75 +340,139 @@ export default function POS() {
         expiryDate: p.expiryDate,
         batchNumber: p.batchNumber,
       }));
+  }, [t]);
 
-      const userType = profile?.user_type || 'cashier';
+  // Load products and categories from cloud with retry logic
+  // ✅ تحميل فوري من الكاش المحلي المسبق (<0.5 ثانية) ثم مزامنة سحابية في الخلفية
+  const loadData = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
+    if (profile === undefined) {
+      console.log('[POS] Profile not loaded yet, waiting...');
+      return;
+    }
+
+    const userType = profile?.user_type || 'cashier';
+
+    // ⚡ الخطوة 1: التحميل الفوري من الكاش المحلي (Local-First) دون حجب الشاشة
+    if (!isBackgroundRefresh) {
+      try {
+        const localProducts = await loadProductsLocalFirst();
+        if (localProducts && localProducts.length > 0) {
+          const initialPosProducts = formatPosProducts(localProducts);
+
+          // فحص كاش المستودع المحلي للموزع/نقطة البيع لئلا يتأخر العرض المبدئي
+          if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
+            const { loadWarehouseStockLocally } = await import('@/lib/cloud/warehouses-cloud');
+            const localWarehouseStock = loadWarehouseStockLocally(activeWarehouse.id);
+            if (localWarehouseStock && localWarehouseStock.length > 0) {
+              const filtered = initialPosProducts
+                .map(p => {
+                  const s = localWarehouseStock.find(item => item.product_id === p.id);
+                  if (s && s.quantity > 0) return { ...p, quantity: s.quantity };
+                  return null;
+                })
+                .filter((p): p is POSProduct => p !== null);
+              setProducts(filtered);
+            } else {
+              setProducts(initialPosProducts);
+            }
+          } else {
+            setProducts(initialPosProducts);
+          }
+
+          // إيقاف مؤشر التحميل فوراً ليظهر كل شيء في أقل من نصف ثانية
+          setIsLoadingProducts(false);
+          console.log(`[POS] ⚡ Instant local-first render: ${initialPosProducts.length} products`);
+        } else {
+          // فقط إذا لم يتوفر أي كاش سابق، إبقاء مؤشر التحميل
+          setIsLoadingProducts(true);
+        }
+      } catch (err) {
+        console.warn('[POS] Local-first initial load failed:', err);
+        setIsLoadingProducts(true);
+      }
+    }
+
+    // 🔄 الخطوة 2: المزامنة السحابية في الخلفية (Background Sync) بدون حجب الشاشة
+    try {
+      const [cloudProducts, cloudCategories] = await Promise.all([
+        loadProductsCloud(),
+        getCategoryNamesCloud()
+      ]);
+
+      if (cloudProducts.length === 0 && retryCount < 3) {
+        console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
+        setTimeout(() => loadData(retryCount + 1, true), 1000);
+        return;
+      }
+
+      const allPosProducts = formatPosProducts(cloudProducts);
 
       if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
         const { loadWarehouseStockCloud } = await import('@/lib/cloud/warehouses-cloud');
         const warehouseStock = await loadWarehouseStockCloud(activeWarehouse.id);
+
         const filteredProducts = allPosProducts
           .map(p => {
             const stockItem = warehouseStock.find(s => s.product_id === p.id);
-            if (stockItem && stockItem.quantity > 0) return { ...p, quantity: stockItem.quantity };
+            if (stockItem && stockItem.quantity > 0) {
+              return { ...p, quantity: stockItem.quantity };
+            }
             return null;
           })
           .filter((p): p is POSProduct => p !== null);
+
         setProducts(filteredProducts);
       } else {
         setProducts(allPosProducts);
       }
 
       setCategories([t('common.all'), ...cloudCategories]);
-    };
-
-    // ✅ Step 1: عرض المنتجات المحلية فوراً (0ms) — لا تظهر شاشة تحميل إذا الكاش موجود
-    if (!isBackgroundRefresh) {
-      try {
-        const localProducts = await loadProductsLocalFirst();
-        if (localProducts.length > 0) {
-          // Categories cache (from cloud module)
-          const localCats = await getCategoryNamesCloud().catch(() => [] as string[]);
-          await transformAndSet(localProducts, localCats);
-          setIsLoadingProducts(false); // ✅ نقطة البيع جاهزة فوراً
-        } else {
-          setIsLoadingProducts(true);
-        }
-      } catch (e) {
-        console.warn('[POS] Local-first load failed:', e);
-      }
-    }
-
-    // ✅ Step 2: تحديث من السحابة في الخلفية (لا يحجب الواجهة)
-    try {
-      const [cloudProducts, cloudCategories] = await Promise.all([
-        navigator.onLine ? refreshProductsFromCloud() : loadProductsCloud(),
-        getCategoryNamesCloud(),
-      ]);
-
-      if (cloudProducts.length === 0 && retryCount < 3 && navigator.onLine) {
-        console.log(`[POS] No products returned, retrying (${retryCount + 1}/3)...`);
-        setTimeout(() => loadData(retryCount + 1, true), 1000);
-        return;
-      }
-
-      await transformAndSet(cloudProducts, cloudCategories);
     } catch (error) {
-      console.error('Error loading POS data (background):', error);
-      if (retryCount < 3 && navigator.onLine) {
+      console.error('Error in background sync:', error);
+      if (retryCount < 3) {
         setTimeout(() => loadData(retryCount + 1, true), 1500);
-        return;
       }
     } finally {
       setIsLoadingProducts(false);
     }
-  }, [t, activeWarehouse, profile]);
+  }, [profile, activeWarehouse, formatPosProducts, t]);
 
   // Reload data when component mounts or when returning to this page
   useEffect(() => {
     loadData();
 
-    // التحديثات اللاحقة تكون في الخلفية عند تعديل المنتجات أو الفئات فقط
-    const onProductsUpdated = () => loadData(0, true);
+    // ✅ الاستماع لحدث EVENTS.PRODUCTS_UPDATED لتحديث لحظي وفوري من الكاش أولاً ثم الخلفية
+    const onProductsUpdated = async () => {
+      try {
+        const local = await loadProductsLocalFirst();
+        if (local && local.length > 0) {
+          const userType = profile?.user_type || 'cashier';
+          const posItems = formatPosProducts(local);
+          if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
+            const { loadWarehouseStockLocally } = await import('@/lib/cloud/warehouses-cloud');
+            const localWarehouseStock = loadWarehouseStockLocally(activeWarehouse.id);
+            if (localWarehouseStock && localWarehouseStock.length > 0) {
+              const filtered = posItems
+                .map(p => {
+                  const s = localWarehouseStock.find(item => item.product_id === p.id);
+                  if (s && s.quantity > 0) return { ...p, quantity: s.quantity };
+                  return null;
+                })
+                .filter((p): p is POSProduct => p !== null);
+              setProducts(filtered);
+            } else {
+              setProducts(posItems);
+            }
+          } else {
+            setProducts(posItems);
+          }
+        }
+      } catch (e) {
+        console.warn('[POS] onProductsUpdated local cache error:', e);
+      }
+      loadData(0, true);
+    };
+
     const onCategoriesUpdated = () => loadData(0, true);
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
@@ -422,7 +482,7 @@ export default function POS() {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
     };
-  }, [loadData]);
+  }, [loadData, formatPosProducts, profile, activeWarehouse]);
 
   const currencies: Currency[] = useMemo(() => {
     const rates = loadExchangeRates();

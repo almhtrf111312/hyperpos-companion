@@ -196,6 +196,49 @@ export async function clearProductsIDB(): Promise<void> {
   }
 }
 
+// Delete a single product from IndexedDB
+export async function deleteProductFromIDB(id: string): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readwrite');
+    tx.objectStore(PRODUCTS_STORE).delete(id);
+    tx.objectStore(META_STORE).put({ key: 'products_updated_at', value: Date.now() });
+
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn('[IDB] Failed to delete product from IDB:', e);
+  }
+}
+
+// Update a single product in IndexedDB
+export async function updateProductInIDB<T extends { id: string }>(id: string, updates: Partial<T>): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readwrite');
+    const store = tx.objectStore(PRODUCTS_STORE);
+    const getReq = store.get(id);
+
+    getReq.onsuccess = () => {
+      if (getReq.result) {
+        const updated = { ...getReq.result, ...updates };
+        store.put(updated);
+      }
+    };
+
+    tx.objectStore(META_STORE).put({ key: 'products_updated_at', value: Date.now() });
+
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn('[IDB] Failed to update product in IDB:', e);
+  }
+}
+
 // Check if IDB cache is still fresh (within maxAge ms)
 export async function isIDBCacheFresh(maxAgeMs: number = 86400000): Promise<boolean> {
   try {

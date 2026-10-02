@@ -32,6 +32,7 @@ interface Product {
   supplier?: string;
   warranty?: string;
   minStockLevel?: number;
+  archived?: boolean;
 }
 
 interface ProductGridProps {
@@ -76,6 +77,7 @@ export function ProductGrid({
   // ProductGrid لم يعد يعالج PENDING_BARCODE_KEY مباشرة لتجنب التكرار
 
   const filteredProducts = products.filter(product => {
+    if (product.archived) return false;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (product.barcode && product.barcode.includes(searchQuery));
     const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;

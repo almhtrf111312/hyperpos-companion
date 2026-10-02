@@ -676,6 +676,25 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     };
   }
 
+  // تحديث فوري لكميات المنتجات في الكاش المحلي (ذاكرة و IndexedDB)
+  try {
+    const { data: invItems } = await sb
+      .from('invoice_items')
+      .select('product_id, quantity')
+      .eq('invoice_id', atomic.invoice_id || id);
+    if (invItems && invItems.length > 0) {
+      const { updateProductsQuantitiesInCache } = await import('./products-cloud');
+      updateProductsQuantitiesInCache(
+        invItems.filter(it => it.product_id).map(it => ({
+          productId: it.product_id,
+          deltaQuantity: Number(it.quantity) || 0
+        }))
+      );
+    }
+  } catch (err) {
+    console.warn('[refundInvoiceCloud] Error updating cache for refunded items:', err);
+  }
+
   if (!atomic.success) return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
 
   // حساب النقدية الواجب إرجاعها (كاش كامل أو دفعة دين سابقة)
@@ -823,6 +842,20 @@ export const refundInvoicePartialCloud = async (
   invalidateDebtsCache();
   const { invalidateCustomersCache } = await import('./customers-cloud');
   invalidateCustomersCache();
+
+  // تحديث كميات المنتجات فوراً في الكاش المحلي (ذاكرة و IndexedDB)
+  const itemsWithProduct = itemsToRefund.filter(it => it.productId);
+  if (itemsWithProduct.length > 0) {
+    try {
+      const { updateProductsQuantitiesInCache } = await import('./products-cloud');
+      updateProductsQuantitiesInCache(
+        itemsWithProduct.map(it => ({
+          productId: it.productId!,
+          deltaQuantity: Number(it.quantityToRefund ?? it.quantity) || 0
+        }))
+      );
+    } catch { /* silent */ }
+  }
 
   emitEvent(EVENTS.INVOICES_UPDATED, null);
   emitEvent(EVENTS.PRODUCTS_UPDATED, null);
