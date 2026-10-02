@@ -210,7 +210,7 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
 // Cache for products
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 10000; // 10 seconds
+const CACHE_TTL = 300000; // 5 minutes — كافٍ لمنع إعادة الطلب السحابي في كل 10 ثوانٍ
 
 // Local storage key for offline fallback (legacy, kept as secondary fallback)
 const LOCAL_PRODUCTS_CACHE_KEY = 'hyperpos_products_cache';
@@ -509,9 +509,12 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
         console.log('[ProductsCloud] ✅ No changes since last sync');
       }
     } else {
-      // Full sync: fetch in chunks of 100 for high speed and reliability
-      console.log('[ProductsCloud] 📥 Full sync (chunked batches of 100)...');
-      const cloudProducts = await fetchProductsInChunks();
+      // Full sync: طلب واحد مباشر بدون pagination تسلسلية (كان كل chunk يضيف 4 ثوانٍ)
+      console.log('[ProductsCloud] 📥 Full sync...');
+      const cloudProducts = await fetchFromSupabase<CloudProduct>('products', {
+        column: 'created_at',
+        ascending: false,
+      });
 
       if (cloudProducts.length === 0) {
         if (productsCache && productsCache.length > 0) {

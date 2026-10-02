@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
 import { getSignedImageUrl } from '@/lib/image-upload';
-import { getCachedProductImage } from '@/lib/offline-image-store';
 import { cn } from '@/lib/utils';
 
 interface ProductImageProps {
@@ -11,44 +10,31 @@ interface ProductImageProps {
   iconClassName?: string;
 }
 
-// كاش في الذاكرة الحية لتسريع العرض الفوري للأصناف أثناء التنقل في الجلسة الحالية
-const memoryCache = new Map<string, string>();
+// كاش في الذاكرة لتفادي إعادة طلب روابط الصور المُوقعة أكثر من مرة
+const signedUrlCache = new Map<string, string>();
 
 /**
- * مكون مشترك لعرض صور المنتجات باستراتيجية Offline-First:
- * 1. إذا كانت الصورة Base64 (data:) أو Blob محلي أو رابط http مباشر → تُعرض فوراً.
- * 2. إذا كانت في كاش الذاكرة الحية (memoryCache) → تُعرض فوراً دون أي طلب.
- * 3. إذا كانت مسار تخزين (storage path):
- *    - يُفحص IndexedDB أولاً → إذا وُجدت تُعرض فوراً حتى بدون إنترنت.
- *    - إذا لم توجد، ينتظر ظهور العنصر في الشاشة (IntersectionObserver).
- *    - يطلب رابطاً موقّعاً من السحابة بمهلة زمنية قصيرة ويعرضه فوراً.
- * 4. عند فشل أي رابط خارجي، يُراجع IndexedDB كـ fallback قبل إظهار أيقونة الخطأ.
- *
- * ملاحظة: حفظ الصور في IndexedDB يتم فقط عند رفعها (image-upload.ts)،
- * وليس عند كل عرض، لتجنب طلبات HTTP و setState مضاعفة.
+ * مكون مشترك لعرض صور المنتجات
+ * - يعرض أيقونة بديلة رمادية خفيفة (Placeholder) فوراً لفصل عرض البيانات عن الصور
+ * - تفعيل التحميل الكسول الحقيقي (Lazy Loading) عبر IntersectionObserver
+ * - لا يتم طلب أو فك تشفير رابط الصورة إلا عند ظهور البطاقة في إطار الرؤية (Viewport)
+ * - مهلة زمنية قصيرة (أقصاها ثانيتان) لتجنب تعليق الواجهة
+ * - لا يوجد IndexedDB في مسار العرض: الحفظ الدائم يتم فقط عند رفع الصورة (image-upload.ts)
  */
 export function ProductImage({ imageUrl, alt, className, iconClassName }: ProductImageProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(() => {
     if (!imageUrl) return null;
-    // 1. فحص كاش الذاكرة الحية أولاً
-    if (memoryCache.has(imageUrl)) return memoryCache.get(imageUrl)!;
-    // 2. الروابط المباشرة وملفات البيانات تُعرض فوراً
-    if (
-      imageUrl.startsWith('data:') ||
-      imageUrl.startsWith('blob:') ||
-      imageUrl.startsWith('http')
-    ) {
-      memoryCache.set(imageUrl, imageUrl);
+    if (signedUrlCache.has(imageUrl)) return signedUrlCache.get(imageUrl)!;
+    if (imageUrl.startsWith('data:') || imageUrl.startsWith('http') || imageUrl.startsWith('blob:')) {
       return imageUrl;
     }
     return null;
   });
-
   const [error, setError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // الخطوة 1: فحص IndexedDB للمسارات السحابية فقط (قبل أي طلب شبكة)
+  // 1. مراقبة ظهور العنصر داخل إطار الرؤية عبر IntersectionObserver
   useEffect(() => {
     if (!imageUrl) {
       setResolvedUrl(null);
@@ -56,45 +42,19 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       return;
     }
 
-    // الروابط المباشرة وملفات البيانات لا تحتاج لفحص IndexedDB
-    if (
-      imageUrl.startsWith('data:') ||
-      imageUrl.startsWith('blob:') ||
-      imageUrl.startsWith('http')
-    ) {
-      memoryCache.set(imageUrl, imageUrl);
+    // إذا كانت الصورة مسبقة الكاش أو رابطاً مباشراً، لا نحتاج للانتظار
+    if (signedUrlCache.has(imageUrl)) {
+      setResolvedUrl(signedUrlCache.get(imageUrl)!);
+      return;
+    }
+
+    if (imageUrl.startsWith('data:') || imageUrl.startsWith('http') || imageUrl.startsWith('blob:')) {
       setResolvedUrl(imageUrl);
-      setError(false);
+      signedUrlCache.set(imageUrl, imageUrl);
       return;
     }
 
-    // فحص كاش الذاكرة الحية
-    if (memoryCache.has(imageUrl)) {
-      setResolvedUrl(memoryCache.get(imageUrl)!);
-      setError(false);
-      return;
-    }
-
-    // مسار تخزين سحابي: نفحص IndexedDB مرة واحدة فقط
-    let isMounted = true;
-    getCachedProductImage(imageUrl).then((cached) => {
-      if (!isMounted) return;
-      if (cached) {
-        memoryCache.set(imageUrl, cached);
-        setResolvedUrl(cached);
-        setError(false);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [imageUrl]);
-
-  // الخطوة 2: مراقبة ظهور العنصر في الشاشة للصور غير المخزنة محلياً
-  useEffect(() => {
-    if (!imageUrl || resolvedUrl) return;
-
+    // فحص دعم المتصفح
     if (typeof IntersectionObserver === 'undefined') {
       setIsVisible(true);
       return;
@@ -109,7 +69,7 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
         }
       },
       {
-        rootMargin: '100px',
+        rootMargin: '100px', // التحميل المسبق الخفيف قبل الظهور التام
       }
     );
 
@@ -120,49 +80,41 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
     return () => {
       observer.disconnect();
     };
-  }, [imageUrl, resolvedUrl]);
+  }, [imageUrl]);
 
-  // الخطوة 3: جلب الرابط الموقّع من السحابة بعد ظهور العنصر في الشاشة
+  // 2. طلب رابط الصورة فقط بعد تأكيد ظهور العنصر في إطار الرؤية
   useEffect(() => {
     if (!imageUrl || !isVisible || resolvedUrl) return;
 
-    let cancelled = false;
-
-    // الجهاز غير متصل ولا توجد نسخة محلية
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setError(true);
+    if (signedUrlCache.has(imageUrl)) {
+      setResolvedUrl(signedUrlCache.get(imageUrl)!);
       return;
     }
 
-    const loadImage = async () => {
-      try {
-        // مهلة زمنية قصيرة (ثانيتان) لتفادي تعليق الواجهة
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Image sign timeout')), 2000)
-        );
+    let cancelled = false;
 
-        const targetUrl = await Promise.race([
-          getSignedImageUrl(imageUrl),
-          timeoutPromise,
-        ]);
+    // مهلة زمنية قصيرة (ثانيتان فقط) لتفادي أي بطء في الواجهة
+    const timeoutPromise = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('Image load timeout')), 2000)
+    );
 
-        if (cancelled) return;
-
-        if (targetUrl) {
-          memoryCache.set(imageUrl, targetUrl);
-          setResolvedUrl(targetUrl);
-          setError(false);
-        } else {
-          setError(true);
+    Promise.race([getSignedImageUrl(imageUrl), timeoutPromise])
+      .then((url) => {
+        if (!cancelled) {
+          if (url) {
+            signedUrlCache.set(imageUrl, url);
+            setResolvedUrl(url);
+            setError(false);
+          } else {
+            setError(true);
+          }
         }
-      } catch {
+      })
+      .catch(() => {
         if (!cancelled) {
           setError(true);
         }
-      }
-    };
-
-    loadImage();
+      });
 
     return () => {
       cancelled = true;
@@ -173,9 +125,9 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
     return (
       <div
         ref={containerRef}
-        className={cn('flex items-center justify-center bg-muted/50 transition-colors', className)}
+        className={cn("flex items-center justify-center bg-muted/50 transition-colors", className)}
       >
-        <Package className={cn('text-muted-foreground/40', iconClassName || 'w-6 h-6')} />
+        <Package className={cn("text-muted-foreground/40", iconClassName || "w-6 h-6")} />
       </div>
     );
   }
@@ -186,18 +138,8 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       alt={alt}
       loading="lazy"
       decoding="async"
-      className={cn('object-cover', className)}
-      onError={() => {
-        // إذا انتهت صلاحية الرابط الموقّع، نُراجع IndexedDB كـ fallback
-        getCachedProductImage(imageUrl).then((fallback) => {
-          if (fallback) {
-            memoryCache.set(imageUrl, fallback);
-            setResolvedUrl(fallback);
-          } else {
-            setError(true);
-          }
-        }).catch(() => setError(true));
-      }}
+      className={cn("object-cover", className)}
+      onError={() => setError(true)}
     />
   );
 }
