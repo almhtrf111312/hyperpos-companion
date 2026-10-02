@@ -491,7 +491,6 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         });
       }
       return { success: false, processed: 0, failed: 1, targetSuccess: false };
-    }
     } finally {
       isSyncingRef.current = false;
       setIsSyncing(false);
