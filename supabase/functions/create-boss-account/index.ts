@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // Check if caller is a boss
     const { data: roleData, error: roleError } = await serviceClient
       .from('user_roles')
-      .select('role')
+      .select('role, is_active')
       .eq('user_id', callerUserId)
       .single();
 
@@ -61,6 +61,13 @@ Deno.serve(async (req) => {
     if (roleError || roleData?.role !== 'boss') {
       return new Response(
         JSON.stringify({ error: 'Forbidden: Only Boss can create Boss accounts' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!roleData.is_active) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Account is deactivated' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
