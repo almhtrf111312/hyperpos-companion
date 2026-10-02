@@ -49,10 +49,10 @@ Deno.serve(async (req) => {
     const currentUser = userData.user;
     console.log('Authenticated user:', currentUser.id);
 
-    // Check if current user is admin or boss
+    // Check if current user is admin or boss and active
     const { data: currentUserRole, error: roleError } = await adminClient
       .from("user_roles")
-      .select("role")
+      .select("role, is_active")
       .eq("user_id", currentUser.id)
       .single();
 
@@ -64,6 +64,14 @@ Deno.serve(async (req) => {
     if (roleError || (!isAdmin && !isBoss)) {
       return new Response(
         JSON.stringify({ error: "Only admins or boss can create users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!currentUserRole.is_active) {
+      console.error('Inactive user attempted user creation:', currentUser.id);
+      return new Response(
+        JSON.stringify({ error: "Forbidden - Account is deactivated" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

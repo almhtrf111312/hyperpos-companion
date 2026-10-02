@@ -47,10 +47,10 @@ Deno.serve(async (req) => {
     const callerId = userData.user.id
     console.log('Authenticated caller:', callerId)
 
-    // Check if caller is admin or boss
+    // Check if caller is admin or boss and active
     const { data: callerRole, error: roleError } = await adminClient
       .from('user_roles')
-      .select('role, owner_id')
+      .select('role, owner_id, is_active')
       .eq('user_id', callerId)
       .single()
 
@@ -68,6 +68,14 @@ Deno.serve(async (req) => {
     if (!isAdmin && !isBoss) {
       return new Response(
         JSON.stringify({ error: 'Only admins or boss can view user emails' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!callerRole.is_active) {
+      console.error('Inactive user attempted email access:', callerId)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Account is deactivated' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

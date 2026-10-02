@@ -44,10 +44,10 @@ Deno.serve(async (req) => {
 
     const bossId = claims.claims.sub
 
-    // Check if user is boss
+    // Check if user is boss and active
     const { data: roleData, error: roleError } = await userClient
       .from('user_roles')
-      .select('role')
+      .select('role, is_active')
       .eq('user_id', bossId)
       .maybeSingle()
 
@@ -55,6 +55,14 @@ Deno.serve(async (req) => {
       console.error('Role check failed:', roleError, roleData)
       return new Response(
         JSON.stringify({ error: 'Forbidden - Boss access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!roleData.is_active) {
+      console.error('Inactive boss attempted access:', bossId)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - Account is deactivated' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -89,7 +97,7 @@ Deno.serve(async (req) => {
     let finalDurationDays = duration_days
     let finalMaxCashiers = max_cashiers
     let finalLicenseTier = license_tier
-    let usedCodeId = activation_code_id
+    const usedCodeId = activation_code_id
 
     // If using an existing activation code
     if (activation_code_id) {
