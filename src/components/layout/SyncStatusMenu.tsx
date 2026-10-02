@@ -27,7 +27,7 @@ export function SyncStatusMenu() {
   const isSyncing = cloudContext?.isSyncing ?? false;
   const isPaused = cloudContext?.isPaused ?? false;
   const hasInternetAccess = cloudContext?.hasInternetAccess ?? true;
-  const syncNow = cloudContext?.syncNow ?? (async () => {});
+  const syncNow = cloudContext?.syncNow ?? (async () => ({ success: false, processed: 0, failed: 0 }));
   const pauseSync = cloudContext?.pauseSync ?? (() => {});
   const resumeSync = cloudContext?.resumeSync ?? (() => {});
 
@@ -218,8 +218,9 @@ export function SyncStatusMenu() {
                 size="sm"
                 variant="outline"
                 className="h-7 text-xs"
-                onClick={() => syncNow()}
+                onClick={() => syncNow(true)}
                 disabled={isSyncing}
+                title="مزامنة فورية الآن"
               >
                 <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
               </Button>

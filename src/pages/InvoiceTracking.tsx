@@ -4,7 +4,7 @@
  * شاشة تتبع الفواتير: تفاصيل الفاتورة، تقدّم المزامنة،
  * وحالة كل بند (مقصوص من المخزون / تمت المزامنة / عالق) مع إشعار عند الاكتمال.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, PackageMinus, RefreshCw, Trash2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EVENTS } from '@/lib/events';
+import { cn } from '@/lib/utils';
+import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { loadQueue, QueuedOperation } from '@/lib/sync-queue';
 import { discardStuckOperation, retryStuckOperation } from '@/lib/sync-recovery';
 import { getPendingStockDeductions, PendingStockDeduction } from '@/lib/indexeddb-cache';
@@ -135,6 +137,8 @@ export default function InvoiceTracking() {
   const [cloudInvoices, setCloudInvoices] = useState<Invoice[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const previousKeys = useRef<Set<string>>(new Set());
+  const cloudContext = useContext(CloudSyncContext);
+  const syncNow = cloudContext?.syncNow;
 
   const refreshQueue = useCallback(async () => {
     const ops = loadQueue().filter(op => SALE_TYPES.has(op.type));
@@ -193,10 +197,31 @@ export default function InvoiceTracking() {
   const liveCount = queueOps.length;
   const stuckCount = queueOps.filter(op => op.errorClass === 'terminal' || op.retryCount >= op.maxRetries).length;
 
-  const handleRetry = (queueId: string) => {
-    retryStuckOperation(queueId);
-    toast.info('ستتم إعادة محاولة رفع الفاتورة', { id: `retry-${queueId}` });
-    refreshQueue();
+  const handleRetry = async (queueId: string) => {
+    setBusyId(queueId);
+    try {
+      retryStuckOperation(queueId);
+      await refreshQueue();
+      if (syncNow) {
+        const result = await syncNow(true, queueId);
+        if (result && (result.targetSuccess || result.processed > 0)) {
+          toast.success('تمت مزامنة الفاتورة بنجاح ✓', { id: `retry-${queueId}` });
+          await refreshCloud();
+        } else if (result && result.failed > 0) {
+          toast.error('تعذرت المزامنة - تحقق من الاتصال بالإنترنت', { id: `retry-${queueId}` });
+        } else {
+          toast.info('تم فحص الطابور وتحديث حالة المزامنة', { id: `retry-${queueId}` });
+        }
+      } else {
+        toast.info('تمت إعادة جدولة الفاتورة للمزامنة', { id: `retry-${queueId}` });
+      }
+    } catch (err) {
+      console.error('Invoice retry error:', err);
+      toast.error('حدث خطأ أثناء محاولة المزامنة', { id: `retry-${queueId}` });
+    } finally {
+      setBusyId(null);
+      await refreshQueue();
+    }
   };
 
   const handleDiscard = async (queueId: string) => {
@@ -301,12 +326,12 @@ export default function InvoiceTracking() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 text-xs flex-1"
+                        className="h-8 text-xs flex-1 gap-1"
                         disabled={busyId === entry.queueId}
                         onClick={() => handleRetry(entry.queueId!)}
                       >
-                        <RefreshCw className="h-3.5 w-3.5 ml-1" />
-                        إعادة المحاولة
+                        <RefreshCw className={cn("h-3.5 w-3.5 ml-1", busyId === entry.queueId && "animate-spin text-primary")} />
+                        {busyId === entry.queueId ? 'جاري الرفع...' : 'إعادة المحاولة'}
                       </Button>
                       <Button
                         size="sm"

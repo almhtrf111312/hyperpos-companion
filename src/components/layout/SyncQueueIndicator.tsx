@@ -29,7 +29,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
     const { isRTL, t, language } = useLanguage();
     
     const isSyncing = cloudContext?.isSyncing ?? false;
-    const syncNow = cloudContext?.syncNow ?? (async () => {});
+    const syncNow = cloudContext?.syncNow ?? (async () => ({ success: false, processed: 0, failed: 0 }));
 
     useEffect(() => {
       const handleUpdate = (e: Event) => {
@@ -57,7 +57,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
       setIsRetrying(true);
       try {
         retryFailedOperations();
-        await syncNow();
+        await syncNow(true);
         setStatus(getQueueStatus());
       } finally {
         setIsRetrying(false);
@@ -65,7 +65,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
     };
 
     const handleManualSync = async () => {
-      await syncNow();
+      await syncNow(true);
       setStatus(getQueueStatus());
     };
 

@@ -58,6 +58,7 @@ export interface SyncResult {
   success: boolean;
   processed: number;
   failed: number;
+  targetSuccess?: boolean;
 }
 
 interface CloudSyncContextType {
@@ -67,7 +68,7 @@ interface CloudSyncContextType {
   hasInternetAccess: boolean;
   isOnline: boolean;
   lastSyncTime: string | null;
-  syncNow: (forceDirect?: boolean) => Promise<SyncResult>;
+  syncNow: (forceDirect?: boolean, targetOperationId?: string) => Promise<SyncResult>;
   syncImmediately: () => Promise<SyncResult>;
   pauseSync: () => void;
   resumeSync: () => void;
@@ -118,7 +119,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setTimeout(() => { syncNowRef.current?.(); }, 50);
   }, []);
 
-  const syncNowRef = useRef<((forceDirect?: boolean) => Promise<SyncResult>) | null>(null);
+  const syncNowRef = useRef<((forceDirect?: boolean, targetOperationId?: string) => Promise<SyncResult>) | null>(null);
   const isSyncingRef = useRef(false);
   const pendingSyncRef = useRef(false);
 
@@ -306,7 +307,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     initializeCloudData();
   }, [user, authLoading, clearUserLocalStorage, initializeCloudData]);
 
-  const syncNow = useCallback(async (forceDirect: boolean = false): Promise<SyncResult> => {
+  const syncNow = useCallback(async (forceDirect: boolean = false, targetOperationId?: string): Promise<SyncResult> => {
     if (!user) return { success: false, processed: 0, failed: 0 };
     if (isPaused) {
       console.log('[CloudSync] Sync skipped: paused by user');
@@ -314,9 +315,15 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     }
 
     if (isSyncingRef.current) {
-      console.log('[CloudSync] Sync already in progress, queuing follow-up sync');
-      pendingSyncRef.current = true;
-      return { success: false, processed: 0, failed: 0 };
+      console.log('[CloudSync] Sync already in progress, waiting briefly...');
+      const startWait = Date.now();
+      while (isSyncingRef.current && Date.now() - startWait < 3000) {
+        await new Promise(r => setTimeout(r, 150));
+      }
+      if (isSyncingRef.current) {
+        pendingSyncRef.current = true;
+        return { success: false, processed: 0, failed: 0 };
+      }
     }
 
     // Verify internet access
@@ -376,10 +383,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           return true;
         }
         return processGenericQueuedOperation(operation);
-      });
+      }, targetOperationId);
 
       // Report sync completion to the user when we actually processed queued work
-      if (pendingBefore > 0 && !forceDirect) {
+      if (pendingBefore > 0 && !forceDirect && !targetOperationId) {
         const refundOnly = processedRefund && !processedNonRefund;
         if (result.failed === 0 && result.processed > 0) {
           if (!refundOnly) {
@@ -466,9 +473,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       setHasInternetAccess(true);
 
       return {
-        success: result.failed === 0 && result.processed > 0,
+        success: targetOperationId
+          ? (result.targetSuccess ?? (result.failed === 0 && result.processed > 0))
+          : (result.failed === 0 && result.processed > 0),
         processed: result.processed,
         failed: result.failed,
+        targetSuccess: result.targetSuccess,
       };
     } catch (error) {
       console.error('Manual sync error:', error);
@@ -480,7 +490,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           duration: 6000
         });
       }
-      return { success: false, processed: 0, failed: 1 };
+      return { success: false, processed: 0, failed: 1, targetSuccess: false };
+    }
     } finally {
       isSyncingRef.current = false;
       setIsSyncing(false);

@@ -232,16 +232,20 @@ export const removeFromQueue = (operationId: string): void => {
   saveQueue(filtered);
 };
 
-/** إعادة عملية واحدة لحالة الانتظار حتى تُعاد محاولتها فوراً */
+/** إعادة عملية واحدة لحالة الانتظار حتى تُعاد محاولتها فوراً ووضعها في بداية الطابور */
 export const resetOperationForRetry = (operationId: string): boolean => {
   const queue = loadQueue();
   const index = queue.findIndex(op => op.id === operationId);
   if (index === -1) return false;
-  queue[index].status = 'pending';
-  queue[index].retryCount = 0;
-  queue[index].error = undefined;
-  queue[index].errorClass = undefined;
+  const [op] = queue.splice(index, 1);
+  op.status = 'pending';
+  op.retryCount = 0;
+  op.error = undefined;
+  op.errorClass = undefined;
+  // أولوية: وضع العملية في مقدمة الطابور لتتم معالجتها أولاً
+  queue.unshift(op);
   saveQueue(queue);
+  emitEvent(EVENTS.SYNC_QUEUE_UPDATED, getQueueStatus());
   return true;
 };
 
@@ -284,11 +288,12 @@ export const getQueueStatus = (): SyncQueueStatus => {
 
 /**
  * معالجة الطابور
- * يتم استدعاؤها عند عودة الإنترنت
+ * يتم استدعاؤها عند عودة الإنترنت أو عند طلب المزامنة يدوياً
  */
 export const processQueue = async (
-  processor: (operation: QueuedOperation) => Promise<boolean>
-): Promise<{ processed: number; failed: number }> => {
+  processor: (operation: QueuedOperation) => Promise<boolean>,
+  targetOperationId?: string,
+): Promise<{ processed: number; failed: number; targetSuccess?: boolean }> => {
   if (isProcessing) {
     console.log('[SyncQueue] Already processing, skipping...');
     return { processed: 0, failed: 0 };
@@ -299,9 +304,17 @@ export const processQueue = async (
   
   let processed = 0;
   let failed = 0;
+  let targetSuccess: boolean | undefined = undefined;
   
   try {
-    const pending = getPendingOperations();
+    let pending = getPendingOperations();
+    if (targetOperationId) {
+      // إعطاء الأولوية للعملية المستهدفة ليتم رفعها أولاً فوراً
+      const targetOp = pending.find(op => op.id === targetOperationId);
+      if (targetOp) {
+        pending = [targetOp, ...pending.filter(op => op.id !== targetOperationId)];
+      }
+    }
     console.log(`[SyncQueue] Processing ${pending.length} operations...`);
     
     for (const operation of pending) {
@@ -315,11 +328,17 @@ export const processQueue = async (
           removeFromQueue(operation.id);
           updateHistoryStatus(operation.id, 'synced');
           processed++;
+          if (operation.id === targetOperationId) {
+            targetSuccess = true;
+          }
           console.log(`[SyncQueue] Processed: ${operation.id}`);
         } else {
           updateOperationStatus(operation.id, 'failed', 'Processing returned false');
           updateHistoryStatus(operation.id, 'failed', 'Processing returned false');
           failed++;
+          if (operation.id === targetOperationId) {
+            targetSuccess = false;
+          }
         }
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
@@ -345,6 +364,9 @@ export const processQueue = async (
         }
         updateHistoryStatus(operation.id, 'failed', errorMessage);
         failed++;
+        if (operation.id === targetOperationId) {
+          targetSuccess = false;
+        }
         console.error(`[SyncQueue] Failed operation ${operation.id} (${operation.type}):`, errorMessage);
       }
     }
@@ -356,7 +378,7 @@ export const processQueue = async (
     emitEvent(EVENTS.SYNC_QUEUE_UPDATED, getQueueStatus());
   }
   
-  return { processed, failed };
+  return { processed, failed, targetSuccess };
 };
 
 /**

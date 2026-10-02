@@ -4,12 +4,14 @@
  * يعرض العمليات العالقة في طابور المزامنة مع سبب الفشل الحقيقي،
  * ويتيح إعادة المحاولة أو إلغاء العملية غير المكتملة.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useContext } from 'react';
 import { AlertTriangle, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
+import { cn } from '@/lib/utils';
+import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import {
   getStuckOperations,
   discardStuckOperation,
@@ -27,6 +29,9 @@ const statusLabel = (op: StuckOperation) => {
 export function StuckOperationsList() {
   const [operations, setOperations] = useState<StuckOperation[]>(() => getStuckOperations());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const cloudContext = useContext(CloudSyncContext);
+  const syncNow = cloudContext?.syncNow;
+  const isCloudSyncing = cloudContext?.isSyncing ?? false;
 
   const refresh = useCallback(() => setOperations(getStuckOperations()), []);
 
@@ -55,10 +60,33 @@ export function StuckOperationsList() {
     }
   };
 
-  const handleRetry = (op: StuckOperation) => {
-    retryStuckOperation(op.id);
-    toast.info('ستتم إعادة محاولة رفع العملية', { id: `retry-${op.id}` });
-    refresh();
+  const handleRetry = async (op: StuckOperation) => {
+    setBusyId(op.id);
+    try {
+      // 1. إعادة العملية إلى حالة الانتظار ونقلها فوراً لمقدمة الطابور
+      retryStuckOperation(op.id);
+      refresh();
+
+      // 2. تشغيل المزامنة الفورية وربطها بنفس دالة زر المزامنة العلوي
+      if (syncNow) {
+        const result = await syncNow(true, op.id);
+        if (result && (result.targetSuccess || result.processed > 0)) {
+          toast.success('تمت مزامنة الفاتورة بنجاح ✓', { id: `retry-${op.id}` });
+        } else if (result && result.failed > 0) {
+          toast.error('تعذرت المزامنة - تحقق من الاتصال بالإنترنت', { id: `retry-${op.id}` });
+        } else {
+          toast.info('تم فحص الطابور وتحديث حالة المزامنة', { id: `retry-${op.id}` });
+        }
+      } else {
+        toast.info('تمت إعادة جدولة العملية للمزامنة', { id: `retry-${op.id}` });
+      }
+    } catch (err) {
+      console.error('Retry error:', err);
+      toast.error('حدث خطأ أثناء محاولة المزامنة', { id: `retry-${op.id}` });
+    } finally {
+      setBusyId(null);
+      refresh();
+    }
   };
 
   return (
@@ -103,12 +131,13 @@ export function StuckOperationsList() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-[11px] gap-1"
-                  disabled={busyId === op.id}
+                  className="h-7 text-[11px] gap-1 text-primary hover:text-primary font-medium"
+                  disabled={busyId === op.id || op.status === 'processing' || isCloudSyncing}
                   onClick={() => handleRetry(op)}
+                  title="إعادة مزامنة هذه الفاتورة الآن"
                 >
-                  <RefreshCw className="h-3 w-3" />
-                  إعادة
+                  <RefreshCw className={cn("h-3 w-3", (busyId === op.id || op.status === 'processing') && "animate-spin")} />
+                  {busyId === op.id ? 'جاري الرفع...' : 'إعادة المزامنة'}
                 </Button>
                 <Button
                   size="sm"
