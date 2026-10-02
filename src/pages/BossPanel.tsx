@@ -213,8 +213,9 @@ export default function BossPanel() {
 
   // Create Owner Dialog
   const [showCreateOwnerDialog, setShowCreateOwnerDialog] = useState(false);
-  const [createOwnerForm, setCreateOwnerForm] = useState({ email: '', password: '', fullName: '' });
+  const [createOwnerForm, setCreateOwnerForm] = useState({ email: '', password: '', fullName: '', bossPassword: '' });
   const [showCreateOwnerPassword, setShowCreateOwnerPassword] = useState(false);
+  const [showCreateOwnerBossPassword, setShowCreateOwnerBossPassword] = useState(false);
   const [isCreatingOwner, setIsCreatingOwner] = useState(false);
 
   // Create Boss Dialog
@@ -266,7 +267,7 @@ export default function BossPanel() {
           console.error('Error fetching users:', response.error);
           // Fallback to secured RPC if edge function fails
           const { data: ownersData } = await supabase.rpc('get_boss_owners');
-          setOwners((ownersData || []).map((o: any) => ({ ...o, email: null })));
+          setOwners((ownersData || []).map((o: Omit<Owner, 'email'>) => ({ ...o, email: null })));
         } else {
           setOwners(response.data.users || []);
         }
@@ -665,7 +666,7 @@ export default function BossPanel() {
 
   // Create Owner handler
   const handleCreateOwner = async () => {
-    if (!createOwnerForm.email || !createOwnerForm.password || !createOwnerForm.fullName) {
+    if (!createOwnerForm.email || !createOwnerForm.password || !createOwnerForm.fullName || !createOwnerForm.bossPassword) {
       toast.error('جميع الحقول مطلوبة');
       return;
     }
@@ -682,12 +683,15 @@ export default function BossPanel() {
         return;
       }
 
+      // Send caller password to server for reauthentication
+      // Server will verify the password before allowing privilege escalation
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: createOwnerForm.email,
           password: createOwnerForm.password,
           fullName: createOwnerForm.fullName,
           role: 'admin',
+          callerPassword: createOwnerForm.bossPassword,
         },
         headers: { Authorization: `Bearer ${session.session.access_token}` },
       });
@@ -697,11 +701,11 @@ export default function BossPanel() {
 
       toast.success('تم إنشاء حساب المالك بنجاح');
       setShowCreateOwnerDialog(false);
-      setCreateOwnerForm({ email: '', password: '', fullName: '' });
+      setCreateOwnerForm({ email: '', password: '', fullName: '', bossPassword: '' });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating owner:', error);
-      toast.error(error.message || 'فشل في إنشاء الحساب');
+      toast.error(error instanceof Error ? error.message : 'فشل في إنشاء الحساب');
     } finally {
       setIsCreatingOwner(false);
     }
@@ -727,23 +731,14 @@ export default function BossPanel() {
         return;
       }
 
-      // Verify boss password first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: createBossForm.bossPassword,
-      });
-
-      if (signInError) {
-        toast.error('كلمة مرور البوس غير صحيحة');
-        setIsCreatingBoss(false);
-        return;
-      }
-
+      // Send caller password to server for reauthentication
+      // Server will verify the password before allowing privilege escalation
       const { data, error } = await supabase.functions.invoke('create-boss-account', {
         body: {
           email: createBossForm.email,
           password: createBossForm.password,
           fullName: createBossForm.fullName,
+          callerPassword: createBossForm.bossPassword,
         },
         headers: { Authorization: `Bearer ${session.session.access_token}` },
       });
@@ -755,9 +750,9 @@ export default function BossPanel() {
       setShowCreateBossDialog(false);
       setCreateBossForm({ email: '', password: '', fullName: '', bossPassword: '' });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating boss:', error);
-      toast.error(error.message || 'فشل في إنشاء الحساب');
+      toast.error(error instanceof Error ? error.message : 'فشل في إنشاء الحساب');
     } finally {
       setIsCreatingBoss(false);
     }
@@ -803,9 +798,9 @@ export default function BossPanel() {
       setDeleteBossConfirm(null);
       setDeleteBossPassword('');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting boss:', error);
-      toast.error(error.message || 'فشل في حذف الحساب');
+      toast.error(error instanceof Error ? error.message : 'فشل في حذف الحساب');
     } finally {
       setIsDeletingBoss(false);
     }
@@ -975,9 +970,9 @@ export default function BossPanel() {
       toast.success(`تم تغيير كلمة مرور "${cashierPasswordDialog.name}" بنجاح`);
       setCashierPasswordDialog(null);
       setCashierNewPassword('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error changing cashier password:', error);
-      toast.error(error.message || 'فشل في تغيير كلمة المرور');
+      toast.error(error instanceof Error ? error.message : 'فشل في تغيير كلمة المرور');
     } finally {
       setIsChangingCashierPassword(false);
     }
@@ -2255,7 +2250,7 @@ export default function BossPanel() {
               </div>
 
               {/* Activation Type */}
-              <RadioGroup value={activationType} onValueChange={(v) => setActivationType(v as any)}>
+              <RadioGroup value={activationType} onValueChange={(v) => setActivationType(v as 'new' | 'existing' | 'whatsapp' | 'manual')}>
                 <div className="flex items-center space-x-2 space-x-reverse">
                   <RadioGroupItem value="new" id="new" />
                   <Label htmlFor="new" className="cursor-pointer">إنشاء ترخيص جديد وتفعيله مباشرة</Label>
@@ -2651,6 +2646,28 @@ export default function BossPanel() {
                     className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
                   >
                     {showCreateOwnerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-amber-500" />
+                  كلمة مرور البوس (للتأكيد)
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showCreateOwnerBossPassword ? 'text' : 'password'}
+                    value={createOwnerForm.bossPassword}
+                    onChange={(e) => setCreateOwnerForm(prev => ({ ...prev, bossPassword: e.target.value }))}
+                    placeholder="••••••••"
+                    className="pe-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateOwnerBossPassword(!showCreateOwnerBossPassword)}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                  >
+                    {showCreateOwnerBossPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
