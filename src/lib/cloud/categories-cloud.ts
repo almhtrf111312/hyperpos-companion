@@ -53,9 +53,10 @@ const loadCategoriesLocally = (): Category[] | null => {
   } catch { return null; }
 };
 
-// Cache
+// Cache with user binding to prevent cross-account leaks
 let categoriesCache: Category[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 60000; // 1 minute
 
 // ✅ Promise singleton to prevent multiple attempts to create defaults
@@ -66,8 +67,8 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  // Check cache
-  if (categoriesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Check cache - verify user binding
+  if (categoriesCache && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return categoriesCache;
   }
 
@@ -95,6 +96,7 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
       const { unique } = deduplicate(local);
       categoriesCache = unique;
       cacheTimestamp = Date.now();
+      cacheUserId = userId;
       return unique;
     }
     return [];
@@ -120,6 +122,7 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
     }
     categoriesCache = unique;
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
     saveCategoriesLocally(categoriesCache);
     return categoriesCache;
   }
@@ -138,6 +141,7 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
 
   categoriesCache = unique;
   cacheTimestamp = Date.now();
+  cacheUserId = userId;
   saveCategoriesLocally(categoriesCache);
   
   return categoriesCache;
@@ -178,6 +182,7 @@ const createDefaultCategories = async (): Promise<void> => {
 export const invalidateCategoriesCache = () => {
   categoriesCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
 };
 
 // ✅ دالة مخصصة لتنظيف وفحص التكرارات سحابياً ومحلياً
@@ -325,7 +330,7 @@ export const getCategoryNamesCloud = async (): Promise<string[]> => {
       const res = await withTimeout(
         Promise.resolve(query),
         2500,
-        { data: null, error: null } as any
+        { data: null, error: null }
       );
       const data = res?.data;
       

@@ -103,9 +103,10 @@ const loadDebtsLocally = (): Debt[] | null => {
   } catch { return null; }
 };
 
-// Cache
+// Cache with user binding to prevent cross-account leaks
 let debtsCache: Debt[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 30000;
 
 // Generate manual debt ID
@@ -141,7 +142,8 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
   }
   if (!userId) return [];
 
-  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Verify cache belongs to current user before returning it
+  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return debtsCache;
   }
 
@@ -151,6 +153,7 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
     if (local) {
       debtsCache = local;
       cacheTimestamp = Date.now();
+      cacheUserId = userId;
       return local;
     }
     return [];
@@ -193,6 +196,7 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
 
   debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
   cacheTimestamp = Date.now();
+  cacheUserId = userId;
   saveDebtsLocally(debtsCache);
 
   return debtsCache;
@@ -202,14 +206,15 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadDebtsCloud = false;
 export const loadDebtsCloud = async (): Promise<Debt[]> => {
+  const userId = getCurrentUserId();
   if (!bootServed_loadDebtsCloud) {
     bootServed_loadDebtsCloud = true;
     const local = loadDebtsLocally();
-    if (local && local.length > 0 && getCurrentUserId()) {
-      debtsCache = local; cacheTimestamp = Date.now();
+    if (local && local.length > 0 && userId) {
+      debtsCache = local; cacheTimestamp = Date.now(); cacheUserId = userId;
       if (navigator.onLine) {
         setTimeout(() => {
-          debtsCache = null; cacheTimestamp = 0;
+          debtsCache = null; cacheTimestamp = 0; cacheUserId = null;
           fetchFresh_loadDebtsCloud().then(() => emitEvent(EVENTS.DEBTS_UPDATED, null)).catch(() => {});
         }, 0);
       }
@@ -222,6 +227,7 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
 export const invalidateDebtsCache = () => {
   debtsCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
 };
 
 // Add debt

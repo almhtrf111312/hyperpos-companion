@@ -10,6 +10,7 @@ import {
 } from '../supabase-store';
 import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
@@ -144,9 +145,10 @@ function toInvoice(cloud: CloudInvoice): Invoice {
   };
 }
 
-// Cache
+// Cache with user binding to prevent cross-account leaks
 let invoicesCache: Invoice[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 30000;
 
 // Local storage key for offline fallback
@@ -244,7 +246,8 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     return localInvoices || [];
   }
 
-  if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Verify cache belongs to current user before returning it
+  if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return invoicesCache;
   }
 
@@ -268,6 +271,7 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     if (localInvoices) {
       invoicesCache = localInvoices;
       cacheTimestamp = Date.now();
+      cacheUserId = userId;
       return localInvoices;
     }
     return invoicesCache || [];
@@ -295,6 +299,7 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
         console.log('[InvoicesCloud] ⚠️ Cloud returned empty, using local cache');
         invoicesCache = localInvoices;
         cacheTimestamp = Date.now();
+        cacheUserId = userId;
         return localInvoices;
       }
     }
@@ -349,6 +354,7 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
 
     invoicesCache = invoicesWithItems;
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
 
     // Save to local cache for offline access
     if (invoicesCache.length > 0) {
@@ -367,6 +373,7 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
 export const invalidateInvoicesCache = () => {
   invoicesCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
 };
 
 // Add invoice
