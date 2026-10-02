@@ -1325,27 +1325,27 @@ export default function Invoices() {
                 <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">{selectedInvoice.type === 'sale' ? t('invoices.products') : 'عناصر الفاتورة'}:</span>
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm table-fixed">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-3 py-2 text-right font-medium text-muted-foreground">المنتج</th>
-                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">الكمية</th>
-                          <th className="px-3 py-2 text-center font-medium text-muted-foreground">السعر</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">المجموع</th>
+                          <th className="w-[45%] px-3 py-2 text-right font-medium text-muted-foreground">المنتج</th>
+                          <th className="w-[15%] px-3 py-2 text-center font-medium text-muted-foreground">الكمية</th>
+                          <th className="w-[20%] px-3 py-2 text-center font-medium text-muted-foreground">السعر</th>
+                          <th className="w-[20%] px-3 py-2 text-left font-medium text-muted-foreground">المجموع</th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedInvoice.items.map((item, idx) => (
                           <tr key={idx} className={cn("border-t border-muted/50", item.refunded && "opacity-60")}>
-                            <td className="px-3 py-2">
+                            <td className="w-[45%] px-3 py-2 text-right whitespace-normal break-words leading-snug" dir="auto">
                               <span className={cn(item.refunded && "line-through")}>{item.name}</span>
                               {item.refunded && (
                                 <span className="mr-2 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">مُسترد</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="px-3 py-2 text-center">{formatCurrency(item.price)}</td>
-                            <td className="px-3 py-2 text-left font-medium">{formatCurrency(item.refunded ? 0 : (item.price * item.quantity))}</td>
+                            <td className="w-[15%] px-3 py-2 text-center">{item.quantity}</td>
+                            <td className="w-[20%] px-3 py-2 text-center">{formatCurrency(item.price)}</td>
+                            <td className="w-[20%] px-3 py-2 text-left font-medium">{formatCurrency(item.refunded ? 0 : (item.price * item.quantity))}</td>
                           </tr>
                         ))}
                       </tbody>

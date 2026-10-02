@@ -815,13 +815,14 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       setPaymentAmountInput('');
                     }}
                     className={cn(
-                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
                       paymentCurrency === 'USD'
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                     )}
                   >
-                    💵 دولار ($)
+                    <span className="text-sm font-bold">💵 دولار</span>
+                    <span className="text-xs font-normal opacity-80">(USD)</span>
                   </button>
                   <button
                     type="button"
@@ -830,13 +831,14 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       setPaymentAmountInput('');
                     }}
                     className={cn(
-                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
                       paymentCurrency === 'TRY'
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                     )}
                   >
-                    ₺ تركي (TRY)
+                    <span className="text-sm font-bold">₺ تركي</span>
+                    <span className="text-xs font-normal opacity-80">(TRY)</span>
                   </button>
                   <button
                     type="button"
@@ -845,13 +847,14 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       setPaymentAmountInput('');
                     }}
                     className={cn(
-                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
+                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
                       paymentCurrency === 'SYP'
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                     )}
                   >
-                    ل.س سوري (SYP)
+                    <span className="text-sm font-bold">ل.س سوري</span>
+                    <span className="text-xs font-normal opacity-80">(SYP)</span>
                   </button>
                 </div>
                 {paymentCurrency !== 'USD' && (
