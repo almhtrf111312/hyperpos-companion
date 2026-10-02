@@ -13,7 +13,11 @@ import {
 } from '@/lib/app-font-config';
 
 export function useAppFont() {
-  const [currentFont, setCurrentFontState] = useState<AppFontId>(() => getStoredAppFont());
+  const [currentFont, setCurrentFontState] = useState<AppFontId>(() => {
+    const font = getStoredAppFont();
+    applyAppFontToDOM(font);
+    return font;
+  });
 
   useEffect(() => {
     // Ensure DOM attribute is in sync on mount
@@ -23,6 +27,7 @@ export function useAppFont() {
       const customEvent = e as CustomEvent<{ fontId: AppFontId }>;
       if (customEvent.detail && isValidAppFontId(customEvent.detail.fontId)) {
         setCurrentFontState(customEvent.detail.fontId);
+        applyAppFontToDOM(customEvent.detail.fontId);
       }
     };
 

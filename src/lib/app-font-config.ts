@@ -74,7 +74,10 @@ export function isValidAppFontId(val: unknown): val is AppFontId {
 
 export function getStoredAppFont(): AppFontId {
   try {
-    const stored = localStorage.getItem(APP_FONT_STORAGE_KEY);
+    let stored = localStorage.getItem(APP_FONT_STORAGE_KEY);
+    if (stored) {
+      stored = stored.trim().replace(/^['"]|['"]$/g, '');
+    }
     if (isValidAppFontId(stored)) {
       return stored;
     }
@@ -88,6 +91,9 @@ export function applyAppFontToDOM(fontId: AppFontId): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   root.setAttribute('data-font', fontId);
+  if (document.body) {
+    document.body.setAttribute('data-font', fontId);
+  }
 }
 
 export function setStoredAppFont(fontId: AppFontId): void {
@@ -101,4 +107,9 @@ export function setStoredAppFont(fontId: AppFontId): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(APP_FONT_CHANGED_EVENT, { detail: { fontId } }));
   }
+}
+
+// Auto-apply font to DOM immediately upon module import
+if (typeof document !== 'undefined') {
+  applyAppFontToDOM(getStoredAppFont());
 }

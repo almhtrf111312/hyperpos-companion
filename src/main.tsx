@@ -4,10 +4,12 @@ import { registerSW } from 'virtual:pwa-register';
 import { Capacitor } from '@capacitor/core';
 import { restoreLastRouteIfNeeded } from "./lib/last-route";
 import { initializeLanguage } from "./lib/i18n";
+import { applyAppFontToDOM, getStoredAppFont } from "./lib/app-font-config";
 import App from "./App.tsx";
 import "./index.css";
 
-// Initialize language and RTL layout immediately on startup
+// Initialize font and language layout immediately on startup
+applyAppFontToDOM(getStoredAppFont());
 initializeLanguage();
 
 // Cold-start only: if the WebView opened at "/", put the user back on the last screen.

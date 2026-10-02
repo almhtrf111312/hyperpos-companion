@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { EVENTS } from '@/lib/events';
+import { EVENTS, emitEvent } from '@/lib/events';
 import {
   loadDebtsCloud,
   addDebtCloud,
@@ -83,6 +83,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const paymentBusyRef = useRef(false);
   const paymentOpIdRef = useRef(`debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const autoOpenProcessedRef = useRef<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
@@ -180,14 +181,35 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     const invoiceId = searchParams.get('invoiceId');
     const autoOpen = searchParams.get('autoOpenPayment');
 
-    if (invoiceId && autoOpen === 'true' && debts.length > 0) {
-      const targetDebt = debts.find(d => d.invoiceId === invoiceId);
-      if (targetDebt && targetDebt.remainingDebt > 0) {
-        openPaymentDialog(targetDebt);
-        // Clear URL params after opening
-        setSearchParams({});
+    if (!invoiceId || autoOpen !== 'true') return;
+    if (autoOpenProcessedRef.current === invoiceId) return;
+
+    let isMounted = true;
+
+    const findAndOpenPayment = async () => {
+      let list = debts;
+      if (list.length === 0) {
+        list = await loadDebtsCloud();
+        if (isMounted && list.length > 0) {
+          setDebts(list);
+        }
       }
-    }
+
+      if (!isMounted) return;
+
+      const targetDebt = list.find(d => d.invoiceId === invoiceId || d.id === invoiceId);
+      if (targetDebt && targetDebt.remainingDebt > 0) {
+        autoOpenProcessedRef.current = invoiceId;
+        openPaymentDialog(targetDebt);
+        setSearchParams({}, { replace: true });
+      }
+    };
+
+    findAndOpenPayment();
+
+    return () => {
+      isMounted = false;
+    };
   }, [debts, searchParams, setSearchParams]);
 
   const filteredDebts = debts.filter(debt => {
