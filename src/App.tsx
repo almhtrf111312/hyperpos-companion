@@ -57,6 +57,7 @@ import BossPanel from "./pages/BossPanel";
 import LibraryMembers from "./pages/LibraryMembers";
 import { WarehouseProvider } from "./hooks/use-warehouse";
 import { useLicenseReminder } from "./hooks/use-license-reminder";
+import { SmartToast } from '@/components/ui/SmartToast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -342,6 +343,7 @@ const App = () => (
                     <WarehouseProvider>
                       <NotificationsProvider>
                         <Sonner />
+                        <SmartToast />
                         {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
                         <LicenseWarningBadge />
                         <OfflineProtectionBanner />

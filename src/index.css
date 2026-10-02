@@ -1797,3 +1797,27 @@ html { font-size: 14px; }
 /* Toasts must never block touches on the rest of the app */
 [data-sonner-toaster] { pointer-events: none !important; }
 [data-sonner-toaster] [data-sonner-toast] { pointer-events: auto !important; }
+
+/* Smart Notification Animations */
+.notification-spring {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15), 
+              opacity 0.3s ease, 
+              max-height 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+.pulse-dot {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+@keyframes shrinkWidth {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.timer-active {
+  animation: shrinkWidth var(--duration, 4500ms) linear forwards;
+}
+.timer-paused {
+  animation-play-state: paused !important;
+}
