@@ -1826,3 +1826,74 @@ html { font-size: 14px; }
 .timer-paused {
   animation-play-state: paused !important;
 }
+
+/* Smart Toast Island Custom Styling & Theme Protection */
+.smart-toast-card {
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.14), 0 6px 14px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.dark .smart-toast-card {
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 8px 16px -6px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Light mode high-contrast text overrides inside toast */
+.light .smart-toast-card .smart-toast-title {
+  color: #0f172a !important; /* dark slate-900 */
+}
+
+.light .smart-toast-card .smart-toast-subtitle {
+  color: #475569 !important; /* slate-600 */
+}
+
+.light .smart-toast-card .smart-toast-time {
+  color: #64748b !important; /* slate-500 */
+}
+
+/* Dark mode high-contrast text overrides inside toast */
+.dark .smart-toast-card .smart-toast-title {
+  color: #ffffff !important;
+}
+
+.dark .smart-toast-card .smart-toast-subtitle {
+  color: #d4d4d8 !important; /* zinc-300 */
+}
+
+.dark .smart-toast-card .smart-toast-time {
+  color: #a1a1aa !important; /* zinc-400 */
+}
+
+/* Primary Button adapts dynamically to Appearance theme (--primary) */
+.smart-toast-btn-primary {
+  background-color: hsl(var(--primary)) !important;
+  color: #ffffff !important;
+}
+
+.smart-toast-btn-primary span,
+.smart-toast-btn-primary * {
+  color: #ffffff !important;
+}
+
+.smart-toast-btn-primary:hover {
+  opacity: 0.92;
+}
+
+/* Secondary Button in light & dark modes */
+.light .smart-toast-btn-secondary {
+  background-color: #f1f5f9 !important; /* slate-100 */
+  color: #1e293b !important; /* slate-800 */
+  border-color: #cbd5e1 !important; /* slate-300 */
+}
+
+.light .smart-toast-btn-secondary:hover {
+  background-color: #e2e8f0 !important; /* slate-200 */
+}
+
+.dark .smart-toast-btn-secondary {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f4f4f5 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .smart-toast-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}

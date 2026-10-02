@@ -231,52 +231,52 @@ export function SmartToast() {
 
   const colors = {
     success: {
-      bg: 'bg-emerald-500/15',
-      border: 'border-emerald-500/30',
-      text: 'text-emerald-400',
-      dot: 'bg-emerald-400',
-      bar: 'bg-emerald-500/80',
-      btnBg: 'bg-emerald-600 hover:bg-emerald-500',
+      bg: 'bg-primary/15',
+      border: 'border-primary/30',
+      text: 'text-primary',
+      dot: 'bg-primary',
+      bar: 'bg-primary',
+      btnBg: 'smart-toast-btn-primary',
       icon: 'M5 13l4 4L19 7',
       animate: '',
     },
     warning: {
       bg: 'bg-amber-500/15',
       border: 'border-amber-500/30',
-      text: 'text-amber-400',
-      dot: 'bg-amber-400',
-      bar: 'bg-amber-500/80',
-      btnBg: 'bg-amber-600 hover:bg-amber-500',
+      text: 'text-amber-500 dark:text-amber-400',
+      dot: 'bg-amber-500',
+      bar: 'bg-amber-500',
+      btnBg: 'bg-amber-600 hover:bg-amber-500 text-white',
       icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
       animate: '',
     },
     error: {
       bg: 'bg-rose-500/15',
       border: 'border-rose-500/30',
-      text: 'text-rose-400',
-      dot: 'bg-rose-400',
-      bar: 'bg-rose-500/80',
-      btnBg: 'bg-rose-600 hover:bg-rose-500',
+      text: 'text-rose-500 dark:text-rose-400',
+      dot: 'bg-rose-500',
+      bar: 'bg-rose-500',
+      btnBg: 'bg-rose-600 hover:bg-rose-500 text-white',
       icon: 'M6 18L18 6M6 6l12 12',
       animate: '',
     },
     info: {
-      bg: 'bg-sky-500/15',
-      border: 'border-sky-500/30',
-      text: 'text-sky-400',
-      dot: 'bg-sky-400',
-      bar: 'bg-sky-500/80',
-      btnBg: 'bg-sky-600 hover:bg-sky-500',
+      bg: 'bg-primary/15',
+      border: 'border-primary/30',
+      text: 'text-primary',
+      dot: 'bg-primary',
+      bar: 'bg-primary',
+      btnBg: 'smart-toast-btn-primary',
       icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
       animate: 'animate-spin',
     },
     purple: {
-      bg: 'bg-purple-500/15',
-      border: 'border-purple-500/30',
-      text: 'text-purple-400',
-      dot: 'bg-purple-400',
-      bar: 'bg-purple-500/80',
-      btnBg: 'bg-purple-600 hover:bg-purple-500',
+      bg: 'bg-primary/15',
+      border: 'border-primary/30',
+      text: 'text-primary',
+      dot: 'bg-primary',
+      bar: 'bg-primary',
+      btnBg: 'smart-toast-btn-primary',
       icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
       animate: '',
     },
@@ -303,17 +303,16 @@ export function SmartToast() {
   }
 
   return (
-    <div className="fixed top-8 inset-x-0 px-3 z-[100] flex justify-center pointer-events-none">
+    <div className="fixed top-6 inset-x-0 px-3 z-[100] flex justify-center pointer-events-none">
       {/* بطاقة الإشعار القابلة للتفاعل والسحب */}
       <div
         className={cn(
-          "notification-spring w-full max-w-[394px] bg-slate-900/95 dark:bg-zinc-900/95 text-white rounded-[26px] shadow-2xl border border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none",
+          "smart-toast-card notification-spring w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none",
           dragState && "dragging"
         )}
         style={{
           transform,
           opacity,
-          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 8px 16px -6px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08)',
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -322,7 +321,7 @@ export function SmartToast() {
       >
         {/* مقبض السحب المرئي العلوي (Visual Pill Handle) */}
         <div className="pt-2 pb-1 flex justify-center">
-          <div className="w-8 h-1 rounded-full bg-white/20"></div>
+          <div className="w-8 h-1 rounded-full bg-slate-300 dark:bg-white/20"></div>
         </div>
 
         {/* السطر الأساسي للإشعار */}
@@ -341,15 +340,15 @@ export function SmartToast() {
           {/* النصوص الرئيسية للإشعار */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1">
-              <h4 className="text-xs font-bold text-white truncate leading-snug">
+              <h4 className="smart-toast-title text-xs font-bold text-slate-900 dark:text-white truncate leading-snug">
                 {toast.title}
               </h4>
-              <span className="text-[10px] text-zinc-400 font-mono shrink-0">
+              <span className="smart-toast-time text-[10px] text-slate-500 dark:text-zinc-400 font-mono shrink-0">
                 {toast.time || 'الآن'}
               </span>
             </div>
             {toast.subtitle && (
-              <p className="text-[11px] text-zinc-300 font-medium truncate mt-0.5">
+              <p className="smart-toast-subtitle text-[11px] text-slate-600 dark:text-zinc-300 font-medium truncate mt-0.5">
                 {toast.subtitle}
               </p>
             )}
@@ -361,7 +360,7 @@ export function SmartToast() {
             <button
               type="button"
               onClick={(e) => toggleDetails(e)}
-              className="w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 flex items-center justify-center transition active:scale-95"
+              className="w-7 h-7 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/20 dark:text-zinc-300 flex items-center justify-center transition active:scale-95"
               title="عرض التفاصيل"
             >
               <svg className={cn("w-3.5 h-3.5 transition-transform duration-300", isExpanded && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +375,7 @@ export function SmartToast() {
                 e.stopPropagation();
                 dismissNotification('up');
               }}
-              className="w-7 h-7 rounded-xl bg-white/5 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 flex items-center justify-center transition active:scale-95"
+              className="w-7 h-7 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 dark:bg-white/5 dark:hover:bg-rose-500/20 dark:text-zinc-400 dark:hover:text-rose-400 flex items-center justify-center transition active:scale-95"
               title="إغلاق"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,20 +390,20 @@ export function SmartToast() {
         {/* ========================================================= */}
         <div 
           className={cn(
-            "overflow-hidden transition-all duration-300 ease-out border-t bg-black/30",
-            isExpanded ? "max-h-[320px] border-white/10" : "max-h-0 border-transparent"
+            "overflow-hidden transition-all duration-300 ease-out border-t bg-slate-50/80 dark:bg-black/30",
+            isExpanded ? "max-h-[320px] border-slate-200/80 dark:border-white/10" : "max-h-0 border-transparent"
           )}
         >
           <div className="p-3.5 space-y-3 text-xs">
             {/* محتوى التفاصيل */}
             {toast.details ? (
-              <div className="space-y-2">
+              <div className="space-y-2 text-slate-800 dark:text-zinc-200">
                 {toast.details}
               </div>
             ) : (
-              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-zinc-300 space-y-1">
-                <div className="font-semibold text-white">{toast.title}</div>
-                <div className="text-[11px] text-zinc-400 leading-relaxed">
+              <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-zinc-300 space-y-1 shadow-sm">
+                <div className="font-semibold text-slate-900 dark:text-white">{toast.title}</div>
+                <div className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
                   {toast.subtitle || 'تمت معالجة هذا الإجراء وتسجيله بنجاح.'}
                 </div>
               </div>
@@ -421,7 +420,7 @@ export function SmartToast() {
                     dismissNotification('up');
                   }}
                   className={cn(
-                    "flex-1 py-2 px-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm",
+                    "smart-toast-btn-primary flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md",
                     config.btnBg
                   )}
                 >
@@ -432,7 +431,7 @@ export function SmartToast() {
                   type="button"
                   onClick={() => dismissNotification('up')}
                   className={cn(
-                    "flex-1 py-2 px-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm",
+                    "smart-toast-btn-primary flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md",
                     config.btnBg
                   )}
                 >
@@ -443,7 +442,7 @@ export function SmartToast() {
               <button
                 type="button"
                 onClick={() => dismissNotification('up')}
-                className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 font-semibold text-xs transition active:scale-95"
+                className="smart-toast-btn-secondary py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/10 dark:hover:bg-white/15 dark:text-zinc-200 font-semibold text-xs transition active:scale-95 border border-slate-200/60 dark:border-white/10"
               >
                 تم، إغلاق
               </button>
@@ -452,7 +451,7 @@ export function SmartToast() {
         </div>
 
         {/* شريط المؤقت الزمني للإغلاق التلقائي (Linear Progress Timer) */}
-        <div className="h-1 bg-white/10 w-full overflow-hidden">
+        <div className="h-1 bg-slate-200/80 dark:bg-white/10 w-full overflow-hidden">
           <div
             className={cn(
               "h-full",
