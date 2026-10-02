@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
+import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -133,12 +134,25 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // فحص صحة صيغة الإيميل وقوة كلمة المرور
+    if (!isValidEmailFormat(email)) {
+      toast.error('صيغة البريد الإلكتروني غير صحيحة');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      toast.error('كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)');
+      return;
+    }
+
     setIsLoading(true);
 
     const { error, data } = await signIn(email, password, stayLoggedIn);
 
     if (error) {
-      toast.error(t('auth.invalidCredentials'));
+      const friendlyMessage = getAuthErrorMessage(error, 'login');
+      toast.error(friendlyMessage);
       setIsLoading(false);
       return;
     }
@@ -204,7 +218,7 @@ export default function Login() {
         const { error: loginError } = await signIn(email, password, stayLoggedIn);
 
         if (loginError) {
-          toast.error(t('auth.invalidCredentials'));
+          toast.error(getAuthErrorMessage(loginError, 'login'));
           setIsLoading(false);
           return;
         }

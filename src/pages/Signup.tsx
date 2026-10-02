@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { Loader2, Store, Eye, EyeOff, Phone } from 'lucide-react';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
+import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -36,6 +37,12 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // التحقق من صحة صيغة الإيميل
+    if (!isValidEmailFormat(email)) {
+      toast.error('صيغة البريد الإلكتروني غير صحيحة');
+      return;
+    }
+
     if (!validatePhone(phone)) {
       toast.error(t('auth.invalidPhone'));
       return;
@@ -46,8 +53,8 @@ export default function Signup() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!password || password.length < 6) {
+      toast.error('كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)');
       return;
     }
 
@@ -56,26 +63,8 @@ export default function Signup() {
     const { error } = await signUp(email, password, fullName, phone);
 
     if (error) {
-      // 🔎 إظهار السبب الحقيقي بدل الرسالة العامة التي كانت تخفي المشكلة
-      const raw = (error as { message?: string })?.message || '';
       console.error('[Signup] فشل إنشاء الحساب:', error);
-
-      let friendly = raw || 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.';
-      const lower = raw.toLowerCase();
-      if (lower.includes('already registered') || lower.includes('user already')) {
-        friendly = 'هذا البريد الإلكتروني مسجل مسبقاً. جرّب تسجيل الدخول أو استخدم بريداً آخر.';
-      } else if (lower.includes('invalid email')) {
-        friendly = 'صيغة البريد الإلكتروني غير صحيحة.';
-      } else if (lower.includes('password')) {
-        friendly = 'كلمة المرور ضعيفة أو مرفوضة: ' + raw;
-      } else if (lower.includes('rate limit') || lower.includes('too many')) {
-        friendly = 'محاولات كثيرة خلال وقت قصير. انتظر قليلاً ثم أعد المحاولة.';
-      } else if (lower.includes('network') || lower.includes('fetch')) {
-        friendly = 'تعذر الاتصال بالخادم. تحقق من الإنترنت ثم أعد المحاولة.';
-      } else if (lower.includes('database') || lower.includes('constraint')) {
-        friendly = 'رُفض إنشاء الحساب من قاعدة البيانات: ' + raw;
-      }
-
+      const friendly = getAuthErrorMessage(error, 'signup');
       toast.error('فشل إنشاء الحساب', { description: friendly, duration: 8000 });
       setIsLoading(false);
       return;

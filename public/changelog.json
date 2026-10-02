@@ -1,5 +1,10 @@
 [
   {
+    "type": "improvement",
+    "ar": "تسريع شاشة نقطة البيع واستبعاد المنتجات المؤرشفة ومزامنة المخزون اللحظية، وتفصيل رسائل أخطاء تسجيل الدخول والمنتجات، وتدقيق رسائل المزامنة مع إظهار بيانات وتاريخ ووقت البناء الفعلي.",
+    "en": "v1.0.59 - POS instant loading, archived products exclusion, real-time stock sync on refunds, detailed auth and product error messages, accurate sync feedback, and build timestamp display."
+  },
+  {
     "type": "fix",
     "ar": "حل مشكلة فحص الإنترنت والـ VPN: إعطاء الأولوية لفحص خادم التطبيق Supabase، رفع المهلة إلى 6 ثوانٍ، التعامل بتفاؤل مع اتصال النظام، تفصيل أسباب فشل طابور المزامنة مع إمكانية إعادة المحاولة، وتوثيق استرداد وتعديل الفواتير وعرض الأرشيف سحابياً.",
     "en": "v1.0.58 - Fixed VPN connectivity probe using Supabase ping and adaptive timeout, detailed sync queue error diagnostics with manual retry, invoice refund/update activity logging, and cloud archive sync."

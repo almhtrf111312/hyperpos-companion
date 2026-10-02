@@ -8,6 +8,7 @@ declare const __APP_VERSION__: {
 };
 
 declare const __BUILD_COMMIT__: string;
+declare const __BUILD_TIMESTAMP__: string;
 
 declare const __APP_CHANGELOG__: {
   type: 'new' | 'improved' | 'fixed';

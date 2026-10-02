@@ -2200,24 +2200,39 @@ export default function Settings() {
         // Read version injected at build time by vite.config.ts from version.json
         const versionInfo = typeof __APP_VERSION__ !== 'undefined'
           ? __APP_VERSION__
-          : { versionName: '1.0.1', versionCode: 230, lastUpdated: '2026-02-18T00:00:00.000Z' };
+          : { versionName: '1.0.59', versionCode: 289, lastUpdated: '2026-10-02T04:00:00.000Z' };
 
         const releaseDate = new Date(versionInfo.lastUpdated);
         const releaseDateStr = releaseDate.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
           year: 'numeric', month: 'long', day: 'numeric'
         });
 
+        // Build timestamp injected at build time
+        const rawBuildTimestamp = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : versionInfo.lastUpdated;
+        const buildDate = new Date(rawBuildTimestamp);
+        const buildTimeStr = buildDate.toLocaleString(isRTL ? 'ar-SA' : 'en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+
+        const commitHash = typeof __BUILD_COMMIT__ !== 'undefined' && __BUILD_COMMIT__ !== 'local'
+          ? __BUILD_COMMIT__.slice(0, 7)
+          : null;
+
         // Load changelog from build-time injection (limited to latest update fixes only)
         const rawChangelog = (globalThis as unknown as { __APP_CHANGELOG__?: unknown }).__APP_CHANGELOG__ ?? (typeof __APP_CHANGELOG__ !== 'undefined' ? __APP_CHANGELOG__ : null);
         const changelog: { type: 'new' | 'improved' | 'fixed'; ar: string; en: string }[] = Array.isArray(rawChangelog) && rawChangelog.length > 0
           ? rawChangelog.slice(0, 8)
           : [
-            { type: 'improved', ar: 'اختبار ميزة تثبيت تطبيق حديث فوق قديم (ترقية مباشرة فوق النسخة السابقة دون أي تعارض)', en: 'Testing in-place app update over previous version without signature conflict' },
-            { type: 'improved', ar: 'تمييز الأيام التي تحتوي على فواتير في التقويم وتظليل الأيام الفارغة لتسهيل البحث', en: 'Highlighted active invoice dates in calendar and dimmed empty dates' },
-            { type: 'fixed', ar: 'ضبط أبعاد أزرار التبديل على أجهزة أندرويد لتطابق تصميم كبسولة تيليجرام ومنع تشوهها إلى دائرة', en: 'Fixed switch dimensions on Android to match Telegram capsule style' },
-            { type: 'fixed', ar: 'حل مشكلة احتجاب وتشوه كاميرا قارئ الباركود، وإخفاء النوافذ العائمة المنبثقة تلقائياً فور تشغيل الكاميرا وإعادتها فور الانتهاء', en: 'Fixed barcode scanner camera obstruction; floating dialogs now hide during scan and restore automatically' },
-            { type: 'fixed', ar: 'تحسين استجابة وتناسق أبعاد نافذة إضافة فاتورة الشراء وإضافة منتج على شاشات الهواتف ومنع التمدد والتمرير الأفقي', en: 'Enhanced Purchase Invoice and Add Product dialog responsiveness on mobile screens' },
-            { type: 'improved', ar: 'معاينة فورية للغة في شاشة الإعدادات؛ تحديث نصوص أزرار الحفظ والإلغاء واتجاهها مباشرة باللغة المختارة قبل الحفظ', en: 'Real-time language preview in Settings; Save/Cancel button text and layout direction now immediately reflect selected language' },
+            { type: 'improved', ar: 'تسريع فتح شاشة نقطة البيع واستبعاد المؤرشف ومزامنة المخزون اللحظية مع استرداد الفواتير', en: 'POS loading acceleration, archived exclusion, and real-time stock sync upon refunds' },
+            { type: 'improved', ar: 'تفصيل رسائل أخطاء تسجيل الدخول وإنشاء الحساب وتوضيح أسباب الفشل بدقة', en: 'Detailed auth error messages for login and signup' },
+            { type: 'improved', ar: 'تدقيق رسائل المزامنة والإنترنت وإظهار أسباب الرفض الصادرة من الخادم بدقة', en: 'Accurate sync error messages with server feedback' },
+            { type: 'new', ar: 'إظهار تاريخ ووقت البناء الفعلي ورقم الإصدار في شاشة الإعدادات', en: 'Display build timestamp and version details in Settings' },
           ];
 
         return (
@@ -2237,14 +2252,16 @@ export default function Settings() {
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-muted/30">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {isRTL ? 'معلومات الإصدار' : 'Version Info'}
+                  {isRTL ? 'معلومات الإصدار والبناء' : 'Version & Build Info'}
                 </p>
               </div>
               <div className="divide-y divide-border">
                 {[
                   { label: isRTL ? 'الإصدار الحالي' : 'Current Version', value: `v${versionInfo.versionName}`, icon: '🏷️' },
                   { label: isRTL ? 'رقم البناء' : 'Build Number', value: String(versionInfo.versionCode), icon: '🔢' },
-                  { label: isRTL ? 'تاريخ آخر تحديث' : 'Last Updated', value: releaseDateStr, icon: '📅' },
+                  { label: isRTL ? 'تاريخ ووقت البناء الفعلي' : 'Build Timestamp', value: buildTimeStr, icon: '⏱️' },
+                  { label: isRTL ? 'تاريخ الإصدار' : 'Release Date', value: releaseDateStr, icon: '📅' },
+                  ...(commitHash ? [{ label: isRTL ? 'معرّف التحديث (Commit)' : 'Commit', value: commitHash, icon: '🔖' }] : []),
                   { label: isRTL ? 'المنصة' : 'Platform', value: 'Android / Web / Windows', icon: '📱' },
                   { label: isRTL ? 'المطور' : 'Developer', value: 'FlowPOS Team', icon: '👨‍💻' },
                 ].map((item) => (
@@ -2253,7 +2270,7 @@ export default function Settings() {
                       <span className="text-base">{item.icon}</span>
                       <span className="text-sm text-muted-foreground">{item.label}</span>
                     </div>
-                    <span className="text-sm font-medium text-foreground">{item.value}</span>
+                    <span className="text-sm font-medium text-foreground font-mono">{item.value}</span>
                   </div>
                 ))}
               </div>

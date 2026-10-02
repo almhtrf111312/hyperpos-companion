@@ -707,27 +707,33 @@ export default function Products() {
     // ✅ منع النقر المتعدد
     if (isSaving) return;
 
-    // ✅ المطلوب فقط: الاسم وسعر البيع. الباركود يُولَّد تلقائيًا إذا كان فارغًا
-    const trimmedBarcode = (formData.barcode || '').trim();
-    const effectiveBarcode = trimmedBarcode || `AUTO${Date.now()}`;
+    // 1. فحص اسم المنتج
     if (!formData.name || !formData.name.trim()) {
-      toast.error('يرجى كتابة اسم المنتج');
-      return;
-    }
-    if (!(Number(formData.salePrice) > 0) && !(Number(formData.bulkSalePrice) > 0)) {
-      toast.error('يرجى كتابة سعر البيع');
+      toast.error('يجب كتابة اسم المنتج');
       return;
     }
 
-    // ✅ فحص تكرار الباركود قبل الإضافة
-    if (effectiveBarcode && !effectiveBarcode.startsWith('AUTO')) {
+    // 2. فحص سعر البيع
+    const salePriceNum = Number(formData.salePrice);
+    const bulkSalePriceNum = Number(formData.bulkSalePrice);
+    if (!(salePriceNum > 0) && !(bulkSalePriceNum > 0)) {
+      toast.error('يرجى تحديد سعر بيع صالح أكبر من 0');
+      return;
+    }
+
+    // 3. فحص تكرار الباركود قبل الإضافة
+    const trimmedBarcode = (formData.barcode || '').trim();
+    const effectiveBarcode = trimmedBarcode || `AUTO${Date.now()}`;
+    const barcodesToCheck = [effectiveBarcode, formData.barcode2, formData.barcode3]
+      .map(b => (b || '').trim())
+      .filter(b => b && !b.startsWith('AUTO'));
+
+    for (const bc of barcodesToCheck) {
       const duplicate = products.find(p =>
-        p.barcode === effectiveBarcode ||
-        p.barcode2 === effectiveBarcode ||
-        p.barcode3 === effectiveBarcode
+        p.barcode === bc || p.barcode2 === bc || p.barcode3 === bc
       );
       if (duplicate) {
-        toast.error(isRTL ? `الباركود "${effectiveBarcode}" موجود بالفعل للمنتج: ${duplicate.name}` : `Barcode "${effectiveBarcode}" already exists for: ${duplicate.name}`);
+        toast.error(`هذا الباركود مستخدم بالفعل لمنتج آخر: ${duplicate.name}`);
         return;
       }
     }
@@ -796,16 +802,45 @@ export default function Products() {
       toast.success(t('products.addSuccess'));
       loadData();
     } else {
-      toast.error(t('products.addFailed'));
+      toast.error('فشل في إضافة المنتج', {
+        description: 'تعذر الحفظ في قاعدة البيانات. تحقق من صحة البيانات أو الصلاحيات.'
+      });
     }
 
     setIsSaving(false);
   };
 
   const handleEditProduct = async () => {
-    if (!selectedProduct || !formData.name) {
-      toast.error(t('products.fillRequired'));
+    if (!selectedProduct) return;
+
+    // 1. فحص اسم المنتج
+    if (!formData.name || !formData.name.trim()) {
+      toast.error('يجب كتابة اسم المنتج');
       return;
+    }
+
+    // 2. فحص سعر البيع
+    const salePriceNum = Number(formData.salePrice);
+    const bulkSalePriceNum = Number(formData.bulkSalePrice);
+    if (!(salePriceNum > 0) && !(bulkSalePriceNum > 0)) {
+      toast.error('يرجى تحديد سعر بيع صالح أكبر من 0');
+      return;
+    }
+
+    // 3. فحص تكرار الباركود لمنتج آخر
+    const barcodesToCheck = [formData.barcode, formData.barcode2, formData.barcode3]
+      .map(b => (b || '').trim())
+      .filter(b => b && !b.startsWith('AUTO'));
+
+    for (const bc of barcodesToCheck) {
+      const duplicate = products.find(p =>
+        p.id !== selectedProduct.id &&
+        (p.barcode === bc || p.barcode2 === bc || p.barcode3 === bc)
+      );
+      if (duplicate) {
+        toast.error(`هذا الباركود مستخدم بالفعل لمنتج آخر: ${duplicate.name}`);
+        return;
+      }
     }
 
     // Validate required custom fields
@@ -880,7 +915,9 @@ export default function Products() {
       toast.success(t('products.editSuccess'));
       loadData();
     } else {
-      toast.error(t('products.editFailed'));
+      toast.error('فشل في تعديل المنتج', {
+        description: 'تعذر حفظ التعديلات في قاعدة البيانات. تحقق من صحة البيانات أو الصلاحيات.'
+      });
     }
 
     setIsSaving(false);

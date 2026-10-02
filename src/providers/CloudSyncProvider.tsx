@@ -19,6 +19,41 @@ const LAST_USER_KEY = 'hyperpos_last_user_id';
 // فترة إعادة المحاولة الدورية التلقائية في الخلفية: 45 ثانية عند وجود عمليات معلقة
 const PERIODIC_RETRY_INTERVAL_MS = 45 * 1000;
 
+/**
+ * توضيح السبب الحقيقي لفشل المزامنة الصادر من الخادم بدقة
+ */
+function formatSyncServerError(error: unknown): string {
+  if (!error) return 'خطأ غير محدد أثناء الاتصال بالخادم';
+  const raw = typeof error === 'string' ? error : (error as { message?: string })?.message || String(error);
+  const lower = raw.toLowerCase();
+
+  // 1. انتهاء الجلسة أو خطأ المصادقة
+  if (lower.includes('jwt') || lower.includes('token') || lower.includes('session') || lower.includes('unauthorized') || lower.includes('auth')) {
+    return 'انتهاء الجلسة (يرجى تسجيل الدخول مجدداً)';
+  }
+
+  // 2. خطأ في صلاحيات الحساب
+  if (lower.includes('permission') || lower.includes('row-level security') || lower.includes('policy') || lower.includes('access denied') || lower.includes('forbidden')) {
+    return 'خطأ في صلاحيات الحساب (لا تملك الصلاحية الكافية لإتمام هذه العملية)';
+  }
+
+  // 3. تعارض في البيانات
+  if (lower.includes('conflict') || lower.includes('duplicate') || lower.includes('unique constraint') || lower.includes('already exists')) {
+    return 'تعارض في البيانات (البيانات موجودة مسبقاً في السحابة)';
+  }
+
+  if (lower.includes('foreign key') || lower.includes('violates foreign key')) {
+    return 'تعارض في البيانات (سجل مرتبط غير موجود في السحابة)';
+  }
+
+  // 4. استجابة بطيئة أو انقطاع
+  if (lower.includes('timeout') || lower.includes('abort') || lower.includes('gateway')) {
+    return 'استجابة الخادم بطيئة (مهلة الاتصال)';
+  }
+
+  return raw;
+}
+
 interface CloudSyncContextType {
   isReady: boolean;
   isSyncing: boolean;
@@ -343,9 +378,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         } else if (result.failed > 0 && result.processed === 0) {
           const failedOps = getFailedOperations();
           const allQueue = loadQueue();
-          const lastError = failedOps[0]?.error || allQueue.find(op => !!op.error)?.error || 'خطأ في معالجة العملية';
+          const rawError = failedOps[0]?.error || allQueue.find(op => !!op.error)?.error || '';
+          const friendlyError = formatSyncServerError(rawError);
           showToast.error('فشلت المزامنة', {
-            description: `${result.failed} عملية معلقة: ${lastError}`,
+            description: `${result.failed} عملية معلقة: ${friendlyError}`,
             duration: 6000
           });
         }
@@ -411,9 +447,13 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       setLastSyncTime(new Date().toISOString());
     } catch (error) {
       console.error('Manual sync error:', error);
-      // ✅ عرض رسالة الفشل فقط إذا كان المستخدم متصلاً فعلياً
+      // ✅ عرض سبب الفشل الحقيقي من الخادم إذا كان الجهاز متصلاً بالشبكة
       if (navigator.onLine) {
-        showToast.info('تعذرت المزامنة مؤقتاً', 'سيتم إعادة المحاولة تلقائياً');
+        const friendlyError = formatSyncServerError(error);
+        showToast.error('فشلت المزامنة', {
+          description: friendlyError,
+          duration: 6000
+        });
       }
     } finally {
       setIsSyncing(false);
