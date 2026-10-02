@@ -50,6 +50,9 @@ export function ProfileManagement() {
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const [showEmailPasswordDialog, setShowEmailPasswordDialog] = useState(false);
+  const [emailChangePassword, setEmailChangePassword] = useState('');
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
 
   useEffect(() => {
     if (profile?.full_name) {
@@ -100,6 +103,16 @@ export function ProfileManagement() {
       return;
     }
 
+    // Show password confirmation dialog
+    setShowEmailPasswordDialog(true);
+  };
+
+  const handleConfirmEmailChange = async () => {
+    if (!emailChangePassword) {
+      toast.error(t('password.currentRequired'));
+      return;
+    }
+
     setIsSavingEmail(true);
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -109,7 +122,10 @@ export function ProfileManagement() {
       }
 
       const response = await supabase.functions.invoke('update-boss-email', {
-        body: { newEmail: newEmail.trim() },
+        body: { 
+          newEmail: newEmail.trim(),
+          currentPassword: emailChangePassword 
+        },
         headers: {
           Authorization: `Bearer ${session.session.access_token}`,
         },
@@ -122,6 +138,8 @@ export function ProfileManagement() {
       if (response.data?.error) {
         if (response.data.error === 'Email already in use') {
           toast.error(t('profile.emailInUse'));
+        } else if (response.data.error === 'Current password is incorrect') {
+          toast.error(t('password.currentWrong'));
         } else {
           throw new Error(response.data.error);
         }
@@ -130,10 +148,12 @@ export function ProfileManagement() {
 
       toast.success(t('profile.emailUpdated'));
       setIsEditingEmail(false);
+      setShowEmailPasswordDialog(false);
+      setEmailChangePassword('');
       await supabase.auth.refreshSession();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating email:', error);
-      toast.error(error.message || t('profile.emailUpdateFailed'));
+      toast.error((error as Error).message || t('profile.emailUpdateFailed'));
     } finally {
       setIsSavingEmail(false);
     }
@@ -363,6 +383,75 @@ export function ProfileManagement() {
                 <>
                   <Lock className="w-4 h-4 me-2" />
                   {t('password.changeBtn')}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Change Password Confirmation Dialog */}
+      <Dialog open={showEmailPasswordDialog} onOpenChange={(open) => {
+        setShowEmailPasswordDialog(open);
+        if (!open) {
+          setEmailChangePassword('');
+          setShowEmailPassword(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('profile.confirmEmailChange')}</DialogTitle>
+            <DialogDescription>
+              {t('profile.enterPasswordToConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{t('password.currentPassword')}</Label>
+              <div className="relative">
+                <Input 
+                  type={showEmailPassword ? 'text' : 'password'} 
+                  value={emailChangePassword} 
+                  onChange={(e) => setEmailChangePassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="pe-10"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleConfirmEmailChange();
+                    }
+                  }}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowEmailPassword(!showEmailPassword)} 
+                  className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
+                >
+                  {showEmailPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowEmailPasswordDialog(false);
+                setEmailChangePassword('');
+                setShowEmailPassword(false);
+              }}
+            >
+              {t('password.cancel')}
+            </Button>
+            <Button onClick={handleConfirmEmailChange} disabled={isSavingEmail}>
+              {isSavingEmail ? (
+                <>
+                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                  {t('profile.updating')}
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 me-2" />
+                  {t('profile.confirmChange')}
                 </>
               )}
             </Button>
