@@ -124,7 +124,7 @@ export async function processPosSaleAtomic(
     });
 
     if (error) {
-      const errorObj = error as unknown as Record<string, unknown>;
+      const errorObj = error as Record<string, unknown>;
       const detailedMsg = error.message || (typeof errorObj?.details === 'string' ? errorObj.details : '') || 'فشل تنفيذ البيع الذري';
       console.error('[AtomicSale] RPC error:', detailedMsg, error);
       throw new Error(detailedMsg);
