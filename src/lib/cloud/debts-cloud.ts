@@ -87,24 +87,44 @@ function toDebt(cloud: CloudDebt & { cashier_name?: string }): Debt {
   };
 }
 
-// Local storage cache helpers
+// Local storage cache helpers with user scoping
 const LOCAL_CACHE_KEY = 'hyperpos_debts_cache';
 
-const saveDebtsLocally = (debts: Debt[]) => {
+interface CachedDebtsData {
+  userId: string;
+  debts: Debt[];
+  timestamp: number;
+}
+
+const saveDebtsLocally = (debts: Debt[], userId: string) => {
   try {
-    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(debts));
+    const cacheData: CachedDebtsData = {
+      userId,
+      debts,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(cacheData));
   } catch { /* ignore */ }
 };
 
-const loadDebtsLocally = (): Debt[] | null => {
+const loadDebtsLocally = (currentUserId: string): Debt[] | null => {
   try {
     const data = localStorage.getItem(LOCAL_CACHE_KEY);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    const cached: CachedDebtsData = JSON.parse(data);
+    // Validate that cached data belongs to current user
+    if (cached.userId !== currentUserId) {
+      console.warn('[debts-cloud] Cached debts belong to different user, ignoring');
+      localStorage.removeItem(LOCAL_CACHE_KEY);
+      return null;
+    }
+    return cached.debts;
   } catch { return null; }
 };
 
-// Cache
+// Cache with user scoping
 let debtsCache: Debt[] | null = null;
+let cacheUserId: string | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 30000;
 
@@ -141,15 +161,25 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
   }
   if (!userId) return [];
 
-  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Validate cache belongs to current user before using TTL
+  if (debtsCache && cacheUserId === userId && Date.now() - cacheTimestamp < CACHE_TTL) {
     return debtsCache;
   }
 
-  // Offline: return local cache
+  // If user changed, invalidate stale cache
+  if (cacheUserId && cacheUserId !== userId) {
+    console.warn('[debts-cloud] User changed, invalidating stale cache');
+    debtsCache = null;
+    cacheUserId = null;
+    cacheTimestamp = 0;
+  }
+
+  // Offline: return local cache only if it belongs to current user
   if (!navigator.onLine) {
-    const local = loadDebtsLocally();
+    const local = loadDebtsLocally(userId);
     if (local) {
       debtsCache = local;
+      cacheUserId = userId;
       cacheTimestamp = Date.now();
       return local;
     }
@@ -192,8 +222,9 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
   }
 
   debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
+  cacheUserId = userId;
   cacheTimestamp = Date.now();
-  saveDebtsLocally(debtsCache);
+  saveDebtsLocally(debtsCache, userId);
 
   return debtsCache;
 };
@@ -202,14 +233,20 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadDebtsCloud = false;
 export const loadDebtsCloud = async (): Promise<Debt[]> => {
-  if (!bootServed_loadDebtsCloud) {
+  const currentUserId = getCurrentUserId();
+  
+  if (!bootServed_loadDebtsCloud && currentUserId) {
     bootServed_loadDebtsCloud = true;
-    const local = loadDebtsLocally();
-    if (local && local.length > 0 && getCurrentUserId()) {
-      debtsCache = local; cacheTimestamp = Date.now();
+    const local = loadDebtsLocally(currentUserId);
+    if (local && local.length > 0) {
+      debtsCache = local; 
+      cacheUserId = currentUserId;
+      cacheTimestamp = Date.now();
       if (navigator.onLine) {
         setTimeout(() => {
-          debtsCache = null; cacheTimestamp = 0;
+          debtsCache = null; 
+          cacheUserId = null;
+          cacheTimestamp = 0;
           fetchFresh_loadDebtsCloud().then(() => emitEvent(EVENTS.DEBTS_UPDATED, null)).catch(() => {});
         }, 0);
       }
@@ -221,7 +258,12 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
 
 export const invalidateDebtsCache = () => {
   debtsCache = null;
+  cacheUserId = null;
   cacheTimestamp = 0;
+  // Also clear localStorage to prevent stale data
+  try {
+    localStorage.removeItem(LOCAL_CACHE_KEY);
+  } catch { /* ignore */ }
 };
 
 // Add debt
@@ -251,8 +293,11 @@ export const addDebtCloud = async (
     };
     addToQueue('debt', row, 10);
     const local = toDebt({ ...row, user_id: '', created_at: nowIso, updated_at: nowIso } as CloudDebt);
-    const list = [local, ...(debtsCache || loadDebtsLocally() || [])];
-    debtsCache = list; cacheTimestamp = Date.now(); saveDebtsLocally(list);
+    const list = [local, ...(debtsCache || (cashierId ? loadDebtsLocally(cashierId) : null) || [])];
+    debtsCache = list; 
+    cacheUserId = cashierId;
+    cacheTimestamp = Date.now(); 
+    if (cashierId) saveDebtsLocally(list, cashierId);
     emitEvent(EVENTS.DEBTS_UPDATED, null);
     return local;
   }
@@ -311,14 +356,18 @@ export const recordPaymentCloud = async (
   const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const amt = Math.round(amount * 100) / 100;
   const queuePayment = (): Debt | null => {
+    const userId = getCurrentUserId();
     addToQueue('debt_payment', { debtId, amount: amt, operationId: opId }, 10);
-    const list = (debtsCache || loadDebtsLocally() || []).map(d => {
+    const list = (debtsCache || (userId ? loadDebtsLocally(userId) : null) || []).map(d => {
       if (d.id !== debtId) return d;
       const totalPaid = Math.round((d.totalPaid + amt) * 100) / 100;
       const remainingDebt = Math.max(0, Math.round((d.totalDebt - totalPaid) * 100) / 100);
       return { ...d, totalPaid, remainingDebt, status: (remainingDebt <= 0 ? 'fully_paid' : 'partially_paid') as DebtStatus };
     });
-    debtsCache = list; cacheTimestamp = Date.now(); saveDebtsLocally(list);
+    debtsCache = list; 
+    cacheUserId = userId;
+    cacheTimestamp = Date.now(); 
+    if (userId) saveDebtsLocally(list, userId);
     emitEvent(EVENTS.DEBTS_UPDATED, null);
     return list.find(d => d.id === debtId) || null;
   };
