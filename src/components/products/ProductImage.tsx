@@ -1,10 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
 import { getSignedImageUrl } from '@/lib/image-upload';
-import {
-  getCachedProductImage,
-  fetchAndCacheProductImage
-} from '@/lib/offline-image-store';
+import { getCachedProductImage } from '@/lib/offline-image-store';
 import { cn } from '@/lib/utils';
 
 interface ProductImageProps {
@@ -18,20 +15,29 @@ interface ProductImageProps {
 const memoryCache = new Map<string, string>();
 
 /**
- * مكون مشترك لعرض صور المنتجات باستراتيجية Offline-First Persistent Cache:
- * 1. إذا كانت الصورة Base64 (data:) أو Blob محلي، تُعرض فوراً.
- * 2. إذا كانت الصورة محفوظة مسبقاً في IndexedDB، تُعرض فوراً حتى لو كان الجهاز بدون إنترنت كلياً.
- * 3. إذا لم تكن مخزنة محلياً وكان الإنترنت متاحاً:
- *    - يتم التحميل الكسول (Lazy Loading) عند ظهور البطاقة في الشاشة عبر IntersectionObserver.
- *    - يتم طلب الرابط الموقع من السحابة وعرضه للمستخدم فوراً.
- *    - يتم تحميل الصورة في الخلفية وحفظها كـ Base64 في IndexedDB للاستخدام أوفلاين لاحقاً.
- * 4. في حال عدم وجود إنترنت وفشل جلب الصورة، يتم إظهار الأيقونة البديلة بنعومة دون تعطيل الواجهة.
+ * مكون مشترك لعرض صور المنتجات باستراتيجية Offline-First:
+ * 1. إذا كانت الصورة Base64 (data:) أو Blob محلي أو رابط http مباشر → تُعرض فوراً.
+ * 2. إذا كانت في كاش الذاكرة الحية (memoryCache) → تُعرض فوراً دون أي طلب.
+ * 3. إذا كانت مسار تخزين (storage path):
+ *    - يُفحص IndexedDB أولاً → إذا وُجدت تُعرض فوراً حتى بدون إنترنت.
+ *    - إذا لم توجد، ينتظر ظهور العنصر في الشاشة (IntersectionObserver).
+ *    - يطلب رابطاً موقّعاً من السحابة بمهلة زمنية قصيرة ويعرضه فوراً.
+ * 4. عند فشل أي رابط خارجي، يُراجع IndexedDB كـ fallback قبل إظهار أيقونة الخطأ.
+ *
+ * ملاحظة: حفظ الصور في IndexedDB يتم فقط عند رفعها (image-upload.ts)،
+ * وليس عند كل عرض، لتجنب طلبات HTTP و setState مضاعفة.
  */
 export function ProductImage({ imageUrl, alt, className, iconClassName }: ProductImageProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(() => {
     if (!imageUrl) return null;
+    // 1. فحص كاش الذاكرة الحية أولاً
     if (memoryCache.has(imageUrl)) return memoryCache.get(imageUrl)!;
-    if (imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')) {
+    // 2. الروابط المباشرة وملفات البيانات تُعرض فوراً
+    if (
+      imageUrl.startsWith('data:') ||
+      imageUrl.startsWith('blob:') ||
+      imageUrl.startsWith('http')
+    ) {
       memoryCache.set(imageUrl, imageUrl);
       return imageUrl;
     }
@@ -42,7 +48,7 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // الخطوة 1: فحص الكاش الدائم (IndexedDB) أولاً قبل أي طلب شبكة
+  // الخطوة 1: فحص IndexedDB للمسارات السحابية فقط (قبل أي طلب شبكة)
   useEffect(() => {
     if (!imageUrl) {
       setResolvedUrl(null);
@@ -50,8 +56,12 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       return;
     }
 
-    // إذا كانت الصورة أصلاً base64 أو blob، فهي محلية بالكامل
-    if (imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')) {
+    // الروابط المباشرة وملفات البيانات لا تحتاج لفحص IndexedDB
+    if (
+      imageUrl.startsWith('data:') ||
+      imageUrl.startsWith('blob:') ||
+      imageUrl.startsWith('http')
+    ) {
       memoryCache.set(imageUrl, imageUrl);
       setResolvedUrl(imageUrl);
       setError(false);
@@ -65,9 +75,8 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       return;
     }
 
+    // مسار تخزين سحابي: نفحص IndexedDB مرة واحدة فقط
     let isMounted = true;
-
-    // استرجاع الصورة من IndexedDB
     getCachedProductImage(imageUrl).then((cached) => {
       if (!isMounted) return;
       if (cached) {
@@ -82,7 +91,7 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
     };
   }, [imageUrl]);
 
-  // الخطوة 2: مراقبة ظهور العنصر داخل إطار الرؤية (IntersectionObserver) للصور غير المخزنة
+  // الخطوة 2: مراقبة ظهور العنصر في الشاشة للصور غير المخزنة محلياً
   useEffect(() => {
     if (!imageUrl || resolvedUrl) return;
 
@@ -100,7 +109,7 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
         }
       },
       {
-        rootMargin: '150px', // تحميل مسبق خفيف قبل الوصول للعنصر
+        rootMargin: '100px',
       }
     );
 
@@ -113,13 +122,13 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
     };
   }, [imageUrl, resolvedUrl]);
 
-  // الخطوة 3: طلب الصورة وتخزينها محلياً فقط بعد التأكد من عدم وجودها محلياً وظهورها في الشاشة
+  // الخطوة 3: جلب الرابط الموقّع من السحابة بعد ظهور العنصر في الشاشة
   useEffect(() => {
     if (!imageUrl || !isVisible || resolvedUrl) return;
 
     let cancelled = false;
 
-    // إذا كان الجهاز غير متصل بالإنترنت ولم تكن الصورة في الكاش
+    // الجهاز غير متصل ولا توجد نسخة محلية
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setError(true);
       return;
@@ -127,53 +136,27 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
 
     const loadImage = async () => {
       try {
-        // فحص أخير في الكاش
-        const cached = await getCachedProductImage(imageUrl);
+        // مهلة زمنية قصيرة (ثانيتان) لتفادي تعليق الواجهة
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Image sign timeout')), 2000)
+        );
+
+        const targetUrl = await Promise.race([
+          getSignedImageUrl(imageUrl),
+          timeoutPromise,
+        ]);
+
         if (cancelled) return;
-        if (cached) {
-          memoryCache.set(imageUrl, cached);
-          setResolvedUrl(cached);
+
+        if (targetUrl) {
+          memoryCache.set(imageUrl, targetUrl);
+          setResolvedUrl(targetUrl);
           setError(false);
-          return;
-        }
-
-        // جلب الرابط الموقع من السحابة أو استخدام الرابط المباشر
-        let targetUrl: string | null = null;
-        if (imageUrl.startsWith('http')) {
-          targetUrl = imageUrl;
         } else {
-          // مهلة زمنية قصيرة (ثانيتان ونصف) لتفادي تعليق الواجهة
-          const timeoutPromise = new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error('Image sign timeout')), 2500)
-          );
-          targetUrl = await Promise.race([getSignedImageUrl(imageUrl), timeoutPromise]);
-        }
-
-        if (cancelled) return;
-
-        if (!targetUrl) {
           setError(true);
-          return;
         }
-
-        // عرض الرابط الموقع فوراً للمستخدم لعدم انتظار حفظ الـ Blob
-        setResolvedUrl(targetUrl);
-        memoryCache.set(imageUrl, targetUrl);
-        setError(false);
-
-        // تحميل الـ Blob وحفظه في IndexedDB بصيغة Base64 للاستخدام أوفلاين لاحقاً
-        fetchAndCacheProductImage(imageUrl, targetUrl).then((base64Data) => {
-          if (base64Data && !cancelled) {
-            memoryCache.set(imageUrl, base64Data);
-            setResolvedUrl(base64Data);
-          }
-        }).catch(() => {
-          // في حال فشل حفظ الـ Blob، يبقى الرابط الموقع معروضاً للمستخدم
-        });
-
-      } catch (err) {
+      } catch {
         if (!cancelled) {
-          console.warn('[ProductImage] Failed to resolve image:', imageUrl, err);
           setError(true);
         }
       }
@@ -190,9 +173,9 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
     return (
       <div
         ref={containerRef}
-        className={cn("flex items-center justify-center bg-muted/50 transition-colors", className)}
+        className={cn('flex items-center justify-center bg-muted/50 transition-colors', className)}
       >
-        <Package className={cn("text-muted-foreground/40", iconClassName || "w-6 h-6")} />
+        <Package className={cn('text-muted-foreground/40', iconClassName || 'w-6 h-6')} />
       </div>
     );
   }
@@ -203,11 +186,12 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       alt={alt}
       loading="lazy"
       decoding="async"
-      className={cn("object-cover", className)}
+      className={cn('object-cover', className)}
       onError={() => {
-        // إذا فشل رابط خارجي، نحاول فحص IndexedDB مرة ثانية قبل الاستسلام للخطأ
+        // إذا انتهت صلاحية الرابط الموقّع، نُراجع IndexedDB كـ fallback
         getCachedProductImage(imageUrl).then((fallback) => {
           if (fallback) {
+            memoryCache.set(imageUrl, fallback);
             setResolvedUrl(fallback);
           } else {
             setError(true);
