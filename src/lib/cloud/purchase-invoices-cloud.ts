@@ -286,13 +286,14 @@
               .single();
   
             if (product) {
-              const oldQty = product.quantity || 0;
-              const oldCost = Number(product.cost_price) || 0;
-              const newQuantity = oldQty + item.quantity;
-              // Weighted Average Cost: blend old inventory cost with newly-purchased cost
-              const avgCost = newQuantity > 0 && item.quantity > 0
-                ? Math.round(((oldQty * oldCost) + (item.quantity * item.cost_price)) / newQuantity * 100) / 100
-                : (item.cost_price ?? oldCost);
+              // ⚖️ الكمية والتكلفة (المتوسط المرجح) تُحسب ذرياً في الخادم — المخزون السالب يُغطّى بسعر الشراء الجديد أولاً
+              const { error: wacErr } = await (supabase as any).rpc('receive_stock_wac', {
+                _product_id: item.product_id,
+                _quantity: item.quantity,
+                _unit_cost: item.cost_price || 0,
+                _reference: `purchase_invoice:${invoice.invoice_number}`,
+              });
+              if (wacErr) throw wacErr;
               const purchaseHistory = Array.isArray(product.purchase_history) 
                 ? product.purchase_history 
                 : [];
@@ -309,11 +310,7 @@
   
               await supabase
                 .from('products')
-                .update({
-                  quantity: newQuantity,
-                  cost_price: avgCost,
-                  purchase_history: purchaseHistory
-                })
+                .update({ purchase_history: purchaseHistory })
                 .eq('id', item.product_id);
             }
           }

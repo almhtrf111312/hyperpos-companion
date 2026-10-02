@@ -40,6 +40,17 @@ export interface AtomicSaleResult {
   alreadyProcessed: boolean;
   invoiceId: string;
   invoiceNumber: string;
+  /** القيم المعتمدة من الخادم (بالدولار) — مصدر الحقيقة بعد المزامنة */
+  subtotal: number;
+  discount: number;
+  taxAmount: number;
+  total: number;
+  cogs: number;
+  profit: number;
+  debtPaid: number;
+  debtRemaining: number;
+  /** البيع تجاوز المخزون المتاح (عجز مسجّل، لم يُوقف الفاتورة) */
+  stockShortage: boolean;
 }
 
 /**
@@ -128,11 +139,24 @@ export async function processPosSaleAtomic(
     emitEvent(EVENTS.INVOICES_UPDATED, null);
     if (paymentType === 'debt') emitEvent(EVENTS.DEBTS_UPDATED, null);
 
+    if (row.stock_shortage) {
+      console.warn('[AtomicSale] Sale synced with stock shortage (negative stock recorded):', row.invoice_number);
+    }
+
     return {
       success: true,
       alreadyProcessed: Boolean(row.already_processed),
       invoiceId: row.invoice_id,
       invoiceNumber: row.invoice_number,
+      subtotal: Number(row.subtotal) || 0,
+      discount: Number(row.discount) || 0,
+      taxAmount: Number(row.tax_amount) || 0,
+      total: Number(row.total) || 0,
+      cogs: Number(row.cogs) || 0,
+      profit: Number(row.profit) || 0,
+      debtPaid: Number(row.debt_paid) || 0,
+      debtRemaining: Number(row.debt_remaining) || 0,
+      stockShortage: Boolean(row.stock_shortage),
     };
   } catch (rpcError) {
     // ⚠️ تم تعطيل الإدراج البديل المباشر: كان يحفظ الفاتورة بدون خصم مخزون

@@ -167,8 +167,10 @@ export async function processDebtSaleWithOfflineSupport(
     
     // Step 6: Record profit
     if (!sale.alreadyProcessed) {
-      addGrossProfit(sale.invoiceNumber, bundle.profit, bundle.cogs, bundle.total);
-      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: bundle.profit, cogs: bundle.cogs, revenue: bundle.total }).catch(() => {});
+      // ✅ أرقام الخادم هي المعتمدة (التكلفة من جدول المنتجات، الضريبة خارج الربح)
+      const revenue = Math.round((sale.total - sale.taxAmount) * 100) / 100;
+      addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue);
+      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue }).catch(() => {});
     }
     
     // Step 7: Distribute to partners - ✅ استخدام Cloud API
