@@ -19,7 +19,7 @@ import {
   Wrench,
   Printer
 } from 'lucide-react';
-import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime, escapeHtml } from '@/lib/utils';
 import { printHTML, getStoreSettings } from '@/lib/native-print';
 import { loadDebtsCloud, Debt } from '@/lib/cloud/debts-cloud';
 import { Button } from '@/components/ui/button';
@@ -338,13 +338,13 @@ export default function Customers() {
 
     const rowsHtml = statementRows.map(row => `
       <tr style="border-bottom: 1px solid #e2e8f0;">
-        <td style="padding: 8px 10px; font-family: monospace; font-size: 12px;">${row.id}</td>
+        <td style="padding: 8px 10px; font-family: monospace; font-size: 12px;">${escapeHtml(row.id)}</td>
         <td style="padding: 8px 10px; font-size: 12px;">${new Date(row.date).toLocaleDateString('ar-SA')}</td>
-        <td style="padding: 8px 10px; font-size: 12px;">${row.type}</td>
+        <td style="padding: 8px 10px; font-size: 12px;">${escapeHtml(row.type)}</td>
         <td style="padding: 8px 10px; font-size: 12px; font-weight: bold; text-align: left;">$${formatNumber(row.total)}</td>
         <td style="padding: 8px 10px; font-size: 12px; color: #16a34a; text-align: left;">$${formatNumber(row.paid)}</td>
         <td style="padding: 8px 10px; font-size: 12px; color: ${row.remaining > 0 ? '#dc2626' : '#16a34a'}; font-weight: bold; text-align: left;">$${formatNumber(row.remaining)}</td>
-        <td style="padding: 8px 10px; font-size: 12px; text-align: center;">${row.status}</td>
+        <td style="padding: 8px 10px; font-size: 12px; text-align: center;">${escapeHtml(row.status)}</td>
       </tr>
     `).join('');
 
@@ -353,7 +353,7 @@ export default function Customers() {
       <html dir="rtl" lang="ar">
       <head>
         <meta charset="utf-8">
-        <title>كشف حساب - ${selectedCustomer.name}</title>
+        <title>كشف حساب - ${escapeHtml(selectedCustomer.name)}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif; margin: 20px; color: #1e293b; line-height: 1.5; }
           .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
@@ -371,15 +371,15 @@ export default function Customers() {
       </head>
       <body>
         <div class="header">
-          <div class="store-name">${store.name || 'FlowPOS'}</div>
-          ${store.phone ? `<div>هاتف المتجر: ${store.phone}</div>` : ''}
+          <div class="store-name">${escapeHtml(store.name || 'FlowPOS')}</div>
+          ${store.phone ? `<div>هاتف المتجر: ${escapeHtml(store.phone)}</div>` : ''}
           <div class="doc-title">كشف حساب عميل تفصيلي</div>
         </div>
 
         <div class="cust-info">
           <div>
-            <strong>اسم العميل:</strong> ${selectedCustomer.name}<br>
-            <strong>رقم الهاتف:</strong> ${selectedCustomer.phone}
+            <strong>اسم العميل:</strong> ${escapeHtml(selectedCustomer.name)}<br>
+            <strong>رقم الهاتف:</strong> ${escapeHtml(selectedCustomer.phone)}
           </div>
           <div style="text-align: left;">
             <strong>تاريخ الإصدار:</strong> ${new Date().toLocaleDateString('ar-SA')}<br>
@@ -439,7 +439,7 @@ export default function Customers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('nav.customersAndDebts' as any)}</h1>
+          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('nav.customersAndDebts' as string)}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>
         </div>
         {activeTab === 'customers' ? (
@@ -461,8 +461,8 @@ export default function Customers() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full md:w-auto">
-          <TabsTrigger value="customers" className="flex-1 md:flex-none">{t('customers.tabCustomers' as any)}</TabsTrigger>
-          <TabsTrigger value="debts" className="flex-1 md:flex-none">{t('customers.tabDebts' as any)}</TabsTrigger>
+          <TabsTrigger value="customers" className="flex-1 md:flex-none">{t('customers.tabCustomers' as string)}</TabsTrigger>
+          <TabsTrigger value="debts" className="flex-1 md:flex-none">{t('customers.tabDebts' as string)}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="customers">

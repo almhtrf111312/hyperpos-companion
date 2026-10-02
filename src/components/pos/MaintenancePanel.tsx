@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatNumber, formatCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, escapeHtml } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -355,7 +355,9 @@ export function MaintenancePanel({
         storePhone = settings.storeSettings?.phone || '';
         footer = settings.printSettings?.footer || footer;
       }
-    } catch { }
+    } catch {
+      // Ignore settings load errors
+    }
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');

@@ -65,7 +65,7 @@ import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
 import { printHTML } from '@/lib/native-print';
 import { checkNotificationPermissionNative, requestNotificationPermissionNative, sendLocalNotification } from '@/lib/native-notifications';
-import { cn, formatDateTime } from '@/lib/utils';
+import { cn, formatDateTime, escapeHtml } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -1313,7 +1313,7 @@ export default function Settings() {
         <html dir="rtl" lang="ar">
         <head>
           <meta charset="UTF-8">
-          <title>فحص الطابعة - ${storeName}</title>
+          <title>فحص الطابعة - ${escapeHtml(storeName)}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', system-ui, sans-serif; }
             body { width: ${paperSize === '58mm' ? '54mm' : paperSize === 'A4' ? '210mm' : '76mm'}; margin: 0 auto; padding: 8px; font-size: 12px; color: #000; }
@@ -1330,15 +1330,15 @@ export default function Settings() {
         </head>
         <body>
           <div class="header">
-            <div class="title">${storeName}</div>
-            ${storeAddress ? '<div>' + storeAddress + '</div>' : ''}
-            ${storePhone ? '<div>هاتف: ' + storePhone + '</div>' : ''}
+            <div class="title">${escapeHtml(storeName)}</div>
+            ${storeAddress ? '<div>' + escapeHtml(storeAddress) + '</div>' : ''}
+            ${storePhone ? '<div>هاتف: ' + escapeHtml(storePhone) + '</div>' : ''}
             <div class="badge">تجربة فحص الطابعة / TEST PRINT</div>
           </div>
           <div class="info-row"><span>التاريخ:</span><span>${dateStr}</span></div>
           <div class="info-row"><span>الوقت:</span><span>${timeStr}</span></div>
-          <div class="info-row"><span>مقاس الورق:</span><span>${paperSize}</span></div>
-          <div class="info-row"><span>عدد النسخ:</span><span>${copies}</span></div>
+          <div class="info-row"><span>مقاس الورق:</span><span>${escapeHtml(paperSize)}</span></div>
+          <div class="info-row"><span>عدد النسخ:</span><span>${escapeHtml(copies)}</span></div>
           <table>
             <thead>
               <tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr>
@@ -1352,7 +1352,7 @@ export default function Settings() {
             الإجمالي التجريبي: $30.00
           </div>
           <div class="footer">
-            <p>${footer}</p>
+            <p>${escapeHtml(footer)}</p>
             <p style="margin-top: 4px; font-size: 9px; color: #888;">FlowPOS Pro • فحص استجابة الطابعة ناجح</p>
           </div>
         </body>

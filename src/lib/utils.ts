@@ -5,6 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Escape HTML special characters to prevent XSS attacks
+ * Used when inserting user-controlled data into HTML contexts
+ */
+export function escapeHtml(unsafe: string | null | undefined): string {
+  if (unsafe == null) return '';
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // ====== Precise Financial Calculations ======
 // Round currency values to exactly 2 decimal places (cents)
 export function roundCurrency(amount: number): number {

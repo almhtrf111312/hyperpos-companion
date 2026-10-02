@@ -58,7 +58,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency, escapeHtml } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
@@ -156,7 +156,9 @@ export default function Invoices() {
           SYP: Number(settings.exchangeRates?.SYP) || 14500,
         };
       }
-    } catch {}
+    } catch {
+      // Ignore settings load errors
+    }
     return { TRY: 34, SYP: 14500 };
   }, []);
 
@@ -430,7 +432,7 @@ export default function Invoices() {
           invalidateProductsCache();
           refreshProductsFromCloud().then(() => {
             // Notify listeners that products updated
-            emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as any, null);
+            emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as string, null);
           }).catch(() => {});
         } catch (e) { /* noop */ }
 
@@ -573,7 +575,7 @@ export default function Invoices() {
       try {
         invalidateProductsCache();
         refreshProductsFromCloud().then(() => {
-          emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as any, null);
+          emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as string, null);
         }).catch(() => {});
       } catch (e) { /* noop */ }
 
@@ -747,7 +749,7 @@ export default function Invoices() {
       // إضافة المبلغ للصندوق وتحديث الوردية
       processDebtPayment(
         finalPaymentUSD,
-        (selectedDebtForPayment as any).customerId,
+        undefined,
         user?.id,
         profile?.full_name || user?.email || 'مستخدم',
         paymentCurrency,
@@ -1162,7 +1164,7 @@ export default function Invoices() {
         </button>
       </div>
 
-      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
+      <Tabs value={activeMainTab} onValueChange={(val: string) => setActiveMainTab(val as 'sales' | 'purchases')} className="w-full space-y-6">
         <TabsContent value="sales" className="space-y-3 m-0">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
