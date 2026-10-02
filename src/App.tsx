@@ -89,6 +89,19 @@ const AppContent = () => {
   useEffect(() => {
     saveLastRoute(location.pathname + location.search);
   }, [location]);
+
+  // تفريغ السلة من التخزين المحلي عند تشغيل التطبيق بالكامل (Cold Start)
+  useEffect(() => {
+    try {
+      localStorage.removeItem('hyperpos_temp_cart');
+      localStorage.removeItem('hyperpos_cart_open');
+      localStorage.removeItem('hyperpos_cart_customer');
+      localStorage.removeItem('hyperpos_cart_discount');
+    } catch (e) {
+      console.warn('[App] Failed to clear cart storage on startup:', e);
+    }
+  }, []);
+
   const isSafeMode = searchParams.get('safe') === '1';
   const isDebugClick = searchParams.get('debugclick') === '1';
   const isReset = searchParams.get('reset') === '1';

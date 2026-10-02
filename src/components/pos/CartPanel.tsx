@@ -466,7 +466,12 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
+    // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     setShowCashDialog(false);
+    onClose?.();
+    saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash');
+    onClearCart();
+    showToast.info('جاري المعالجة والمزامنة...');
     startSync('جاري حفظ الفاتورة...', false);
 
     try {
@@ -609,22 +614,25 @@ export function CartPanel({
       );
       recordActivity();
 
-      // ✅ إغلاق الواجهة فوراً (< 100ms من الضغط على "بيع")
-      saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash');
-      onClearCart();
       playSaleComplete();
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
-      showToast.success('تم حفظ الفاتورة ✓');
 
       // ✅ مزامنة فورية في الخلفية (بدون انتظار المستخدم)
       if (isOnline) {
         syncImmediately();
       }
 
+      // تأخير ظهور الإشعار النهائي (النجاح) لانتهاء المزامنة الفعلية
+      setTimeout(() => {
+        showToast.success('تم حفظ الفاتورة ✓');
+      }, 3500);
+
     } catch (error) {
       console.error('Cash sale error:', error);
       failSync('حدث خطأ - الفاتورة محفوظة محلياً');
-      showToast.warning('تم حفظ الفاتورة أوفلاين - سيتم رفعها تلقائياً');
+      setTimeout(() => {
+        showToast.warning('تم حفظ الفاتورة أوفلاين - سيتم رفعها تلقائياً');
+      }, 3500);
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -656,8 +664,19 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
+    // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     setShowDebtDialog(false);
     setShowSplitDialog(false);
+    onClose?.();
+    saveSaleSnapshot(
+      cartSnapshot,
+      customerNameSnapshot,
+      downPaymentSnapshot > 0 ? 'split' : 'debt',
+      downPaymentSnapshot,
+      debtRemainingSnapshot
+    );
+    onClearCart();
+    showToast.info('جاري المعالجة والمزامنة...');
     startSync(
       downPaymentSnapshot > 0 
         ? 'جاري حفظ البيع المركب...' 
@@ -832,36 +851,33 @@ export function CartPanel({
 
       }
 
-      // ✅ إغلاق الواجهة فوراً
-      saveSaleSnapshot(
-        cartSnapshot,
-        customerNameSnapshot,
-        downPaymentSnapshot > 0 ? 'split' : 'debt',
-        downPaymentSnapshot,
-        debtRemainingSnapshot
-      );
-      onClearCart();
       if (downPaymentSnapshot > 0) {
         playSaleComplete();
       } else {
         playDebtRecorded();
       }
       completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
-      if (downPaymentSnapshot > 0) {
-        showToast.success(`تم حفظ البيع المركب بنجاح ✓ (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)})`);
-      } else {
-        showToast.success('تم حفظ فاتورة البيع المؤجل ✓');
-      }
 
       // ✅ مزامنة فورية في الخلفية
       if (isOnline) {
         syncImmediately();
       }
 
+      // تأخير ظهور الإشعار النهائي لانتهاء المزامنة الفعلية
+      setTimeout(() => {
+        if (downPaymentSnapshot > 0) {
+          showToast.success(`تم حفظ البيع المركب بنجاح ✓ (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)})`);
+        } else {
+          showToast.success('تم حفظ فاتورة البيع المؤجل ✓');
+        }
+      }, 3500);
+
     } catch (error) {
       console.error('Debt sale error:', error);
       failSync('حدث خطأ - الفاتورة محفوظة محلياً');
-      showToast.warning('تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
+      setTimeout(() => {
+        showToast.warning('تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
+      }, 3500);
     } finally {
       savingRef.current = false;
       setIsSaving(false);
