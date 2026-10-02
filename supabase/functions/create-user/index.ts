@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     }
 
     // Get user data from request body
-    const { email, password, fullName, role, userType, phone, allowedPages } = await req.json();
+    const { email, password, fullName, role, userType, phone, allowedPages, callerPassword } = await req.json();
     
     if (!email || !password) {
       return new Response(
@@ -83,6 +83,51 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Password must be at least 6 characters" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // CRITICAL SECURITY: Require server-side reauthentication when creating admin accounts
+    // This prevents session hijacking attacks from creating persistent privileged accounts
+    const requestedRole = role || 'cashier';
+    if (requestedRole === 'admin' || (isBoss && requestedRole !== 'cashier')) {
+      // Creating an admin account requires password verification
+      if (!callerPassword) {
+        return new Response(
+          JSON.stringify({ error: "Caller password required for creating admin accounts" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const callerEmail = currentUser.email;
+      if (!callerEmail) {
+        return new Response(
+          JSON.stringify({ error: "Caller email not found" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Create a temporary client to verify the caller's password
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      });
+
+      const { error: reauthError } = await authClient.auth.signInWithPassword({
+        email: callerEmail,
+        password: callerPassword,
+      });
+
+      if (reauthError) {
+        console.log('Reauthentication failed for caller:', currentUser.id);
+        return new Response(
+          JSON.stringify({ error: "Invalid caller password - reauthentication required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log('Caller reauthenticated successfully for admin creation:', currentUser.id);
     }
 
     console.log('Creating user with email:', email);

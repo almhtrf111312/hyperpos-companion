@@ -66,22 +66,56 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, fullName } = await req.json();
+    const { email, password, fullName, callerPassword } = await req.json();
 
-    if (!email || !password || !fullName) {
+    if (!email || !password || !fullName || !callerPassword) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, password, fullName' }),
+        JSON.stringify({ error: 'Missing required fields: email, password, fullName, callerPassword' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate password length
+    // Validate new account password length
     if (password.length < 6) {
       return new Response(
         JSON.stringify({ error: 'Password must be at least 6 characters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // CRITICAL SECURITY: Require server-side reauthentication before privilege escalation
+    // Verify the caller's current password to prevent session hijacking attacks
+    const callerEmail = userData.user.email;
+    if (!callerEmail) {
+      return new Response(
+        JSON.stringify({ error: 'Caller email not found' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create a temporary client to verify the caller's password
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    const { error: reauthError } = await authClient.auth.signInWithPassword({
+      email: callerEmail,
+      password: callerPassword,
+    });
+
+    if (reauthError) {
+      console.log('Reauthentication failed for caller:', callerUserId);
+      return new Response(
+        JSON.stringify({ error: 'Invalid caller password - reauthentication required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Caller reauthenticated successfully:', callerUserId);
 
     // Create the new user
     const { data: newUser, error: createError } = await serviceClient.auth.admin.createUser({
