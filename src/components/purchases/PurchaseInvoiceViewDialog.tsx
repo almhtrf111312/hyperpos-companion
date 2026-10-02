@@ -27,7 +27,7 @@ import {
   PurchaseInvoice,
   PurchaseInvoiceItem
 } from '@/lib/cloud/purchase-invoices-cloud';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import { formatNumber, formatCurrency, escapeHtml } from '@/lib/utils';
 import { printHTML } from '@/lib/native-print';
 import { toast } from 'sonner';
 import { emitEvent, EVENTS } from '@/lib/events';
@@ -123,8 +123,8 @@ export function PurchaseInvoiceViewDialog({
       <tr>
         <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center;">${idx + 1}</td>
         <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: bold; text-align: right;">
-          ${item.product_name}
-          ${item.barcode ? `<div style="font-size: 10px; color: #64748b; font-family: monospace;">${item.barcode}</div>` : ''}
+          ${escapeHtml(item.product_name)}
+          ${item.barcode ? `<div style="font-size: 10px; color: #64748b; font-family: monospace;">${escapeHtml(item.barcode)}</div>` : ''}
         </td>
         <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center;">${formatNumber(item.quantity)}</td>
         <td style="padding: 8px 6px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center;">${formatCurrency(item.cost_price)}</td>
@@ -137,7 +137,7 @@ export function PurchaseInvoiceViewDialog({
       <html dir="rtl" lang="ar">
         <head>
           <meta charset="utf-8">
-          <title>فاتورة مشتريات #${invoice.invoice_number}</title>
+          <title>فاتورة مشتريات #${escapeHtml(invoice.invoice_number)}</title>
           <style>
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Arabic', sans-serif;
@@ -212,16 +212,16 @@ export function PurchaseInvoiceViewDialog({
         <body>
           <div class="header">
             <div>
-              <div class="store-title">${storeName}</div>
-              <div style="font-size: 11px; color: #64748b;">${storeAddress} ${storePhone ? `• هاتف: ${storePhone}` : ''}</div>
+              <div class="store-title">${escapeHtml(storeName)}</div>
+              <div style="font-size: 11px; color: #64748b;">${escapeHtml(storeAddress)} ${storePhone ? `• هاتف: ${escapeHtml(storePhone)}` : ''}</div>
             </div>
             <div class="inv-badge">
-              فاتورة مشتريات #${invoice.invoice_number}
+              فاتورة مشتريات #${escapeHtml(invoice.invoice_number)}
             </div>
           </div>
 
           <div class="info-grid">
-            <div><strong>المورد:</strong> ${invoice.supplier_name} ${invoice.supplier_company ? `(${invoice.supplier_company})` : ''}</div>
+            <div><strong>المورد:</strong> ${escapeHtml(invoice.supplier_name)} ${invoice.supplier_company ? `(${escapeHtml(invoice.supplier_company)})` : ''}</div>
             <div><strong>تاريخ الفاتورة:</strong> ${invoice.invoice_date}</div>
             <div><strong>الحالة:</strong> ${invoice.status === 'finalized' ? 'مؤكدة (تم إدخالها للمخزون)' : 'مسودة'}</div>
             <div><strong>عدد الأصناف:</strong> ${items.length} صنف (إجمالي ${formatNumber(totalQty)} قطعة)</div>
@@ -247,7 +247,7 @@ export function PurchaseInvoiceViewDialog({
             <span>${formatCurrency(grandTotal)}</span>
           </div>
 
-          ${invoice.notes ? `<div class="notes"><strong>ملاحظات:</strong> ${invoice.notes}</div>` : ''}
+          ${invoice.notes ? `<div class="notes"><strong>ملاحظات:</strong> ${escapeHtml(invoice.notes)}</div>` : ''}
         </body>
       </html>
     `;

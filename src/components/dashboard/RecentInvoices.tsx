@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy, FileX, Loader2 } from 'lucide-react';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, escapeHtml } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -78,7 +78,7 @@ export function RecentInvoices() {
       <html dir="rtl">
         <head>
           <meta charset="UTF-8">
-          <title>فاتورة ${invoice.id}</title>
+          <title>فاتورة ${escapeHtml(invoice.id)}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
@@ -100,32 +100,32 @@ export function RecentInvoices() {
         </head>
         <body>
           <div class="header">
-            ${printSettings.showLogo && storeSettings.logo ? `<img src="${storeSettings.logo}" alt="شعار المحل" class="logo" />` : ''}
-            <div class="store-name">${storeSettings.name}</div>
-            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${storeSettings.address}</div>` : ''}
-            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
+            ${printSettings.showLogo && storeSettings.logo ? `<img src="${escapeHtml(storeSettings.logo)}" alt="شعار المحل" class="logo" />` : ''}
+            <div class="store-name">${escapeHtml(storeSettings.name)}</div>
+            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${escapeHtml(storeSettings.address)}</div>` : ''}
+            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${escapeHtml(storeSettings.phone)}</div>` : ''}
           </div>
           <div class="invoice-info">
-            <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
-            <p><strong>العميل:</strong> ${invoice.customerName}</p>
+            <p><strong>رقم الفاتورة:</strong> ${escapeHtml(invoice.id)}</p>
+            <p><strong>العميل:</strong> ${escapeHtml(invoice.customerName)}</p>
             <p><strong>التاريخ:</strong> ${dateStr} - ${timeStr}</p>
             <p><strong>نوع الدفع:</strong> ${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</p>
           </div>
           <div class="items">
             ${invoice.items.map(item => `
               <div class="item">
-                <span class="item-name">${item.name}</span>
+                <span class="item-name">${escapeHtml(item.name)}</span>
                 <span class="item-qty">×${item.quantity}</span>
-                <span class="item-price">${invoice.currencySymbol}${item.total}</span>
+                <span class="item-price">${escapeHtml(invoice.currencySymbol)}${item.total}</span>
               </div>
             `).join('')}
           </div>
-          ${invoice.discount > 0 ? `<div style="text-align: center; color: #666;">خصم: ${invoice.currencySymbol}${invoice.discount}</div>` : ''}
+          ${invoice.discount > 0 ? `<div style="text-align: center; color: #666;">خصم: ${escapeHtml(invoice.currencySymbol)}${invoice.discount}</div>` : ''}
           <div class="total">
-            المجموع: ${invoice.currencySymbol}${formatNumber(invoice.totalInCurrency)}
+            المجموع: ${escapeHtml(invoice.currencySymbol)}${formatNumber(invoice.totalInCurrency)}
           </div>
           <div class="footer">
-            <p>${printSettings.footer}</p>
+            <p>${escapeHtml(printSettings.footer)}</p>
           </div>
         </body>
       </html>

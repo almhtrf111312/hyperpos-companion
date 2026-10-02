@@ -8,7 +8,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { formatNumber } from './utils';
+import { formatNumber, escapeHtml } from './utils';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
 
@@ -92,22 +92,22 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
 
   const itemsHTML = invoice.items.map(item => `
     <tr>
-      <td style="text-align: right; padding: 4px 0; font-size: 12px;">${item.name}</td>
+      <td style="text-align: right; padding: 4px 0; font-size: 12px;">${escapeHtml(item.name)}</td>
       <td style="text-align: center; padding: 4px 0; font-size: 12px;">${item.quantity}</td>
-      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${invoice.currencySymbol}${formatNumber(item.total)}</td>
+      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${escapeHtml(invoice.currencySymbol)}${formatNumber(item.total)}</td>
     </tr>
   `).join('');
 
   const logoHTML = printSettings.showLogo && store.logo
-    ? `<img src="${store.logo}" alt="Logo" style="max-width: 80px; max-height: 80px; margin-bottom: 8px;" />`
+    ? `<img src="${escapeHtml(store.logo)}" alt="Logo" style="max-width: 80px; max-height: 80px; margin-bottom: 8px;" />`
     : '';
 
   const addressHTML = printSettings.showAddress && store.address
-    ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">${store.address}</p>`
+    ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">${escapeHtml(store.address)}</p>`
     : '';
 
   const phoneHTML = printSettings.showPhone && store.phone
-    ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">📞 ${store.phone}</p>`
+    ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">📞 ${escapeHtml(store.phone)}</p>`
     : '';
 
   return `
@@ -210,19 +210,19 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
   <div class="receipt">
     <div class="header">
       ${logoHTML}
-      <div class="store-name">${store.name}</div>
+      <div class="store-name">${escapeHtml(store.name)}</div>
       ${addressHTML}
       ${phoneHTML}
     </div>
 
     <div class="invoice-info">
-      <span>فاتورة: ${invoice.id}</span>
-      <span>${invoice.date}${invoice.time ? ' ' + invoice.time : ''}</span>
+      <span>فاتورة: ${escapeHtml(invoice.id)}</span>
+      <span>${escapeHtml(invoice.date)}${invoice.time ? ' ' + escapeHtml(invoice.time) : ''}</span>
     </div>
 
     <div class="customer-info">
-      <strong>العميل:</strong> ${invoice.customerName || 'عميل نقدي'}
-      ${invoice.customerPhone ? `<br/>الهاتف: ${invoice.customerPhone}` : ''}
+      <strong>العميل:</strong> ${escapeHtml(invoice.customerName || 'عميل نقدي')}
+      ${invoice.customerPhone ? `<br/>الهاتف: ${escapeHtml(invoice.customerPhone)}` : ''}
     </div>
 
     <table class="items-table">
@@ -242,27 +242,27 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
       ${invoice.items.length > 1 ? `
         <div class="total-row">
           <span>المجموع الفرعي:</span>
-          <span>${invoice.currencySymbol}${formatNumber(invoice.subtotal)}</span>
+          <span>${escapeHtml(invoice.currencySymbol)}${formatNumber(invoice.subtotal)}</span>
         </div>
       ` : ''}
       
       ${invoice.discountAmount && invoice.discountAmount > 0 ? `
         <div class="total-row">
           <span>الخصم${invoice.discount ? ` (${invoice.discount}%)` : ''}:</span>
-          <span>-${invoice.currencySymbol}${formatNumber(invoice.discountAmount!)}</span>
+          <span>-${escapeHtml(invoice.currencySymbol)}${formatNumber(invoice.discountAmount!)}</span>
         </div>
       ` : ''}
 
       ${invoice.tax && invoice.tax > 0 ? `
         <div class="total-row">
           <span>الضريبة:</span>
-          <span>${invoice.currencySymbol}${formatNumber(invoice.tax!)}</span>
+          <span>${escapeHtml(invoice.currencySymbol)}${formatNumber(invoice.tax!)}</span>
         </div>
       ` : ''}
 
       <div class="total-row grand-total">
         <span>الإجمالي:</span>
-        <span>${invoice.currencySymbol}${formatNumber(invoice.total)}</span>
+        <span>${escapeHtml(invoice.currencySymbol)}${formatNumber(invoice.total)}</span>
       </div>
 
       <div style="text-align: center; margin-top: 8px;">
@@ -273,7 +273,7 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
     </div>
 
     <div class="footer">
-      ${printSettings.footer}
+      ${escapeHtml(printSettings.footer)}
       <br/>
       <small style="color: #999;">FlowPOS Pro</small>
     </div>
@@ -290,12 +290,12 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
  */
 export async function printHTML(htmlContent: string): Promise<boolean> {
   // 1. إذا كان التطبيق يعمل داخل أندرويد ويدعم واجهة الطباعة الأصلية المباشرة
-  if (typeof window !== 'undefined' && (window as any).AndroidPrinter?.print) {
+  if (typeof window !== 'undefined' && (window as Window & { AndroidPrinter?: { print: () => void } }).AndroidPrinter?.print) {
     try {
       printOnWeb(htmlContent);
       setTimeout(() => {
         try {
-          (window as any).AndroidPrinter.print();
+          (window as Window & { AndroidPrinter?: { print: () => void } }).AndroidPrinter?.print();
         } catch (e) {
           console.warn('[NativePrint] AndroidPrinter.print failed:', e);
         }
@@ -333,6 +333,8 @@ function printOnWeb(htmlContent: string): boolean {
     iframe.style.border = 'none';
     iframe.style.opacity = '0.01';
     iframe.style.pointerEvents = 'none';
+    // Add sandbox attribute to restrict iframe capabilities
+    iframe.setAttribute('sandbox', 'allow-same-origin allow-modals');
     document.body.appendChild(iframe);
 
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -355,7 +357,9 @@ function printOnWeb(htmlContent: string): boolean {
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe);
             }
-          } catch {}
+          } catch {
+            // Ignore cleanup errors
+          }
         }, 3000);
       };
 

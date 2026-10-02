@@ -21,7 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency, clampNumber } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency, clampNumber, escapeHtml } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -609,7 +609,7 @@ export function CartPanel({
         totalSnapshot,
         discountedProfit,
         totalCOGS,
-        (receivedCurrencyCode as any) || 'USD',
+        (receivedCurrencyCode as string) || 'USD',
         receivedAmountSnapshot || (totalSnapshot * (activeReceivedCurrency.rate || 1))
       );
       recordActivity();
@@ -829,7 +829,7 @@ export function CartPanel({
           downPaymentSnapshot,
           downPaymentProfit,
           downPaymentCOGS,
-          (receivedCurrencyCode as any) || 'USD',
+          (receivedCurrencyCode as string) || 'USD',
           downPaymentSnapshot * (activeReceivedCurrency.rate || 1)
         );
       }
@@ -1036,7 +1036,9 @@ export function CartPanel({
         storeLogo = settings.storeSettings?.logo || '';
         footer = settings.printSettings?.footer || footer;
       }
-    } catch { }
+    } catch {
+      // Ignore settings load errors
+    }
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const currentTime = new Date().toLocaleTimeString('ar-SA');
@@ -1047,12 +1049,12 @@ export function CartPanel({
     const itemsHtml = printCart.map(item => `
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">
-          ${item.name}
-          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">الصلاحية: ${item.expiryDate}</small>` : ''}
-          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">الدفعة: ${item.batchNumber}</small>` : ''}
+          ${escapeHtml(item.name)}
+          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">الصلاحية: ${escapeHtml(item.expiryDate)}</small>` : ''}
+          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">الدفعة: ${escapeHtml(item.batchNumber)}</small>` : ''}
         </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${printCurrency.symbol}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${escapeHtml(printCurrency.symbol)}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
       </tr>
     `).join('');
 
@@ -1080,14 +1082,14 @@ export function CartPanel({
         </head>
         <body>
           <div class="header">
-            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" />` : ''}
-            <div class="store-name">${storeName}</div>
-            ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
-            ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+            ${storeLogo ? `<img src="${escapeHtml(storeLogo)}" alt="شعار" class="logo" />` : ''}
+            <div class="store-name">${escapeHtml(storeName)}</div>
+            ${storeAddress ? `<div class="store-info">${escapeHtml(storeAddress)}</div>` : ''}
+            ${storePhone ? `<div class="store-info">${escapeHtml(storePhone)}</div>` : ''}
           </div>
           <div class="invoice-info">
             <div><strong>التاريخ:</strong> ${currentDate} - ${currentTime}</div>
-            <div><strong>العميل:</strong> ${printCustomerName || 'عميل نقدي'}</div>
+            <div><strong>العميل:</strong> ${escapeHtml(printCustomerName || 'عميل نقدي')}</div>
           </div>
           <table>
             <thead>
@@ -1099,18 +1101,18 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${printDiscount > 0 ? `<div style="text-align: left; color: #c00;">خصم: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
+          ${printDiscount > 0 ? `<div style="text-align: left; color: #c00;">خصم: -${escapeHtml(printCurrency.symbol)}${formatNumber(printDiscountAmount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${printCurrency.symbol}${formatNumber(printTotalInCurrency)}
+            الإجمالي: ${escapeHtml(printCurrency.symbol)}${formatNumber(printTotalInCurrency)}
           </div>
           ${data?.paymentType === 'split' && data?.downPayment ? `
             <div style="margin-top: 8px; font-size: 0.9em; text-align: center; border-top: 1px dashed #333; padding-top: 6px;">
               <div>طريقة الدفع: <strong>بيع مركب</strong></div>
-              <div>المقبوض نقداً: <strong>${printCurrency.symbol}${formatNumber(roundCurrency(data.downPayment * printCurrency.rate))}</strong></div>
-              <div style="color: #c00;">المتبقي كدين: <strong>${printCurrency.symbol}${formatNumber(roundCurrency((data.debtRemaining || 0) * printCurrency.rate))}</strong></div>
+              <div>المقبوض نقداً: <strong>${escapeHtml(printCurrency.symbol)}${formatNumber(roundCurrency(data.downPayment * printCurrency.rate))}</strong></div>
+              <div style="color: #c00;">المتبقي كدين: <strong>${escapeHtml(printCurrency.symbol)}${formatNumber(roundCurrency((data.debtRemaining || 0) * printCurrency.rate))}</strong></div>
             </div>
           ` : ''}
-          <div class="footer">${footer}</div>
+          <div class="footer">${escapeHtml(footer)}</div>
         </body>
       </html>
     `;

@@ -60,7 +60,7 @@ export function getPrintSettings(): PrintSettings {
  */
 export function printHTML(htmlContent: string): void {
   // على Capacitor/Android استخدم native-print
-  if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) {
+  if (typeof window !== 'undefined' && (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()) {
     import('./native-print').then(mod => mod.printHTML(htmlContent));
     return;
   }
@@ -73,6 +73,8 @@ export function printHTML(htmlContent: string): void {
   iframe.style.width = '80mm';
   iframe.style.height = '0';
   iframe.style.border = 'none';
+  // Add sandbox attribute to restrict iframe capabilities
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-modals');
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
