@@ -713,18 +713,6 @@ export const clearProductsLocalCache = () => {
   }
 };
 
-// ✅ Local-first: returns immediately from IndexedDB / localStorage cache (no network)
-export const loadProductsLocalFirst = async (): Promise<Product[]> => {
-  if (productsCache && productsCache.length > 0) return productsCache;
-  const local = await loadFromLocalCache();
-  if (local && local.length > 0) {
-    productsCache = local;
-    cacheTimestamp = Date.now();
-    return local;
-  }
-  return [];
-};
-
 // ✅ Refresh products from cloud in background (non-blocking)
 export const refreshProductsFromCloud = async (): Promise<Product[]> => {
   if (!navigator.onLine) return productsCache || [];
