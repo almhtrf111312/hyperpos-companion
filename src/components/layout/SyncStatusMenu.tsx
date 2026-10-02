@@ -191,7 +191,7 @@ export function SyncStatusMenu() {
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-72 p-0"
+        className="w-[92vw] max-w-sm sm:w-96 p-0 shadow-2xl"
         align={isRTL ? 'start' : 'end'}
         side="bottom"
       >

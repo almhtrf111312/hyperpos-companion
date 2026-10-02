@@ -61,36 +61,34 @@ export async function processCashSaleBundleFromQueue(
     invalidateProductsCache();
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
 
-    // Customer bookkeeping is best-effort and must never block the invoice.
-    const customer = !sale.alreadyProcessed && bundle.customerName && bundle.customerName !== 'عميل نقدي'
-      ? await findOrCreateCustomerCloud(bundle.customerName).catch(() => null)
-      : null;
-
-    // 3. Record profit
+    // 3. Record profit & background bookkeeping (must not block instant sale response)
     if (!sale.alreadyProcessed) {
-      // ✅ أرقام الخادم هي المعتمدة (التكلفة من جدول المنتجات، الضريبة خارج الربح)
       const revenue = Math.round((sale.total - sale.taxAmount) * 100) / 100;
       addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue);
       addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue }).catch(() => {});
-    }
 
-    // 4. Distribute profit to partners
-    const categoryProfits = Object.entries(bundle.profitsByCategory)
-      .filter(([_, profit]) => profit > 0)
-      .map(([category, profit]) => ({ category, profit }));
+      // 4. Distribute profit to partners in background (non-blocking)
+      const categoryProfits = Object.entries(bundle.profitsByCategory)
+        .filter(([_, profit]) => profit > 0)
+        .map(([category, profit]) => ({ category, profit }));
 
-    if (!sale.alreadyProcessed && categoryProfits.length > 0) {
-      await distributeDetailedProfitCloud(
-        categoryProfits,
-        sale.invoiceNumber,
-        bundle.customerName || 'عميل نقدي',
-        false
-      ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
-    }
+      if (categoryProfits.length > 0) {
+        distributeDetailedProfitCloud(
+          categoryProfits,
+          sale.invoiceNumber,
+          bundle.customerName || 'عميل نقدي',
+          false
+        ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
+      }
 
-    // 5. Link invoice to customer then recompute his stats from active invoices
-    if (!sale.alreadyProcessed && customer) {
-      await linkInvoiceToCustomerCloud(sale.invoiceNumber, customer.id).catch(() => {});
+      // 5. Link invoice to customer in background (non-blocking)
+      if (bundle.customerName && bundle.customerName !== 'عميل نقدي') {
+        findOrCreateCustomerCloud(bundle.customerName)
+          .then(customer => {
+            if (customer) return linkInvoiceToCustomerCloud(sale.invoiceNumber, customer.id);
+          })
+          .catch(() => {});
+      }
     }
 
     console.log('[CashSale] Bundle synced successfully:', sale.invoiceNumber);
