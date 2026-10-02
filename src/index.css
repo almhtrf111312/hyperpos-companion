@@ -1794,9 +1794,8 @@ html, body, #root {
 
 /* Global smaller type scale */
 html { font-size: 14px; }
-/* Toasts must never block touches on the rest of the app */
-[data-sonner-toaster] { pointer-events: none !important; }
-[data-sonner-toaster] [data-sonner-toast] { pointer-events: auto !important; }
+/* Hide legacy sonner toasts so Smart Dynamic Island Notifications display exclusively */
+[data-sonner-toaster] { display: none !important; }
 
 /* Smart Notification Animations */
 .notification-spring {

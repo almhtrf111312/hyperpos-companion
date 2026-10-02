@@ -1,20 +1,20 @@
 import { toast } from 'sonner';
+import { showSmartToast } from '@/hooks/use-smart-toast';
 
 /**
- * Unified toast notification utility with consistent positioning and styling
- * Toasts appear at top-right to avoid overlapping with cart FAB
- * Duration reduced to 1.5s for faster workflow
+ * Unified toast notification utility linked to Smart Dynamic Island Notifications
  * 
  * ✅ Includes throttling to prevent repeated notifications
+ * ✅ Automatically displays the new Smart Dynamic Island UI for all app actions
  */
 
 // Throttle map to prevent repeated notifications
 const lastToastTime: Map<string, number> = new Map();
-const THROTTLE_MS = 3000; // 3 seconds throttle per unique message
+const THROTTLE_MS = 1500; // 1.5 seconds throttle per unique message
 
 // Additional map to track very recent identical messages (aggressive throttling)
 const recentMessages: Map<string, number> = new Map();
-const AGGRESSIVE_THROTTLE_MS = 500; // Block identical messages within 500ms
+const AGGRESSIVE_THROTTLE_MS = 400; // Block identical messages within 400ms
 
 // Generate a key for throttling based on message content
 const getThrottleKey = (type: string, message: string): string => {
@@ -46,14 +46,12 @@ const shouldShowToast = (key: string): boolean => {
 setInterval(() => {
   const now = Date.now();
   
-  // Clean up normal throttle map
   for (const [key, time] of lastToastTime.entries()) {
     if (now - time > THROTTLE_MS * 2) {
       lastToastTime.delete(key);
     }
   }
   
-  // Clean up aggressive throttle map
   for (const [key, time] of recentMessages.entries()) {
     if (now - time > AGGRESSIVE_THROTTLE_MS * 2) {
       recentMessages.delete(key);
@@ -66,9 +64,11 @@ export const showToast = {
     const key = getThrottleKey('success', message);
     if (!shouldShowToast(key)) return;
     
-    toast.success(message, {
-      duration: 4000,
-      description,
+    showSmartToast({
+      title: message,
+      subtitle: description,
+      type: 'success',
+      time: 'الآن',
     });
   },
     
@@ -76,10 +76,12 @@ export const showToast = {
     const key = getThrottleKey('error', message);
     if (!shouldShowToast(key)) return;
     
-    toast.error(message, {
-      duration: options?.persistent ? Infinity : 5000,
-      closeButton: options?.persistent,
-      description: options?.description,
+    showSmartToast({
+      title: message,
+      subtitle: options?.description,
+      type: 'error',
+      time: 'الآن',
+      duration: options?.persistent ? 10000 : 5000,
     });
   },
     
@@ -87,9 +89,11 @@ export const showToast = {
     const key = getThrottleKey('warning', message);
     if (!shouldShowToast(key)) return;
     
-    toast.warning(message, {
-      duration: 5000,
-      description,
+    showSmartToast({
+      title: message,
+      subtitle: description,
+      type: 'warning',
+      time: 'الآن',
     });
   },
     
@@ -97,9 +101,53 @@ export const showToast = {
     const key = getThrottleKey('info', message);
     if (!shouldShowToast(key)) return;
     
-    toast.info(message, {
-      duration: 4000,
-      description,
+    showSmartToast({
+      title: message,
+      subtitle: description,
+      type: 'info',
+      time: 'الآن',
     });
   },
 };
+
+// Global interceptor for any direct toast.* calls throughout the codebase
+if (typeof window !== 'undefined' && !(window as unknown as { __smart_toast_intercepted?: boolean }).__smart_toast_intercepted) {
+  (window as unknown as { __smart_toast_intercepted?: boolean }).__smart_toast_intercepted = true;
+
+  const origSuccess = toast.success;
+  const origError = toast.error;
+  const origWarning = toast.warning;
+  const origInfo = toast.info;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toast.success = ((message: any, data?: any) => {
+    if (typeof message === 'string') {
+      showToast.success(message, typeof data?.description === 'string' ? data.description : undefined);
+    }
+    return origSuccess(message, data);
+  }) as typeof toast.success;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toast.error = ((message: any, data?: any) => {
+    if (typeof message === 'string') {
+      showToast.error(message, { description: typeof data?.description === 'string' ? data.description : undefined });
+    }
+    return origError(message, data);
+  }) as typeof toast.error;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toast.warning = ((message: any, data?: any) => {
+    if (typeof message === 'string') {
+      showToast.warning(message, typeof data?.description === 'string' ? data.description : undefined);
+    }
+    return origWarning(message, data);
+  }) as typeof toast.warning;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toast.info = ((message: any, data?: any) => {
+    if (typeof message === 'string') {
+      showToast.info(message, typeof data?.description === 'string' ? data.description : undefined);
+    }
+    return origInfo(message, data);
+  }) as typeof toast.info;
+}
