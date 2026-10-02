@@ -229,8 +229,8 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
           "fixed z-50 transition-all duration-300 ease-in-out flex flex-col",
           "bg-sidebar pt-[env(safe-area-inset-top)]",
           isMobile 
-            ? cn("top-0 h-screen border-sidebar-border", isRTL ? "right-0 border-l" : "left-0 border-r", "w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
-            : cn("top-2 rounded-2xl shadow-xl border border-sidebar-border/50", isRTL ? "right-2" : "left-2", effectiveCollapsed ? "w-[72px]" : "w-56", "h-[calc(100vh-16px)]")
+            ? cn("top-0 h-screen border-sidebar-border start-0 border-e", "w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
+            : cn("top-2 rounded-2xl shadow-xl border border-sidebar-border/50 start-2", effectiveCollapsed ? "w-[72px]" : "w-56", "h-[calc(100vh-16px)]")
         )}
       >
         {/* Brand Header */}
@@ -414,7 +414,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
 // Mobile menu trigger button - unified across all pages
 export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
-  const isRTL = document.documentElement.dir === 'rtl';
+  const { isRTL } = useLanguage();
   
   return (
     <button
@@ -425,7 +425,7 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
         "w-9 h-9 rounded-xl bg-card/90 backdrop-blur-md border border-border",
         "text-foreground flex items-center justify-center shadow-sm",
         "hover:bg-card active:scale-95 transition-all duration-200",
-        isRTL ? 'right-3' : 'left-3'
+        "start-3"
       )}
     >
       <Menu className="w-4 h-4" />

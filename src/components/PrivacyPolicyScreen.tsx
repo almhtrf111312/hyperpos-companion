@@ -129,7 +129,8 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
   const { t, isRTL, language } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const isRTLLang = language === 'ar' || language === 'fa' || language === 'ku';
+  // Default strictly to Arabic terms on initial launch or unless explicit English
+  const isRTLLang = language !== 'en';
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;

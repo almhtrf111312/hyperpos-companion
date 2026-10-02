@@ -37,11 +37,9 @@ export function MainLayout({ children }: MainLayoutProps) {
         <MobileMenuTrigger onClick={openSidebar} />
       )}
 
-      {/* Main content - margin based on RTL/LTR */}
+      {/* Main content - margin based on RTL/LTR using inline-start */}
       <main className={`min-h-screen overflow-x-hidden max-w-full transition-all duration-300 pt-4 ${
-        isRTL 
-          ? (isMobile ? 'mr-0' : isTablet ? 'mr-[calc(72px+16px)]' : 'mr-[calc(14rem+16px)]') 
-          : (isMobile ? 'ml-0' : isTablet ? 'ml-[calc(72px+16px)]' : 'ml-[calc(14rem+16px)]')
+        isMobile ? 'ms-0' : isTablet ? 'ms-[calc(72px+16px)]' : 'ms-[calc(14rem+16px)]'
       }`}>
         {children ?? <Outlet />}
       </main>

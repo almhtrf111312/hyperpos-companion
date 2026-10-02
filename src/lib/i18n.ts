@@ -9578,19 +9578,32 @@ export const translations = {
 // Language helpers
 export function getCurrentLanguage(): Language {
   if (typeof window === 'undefined') return 'ar';
-  const stored = localStorage.getItem('hyperpos_language');
-  const validLangs: Language[] = ['ar', 'en', 'tr', 'fa', 'ku'];
-  if (stored && validLangs.includes(stored as Language)) return stored as Language;
+  try {
+    const stored = localStorage.getItem('hyperpos_language');
+    const validLangs: Language[] = ['ar', 'en', 'tr', 'fa', 'ku'];
+    if (stored && validLangs.includes(stored as Language)) return stored as Language;
+    // Always default to 'ar' on first launch and persist it immediately
+    localStorage.setItem('hyperpos_language', 'ar');
+  } catch {}
   return 'ar';
 }
 
 export function setLanguage(lang: Language): void {
-  localStorage.setItem('hyperpos_language', lang);
-  document.documentElement.dir = languages.find(l => l.code === lang)?.direction || 'rtl';
-  document.documentElement.lang = lang;
+  try {
+    localStorage.setItem('hyperpos_language', lang);
+  } catch {}
+  const dir = languages.find(l => l.code === lang)?.direction || (lang === 'en' || lang === 'tr' ? 'ltr' : 'rtl');
+  if (typeof document !== 'undefined') {
+    document.documentElement.dir = dir;
+    document.documentElement.lang = lang;
+    document.documentElement.classList.remove('rtl', 'ltr');
+    document.documentElement.classList.add(dir);
+  }
 
   // Dispatch event for components to react
-  window.dispatchEvent(new CustomEvent('languagechange', { detail: lang }));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('languagechange', { detail: lang }));
+  }
 }
 
 export function t(key: TranslationKey, lang?: Language): string {
@@ -9607,6 +9620,17 @@ export function t(key: TranslationKey, lang?: Language): string {
 
 export function initializeLanguage(): void {
   const lang = getCurrentLanguage();
-  document.documentElement.dir = languages.find(l => l.code === lang)?.direction || 'rtl';
-  document.documentElement.lang = lang;
+  const dir = languages.find(l => l.code === lang)?.direction || (lang === 'en' || lang === 'tr' ? 'ltr' : 'rtl');
+  if (typeof document !== 'undefined') {
+    document.documentElement.dir = dir;
+    document.documentElement.lang = lang;
+    document.documentElement.classList.remove('rtl', 'ltr');
+    document.documentElement.classList.add(dir);
+  }
 }
+
+// Automatically initialize language and direction on module load
+if (typeof document !== 'undefined') {
+  initializeLanguage();
+}
+

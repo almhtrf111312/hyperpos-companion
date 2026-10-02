@@ -8,6 +8,16 @@
         try {
           var font = localStorage.getItem('hyperpos_app_font') || 'cairo';
           document.documentElement.setAttribute('data-font', font);
+          var lang = localStorage.getItem('hyperpos_language');
+          if (!lang || !['ar', 'en', 'tr', 'fa', 'ku'].includes(lang)) {
+            localStorage.setItem('hyperpos_language', 'ar');
+            lang = 'ar';
+          }
+          var isRtl = lang === 'ar' || lang === 'fa' || lang === 'ku';
+          document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+          document.documentElement.setAttribute('lang', lang);
+          document.documentElement.classList.remove('rtl', 'ltr');
+          document.documentElement.classList.add(isRtl ? 'rtl' : 'ltr');
         } catch (e) {}
       })();
     </script>

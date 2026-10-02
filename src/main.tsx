@@ -3,8 +3,12 @@ import { Component, ReactNode, ErrorInfo } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 import { Capacitor } from '@capacitor/core';
 import { restoreLastRouteIfNeeded } from "./lib/last-route";
+import { initializeLanguage } from "./lib/i18n";
 import App from "./App.tsx";
 import "./index.css";
+
+// Initialize language and RTL layout immediately on startup
+initializeLanguage();
 
 // Cold-start only: if the WebView opened at "/", put the user back on the last screen.
 restoreLastRouteIfNeeded();

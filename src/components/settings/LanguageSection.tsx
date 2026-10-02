@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,16 @@ import { Language } from '@/lib/i18n';
 export function LanguageSection() {
   const { language, setLanguage, t, languages } = useLanguage();
   
-  const [pendingLanguage, setPendingLanguage] = useState<Language>(language);
-  const hasChanges = pendingLanguage !== language;
+  const currentSafeLang: Language = (language && languages.some(l => l.code === language)) ? language : 'ar';
+  const [pendingLanguage, setPendingLanguage] = useState<Language>(currentSafeLang);
+
+  useEffect(() => {
+    if (language && languages.some(l => l.code === language)) {
+      setPendingLanguage(language);
+    }
+  }, [language, languages]);
+
+  const hasChanges = pendingLanguage !== (language || 'ar');
 
   const handleLanguageSelect = (value: string) => {
     setPendingLanguage(value as Language);
@@ -22,10 +30,10 @@ export function LanguageSection() {
   };
 
   const handleCancel = () => {
-    setPendingLanguage(language);
+    setPendingLanguage(currentSafeLang);
   };
 
-  const selectedLanguage = languages.find(l => l.code === pendingLanguage);
+  const selectedLanguage = languages.find(l => l.code === pendingLanguage) || languages.find(l => l.code === 'ar') || languages[0];
 
   return (
     <div className="space-y-3">
@@ -34,10 +42,10 @@ export function LanguageSection() {
           <Globe className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">{t('settings.language')}</span>
         </div>
-        <Select value={pendingLanguage} onValueChange={handleLanguageSelect}>
+        <Select value={pendingLanguage || 'ar'} onValueChange={handleLanguageSelect}>
           <SelectTrigger className="w-40 h-9">
-            <SelectValue>
-              <span className="text-sm font-medium">{selectedLanguage?.nativeName}</span>
+            <SelectValue placeholder={selectedLanguage?.nativeName || 'العربية'}>
+              <span className="text-sm font-medium">{selectedLanguage?.nativeName || 'العربية'}</span>
             </SelectValue>
           </SelectTrigger>
           <SelectContent 

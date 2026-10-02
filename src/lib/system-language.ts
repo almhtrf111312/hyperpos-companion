@@ -21,15 +21,17 @@ export async function getSystemLanguage(): Promise<string> {
  * @returns Mapped language code ('ar' or 'en')
  */
 export function mapSystemLanguage(systemLang: string): 'ar' | 'en' | 'tr' | 'fa' | 'ku' {
+  if (!systemLang) return 'ar';
   // Handle language codes with region (e.g., 'en-US', 'ar-SA')
   const baseLang = systemLang.split('-')[0].toLowerCase();
   
   // Map to supported languages
   if (baseLang === 'ar') return 'ar';
+  if (baseLang === 'en') return 'en';
   if (baseLang === 'tr') return 'tr';
   if (baseLang === 'fa') return 'fa';
   if (baseLang === 'ku' || baseLang === 'ckb') return 'ku';
-  return 'en'; // Default to English for all other languages
+  return 'ar'; // Default to Arabic for FlowPOS
 }
 
 /**
@@ -51,18 +53,16 @@ export function setupSystemLanguageListener(callback: (lang: string) => void) {
 
 /**
  * Initialize and get the appropriate language based on user preference
- * @param userPreference - User's saved preference ('auto', 'ar', 'en')
- * @returns Language to use
+ * @param userPreference - User's saved preference
+ * @returns Language to use - Defaults strictly to 'ar' on first launch
  */
 export async function initializeLanguage(userPreference: string | null): Promise<'ar' | 'en' | 'tr' | 'fa' | 'ku'> {
-  // If user wants auto-detection or has no preference
-  if (!userPreference || userPreference === 'auto') {
-    const systemLang = await getSystemLanguage();
-    return mapSystemLanguage(systemLang);
+  // Use user's explicit preference if valid
+  const validLangs = ['ar', 'en', 'tr', 'fa', 'ku'] as const;
+  if (userPreference && validLangs.includes(userPreference as any)) {
+    return userPreference as any;
   }
   
-  // Use user's explicit preference
-  const validLangs = ['ar', 'en', 'tr', 'fa', 'ku'] as const;
-  if (validLangs.includes(userPreference as any)) return userPreference as any;
+  // Default is ALWAYS Arabic on first launch / no preference
   return 'ar';
 }

@@ -29,10 +29,20 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 // RTL languages from the supported list
 const RTL_LANGUAGES: Language[] = ['ar', 'fa', 'ku'];
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(getCurrentLanguage);
+// Synchronous DOM setup on module evaluation to guarantee immediate RTL layout on first launch
+if (typeof document !== 'undefined') {
+  const initLang = getCurrentLanguage();
+  const isRtl = RTL_LANGUAGES.includes(initLang);
+  document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+  document.documentElement.lang = initLang;
+  document.documentElement.classList.remove('rtl', 'ltr');
+  document.documentElement.classList.add(isRtl ? 'rtl' : 'ltr');
+}
 
-  // ✅ Auto-detect system language on mount
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => getCurrentLanguage());
+
+  // ✅ Auto-detect system language on mount only if 'auto'
   useEffect(() => {
     const initLanguage = async () => {
       const savedLang = getCurrentLanguage();
@@ -42,10 +52,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         const mappedLang = mapSystemLanguage(systemLang);
         setLanguageState(mappedLang);
         const langInfo = languages.find(l => l.code === mappedLang);
-        document.documentElement.dir = langInfo?.direction || 'rtl';
+        const dir = langInfo?.direction || 'rtl';
+        document.documentElement.dir = dir;
+        document.documentElement.lang = mappedLang;
+        document.documentElement.classList.remove('rtl', 'ltr');
+        document.documentElement.classList.add(dir);
       } else {
         const langInfo = languages.find(l => l.code === savedLang);
-        document.documentElement.dir = langInfo?.direction || 'rtl';
+        const dir = langInfo?.direction || 'rtl';
+        document.documentElement.dir = dir;
+        document.documentElement.lang = savedLang;
+        document.documentElement.classList.remove('rtl', 'ltr');
+        document.documentElement.classList.add(dir);
       }
     };
 
@@ -57,7 +75,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       if ((savedLang as string) === 'auto') {
         setLanguageState(newLang as Language);
         const langInfo = languages.find(l => l.code === newLang);
-        document.documentElement.dir = langInfo?.direction || 'rtl';
+        const dir = langInfo?.direction || 'rtl';
+        document.documentElement.dir = dir;
+        document.documentElement.lang = newLang;
+        document.documentElement.classList.remove('rtl', 'ltr');
+        document.documentElement.classList.add(dir);
       }
     });
   }, []);
