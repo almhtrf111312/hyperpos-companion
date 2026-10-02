@@ -87,7 +87,6 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>('USD');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
   const [debtItems, setDebtItems] = useState<InvoiceItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
@@ -269,7 +268,6 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     setSelectedDebt(fresh);
     setPaymentCurrency('USD');
-    setPaymentMethod('cash');
     setPaymentAmountInput('');
     setPaymentAmount(0);
     setShowPaymentDialog(true);
@@ -351,7 +349,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     paymentBusyRef.current = false;
     paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // ✅ إضافة المبلغ للصندوق وتحديث الوردية بالعملة وطريقة القبض
+    // ✅ إضافة المبلغ للصندوق وتحديث الوردية بالعملة
     processDebtPayment(
       finalPaymentUSD,
       selectedDebt.customerId,
@@ -359,7 +357,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       profile?.full_name || user?.email || t('common.user'),
       paymentCurrency,
       parseFloat(paymentAmountInput) || finalPaymentUSD,
-      paymentMethod
+      'cash'
     );
 
     // Confirm pending profits proportionally to payment (محلياً + سحابياً)
@@ -385,7 +383,6 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
     // Log activity
     if (user) {
-      const methodLabel = paymentMethod === 'cash' ? 'نقداً (كاش)' : 'تحويل إلكتروني / بنكي';
       const currDesc = paymentCurrency !== 'USD'
         ? `${paymentAmountInput} ${paymentCurrency} (يعادل $${formatNumber(finalPaymentUSD)} بسعر صرف ${currentRate})`
         : `$${formatNumber(finalPaymentUSD)}`;
@@ -393,7 +390,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
         'debt_paid',
         user.id,
         profile?.full_name || user.email || t('common.user'),
-        `${t('debts.paymentRecorded')} ${currDesc} بطريقة ${methodLabel} - ${selectedDebt.customerName}`,
+        `${t('debts.paymentRecorded')} ${currDesc} - ${selectedDebt.customerName}`,
         {
           debtId: selectedDebt.id,
           invoiceId: selectedDebt.invoiceId,
@@ -402,7 +399,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
           amountInCurrency: parseFloat(paymentAmountInput) || finalPaymentUSD,
           currency: paymentCurrency,
           rate: currentRate,
-          paymentMethod,
+          paymentMethod: 'cash',
           totalDebt: latest.totalDebt,
           remainingBefore: remainingNow,
           remainingAfter: Math.max(0, Math.round((remainingNow - finalPaymentUSD) * 100) / 100),
@@ -865,36 +862,6 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 )}
               </div>
 
-              {/* طريقة القبض */}
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">طريقة القبض</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('cash')}
-                    className={cn(
-                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
-                      paymentMethod === 'cash'
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                    )}
-                  >
-                    💵 نقداً (يضاف للصندوق)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('transfer')}
-                    className={cn(
-                      "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center",
-                      paymentMethod === 'transfer'
-                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                    )}
-                  >
-                    🏦 تحويل بنكي / إلكتروني
-                  </button>
-                </div>
-              </div>
 
               {/* حقل إدخال المبلغ */}
               <div>
