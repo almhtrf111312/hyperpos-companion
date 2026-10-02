@@ -179,7 +179,13 @@ export async function processDebtSaleWithOfflineSupport(
       .map(([category, profit]) => ({ category, profit }));
     
     if (!sale.alreadyProcessed && categoryProfits.length > 0) {
-      distributeDetailedProfitCloud(categoryProfits, sale.invoiceNumber, bundle.customerName, true);
+      distributeDetailedProfitCloud(
+        categoryProfits,
+        sale.invoiceNumber,
+        bundle.customerName,
+        true,
+        sale.profit  // ✅ Server-authoritative profit for reconciliation
+      );
     }
     
     return {
