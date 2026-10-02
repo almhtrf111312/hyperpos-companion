@@ -184,15 +184,18 @@ const loadPartnersLocally = (): Partner[] | null => {
   } catch { return null; }
 };
 
-// Cache
+// Cache with user binding to prevent cross-account leaks
 let partnersCache: Partner[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 30000;
 
 // Background refresh control
 let bgPartnersRefreshing = false;
 const refreshPartnersInBackground = async () => {
   if (bgPartnersRefreshing || !navigator.onLine) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
   bgPartnersRefreshing = true;
   try {
     const cloudPartners = await fetchFromSupabase<CloudPartner>('partners', {
@@ -201,6 +204,7 @@ const refreshPartnersInBackground = async () => {
     });
     partnersCache = cloudPartners.map(toPartner);
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
     savePartnersLocally(partnersCache);
     emitEvent(EVENTS.PARTNERS_UPDATED, null);
   } catch (e) {
@@ -218,7 +222,8 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
     return local || [];
   }
 
-  if (partnersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Verify cache belongs to current user
+  if (partnersCache && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return partnersCache;
   }
 
@@ -226,6 +231,7 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
   if (local) {
     partnersCache = local;
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
     if (navigator.onLine) refreshPartnersInBackground();
     return local;
   }
@@ -239,6 +245,7 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
 
   partnersCache = cloudPartners.map(toPartner);
   cacheTimestamp = Date.now();
+  cacheUserId = userId;
   savePartnersLocally(partnersCache);
 
   return partnersCache;
@@ -247,6 +254,7 @@ export const loadPartnersCloud = async (): Promise<Partner[]> => {
 export const invalidatePartnersCache = () => {
   partnersCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
 };
 
 // Save partners (full update)

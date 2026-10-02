@@ -85,15 +85,18 @@ const loadCustomersLocally = (): Customer[] | null => {
   } catch { return null; }
 };
 
-// Cache
+// Cache with user binding to prevent cross-account leaks
 let customersCache: Customer[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 30000; // 30 seconds
 
 // Background refresh control
 let bgRefreshing = false;
 const refreshCustomersInBackground = async () => {
   if (bgRefreshing || !navigator.onLine) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
   bgRefreshing = true;
   try {
     const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
@@ -102,6 +105,7 @@ const refreshCustomersInBackground = async () => {
     });
     customersCache = cloudCustomers.map(toCustomer);
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
     saveCustomersLocally(customersCache);
     try {
       const { emitEvent, EVENTS } = await import('../events');
@@ -122,8 +126,8 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
     return local || [];
   }
 
-  // Memory cache: instant
-  if (customersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Memory cache: instant (verify user binding)
+  if (customersCache && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return customersCache;
   }
 
@@ -132,6 +136,7 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
   if (local) {
     customersCache = local;
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
     if (navigator.onLine) refreshCustomersInBackground();
     return local;
   }
@@ -146,6 +151,7 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
 
   customersCache = cloudCustomers.map(toCustomer);
   cacheTimestamp = Date.now();
+  cacheUserId = userId;
   saveCustomersLocally(customersCache);
 
   return customersCache;
@@ -176,6 +182,7 @@ export const loadCustomersWithCashierNamesCloud = async (): Promise<Customer[]> 
 export const invalidateCustomersCache = () => {
   customersCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
 };
 
 // Add customer

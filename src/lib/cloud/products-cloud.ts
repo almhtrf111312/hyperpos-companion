@@ -140,13 +140,13 @@ function toProduct(cloud: CloudProduct): Product {
       )
     ) : undefined,
     // Unit settings
-    laborCost: Number((cloud as any).labor_cost ?? cloud.labor_cost) || 0,
-    bulkUnit: (cloud as any).bulk_unit || cloud.bulk_unit || 'كرتونة',
-    smallUnit: (cloud as any).small_unit || cloud.small_unit || 'قطعة',
-    conversionFactor: (cloud as any).conversion_factor || cloud.conversion_factor || 1,
-    bulkCostPrice: Number((cloud as any).bulk_cost_price ?? cloud.bulk_cost_price) || 0,
-    bulkSalePrice: Number((cloud as any).bulk_sale_price ?? cloud.bulk_sale_price) || 0,
-    trackByUnit: (cloud as any).track_by_unit || cloud.track_by_unit || 'piece',
+    laborCost: Number(cloud.labor_cost ?? 0) || 0,
+    bulkUnit: cloud.bulk_unit || 'كرتونة',
+    smallUnit: cloud.small_unit || 'قطعة',
+    conversionFactor: cloud.conversion_factor || 1,
+    bulkCostPrice: Number(cloud.bulk_cost_price ?? 0) || 0,
+    bulkSalePrice: Number(cloud.bulk_sale_price ?? 0) || 0,
+    trackByUnit: cloud.track_by_unit || 'piece',
     createdAt: cloud.created_at || undefined,
     updatedAt: cloud.updated_at || undefined,
     archived: cloud.archived === true,
@@ -207,9 +207,10 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
   return 'in_stock';
 };
 
-// Cache for products
+// Cache for products with user binding to prevent cross-account leaks
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 300000; // 5 minutes — كافٍ لمنع إعادة الطلب السحابي في كل 10 ثوانٍ
 
 // Local storage key for offline fallback (legacy, kept as secondary fallback)
@@ -282,7 +283,7 @@ async function fetchProductsInChunks(): Promise<CloudProduct[]> {
     const res = await withTimeout(
       Promise.resolve(query),
       4000,
-      { data: null, error: new Error('Timeout fetching products chunk') } as any
+      { data: null, error: new Error('Timeout fetching products chunk') }
     );
     const data = res?.data;
     const error = res?.error;
@@ -469,9 +470,17 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
     return (productsCache || []).filter(p => !p.archived);
   }
 
-  // 3. Memory cache TTL check (short 10s TTL)
-  if (productsCache && productsCache.length > 0 && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // 3. Memory cache TTL check (short 10s TTL) - verify user binding
+  if (productsCache && productsCache.length > 0 && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return productsCache.filter(p => !p.archived);
+  }
+
+  // If cache exists but belongs to different user, invalidate it
+  if (productsCache && cacheUserId && cacheUserId !== userId) {
+    console.log('[ProductsCloud] Cache belongs to different user, invalidating');
+    productsCache = null;
+    cacheTimestamp = 0;
+    cacheUserId = null;
   }
 
   try {
@@ -535,6 +544,7 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
     productsCache = (productsCache || []).filter(p => !p.archived);
     cacheTimestamp = Date.now();
+    cacheUserId = userId;
 
     // Update last sync timestamp
     localStorage.setItem(LAST_SYNC_TIMESTAMP_KEY, new Date().toISOString());
@@ -565,6 +575,7 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 export const invalidateProductsCache = () => {
   productsCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
   // ❌ لا نمسح IndexedDB/localStorage هنا — نريد المنتجات تظهر فوراً عند فتح التطبيق
 };
 

@@ -122,9 +122,10 @@ const loadExpensesLocally = (): Expense[] | null => {
   } catch { return null; }
 };
 
-// Cache
+// Cache with user binding to prevent cross-account leaks
 let expensesCache: Expense[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null;
 const CACHE_TTL = 30000;
 
 // Load expenses - cashiers see only their expenses, owners see all
@@ -132,7 +133,8 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Verify cache belongs to current user before returning it
+  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL && cacheUserId === userId) {
     return expensesCache;
   }
 
@@ -142,6 +144,7 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
     if (local) {
       expensesCache = local;
       cacheTimestamp = Date.now();
+      cacheUserId = userId;
       return local;
     }
     return [];
@@ -198,6 +201,7 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
 
   expensesCache = cloudExpenses.map(toExpense);
   cacheTimestamp = Date.now();
+  cacheUserId = userId;
   saveExpensesLocally(expensesCache);
   
   return expensesCache;
@@ -207,14 +211,15 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadExpensesCloud = false;
 export const loadExpensesCloud = async (): Promise<Expense[]> => {
+  const userId = getCurrentUserId();
   if (!bootServed_loadExpensesCloud) {
     bootServed_loadExpensesCloud = true;
     const local = loadExpensesLocally();
-    if (local && local.length > 0 && getCurrentUserId()) {
-      expensesCache = local; cacheTimestamp = Date.now();
+    if (local && local.length > 0 && userId) {
+      expensesCache = local; cacheTimestamp = Date.now(); cacheUserId = userId;
       if (navigator.onLine) {
         setTimeout(() => {
-          expensesCache = null; cacheTimestamp = 0;
+          expensesCache = null; cacheTimestamp = 0; cacheUserId = null;
           fetchFresh_loadExpensesCloud().then(() => emitEvent(EVENTS.EXPENSES_UPDATED, null)).catch(() => {});
         }, 0);
       }
@@ -227,6 +232,7 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
 export const invalidateExpensesCache = () => {
   expensesCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
 };
 
 // Add expense
