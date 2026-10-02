@@ -615,24 +615,42 @@ export function CartPanel({
       recordActivity();
 
       playSaleComplete();
-      completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
+      startSync('جاري رفع الفاتورة للسحابة...', false);
 
-      // ✅ مزامنة فورية في الخلفية (بدون انتظار المستخدم)
-      if (isOnline) {
-        syncImmediately();
-      }
+      // ✅ تشغيل المزامنة الفورية وربط الإشعار بالنتيجة الحقيقية بدقة
+      (async () => {
+        try {
+          const syncPromise = syncImmediately();
+          const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
+            setTimeout(() => resolve({ timeout: true }), 3500)
+          );
 
-      // تأخير ظهور الإشعار النهائي (النجاح) لانتهاء المزامنة الفعلية
-      setTimeout(() => {
-        showToast.success('تم حفظ الفاتورة ✓');
-      }, 3500);
+          const outcome = await Promise.race([syncPromise, timeoutPromise]);
+
+          if ('timeout' in outcome) {
+            // استغرقت المزامنة وقتاً أطول على الشبكة، الفاتورة محفوظة محلياً وفي طريقها للسحابة
+            completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
+            showToast.info('تم حفظ الفاتورة محلياً', 'جاري المزامنة مع السحابة في الخلفية...');
+          } else if (outcome.success) {
+            completeSync('تمت المزامنة بنجاح ✓', 2000);
+            showToast.success('تم حفظ الفاتورة ومزامنتها بنجاح ✓');
+          } else if (outcome.failed > 0) {
+            failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
+            showToast.warning('تم حفظ الفاتورة محلياً', 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً');
+          } else {
+            completeSync('تم حفظ الفاتورة ✓', 2000);
+            showToast.success('تم حفظ الفاتورة ✓');
+          }
+        } catch {
+          completeSync('محفوظة محلياً ✓', 2000);
+          showToast.info('تم حفظ الفاتورة محلياً', 'سيتم رفعها للسحابة تلقائياً');
+        }
+      })();
 
     } catch (error) {
       console.error('Cash sale error:', error);
       failSync('حدث خطأ - الفاتورة محفوظة محلياً');
-      setTimeout(() => {
-        showToast.warning('تم حفظ الفاتورة أوفلاين - سيتم رفعها تلقائياً');
-      }, 3500);
+      showToast.warning('تم حفظ الفاتورة أوفلاين - سيتم رفعها تلقائياً');
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -856,28 +874,44 @@ export function CartPanel({
       } else {
         playDebtRecorded();
       }
-      completeSync('تم الحفظ ✓ جاري الرفع...', 2000);
 
-      // ✅ مزامنة فورية في الخلفية
-      if (isOnline) {
-        syncImmediately();
-      }
+      // ✅ تشغيل المزامنة الفورية وربط الإشعار بالنتيجة الحقيقية بدقة
+      (async () => {
+        try {
+          const syncPromise = syncImmediately();
+          const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
+            setTimeout(() => resolve({ timeout: true }), 3500)
+          );
 
-      // تأخير ظهور الإشعار النهائي لانتهاء المزامنة الفعلية
-      setTimeout(() => {
-        if (downPaymentSnapshot > 0) {
-          showToast.success(`تم حفظ البيع المركب بنجاح ✓ (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)})`);
-        } else {
-          showToast.success('تم حفظ فاتورة البيع المؤجل ✓');
+          const outcome = await Promise.race([syncPromise, timeoutPromise]);
+
+          if ('timeout' in outcome) {
+            completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
+            showToast.info('تم حفظ الفاتورة محلياً', 'جاري المزامنة مع السحابة في الخلفية...');
+          } else if (outcome.success) {
+            completeSync('تمت المزامنة بنجاح ✓', 2000);
+            if (downPaymentSnapshot > 0) {
+              showToast.success(`تم حفظ ومزامنة البيع المركب بنجاح ✓ (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)})`);
+            } else {
+              showToast.success('تم حفظ فاتورة البيع المؤجل ومزامنتها بنجاح ✓');
+            }
+          } else if (outcome.failed > 0) {
+            failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
+            showToast.warning('تم حفظ الفاتورة محلياً', 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً');
+          } else {
+            completeSync('تم حفظ الفاتورة ✓', 2000);
+            showToast.success(downPaymentSnapshot > 0 ? 'تم حفظ البيع المركب بنجاح ✓' : 'تم حفظ فاتورة البيع المؤجل ✓');
+          }
+        } catch {
+          completeSync('محفوظة محلياً ✓', 2000);
+          showToast.info('تم حفظ الفاتورة محلياً', 'سيتم رفعها للسحابة تلقائياً');
         }
-      }, 3500);
+      })();
 
     } catch (error) {
       console.error('Debt sale error:', error);
       failSync('حدث خطأ - الفاتورة محفوظة محلياً');
-      setTimeout(() => {
-        showToast.warning('تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
-      }, 3500);
+      showToast.warning('تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
     } finally {
       savingRef.current = false;
       setIsSaving(false);

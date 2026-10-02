@@ -281,26 +281,46 @@ export function useSyncState() {
     }
   };
 
-  const completeSync = (message = 'تمت المزامنة بنجاح', delay = 5000) => {
-    // تأخير 5 ثوانٍ للتأكد من اكتمال المزامنة
+  const completeSync = (message = 'تمت المزامنة بنجاح', delay = 2000, triggerToast = false) => {
+    if (delayTimer) {
+      clearTimeout(delayTimer);
+      setDelayTimer(null);
+    }
     const timer = setTimeout(() => {
-      setSyncState('success');
-      setSyncMessage('');
-      showToast.success(message);
+      const status = getQueueStatus();
+      if (status.failedCount > 0) {
+        setSyncState('error');
+      } else if (status.pendingCount > 0) {
+        setSyncState('idle');
+      } else {
+        setSyncState('success');
+      }
+      setSyncMessage(message);
+      if (triggerToast && message) {
+        showToast.success(message);
+      }
       
       // العودة لـ idle بعد 3 ثوانٍ
-      setTimeout(() => setSyncState('idle'), 3000);
+      setTimeout(() => {
+        setSyncState('idle');
+        setSyncMessage('');
+      }, 3000);
     }, delay);
     
     setDelayTimer(timer);
   };
 
-  const failSync = (error = 'فشلت المزامنة', delay = 5000) => {
-    // تأخير 5 ثوانٍ للتأكد من الفشل النهائي
+  const failSync = (error = 'فشلت المزامنة', delay = 2000, triggerToast = false) => {
+    if (delayTimer) {
+      clearTimeout(delayTimer);
+      setDelayTimer(null);
+    }
     const timer = setTimeout(() => {
       setSyncState('error');
       setSyncMessage(error);
-      showToast.error(error);
+      if (triggerToast && error) {
+        showToast.error(error);
+      }
     }, delay);
     
     setDelayTimer(timer);

@@ -54,6 +54,12 @@ function formatSyncServerError(error: unknown): string {
   return raw;
 }
 
+export interface SyncResult {
+  success: boolean;
+  processed: number;
+  failed: number;
+}
+
 interface CloudSyncContextType {
   isReady: boolean;
   isSyncing: boolean;
@@ -61,8 +67,8 @@ interface CloudSyncContextType {
   hasInternetAccess: boolean;
   isOnline: boolean;
   lastSyncTime: string | null;
-  syncNow: () => Promise<void>;
-  syncImmediately: () => void; // مزامنة فورية في الخلفية بعد عملية بيع
+  syncNow: (forceDirect?: boolean) => Promise<SyncResult>;
+  syncImmediately: () => Promise<SyncResult>;
   pauseSync: () => void;
   resumeSync: () => void;
 }
@@ -112,7 +118,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setTimeout(() => { syncNowRef.current?.(); }, 50);
   }, []);
 
-  const syncNowRef = useRef<(() => Promise<void>) | null>(null);
+  const syncNowRef = useRef<((forceDirect?: boolean) => Promise<SyncResult>) | null>(null);
+  const isSyncingRef = useRef(false);
+  const pendingSyncRef = useRef(false);
 
   // Enable realtime sync for instant updates across devices
   useRealtimeSync();
@@ -298,27 +306,37 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     initializeCloudData();
   }, [user, authLoading, clearUserLocalStorage, initializeCloudData]);
 
-  const syncNow = useCallback(async () => {
-    if (!user || isSyncing) return;
+  const syncNow = useCallback(async (forceDirect: boolean = false): Promise<SyncResult> => {
+    if (!user) return { success: false, processed: 0, failed: 0 };
     if (isPaused) {
       console.log('[CloudSync] Sync skipped: paused by user');
-      return;
+      return { success: false, processed: 0, failed: 0 };
     }
 
-    // Verify real internet access (network may be on but no internet)
+    if (isSyncingRef.current) {
+      console.log('[CloudSync] Sync already in progress, queuing follow-up sync');
+      pendingSyncRef.current = true;
+      return { success: false, processed: 0, failed: 0 };
+    }
+
+    // Verify internet access
+    // ✅ في المزامنة الفورية بعد عملية البيع (forceDirect)، لا نحظر المعالجة بفحوصات خارجية بطيئة
+    // بل نتصل مباشرة بـ Supabase لمعالجة الطابور، فإذا رد الخادم كان هذا إثباتاً قاطعاً للاتصال
     if (navigator.onLine) {
-      const hasInternet = await checkRealInternetAccess(6000);
-      setHasInternetAccess(hasInternet);
-      if (!hasInternet) {
-        // ✅ كتم الرسالة أثناء الأوفلاين - المزامنة ستحدث تلقائياً
-        console.log('[CloudSync] No real internet access, skipping sync silently');
-        return;
+      if (!forceDirect) {
+        const hasInternet = await checkRealInternetAccess(3000);
+        setHasInternetAccess(hasInternet);
+        if (!hasInternet) {
+          console.log('[CloudSync] No real internet access, skipping periodic sync silently');
+          return { success: false, processed: 0, failed: 0 };
+        }
       }
     } else {
       setHasInternetAccess(false);
-      return;
+      return { success: false, processed: 0, failed: 0 };
     }
 
+    isSyncingRef.current = true;
     setIsSyncing(true);
 
     try {
@@ -346,22 +364,22 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         if (operation.type === 'invoice_refund') {
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
           const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
-          const result = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
+          const res = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
           // An already-refunded invoice is an idempotent success; a real failure retries.
-          return result === true || (typeof result === 'object' && (result.success || result.alreadyRefunded === true));
+          return res === true || (typeof res === 'object' && (res.success || res.alreadyRefunded === true));
         }
         if (operation.type === 'invoice_refund_partial') {
           const { refundInvoicePartialCloud } = await import('@/lib/cloud/invoices-cloud');
           const { invoiceNumber, itemsToRefund, operationId } = operation.data as { invoiceNumber: string; itemsToRefund: any[]; operationId?: string };
-          const result = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund, operationId || `legacy-${operation.id}`);
-          if (!result.success) throw new Error(result.error || 'فشل الاسترداد الجزئي');
+          const res = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund, operationId || `legacy-${operation.id}`);
+          if (!res.success) throw new Error(res.error || 'فشل الاسترداد الجزئي');
           return true;
         }
         return processGenericQueuedOperation(operation);
       });
 
       // Report sync completion to the user when we actually processed queued work
-      if (pendingBefore > 0) {
+      if (pendingBefore > 0 && !forceDirect) {
         const refundOnly = processedRefund && !processedNonRefund;
         if (result.failed === 0 && result.processed > 0) {
           if (!refundOnly) {
@@ -445,31 +463,44 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       emitEvent(EVENTS.SETTINGS_UPDATED);
 
       setLastSyncTime(new Date().toISOString());
+      setHasInternetAccess(true);
+
+      return {
+        success: result.failed === 0 && result.processed > 0,
+        processed: result.processed,
+        failed: result.failed,
+      };
     } catch (error) {
       console.error('Manual sync error:', error);
       // ✅ عرض سبب الفشل الحقيقي من الخادم إذا كان الجهاز متصلاً بالشبكة
-      if (navigator.onLine) {
+      if (navigator.onLine && !forceDirect) {
         const friendlyError = formatSyncServerError(error);
         showToast.error('فشلت المزامنة', {
           description: friendlyError,
           duration: 6000
         });
       }
+      return { success: false, processed: 0, failed: 1 };
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
+
+      // إذا ورد طلب مزامنة أثناء تنفيذ هذه العملية، نشغله فوراً لمعالجة العناصر الجديدة
+      if (pendingSyncRef.current) {
+        pendingSyncRef.current = false;
+        setTimeout(() => {
+          syncNowRef.current?.(true);
+        }, 50);
+      }
     }
-  }, [user, isSyncing, isPaused]);
+  }, [user, isPaused]);
 
   // expose latest syncNow to refs (for resume callback)
   useEffect(() => { syncNowRef.current = syncNow; }, [syncNow]);
 
-  const syncImmediately = useCallback(() => {
-    if (!user || isPaused) return;
-    setTimeout(() => {
-      syncNow().catch(err => {
-        console.warn('[CloudSync] Background sync after sale failed (will retry):', err);
-      });
-    }, 100);
+  const syncImmediately = useCallback(async (): Promise<SyncResult> => {
+    if (!user || isPaused) return { success: false, processed: 0, failed: 0 };
+    return await (syncNowRef.current ? syncNowRef.current(true) : syncNow(true));
   }, [user, syncNow, isPaused]);
 
   return (
