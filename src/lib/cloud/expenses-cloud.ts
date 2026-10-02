@@ -125,6 +125,7 @@ const loadExpensesLocally = (): Expense[] | null => {
 // Cache
 let expensesCache: Expense[] | null = null;
 let cacheTimestamp = 0;
+let cacheUserId: string | null = null; // Track which user this cache belongs to
 const CACHE_TTL = 30000;
 
 // Load expenses - cashiers see only their expenses, owners see all
@@ -132,7 +133,8 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  if (expensesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Verify cache belongs to current user and is still fresh
+  if (expensesCache && cacheUserId === userId && Date.now() - cacheTimestamp < CACHE_TTL) {
     return expensesCache;
   }
 
@@ -142,6 +144,7 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
     if (local) {
       expensesCache = local;
       cacheTimestamp = Date.now();
+      cacheUserId = userId;
       return local;
     }
     return [];
@@ -198,6 +201,7 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
 
   expensesCache = cloudExpenses.map(toExpense);
   cacheTimestamp = Date.now();
+  cacheUserId = userId;
   saveExpensesLocally(expensesCache);
   
   return expensesCache;
@@ -207,14 +211,20 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadExpensesCloud = false;
 export const loadExpensesCloud = async (): Promise<Expense[]> => {
+  const userId = getCurrentUserId();
+  
   if (!bootServed_loadExpensesCloud) {
     bootServed_loadExpensesCloud = true;
     const local = loadExpensesLocally();
-    if (local && local.length > 0 && getCurrentUserId()) {
-      expensesCache = local; cacheTimestamp = Date.now();
+    if (local && local.length > 0 && userId) {
+      expensesCache = local; 
+      cacheTimestamp = Date.now();
+      cacheUserId = userId;
       if (navigator.onLine) {
         setTimeout(() => {
-          expensesCache = null; cacheTimestamp = 0;
+          expensesCache = null; 
+          cacheTimestamp = 0;
+          cacheUserId = null;
           fetchFresh_loadExpensesCloud().then(() => emitEvent(EVENTS.EXPENSES_UPDATED, null)).catch(() => {});
         }, 0);
       }
@@ -227,6 +237,8 @@ export const loadExpensesCloud = async (): Promise<Expense[]> => {
 export const invalidateExpensesCache = () => {
   expensesCache = null;
   cacheTimestamp = 0;
+  cacheUserId = null;
+  bootServed_loadExpensesCloud = false;
 };
 
 // Add expense
@@ -257,7 +269,10 @@ export const addExpenseCloud = async (expenseData: {
   const queueIt = () => {
     addToQueue('expense_atomic', payload, 10);
     const list = [localExpense, ...(expensesCache || loadExpensesLocally() || [])];
-    expensesCache = list; cacheTimestamp = Date.now(); saveExpensesLocally(list);
+    expensesCache = list; 
+    cacheTimestamp = Date.now(); 
+    cacheUserId = getCurrentUserId();
+    saveExpensesLocally(list);
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
     return localExpense;
   };
