@@ -87,12 +87,16 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       throw new Error(`تعذر جلب المنتج للتحديث: ${extractErrorMessage(fetchErr)}`);
     }
 
-    const curQty = existingProd?.quantity || 0;
-    const curCost = Number(existingProd?.cost_price) || 0;
-    const newQty = curQty + data.quantity;
-    const avgCost = newQty > 0 && data.costPrice > 0
-      ? Math.round(((curQty * curCost) + (data.quantity * data.costPrice)) / newQty * 100) / 100
-      : data.costPrice;
+    // ⚖️ الكمية والمتوسط المرجح يُحسبان ذرياً في الخادم (المخزون السالب يُغطّى بسعر الشراء أولاً)
+    const { error: wacErr } = await (supabase as any).rpc('receive_stock_wac', {
+      _product_id: targetProductId,
+      _quantity: data.quantity,
+      _unit_cost: data.costPrice || 0,
+      _reference: `quick_purchase:${invoiceNumber}`,
+    });
+    if (wacErr) {
+      throw new Error(`فشل تحديث المخزون والتكلفة: ${extractErrorMessage(wacErr)}`);
+    }
 
     const hist = Array.isArray(existingProd?.purchase_history) ? [...existingProd.purchase_history] : [];
     hist.push({
@@ -106,8 +110,6 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
     });
 
     interface ProductUpdates {
-      quantity: number;
-      cost_price: number;
       purchase_history: unknown[];
       updated_at: string;
       sale_price?: number;
@@ -118,8 +120,6 @@ export async function processQuickPurchaseFromQueue(data: QuickPurchaseData): Pr
       custom_fields?: Record<string, unknown> | null;
     }
     const updates: ProductUpdates = {
-      quantity: newQty,
-      cost_price: avgCost,
       purchase_history: hist,
       updated_at: new Date().toISOString(),
     };
