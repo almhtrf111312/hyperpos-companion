@@ -53,7 +53,7 @@ import {
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator';
 import { addUniqueOperation } from '@/lib/sync-queue';
-import { deductProductsLocalCache } from '@/lib/cloud/products-cloud';
+import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 
 import { Calculator } from '@/components/ui/Calculator';
@@ -362,8 +362,18 @@ export function CartPanel({
     });
   };
 
-  const handleCashSale = () => {
+  const handleCashSale = async () => {
     if (cart.length === 0) return;
+
+    // 🛡️ فحص استباقي: التحقق من أن كل صنف في السلة معتمد وموجود في الكتالوج السحابي
+    const validation = await validateCartProducts(cart);
+    if (!validation.isValid) {
+      showToast.error(
+        `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        { duration: 6000 }
+      );
+      return;
+    }
 
     // إذا كان هناك عجز في المقبوض وعميل مسجل، نفتح البيع المركب مباشرة
     if (!wholesaleMode && isSplitEligible) {
@@ -381,8 +391,19 @@ export function CartPanel({
     setShowCashDialog(true);
   };
 
-  const handleDebtSale = () => {
+  const handleDebtSale = async () => {
     if (cart.length === 0) return;
+
+    // 🛡️ فحص استباقي: التحقق من أن كل صنف في السلة معتمد وموجود في الكتالوج السحابي
+    const validation = await validateCartProducts(cart);
+    if (!validation.isValid) {
+      showToast.error(
+        `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     if (!isRealCustomerSelected(customerName)) {
       showToast.error(t('pos.enterCustomerName') || 'يرجى تحديد عميل مسجل لتسجيل الدين');
       return;
@@ -411,8 +432,19 @@ export function CartPanel({
     }
   };
 
-  const handleSplitSale = () => {
+  const handleSplitSale = async () => {
     if (cart.length === 0) return;
+
+    // 🛡️ فحص استباقي: التحقق من أن كل صنف في السلة معتمد وموجود في الكتالوج السحابي
+    const validation = await validateCartProducts(cart);
+    if (!validation.isValid) {
+      showToast.error(
+        `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     if (!isRealCustomerSelected(customerName)) {
       showToast.error('لا يمكن تسجيل دفع مركب بدون تحديد عميل مسجل لترحيل المتبقي كدين.');
       return;
@@ -438,6 +470,17 @@ export function CartPanel({
   const confirmCashSale = async () => {
     // ✅ حماية مزدوجة: state + ref لمنع التكرارات
     if (isSaving || savingRef.current) return;
+
+    // 🛡️ فحص استباقي حاسم قبل تفريغ السلة وتوليد الفاتورة
+    const validation = await validateCartProducts(cart);
+    if (!validation.isValid) {
+      showToast.error(
+        `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" تالف أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     savingRef.current = true;
     setIsSaving(true);
 
@@ -663,6 +706,16 @@ export function CartPanel({
 
     if (!isRealCustomerSelected(customerName)) {
       showToast.error('لا يمكن اعتماد الفاتورة كدين أو بيع مركب بدون تحديد عميل مسجل.');
+      return;
+    }
+
+    // 🛡️ فحص استباقي حاسم قبل تفريغ السلة وتوليد الفاتورة
+    const validation = await validateCartProducts(cart);
+    if (!validation.isValid) {
+      showToast.error(
+        `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" تالف أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        { duration: 6000 }
+      );
       return;
     }
 

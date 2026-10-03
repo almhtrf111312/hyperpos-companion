@@ -207,6 +207,13 @@ export const getStatus = (quantity: number, minStockLevel?: number): 'in_stock' 
   return 'in_stock';
 };
 
+// Helper to check if a product is marked as archived or deleted across various schemas
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const isProductArchivedOrDeleted = (p: any): boolean => {
+  if (!p || typeof p !== 'object') return false;
+  return p.archived === true || p.is_archived === true || p.is_deleted === true;
+};
+
 // Cache for products
 let productsCache: Product[] | null = null;
 let cacheTimestamp = 0;
@@ -231,13 +238,13 @@ const saveToLocalCache = (products: Product[]) => {
   }
 };
 
-// Load products from IndexedDB first, then localStorage fallback (strictly excludes archived, never expires offline)
+// Load products from IndexedDB first, then localStorage fallback (strictly excludes archived/deleted, never expires offline)
 export const loadFromLocalCache = async (): Promise<Product[] | null> => {
   // Try IndexedDB first (faster, larger capacity)
   try {
     const idbResult = await loadProductsFromIDB<Product>();
     if (idbResult && idbResult.products && idbResult.products.length > 0) {
-      const activeProducts = idbResult.products.filter(p => !p.archived);
+      const activeProducts = idbResult.products.filter(p => !isProductArchivedOrDeleted(p));
       console.log('[ProductsCloud] ✅ Serving from IndexedDB cache (' + activeProducts.length + ' products)');
       return activeProducts;
     }
@@ -252,7 +259,7 @@ export const loadFromLocalCache = async (): Promise<Product[] | null> => {
       const parsed = JSON.parse(cached);
       const products = parsed.products;
       if (Array.isArray(products) && products.length > 0) {
-        const activeProducts = (products as Product[]).filter(p => !p.archived);
+        const activeProducts = (products as Product[]).filter(p => !isProductArchivedOrDeleted(p));
         console.log('[ProductsCloud] Serving from localStorage fallback (' + activeProducts.length + ' products)');
         return activeProducts;
       }
@@ -330,7 +337,7 @@ const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promi
 export const loadProductsLocalFirst = async (): Promise<Product[]> => {
   // 1. فحص كاش الذاكرة أولاً
   if (productsCache && productsCache.length > 0) {
-    const activeCache = productsCache.filter(p => !p.archived);
+    const activeCache = productsCache.filter(p => !isProductArchivedOrDeleted(p));
     productsCache = activeCache;
     return activeCache;
   }
@@ -338,7 +345,7 @@ export const loadProductsLocalFirst = async (): Promise<Product[]> => {
   // 2. فحص الكاش المحلي المسبق (IndexedDB ثم localStorage)
   const localProducts = await loadFromLocalCache();
   if (localProducts && localProducts.length > 0) {
-    const activeLocal = localProducts.filter(p => !p.archived);
+    const activeLocal = localProducts.filter(p => !isProductArchivedOrDeleted(p));
     productsCache = activeLocal;
     cacheTimestamp = Date.now();
     return activeLocal;
@@ -471,7 +478,7 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
 
   // 3. Memory cache TTL check (short 10s TTL)
   if (productsCache && productsCache.length > 0 && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return productsCache.filter(p => !p.archived);
+    return productsCache.filter(p => !isProductArchivedOrDeleted(p));
   }
 
   try {
@@ -487,15 +494,15 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
       if (updatedProducts.length > 0) {
         console.log('[ProductsCloud] 🔄 Delta sync:', updatedProducts.length, 'updated products');
         const archivedIds = new Set(
-          updatedProducts.filter(p => p.archived === true).map(p => p.id)
+          updatedProducts.filter(p => isProductArchivedOrDeleted(p)).map(p => p.id)
         );
-        const activeCloudProducts = updatedProducts.filter(p => !p.archived);
+        const activeCloudProducts = updatedProducts.filter(p => !isProductArchivedOrDeleted(p));
         const updatedWithPending = await applyPendingDeductionsToCloudProducts(activeCloudProducts.map(toProduct));
         const updatedMap = new Map(updatedWithPending.map(p => [p.id, p]));
 
         // Merge: drop archived, replace existing, add new
         productsCache = productsCache
-          .filter(p => !archivedIds.has(p.id) && !p.archived)
+          .filter(p => !archivedIds.has(p.id) && !isProductArchivedOrDeleted(p))
           .map(p => updatedMap.get(p.id) || p);
 
         const existingIds = new Set(productsCache.map(p => p.id));
@@ -505,6 +512,11 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
           }
         }
         saveToLocalCache(productsCache);
+
+        // حذف المنتجات المؤرشفة أو المحذوفة من IndexedDB فوراً
+        if (archivedIds.size > 0) {
+          await Promise.all(Array.from(archivedIds).map(id => deleteProductFromIDB(id)));
+        }
       } else {
         console.log('[ProductsCloud] ✅ No changes since last sync');
       }
@@ -524,16 +536,34 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
         const localProducts = await loadFromLocalCache();
         if (localProducts && localProducts.length > 0) {
           console.log('[ProductsCloud] ⚠️ Cloud returned empty, using local cache');
-          productsCache = localProducts.filter(p => !p.archived);
+          productsCache = localProducts.filter(p => !isProductArchivedOrDeleted(p));
           cacheTimestamp = Date.now();
           return productsCache;
         }
       } else {
-        productsCache = await applyPendingDeductionsToCloudProducts(cloudProducts.map(toProduct));
+        const activeCloudProducts = cloudProducts.filter(p => !isProductArchivedOrDeleted(p));
+        productsCache = await applyPendingDeductionsToCloudProducts(activeCloudProducts.map(toProduct));
+
+        // تنظيف وحذف فوري من IndexedDB لأي منتج محذوف أو مؤرشف أو غير موجود بالسحابة
+        try {
+          const cloudIds = new Set(activeCloudProducts.map(p => p.id));
+          const idbResult = await loadProductsFromIDB<{ id: string }>();
+          if (idbResult && idbResult.products && idbResult.products.length > 0) {
+            const staleIds = idbResult.products
+              .map(p => p.id)
+              .filter(id => !cloudIds.has(id));
+            if (staleIds.length > 0) {
+              console.log('[ProductsCloud] 🧹 Full sync: purging', staleIds.length, 'stale IDB products:', staleIds);
+              await Promise.all(staleIds.map(id => deleteProductFromIDB(id)));
+            }
+          }
+        } catch (e) {
+          console.warn('[ProductsCloud] Stale IDB purge failed in full sync:', e);
+        }
       }
     }
 
-    productsCache = (productsCache || []).filter(p => !p.archived);
+    productsCache = (productsCache || []).filter(p => !isProductArchivedOrDeleted(p));
     cacheTimestamp = Date.now();
 
     // Update last sync timestamp
@@ -549,12 +579,12 @@ export const loadProductsCloud = async (): Promise<Product[]> => {
     console.error('[ProductsCloud] Cloud fetch failed, serving local cache:', error);
 
     if (productsCache && productsCache.length > 0) {
-      return productsCache.filter(p => !p.archived);
+      return productsCache.filter(p => !isProductArchivedOrDeleted(p));
     }
 
     const localProducts = await loadFromLocalCache();
     if (localProducts && localProducts.length > 0) {
-      return localProducts.filter(p => !p.archived);
+      return localProducts.filter(p => !isProductArchivedOrDeleted(p));
     }
 
     return [];
@@ -726,14 +756,14 @@ export const refreshProductsFromCloud = async (): Promise<Product[]> => {
     // 1. جلب المنتجات من السحابة
     const freshProducts = await loadProductsCloud();
 
-    // 2. تنظيف IndexedDB: حذف المنتجات الغائبة عن السحابة (محذوفة أو مؤرشفة)
+    // 2. تنظيف IndexedDB: حذف المنتجات الغائبة عن السحابة أو المعلمة كمحذوفة/مؤرشفة
     try {
-      const idbResult = await loadProductsFromIDB<{ id: string }>();
+      const idbResult = await loadProductsFromIDB<{ id: string; archived?: boolean; is_archived?: boolean; is_deleted?: boolean }>();
       if (idbResult && idbResult.products.length > 0) {
-        const cloudIds = new Set(freshProducts.map(p => p.id));
+        const cloudIds = new Set(freshProducts.filter(p => !isProductArchivedOrDeleted(p)).map(p => p.id));
         const staleIds = idbResult.products
-          .map(p => p.id)
-          .filter(id => !cloudIds.has(id));
+          .filter(p => !cloudIds.has(p.id) || isProductArchivedOrDeleted(p))
+          .map(p => p.id);
         if (staleIds.length > 0) {
           console.log('[ProductsCloud] 🧹 Purging', staleIds.length, 'stale IDB products:', staleIds);
           await Promise.all(staleIds.map(id => deleteProductFromIDB(id)));
@@ -759,6 +789,42 @@ export const refreshProductsFromCloud = async (): Promise<Product[]> => {
   } catch {
     return productsCache || [];
   }
+};
+
+/**
+ * التحقق من أن جميع عناصر السلة ترتبط بمنتجات معتمدة في السحابة
+ * يمنع إنشاء أو بيع فواتير لأصناف محذوفة أو وهمية تسبب خطأ "Product not found"
+ */
+export const validateCartProducts = async (
+  items: Array<{ id: string; name: string }>
+): Promise<{ isValid: boolean; invalidItems: string[] }> => {
+  if (!items || items.length === 0) return { isValid: true, invalidItems: [] };
+
+  const products = productsCache && productsCache.length > 0
+    ? productsCache
+    : (await loadFromLocalCache()) || [];
+
+  const activeIdSet = new Set(
+    products
+      .filter(p => !isProductArchivedOrDeleted(p))
+      .map(p => p.id)
+  );
+
+  const invalidItems: string[] = [];
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  for (const item of items) {
+    const isUuid = uuidRegex.test(item.id);
+    const exists = activeIdSet.has(item.id);
+    if (!isUuid || !exists) {
+      invalidItems.push(item.name || item.id || 'صنف غير معروف');
+    }
+  }
+
+  return {
+    isValid: invalidItems.length === 0,
+    invalidItems,
+  };
 };
 
 // Add product to cloud

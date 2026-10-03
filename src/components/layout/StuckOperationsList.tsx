@@ -15,6 +15,7 @@ import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import {
   getStuckOperations,
   discardStuckOperation,
+  discardAllTerminalOperations,
   retryStuckOperation,
   StuckOperation,
 } from '@/lib/sync-recovery';
@@ -29,6 +30,7 @@ const statusLabel = (op: StuckOperation) => {
 export function StuckOperationsList() {
   const [operations, setOperations] = useState<StuckOperation[]>(() => getStuckOperations());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [isDiscardingAll, setIsDiscardingAll] = useState(false);
   const cloudContext = useContext(CloudSyncContext);
   const syncNow = cloudContext?.syncNow;
   const isCloudSyncing = cloudContext?.isSyncing ?? false;
@@ -89,6 +91,28 @@ export function StuckOperationsList() {
     }
   };
 
+  const terminalOps = operations.filter(
+    op => op.errorClass === 'terminal' || op.status === 'failed' || op.retryCount >= op.maxRetries || Boolean(op.error)
+  );
+
+  const handleDiscardAll = async () => {
+    setIsDiscardingAll(true);
+    try {
+      const result = await discardAllTerminalOperations();
+      if (result.count > 0) {
+        toast.success(`تم إلغاء ${result.count} عملية تالفة بنجاح وإرجاع حجز المخزون`, { id: 'discard-all' });
+      } else {
+        toast.info('لا توجد عمليات تالفة للإلغاء', { id: 'discard-all' });
+      }
+    } catch (err) {
+      console.error('Discard all error:', err);
+      toast.error('حدث خطأ أثناء إلغاء العمليات', { id: 'discard-all' });
+    } finally {
+      setIsDiscardingAll(false);
+      refresh();
+    }
+  };
+
   return (
     <div className="border-t border-border">
       <div className="px-3 py-2 flex items-center justify-between bg-destructive/10 border-b border-destructive/20">
@@ -100,6 +124,28 @@ export function StuckOperationsList() {
         </div>
         <span className="text-[10px] text-destructive/80 font-medium">بحاجة للمزامنة أو الإلغاء</span>
       </div>
+
+      {terminalOps.length > 0 && (
+        <div className="px-3 py-2 bg-destructive/15 border-b border-destructive/25 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-ping shrink-0" />
+            <span className="text-[11px] font-bold text-destructive truncate">
+              {terminalOps.length} عملية متعثرة
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="h-7 text-xs px-2.5 gap-1.5 font-bold shadow-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 shrink-0"
+            disabled={isDiscardingAll || !!busyId}
+            onClick={handleDiscardAll}
+            title="إلغاء كل العمليات التالفة دفعة واحدة وإرجاع المخزون المحجوز"
+          >
+            <Trash2 className={cn("h-3.5 w-3.5", isDiscardingAll && "animate-spin")} />
+            <span>{isDiscardingAll ? 'جاري الإلغاء...' : 'إلغاء كل العمليات التالفة دفعة واحدة'}</span>
+          </Button>
+        </div>
+      )}
 
       <div className="p-2 space-y-2 max-h-60 overflow-y-auto">
         {operations.map(op => {

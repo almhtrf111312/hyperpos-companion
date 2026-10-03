@@ -108,7 +108,40 @@ export const discardStuckOperation = async (operationQueueId: string): Promise<b
   return true;
 };
 
+/**
+ * إلغاء كافة العمليات الفاشلة نهائياً أو التالفة دفعة واحدة
+ * مع إرجاع حجز المخزون المحلي وحذفها من الطابور نهائياً
+ */
+export const discardAllTerminalOperations = async (): Promise<{ count: number; success: boolean }> => {
+  const queue = loadQueue();
+  const terminalOps = queue.filter(
+    op =>
+      op.status === 'failed' ||
+      op.errorClass === 'terminal' ||
+      op.retryCount >= op.maxRetries ||
+      Boolean(op.error)
+  );
+
+  if (terminalOps.length === 0) return { count: 0, success: true };
+
+  for (const op of terminalOps) {
+    try {
+      await restoreLocalStock(op);
+      removeFromQueue(op.id);
+      updateHistoryStatus(op.id, 'failed', 'تم إلغاء العملية التالفة نهائياً');
+    } catch (err) {
+      console.warn('[SyncRecovery] Failed to discard terminal op:', op.id, err);
+    }
+  }
+
+  emitEvent(EVENTS.INVOICES_UPDATED, null);
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  emitEvent(EVENTS.SYNC_QUEUE_UPDATED, null);
+  return { count: terminalOps.length, success: true };
+};
+
 /** إعادة عملية واحدة إلى حالة الانتظار لإعادة المحاولة فوراً */
 export const retryStuckOperation = (operationQueueId: string): boolean =>
   resetOperationForRetry(operationQueueId);
+
 
