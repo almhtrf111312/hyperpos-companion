@@ -64,6 +64,8 @@ export interface CloudInvoice {
 }
 
 export interface Invoice {
+  warehouseId?: string;
+  dueDate?: string;
   id: string;
   type: InvoiceType;
   customerId?: string;

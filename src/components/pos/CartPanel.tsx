@@ -610,7 +610,7 @@ export function CartPanel({
         discountedProfit,
         totalCOGS,
         (receivedCurrencyCode as any) || 'USD',
-        receivedAmountSnapshot || (totalSnapshot * (activeReceivedCurrency.rate || 1))
+        receivedAmount || (totalSnapshot * (activeReceivedCurrency.rate || 1))
       );
       recordActivity();
 

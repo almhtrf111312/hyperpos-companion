@@ -1,5 +1,10 @@
 [
   {
+    "type": "fix",
+    "ar": "إصلاح أخطاء البناء، ورفض الأصناف غير المتزامنة برسالة واضحة بدل تعليق طابور المزامنة.",
+    "en": "v1.0.60 - Fixed build errors; unsynced products now fail clearly instead of blocking the sync queue"
+  },
+  {
     "type": "improvement",
     "ar": "تسريع شاشة نقطة البيع واستبعاد المنتجات المؤرشفة ومزامنة المخزون اللحظية، وتفصيل رسائل أخطاء تسجيل الدخول والمنتجات، وتدقيق رسائل المزامنة مع إظهار بيانات وتاريخ ووقت البناء الفعلي.",
     "en": "v1.0.59 - POS instant loading, archived products exclusion, real-time stock sync on refunds, detailed auth and product error messages, accurate sync feedback, and build timestamp display."
@@ -15,7 +20,6 @@
     "en": "v1.0.57 - Safe product archiving, real signup error reasons, single grouped startup alert, currency-aware received amount, no silent cash discount, and down payments on deferred sales."
   },
   {
-
     "type": "fix",
     "ar": "تسريع ظهور المنتجات: الصور تُحمَّل فقط عند ظهورها على الشاشة، وإصلاح ظهور «غير متصل» خطأً عند استخدام VPN.",
     "en": "v1.0.56 - Faster product lists (lazy images) and fixed false offline status with VPN."

@@ -412,8 +412,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           const rawError = failedOps[0]?.error || allQueue.find(op => !!op.error)?.error || '';
           const friendlyError = formatSyncServerError(rawError);
           showToast.error('فشلت المزامنة', {
-            description: `${result.failed} عملية معلقة: ${friendlyError}`,
-            duration: 6000
+            description: `${result.failed} عملية معلقة: ${friendlyError}`
           });
         }
       }
@@ -493,7 +492,6 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         const friendlyError = formatSyncServerError(error);
         showToast.error('فشلت المزامنة', {
           description: friendlyError,
-          duration: 6000
         });
       }
       return { success: false, processed: 0, failed: 1, targetSuccess: false };
