@@ -229,11 +229,11 @@ export default function BossPanel() {
   const [showDeleteBossPassword, setShowDeleteBossPassword] = useState(false);
   const [isDeletingBoss, setIsDeletingBoss] = useState(false);
 
-  // Cashier password change
-  const [cashierPasswordDialog, setCashierPasswordDialog] = useState<{ userId: string; name: string } | null>(null);
-  const [cashierNewPassword, setCashierNewPassword] = useState('');
-  const [showCashierNewPassword, setShowCashierNewPassword] = useState(false);
-  const [isChangingCashierPassword, setIsChangingCashierPassword] = useState(false);
+  // Password change (Owners & Cashiers)
+  const [passwordChangeDialog, setPasswordChangeDialog] = useState<{ userId: string; name: string } | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Cashier edit name
   const [editCashierNameDialog, setEditCashierNameDialog] = useState<{ userId: string; name: string } | null>(null);
@@ -956,30 +956,31 @@ export default function BossPanel() {
     }
   };
 
-  // Cashier password change handler
-  const handleChangeCashierPassword = async () => {
-    if (!cashierPasswordDialog || !cashierNewPassword) return;
-    if (cashierNewPassword.length < 6) {
+  // Password change handler (for Owners and Cashiers)
+  const handleChangePassword = async () => {
+    if (!passwordChangeDialog || !newPassword) return;
+    if (newPassword.length < 6) {
       toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
 
-    setIsChangingCashierPassword(true);
+    setIsChangingPassword(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-change-password', {
-        body: { userId: cashierPasswordDialog.userId, newPassword: cashierNewPassword },
+      const { data, error } = await supabase.rpc('boss_change_user_password', {
+        _target_user_id: passwordChangeDialog.userId,
+        _new_password: newPassword,
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
-      toast.success(`تم تغيير كلمة مرور "${cashierPasswordDialog.name}" بنجاح`);
-      setCashierPasswordDialog(null);
-      setCashierNewPassword('');
+      if (error) throw error;
+
+      toast.success(`تم تغيير كلمة مرور "${passwordChangeDialog.name}" بنجاح`);
+      setPasswordChangeDialog(null);
+      setNewPassword('');
     } catch (error: any) {
-      console.error('Error changing cashier password:', error);
+      console.error('Error changing password:', error);
       toast.error(error.message || 'فشل في تغيير كلمة المرور');
     } finally {
-      setIsChangingCashierPassword(false);
+      setIsChangingPassword(false);
     }
   };
 
@@ -1460,6 +1461,13 @@ export default function BossPanel() {
                                     <Pencil className="w-4 h-4 me-2" />
                                     تعديل الاسم
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    setPasswordChangeDialog({ userId: owner.user_id, name: owner.full_name || owner.email || '' });
+                                    setNewPassword('');
+                                  }}>
+                                    <KeyRound className="w-4 h-4 me-2" />
+                                    تغيير كلمة المرور
+                                  </DropdownMenuItem>
 
                                   <DropdownMenuSeparator />
                                   <DropdownMenuLabel>إدارة الترخيص</DropdownMenuLabel>
@@ -1617,8 +1625,8 @@ export default function BossPanel() {
                                               تعديل الاسم
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => {
-                                              setCashierPasswordDialog({ userId: cashier.user_id, name: cashier.full_name || cashier.email || '' });
-                                              setCashierNewPassword('');
+                                              setPasswordChangeDialog({ userId: cashier.user_id, name: cashier.full_name || cashier.email || '' });
+                                              setNewPassword('');
                                             }}>
                                               <KeyRound className="w-4 h-4 me-2" />
                                               تغيير كلمة المرور
@@ -2879,8 +2887,8 @@ export default function BossPanel() {
           </DialogContent>
         </Dialog>
 
-        {/* Cashier Password Change Dialog */}
-        <Dialog open={!!cashierPasswordDialog} onOpenChange={() => { setCashierPasswordDialog(null); setCashierNewPassword(''); }}>
+        {/* Password Change Dialog (Owners & Cashiers) */}
+        <Dialog open={!!passwordChangeDialog} onOpenChange={() => { setPasswordChangeDialog(null); setNewPassword(''); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -2888,7 +2896,7 @@ export default function BossPanel() {
                 تغيير كلمة المرور
               </DialogTitle>
               <DialogDescription>
-                تغيير كلمة مرور الحساب التابع: {cashierPasswordDialog?.name}
+                تغيير كلمة مرور الحساب: {passwordChangeDialog?.name}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -2896,26 +2904,26 @@ export default function BossPanel() {
                 <Label>كلمة المرور الجديدة</Label>
                 <div className="relative">
                   <Input
-                    type={showCashierNewPassword ? 'text' : 'password'}
-                    value={cashierNewPassword}
-                    onChange={(e) => setCashierNewPassword(e.target.value)}
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="أدخل كلمة المرور الجديدة (6 أحرف على الأقل)"
                     className="pe-10"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowCashierNewPassword(!showCashierNewPassword)}
+                    onClick={() => setShowNewPassword(!showNewPassword)}
                     className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground"
                   >
-                    {showCashierNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setCashierPasswordDialog(null); setCashierNewPassword(''); }}>إلغاء</Button>
-              <Button onClick={handleChangeCashierPassword} disabled={isChangingCashierPassword || cashierNewPassword.length < 6}>
-                {isChangingCashierPassword ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <KeyRound className="w-4 h-4 me-2" />}
+              <Button variant="outline" onClick={() => { setPasswordChangeDialog(null); setNewPassword(''); }}>إلغاء</Button>
+              <Button onClick={handleChangePassword} disabled={isChangingPassword || newPassword.length < 6}>
+                {isChangingPassword ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <KeyRound className="w-4 h-4 me-2" />}
                 تغيير كلمة المرور
               </Button>
             </DialogFooter>
