@@ -38,6 +38,7 @@ export interface CloudDebt {
 }
 
 export interface Debt {
+  customerId?: string;
   id: string;
   invoiceId: string;
   customerName: string;
