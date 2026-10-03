@@ -299,12 +299,17 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     // Check if user changed - clear old data
     const lastUserId = localStorage.getItem(LAST_USER_KEY);
     if (lastUserId && lastUserId !== user.id) {
-      console.log('[CloudSync] User changed, clearing old localStorage data + IndexedDB');
+      console.log('[CloudSync] User changed, clearing old localStorage data + IndexedDB + memory caches');
       clearUserLocalStorage();
       // ✅ مسح IndexedDB عند تغيير المستخدم
       import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
         clearProductsIDB();
         console.log('[CloudSync] Cleared IndexedDB products cache on user change');
+      });
+      // ✅ إبطال جميع الكاشات في الذاكرة لمنع تسرب البيانات بين الحسابات
+      import('@/lib/cloud').then(({ invalidateAllCaches }) => {
+        invalidateAllCaches();
+        console.log('[CloudSync] Invalidated all memory caches on user change');
       });
     }
     localStorage.setItem(LAST_USER_KEY, user.id);
@@ -383,7 +388,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         }
         if (operation.type === 'invoice_refund_partial') {
           const { refundInvoicePartialCloud } = await import('@/lib/cloud/invoices-cloud');
-          const { invoiceNumber, itemsToRefund, operationId } = operation.data as { invoiceNumber: string; itemsToRefund: any[]; operationId?: string };
+          const { invoiceNumber, itemsToRefund, operationId } = operation.data as { invoiceNumber: string; itemsToRefund: unknown[]; operationId?: string };
           const res = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund, operationId || `legacy-${operation.id}`);
           if (!res.success) throw new Error(res.error || 'فشل الاسترداد الجزئي');
           return true;
