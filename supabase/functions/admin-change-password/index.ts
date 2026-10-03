@@ -50,16 +50,24 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     })
 
-    // Verify the requesting user is an admin or boss
+    // Verify the requesting user is an admin or boss and is active
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
-      .select('role')
+      .select('role, is_active')
       .eq('user_id', adminUserId)
       .single()
 
     if (roleError || (roleData?.role !== 'admin' && roleData?.role !== 'boss')) {
       return new Response(
         JSON.stringify({ error: 'Forbidden: Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!roleData.is_active) {
+      console.error('Inactive user attempted password change:', adminUserId)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Account is deactivated' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     // Check if user has a role (only admin/owner can start trial, not cashiers)
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .select('role, owner_id')
+      .select('role, owner_id, is_active')
       .eq('user_id', user.id)
       .single()
 
@@ -76,6 +76,15 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'لم يتم العثور على دور المستخدم' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check if user role is active
+    if (!roleData.is_active) {
+      console.log('User account is deactivated:', user.id)
+      return new Response(
+        JSON.stringify({ success: false, error: 'الحساب معطل' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

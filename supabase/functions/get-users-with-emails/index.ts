@@ -43,10 +43,10 @@ Deno.serve(async (req) => {
 
     const userId = userData.user.id
 
-    // Check if user is boss
+    // Check if user is boss and active
     const { data: roleData, error: roleError } = await adminClient
       .from('user_roles')
-      .select('role')
+      .select('role, is_active')
       .eq('user_id', userId)
       .maybeSingle()
 
@@ -54,6 +54,14 @@ Deno.serve(async (req) => {
       console.error('Role check failed:', roleError, roleData)
       return new Response(
         JSON.stringify({ error: 'Forbidden - Boss access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!roleData.is_active) {
+      console.error('Inactive boss attempted access:', userId)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - Account is deactivated' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -154,7 +162,13 @@ Deno.serve(async (req) => {
     })
 
     // Build cashiers map by owner
-    const cashiersByOwner = new Map<string, any[]>()
+    const cashiersByOwner = new Map<string, Array<{
+      user_id: string;
+      email: string;
+      full_name: string | null;
+      user_type: string;
+      is_active: boolean;
+    }>>()
     for (const user of usersWithDetails) {
       if (user.role === 'cashier' && user.owner_id) {
         const list = cashiersByOwner.get(user.owner_id) || []

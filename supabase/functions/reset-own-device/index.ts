@@ -48,7 +48,23 @@ serve(async (req) => {
     const userId = signInData.user.id;
     console.log('[reset-own-device] Credentials verified for user:', userId);
 
-    // Step 2: Reset the device_id in app_licenses
+    // Step 2: Check if user role is active
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('is_active')
+      .eq('user_id', userId)
+      .single();
+
+    if (roleError || !roleData?.is_active) {
+      console.log('[reset-own-device] User account is deactivated:', userId);
+      await supabaseAnon.auth.signOut();
+      return new Response(
+        JSON.stringify({ error: 'الحساب معطل' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 3: Reset the device_id in app_licenses
     const { error: updateError } = await supabaseAdmin
       .from('app_licenses')
       .update({ device_id: null })

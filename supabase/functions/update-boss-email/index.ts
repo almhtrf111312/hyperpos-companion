@@ -39,10 +39,10 @@ serve(async (req) => {
       );
     }
 
-    // Check if user is boss
+    // Check if user is boss and active
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .select('role')
+      .select('role, is_active')
       .eq('user_id', user.id)
       .single();
 
@@ -50,6 +50,14 @@ serve(async (req) => {
       console.error('Role check failed:', roleError);
       return new Response(
         JSON.stringify({ error: 'Only boss can update email' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!roleData.is_active) {
+      console.error('Inactive boss attempted email update:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Account is deactivated' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

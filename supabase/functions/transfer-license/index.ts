@@ -44,7 +44,23 @@ serve(async (req) => {
     const userId = signInData.user.id;
     console.log('[transfer-license] Credentials verified for user:', userId);
 
-    // Step 2: Clear device_id from active license
+    // Step 2: Check if user role is active
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('is_active')
+      .eq('user_id', userId)
+      .single();
+
+    if (roleError || !roleData?.is_active) {
+      console.log('[transfer-license] User account is deactivated:', userId);
+      await supabaseAnon.auth.signOut();
+      return new Response(
+        JSON.stringify({ error: 'الحساب معطل' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 3: Clear device_id from active license
     const { error: updateError } = await supabaseAdmin
       .from('app_licenses')
       .update({ device_id: null })
