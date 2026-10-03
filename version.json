@@ -1,8 +1,14 @@
 {
-  "versionCode": 289,
-  "versionName": "1.0.59",
-  "lastUpdated": "2026-10-02T04:00:00.000Z",
+  "versionCode": 290,
+  "versionName": "1.0.60",
+  "lastUpdated": "2026-10-03T00:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 290,
+      "versionName": "1.0.60",
+      "date": "2026-10-03",
+      "description": "v1.0.60 - Fixed build errors; unsynced products now fail clearly instead of blocking the sync queue"
+    },
     {
       "versionCode": 289,
       "versionName": "1.0.59",
@@ -27,7 +33,6 @@
       "date": "2026-09-29",
       "description": "v1.0.56 - Product images load only when visible (IntersectionObserver + signed URL memo); connectivity check probes app backend first with 4s timeout to fix false offline on VPN"
     },
-
     {
       "versionCode": 285,
       "versionName": "1.0.55",

@@ -75,7 +75,10 @@ function buildRpcItems(bundle: AtomicSaleBundle) {
     }
 
     // ✅ التأكد من فحص stockItem.productId، وإذا لم يكن UUID صالحاً تجنب تمرير نص خاطئ يكسر تحويل uuid في قاعدة البيانات
-    const productId = isValidUUID(stockItem.productId) ? stockItem.productId : null;
+    if (!isValidUUID(stockItem.productId)) {
+      throw new Error(`Invalid item: product "${item.name}" is not synced yet`);
+    }
+    const productId = stockItem.productId;
 
     return {
       product_id: productId,
