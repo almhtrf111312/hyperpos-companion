@@ -35,6 +35,7 @@ export type ActivityType =
   | 'expense_deleted'
   | 'expense'
   | 'refund'
+  | 'partial_refund'
   | 'partner_added'
   | 'partner_updated'
   | 'partner_deleted'

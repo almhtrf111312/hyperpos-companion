@@ -214,7 +214,7 @@ export async function deleteProductFromIDB(id: string): Promise<void> {
 }
 
 // Update a single product in IndexedDB
-export async function updateProductInIDB<T extends { id: string }>(id: string, updates: Partial<T>): Promise<void> {
+export async function updateProductInIDB(id: string, updates: Record<string, unknown>): Promise<void> {
   try {
     const db = await openDB();
     const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readwrite');

@@ -430,7 +430,7 @@ export default function Invoices() {
           invalidateProductsCache();
           refreshProductsFromCloud().then(() => {
             // Notify listeners that products updated
-            emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as any, null);
+            emitEvent(EVENTS.PRODUCTS_UPDATED, null);
           }).catch(() => {});
         } catch (e) { /* noop */ }
 
@@ -573,7 +573,7 @@ export default function Invoices() {
       try {
         invalidateProductsCache();
         refreshProductsFromCloud().then(() => {
-          emitEvent(PROD_EVENTS.PRODUCTS_UPDATED as any, null);
+          emitEvent(EVENTS.PRODUCTS_UPDATED, null);
         }).catch(() => {});
       } catch (e) { /* noop */ }
 
