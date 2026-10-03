@@ -303,7 +303,7 @@ export function InputBar({
       const { data, error } = await supabase.rpc('send_support_message', {
         _message: trimmed,
         _conversation_id: conversationId || null,
-      } as Record<string, unknown>);
+      } as { _message: string; _conversation_id?: string });
 
       if (error) {
         console.error('[SupportChat] RPC error:', error);

@@ -370,7 +370,7 @@ export function CartPanel({
     if (!validation.isValid) {
       showToast.error(
         `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { duration: 6000 }
+        { persistent: false }
       );
       return;
     }
@@ -399,7 +399,7 @@ export function CartPanel({
     if (!validation.isValid) {
       showToast.error(
         `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { duration: 6000 }
+        { persistent: false }
       );
       return;
     }
@@ -440,7 +440,7 @@ export function CartPanel({
     if (!validation.isValid) {
       showToast.error(
         `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { duration: 6000 }
+        { persistent: false }
       );
       return;
     }
@@ -476,7 +476,7 @@ export function CartPanel({
     if (!validation.isValid) {
       showToast.error(
         `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" تالف أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { duration: 6000 }
+        { persistent: false }
       );
       return;
     }
@@ -714,7 +714,7 @@ export function CartPanel({
     if (!validation.isValid) {
       showToast.error(
         `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" تالف أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { duration: 6000 }
+        { persistent: false }
       );
       return;
     }

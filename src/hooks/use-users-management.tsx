@@ -66,15 +66,20 @@ export function useUsersManagement() {
       let emailMap: Record<string, string> = {};
       
       try {
-        const { data: emailsData, error: emailsError } = await supabase.functions.invoke('get-users-emails', {
-          body: { userIds },
-        });
-        
-        if (!emailsError && emailsData?.emails) {
-          emailMap = emailsData.emails;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token && userIds.length > 0) {
+          const { data: emailsData, error: emailsError } = await supabase.functions.invoke('get-users-emails', {
+            body: { userIds },
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (!emailsError && emailsData?.emails) {
+            emailMap = emailsData.emails;
+          } else if (emailsError) {
+            console.warn('[Users] emails unavailable:', emailsError.message);
+          }
         }
       } catch (e) {
-        console.error('Error fetching user emails:', e);
+        console.warn('Error fetching user emails:', e);
       }
 
       // Combine data

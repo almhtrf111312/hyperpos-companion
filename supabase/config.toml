@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.transfer-license]
 verify_jwt = false
+
+[functions.get-users-emails]
+verify_jwt = false
