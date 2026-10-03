@@ -221,7 +221,8 @@ export function MaintenancePanel({
           [{ category: 'صيانة', profit }],
           invoice.id,
           customerName,
-          paymentType === 'debt'
+          paymentType === 'debt',
+          profit  // ✅ Pass as authoritative since it's directly calculated from user input
         );
       }
 
@@ -355,7 +356,9 @@ export function MaintenancePanel({
         storePhone = settings.storeSettings?.phone || '';
         footer = settings.printSettings?.footer || footer;
       }
-    } catch { }
+    } catch {
+      // Ignore parsing errors
+    }
 
     const currentDate = new Date().toLocaleDateString('ar-SA');
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');

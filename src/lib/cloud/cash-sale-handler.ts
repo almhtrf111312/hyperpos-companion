@@ -77,7 +77,8 @@ export async function processCashSaleBundleFromQueue(
           categoryProfits,
           sale.invoiceNumber,
           bundle.customerName || 'عميل نقدي',
-          false
+          false,
+          sale.profit  // ✅ Server-authoritative profit for reconciliation
         ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
       }
 
