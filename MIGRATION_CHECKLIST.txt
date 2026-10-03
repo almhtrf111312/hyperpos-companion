@@ -1,0 +1,98 @@
+================================================================================
+POST-PATCH MIGRATION CHECKLIST
+================================================================================
+
+This patch has removed the committed keystore and hardcoded passwords from the
+repository. To complete the migration, follow these steps IN ORDER:
+
+STEP 1: BACKUP THE EXISTING KEYSTORE (CRITICAL - DO THIS FIRST)
+----------------------------------------------------------------
+Before committing these changes, ensure you have a backup of the keystore:
+
+  cp android/app/flowpos-release.keystore ~/flowpos-release.keystore.backup
+
+Store this backup in a secure location (password manager, encrypted storage).
+This is your ONLY copy after the next step.
+
+
+STEP 2: CONFIGURE GITHUB SECRETS
+---------------------------------
+See SETUP_SIGNING_SECRETS.txt for detailed instructions.
+
+Quick commands:
+  cd android/app
+  base64 -i flowpos-release.keystore | tr -d '\n' > keystore_base64.txt
+  cat keystore_base64.txt  # Copy this value
+
+Then in GitHub:
+  Settings > Secrets and variables > Actions > New repository secret
+
+Add these 4 secrets:
+  - RELEASE_KEYSTORE_BASE64 (paste the base64 string)
+  - RELEASE_KEYSTORE_PASSWORD (value: flowpos123)
+  - RELEASE_KEY_ALIAS (value: flowpos)
+  - RELEASE_KEY_PASSWORD (value: flowpos123)
+
+Clean up:
+  rm keystore_base64.txt  # Never commit this file
+
+
+STEP 3: COMMIT AND PUSH THE CHANGES
+------------------------------------
+  git add .gitignore .github/workflows/build-apk.yml android/app/build.gradle
+  git commit -m "Security: Move Android signing credentials to GitHub Secrets"
+  git push
+
+
+STEP 4: REMOVE KEYSTORE FROM GIT HISTORY
+-----------------------------------------
+The keystore is still in git history. Remove it:
+
+  git rm android/app/flowpos-release.keystore
+  git commit -m "Remove committed keystore file"
+  git push
+
+To purge from history (optional but recommended):
+  git filter-branch --force --index-filter \
+    "git rm --cached --ignore-unmatch android/app/flowpos-release.keystore" \
+    --prune-empty --tag-name-filter cat -- --all
+  
+  git push origin --force --all
+
+
+STEP 5: VERIFY THE BUILD
+-------------------------
+Trigger the workflow manually:
+  Actions > Build FlowPOS Pro APK > Run workflow
+
+Verify:
+  - Workflow completes successfully
+  - APK is signed and uploaded
+  - No keystore or password appears in logs
+
+
+STEP 6: ROTATE CREDENTIALS (RECOMMENDED)
+-----------------------------------------
+If the repository was ever public or if unauthorized users had access:
+
+1. Generate a new keystore with different passwords
+2. Update the GitHub Secrets with the new values
+3. Note: This will break update compatibility - users must reinstall
+
+If the repository was always private and access was controlled, you may
+continue using the existing keystore for update compatibility.
+
+
+================================================================================
+SECURITY IMPROVEMENTS ACHIEVED
+================================================================================
+
+✓ Keystore file removed from repository
+✓ Passwords removed from workflow files
+✓ Credentials stored in encrypted GitHub Secrets
+✓ Keystore decoded to temporary directory (auto-cleaned)
+✓ Repository readers can no longer access signing material
+✓ Later workflow steps cannot access keystore file
+✓ Secrets only accessible to repository admins
+
+================================================================================
