@@ -35,7 +35,6 @@ export function brokeredPreviewStorage() {
     new Promise((resolve) => {
       const requestId = newId();
       let done = false;
-      let timer: ReturnType<typeof setTimeout>;
       const finish = (r: { ok: boolean; value?: string | null } | null) => {
         if (done) return;
         done = true;
@@ -53,7 +52,7 @@ export function brokeredPreviewStorage() {
       if (value !== undefined) msg['value'] = value;
       // targetOrigin per trusted editor origin, so a session token never reaches an arbitrary embedder.
       for (const origin of editorOrigins) window.parent.postMessage(msg, origin);
-      timer = setTimeout(() => finish(null), TIMEOUT);
+      const timer = setTimeout(() => finish(null), TIMEOUT);
     });
 
   // The editor may not be listening yet at the first getItem, so retry once.
@@ -62,6 +61,14 @@ export function brokeredPreviewStorage() {
 
   return {
     getItem: async (key: string) => {
+      // Check local tombstone first: if we recorded a logout locally, never trust
+      // a stale broker response even if the removal message was lost.
+      const localValue = localStorage.getItem(key);
+      if (localValue === '') {
+        // Local tombstone present: logout was recorded, ignore broker
+        return null;
+      }
+
       let res = await request('lovable-preview-auth:get', key);
       if (!res && firstGet) {
         await new Promise((r) => setTimeout(r, RETRY_DELAY));
@@ -71,22 +78,24 @@ export function brokeredPreviewStorage() {
       // '' is the logout tombstone: clear the local copy too so it can't resurrect if
       // the broker later goes silent. A null reply means never-synced -> keep local.
       if (res && res.ok && typeof res.value === 'string') {
-        if (res.value === '') { localStorage.removeItem(key); return null; }
+        if (res.value === '') { localStorage.setItem(key, ''); return null; }
         return res.value;
       }
-      return localStorage.getItem(key);
+      return localValue;
     },
     setItem: (key: string, value: string) => {
       localStorage.setItem(key, value);
       return request('lovable-preview-auth:set', key, value).then((res) => {
         if (res && res.ok && typeof res.value === 'string' && localStorage.getItem(key) === value) {
-          if (res.value === '') localStorage.removeItem(key);
+          if (res.value === '') localStorage.setItem(key, '');
           else localStorage.setItem(key, res.value);
         }
       });
     },
     removeItem: (key: string) => {
-      localStorage.removeItem(key);
+      // Set local tombstone immediately to prevent stale broker responses from
+      // being accepted if the removal message is lost or the broker is unavailable.
+      localStorage.setItem(key, '');
       return request('lovable-preview-auth:remove', key).then(() => undefined);
     },
   };
