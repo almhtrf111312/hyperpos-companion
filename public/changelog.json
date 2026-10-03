@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "أمان: قراءة الفواتير تتطلب الآن رخصة فعّالة على مستوى قاعدة البيانات، مع استثناء حسابات المدير العام.",
+    "en": "v1.0.62 - Security: invoice reading now requires an active license enforced by the database; boss accounts exempt"
+  },
+  {
+    "type": "fix",
     "ar": "إصلاح خطأ عدم التصريح عند جلب بريد المستخدمين في صفحة الحسابات.",
     "en": "v1.0.61 - Fixed user list email lookup returning Unauthorized"
   },
