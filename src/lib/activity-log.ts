@@ -210,6 +210,7 @@ export const activityTypeLabels: Record<ActivityType, { ar: string; en: string; 
   debt_deleted: { ar: 'حذف دين', en: 'Debt Deleted', fr: 'Dette Supprimée' },
   debt_payment: { ar: 'تسديد دفعة', en: 'Debt Payment', fr: 'Paiement Dette' },
   expense: { ar: 'مصروف', en: 'Expense', fr: 'Dépense' },
+  partial_refund: { ar: 'استرداد جزئي', en: 'Partial refund', fr: 'Remboursement partiel' },
   refund: { ar: 'مرتجع', en: 'Refund', fr: 'Remboursement' },
 };
 
