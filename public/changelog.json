@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "إصلاح خطأ عدم التصريح عند جلب بريد المستخدمين في صفحة الحسابات.",
+    "en": "v1.0.61 - Fixed user list email lookup returning Unauthorized"
+  },
+  {
+    "type": "fix",
     "ar": "إصلاح أخطاء البناء، ورفض الأصناف غير المتزامنة برسالة واضحة بدل تعليق طابور المزامنة.",
     "en": "v1.0.60 - Fixed build errors; unsynced products now fail clearly instead of blocking the sync queue"
   },
