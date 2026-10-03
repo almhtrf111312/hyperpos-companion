@@ -716,14 +716,46 @@ export const clearProductsLocalCache = () => {
   }
 };
 
-// ✅ Refresh products from cloud in background (non-blocking)
+// ✅ Refresh products from cloud in background (non-blocking) + purge stale IDB entries
 export const refreshProductsFromCloud = async (): Promise<Product[]> => {
   if (!navigator.onLine) return productsCache || [];
   const userId = getCurrentUserId();
   if (!userId) return productsCache || [];
   cacheTimestamp = 0; // bypass memory TTL
   try {
-    return await loadProductsCloud();
+    // 1. جلب المنتجات من السحابة
+    const freshProducts = await loadProductsCloud();
+
+    // 2. تنظيف IndexedDB: حذف المنتجات الغائبة عن السحابة (محذوفة أو مؤرشفة)
+    try {
+      const idbResult = await loadProductsFromIDB<{ id: string }>();
+      if (idbResult && idbResult.products.length > 0) {
+        const cloudIds = new Set(freshProducts.map(p => p.id));
+        const staleIds = idbResult.products
+          .map(p => p.id)
+          .filter(id => !cloudIds.has(id));
+        if (staleIds.length > 0) {
+          console.log('[ProductsCloud] 🧹 Purging', staleIds.length, 'stale IDB products:', staleIds);
+          await Promise.all(staleIds.map(id => deleteProductFromIDB(id)));
+          // تحديث localStorage أيضاً
+          try {
+            const cached = localStorage.getItem('hyperpos_products_cache');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed && Array.isArray(parsed.products)) {
+                parsed.products = parsed.products.filter((p: { id: string }) => cloudIds.has(p.id));
+                parsed.timestamp = Date.now();
+                localStorage.setItem('hyperpos_products_cache', JSON.stringify(parsed));
+              }
+            }
+          } catch { /* noop */ }
+        }
+      }
+    } catch (idbErr) {
+      console.warn('[ProductsCloud] IDB purge check failed:', idbErr);
+    }
+
+    return freshProducts;
   } catch {
     return productsCache || [];
   }

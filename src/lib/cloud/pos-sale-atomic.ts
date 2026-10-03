@@ -41,16 +41,16 @@ export interface AtomicSaleResult {
   invoiceId: string;
   invoiceNumber: string;
   /** القيم المعتمدة من الخادم (بالدولار) — مصدر الحقيقة بعد المزامنة */
-  subtotal: number;
-  discount: number;
-  taxAmount: number;
-  total: number;
-  cogs: number;
-  profit: number;
-  debtPaid: number;
-  debtRemaining: number;
+  subtotal?: number;
+  discount?: number;
+  taxAmount?: number;
+  total?: number;
+  cogs?: number;
+  profit?: number;
+  debtPaid?: number;
+  debtRemaining?: number;
   /** البيع تجاوز المخزون المتاح (عجز مسجّل، لم يُوقف الفاتورة) */
-  stockShortage: boolean;
+  stockShortage?: boolean;
 }
 
 /**
@@ -124,7 +124,7 @@ export async function processPosSaleAtomic(
     });
 
     if (error) {
-      const errorObj = error as Record<string, unknown>;
+      const errorObj = error as unknown as Record<string, unknown>;
       const detailedMsg = error.message || (typeof errorObj?.details === 'string' ? errorObj.details : '') || 'فشل تنفيذ البيع الذري';
       console.error('[AtomicSale] RPC error:', detailedMsg, error);
       throw new Error(detailedMsg);

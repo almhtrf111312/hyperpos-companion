@@ -5,7 +5,7 @@ import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/s
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
-import { processQueue, hasPendingOperations, getQueueStatus, getFailedOperations, loadQueue } from '@/lib/sync-queue';
+import { processQueue, getQueueStatus, getFailedOperations, loadQueue } from '@/lib/sync-queue';
 import { processDebtSaleBundleFromQueue } from '@/lib/cloud/debt-sale-handler';
 import { processCashSaleBundleFromQueue } from '@/lib/cloud/cash-sale-handler';
 import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '@/lib/cloud/purchase-queue-processor';
@@ -17,7 +17,7 @@ const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
 
 // فترة إعادة المحاولة الدورية التلقائية في الخلفية: 45 ثانية عند وجود عمليات معلقة
-const PERIODIC_RETRY_INTERVAL_MS = 45 * 1000;
+const PERIODIC_RETRY_INTERVAL_MS = 30 * 1000;
 
 /**
  * توضيح السبب الحقيقي لفشل المزامنة الصادر من الخادم بدقة
@@ -147,21 +147,27 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setWasOffline(!isOnline);
   }, [isOnline, wasOffline, user]);
 
+  // مستمع حدث عودة الإنترنت من المتصفح مباشرةً
+  useEffect(() => {
+    if (!user) return;
+    const handleOnline = () => {
+      console.log('[CloudSync] window online event fired, triggering sync...');
+      setTimeout(() => { syncNowRef.current?.(true); }, 200);
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user]);
+
   // مؤقت دوري لإعادة محاولة المزامنة كل 30 دقيقة
   useEffect(() => {
     if (!user) return;
 
     periodicRetryRef.current = setInterval(async () => {
-      if (!hasPendingOperations()) return;
-      
-      console.log('[CloudSync] Periodic retry: checking for pending operations...');
-      const hasInternet = await checkRealInternetAccess(6000);
-      
+      if (isSyncingRef.current) return;
+      console.log('[CloudSync] Periodic background sync check...');
+      const hasInternet = await checkRealInternetAccess(4000);
       if (hasInternet) {
-        console.log('[CloudSync] Periodic retry: internet available, syncing...');
         syncNowRef.current?.();
-      } else {
-        console.log('[CloudSync] Periodic retry: still no internet, will try again in 30 min');
       }
     }, PERIODIC_RETRY_INTERVAL_MS);
 
