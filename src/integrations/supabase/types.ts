@@ -1659,9 +1659,11 @@ export type Database = {
       stores: {
         Row: {
           address: string | null
+          appearance_settings: Json | null
           created_at: string | null
           currency_symbol: string | null
           exchange_rates: Json | null
+          font_family: string | null
           id: string
           language: string | null
           logo_url: string | null
@@ -1680,9 +1682,11 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          appearance_settings?: Json | null
           created_at?: string | null
           currency_symbol?: string | null
           exchange_rates?: Json | null
+          font_family?: string | null
           id?: string
           language?: string | null
           logo_url?: string | null
@@ -1701,9 +1705,11 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          appearance_settings?: Json | null
           created_at?: string | null
           currency_symbol?: string | null
           exchange_rates?: Json | null
+          font_family?: string | null
           id?: string
           language?: string | null
           logo_url?: string | null
@@ -1721,6 +1727,86 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      support_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          owner_id: string | null
+          status: string
+          store_name: string | null
+          updated_at: string
+          user_email: string | null
+          user_id: string
+          user_name: string | null
+          user_phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          owner_id?: string | null
+          status?: string
+          store_name?: string | null
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+          user_name?: string | null
+          user_phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          owner_id?: string | null
+          status?: string
+          store_name?: string | null
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+          user_name?: string | null
+          user_phone?: string | null
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_id: string
+          sender_role?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1853,17 +1939,29 @@ export type Database = {
       }
     }
     Functions: {
-      add_expense_atomic: {
-        Args: {
-          _amount: number
-          _date: string
-          _description: string
-          _expense_type: string
-          _notes: string
-          _operation_id: string
-        }
-        Returns: Json
-      }
+      add_expense_atomic:
+        | {
+            Args: {
+              _amount: number
+              _date: string
+              _description: string
+              _expense_type: string
+              _notes: string
+              _operation_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _amount: number
+              _date: string
+              _description: string
+              _expense_type: string
+              _notes: string
+              _operation_id: string
+            }
+            Returns: Json
+          }
       add_product_quantity: {
         Args: { _amount: number; _product_id: string }
         Returns: number
@@ -2014,6 +2112,14 @@ export type Database = {
       revoke_license: {
         Args: { _license_id: string; _reason?: string }
         Returns: boolean
+      }
+      save_store_appearance: {
+        Args: { _appearance?: Json; _font_family: string; _theme?: string }
+        Returns: Json
+      }
+      send_support_message: {
+        Args: { _conversation_id?: string; _message: string }
+        Returns: Json
       }
     }
     Enums: {
