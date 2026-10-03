@@ -502,6 +502,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Explicitly clear debt cache to prevent cross-account leakage
+    localStorage.removeItem('hyperpos_debts_cache');
 
     // ✅ مسح IndexedDB وكاش الذاكرة عند تسجيل الخروج
     try {
