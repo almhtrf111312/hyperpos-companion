@@ -1966,6 +1966,10 @@ export type Database = {
         Args: { _amount: number; _product_id: string }
         Returns: number
       }
+      boss_change_user_password: {
+        Args: { _new_password: string; _target_user_id: string }
+        Returns: Json
+      }
       can_add_cashier: { Args: { _owner_id: string }; Returns: boolean }
       count_owner_cashiers: { Args: { _owner_id: string }; Returns: number }
       deduct_product_quantity: {
