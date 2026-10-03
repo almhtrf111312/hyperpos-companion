@@ -23,28 +23,28 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    // Create admin client
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Verify the caller's token
-    const token = authHeader.replace('Bearer ', '')
-    const { data: userData, error: userError } = await adminClient.auth.getUser(token)
-    
-    if (userError || !userData?.user) {
-      console.error('JWT verification failed:', userError)
+    // Verify caller using a user-scoped client (works with signing keys)
+    const token = authHeader.replace('Bearer ', '').trim()
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token)
+    const callerId = claimsData?.claims?.sub as string | undefined
+
+    if (claimsError || !callerId) {
+      console.warn('JWT verification failed:', claimsError?.message || 'no sub')
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    const callerId = userData.user.id
     console.log('Authenticated caller:', callerId)
 
     // Check if caller is admin or boss
