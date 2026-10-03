@@ -4,6 +4,7 @@ import { Sidebar, MobileMenuTrigger } from './Sidebar';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 import { useLanguage } from '@/hooks/use-language';
+import { SupportChat } from '@/components/support/SupportChat';
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -43,6 +44,9 @@ export function MainLayout({ children }: MainLayoutProps) {
       }`}>
         {children ?? <Outlet />}
       </main>
+
+      {/* Global Support Chat FAB */}
+      <SupportChat />
     </div>
   );
 }
