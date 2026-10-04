@@ -3,6 +3,7 @@ export const EVENTS = {
   // Sync Queue Events
   SYNC_QUEUE_UPDATED: 'syncQueueUpdated',
   PRODUCTS_UPDATED: 'hyperpos:products-updated',
+  PRODUCT_DELETED: 'hyperpos:product-deleted',
   CATEGORIES_UPDATED: 'hyperpos:categories-updated',
   CUSTOMERS_UPDATED: 'hyperpos:customers-updated',
   DEBTS_UPDATED: 'hyperpos:debts-updated',

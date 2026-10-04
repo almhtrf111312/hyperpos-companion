@@ -128,6 +128,12 @@ interface ActivationCode {
   used_at?: string | null;
 }
 
+const calculateDaysRemaining = (expiresAt: string | null) => {
+  if (!expiresAt) return 0;
+  const diff = new Date(expiresAt).getTime() - new Date().getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+};
+
 export default function BossPanel() {
   const navigate = useNavigate();
   const { isBoss, isLoading: roleLoading } = useUserRole();
@@ -589,42 +595,34 @@ export default function BossPanel() {
 
   const handleRevokeLicense = async (ownerId: string) => {
     try {
-      const { error } = await supabase
-        .from('app_licenses')
-        .update({
-          is_revoked: true,
-          revoked_at: new Date().toISOString(),
-          revoked_reason: 'Revoked by admin'
-        })
-        .eq('user_id', ownerId);
+      const { error } = await supabase.rpc('boss_revoke_user_license', {
+        _target_user_id: ownerId,
+      });
 
       if (error) throw error;
 
-      toast.success('تم إلغاء ترخيص المالك');
+      toast.success('تم إلغاء ترخيص المالك وتعطيل الحساب');
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error revoking license:', error);
-      toast.error('فشل في إلغاء الترخيص');
+      toast.error(error.message || 'فشل في إلغاء الترخيص');
     }
   };
 
   const handleDeleteOwner = async (ownerId: string) => {
     try {
-      // IMPORTANT: deleting an owner must remove the auth account too (email reuse)
-      // so we call the backend delete-user function in "owner" mode.
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: ownerId, deleteType: 'owner' },
+      const { data, error } = await supabase.rpc('boss_hard_delete_user', {
+        _target_user_id: ownerId,
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Failed to delete owner');
 
       toast.success('تم حذف المالك بالكامل من النظام');
       setDeleteConfirm(null);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting owner:', error);
-      toast.error('فشل في حذف المالك');
+      toast.error(error.message || 'فشل في حذف المالك');
     }
   };
 
@@ -791,13 +789,11 @@ export default function BossPanel() {
         return;
       }
 
-      const response = await supabase.functions.invoke('delete-user', {
-        body: { userId: deleteBossConfirm.user_id, deleteType: 'boss' },
-        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      const { data, error } = await supabase.rpc('boss_hard_delete_user', {
+        _target_user_id: deleteBossConfirm.user_id,
       });
 
-      if (response.error) throw new Error(response.error.message || 'فشل في حذف الحساب');
-      if (response.data?.error) throw new Error(response.data.error);
+      if (error) throw error;
 
       toast.success('تم حذف حساب Boss بنجاح');
       setDeleteBossConfirm(null);
@@ -1012,17 +1008,16 @@ export default function BossPanel() {
   // Delete cashier handler
   const handleDeleteCashier = async (cashierUserId: string, cashierName: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: cashierUserId },
+      const { data, error } = await supabase.rpc('boss_hard_delete_user', {
+        _target_user_id: cashierUserId,
       });
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Failed');
 
       toast.success(`تم حذف "${cashierName}" بنجاح`);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting cashier:', error);
-      toast.error('فشل في حذف الحساب التابع');
+      toast.error(error.message || 'فشل في حذف الحساب التابع');
     }
   };
 
@@ -1371,10 +1366,8 @@ export default function BossPanel() {
                     <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">لا يوجد مستخدمين مسجلين</p>
                   ) : (
                     filteredOwners.map((owner) => {
-                      const isLicenseValid = owner.license_expires && new Date(owner.license_expires) > new Date() && !owner.license_revoked;
-                      const daysRemaining = owner.license_expires
-                        ? Math.ceil((new Date(owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                        : 0;
+                      const daysRemaining = calculateDaysRemaining(owner.license_expires);
+                      const isLicenseValid = owner.license_expires && daysRemaining > 0 && !owner.license_revoked;
                       const isBossUser = owner.role === 'boss';
 
                       return (
@@ -1400,12 +1393,21 @@ export default function BossPanel() {
                                   <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-[10px] md:text-xs">
                                     ترخيص دائم ∞
                                   </Badge>
+                                ) : owner.license_revoked ? (
+                                  <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
+                                    ترخيص ملغى
+                                  </Badge>
+                                ) : !owner.license_expires ? (
+                                  <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
+                                    بدون ترخيص
+                                  </Badge>
+                                ) : daysRemaining > 0 ? (
+                                  <Badge className={`${daysRemaining <= 7 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'} text-white text-[10px] md:text-xs font-semibold`}>
+                                    متبقي: {daysRemaining} يوم
+                                  </Badge>
                                 ) : (
-                                  <Badge variant={isLicenseValid ? 'default' : 'destructive'} className="text-[10px] md:text-xs">
-                                    {isLicenseValid
-                                      ? (owner.is_trial ? 'تجريبي' : 'فعال')
-                                      : owner.license_revoked ? 'ملغى' : 'منتهي'
-                                    }
+                                  <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
+                                    منتهي الصلاحية
                                   </Badge>
                                 )}
                                 {owner.license_tier && !isBossUser && (
@@ -1536,14 +1538,23 @@ export default function BossPanel() {
                               </span>
                             )}
                             {!isBossUser && owner.license_expires && (
-                              <span className={`flex items-center gap-1 px-2 py-0.5 rounded ${
-                                daysRemaining <= 7 ? 'bg-destructive/10 text-destructive font-medium' :
-                                daysRemaining <= 30 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                'bg-muted'
-                              }`}>
+                              <Badge
+                                variant={owner.license_revoked || daysRemaining === 0 ? 'destructive' : 'outline'}
+                                className={`flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-lg ${
+                                  owner.license_revoked || daysRemaining === 0
+                                    ? 'bg-destructive/15 text-destructive border-destructive/30'
+                                    : daysRemaining <= 7
+                                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                }`}
+                              >
                                 <Calendar className="w-3 h-3" />
-                                {isLicenseValid ? `${daysRemaining} يوم متبقي` : 'منتهي'}
-                              </span>
+                                {owner.license_revoked
+                                  ? 'ترخيص ملغى'
+                                  : daysRemaining > 0
+                                  ? `متبقي: ${daysRemaining} يوم`
+                                  : 'منتهي الصلاحية'}
+                              </Badge>
                             )}
                             {isBossUser && (
                               <span className="flex items-center gap-1 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
@@ -1874,8 +1885,7 @@ export default function BossPanel() {
                   <div className="space-y-3">
                     {licenseIssueOwners.map((owner) => {
                       const isRevoked = owner.license_revoked;
-                      const isExpired = owner.license_expires && new Date(owner.license_expires) <= new Date();
-                      const noLicense = !owner.license_expires;
+                      const daysRemaining = calculateDaysRemaining(owner.license_expires);
 
                       return (
                         <div key={owner.user_id} className="p-3 rounded-lg border-s-4 border-s-destructive bg-destructive/5 space-y-2">
@@ -1883,16 +1893,31 @@ export default function BossPanel() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">{owner.full_name || 'بدون اسم'}</span>
-                                <Badge variant="destructive" className="text-[10px]">
-                                  {isRevoked ? 'ملغى' : isExpired ? 'منتهي' : 'بدون ترخيص'}
-                                </Badge>
+                                {isRevoked ? (
+                                  <Badge variant="destructive" className="text-[10px] font-semibold">
+                                    ترخيص ملغى
+                                  </Badge>
+                                ) : !owner.license_expires ? (
+                                  <Badge variant="destructive" className="text-[10px] font-semibold">
+                                    بدون ترخيص
+                                  </Badge>
+                                ) : daysRemaining > 0 ? (
+                                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-semibold">
+                                    متبقي: {daysRemaining} يوم
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-[10px] font-semibold">
+                                    منتهي الصلاحية
+                                  </Badge>
+                                )}
                               </div>
                               {owner.email && (
                                 <p className="text-xs text-muted-foreground font-mono mt-1">{owner.email}</p>
                               )}
                               {owner.license_expires && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  انتهى في: {new Date(owner.license_expires).toLocaleDateString('ar-EG')}
+                                  {daysRemaining === 0 ? 'انتهى في: ' : 'تاريخ الانتهاء: '}
+                                  {new Date(owner.license_expires).toLocaleDateString('ar-EG')}
                                 </p>
                               )}
                             </div>
@@ -2506,14 +2531,21 @@ export default function BossPanel() {
                       الكود: {editLicenseDialog.owner.activation_code}
                     </Badge>
                   )}
-                  {editLicenseDialog?.owner.license_expires && (
-                    <Badge variant={new Date(editLicenseDialog.owner.license_expires) > new Date() ? 'default' : 'destructive'}>
-                      {new Date(editLicenseDialog.owner.license_expires) > new Date() 
-                        ? `متبقي ${Math.ceil((new Date(editLicenseDialog.owner.license_expires).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} يوم`
-                        : 'منتهي'
-                      }
-                    </Badge>
-                  )}
+                  {editLicenseDialog?.owner.license_expires && (() => {
+                    const days = calculateDaysRemaining(editLicenseDialog.owner.license_expires);
+                    return (
+                      <Badge
+                        variant={editLicenseDialog.owner.license_revoked || days === 0 ? 'destructive' : 'default'}
+                        className={!editLicenseDialog.owner.license_revoked && days > 0 ? 'bg-emerald-600 text-white font-semibold' : 'font-semibold'}
+                      >
+                        {editLicenseDialog.owner.license_revoked
+                          ? 'ترخيص ملغى'
+                          : days > 0
+                          ? `متبقي: ${days} يوم`
+                          : 'منتهي الصلاحية'}
+                      </Badge>
+                    );
+                  })()}
                 </div>
               </div>
 

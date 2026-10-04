@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback,
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 import { recordServerContact, getOfflineStatus, isDataEncrypted, decryptLocalData, checkAndEnforceProtection } from '@/lib/offline-protection';
+import { toast } from 'sonner';
 
 interface LicenseState {
   isLoading: boolean;
@@ -129,6 +130,17 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         setState(prev => ({
           ...prev, isLoading: false, isValid: false, hasLicense: false, needsActivation: false,
+        }));
+        return;
+      }
+
+      if (data.isRevoked) {
+        console.log('[License] License is revoked, signing out immediately...');
+        localStorage.removeItem(LICENSE_CACHE_KEY);
+        toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+        await supabase.auth.signOut();
+        setState(prev => ({
+          ...prev, isLoading: false, isValid: false, hasLicense: false, isRevoked: true, needsActivation: false,
         }));
         return;
       }

@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Key, Clock } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface LicenseGuardProps {
   children: ReactNode;
@@ -113,8 +114,8 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 }
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
-  const { user, isLoading: authLoading } = useAuth();
-  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role, dataEncrypted } = useLicense();
+  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role, dataEncrypted, isRevoked } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
   const { t, direction } = useLanguage();
@@ -123,10 +124,19 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const isFullyLoading = authLoading || isLoading || isCheckingDevice;
 
   useEffect(() => {
+    if (isRevoked) {
+      toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+      signOut();
+    }
+  }, [isRevoked, signOut]);
+
+  useEffect(() => {
     if (isValid && hasLicense && expiresAt && remainingDays !== null) {
       checkLicenseStatus(expiresAt, remainingDays, isTrial);
     }
   }, [isValid, hasLicense, expiresAt, remainingDays, isTrial, checkLicenseStatus]);
+
+  if (isRevoked) return null;
 
   if (isFullyLoading) {
     return (

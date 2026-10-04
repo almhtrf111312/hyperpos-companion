@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,13 @@ export default function Login() {
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.error) {
+      toast.error(location.state.error);
+    }
+  }, [location.state?.error]);
 
   // جلب بيانات التواصل عند فتح نافذة نسيت كلمة المرور
   useEffect(() => {
@@ -256,6 +263,12 @@ export default function Login() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {location.state?.error && (
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium">{location.state.error}</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t('auth.email')}</Label>

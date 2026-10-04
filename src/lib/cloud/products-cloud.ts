@@ -1001,27 +1001,24 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   return success;
 };
 
-// Archive product (soft delete) — يحافظ على كامل السجل المالي والتاريخي المرتبط بالمنتج
+// Hard delete product atomic — حذف المنتج ومخزونه كلياً ونهائياً من السحابة والذاكرة المحلية و IndexedDB
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
 
-  // ✅ الحذف الفوري من الكاش المحلي وإطلاق الحدث فوراً
+  // الحذف الفوري من الكاش المحلي ومصفوفة الذاكرة
   removeProductFromLocalCache(id);
 
   try {
-    // ❌ لا حذف فيزيائي: الحذف الفيزيائي يكسر الفواتير وحركات المخزون التاريخية
-    // ✅ أرشفة ناعمة: المنتج يختفي من الواجهات لكن تبقى بياناته مرجعاً للتقارير
-    const { error } = await sb
-      .from('products')
-      .update({ archived: true, updated_at: new Date().toISOString() })
-      .eq('id', id);
+    const { error } = await supabase.rpc('hard_delete_product_atomic', { _product_id: id });
 
     if (error) {
-      console.error('[deleteProductCloud] Archive failed:', error.message);
+      console.error('[deleteProductCloud] Hard delete failed:', error.message);
       return false;
     }
 
+    await deleteProductFromIDB(id);
+    emitEvent(EVENTS.PRODUCT_DELETED, id);
     emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
     return true;
   } catch (error) {

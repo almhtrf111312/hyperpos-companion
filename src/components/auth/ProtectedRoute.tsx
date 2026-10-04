@@ -1,15 +1,39 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, checkUserAccountStatus } from '@/hooks/use-auth';
 import { Loader2, Smartphone } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, isAutoLoginChecking } = useAuth();
+  const { user, isLoading, isAutoLoginChecking, signOut } = useAuth();
   const location = useLocation();
+  const [isAccountBlocked, setIsAccountBlocked] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let isCancelled = false;
+
+    checkUserAccountStatus(user.id).then(async (res) => {
+      if (isCancelled) return;
+      if (res.blocked) {
+        setIsAccountBlocked(true);
+        toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+        try {
+          await signOut();
+        } catch (e) {
+          console.error('[ProtectedRoute] Error signing out blocked user:', e);
+        }
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user, signOut]);
 
   // Show loading while checking session
   if (isLoading) {
@@ -37,6 +61,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         </div>
       </div>
     );
+  }
+
+  if (isAccountBlocked) {
+    return <Navigate to="/login" state={{ error: 'تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة' }} replace />;
   }
 
   if (!user) {

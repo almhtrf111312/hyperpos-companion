@@ -1970,6 +1970,18 @@ export type Database = {
         Args: { _new_password: string; _target_user_id: string }
         Returns: Json
       }
+      boss_hard_delete_user: {
+        Args: { _target_user_id: string }
+        Returns: Json
+      }
+      boss_revoke_user_license: {
+        Args: { _target_user_id: string }
+        Returns: Json
+      }
+      hard_delete_product_atomic: {
+        Args: { _product_id: string }
+        Returns: Json
+      }
       can_add_cashier: { Args: { _owner_id: string }; Returns: boolean }
       count_owner_cashiers: { Args: { _owner_id: string }; Returns: number }
       deduct_product_quantity: {

@@ -2,6 +2,83 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { getDeviceId } from '@/lib/device-fingerprint';
+import { toast } from 'sonner';
+
+// Helper function to check if account is active and license is not revoked
+export async function checkUserAccountStatus(userId: string): Promise<{ blocked: boolean; reason?: string }> {
+  try {
+    // 1. Check user_roles for is_active and role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role, owner_id, is_active')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (roleError) {
+      console.warn('[AccountCheck] Error querying user_roles:', roleError);
+    }
+
+    if (roleData) {
+      // Boss accounts are superadmins, never blocked
+      if (roleData.role === 'boss') {
+        return { blocked: false };
+      }
+
+      // Check if user account is deactivated
+      if (roleData.is_active === false) {
+        return { blocked: true, reason: 'inactive' };
+      }
+
+      // If cashier, also check if owner is deactivated
+      if (roleData.role === 'cashier' && roleData.owner_id) {
+        const { data: ownerRole } = await supabase
+          .from('user_roles')
+          .select('is_active')
+          .eq('user_id', roleData.owner_id)
+          .maybeSingle();
+
+        if (ownerRole?.is_active === false) {
+          return { blocked: true, reason: 'owner_inactive' };
+        }
+      }
+
+      // Check owner license if cashier, or own license
+      const targetUserId = (roleData.role === 'cashier' && roleData.owner_id)
+        ? roleData.owner_id
+        : userId;
+
+      const { data: licenseData, error: licenseError } = await supabase
+        .from('app_licenses')
+        .select('is_revoked')
+        .eq('user_id', targetUserId)
+        .maybeSingle();
+
+      if (licenseError) {
+        console.warn('[AccountCheck] Error querying app_licenses:', licenseError);
+      }
+
+      if (licenseData?.is_revoked === true) {
+        return { blocked: true, reason: 'revoked' };
+      }
+    } else {
+      // Fallback: check app_licenses directly if no user_role record found
+      const { data: licenseData } = await supabase
+        .from('app_licenses')
+        .select('is_revoked')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (licenseData?.is_revoked === true) {
+        return { blocked: true, reason: 'revoked' };
+      }
+    }
+
+    return { blocked: false };
+  } catch (err) {
+    console.warn('[AccountCheck] Exception checking account status:', err);
+    return { blocked: false };
+  }
+}
 
 // Session persistence keys
 const STAY_LOGGED_IN_KEY = 'hyperpos_stay_logged_in';
@@ -235,6 +312,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             if (otpData?.session) {
+              const accountCheck = await checkUserAccountStatus(otpData.session.user.id);
+              if (accountCheck.blocked) {
+                console.log('[AutoLogin] User account disabled or license revoked, rejecting auto-login');
+                await supabase.auth.signOut();
+                cacheSession(null);
+                return false;
+              }
               console.log('[AutoLogin] Session restored successfully!');
               cacheSession(otpData.session);
               return true;
@@ -313,6 +397,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           return;
         }
+
+        // Check if user account is deactivated or license is revoked on startup
+        if (currentUser) {
+          const accountCheck = await checkUserAccountStatus(currentUser.id);
+          if (accountCheck.blocked) {
+            console.log('[Auth] Account is disabled or license is revoked, signing out immediately...');
+            toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+            await supabase.auth.signOut();
+            cacheSession(null);
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+            return;
+          }
+        }
       } catch {
         // Network timeout / dead VPN / offline - trust existing local session!
         console.log('[Auth] Network probe timeout (e.g. dead VPN), trusting active session');
@@ -371,6 +470,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (error) {
         return { error: new Error(error.message) };
+      }
+
+      // Check if account is inactive or license revoked immediately upon sign in
+      if (data?.user) {
+        const accountCheck = await checkUserAccountStatus(data.user.id);
+        if (accountCheck.blocked) {
+          await supabase.auth.signOut();
+          cacheSession(null);
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+          return { error: new Error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة') };
+        }
       }
       
       // ✅ مسح شامل للبيانات المحلية لمنع تسرب بيانات الحساب السابق

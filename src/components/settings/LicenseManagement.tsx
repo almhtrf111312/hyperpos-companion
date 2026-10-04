@@ -193,7 +193,7 @@ export function LicenseManagement() {
   const handleRevokeLicense = async (license: License) => {
     setIsProcessing(true);
     try {
-      const { error } = await supabase.rpc('revoke_license', { _license_id: license.id, _reason: 'Revoked by boss' });
+      const { error } = await supabase.rpc('boss_revoke_user_license', { _target_user_id: license.user_id });
       if (error) throw error;
       setRevokeTarget(null);
       fetchData();
@@ -208,11 +208,10 @@ export function LicenseManagement() {
   const handleDeleteUser = async (license: License) => {
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: license.user_id, deleteType: 'owner' },
+      const { data, error } = await supabase.rpc('boss_hard_delete_user', {
+        _target_user_id: license.user_id,
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       setDeleteUserTarget(null);
       fetchData();
       toast({ title: t('licenseManagement.deleted'), description: t('licenseManagement.userDeleted') });

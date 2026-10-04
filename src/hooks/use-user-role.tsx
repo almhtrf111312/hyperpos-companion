@@ -158,6 +158,15 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (data.is_active === false && data.role !== 'boss') {
+        console.warn('[UserRole] User account is inactive, signing out...');
+        const { toast } = await import('sonner');
+        toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+        await supabase.auth.signOut();
+        setState(prev => ({ ...prev, isLoading: false, role: null }));
+        return;
+      }
+
       const role = data.role as AppRole;
       const ownerId = data.owner_id || user.id;
 
