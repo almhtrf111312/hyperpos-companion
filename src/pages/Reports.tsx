@@ -97,6 +97,7 @@ import { InventoryValueReport } from '@/components/reports/InventoryValueReport'
 import { TopProductsReport } from '@/components/reports/TopProductsReport';
 import { SalesDetailedReport } from '@/components/reports/SalesDetailedReport';
 import { StockDiscrepancyReport } from '@/components/reports/StockDiscrepancyReport';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -1301,13 +1302,7 @@ export default function Reports() {
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
         {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
-          <div className="relative flex items-center justify-center min-h-[40px]">
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-black text-foreground tracking-tight text-center">
-                التقارير المالية
-              </h1>
-            </div>
-          </div>
+          <PageHeader title="التقارير المالية" className="mb-0 md:mb-0" />
         </div>
 
         {/* Quick Access Pill Row — no horizontal scroll, always 2-per-row in compact layout */}

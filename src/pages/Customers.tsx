@@ -63,6 +63,7 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import Debts from '@/pages/Debts';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Customers() {
   const { t } = useLanguage();
@@ -437,26 +438,26 @@ export default function Customers() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('nav.customersAndDebts' as any)}</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('customers.pageSubtitle')}</p>
-        </div>
-        {activeTab === 'customers' ? (
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-            setFormData({ name: '', phone: '', email: '', address: '' });
-            setShowAddDialog(true);
-          }}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            {t('customers.addCustomer')}
-          </Button>
-        ) : (
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowEmbeddedAddDebt(true)}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-            {t('debts.addCashDebt')}
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title={t('nav.customersAndDebts' as any)}
+        subtitle={t('customers.pageSubtitle')}
+        actions={
+          activeTab === 'customers' ? (
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+              setFormData({ name: '', phone: '', email: '', address: '' });
+              setShowAddDialog(true);
+            }}>
+              <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+              {t('customers.addCustomer')}
+            </Button>
+          ) : (
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => setShowEmbeddedAddDebt(true)}>
+              <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+              {t('debts.addCashDebt')}
+            </Button>
+          )
+        }
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>

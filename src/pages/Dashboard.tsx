@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 import {
   DollarSign,
@@ -302,27 +303,26 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-6 space-y-3 md:space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('dashboard.welcome')} 👋</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{today}</p>
-        </div>
-        {loadError ? (
-          <button onClick={() => loadStats()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-medium text-destructive">
-            تعذّر التحديث — إعادة المحاولة
-          </button>
-        ) : isLoading ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted border border-border">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-medium text-muted-foreground">{hasData ? 'جارٍ التحديث...' : 'جارٍ الحساب...'}</span>
-          </div>
-        ) : (
-          <div className="flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl bg-success/10 border border-success/20">
-            <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
-            {lastUpdated && <span className="text-[10px] text-muted-foreground" dir="ltr">{new Date(lastUpdated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title={t('nav.dashboard')}
+        actions={
+          loadError ? (
+            <button onClick={() => loadStats()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-medium text-destructive">
+              تعذّر التحديث — إعادة المحاولة
+            </button>
+          ) : isLoading ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted border border-border">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-xs font-medium text-muted-foreground">{hasData ? 'جارٍ التحديث...' : 'جارٍ الحساب...'}</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl bg-success/10 border border-success/20">
+              <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
+              {lastUpdated && <span className="text-[10px] text-muted-foreground" dir="ltr">{new Date(lastUpdated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
+            </div>
+          )
+        }
+      />
 
       {/* Quick Actions - Compact Toolbar */}
       <QuickActions />

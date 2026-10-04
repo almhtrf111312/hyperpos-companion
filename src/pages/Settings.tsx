@@ -83,6 +83,7 @@ import { saveStoreSettings, fetchStoreSettings } from '@/lib/supabase-store';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import type { TranslationKey } from '@/lib/i18n';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export interface SettingsTabItem {
   id: string;
@@ -549,7 +550,7 @@ export default function Settings() {
           name: cloudData.name ?? prev.name,
           type: cloudData.store_type ?? prev.type,
           phone: cloudData.phone ?? prev.phone,
-          email: prev.email,
+          email: (cloudData.email as string | null | undefined) ?? prev.email,
           address: cloudData.address ?? prev.address,
           logo: cloudData.logo_url ?? prev.logo,
         }));
@@ -640,6 +641,7 @@ export default function Settings() {
             name: cloudData.name ?? '',
             type: cloudData.store_type ?? 'phones',
             phone: cloudData.phone ?? '',
+            email: (cloudData.email as string | null | undefined) ?? '',
             address: cloudData.address ?? '',
             logo: cloudData.logo_url ?? '',
           },
@@ -719,8 +721,13 @@ export default function Settings() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Independent tabs that have no saveable settings form state
+  const INDEPENDENT_TABS = ['licenses', 'activity', 'backup', 'archive', 'license', 'contact', 'reset', 'about', 'users'];
+
   // Check if there are unsaved changes
   const hasUnsavedChanges = (() => {
+    // Never show save bar for tabs that manage their own actions
+    if (activeTab !== null && INDEPENDENT_TABS.includes(activeTab)) return false;
     const snap = settingsSnapshotRef.current;
     if (!snap) return false;
     const isProductFieldsDirty = Boolean(
@@ -879,6 +886,7 @@ export default function Settings() {
         name: storeSettings.name,
         store_type: storeSettings.type,
         phone: storeSettings.phone,
+        email: storeSettings.email,
         address: storeSettings.address,
         logo_url: storeSettings.logo,
         exchange_rates: { USD: 1, TRY: tryRate, SYP: sypRate },
@@ -2386,12 +2394,10 @@ export default function Settings() {
       {activeTab === null ? (
         <>
           {/* Header */}
-          <div className="flex items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t('settings.title')}</h1>
-              <p className="text-muted-foreground mt-1">{t('settings.subtitle')}</p>
-            </div>
-          </div>
+          <PageHeader
+            title={t('settings.title')}
+            subtitle={t('settings.subtitle')}
+          />
 
           {/* Tabs Grid */}
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-full">

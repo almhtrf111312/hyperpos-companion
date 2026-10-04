@@ -10,6 +10,7 @@ import { PurchaseInvoiceViewDialog } from '@/components/purchases/PurchaseInvoic
 import { EVENTS } from '@/lib/events';
 import { format } from 'date-fns';
 import { ar, enUS, tr } from 'date-fns/locale';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Purchases() {
   const { t, language } = useLanguage();
@@ -51,29 +52,29 @@ export default function Purchases() {
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 p-3 pt-6 md:p-6 pb-2 md:pb-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-6 md:ltr:pl-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('purchases.title')}</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">{t('purchases.subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              onClick={() => setShowQuickDialog(true)}
-              className="flex-1 sm:flex-initial h-9 md:h-10 px-2 sm:px-4 text-xs sm:text-sm font-medium whitespace-nowrap shadow-sm min-w-0"
-            >
-              <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
-              <span className="truncate">{t('purchases.quickAdd')}</span>
-            </Button>
-            <Button
-              className="flex-1 sm:flex-initial h-9 md:h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold bg-primary hover:bg-primary/90 whitespace-nowrap shadow-sm min-w-0"
-              onClick={() => setShowDialog(true)}
-            >
-              <Plus className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
-              <span className="truncate">{t('purchases.addNew')}</span>
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title={t('purchases.title')}
+          subtitle={t('purchases.subtitle')}
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShowQuickDialog(true)}
+                className="flex-1 sm:flex-initial h-9 md:h-10 px-2 sm:px-4 text-xs sm:text-sm font-medium whitespace-nowrap shadow-sm min-w-0"
+              >
+                <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
+                <span className="truncate">{t('purchases.quickAdd')}</span>
+              </Button>
+              <Button
+                className="flex-1 sm:flex-initial h-9 md:h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold bg-primary hover:bg-primary/90 whitespace-nowrap shadow-sm min-w-0"
+                onClick={() => setShowDialog(true)}
+              >
+                <Plus className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
+                <span className="truncate">{t('purchases.addNew')}</span>
+              </Button>
+            </>
+          }
+        />
       </div>
 
       {/* Stats */}

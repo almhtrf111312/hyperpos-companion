@@ -96,6 +96,7 @@ import { addToQueueIfNotExists } from '@/lib/sync-queue';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getCurrentUserRole } from '@/lib/supabase-store';
 import { PurchaseInvoicesListTab } from '@/components/purchases/PurchaseInvoicesListTab';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 // مفتاح موحّد لبنود الاسترداد (يُستخدم في الاختيار والإرسال معًا)
 const refundKey = (item: { productId?: string; name: string }): string =>
@@ -1121,16 +1122,10 @@ export default function Invoices() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">
-            {t('invoices.title')}
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">
-            {t('invoices.subtitle')}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t('invoices.title')}
+        subtitle={t('invoices.subtitle')}
+      />
 
       {/* Fixed 2-button segmented control (strictly non-scrollable) */}
       <div className="w-full sm:w-auto inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-sm overflow-hidden select-none">

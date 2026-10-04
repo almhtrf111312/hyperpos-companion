@@ -421,14 +421,14 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
       data-tour="mobile-menu-trigger"
       onClick={onClick}
       className={cn(
-        "fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-30 md:hidden",
-        "w-9 h-9 rounded-xl bg-card/90 backdrop-blur-md border border-border",
-        "text-foreground flex items-center justify-center shadow-sm",
-        "hover:bg-card active:scale-95 transition-all duration-200",
-        "start-3"
+        "fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-40 md:hidden",
+        "w-10 h-11 bg-background/95 backdrop-blur-md border-y border-e border-border",
+        "text-foreground flex items-center justify-center shadow-sm rounded-e-xl",
+        "hover:bg-muted active:scale-95 transition-all duration-200",
+        "start-0"
       )}
     >
-      <Menu className="w-4 h-4" />
+      <Menu className="w-5 h-5" />
     </button>
   );
 }

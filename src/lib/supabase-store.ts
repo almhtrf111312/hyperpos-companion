@@ -17,6 +17,7 @@ export interface StoreSettingsRow {
   name?: string | null;
   store_type?: string | null;
   phone?: string | null;
+  email?: string | null;
   address?: string | null;
   logo_url?: string | null;
   tax_enabled?: boolean | null;

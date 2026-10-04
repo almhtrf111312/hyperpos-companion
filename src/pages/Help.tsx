@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface FAQItem {
   question: string;
@@ -85,23 +86,13 @@ export default function HelpPage() {
       <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
         {/* Compact Header */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-border p-4 md:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                <BookOpen className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg md:text-xl font-bold text-foreground">
-                  {isAr ? 'مركز التعليمات والمساعدة' : 'Help & Documentation Center'}
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  {isAr ? 'دليل الاستخدام والأسئلة الشائعة' : 'User guide and FAQs'}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
+          <PageHeader
+            title={isAr ? 'مركز التعليمات والمساعدة' : 'Help & Documentation Center'}
+            subtitle={isAr ? 'دليل الاستخدام والأسئلة الشائعة' : 'User guide and FAQs'}
+            actions={
+              <Button
+                variant="outline"
+                size="sm"
               className="h-8 text-xs shrink-0 self-start sm:self-auto gap-1.5"
               onClick={() => {
                 try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
@@ -111,7 +102,8 @@ export default function HelpPage() {
               <Sparkles className="w-3.5 h-3.5 text-primary" />
               <span>{isAr ? 'إعادة جولة الشرح' : 'Replay tour'}</span>
             </Button>
-          </div>
+            }
+          />
         </div>
 
         {/* Modern 2-Button Segmented Navigation Tabs */}

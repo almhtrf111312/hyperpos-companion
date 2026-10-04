@@ -222,9 +222,29 @@ export default function POS() {
 
   // ✅ حفظ حالة فتح السلة في localStorage لاستعادتها عند العودة
   const handleSetCartOpen = useCallback((open: boolean) => {
+    // If opening, push state. If closing via button (not back navigation), go back to pop it.
+    if (open && !cartOpen) {
+      window.history.pushState({ posCartOpen: true }, '');
+    } else if (!open && cartOpen && window.history.state?.posCartOpen) {
+      window.history.back();
+      // the popstate listener will handle setting state
+      return; 
+    }
+    
     setCartOpen(open);
     try { localStorage.setItem(CART_OPEN_KEY, open ? '1' : '0'); } catch { }
-  }, []);
+  }, [cartOpen]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (cartOpen) {
+        setCartOpen(false);
+        try { localStorage.setItem(CART_OPEN_KEY, '0'); } catch { }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [cartOpen]);
 
   // تم إزالة useEffect القديم الذي كان يمسح الباركود المعلق فقط دون معالجته
 

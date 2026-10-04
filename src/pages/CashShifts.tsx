@@ -53,6 +53,7 @@ import {
   Banknote
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function CashShifts() {
   const { user, profile } = useAuth();
@@ -276,34 +277,29 @@ export default function CashShifts() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Wallet className="h-7 w-7 text-primary" />
-            {t('cashShifts.pageTitle')}
-          </h1>
-          <p className="text-muted-foreground mt-1">{t('cashShifts.pageSubtitle')}</p>
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={loadData}>
-            <RefreshCw className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-            {t('cashShifts.refresh')}
-          </Button>
-
-          {openShift ? (
-            <Button variant="destructive" onClick={() => setShowCloseDialog(true)}>
-              <StopCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-              {t('cashShifts.closeShift')}
+      <PageHeader
+        title={t('cashShifts.pageTitle')}
+        subtitle={t('cashShifts.pageSubtitle')}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={loadData}>
+              <RefreshCw className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              {t('cashShifts.refresh')}
             </Button>
-          ) : (
-            <Button onClick={() => setShowStartDialog(true)}>
-              <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-              {t('cashShifts.startShift')}
-            </Button>
-          )}
-        </div>
-      </div>
+            {openShift ? (
+              <Button variant="destructive" onClick={() => setShowCloseDialog(true)}>
+                <StopCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                {t('cashShifts.closeShift')}
+              </Button>
+            ) : (
+              <Button onClick={() => setShowStartDialog(true)}>
+                <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                {t('cashShifts.startShift')}
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Current Shift Status */}
       {openShift ? (
