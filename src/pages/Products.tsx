@@ -98,6 +98,7 @@ import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDial
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
 import { getSignedImageUrl } from '@/lib/image-upload';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
