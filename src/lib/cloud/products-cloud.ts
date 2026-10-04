@@ -928,6 +928,7 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   if (data.bulkCostPrice !== undefined) updates.bulk_cost_price = data.bulkCostPrice;
   if (data.bulkSalePrice !== undefined) updates.bulk_sale_price = data.bulkSalePrice;
   if (data.trackByUnit !== undefined) updates.track_by_unit = data.trackByUnit;
+  if (data.archived !== undefined) updates.archived = data.archived;
 
   // ✅ Merge static fields (wholesalePrice, serialNumber, etc.) into custom_fields
   // These fields are stored inside custom_fields JSONB column, not as separate columns
@@ -959,10 +960,41 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
     if (data.archived === true) {
       removeProductFromLocalCache(id);
     } else if (productsCache) {
-      // Update in local cache immediately
-      productsCache = productsCache.map(p =>
-        p.id === id ? { ...p, ...data, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
-      );
+      const idx = productsCache.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        productsCache = productsCache.map(p =>
+          p.id === id ? { ...p, ...data, archived: false, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
+        );
+      } else {
+        const restoredProduct: Product = {
+          id,
+          name: data.name || '',
+          barcode: data.barcode || '',
+          barcode2: data.barcode2,
+          barcode3: data.barcode3,
+          variantLabel: data.variantLabel,
+          category: data.category || '',
+          costPrice: data.costPrice || 0,
+          salePrice: data.salePrice || 0,
+          quantity: data.quantity || 0,
+          minStockLevel: data.minStockLevel || 1,
+          status: getStatus(data.quantity || 0, data.minStockLevel || 1),
+          laborCost: data.laborCost || 0,
+          bulkUnit: data.bulkUnit || 'كرتونة',
+          smallUnit: data.smallUnit || 'قطعة',
+          conversionFactor: data.conversionFactor || 1,
+          bulkCostPrice: data.bulkCostPrice || 0,
+          bulkSalePrice: data.bulkSalePrice || 0,
+          trackByUnit: data.trackByUnit || 'piece',
+          image: data.image,
+          expiryDate: data.expiryDate,
+          customFields: data.customFields,
+          archived: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        productsCache.unshift(restoredProduct);
+      }
       cacheTimestamp = Date.now();
       saveToLocalCache(productsCache);
     }
@@ -987,18 +1019,96 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
     if (data.archived === true) {
       removeProductFromLocalCache(id);
     } else if (productsCache) {
-      productsCache = productsCache.map(p =>
-        p.id === id ? { ...p, ...data, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
-      );
+      const idx = productsCache.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        productsCache = productsCache.map(p =>
+          p.id === id ? { ...p, ...data, archived: false, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
+        );
+      } else {
+        const restoredProduct: Product = {
+          id,
+          name: data.name || '',
+          barcode: data.barcode || '',
+          barcode2: data.barcode2,
+          barcode3: data.barcode3,
+          variantLabel: data.variantLabel,
+          category: data.category || '',
+          costPrice: data.costPrice || 0,
+          salePrice: data.salePrice || 0,
+          quantity: data.quantity || 0,
+          minStockLevel: data.minStockLevel || 1,
+          status: getStatus(data.quantity || 0, data.minStockLevel || 1),
+          laborCost: data.laborCost || 0,
+          bulkUnit: data.bulkUnit || 'كرتونة',
+          smallUnit: data.smallUnit || 'قطعة',
+          conversionFactor: data.conversionFactor || 1,
+          bulkCostPrice: data.bulkCostPrice || 0,
+          bulkSalePrice: data.bulkSalePrice || 0,
+          trackByUnit: data.trackByUnit || 'piece',
+          image: data.image,
+          expiryDate: data.expiryDate,
+          customFields: data.customFields,
+          archived: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        productsCache.unshift(restoredProduct);
+      }
       cacheTimestamp = Date.now();
       saveToLocalCache(productsCache);
-      updateProductInIDB(id, data).catch(() => {});
+      updateProductInIDB(id, { ...data, archived: false }).catch(() => {});
     }
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
     triggerAutoBackup(`تعديل منتج: ${id}`);
   }
 
   return success;
+};
+
+// Load archived products from cloud (archived = true)
+export const loadArchivedProductsCloud = async (): Promise<Product[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return [];
+  }
+
+  try {
+    const { withTimeout } = await import('../supabase-store');
+    const query = sb
+      .from('products')
+      .select('*')
+      .eq('archived', true)
+      .order('updated_at', { ascending: false });
+
+    const res = await withTimeout(
+      Promise.resolve(query),
+      5000,
+      { data: null, error: new Error('Timeout fetching archived products') } as any
+    );
+
+    const data = res?.data;
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+
+    return (data as CloudProduct[]).map(toProduct);
+  } catch (err) {
+    console.error('[loadArchivedProductsCloud] Error:', err);
+    return [];
+  }
+};
+
+// Restore archived product with new quantity and settings
+export const restoreArchivedProductCloud = async (
+  id: string,
+  restoredData: Partial<Omit<Product, 'id' | 'status'>>
+): Promise<boolean> => {
+  return updateProductCloud(id, {
+    ...restoredData,
+    archived: false,
+  });
 };
 
 // Hard delete product atomic — حذف المنتج ومخزونه كلياً ونهائياً من السحابة والذاكرة المحلية و IndexedDB

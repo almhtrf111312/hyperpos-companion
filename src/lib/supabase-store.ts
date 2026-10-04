@@ -272,10 +272,11 @@ export const TABLE_ALLOWED_COLUMNS: Record<string, string[]> = {
     'conversion_factor', 'stock_warehouse_id', 'created_at'
   ],
   products: [
-    'id', 'user_id', 'name', 'barcode', 'category', 'cost_price', 'sale_price',
+    'id', 'user_id', 'name', 'barcode', 'barcode2', 'barcode3', 'variant_label', 'category', 'cost_price', 'sale_price',
     'wholesale_price', 'quantity', 'min_stock_level', 'expiry_date', 'image_url',
     'custom_fields', 'purchase_history', 'is_taxable', 'tax_rate', 'track_stock',
-    'is_active', 'created_at', 'updated_at'
+    'is_active', 'archived', 'labor_cost', 'bulk_unit', 'small_unit', 'conversion_factor',
+    'bulk_cost_price', 'bulk_sale_price', 'track_by_unit', 'created_at', 'updated_at'
   ],
   profit_records: [
     'id', 'user_id', 'invoice_id', 'revenue', 'cogs', 'gross_profit', 'currency',
