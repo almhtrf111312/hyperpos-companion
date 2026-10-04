@@ -284,6 +284,12 @@ export function SmartToast() {
 
   const config = colors[toast.type] || colors.info;
 
+  const isError = toast.type === 'error' || (toast.type as string) === 'destructive';
+  const isSuccessSubtitle = toast.subtitle?.includes('تمت معالجة هذا الإجراء وتسجيله بنجاح') ||
+                            toast.subtitle?.includes('تم بنجاح') ||
+                            toast.subtitle?.includes('بنجاح');
+  const safeSubtitle = (isError && isSuccessSubtitle) ? null : toast.subtitle;
+
   // حساب التحول (Transform & Opacity)
   let transform = 'translate(0px, 0px) rotate(0deg)';
   let opacity = 1;
@@ -347,9 +353,9 @@ export function SmartToast() {
                 {toast.time || 'الآن'}
               </span>
             </div>
-            {toast.subtitle && (
+            {safeSubtitle && (
               <p className="smart-toast-subtitle text-[11px] text-slate-600 dark:text-zinc-300 font-medium truncate mt-0.5">
-                {toast.subtitle}
+                {safeSubtitle}
               </p>
             )}
           </div>
@@ -403,9 +409,15 @@ export function SmartToast() {
             ) : (
               <div className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-zinc-300 space-y-1 shadow-sm">
                 <div className="font-semibold text-slate-900 dark:text-white">{toast.title}</div>
-                <div className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  {toast.subtitle || 'تمت معالجة هذا الإجراء وتسجيله بنجاح.'}
-                </div>
+                {safeSubtitle ? (
+                  <div className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    {safeSubtitle}
+                  </div>
+                ) : !isError ? (
+                  <div className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    تمت معالجة هذا الإجراء وتسجيله بنجاح.
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -435,7 +447,7 @@ export function SmartToast() {
                     config.btnBg
                   )}
                 >
-                  <span>حسناً</span>
+                  <span>{isError ? 'إغلاق' : 'حسناً'}</span>
                 </button>
               )}
 
@@ -444,7 +456,7 @@ export function SmartToast() {
                 onClick={() => dismissNotification('up')}
                 className="smart-toast-btn-secondary py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-white/10 dark:hover:bg-white/15 dark:text-zinc-200 font-semibold text-xs transition active:scale-95 border border-slate-200/60 dark:border-white/10"
               >
-                تم، إغلاق
+                {isError ? 'إغلاق' : 'تم، إغلاق'}
               </button>
             </div>
           </div>

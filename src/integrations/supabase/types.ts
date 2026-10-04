@@ -1978,6 +1978,10 @@ export type Database = {
         Args: { _target_user_id: string }
         Returns: Json
       }
+      boss_reactivate_user_license: {
+        Args: { _target_user_id: string }
+        Returns: Json
+      }
       hard_delete_product_atomic: {
         Args: { _product_id: string }
         Returns: Json

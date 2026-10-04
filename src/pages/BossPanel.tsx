@@ -595,17 +595,49 @@ export default function BossPanel() {
 
   const handleRevokeLicense = async (ownerId: string) => {
     try {
-      const { error } = await supabase.rpc('boss_revoke_user_license', {
+      const { data, error } = await supabase.rpc('boss_revoke_user_license', {
         _target_user_id: ownerId,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || 'فشل في إلغاء الترخيص');
+      }
 
-      toast.success('تم إلغاء ترخيص المالك وتعطيل الحساب');
-      fetchData();
+      const res = data as { success?: boolean; error?: string; message?: string } | null;
+      if (res?.success === true) {
+        toast.success('تم إلغاء ترخيص المالك وتعطيل الحساب');
+        fetchData();
+      } else {
+        const errorMsg = res?.error || res?.message || 'فشل في إلغاء الترخيص من الخادم';
+        throw new Error(errorMsg);
+      }
     } catch (error: any) {
       console.error('Error revoking license:', error);
       toast.error(error.message || 'فشل في إلغاء الترخيص');
+    }
+  };
+
+  const handleReactivateLicense = async (ownerId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('boss_reactivate_user_license', {
+        _target_user_id: ownerId,
+      });
+
+      if (error) {
+        throw new Error(error.message || 'فشل في إعادة تفعيل الترخيص');
+      }
+
+      const res = data as { success?: boolean; error?: string; message?: string } | null;
+      if (res?.success === true) {
+        toast.success('تمت إعادة تفعيل ترخيص المالك وتنشيط الحساب بنجاح');
+        fetchData();
+      } else {
+        const errorMsg = res?.error || res?.message || 'فشل في إعادة تفعيل الترخيص من الخادم';
+        throw new Error(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Error reactivating license:', error);
+      toast.error(error.message || 'فشل في إعادة تفعيل الترخيص');
     }
   };
 
@@ -1502,6 +1534,12 @@ export default function BossPanel() {
                                       إلغاء الترخيص
                                     </DropdownMenuItem>
                                   )}
+                                  {(owner.license_revoked || !owner.is_active) && (
+                                    <DropdownMenuItem onClick={() => handleReactivateLicense(owner.user_id)} className="text-emerald-600 font-medium">
+                                      <RotateCcw className="w-4 h-4 me-2" />
+                                      إعادة تفعيل الترخيص
+                                    </DropdownMenuItem>
+                                  )}
 
                                   <DropdownMenuSeparator />
                                   <DropdownMenuLabel>إدارة الجهاز</DropdownMenuLabel>
@@ -1922,6 +1960,17 @@ export default function BossPanel() {
                               )}
                             </div>
                             <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
+                              {(isRevoked || !owner.is_active) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs text-emerald-600 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                  onClick={() => handleReactivateLicense(owner.user_id)}
+                                >
+                                  <RotateCcw className="w-3 h-3 me-1" />
+                                  إعادة تفعيل
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 className="text-xs"
