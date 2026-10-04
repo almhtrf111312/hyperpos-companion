@@ -461,6 +461,11 @@ export default function Settings() {
     userType: 'cashier' as 'cashier' | 'distributor' | 'pos',
     allowedPages: [] as string[],
   });
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const userNameInputRef = useRef<HTMLInputElement>(null);
+  const userEmailInputRef = useRef<HTMLInputElement>(null);
+  const userPasswordInputRef = useRef<HTMLInputElement>(null);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -955,6 +960,8 @@ export default function Settings() {
   const handleAddUser = () => {
     setSelectedUser(null);
     setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier', allowedPages: [] });
+    setEmailError('');
+    setPasswordError('');
     setUserDialogOpen(true);
   };
 
@@ -972,6 +979,8 @@ export default function Settings() {
       userType: user.userType || 'cashier',
       allowedPages: user.allowedPages || [],
     });
+    setEmailError('');
+    setPasswordError('');
     setUserDialogOpen(true);
   };
 
@@ -993,20 +1002,24 @@ export default function Settings() {
   };
 
   const handleSaveUser = async () => {
-    if (!userForm.name) {
+    setEmailError('');
+    setPasswordError('');
+
+    const trimmedName = userForm.name.trim();
+    if (!trimmedName) {
       toast({
         title: t('common.error'),
         description: t('settings.enterUsername'),
         variant: "destructive",
       });
+      userNameInputRef.current?.focus();
       return;
     }
 
-    setIsSavingUser(true);
-
     if (selectedUser) {
+      setIsSavingUser(true);
       // Update existing user - update profile with name, userType, phone, and allowedPages
-      const nameChanged = userForm.name !== selectedUser.name;
+      const nameChanged = trimmedName !== selectedUser.name;
       const userTypeChanged = userForm.userType !== selectedUser.userType;
       const phoneChanged = userForm.phone !== (selectedUser.phone || '');
       const pagesChanged = JSON.stringify(userForm.allowedPages) !== JSON.stringify(selectedUser.allowedPages || []);
@@ -1017,7 +1030,7 @@ export default function Settings() {
       if (nameChanged || userTypeChanged || phoneChanged || pagesChanged) {
         success = await updateUserProfile(
           selectedUser.user_id,
-          userForm.name,
+          trimmedName,
           userForm.userType,
           userForm.phone,
           userForm.allowedPages.length > 0 ? userForm.allowedPages : null
@@ -1029,35 +1042,79 @@ export default function Settings() {
         setSelectedUser(null);
         setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier', allowedPages: [] });
       }
+      setIsSavingUser(false);
     } else {
-      // Add new user
-      if (!userForm.email || !userForm.password) {
+      // Add new user - Clean inputs
+      const trimmedEmail = userForm.email.trim().toLowerCase();
+      const rawPassword = userForm.password;
+
+      // Email validation: check empty and strict regex
+      if (!trimmedEmail) {
+        setEmailError('يرجى إدخال البريد الإلكتروني');
         toast({
           title: t('common.error'),
-          description: t('settings.enterEmailPassword'),
+          description: 'يرجى إدخال البريد الإلكتروني',
           variant: "destructive",
         });
-        setIsSavingUser(false);
+        userEmailInputRef.current?.focus();
         return;
       }
 
-      if (userForm.password.length < 6) {
+      // Regex ensures valid standard format [local]@[domain].[tld] preventing reversed formats
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setEmailError('صيغة البريد الإلكتروني غير صالحة (مثال: user@example.com)');
         toast({
           title: t('common.error'),
-          description: t('settings.passwordTooShort'),
+          description: 'صيغة البريد الإلكتروني غير صالحة، تأكد من كتابة البريد بشكل صحيح',
           variant: "destructive",
         });
-        setIsSavingUser(false);
+        userEmailInputRef.current?.focus();
         return;
       }
 
-      const success = await addUser(userForm.email, userForm.password, userForm.name, userForm.role, userForm.userType, userForm.phone, userForm.allowedPages.length > 0 ? userForm.allowedPages : undefined);
+      // Password validation: check empty and minimum length
+      if (!rawPassword) {
+        setPasswordError('يرجى إدخال كلمة المرور');
+        toast({
+          title: t('common.error'),
+          description: 'يرجى إدخال كلمة المرور',
+          variant: "destructive",
+        });
+        userPasswordInputRef.current?.focus();
+        return;
+      }
+
+      if (rawPassword.length < 6) {
+        setPasswordError('يجب أن تتكون كلمة المرور من 6 أحرف على الأقل');
+        toast({
+          title: t('common.error'),
+          description: t('settings.passwordTooShort') || 'كلمة المرور يجب أن لا تقل عن 6 أحرف',
+          variant: "destructive",
+        });
+        userPasswordInputRef.current?.focus();
+        return;
+      }
+
+      setIsSavingUser(true);
+
+      const success = await addUser(
+        trimmedEmail,
+        rawPassword,
+        trimmedName,
+        userForm.role,
+        userForm.userType,
+        userForm.phone?.trim() || undefined,
+        userForm.allowedPages.length > 0 ? userForm.allowedPages : undefined
+      );
+
       if (success) {
         setUserDialogOpen(false);
+        setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier', allowedPages: [] });
       }
-    }
 
-    setIsSavingUser(false);
+      setIsSavingUser(false);
+    }
   };
 
   const handleBackupNow = async () => {
@@ -2428,7 +2485,16 @@ export default function Settings() {
       )}
 
       {/* User Dialog */}
-      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+      <Dialog
+        open={userDialogOpen}
+        onOpenChange={(open) => {
+          setUserDialogOpen(open);
+          if (!open) {
+            setEmailError('');
+            setPasswordError('');
+          }
+        }}
+      >
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw] rounded-2xl">
           <DialogHeader>
             <DialogTitle>{selectedUser ? t('settings.editUser') : t('settings.addNewUser')}</DialogTitle>
@@ -2437,6 +2503,7 @@ export default function Settings() {
             <div className="space-y-2">
               <label className="text-sm font-medium">{t('common.name')}</label>
               <Input
+                ref={userNameInputRef}
                 value={userForm.name}
                 onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
                 placeholder={t('settings.usernamePlaceholder')}
@@ -2447,30 +2514,48 @@ export default function Settings() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('common.email')}</label>
                   <Input
+                    ref={userEmailInputRef}
                     type="email"
+                    dir="ltr"
                     value={userForm.email}
-                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    onChange={(e) => {
+                      setUserForm({ ...userForm, email: e.target.value });
+                      if (emailError) setEmailError('');
+                    }}
                     placeholder="email@example.com"
+                    className={`text-left placeholder:text-right ${emailError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                   />
+                  {emailError && (
+                    <p className="text-xs text-destructive font-medium">{emailError}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('auth.password')}</label>
                   <div className="relative">
                     <Input
+                      ref={userPasswordInputRef}
                       type={showPassword ? 'text' : 'password'}
+                      dir="ltr"
                       value={userForm.password}
-                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                      onChange={(e) => {
+                        setUserForm({ ...userForm, password: e.target.value });
+                        if (passwordError) setPasswordError('');
+                      }}
                       placeholder={t('auth.password')}
-                      className="pr-10"
+                      className={`text-left placeholder:text-right pr-10 ${passwordError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {passwordError && (
+                    <p className="text-xs text-destructive font-medium">{passwordError}</p>
+                  )}
                 </div>
               </>
             )}

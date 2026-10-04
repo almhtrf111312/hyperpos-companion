@@ -150,25 +150,91 @@ export function useUsersManagement() {
         return false;
       }
 
+      // Check owner license and cashier capacity before creating user
+      const { data: roleRow } = await supabase
+        .from('user_roles')
+        .select('role, owner_id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      const isBoss = roleRow?.role === 'boss';
+      const ownerId = (roleRow?.role === 'cashier' && roleRow.owner_id)
+        ? roleRow.owner_id
+        : session.user.id;
+
+      if (!isBoss) {
+        const { data: canAdd, error: canAddError } = await supabase.rpc('can_add_cashier', {
+          _owner_id: ownerId,
+        });
+
+        if (canAddError) {
+          console.error('Error checking cashier limit:', canAddError);
+        } else if (canAdd === false) {
+          toast({
+            title: 'خطأ في الترخيص',
+            description: 'لا يمكنك إضافة كاشير جديد: انتهت صلاحية الترخيص أو تم الوصول للحد الأقصى المسموح من الكاشيرات',
+            variant: 'destructive',
+          });
+          return false;
+        }
+      }
+
+      // Normalize email to standard lowercase trimmed format
+      const normalizedEmail = email.trim().toLowerCase();
+
       // Call backend function to create the user - this won't affect the current session
       const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email, password, fullName, role, userType, phone, allowedPages },
+        body: { email: normalizedEmail, password, fullName, role, userType, phone, allowedPages },
       });
+
+      let errorMessage = '';
 
       if (error) {
         console.error('Error calling create-user:', error);
-        toast({
-          title: 'خطأ',
-          description: error.message || 'فشل في إنشاء المستخدم',
-          variant: 'destructive',
-        });
-        return false;
+        try {
+          if ((error as any).context && typeof (error as any).context.json === 'function') {
+            const errorBody = await (error as any).context.json();
+            if (errorBody?.error) {
+              errorMessage = errorBody.error;
+            }
+          }
+        } catch (e) {
+          console.warn('Could not read error context body:', e);
+        }
+
+        if (!errorMessage) {
+          errorMessage = error.message || '';
+        }
+      } else if (!data?.success) {
+        errorMessage = data?.error || '';
       }
 
-      if (!data?.success) {
+      if (errorMessage) {
+        let userFacingError = errorMessage;
+        const lowerErr = errorMessage.toLowerCase();
+
+        if (
+          lowerErr.includes('user already registered') ||
+          lowerErr.includes('already registered') ||
+          lowerErr.includes('already exists') ||
+          lowerErr.includes('already in use')
+        ) {
+          userFacingError = 'البريد الإلكتروني مسجل مسبقاً لمستخدم آخر، يرجى استخدام بريد إلكتروني مختلف';
+        } else if (
+          (lowerErr.includes('invalid') && lowerErr.includes('email')) ||
+          lowerErr.includes('unable to validate email') ||
+          lowerErr.includes('invalid format')
+        ) {
+          userFacingError = 'صيغة البريد الإلكتروني غير صالحة، يرجى التأكد من كتابة البريد بشكل صحيح';
+        } else if (
+          lowerErr.includes('password') && (lowerErr.includes('6') || lowerErr.includes('least'))
+        ) {
+          userFacingError = 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل';
+        }
+
         toast({
           title: 'خطأ',
-          description: data?.error || 'فشل في إنشاء المستخدم',
+          description: userFacingError,
           variant: 'destructive',
         });
         return false;
@@ -181,7 +247,7 @@ export function useUsersManagement() {
           currentUser.id,
           profile?.full_name || currentUser.email || 'مستخدم',
           `تم إضافة مستخدم جديد: ${fullName} (${role === 'admin' ? 'مدير' : 'كاشير'})`,
-          { email, role, newUserId: data.user?.id }
+          { email: normalizedEmail, role, newUserId: data?.user?.id }
         );
       }
 
