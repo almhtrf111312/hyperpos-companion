@@ -55,6 +55,24 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Use service role to check user role status
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Check if user role is active
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('is_active')
+      .eq('user_id', user.id)
+      .single()
+
+    if (roleError || !roleData?.is_active) {
+      console.log('User account is deactivated:', user.id)
+      return new Response(
+        JSON.stringify({ success: false, error: 'الحساب معطل' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Get the activation code from request
     const { code } = await req.json()
     if (!code || typeof code !== 'string') {
@@ -73,13 +91,10 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Use service role to access activation_codes table
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-
     console.log('Looking for code:', sanitizedCode)
 
     // Find the activation code - try exact match first
-    let { data: activationCode, error: codeError } = await supabaseAdmin
+    const { data: activationCode, error: codeError } = await supabaseAdmin
       .from('activation_codes')
       .select('*')
       .eq('code', sanitizedCode)

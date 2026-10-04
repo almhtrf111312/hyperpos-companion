@@ -10,7 +10,7 @@ type DeleteType = 'user' | 'owner' | 'boss';
 
 // NOTE: Deno edge runtime + esm.sh types can be overly strict here.
 // We intentionally treat the client as `any` to avoid type mismatches.
-type SupabaseAnyClient = any;
+type SupabaseAnyClient = ReturnType<typeof createClient>;
 
 async function safeDeleteByUserId(
   adminClient: SupabaseAnyClient,
@@ -78,10 +78,10 @@ Deno.serve(async (req) => {
     const currentUser = userData.user;
     console.log('Authenticated user:', currentUser.id);
 
-    // Check if current user is admin or boss
+    // Check if current user is admin or boss and active
     const { data: currentUserRole, error: roleError } = await adminClient
       .from("user_roles")
-      .select("role")
+      .select("role, is_active")
       .eq("user_id", currentUser.id)
       .single();
 
@@ -93,6 +93,14 @@ Deno.serve(async (req) => {
     if (roleError || (!isAdmin && !isBoss)) {
       return new Response(
         JSON.stringify({ error: "Only admins or boss can delete users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!currentUserRole.is_active) {
+      console.error('Inactive user attempted delete:', currentUser.id);
+      return new Response(
+        JSON.stringify({ error: "Forbidden - Account is deactivated" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -131,7 +139,7 @@ Deno.serve(async (req) => {
     }
 
     const targetRole = targetRoleRow?.role as string | undefined;
-    const targetOwnerId = (targetRoleRow as any)?.owner_id as string | null | undefined;
+    const targetOwnerId = (targetRoleRow as { owner_id?: string | null })?.owner_id as string | null | undefined;
 
     // Boss-only deletion of boss accounts
     if (deleteType === 'boss') {
@@ -208,7 +216,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const subUserIds = (subRoles || []).map((r: any) => r.user_id).filter(Boolean);
+      const subUserIds = (subRoles || []).map((r: { user_id?: string }) => r.user_id).filter(Boolean);
       console.log('Owner sub accounts:', subUserIds.length);
 
       // 2) Delete sub-accounts fully (including auth)

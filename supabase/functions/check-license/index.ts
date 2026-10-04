@@ -101,8 +101,22 @@ Deno.serve(async (req) => {
     // IMPORTANT: Cashiers inherit license from owner - they don't need separate activation
     const isCashierWithOwner = roleData.role === 'cashier' && roleData.owner_id
 
-    // Boss users always have valid license
+    // Boss users always have valid license (but must be active)
     if (roleData.role === 'boss') {
+      if (!roleData.is_active) {
+        return new Response(
+          JSON.stringify({ 
+            valid: false,
+            hasLicense: false,
+            isBossDeactivated: true,
+            needsActivation: false,
+            role: 'boss',
+            message: 'حساب المدير معطل'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
       return new Response(
         JSON.stringify({ 
           valid: true,
