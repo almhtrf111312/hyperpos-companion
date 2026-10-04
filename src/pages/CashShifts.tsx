@@ -275,29 +275,30 @@ export default function CashShifts() {
   }, [shifts]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <PageHeader
         title={t('cashShifts.pageTitle')}
         subtitle={t('cashShifts.pageSubtitle')}
+        icon={<Wallet className="h-5 w-5 text-primary" />}
         actions={
-          <>
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <Button variant="outline" size="sm" onClick={loadData}>
               <RefreshCw className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
               {t('cashShifts.refresh')}
             </Button>
             {openShift ? (
-              <Button variant="destructive" onClick={() => setShowCloseDialog(true)}>
+              <Button variant="destructive" size="sm" onClick={() => setShowCloseDialog(true)}>
                 <StopCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 {t('cashShifts.closeShift')}
               </Button>
             ) : (
-              <Button onClick={() => setShowStartDialog(true)}>
+              <Button size="sm" onClick={() => setShowStartDialog(true)}>
                 <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 {t('cashShifts.startShift')}
               </Button>
             )}
-          </>
+          </div>
         }
       />
 

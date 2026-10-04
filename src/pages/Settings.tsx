@@ -545,91 +545,90 @@ export default function Settings() {
         const cloudData = await fetchStoreSettings();
         if (!cloudData) return;
 
-        // Apply cloud store settings
-        setStoreSettings(prev => ({
-          name: cloudData.name ?? prev.name,
-          type: cloudData.store_type ?? prev.type,
-          phone: cloudData.phone ?? prev.phone,
-          email: (cloudData.email as string | null | undefined) ?? prev.email,
-          address: cloudData.address ?? prev.address,
-          logo: cloudData.logo_url ?? prev.logo,
-        }));
+        // 1. Resolved Store settings
+        const freshStoreSettings = {
+          name: cloudData.name ?? '',
+          type: cloudData.store_type ?? 'phones',
+          phone: cloudData.phone ?? '',
+          email: (cloudData.email as string | null | undefined) ?? '',
+          address: cloudData.address ?? '',
+          logo: cloudData.logo_url ?? '',
+        };
+        setStoreSettings(freshStoreSettings);
 
-        // Apply tax settings from cloud
-        if (typeof cloudData.tax_enabled === 'boolean') {
-          setTaxEnabled(cloudData.tax_enabled);
-        }
-        if (typeof cloudData.tax_rate === 'number') {
-          setTaxRate(cloudData.tax_rate);
-        }
+        // 2. Resolved Tax settings
+        const freshTaxEnabled = typeof cloudData.tax_enabled === 'boolean' ? cloudData.tax_enabled : false;
+        const freshTaxRate = typeof cloudData.tax_rate === 'number' ? cloudData.tax_rate : 0;
+        setTaxEnabled(freshTaxEnabled);
+        setTaxRate(freshTaxRate);
 
-        // Apply notification settings from cloud
-        if (cloudData.notification_settings && typeof cloudData.notification_settings === 'object') {
-          setNotificationSettings(prev => ({ ...prev, ...cloudData.notification_settings }));
-        }
+        // 3. Resolved Notification settings
+        const freshNotificationSettings = (cloudData.notification_settings && typeof cloudData.notification_settings === 'object'
+          ? { ...notificationSettings, ...cloudData.notification_settings }
+          : notificationSettings) as typeof notificationSettings;
+        setNotificationSettings(freshNotificationSettings);
 
-        // Apply print settings from cloud
-        if (cloudData.print_settings && typeof cloudData.print_settings === 'object') {
-          setPrintSettings(prev => ({ ...prev, ...cloudData.print_settings }));
-        }
+        // 4. Resolved Print settings
+        const freshPrintSettings = (cloudData.print_settings && typeof cloudData.print_settings === 'object'
+          ? { ...printSettings, ...cloudData.print_settings }
+          : printSettings) as typeof printSettings;
+        setPrintSettings(freshPrintSettings);
 
-        // Apply exchange rates from cloud
-        if (cloudData.exchange_rates && typeof cloudData.exchange_rates === 'object') {
-          const rates = cloudData.exchange_rates as Record<string, number>;
-          setExchangeRates(prev => ({
-            TRY: rates.TRY !== undefined ? String(rates.TRY) : prev.TRY,
-            SYP: rates.SYP !== undefined ? String(rates.SYP) : prev.SYP,
-          }));
-        }
+        // 5. Resolved Exchange rates
+        const rates = (cloudData.exchange_rates && typeof cloudData.exchange_rates === 'object')
+          ? cloudData.exchange_rates as Record<string, number>
+          : {};
+        const freshExchangeRates = {
+          TRY: rates.TRY !== undefined ? String(rates.TRY) : '',
+          SYP: rates.SYP !== undefined ? String(rates.SYP) : '',
+        };
+        setExchangeRates(freshExchangeRates);
 
-        // Apply discount settings and additional preferences from sync_settings
+        // 6. Resolved Sync settings
         const syncObj = cloudData.sync_settings && typeof cloudData.sync_settings === 'object' 
           ? cloudData.sync_settings as Record<string, unknown> : {};
 
-        if (typeof syncObj.discountPercentEnabled === 'boolean') {
-          setDiscountPercentEnabled(syncObj.discountPercentEnabled);
-        }
-        if (typeof syncObj.discountFixedEnabled === 'boolean') {
-          setDiscountFixedEnabled(syncObj.discountFixedEnabled);
-        }
-        if (syncObj.barcodeScanMode === 'search' || syncObj.barcodeScanMode === 'add') {
-          setBarcodeScanMode(syncObj.barcodeScanMode);
-        }
-        // ✅ Restore hideMaintenanceSection from cloud
-        if (typeof syncObj.hideMaintenanceSection === 'boolean') {
-          setHideMaintenanceSection(syncObj.hideMaintenanceSection);
-        }
-        // ✅ Restore currency names from cloud
-        if (syncObj.currencyNames && typeof syncObj.currencyNames === 'object') {
-          const cn = syncObj.currencyNames as Record<string, string>;
-          setCurrencyNames(prev => ({
-            TRY: cn.TRY ?? prev.TRY,
-            SYP: cn.SYP ?? prev.SYP,
-          }));
-        }
-        // ✅ Restore backup settings from cloud
-        if (syncObj.backupSettings && typeof syncObj.backupSettings === 'object') {
-          const bs = syncObj.backupSettings as Record<string, unknown>;
-          setBackupSettings(prev => ({
-            autoBackup: typeof bs.autoBackup === 'boolean' ? bs.autoBackup : prev.autoBackup,
-            interval: typeof bs.interval === 'string' ? bs.interval : prev.interval,
-            keepDays: typeof bs.keepDays === 'string' ? bs.keepDays : String(bs.keepDays ?? prev.keepDays),
-          }));
-        }
+        const freshDiscountPercent = typeof syncObj.discountPercentEnabled === 'boolean' ? syncObj.discountPercentEnabled : true;
+        const freshDiscountFixed = typeof syncObj.discountFixedEnabled === 'boolean' ? syncObj.discountFixedEnabled : true;
+        const freshBarcodeMode = (syncObj.barcodeScanMode === 'search' || syncObj.barcodeScanMode === 'add') ? syncObj.barcodeScanMode : 'search';
+        const freshHideMaintenance = typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : false;
 
-        // ✅ Restore app font from cloud sync if present
+        setDiscountPercentEnabled(freshDiscountPercent);
+        setDiscountFixedEnabled(freshDiscountFixed);
+        setBarcodeScanMode(freshBarcodeMode);
+        setHideMaintenanceSection(freshHideMaintenance);
+
+        const cn = (syncObj.currencyNames && typeof syncObj.currencyNames === 'object')
+          ? syncObj.currencyNames as Record<string, string>
+          : {};
+        const freshCurrencyNames = {
+          TRY: cn.TRY ?? '',
+          SYP: cn.SYP ?? '',
+        };
+        setCurrencyNames(freshCurrencyNames);
+
+        const bs = (syncObj.backupSettings && typeof syncObj.backupSettings === 'object')
+          ? syncObj.backupSettings as Record<string, unknown>
+          : {};
+        const freshBackupSettings = {
+          autoBackup: typeof bs.autoBackup === 'boolean' ? bs.autoBackup : true,
+          interval: typeof bs.interval === 'string' ? bs.interval : 'daily',
+          keepDays: typeof bs.keepDays === 'string' ? bs.keepDays : String(bs.keepDays ?? '7'),
+        };
+        setBackupSettings(freshBackupSettings);
+
         if (typeof syncObj.appFont === 'string' && isValidAppFontId(syncObj.appFont)) {
           setStoredAppFont(syncObj.appFont);
         }
 
-        // ✅ Restore productFieldsConfig from cloud if present
+        let freshProductFieldsConfig = productFieldsConfig;
         if (syncObj.productFieldsConfig) {
-          setProductFieldsConfig(syncObj.productFieldsConfig as ProductFieldsConfig);
-          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(syncObj.productFieldsConfig));
-          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, syncObj.productFieldsConfig);
+          freshProductFieldsConfig = syncObj.productFieldsConfig as ProductFieldsConfig;
+          setProductFieldsConfig(freshProductFieldsConfig);
+          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(freshProductFieldsConfig));
+          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, freshProductFieldsConfig);
         }
 
-        // ✅ Restore customFields from cloud if present
         if (syncObj.customFields && Array.isArray(syncObj.customFields)) {
           localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncObj.customFields));
           emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncObj.customFields);
@@ -637,58 +636,35 @@ export default function Settings() {
 
         // Persist to localStorage so offline reads stay in sync
         savePersistedSettings({
-          storeSettings: {
-            name: cloudData.name ?? '',
-            type: cloudData.store_type ?? 'phones',
-            phone: cloudData.phone ?? '',
-            email: (cloudData.email as string | null | undefined) ?? '',
-            address: cloudData.address ?? '',
-            logo: cloudData.logo_url ?? '',
-          },
-          exchangeRates: cloudData.exchange_rates ? {
-            TRY: String((cloudData.exchange_rates as Record<string, number>).TRY ?? ''),
-            SYP: String((cloudData.exchange_rates as Record<string, number>).SYP ?? ''),
-          } : undefined,
-          currencyNames: syncObj.currencyNames as Record<string, string> | undefined,
-          taxEnabled: cloudData.tax_enabled ?? false,
-          taxRate: cloudData.tax_rate ?? 0,
-          notificationSettings: cloudData.notification_settings ?? undefined,
-          printSettings: cloudData.print_settings ?? undefined,
-          backupSettings: syncObj.backupSettings as BackupSettingsType | undefined,
-          hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : undefined,
-          discountPercentEnabled: syncObj.discountPercentEnabled !== false,
-          discountFixedEnabled: syncObj.discountFixedEnabled !== false,
-          barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : 'search',
+          storeSettings: freshStoreSettings,
+          exchangeRates: freshExchangeRates,
+          currencyNames: freshCurrencyNames,
+          taxEnabled: freshTaxEnabled,
+          taxRate: freshTaxRate,
+          notificationSettings: freshNotificationSettings,
+          printSettings: freshPrintSettings,
+          backupSettings: freshBackupSettings,
+          hideMaintenanceSection: freshHideMaintenance,
+          discountPercentEnabled: freshDiscountPercent,
+          discountFixedEnabled: freshDiscountFixed,
+          barcodeScanMode: freshBarcodeMode,
         });
 
-        // ✅ Update snapshot with fresh cloud values so hasUnsavedChanges stays accurate
+        // ✅ Update snapshot with the EXACT identical fresh values from cloud
         settingsSnapshotRef.current = {
-          storeSettings: {
-            name: cloudData.name ?? storeSettings.name,
-            type: cloudData.store_type ?? storeSettings.type,
-            phone: cloudData.phone ?? storeSettings.phone,
-            email: storeSettings.email,
-            address: cloudData.address ?? storeSettings.address,
-            logo: cloudData.logo_url ?? storeSettings.logo,
-          },
-          exchangeRates: {
-            TRY: (cloudData.exchange_rates as Record<string, number>)?.TRY !== undefined ? String((cloudData.exchange_rates as Record<string, number>).TRY) : exchangeRates.TRY,
-            SYP: (cloudData.exchange_rates as Record<string, number>)?.SYP !== undefined ? String((cloudData.exchange_rates as Record<string, number>).SYP) : exchangeRates.SYP,
-          },
-          currencyNames: {
-            TRY: (syncObj.currencyNames as Record<string, string> | undefined)?.TRY ?? currencyNames.TRY,
-            SYP: (syncObj.currencyNames as Record<string, string> | undefined)?.SYP ?? currencyNames.SYP,
-          },
-          notificationSettings: (cloudData.notification_settings as unknown as typeof notificationSettings) || notificationSettings,
-          printSettings: (cloudData.print_settings as unknown as typeof printSettings) || printSettings,
-          backupSettings: (syncObj.backupSettings as unknown as typeof backupSettings) || backupSettings,
-          hideMaintenanceSection: typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : hideMaintenanceSection,
-          productFieldsConfig: (syncObj.productFieldsConfig as ProductFieldsConfig) || loadProductFieldsConfig(),
-          taxEnabled: typeof cloudData.tax_enabled === 'boolean' ? cloudData.tax_enabled : taxEnabled,
-          taxRate: typeof cloudData.tax_rate === 'number' ? cloudData.tax_rate : taxRate,
-          discountPercentEnabled: typeof syncObj.discountPercentEnabled === 'boolean' ? syncObj.discountPercentEnabled : discountPercentEnabled,
-          discountFixedEnabled: typeof syncObj.discountFixedEnabled === 'boolean' ? syncObj.discountFixedEnabled : discountFixedEnabled,
-          barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : barcodeScanMode,
+          storeSettings: { ...freshStoreSettings },
+          exchangeRates: { ...freshExchangeRates },
+          currencyNames: { ...freshCurrencyNames },
+          notificationSettings: { ...freshNotificationSettings },
+          printSettings: { ...freshPrintSettings },
+          backupSettings: { ...freshBackupSettings },
+          hideMaintenanceSection: freshHideMaintenance,
+          productFieldsConfig: freshProductFieldsConfig ? { ...freshProductFieldsConfig } : loadProductFieldsConfig(),
+          taxEnabled: freshTaxEnabled,
+          taxRate: freshTaxRate,
+          discountPercentEnabled: freshDiscountPercent,
+          discountFixedEnabled: freshDiscountFixed,
+          barcodeScanMode: freshBarcodeMode,
         };
 
         console.log('[Settings] Loaded and synced from cloud successfully');
@@ -722,35 +698,48 @@ export default function Settings() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Independent tabs that have no saveable settings form state
-  const INDEPENDENT_TABS = ['licenses', 'activity', 'backup', 'archive', 'license', 'contact', 'reset', 'about', 'users'];
+  const INDEPENDENT_TABS = ['licenses', 'activity', 'backup', 'archive', 'license', 'contact', 'reset', 'about', 'users', 'partners', 'profile'];
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = (() => {
-    // Never show save bar for tabs that manage their own actions
-    if (activeTab !== null && INDEPENDENT_TABS.includes(activeTab)) return false;
+    // Hide save bar on main screen (activeTab === null) or independent tabs
+    if (!activeTab || INDEPENDENT_TABS.includes(activeTab)) return false;
     const snap = settingsSnapshotRef.current;
     if (!snap) return false;
-    const isProductFieldsDirty = Boolean(
-      (productFieldsConfig && !snap.productFieldsConfig) ||
-      (!productFieldsConfig && snap.productFieldsConfig) ||
-      (productFieldsConfig && snap.productFieldsConfig && JSON.stringify(productFieldsConfig) !== JSON.stringify(snap.productFieldsConfig))
-    );
-    return (
-      JSON.stringify(storeSettings) !== JSON.stringify(snap.storeSettings) ||
-      JSON.stringify(exchangeRates) !== JSON.stringify(snap.exchangeRates) ||
-      JSON.stringify(currencyNames) !== JSON.stringify(snap.currencyNames) ||
-      JSON.stringify(notificationSettings) !== JSON.stringify(snap.notificationSettings) ||
-      JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings) ||
-      JSON.stringify(backupSettings) !== JSON.stringify(snap.backupSettings) ||
-      hideMaintenanceSection !== snap.hideMaintenanceSection ||
-      taxEnabled !== snap.taxEnabled ||
-      taxRate !== snap.taxRate ||
-      discountPercentEnabled !== snap.discountPercentEnabled ||
-      discountFixedEnabled !== snap.discountFixedEnabled ||
-      barcodeScanMode !== snap.barcodeScanMode ||
-      isProductFieldsDirty ||
-      productFieldsChanged
-    );
+
+    // Check changes ONLY for the active tab to prevent false triggers
+    if (activeTab === 'store') {
+      return (
+        JSON.stringify(storeSettings) !== JSON.stringify(snap.storeSettings) ||
+        JSON.stringify(exchangeRates) !== JSON.stringify(snap.exchangeRates) ||
+        JSON.stringify(currencyNames) !== JSON.stringify(snap.currencyNames) ||
+        hideMaintenanceSection !== snap.hideMaintenanceSection ||
+        taxEnabled !== snap.taxEnabled ||
+        taxRate !== snap.taxRate ||
+        discountPercentEnabled !== snap.discountPercentEnabled ||
+        discountFixedEnabled !== snap.discountFixedEnabled ||
+        barcodeScanMode !== snap.barcodeScanMode
+      );
+    }
+
+    if (activeTab === 'productFields') {
+      const isProductFieldsDirty = Boolean(
+        (productFieldsConfig && !snap.productFieldsConfig) ||
+        (!productFieldsConfig && snap.productFieldsConfig) ||
+        (productFieldsConfig && snap.productFieldsConfig && JSON.stringify(productFieldsConfig) !== JSON.stringify(snap.productFieldsConfig))
+      );
+      return isProductFieldsDirty || productFieldsChanged;
+    }
+
+    if (activeTab === 'notifications') {
+      return JSON.stringify(notificationSettings) !== JSON.stringify(snap.notificationSettings);
+    }
+
+    if (activeTab === 'printing') {
+      return JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings);
+    }
+
+    return false;
   })();
 
   // Revert all settings to snapshot
