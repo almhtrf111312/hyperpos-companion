@@ -14,7 +14,8 @@ import {
   TrendingDown,
   Calendar,
   BarChart3,
-  RotateCcw
+  RotateCcw,
+  Receipt
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
@@ -33,9 +34,33 @@ import { isNoInventoryMode } from '@/lib/store-type-config';
 
 const DASHBOARD_CACHE_KEY = 'hyperpos_dashboard_stats_cache_v1';
 
+const getCapitalSettings = () => {
+  try {
+    const raw = localStorage.getItem('hyperpos_settings_v1');
+    if (!raw) return { trackCapital: false, initialCapital: 0 };
+    const parsed = JSON.parse(raw);
+    const trackCapital = Boolean(
+      parsed.trackCapital ?? 
+      parsed.syncSettings?.trackCapital ?? 
+      parsed.storeSettings?.trackCapital ?? 
+      false
+    );
+    const initialCapital = Number(
+      parsed.initialCapital ?? 
+      parsed.syncSettings?.initialCapital ?? 
+      parsed.storeSettings?.initialCapital ?? 
+      0
+    ) || 0;
+    return { trackCapital, initialCapital };
+  } catch {
+    return { trackCapital: false, initialCapital: 0 };
+  }
+};
+
 export default function Dashboard() {
-  const { t, language } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
+  const [capitalConfig, setCapitalConfig] = useState(getCapitalSettings);
   const noInventory = isNoInventoryMode();
   // Display-only cache of last successful stats (never used for financial operations)
   const cached = (() => {
@@ -59,6 +84,7 @@ export default function Dashboard() {
     uniqueCustomers: 0,
     inventoryValue: 0,
     totalCapital: 0,
+    storeInitialCapital: 0,
     availableCapital: 0,
     cashboxBalance: 0,
     liquidCapital: 0,
@@ -92,6 +118,9 @@ export default function Dashboard() {
   const loadStats = useCallback(async () => {
     setIsLoading(true);
     try {
+      const currentCap = getCapitalSettings();
+      setCapitalConfig(currentCap);
+
       const [invoices, products, partners, expenses, debts, purchaseInvoices] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
@@ -199,22 +228,49 @@ export default function Dashboard() {
         }).reduce((sum, inv) => sum + inv.total, 0);
       }).reverse();
 
-      const totalCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
+      // المحاسبة الدقيقة:
+      // 1. إجمالي رأس المال التأسيسي = رأس مال المحل التأسيسي + مجموع رؤوس أموال الشركاء
+      const partnersCapital = partners.reduce((sum, p) => sum + (p.currentCapital || 0), 0);
+      const storeInitialCapital = currentCap.trackCapital ? (currentCap.initialCapital || 0) : 0;
+      const totalCapital = storeInitialCapital + partnersCapital;
 
+      // 2. المبيعات النقدية المقبوضة كاش فقط
       const totalSalesCash = invoices
-        .filter(inv => isActiveInvoice(inv) && inv.paymentType === 'cash')
-        .reduce((sum, inv) => sum + inv.total, 0);
+        .filter(inv => isActiveInvoice(inv))
+        .reduce((sum, inv) => {
+          if (inv.paymentType === 'cash') return sum + inv.total;
+          if (inv.paymentType === 'split' && (inv as any).downPayment) return sum + Number((inv as any).downPayment);
+          return sum;
+        }, 0);
 
-      const totalDebtPaid = invoices
+      // 3. الديون المحصلة نقداً
+      const debtPaidInvoices = invoices
         .filter(inv => isActiveInvoice(inv))
         .reduce((sum, inv) => sum + (inv.debtPaid || 0), 0);
+      const debtPaidTable = debts.reduce((sum, d) => sum + (d.totalPaid || 0), 0);
+      const totalDebtPaid = Math.max(debtPaidInvoices, debtPaidTable);
 
+      // 4. فواتير الشراء المسددة نقداً فقط (فواتير الآجل لا تُخصم من السيولة النقدية حتى تُسدد)
+      const isCashPurchase = (pi: any) => {
+        const pType = pi.paymentType || pi.payment_type;
+        if (pType === 'debt' || pType === 'credit') return false;
+        if (typeof pi.notes === 'string' && (pi.notes.includes('آجل') || pi.notes.includes('دين'))) return false;
+        return true;
+      };
+
+      const cashPurchasesPaid = purchaseInvoices
+        .filter(pi => pi.status === 'finalized' && isCashPurchase(pi))
+        .reduce((sum, pi) => sum + (pi.actual_grand_total || pi.expected_grand_total || 0), 0);
+
+      // 5. المصاريف
       const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
+      // 6. مسحوبات الشركاء / المالك
       const totalWithdrawals = partners.reduce((sum, p) => sum + (p.totalWithdrawn || 0), 0);
 
-      const globalCashBalance = (totalSalesCash + totalDebtPaid + totalCapital) - (totalExpenses + totalWithdrawals);
-
+      // 7. رأس المال السائل / السيولة المتوفرة بالصندوق:
+      // Liquid Capital = (Total Capital + المبيعات النقدية + الديون المحصلة) - (فواتير الشراء المسددة نقداً + المصاريف + المسحوبات)
+      const globalCashBalance = (totalCapital + totalSalesCash + totalDebtPaid) - (cashPurchasesPaid + totalExpenses + totalWithdrawals);
       const liquidCapital = globalCashBalance;
 
       const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;
@@ -248,6 +304,7 @@ export default function Dashboard() {
         uniqueCustomers,
         inventoryValue,
         totalCapital,
+        storeInitialCapital,
         availableCapital: globalCashBalance,
         cashboxBalance: globalCashBalance,
         liquidCapital,
@@ -291,7 +348,17 @@ export default function Dashboard() {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => loadStats(), 800);
     };
-    const evts = [EVENTS.INVOICES_UPDATED, EVENTS.PRODUCTS_UPDATED, EVENTS.PARTNERS_UPDATED, EVENTS.EXPENSES_UPDATED, EVENTS.CASHBOX_UPDATED, EVENTS.CAPITAL_UPDATED];
+    const evts = [
+      EVENTS.INVOICES_UPDATED,
+      EVENTS.PRODUCTS_UPDATED,
+      EVENTS.PARTNERS_UPDATED,
+      EVENTS.EXPENSES_UPDATED,
+      EVENTS.CASHBOX_UPDATED,
+      EVENTS.CAPITAL_UPDATED,
+      EVENTS.SETTINGS_UPDATED,
+      EVENTS.PURCHASES_UPDATED,
+      EVENTS.DEBTS_UPDATED,
+    ];
     evts.forEach(e => window.addEventListener(e, handleUpdate));
 
     return () => {
@@ -387,52 +454,85 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Capital Row - 4 columns on desktop, 2x2 on mobile */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        {noInventory ? (
+      {/* Capital / Financial Overview Row */}
+      {capitalConfig.trackCapital ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+          {noInventory ? (
+            <StatCard
+              title="إجمالي المشتريات"
+              value={formatCurrency(stats.totalPurchases)}
+              icon={<ShoppingCart />}
+              variant="purple"
+              linkTo="/products"
+              sparklineData={stats.dailySales}
+            />
+          ) : (
+            <StatCard
+              title={t('dashboard.inventoryValue')}
+              value={formatCurrency(stats.inventoryValue)}
+              subtitle="بسعر التكلفة"
+              icon={<Package />}
+              variant="purple"
+              linkTo="/products"
+              sparklineData={stats.dailySales}
+            />
+          )}
           <StatCard
-            title="إجمالي المشتريات"
-            value={formatCurrency(stats.totalPurchases)}
-            icon={<ShoppingCart />}
-            variant="purple"
-            linkTo="/products"
-            sparklineData={stats.dailySales}
+            title={t('dashboard.totalCapital')}
+            value={formatCurrency(stats.totalCapital)}
+            subtitle={stats.storeInitialCapital > 0 ? `رأس مال المتجر: ${formatCurrency(stats.storeInitialCapital)}` : undefined}
+            icon={<Wallet />}
+            variant="success"
+            linkTo="/partners"
+            sparklineData={stats.dailyProfit}
           />
-        ) : (
           <StatCard
-            title={t('dashboard.inventoryValue')}
-            value={formatCurrency(stats.inventoryValue)}
-            icon={<Package />}
-            variant="purple"
-            linkTo="/products"
-            sparklineData={stats.dailySales}
+            title={t('dashboard.liquidCapital')}
+            value={formatCurrency(stats.liquidCapital)}
+            subtitle={
+              stats.deficit > 0
+                ? `عجز سيولة: ${formatCurrency(stats.deficit)} (${stats.deficitPercentage.toFixed(1)}%)`
+                : 'رصيد الخزينة والنقد الفعلي'
+            }
+            icon={<Banknote />}
+            variant={stats.liquidCapital < 0 ? 'danger' : 'info'}
+            linkTo="/reports"
+            sparklineData={stats.dailyProfit}
           />
-        )}
-        <StatCard
-          title={t('dashboard.totalCapital')}
-          value={formatCurrency(stats.totalCapital)}
-          icon={<Wallet />}
-          variant="success"
-          linkTo="/partners"
-          sparklineData={stats.dailyProfit}
-        />
-        <StatCard
-          title={t('dashboard.cashboxBalance')}
-          value={formatCurrency(stats.cashboxBalance)}
-          icon={<Banknote />}
-          variant="primary"
-          linkTo="/cashbox"
-          sparklineData={stats.dailySales}
-        />
-        <StatCard
-          title={t('dashboard.liquidCapital')}
-          value={formatCurrency(stats.liquidCapital)}
-          icon={<DollarSign />}
-          variant="info"
-          linkTo="/reports"
-          sparklineData={stats.dailyProfit}
-        />
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 md:gap-3">
+          {noInventory ? (
+            <StatCard
+              title="إجمالي المشتريات"
+              value={formatCurrency(stats.totalPurchases)}
+              icon={<ShoppingCart />}
+              variant="purple"
+              linkTo="/products"
+              sparklineData={stats.dailySales}
+            />
+          ) : (
+            <StatCard
+              title={t('dashboard.inventoryValue')}
+              value={formatCurrency(stats.inventoryValue)}
+              subtitle="بسعر التكلفة"
+              icon={<Package />}
+              variant="purple"
+              linkTo="/products"
+              sparklineData={stats.dailySales}
+            />
+          )}
+          <StatCard
+            title="مصاريف اليوم"
+            value={formatCurrency(stats.todayExpenses)}
+            subtitle="المصروفات التشغيلية اليومية"
+            icon={<Receipt />}
+            variant="warning"
+            linkTo="/expenses"
+            sparklineData={stats.dailyProfit}
+          />
+        </div>
+      )}
 
       {/* Refund Stats Row */}
       <div className="grid grid-cols-2 gap-2 md:gap-3">

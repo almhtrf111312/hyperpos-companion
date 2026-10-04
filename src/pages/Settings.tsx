@@ -43,7 +43,8 @@ import {
   ExternalLink,
   Wrench,
   Archive,
-  Percent
+  Percent,
+  Wallet
 } from 'lucide-react';
 import { downloadJSON, isNativePlatform, listNativeBackups, NativeBackupFile, DownloadResult } from '@/lib/file-download';
 import { LocalBackupSection } from '@/components/settings/LocalBackupSection';
@@ -103,6 +104,8 @@ interface SyncSettingsType {
   showErrorNotification: boolean;
   showSyncStatus: boolean;
   lastSync: string;
+  trackCapital?: boolean;
+  initialCapital?: number;
 }
 
 interface NotificationSettingsType {
@@ -146,6 +149,8 @@ type PersistedSettings = {
   discountPercentEnabled?: boolean;
   discountFixedEnabled?: boolean;
   barcodeScanMode?: 'search' | 'add';
+  trackCapital?: boolean;
+  initialCapital?: number;
 };
 
 const sanitizeNumberText = (value: string) => value.replace(/[^\d.]/g, '');
@@ -272,6 +277,14 @@ export default function Settings() {
   const [discountPercentEnabled, setDiscountPercentEnabled] = useState(persisted?.discountPercentEnabled ?? true);
   const [discountFixedEnabled, setDiscountFixedEnabled] = useState(persisted?.discountFixedEnabled ?? true);
   const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(persisted?.barcodeScanMode ?? 'search');
+
+  // Capital tracking settings
+  const [trackCapital, setTrackCapital] = useState<boolean>(
+    persisted?.trackCapital ?? (persisted?.syncSettings?.trackCapital ?? false)
+  );
+  const [initialCapital, setInitialCapital] = useState<number>(
+    persisted?.initialCapital ?? (persisted?.syncSettings?.initialCapital ?? 0)
+  );
 
   const [notificationPerm, setNotificationPerm] = useState<string>('prompt');
 
@@ -592,11 +605,17 @@ export default function Settings() {
         const freshDiscountFixed = typeof syncObj.discountFixedEnabled === 'boolean' ? syncObj.discountFixedEnabled : true;
         const freshBarcodeMode = (syncObj.barcodeScanMode === 'search' || syncObj.barcodeScanMode === 'add') ? syncObj.barcodeScanMode : 'search';
         const freshHideMaintenance = typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : false;
+        const freshTrackCapital = typeof syncObj.trackCapital === 'boolean' ? syncObj.trackCapital : false;
+        const freshInitialCapital = typeof syncObj.initialCapital === 'number' 
+          ? syncObj.initialCapital 
+          : (Number(syncObj.initialCapital) || 0);
 
         setDiscountPercentEnabled(freshDiscountPercent);
         setDiscountFixedEnabled(freshDiscountFixed);
         setBarcodeScanMode(freshBarcodeMode);
         setHideMaintenanceSection(freshHideMaintenance);
+        setTrackCapital(freshTrackCapital);
+        setInitialCapital(freshInitialCapital);
 
         const cn = (syncObj.currencyNames && typeof syncObj.currencyNames === 'object')
           ? syncObj.currencyNames as Record<string, string>
@@ -648,6 +667,8 @@ export default function Settings() {
           discountPercentEnabled: freshDiscountPercent,
           discountFixedEnabled: freshDiscountFixed,
           barcodeScanMode: freshBarcodeMode,
+          trackCapital: freshTrackCapital,
+          initialCapital: freshInitialCapital,
         });
 
         // ✅ Update snapshot with the EXACT identical fresh values from cloud
@@ -665,6 +686,8 @@ export default function Settings() {
           discountPercentEnabled: freshDiscountPercent,
           discountFixedEnabled: freshDiscountFixed,
           barcodeScanMode: freshBarcodeMode,
+          trackCapital: freshTrackCapital,
+          initialCapital: freshInitialCapital,
         };
 
         console.log('[Settings] Loaded and synced from cloud successfully');
@@ -693,6 +716,8 @@ export default function Settings() {
         discountPercentEnabled,
         discountFixedEnabled,
         barcodeScanMode,
+        trackCapital,
+        initialCapital,
       };
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -718,7 +743,9 @@ export default function Settings() {
         taxRate !== snap.taxRate ||
         discountPercentEnabled !== snap.discountPercentEnabled ||
         discountFixedEnabled !== snap.discountFixedEnabled ||
-        barcodeScanMode !== snap.barcodeScanMode
+        barcodeScanMode !== snap.barcodeScanMode ||
+        trackCapital !== snap.trackCapital ||
+        initialCapital !== snap.initialCapital
       );
     }
 
@@ -753,6 +780,8 @@ export default function Settings() {
     setPrintSettings({ ...snap.printSettings });
     setBackupSettings({ ...snap.backupSettings });
     setHideMaintenanceSection(snap.hideMaintenanceSection);
+    setTrackCapital(snap.trackCapital ?? false);
+    setInitialCapital(snap.initialCapital ?? 0);
     if (snap.productFieldsConfig) {
       setProductFieldsConfig({ ...snap.productFieldsConfig });
       localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(snap.productFieldsConfig));
@@ -837,11 +866,15 @@ export default function Settings() {
         discountPercentEnabled,
         discountFixedEnabled,
         barcodeScanMode,
+        trackCapital,
+        initialCapital,
       });
 
       // Build merged sync_settings: keep productFieldsConfig alongside sync settings
       const mergedSyncSettings: Record<string, unknown> = {
         ...syncSettings,
+        trackCapital,
+        initialCapital,
       };
       if (productFieldsConfig) {
         mergedSyncSettings.productFieldsConfig = productFieldsConfig;
@@ -908,6 +941,8 @@ export default function Settings() {
         discountPercentEnabled,
         discountFixedEnabled,
         barcodeScanMode,
+        trackCapital,
+        initialCapital,
       };
 
       // Activate interactive save success state in floating action banner
@@ -1760,6 +1795,58 @@ export default function Settings() {
                       }}
                     />
                   </div>
+                </div>
+
+                {/* Capital & Liquidity Tracking Section */}
+                <div className="pt-2 border-t border-border space-y-3">
+                  <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-primary" />
+                      <div>
+                        <span className="text-sm font-medium block">
+                          {isRTL ? 'تتبع رأس المال والسيولة' : 'Track Capital & Liquidity'}
+                        </span>
+                        <span className="text-xs text-muted-foreground block">
+                          {isRTL 
+                            ? (trackCapital ? 'وضع تتبع رأس المال التأسيسي وحركة السيولة النقدية' : 'وضع بدون رأس مال (تدفق نقدي بسيط)') 
+                            : (trackCapital ? 'Track initial capital and liquid cash movement' : 'Simple cash flow mode')}
+                        </span>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={trackCapital}
+                      onCheckedChange={(checked) => {
+                        setTrackCapital(checked);
+                      }}
+                    />
+                  </div>
+                  {trackCapital && (
+                    <div className="space-y-1 bg-muted/40 p-3 rounded-xl border border-border/60">
+                      <label className="text-sm font-medium text-foreground block">
+                        {isRTL ? 'رأس المال التأسيسي للمحل ($)' : 'Initial Store Capital ($)'}
+                      </label>
+                      <div className="relative">
+                        <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          value={initialCapital || ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                            setInitialCapital(val);
+                          }}
+                          className="pr-10 bg-background border-border/80 h-9 text-sm"
+                          placeholder="0.00"
+                          min="0"
+                          step="any"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isRTL 
+                          ? 'يُضاف هذا المبلغ تلقائياً إلى رؤوس أموال الشركاء إن وجدوا لاحتساب إجمالي رأس المال والسيولة المتاحة.'
+                          : 'This amount is combined with partners capital (if any) to calculate total capital and available liquidity.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* نص توضيحي للعملات والضرائب */}

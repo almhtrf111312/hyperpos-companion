@@ -230,6 +230,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           discountFixedEnabled: syncObj.discountFixedEnabled ?? true,
           barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : 'search',
           hideMaintenanceSection: syncObj.hideMaintenanceSection ?? false,
+          trackCapital: syncObj.trackCapital ?? false,
+          initialCapital: Number(syncObj.initialCapital) || 0,
           currencyNames: syncObj.currencyNames,
           backupSettings: syncObj.backupSettings,
         };
@@ -447,6 +449,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           discountFixedEnabled: syncSettingsObj.discountFixedEnabled ?? existing.discountFixedEnabled ?? true,
           barcodeScanMode: syncSettingsObj.barcodeScanMode === 'add' ? 'add' : (existing.barcodeScanMode ?? 'search'),
           hideMaintenanceSection: syncSettingsObj.hideMaintenanceSection ?? existing.hideMaintenanceSection ?? false,
+          trackCapital: syncSettingsObj.trackCapital ?? existing.trackCapital ?? false,
+          initialCapital: syncSettingsObj.initialCapital !== undefined ? (Number(syncSettingsObj.initialCapital) || 0) : (existing.initialCapital ?? 0),
           currencyNames: syncSettingsObj.currencyNames ?? existing.currencyNames,
           backupSettings: syncSettingsObj.backupSettings ?? existing.backupSettings,
           notificationSettings: cloudSettings.notification_settings ?? existing.notificationSettings,
