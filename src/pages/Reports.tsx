@@ -1586,11 +1586,7 @@ export default function Reports() {
         case 'inventory': {
           const filteredProducts = getFilteredProductsForReport();
           if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
-          await exportProductsToExcel(filteredProducts.map(p => ({
-            name: p.name, barcode: p.barcode || '', barcode2: p.barcode2 || '', barcode3: p.barcode3 || '',
-            variantLabel: p.variantLabel || '', category: p.category || 'بدون تصنيف',
-            costPrice: p.costPrice, salePrice: p.salePrice, quantity: p.quantity,
-          })), currentSummary);
+          await exportProductsToExcel(filteredProducts, currentSummary);
           break;
         }
         case 'inventory-stock':

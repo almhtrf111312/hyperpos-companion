@@ -376,16 +376,11 @@ export function CartPanel({
     }
 
     // إذا كان هناك عجز في المقبوض وعميل مسجل، نفتح البيع المركب مباشرة
-    if (!wholesaleMode && isSplitEligible) {
-      if (isRealCustomerSelected(customerName)) {
-        handleSplitSale();
-        return;
-      } else {
-        showToast.error(
-          `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من إجمالي الفاتورة (${activeReceivedCurrency.symbol}${formatNumber(totalInReceivedCurrency)}). يرجى إدخال المبلغ كاملاً، أو تحديد عميل لإتمام العملية كدفع مركب.`
-        );
-        return;
-      }
+    if (!wholesaleMode && receivedAmount > 0 && receivedAmount < totalInReceivedCurrency) {
+      showToast.error(
+        `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من إجمالي الفاتورة (${activeReceivedCurrency.symbol}${formatNumber(totalInReceivedCurrency)}). يرجى إدخال المبلغ كاملاً أو استخدام 'بيع مؤجل'.`
+      );
+      return;
     }
 
     setShowCashDialog(true);
@@ -425,46 +420,7 @@ export function CartPanel({
       setCustomerPhone('');
     }
 
-    if (isSplitEligible) {
-      setShowSplitDialog(true);
-    } else {
-      setShowDebtDialog(true);
-    }
-  };
-
-  const handleSplitSale = async () => {
-    if (cart.length === 0) return;
-
-    // 🛡️ فحص استباقي: التحقق من أن كل صنف في السلة معتمد وموجود في الكتالوج السحابي
-    const validation = await validateCartProducts(cart);
-    if (!validation.isValid) {
-      showToast.error(
-        `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { persistent: false }
-      );
-      return;
-    }
-
-    if (!isRealCustomerSelected(customerName)) {
-      showToast.error('لا يمكن تسجيل دفع مركب بدون تحديد عميل مسجل لترحيل المتبقي كدين.');
-      return;
-    }
-
-    const existingCustomer = allCustomers.find(c =>
-      c.name.toLowerCase().trim() === customerName.toLowerCase().trim()
-    );
-
-    if (existingCustomer) {
-      setIsNewCustomer(false);
-      setCustomerPhone(existingCustomer.phone || customerPhone || '');
-    } else if (customerPhone && customerPhone.trim()) {
-      setIsNewCustomer(false);
-    } else {
-      setIsNewCustomer(true);
-      setCustomerPhone('');
-    }
-
-    setShowSplitDialog(true);
+    setShowDebtDialog(true);
   };
 
   const confirmCashSale = async () => {
@@ -492,10 +448,7 @@ export function CartPanel({
       savingRef.current = false;
       setIsSaving(false);
       setShowCashDialog(false);
-      if (isRealCustomerSelected(customerName)) {
-        setShowSplitDialog(true);
-        return;
-      }
+      
       showToast.error(
         `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من إجمالي الفاتورة (${activeReceivedCurrency.symbol}${formatNumber(totalInReceivedCurrency)}). حدد عميلاً مسجلاً لإتمام العملية كدفع مركب، أو أدخل المبلغ كاملاً.`
       );
@@ -737,7 +690,6 @@ export function CartPanel({
 
     // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     setShowDebtDialog(false);
-    setShowSplitDialog(false);
     onClose?.();
     saveSaleSnapshot(
       cartSnapshot,

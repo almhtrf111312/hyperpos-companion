@@ -135,84 +135,123 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
   const store = storeName ? { name: storeName, phone: storePhone, address: storeAddress } : getStoreInfo();
 
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet(sheetName);
-
-  // Build rows as array of arrays
-  const rows: (string | number | undefined)[][] = [];
+  const ws = wb.addWorksheet(sheetName, { views: [{ rtl: true }] });
 
   // Store header
-  rows.push([store.name]);
-  if (store.phone) rows.push([`هاتف: ${store.phone}`]);
-  if (store.address) rows.push([`العنوان: ${store.address}`]);
-  rows.push([]);
+  ws.addRow([store.name]);
+  const storeNameRow = ws.lastRow;
+  if (storeNameRow) {
+      storeNameRow.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      storeNameRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+      storeNameRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  }
+  
+  if (store.phone) {
+      ws.addRow([`هاتف: ${store.phone}`]);
+      ws.lastRow!.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+      ws.lastRow!.font = { name: 'Segoe UI', size: 11, color: { argb: 'FFFFFFFF' } };
+  }
+  if (store.address) {
+      ws.addRow([`العنوان: ${store.address}`]);
+      ws.lastRow!.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+      ws.lastRow!.font = { name: 'Segoe UI', size: 11, color: { argb: 'FFFFFFFF' } };
+  }
+  
+  ws.mergeCells(1, 1, store.address ? 3 : store.phone ? 2 : 1, columns.length);
+  ws.addRow([]);
 
-  if (reportType) rows.push([`نوع التقرير: ${reportType}`]);
-  rows.push([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
-  rows.push([]);
+  if (reportType) {
+      ws.addRow([`نوع التقرير: ${reportType}`]);
+      ws.lastRow!.font = { name: 'Segoe UI', size: 12, bold: true };
+  }
+  ws.addRow([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
+  ws.addRow([]);
 
-  if (title) { rows.push([title]); rows.push([]); }
-  if (subtitle) { rows.push([subtitle]); rows.push([]); }
+  if (title) { 
+      ws.addRow([title]); 
+      ws.lastRow!.font = { name: 'Segoe UI', size: 14, bold: true };
+      ws.addRow([]); 
+  }
+  if (subtitle) { 
+      ws.addRow([subtitle]); 
+      ws.addRow([]); 
+  }
 
   // Header row
-  rows.push(columns.map(col => col.header));
+  const headerRow = ws.addRow(columns.map(col => col.header));
+  headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0284C7' } };
+      cell.font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = thinBorder;
+  });
 
   // Data rows
-  data.forEach(item => {
+  data.forEach((item, index) => {
     const row = columns.map(col => {
       const value = item[col.key];
       if (typeof value === 'number') return value;
       return String(value ?? '');
     });
-    rows.push(row);
+    
+    const dataRow = ws.addRow(row);
+    const isZebra = index % 2 !== 0;
+    
+    dataRow.eachCell((cell, colNumber) => {
+        cell.font = { name: 'Segoe UI', size: 11 };
+        cell.border = thinBorder;
+        if (isZebra) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        }
+        
+        if (typeof cell.value === 'number') {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        } else {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        }
+    });
   });
 
   // Totals row
   if (totals) {
-    rows.push([]);
-    const totalsRow = columns.map(col => {
+    ws.addRow([]);
+    const totalsRowValues = columns.map(col => {
       if (totals[col.key] !== undefined) return totals[col.key];
-      if (col.key === columns[0].key) return 'الإجمالي';
+      if (col.key === columns[0].key) return 'الإجمالي الكلي';
       return '';
     });
-    rows.push(totalsRow);
+    const totalsRow = ws.addRow(totalsRowValues);
+    totalsRow.eachCell((cell) => {
+        cell.font = { name: 'Segoe UI', size: 12, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+        cell.border = thinBorder;
+    });
   }
 
   // Summary section
   if (summary && summary.length > 0) {
-    rows.push([]);
-    rows.push(['خلاصة حسابية']);
-    rows.push(['البند', 'القيمة']);
+    ws.addRow([]);
+    ws.addRow(['خلاصة التقرير']).font = { name: 'Segoe UI', size: 13, bold: true };
+    const summaryHeader = ws.addRow(['المؤشر', 'القيمة']);
+    summaryHeader.eachCell(cell => {
+        cell.font = { name: 'Segoe UI', size: 11, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCBD5E1' } };
+        cell.border = thinBorder;
+    });
     summary.forEach(item => {
-      rows.push([item.label, item.value]);
+      const sumRow = ws.addRow([item.label, item.value]);
+      sumRow.eachCell(cell => {
+          cell.font = { name: 'Segoe UI', size: 11 };
+          cell.border = thinBorder;
+      });
     });
   }
-
-  // Add all rows to worksheet
-  rows.forEach(row => ws.addRow(row));
 
   // Set column widths
   columns.forEach((col, i) => {
     const wsCol = ws.getColumn(i + 1);
     wsCol.width = col.width || 15;
   });
-
-  // Apply alternating column colors (Light Blue / Light Green)
-  const totalRows = ws.rowCount;
-  const totalCols = columns.length;
-  for (let c = 1; c <= totalCols; c++) {
-    const fillColor = (c - 1) % 2 === 0 ? 'FFE6F3FF' : 'FFF0FFF0';
-    for (let r = 1; r <= totalRows; r++) {
-      const cell = ws.getCell(r, c);
-      if (cell.value !== undefined && cell.value !== null && cell.value !== '') {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: fillColor },
-        };
-        cell.border = thinBorder;
-      }
-    }
-  }
 
   // Generate and download/share file based on platform
   if (Capacitor.isNativePlatform()) {
@@ -305,74 +344,77 @@ export const exportInvoicesToExcel = async (
 
 // Export products to Excel with full details
 export const exportProductsToExcel = async (
-  products: Array<{
-    name: string;
-    barcode: string;
-    barcode2?: string;
-    barcode3?: string;
-    variantLabel?: string;
-    category: string;
-    costPrice: number;
-    salePrice: number;
-    quantity: number;
-    minStockLevel?: number;
-  }>,
+  products: Array<any>,
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
-    { header: 'المنتج', key: 'name', width: 25 },
-    { header: 'المتغير', key: 'variantLabel', width: 15 },
-    { header: 'باركود 1', key: 'barcode', width: 15 },
-    { header: 'باركود 2', key: 'barcode2', width: 15 },
-    { header: 'باركود 3', key: 'barcode3', width: 15 },
+    { header: 'كود المنتج / المعرف', key: 'id', width: 20 },
+    { header: 'الباركود', key: 'barcode', width: 15 },
+    { header: 'اسم المنتج', key: 'name', width: 25 },
+    { header: 'التصنيف', key: 'category', width: 15 },
+    { header: 'الوحدة', key: 'unit', width: 10 },
     { header: 'سعر التكلفة', key: 'costPrice', width: 12 },
     { header: 'سعر البيع', key: 'salePrice', width: 12 },
-    { header: 'الربح', key: 'profit', width: 10 },
-    { header: 'الكمية', key: 'quantity', width: 10 },
-    { header: 'الحد الأدنى', key: 'minStockLevel', width: 12 },
-    { header: 'القسم', key: 'category', width: 15 },
-    { header: 'قيمة المخزون', key: 'stockValue', width: 15 },
+    { header: 'سعر الجملة', key: 'wholesalePrice', width: 12 },
+    { header: 'الربح (قيمة)', key: 'profit', width: 10 },
+    { header: 'الربح (%)', key: 'profitMargin', width: 10 },
+    { header: 'الكمية الحالية', key: 'quantity', width: 12 },
+    { header: 'حد إعادة الطلب', key: 'minStockLevel', width: 12 },
+    { header: 'القيمة (تكلفة)', key: 'totalCost', width: 15 },
+    { header: 'القيمة (بيع)', key: 'totalValue', width: 15 },
+    { header: 'حالة المنتج', key: 'status', width: 15 }
   ];
 
-  const data = products.map(p => ({
-    ...p,
-    barcode: p.barcode || '-',
-    barcode2: p.barcode2 || '-',
-    barcode3: p.barcode3 || '-',
-    variantLabel: p.variantLabel || '-',
-    profit: p.salePrice - p.costPrice,
-    minStockLevel: p.minStockLevel || 0,
-    category: p.category || 'بدون تصنيف',
-    stockValue: p.costPrice * p.quantity,
-  }));
+  const data = products.map(p => {
+    const profit = p.salePrice - p.costPrice;
+    const profitMargin = p.salePrice > 0 ? Math.round((profit / p.salePrice) * 100) : 0;
+    
+    let status = 'نشط';
+    if (p.quantity <= 0) status = 'نفد المخزون';
+    else if (p.minStockLevel && p.quantity <= p.minStockLevel) status = 'منخفض';
 
-  const totalStock = products.reduce((sum, p) => sum + p.quantity, 0);
-  const totalCostValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
-  const totalSaleValue = products.reduce((sum, p) => sum + (p.salePrice * p.quantity), 0);
+    return {
+      id: p.id || '-',
+      barcode: p.barcode || '-',
+      name: p.name || '-',
+      category: p.category || 'عام',
+      unit: p.unit || 'قطعة',
+      costPrice: p.costPrice || 0,
+      salePrice: p.salePrice || 0,
+      wholesalePrice: p.wholesalePrice || p.salePrice || 0,
+      profit: profit,
+      profitMargin: profitMargin,
+      quantity: p.quantity || 0,
+      minStockLevel: p.minStockLevel || 0,
+      totalCost: (p.quantity || 0) * (p.costPrice || 0),
+      totalValue: (p.quantity || 0) * (p.salePrice || 0),
+      status: status
+    };
+  });
 
   const totals: Record<string, number> = {
-    quantity: totalStock,
-    stockValue: totalCostValue,
+    totalCost: data.reduce((sum, p) => sum + p.totalCost, 0),
+    totalValue: data.reduce((sum, p) => sum + p.totalValue, 0),
+    quantity: data.reduce((sum, p) => sum + p.quantity, 0)
   };
 
   const summary = customSummary || [
-    { label: 'عدد المنتجات', value: products.length },
-    { label: 'إجمالي المخزون', value: totalStock },
-    { label: 'قيمة المخزون (بالتكلفة)', value: totalCostValue },
-    { label: 'قيمة المخزون (بالبيع)', value: totalSaleValue },
-    { label: 'الربح المتوقع', value: totalSaleValue - totalCostValue },
+    { label: 'إجمالي عدد المنتجات', value: products.length },
+    { label: 'إجمالي القيمة (بسعر التكلفة)', value: totals.totalCost },
+    { label: 'إجمالي القيمة (بسعر البيع المفرق)', value: totals.totalValue }
   ];
 
+  const fileDate = new Date().toISOString().split('T')[0];
+
   await exportToExcel({
-    sheetName: 'المنتجات',
-    fileName: `منتجات_${new Date().toISOString().split('T')[0]}.xlsx`,
+    sheetName: 'المنتجات والمخزون',
+    fileName: `products_${fileDate}.xlsx`,
     columns,
     data,
     totals,
-    title: 'قائمة المنتجات',
-    reportType: 'تقرير المخزون',
-    subtitle: `التاريخ: ${formatLocalDate()}`,
-    summary,
+    title: 'تقرير المنتجات وقيمة المخزون التفصيلي',
+    reportType: 'جرد وتفاصيل المنتجات',
+    summary
   });
 };
 
