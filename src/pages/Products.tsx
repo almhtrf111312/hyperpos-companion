@@ -2352,8 +2352,9 @@ export default function Products() {
             </table>
           </div>
         </div>
-      </>
-    )}
+      </div>
+    </>
+  )}
 
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
@@ -3578,7 +3579,6 @@ export default function Products() {
           maxSize={400}
           quality={40}
         />
-      </div>
     </div>
   );
 }
