@@ -247,7 +247,6 @@ export default function Reports() {
   // All available reports categorized and refined
   const allReports = useMemo(() => [
     { id: 'sales', category: 'sales', label: t('reports.sales'), icon: ShoppingCart },
-    { id: 'profits', category: 'sales', label: t('reports.profits'), icon: TrendingUp },
     { id: 'partner-detailed', category: 'sales', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
 
     ...(!noInventory ? [
@@ -349,6 +348,43 @@ export default function Reports() {
   // ========== DATA CALCULATIONS ==========
 
   const reportData = useMemo(() => {
+    // Helper function to reliably compute invoice profit with cloudProducts costPrice fallback and discounts
+    const getInvoiceCalculatedMetrics = (inv: (typeof cloudInvoices)[0]) => {
+      const discount = Number(inv.discount || (inv as any).discountAmount || 0);
+
+      let itemsProfit = 0;
+      let hasCalculatedItems = false;
+
+      if (Array.isArray(inv.items) && inv.items.length > 0) {
+        inv.items.forEach(item => {
+          const catalogProduct = cloudProducts.find(p => p.id === item.id || (p.barcode && p.barcode === (item as any).barcode) || p.name === item.name);
+          const actualCost = item.costPrice !== undefined && item.costPrice !== null
+            ? Number(item.costPrice)
+            : (catalogProduct?.costPrice !== undefined && catalogProduct?.costPrice !== null ? Number(catalogProduct.costPrice) : 0);
+
+          let singleItemProfit: number;
+          if (item.profit !== undefined && item.profit !== null && Number(item.profit) > 0) {
+            singleItemProfit = Number(item.profit);
+          } else {
+            const price = Number(item.price || 0);
+            const qty = Number(item.quantity || 1);
+            singleItemProfit = Math.max(0, (price - actualCost) * qty);
+          }
+          itemsProfit += singleItemProfit;
+          hasCalculatedItems = true;
+        });
+      }
+
+      let profit = 0;
+      if (inv.profit !== undefined && inv.profit !== null && Number(inv.profit) > 0) {
+        profit = Number(inv.profit);
+      } else if (hasCalculatedItems) {
+        profit = Math.max(0, itemsProfit - discount);
+      }
+
+      return { profit, discount };
+    };
+
     const filteredInvoices = cloudInvoices.filter(inv => {
       const invDate = toLocalDateString(inv.createdAt);
       const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
@@ -371,19 +407,28 @@ export default function Reports() {
       return true;
     });
 
-    const totalSales = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
-    const totalProfit = filteredInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+    let totalSales = 0;
+    let totalProfit = 0;
+    let totalDiscount = 0;
+
+    const dailySalesMap: Record<string, { sales: number; profit: number; orders: number; discount: number }> = {};
+    filteredInvoices.forEach(inv => {
+      const invTotal = Number(inv.total || 0);
+      const { profit, discount } = getInvoiceCalculatedMetrics(inv);
+      totalSales += invTotal;
+      totalProfit += profit;
+      totalDiscount += discount;
+
+      const date = toLocalDateString(inv.createdAt);
+      if (!dailySalesMap[date]) dailySalesMap[date] = { sales: 0, profit: 0, orders: 0, discount: 0 };
+      dailySalesMap[date].sales += invTotal;
+      dailySalesMap[date].profit += profit;
+      dailySalesMap[date].orders += 1;
+      dailySalesMap[date].discount += discount;
+    });
+
     const totalOrders = filteredInvoices.length;
     const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-
-    const dailySalesMap: Record<string, { sales: number; profit: number; orders: number }> = {};
-    filteredInvoices.forEach(inv => {
-      const date = toLocalDateString(inv.createdAt);
-      if (!dailySalesMap[date]) dailySalesMap[date] = { sales: 0, profit: 0, orders: 0 };
-      dailySalesMap[date].sales += inv.total;
-      dailySalesMap[date].profit += inv.profit || 0;
-      dailySalesMap[date].orders += 1;
-    });
 
     const allDailySales = Object.entries(dailySalesMap)
       .map(([date, data]) => ({ date, ...data }))
@@ -392,16 +437,24 @@ export default function Reports() {
 
     const productSalesMap: Record<string, { name: string; sales: number; revenue: number; profit: number }> = {};
     filteredInvoices.forEach(inv => {
-      inv.items.forEach(item => {
-        const key = item.id || item.name;
-        if (!productSalesMap[key]) productSalesMap[key] = { name: item.name, sales: 0, revenue: 0, profit: 0 };
-        productSalesMap[key].sales += item.quantity;
-        productSalesMap[key].revenue += item.total;
-        const catalogProduct = cloudProducts.find(p => p.id === item.id || p.name === item.name);
-        const actualCost = item.costPrice ?? catalogProduct?.costPrice;
-        const itemProfit = item.profit ?? (actualCost !== undefined ? Math.max(0, item.price - actualCost) * item.quantity : 0);
-        productSalesMap[key].profit += itemProfit;
-      });
+      if (Array.isArray(inv.items)) {
+        inv.items.forEach(item => {
+          const key = item.id || item.name;
+          if (!productSalesMap[key]) productSalesMap[key] = { name: item.name, sales: 0, revenue: 0, profit: 0 };
+          const qty = Number(item.quantity || 1);
+          const itemTotal = Number(item.total || (Number(item.price || 0) * qty));
+          productSalesMap[key].sales += qty;
+          productSalesMap[key].revenue += itemTotal;
+          const catalogProduct = cloudProducts.find(p => p.id === item.id || (p.barcode && p.barcode === (item as any).barcode) || p.name === item.name);
+          const actualCost = item.costPrice !== undefined && item.costPrice !== null
+            ? Number(item.costPrice)
+            : (catalogProduct?.costPrice !== undefined && catalogProduct?.costPrice !== null ? Number(catalogProduct.costPrice) : 0);
+          const itemProfit = (item.profit !== undefined && item.profit !== null && Number(item.profit) > 0)
+            ? Number(item.profit)
+            : Math.max(0, (Number(item.price || 0) - actualCost) * qty);
+          productSalesMap[key].profit += itemProfit;
+        });
+      }
     });
 
     const allProducts = Object.values(productSalesMap).sort((a, b) => b.revenue - a.revenue);
@@ -412,7 +465,7 @@ export default function Reports() {
       const name = inv.customerName || t('reports.cashCustomer');
       if (!customerPurchasesMap[name]) customerPurchasesMap[name] = { name, orders: 0, total: 0 };
       customerPurchasesMap[name].orders += 1;
-      customerPurchasesMap[name].total += inv.total;
+      customerPurchasesMap[name].total += Number(inv.total || 0);
     });
 
     const allCustomers = Object.values(customerPurchasesMap).sort((a, b) => b.total - a.total);
@@ -422,7 +475,7 @@ export default function Reports() {
     const topCustomer = topCustomers.length > 0 ? topCustomers[0].name : t('common.noData');
 
     return {
-      summary: { totalSales, totalProfit, totalOrders, avgOrderValue, topProduct, topCustomer },
+      summary: { totalSales, totalProfit, totalDiscount, totalOrders, avgOrderValue, topProduct, topCustomer },
       dailySales, allDailySales, topProducts, allProducts, topCustomers, allCustomers,
       hasData: filteredInvoices.length > 0,
     };
@@ -1368,30 +1421,45 @@ export default function Reports() {
         case 'debts': {
           const filteredDebts = getFilteredDebtsForReport();
           if (filteredDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          const totalDebtVal = filteredDebts.reduce((s, d) => s + (d.totalDebt || 0), 0);
+          const totalPaidVal = filteredDebts.reduce((s, d) => s + (d.totalPaid || 0), 0);
+          const remainingDebtVal = filteredDebts.reduce((s, d) => s + (d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))), 0);
           await exportToPDF({
             title: 'تقرير الديون والبيع المؤجل',
+            reportType: 'تقرير الديون والبيع المؤجل',
             subtitle: `تاريخ التقرير: ${dateRange.to}`,
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
-            summary: currentSummary,
+            summary: [
+              { label: 'إجمالي الديون', value: totalDebtVal },
+              { label: 'إجمالي المسدد', value: totalPaidVal },
+              { label: 'المتبقي للتحصيل', value: remainingDebtVal },
+              { label: 'عدد الديون', value: filteredDebts.length },
+            ],
             columns: [
               { header: 'العميل', key: 'customerName' },
-              { header: 'المبلغ الإجمالي', key: 'amount' },
-              { header: 'المسدد', key: 'paid' },
-              { header: 'المتبقي', key: 'remaining' },
+              { header: 'المبلغ الإجمالي', key: 'totalDebt' },
+              { header: 'المسدد', key: 'totalPaid' },
+              { header: 'المتبقي', key: 'remainingDebt' },
               { header: 'تاريخ الاستحقاق', key: 'dueDate' },
               { header: 'الحالة', key: 'status' },
             ],
             data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
-              amount: formatCurrency(d.totalDebt || 0),
-              paid: formatCurrency(d.totalPaid || 0),
-              remaining: formatCurrency(d.remainingDebt || (d.totalDebt || 0) - (d.totalPaid || 0)),
+              totalDebt: d.totalDebt || 0,
+              totalPaid: d.totalPaid || 0,
+              remainingDebt: d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0)),
               dueDate: d.dueDate || '-',
               status: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : 'مستحق',
             })),
+            totals: {
+              totalDebt: totalDebtVal,
+              totalPaid: totalPaidVal,
+              remainingDebt: remainingDebtVal,
+            },
             fileName: `debts-report-${dateRange.to}.pdf`,
+            orientation: 'landscape',
           });
           break;
         }
@@ -1850,14 +1918,25 @@ export default function Reports() {
 
   // 7-day Bar chart data ending on dateRange.to
   const chartDays = useMemo(() => {
-    const endDate = new Date(dateRange.to);
-    const validEndDate = isNaN(endDate.getTime()) ? new Date() : endDate;
+    let validEndDate: Date;
+    if (dateRange.to) {
+      const parts = dateRange.to.split('-');
+      if (parts.length === 3) {
+        validEndDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      } else {
+        validEndDate = new Date(dateRange.to);
+      }
+    } else {
+      validEndDate = new Date();
+    }
+    if (isNaN(validEndDate.getTime())) validEndDate = new Date();
+
     const days: { date: string; dayNum: string; sales: number; profit: number; orders: number }[] = [];
 
     for (let i = 6; i >= 0; i--) {
       const d = new Date(validEndDate);
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toLocalDateString(d);
       const dayNum = String(d.getDate());
       const salesData = reportData.allDailySales.find(s => s.date === dateStr);
       days.push({
@@ -1910,30 +1989,32 @@ export default function Reports() {
 
   const ALL_REPORT_SECTIONS = [
     {
-      category: 'المبيعات والمالية',
-      items: [
-        { id: 'sales', name: 'المبيعات والأرباح', icon: BarChart3, bg: 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-600' },
-        { id: 'profits', name: 'تفاصيل الأرباح', icon: TrendingUp, bg: 'bg-rose-100/70 dark:bg-rose-950/60 text-rose-600' },
-        { id: 'top-products', name: 'الأكثر مبيعاً', icon: Flame, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
-        { id: 'expenses', name: 'المصاريف', icon: Banknote, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
-      ]
-    },
-    {
       category: 'المخزون والمشتريات',
       items: [
-        { id: 'inventory', name: 'المخزون وقيمته', icon: Package, bg: 'bg-orange-100/70 dark:bg-orange-950/60 text-orange-600' },
+        { id: 'top-products', name: 'الأكثر مبيعاً', icon: Flame, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
         { id: 'product-movement', name: 'حركة منتج', icon: RefreshCw, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
-        { id: 'inventory-stock', name: 'الجرد والفروقات', icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
+        { id: 'inventory-stock', name: 'الجرد وفروقات المخزون', icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
         { id: 'purchases', name: 'فواتير المشتريات', icon: FileText, bg: 'bg-sky-100/70 dark:bg-sky-950/60 text-sky-600' },
       ]
     },
     {
-      category: 'العملاء والإدارة',
+      category: 'العملاء والشركاء',
       items: [
-        { id: 'debts', name: 'الديون والآجل', icon: Clock, bg: 'bg-yellow-100/70 dark:bg-yellow-950/60 text-amber-600' },
         { id: 'customers', name: 'دليل العملاء', icon: Users, bg: 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-600' },
+        { id: 'partners', name: 'أرباح الشركاء', icon: UsersRound, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
+      ]
+    },
+    {
+      category: 'التقارير الإدارية والتشغيلية',
+      items: [
         { id: 'daily-closing', name: 'الإغلاق اليومي', icon: Lock, bg: 'bg-pink-100/70 dark:bg-pink-950/60 text-pink-600' },
         { id: 'cashier-performance', name: 'أداء الكاشير', icon: UserCheck, bg: 'bg-teal-100/70 dark:bg-teal-950/60 text-teal-600' },
+        ...(visibleSections.maintenance ? [{ id: 'maintenance', name: 'خدمات الصيانة', icon: ClipboardList, bg: 'bg-violet-100/70 dark:bg-violet-950/60 text-violet-600' }] : []),
+        ...(storeType === 'bookstore' ? [{ id: 'library', name: 'تقرير المكتبة', icon: BookOpen, bg: 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-600' }] : []),
+        ...(isDistributorStore ? [
+          { id: 'distributor-inventory', name: 'مخزون الموزع', icon: Truck, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
+          { id: 'custody-value', name: 'قيمة العهدة', icon: Wallet, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
+        ] : []),
       ]
     }
   ];
@@ -2374,6 +2455,8 @@ export default function Reports() {
                         </div>
                         <div className="bg-muted text-foreground border border-border/70 text-xs font-bold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-sm">
                           <span className="text-primary font-black">${formatCurrency(activeChartDay.sales).replace('$', '')}</span>
+                          <span className="text-muted-foreground/50">|</span>
+                          <span className="text-emerald-600 font-bold">ربح: {formatCurrency(activeChartDay.profit)}</span>
                           <span className="text-muted-foreground/50">|</span>
                           <span className="text-muted-foreground text-[11px]">{activeChartDay.orders} طلب</span>
                         </div>

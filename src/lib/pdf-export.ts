@@ -34,130 +34,22 @@ export const containsArabic = (text: string): boolean => {
   return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 };
 
-// Mirror brackets for proper RTL visual display
-const MIRRORED_BRACKETS: Record<string, string> = {
-  '(': ')',
-  ')': '(',
-  '[': ']',
-  ']': '[',
-  '{': '}',
-  '}': '{',
-  '<': '>',
-  '>': '<',
-  '«': '»',
-  '»': '«',
-  '‹': '›',
-  '›': '‹',
-};
-
-// Split string into Unicode grapheme clusters to prevent detaching diacritics
-const splitGraphemes = (str: string): string[] => {
-  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
-    try {
-      const segmenter = new Intl.Segmenter('ar', { granularity: 'grapheme' });
-      return Array.from(segmenter.segment(str), s => s.segment);
-    } catch {
-      // Fallback if Segmenter throws
-    }
-  }
-  return Array.from(str);
-};
-
 /**
- * BiDi Arabic text processor for jsPDF rendering:
- * 1. Segregates numbers, dates, times, currency amounts, codes, and English/Latin words from Arabic words.
- * 2. Connects Arabic characters with ArabicReshaper in logical reading order.
- * 3. Preserves LTR sequences (such as "79" in "صنف 79" or dates "2026/10/05") without inverting their digits or characters.
- * 4. Reorders segments into visual RTL presentation so jsPDF's LTR engine outputs natural right-to-left text.
+ * Process Arabic text for proper PDF display:
+ * 1. Reshape: Convert characters to their connected forms using arabic-reshaper.
+ * 2. NO reverse: jsPDF with Arabic TTF font displays connected Arabic text in natural reading order.
+ * 3. Non-Arabic text (numbers, dates, Latin words) returned as-is.
  */
 export const processArabicText = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
   if (!containsArabic(text)) return text;
 
-  // Process line by line to support multi-line table cells and headers
-  return text
-    .split('\n')
-    .map(line => processArabicLine(line))
-    .join('\n');
-};
-
-const processArabicLine = (line: string): string => {
-  if (!line || !containsArabic(line)) return line;
-
-  /**
-   * Matches LTR segments:
-   * - URLs (https://...)
-   * - Dates (e.g. 2026/10/05, 05/10/2026, 2026-10-05)
-   * - Times (e.g. 14:30, 09:15:00)
-   * - Numbers with decimals/commas/percentages/currencies (e.g. 1,250.50, 79, 15%, +5, -10)
-   * - Latin identifiers and words (e.g. iPhone, FlowPOS, VIP, INV-0012)
-   * - Sequences of Latin words and numbers separated by single spaces (e.g. "iPhone 15 Pro")
-   */
-  const ltrTokenRegex = /(?:https?:\/\/[^\s]+|\b\d{1,4}[/\-.]\d{1,2}[/\-.]\d{1,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b|[#@$€£¥]?[A-Za-z0-9]+(?:[.\-_/:][A-Za-z0-9]+)*%?|[+\-]?[0-9]+(?:[.,][0-9]+)*(?:%|[A-Za-z]+)?)(?:\s+(?:[#@$€£¥]?[A-Za-z0-9]+(?:[.\-_/:][A-Za-z0-9]+)*%?|[+\-]?[0-9]+(?:[.,][0-9]+)*(?:%|[A-Za-z]+)?))*/g;
-
-  interface Token {
-    type: 'ltr' | 'rtl';
-    text: string;
+  try {
+    return ArabicReshaper.convertArabic(text);
+  } catch (error) {
+    console.warn('Arabic reshaping failed, using original text:', error);
+    return text;
   }
-
-  const tokens: Token[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = ltrTokenRegex.exec(line)) !== null) {
-    // Non-LTR chunk preceding this match
-    if (match.index > lastIndex) {
-      tokens.push({
-        type: 'rtl',
-        text: line.slice(lastIndex, match.index),
-      });
-    }
-
-    tokens.push({
-      type: 'ltr',
-      text: match[0],
-    });
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Trailing chunk
-  if (lastIndex < line.length) {
-    tokens.push({
-      type: 'rtl',
-      text: line.slice(lastIndex),
-    });
-  }
-
-  // Transform each token
-  const processedTokens = tokens.map(token => {
-    if (token.type === 'ltr') {
-      // LTR token: numbers, dates, Latin words remain untouched in their natural LTR order
-      return token.text;
-    }
-
-    // RTL token: Arabic letters and associated punctuation/brackets
-    try {
-      // Reshape Arabic letters into connected forms
-      const shaped = ArabicReshaper.convertArabic(token.text);
-      // Mirror brackets and reverse graphemes for jsPDF LTR drawing
-      const graphemes = splitGraphemes(shaped);
-      const reversed = graphemes
-        .map(char => MIRRORED_BRACKETS[char] || char)
-        .reverse()
-        .join('');
-      return reversed;
-    } catch {
-      // Fallback
-      return splitGraphemes(token.text)
-        .map(char => MIRRORED_BRACKETS[char] || char)
-        .reverse()
-        .join('');
-    }
-  });
-
-  // Since overall line context is RTL, reverse the order of the segments
-  return processedTokens.reverse().join('');
 };
 
 // Process text for RTL display

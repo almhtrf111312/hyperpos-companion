@@ -121,9 +121,10 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
       })),
       totals: { totalDebt: stats.totalDebt, totalPaid: stats.totalPaid, remainingDebt: stats.totalRemaining },
       summary: [
-        { label: 'عدد الديون', value: stats.count },
         { label: 'إجمالي الديون', value: stats.totalDebt },
-        { label: 'المتبقي', value: stats.totalRemaining },
+        { label: 'إجمالي المسدد', value: stats.totalPaid },
+        { label: 'المتبقي للتحصيل', value: stats.totalRemaining },
+        { label: 'عدد الديون', value: stats.count },
       ],
       fileName: `تقرير_ديون_${dateRange.from}_${dateRange.to}.pdf`,
       orientation: 'landscape',
