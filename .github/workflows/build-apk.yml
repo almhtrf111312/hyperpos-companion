@@ -7,37 +7,42 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version-name: ${{ steps.version.outputs.version-name }}
+      apk-name: ${{ steps.version.outputs.apk-name }}
     env:
       VERSION_CODE: '256'
       VERSION_NAME: '1.0.26'
-      FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5.2.2
         with:
           fetch-depth: 0
           clean: true
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v5.1.0
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v6.1.0
         with:
           node-version: '22'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@d156388eb19639ec20ade50009f3d199ce1e2808 # v5.1.0
 
       - name: Read and update application version
+        id: version
         shell: bash
         run: |
           if [ -f "./version.json" ]; then
@@ -62,6 +67,8 @@ jobs:
 
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "apk-name=FlowPOS-v${VERSION_NAME}.apk" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -74,22 +81,18 @@ jobs:
       - name: Sync embedded files to Android
         run: npx cap sync android
 
-      - name: Setup release signing key
-        shell: bash
-        # Always sign with the SAME committed key so new APKs install over old ones
-        run: |
-          test -f android/app/flowpos-release.keystore || { echo "Missing keystore"; exit 1; }
-          echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
-          echo "KEYSTORE_PASSWORD=flowpos123" >> "$GITHUB_ENV"
-          echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=flowpos123" >> "$GITHUB_ENV"
-
       - name: Build signed release APK
         working-directory: android
         env:
           APP_VERSION_CODE: ${{ env.VERSION_CODE }}
           APP_VERSION_NAME: ${{ env.VERSION_NAME }}
+          KEYSTORE_PATH: flowpos-release.keystore
+          KEYSTORE_PASSWORD: flowpos123
+          KEY_ALIAS: flowpos
+          KEY_PASSWORD: flowpos123
         run: |
+          # Verify keystore exists before building
+          test -f app/flowpos-release.keystore || { echo "Missing keystore"; exit 1; }
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --warning-mode=all
 
@@ -112,20 +115,30 @@ jobs:
           
           find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
           
-          echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
-          echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
           ls -lh "$RELEASE_DIR"
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v5.0.2
         with:
           name: FlowPOS-v${{ env.VERSION_NAME }}
           path: android/app/build/outputs/apk/release/FlowPOS-v${{ env.VERSION_NAME }}.apk
           retention-days: 30
 
-      - name: Create tagged release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v5.0.1
         with:
-          files: ${{ env.FINAL_APK_PATH }}
+          name: FlowPOS-v${{ needs.build.outputs.version-name }}
+          path: ./artifacts
+
+      - name: Create tagged release
+        uses: softprops/action-gh-release@7b4da11513bf3f43f9999e90eabced41ab8bb048 # v2.2.0
+        with:
+          files: ./artifacts/${{ needs.build.outputs.apk-name }}
           generate_release_notes: true
