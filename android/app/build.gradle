@@ -26,7 +26,12 @@ android {
         release {
             def keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath) {
-                storeFile file(keystorePath)
+                // Support both absolute paths (from CI secrets) and relative paths (local dev)
+                def keystoreFile = new File(keystorePath)
+                if (!keystoreFile.isAbsolute()) {
+                    keystoreFile = file(keystorePath)
+                }
+                storeFile keystoreFile
                 storePassword System.getenv("KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KEY_ALIAS")
                 keyPassword System.getenv("KEY_PASSWORD")
