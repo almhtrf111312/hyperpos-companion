@@ -132,6 +132,7 @@ export type Database = {
           max_cashiers: number | null
           revoked_at: string | null
           revoked_reason: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -149,6 +150,7 @@ export type Database = {
           max_cashiers?: number | null
           revoked_at?: string | null
           revoked_reason?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -166,6 +168,7 @@ export type Database = {
           max_cashiers?: number | null
           revoked_at?: string | null
           revoked_reason?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1662,6 +1665,7 @@ export type Database = {
           appearance_settings: Json | null
           created_at: string | null
           currency_symbol: string | null
+          email: string | null
           exchange_rates: Json | null
           font_family: string | null
           id: string
@@ -1685,6 +1689,7 @@ export type Database = {
           appearance_settings?: Json | null
           created_at?: string | null
           currency_symbol?: string | null
+          email?: string | null
           exchange_rates?: Json | null
           font_family?: string | null
           id?: string
@@ -1708,6 +1713,7 @@ export type Database = {
           appearance_settings?: Json | null
           created_at?: string | null
           currency_symbol?: string | null
+          email?: string | null
           exchange_rates?: Json | null
           font_family?: string | null
           id?: string
@@ -1974,16 +1980,12 @@ export type Database = {
         Args: { _target_user_id: string }
         Returns: Json
       }
-      boss_revoke_user_license: {
-        Args: { _target_user_id: string }
-        Returns: Json
-      }
       boss_reactivate_user_license: {
         Args: { _target_user_id: string }
         Returns: Json
       }
-      hard_delete_product_atomic: {
-        Args: { _product_id: string }
+      boss_revoke_user_license: {
+        Args: { _target_user_id: string }
         Returns: Json
       }
       can_add_cashier: { Args: { _owner_id: string }; Returns: boolean }
@@ -2044,6 +2046,10 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      hard_delete_product_atomic: {
+        Args: { _product_id: string }
+        Returns: Json
       }
       has_role: {
         Args: {

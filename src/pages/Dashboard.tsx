@@ -239,7 +239,7 @@ export default function Dashboard() {
         .filter(inv => isActiveInvoice(inv))
         .reduce((sum, inv) => {
           if (inv.paymentType === 'cash') return sum + inv.total;
-          if (inv.paymentType === 'split' && (inv as any).downPayment) return sum + Number((inv as any).downPayment);
+          if ((inv.paymentType as string) === 'split' && (inv as any).downPayment) return sum + Number((inv as any).downPayment);
           return sum;
         }, 0);
 

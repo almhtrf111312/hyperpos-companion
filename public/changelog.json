@@ -1,6 +1,11 @@
 [
   {
     "type": "fix",
+    "ar": "أمان: تحديث مكتبة التنقل بين الصفحات لإصلاح ثغرات معروفة.",
+    "en": "v1.0.63 - Security: updated react-router-dom to 7.18.4 to fix known vulnerabilities"
+  },
+  {
+    "type": "fix",
     "ar": "أمان: قراءة الفواتير تتطلب الآن رخصة فعّالة على مستوى قاعدة البيانات، مع استثناء حسابات المدير العام.",
     "en": "v1.0.62 - Security: invoice reading now requires an active license enforced by the database; boss accounts exempt"
   },
