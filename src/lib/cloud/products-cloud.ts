@@ -216,6 +216,7 @@ export const isProductArchivedOrDeleted = (p: any): boolean => {
 
 // Cache for products
 let productsCache: Product[] | null = null;
+let fetchPromise: Promise<Product[]> | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 300000; // 5 minutes — كافٍ لمنع إعادة الطلب السحابي في كل 10 ثوانٍ
 
@@ -337,7 +338,14 @@ const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promi
  * تحميل فوري للمنتجات من الكاش المحلي (الذاكرة أولاً ثم IndexedDB ثم localStorage)
  * يستبعد أي منتج مؤرشف ويعيد البيانات فوراً (<0.5 ثانية) دون انتظار الشبكة
  */
+export const loadProductsCloud = async (): Promise<Product[]> => {
+  if (fetchPromise) return fetchPromise;
+  fetchPromise = loadProductsCloudInternal().finally(() => { fetchPromise = null; });
+  return fetchPromise;
+};
+
 export const loadProductsLocalFirst = async (): Promise<Product[]> => {
+  if (fetchPromise) return fetchPromise;
   // 1. فحص كاش الذاكرة أولاً
   if (productsCache && productsCache.length > 0) {
     const activeCache = productsCache.filter(p => !isProductArchivedOrDeleted(p));
@@ -447,7 +455,7 @@ export const updateProductsQuantitiesInCache = (
 };
 
 // Load products from cloud with incremental sync (delta sync)
-export const loadProductsCloud = async (): Promise<Product[]> => {
+const loadProductsCloudInternal = async (): Promise<Product[]> => {
   const userId = getCurrentUserId();
 
   // 1. Pre-populate memory cache from local IndexedDB immediately if not yet in memory
@@ -1280,3 +1288,4 @@ export const checkStockAvailabilityCloud = async (
     insufficientItems,
   };
 };
+

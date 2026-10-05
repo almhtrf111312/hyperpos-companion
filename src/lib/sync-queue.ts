@@ -116,10 +116,39 @@ let lastSyncTime: string | null = null;
 /**
  * تحميل الطابور من التخزين الآمن
  */
+export const mergePendingQueue = () => {
+  const queue = loadQueue();
+  let merged = false;
+  const keysToDelete = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('hyperpos_sync_pending_')) {
+      merged = true;
+      keysToDelete.push(key);
+    }
+  }
+  if (merged) {
+    saveQueue(queue);
+    keysToDelete.forEach(k => {
+      const id = k.replace('hyperpos_sync_pending_', '');
+      if (queue.find(x => x.id === id)) localStorage.removeItem(k);
+    });
+  }
+};
+
 export const loadQueue = (): QueuedOperation[] => {
-  try {
-    const queue = secureGet<QueuedOperation[]>(SYNC_QUEUE_KEY, { namespace: SYNC_QUEUE_NAMESPACE });
-    if (!queue) return [];
+    try {
+      const queue = secureGet<QueuedOperation[]>(SYNC_QUEUE_KEY, { namespace: SYNC_QUEUE_NAMESPACE }) || [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('hyperpos_sync_pending_')) {
+          try {
+            const op = JSON.parse(localStorage.getItem(key) || 'null');
+            if (op && !queue.find(x => x.id === op.id)) queue.push(op);
+          } catch {}
+        }
+      }
+      if (!queue.length) return [];
     const staleBefore = Date.now() - 5 * 60 * 1000;
     let recovered = false;
     const normalized = queue.map(operation => {
@@ -173,8 +202,8 @@ export const addToQueue = (
     createdAt: new Date().toISOString(),
   };
   
-  queue.push(operation);
-  saveQueue(queue);
+  localStorage.setItem('hyperpos_sync_pending_' + operation.id, JSON.stringify(operation));
+    setTimeout(mergePendingQueue, 0);
   
   // Track in history for UI display
   addToHistory(operation.id, type);
@@ -461,3 +490,9 @@ export const addToQueueIfNotExists = (
   
   return addToQueue(type, { ...data, uniqueKey }, maxRetries);
 };
+
+
+
+
+
+

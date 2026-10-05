@@ -109,11 +109,20 @@ export async function saveProductsToIDB(products: unknown[]): Promise<void> {
     const store = tx.objectStore(PRODUCTS_STORE);
     const metaStore = tx.objectStore(META_STORE);
 
-    // Clear existing and write new
-    store.clear();
-    for (const product of products) {
-      store.put(product);
-    }
+    const keysReq = store.getAllKeys();
+    keysReq.onsuccess = () => {
+      const oldKeys = new Set(keysReq.result as string[]);
+      for (const product of products) {
+        const p = product as { id: string };
+        if (p && p.id) {
+          store.put(p);
+          oldKeys.delete(p.id);
+        }
+      }
+      for (const key of oldKeys) {
+        store.delete(key);
+      }
+    };
 
     // Save timestamp
     metaStore.put({ key: 'products_updated_at', value: Date.now() });
