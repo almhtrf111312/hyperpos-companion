@@ -581,12 +581,10 @@ export const distributeDetailedProfitCloud = async (
     // ======= المرحلة 2: الشركاء الكاملون =======
     if (remainingProfit > 0) {
       const fullPartners = partners.filter(p => p.accessAll);
-      const totalFullShare = fullPartners.reduce((sum, p) => sum + p.sharePercentage, 0);
       
       fullPartners.forEach(partner => {
-        if (partner.sharePercentage > 0 && totalFullShare > 0) {
-          const partnerRatio = partner.sharePercentage / totalFullShare;
-          const partnerShare = remainingProfit * partnerRatio;
+        if (partner.sharePercentage > 0) {
+          const partnerShare = (remainingProfit * partner.sharePercentage) / 100;
           
           allDistributions.push({
             partnerId: partner.id,

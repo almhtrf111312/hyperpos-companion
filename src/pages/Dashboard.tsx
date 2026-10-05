@@ -273,8 +273,8 @@ export default function Dashboard() {
       const totalWithdrawals = partners.reduce((sum, p) => sum + (p.totalWithdrawn || 0), 0);
 
       // 7. رأس المال السائل / السيولة المتوفرة بالصندوق:
-      // Liquid Capital = (Total Capital + المبيعات النقدية + الديون المحصلة) - (فواتير الشراء المسددة نقداً + المصاريف + المسحوبات)
-      const globalCashBalance = (totalCapital + totalSalesCash + totalDebtPaid) - (cashPurchasesPaid + totalExpenses + totalWithdrawals);
+      // Liquid Capital = (Total Capital + المبيعات النقدية + الديون المحصلة) - (فواتير الشراء المسددة نقداً + المصاريف)
+      const globalCashBalance = (totalCapital + totalSalesCash + totalDebtPaid) - (cashPurchasesPaid + totalExpenses);
       const liquidCapital = globalCashBalance;
 
       const deficit = liquidCapital < 0 ? Math.abs(liquidCapital) : 0;

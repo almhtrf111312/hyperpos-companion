@@ -684,14 +684,20 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   try {
     const { data: invItems } = await sb
       .from('invoice_items')
-      .select('product_id, quantity')
+      .select('product_id, quantity, unit, conversion_factor')
       .eq('invoice_id', atomic.invoice_id || id);
     if (invItems && invItems.length > 0) {
-      const validItems = invItems.filter(it => it.product_id).map(it => ({
-        productId: it.product_id,
-        quantity: Number(it.quantity) || 0,
-        deltaQuantity: Number(it.quantity) || 0
-      }));
+      const validItems = invItems.filter(it => it.product_id).map(it => {
+        const qty = Number(it.quantity) || 0;
+        const conv = Number(it.conversion_factor) || 1;
+        const isBulk = it.unit === 'bulk';
+        const finalQty = isBulk ? qty * conv : qty;
+        return {
+          productId: it.product_id,
+          quantity: finalQty,
+          deltaQuantity: finalQty
+        };
+      });
 
       const { updateProductsQuantitiesInCache } = await import('./products-cloud');
       updateProductsQuantitiesInCache(validItems);

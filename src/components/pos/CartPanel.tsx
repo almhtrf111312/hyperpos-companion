@@ -519,7 +519,8 @@ export function CartPanel({
         }
 
         const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
-        const itemProfit = roundCurrency((itemPrice - itemCostPrice) * item.quantity);
+        const itemNetPrice = taxMode === 'gross' && effectiveTaxRate > 0 ? itemPrice / (1 + effectiveTaxRate / 100) : itemPrice;
+        const itemProfit = roundCurrency((itemNetPrice - itemCostPrice) * item.quantity);
         const itemCOGS = roundCurrency(itemCostPrice * item.quantity);
 
         const cat = item.category || 'عام';
@@ -577,7 +578,7 @@ export function CartPanel({
           profit: discountedProfit,
           cogs: totalCOGS,
           profitsByCategory: Object.fromEntries(
-            Object.entries(profitsByCategory).map(([k, v]) => [k, v * (1 - discountRatio)])
+            Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(localItems.filter(i => i.category === k).reduce((s, i) => s + (i.profit - i.total * discountRatio), 0))])
           ),
           stockItems: stockItemsLocal,
           warehouseId: stockWarehouseId,
@@ -752,7 +753,8 @@ export function CartPanel({
           itemCostPrice = item.costPrice || 0;
         }
 
-        const itemProfit = roundCurrency((item.price - itemCostPrice) * item.quantity);
+        const itemNetPrice = taxMode === 'gross' && effectiveTaxRate > 0 ? item.price / (1 + effectiveTaxRate / 100) : item.price;
+        const itemProfit = roundCurrency((itemNetPrice - itemCostPrice) * item.quantity);
         const itemCOGS = roundCurrency(itemCostPrice * item.quantity);
 
         const cat = item.category || 'عام';
@@ -770,12 +772,12 @@ export function CartPanel({
           conversionFactor: item.conversionFactor,
           category: cat,
           total: roundCurrency(item.price * item.quantity),
-          profit: roundCurrency(itemProfit * (1 - (subtotal > 0 ? discountAmount / subtotal : 0))),
+          profit: roundCurrency(itemProfit - (item.price * item.quantity) * (subtotal > 0 ? discountAmount / subtotal : 0)),
         };
       });
 
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = roundCurrency(totalProfit * (1 - discountRatio));
+      const discountedProfit = roundCurrency(totalProfit - discountAmount);
 
       const stockItemsLocal = cartSnapshot.map(item => ({
         productId: item.id,
@@ -803,7 +805,7 @@ export function CartPanel({
         profit: discountedProfit,
         cogs: totalCOGS,
         profitsByCategory: Object.fromEntries(
-          Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(v * (1 - discountRatio))])
+          Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(localItems.filter(i => i.category === k).reduce((s, i) => s + i.profit, 0))])
         ),
         stockItems: stockItemsLocal,
         warehouseId: stockWarehouseId,
@@ -1878,3 +1880,7 @@ export function CartPanel({
     </>
   );
 }
+
+
+
+
