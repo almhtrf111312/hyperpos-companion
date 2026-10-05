@@ -123,6 +123,7 @@ export function PurchaseInvoiceViewDialog({
       storeName,
       storePhone,
       storeAddress,
+      customerName: invoice.supplier_name,
       supplierName: invoice.supplier_name,
       supplierPhone: invoice.supplier_phone,
       date: new Date(invoice.invoice_date).toLocaleDateString('ar-SA'),
@@ -135,7 +136,7 @@ export function PurchaseInvoiceViewDialog({
       subtotal: grandTotal,
       total: grandTotal,
       currencySymbol: '$',
-      paymentType: invoice.payment_type || 'cash',
+      paymentType: (invoice.payment_type || 'cash') as InvoiceShareData['paymentType'],
       type: 'purchase',
       notes: invoice.notes,
     };

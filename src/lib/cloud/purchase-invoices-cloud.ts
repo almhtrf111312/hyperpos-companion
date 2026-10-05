@@ -10,6 +10,8 @@
   image_url?: string | null;
    supplier_name: string;
    supplier_company?: string;
+  supplier_phone?: string;
+  payment_type?: string;
    invoice_date: string;
    expected_items_count: number;
    expected_total_quantity: number;

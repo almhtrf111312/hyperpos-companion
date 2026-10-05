@@ -548,6 +548,8 @@ export default function Settings() {
     discountPercentEnabled: boolean;
     discountFixedEnabled: boolean;
     barcodeScanMode: 'search' | 'add';
+    trackCapital?: boolean;
+    initialCapital?: number | string;
   } | null>(null);
 
 
