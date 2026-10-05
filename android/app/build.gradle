@@ -25,11 +25,25 @@ android {
     signingConfigs {
         release {
             def keystorePath = System.getenv("KEYSTORE_PATH")
-            if (keystorePath) {
-                storeFile file(keystorePath)
-                storePassword System.getenv("KEYSTORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
+            def keystorePassword = System.getenv("KEYSTORE_PASSWORD")
+            def keyAlias = System.getenv("KEY_ALIAS")
+            def keyPassword = System.getenv("KEY_PASSWORD")
+            
+            if (keystorePath && keystorePassword && keyAlias && keyPassword) {
+                def keystoreFile = file(keystorePath)
+                if (keystoreFile.exists()) {
+                    storeFile keystoreFile
+                    storePassword keystorePassword
+                    keyAlias keyAlias
+                    keyPassword keyPassword
+                } else {
+                    logger.warn("Keystore file not found at: ${keystorePath}")
+                    logger.warn("Release APK will be built unsigned.")
+                }
+            } else {
+                logger.warn("Release signing configuration incomplete.")
+                logger.warn("Required environment variables: KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD")
+                logger.warn("Release APK will be built unsigned.")
             }
         }
     }
