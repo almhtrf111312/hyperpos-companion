@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Printer, MoreVertical, X, Edit, Trash2, Copy, FileX, Loader2 } from 'lucide-react';
+import { Eye, Share2, MoreVertical, X, Edit, Trash2, Copy, FileX, Loader2 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import { loadInvoicesCloud, deleteInvoiceCloud, Invoice } from '@/lib/cloud/invoices-cloud';
-import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { EVENTS } from '@/lib/events';
 import { useActionGuard } from '@/hooks/use-action-guard';
 
@@ -65,74 +66,40 @@ export function RecentInvoices() {
     setShowViewDialog(true);
   };
 
-  const handlePrintInvoice = (invoice: Invoice) => {
+  const handleShareInvoice = async (invoice: Invoice) => {
     const storeSettings = getStoreSettings();
-    const printSettings = getPrintSettings();
-
     const invoiceDate = new Date(invoice.createdAt);
     const dateStr = invoiceDate.toLocaleDateString('ar-SA');
     const timeStr = invoiceDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
 
-    const printContent = `
-      <!DOCTYPE html>
-      <html dir="rtl">
-        <head>
-          <meta charset="UTF-8">
-          <title>فاتورة ${invoice.id}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-            .logo { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; }
-            .store-name { font-size: 1.4em; font-weight: bold; margin: 5px 0; }
-            .store-info { font-size: 0.85em; color: #555; }
-            .invoice-info { margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
-            .invoice-info p { margin: 5px 0; font-size: 0.9em; }
-            .items { margin: 15px 0; }
-            .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #ddd; }
-            .item-name { flex: 1; }
-            .item-qty { color: #555; font-size: 0.85em; }
-            .item-price { font-weight: bold; }
-            .total { font-size: 1.3em; font-weight: bold; margin-top: 15px; padding-top: 10px; border-top: 2px solid #000; text-align: center; }
-            .footer { text-align: center; margin-top: 25px; font-size: 0.85em; color: #555; border-top: 1px dashed #ccc; padding-top: 15px; }
-            @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            ${printSettings.showLogo && storeSettings.logo ? `<img src="${storeSettings.logo}" alt="شعار المحل" class="logo" />` : ''}
-            <div class="store-name">${storeSettings.name}</div>
-            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${storeSettings.address}</div>` : ''}
-            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${storeSettings.phone}</div>` : ''}
-          </div>
-          <div class="invoice-info">
-            <p><strong>رقم الفاتورة:</strong> ${invoice.id}</p>
-            <p><strong>العميل:</strong> ${invoice.customerName}</p>
-            <p><strong>التاريخ:</strong> ${dateStr} - ${timeStr}</p>
-            <p><strong>نوع الدفع:</strong> ${invoice.paymentType === 'cash' ? 'نقدي' : 'آجل'}</p>
-          </div>
-          <div class="items">
-            ${invoice.items.map(item => `
-              <div class="item">
-                <span class="item-name">${item.name}</span>
-                <span class="item-qty">×${item.quantity}</span>
-                <span class="item-price">${invoice.currencySymbol}${item.total}</span>
-              </div>
-            `).join('')}
-          </div>
-          ${invoice.discount > 0 ? `<div style="text-align: center; color: #666;">خصم: ${invoice.currencySymbol}${invoice.discount}</div>` : ''}
-          <div class="total">
-            المجموع: ${invoice.currencySymbol}${formatNumber(invoice.totalInCurrency)}
-          </div>
-          <div class="footer">
-            <p>${printSettings.footer}</p>
-          </div>
-        </body>
-      </html>
-    `;
+    const shareData: InvoiceShareData = {
+      id: invoice.id,
+      storeName: storeSettings.name,
+      storePhone: storeSettings.phone,
+      storeAddress: storeSettings.address,
+      storeLogo: storeSettings.logo,
+      customerName: invoice.customerName,
+      customerPhone: invoice.customerPhone,
+      date: dateStr,
+      time: timeStr,
+      items: invoice.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.total,
+      })),
+      subtotal: invoice.subtotal,
+      discount: invoice.discount,
+      total: invoice.totalInCurrency,
+      currencySymbol: invoice.currencySymbol,
+      paymentType: invoice.paymentType,
+      type: invoice.type || 'sale',
+    };
 
-    printHTML(printContent);
-    toast.success('جاري إرسال الفاتورة للطابعة...');
+    const success = await shareInvoice(shareData);
+    if (success) {
+      toast.success('تم فتح نافذة المشاركة');
+    }
   };
 
   const handleCopyInvoice = (invoice: Invoice) => {
@@ -259,11 +226,11 @@ export function RecentInvoices() {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={() => handlePrintInvoice(invoice)}
-                            title="طباعة"
+                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-primary hover:bg-primary/10"
+                            onClick={() => handleShareInvoice(invoice)}
+                            title="مشاركة الفاتورة كصورة"
                           >
-                            <Printer className="w-4 h-4" />
+                            <Share2 className="w-4 h-4" />
                           </button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -429,12 +396,11 @@ export function RecentInvoices() {
 
               <div className="flex gap-3 pt-4">
                 <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handlePrintInvoice(selectedInvoice)}
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+                  onClick={() => handleShareInvoice(selectedInvoice)}
                 >
-                  <Printer className="w-4 h-4 ml-2" />
-                  طباعة
+                  <Share2 className="w-4 h-4 ml-2" />
+                  مشاركة الفاتورة كصورة
                 </Button>
                 <Button
                   className="flex-1"

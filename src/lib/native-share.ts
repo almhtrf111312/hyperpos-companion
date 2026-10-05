@@ -1,19 +1,121 @@
 /**
  * Native Share Utility for Capacitor/Android
  * ============================================
- * يستخدم @capacitor/share للمشاركة الأصلية على الأندرويد
- * مع fallback للمتصفح (Web Share API أو window.open)
+ * يستخدم @capacitor/share و @capacitor/filesystem للمشاركة الأصلية كصور
+ * مع fallback للمتصفح (Web Share API أو التحميل التلقائي للصورة)
  */
 
 import { Capacitor } from '@capacitor/core';
 import { Share as CapacitorShare } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { formatNumber } from './utils';
+import {
+  InvoiceCanvasData,
+  DebtStatementCanvasData,
+  generateInvoiceBlob,
+  generateDebtStatementBlob,
+} from './invoice-canvas-generator';
 
 interface ShareOptions {
   title?: string;
   text: string;
   url?: string;
   dialogTitle?: string;
+}
+
+/**
+ * تحويل كائن Blob إلى سلسلة base64
+ */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * مشاركة ملف صورة (PNG) عبر النظام الأصلي أو المتصفح
+ * على أندرويد/Capacitor: يحفظ في Cache ويشارك عبر @capacitor/share
+ * على المتصفح: يشارك عبر Web Share API أو يقوم بالتنزيل المباشر كصورة
+ */
+export async function shareInvoiceImage(
+  blob: Blob,
+  fileName: string = `invoice_${Date.now()}`,
+  title: string = 'مشاركة الفاتورة'
+): Promise<boolean> {
+  const safeName = `${fileName.replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, '_')}.png`;
+
+  // 1. على الأندرويد/iOS (Capacitor): حفظ الملف مؤقتاً ومشاركته كملف صورة عبر @capacitor/share
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const base64Data = await blobToBase64(blob);
+      const writeResult = await Filesystem.writeFile({
+        path: safeName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      const fileUri = writeResult.uri || (await Filesystem.getUri({
+        path: safeName,
+        directory: Directory.Cache,
+      })).uri;
+
+      await CapacitorShare.share({
+        title: title,
+        files: [fileUri],
+        dialogTitle: 'مشاركة الفاتورة كصورة',
+      });
+      return true;
+    } catch (error: any) {
+      if (error?.message?.includes('cancel') || error?.name === 'AbortError') {
+        return false;
+      }
+      console.warn('[NativeShare] Capacitor file share failed, trying web fallback:', error);
+    }
+  }
+
+  // 2. على المتصفح: استخدام navigator.share({ files: [...] })
+  if (typeof navigator !== 'undefined') {
+    try {
+      const file = new File([blob], safeName, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: title,
+          files: [file],
+        });
+        return true;
+      }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return false;
+      }
+      console.warn('[NativeShare] navigator.share with file failed, falling back to download:', error);
+    }
+
+    // 3. Fallback: تنزيل الصورة تلقائياً في المتصفح
+    try {
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = safeName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      return true;
+    } catch (e) {
+      console.error('[NativeShare] Download fallback failed:', e);
+      return false;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -89,32 +191,41 @@ export function shareViaWhatsApp(text: string, phoneNumber?: string): boolean {
 }
 
 /**
- * مشاركة فاتورة بتنسيق جاهز للطباعة
+ * واجهة بيانات مشاركة الفاتورة
  */
 export interface InvoiceShareData {
   id: string;
   storeName: string;
   storePhone?: string;
+  storeAddress?: string;
+  storeLogo?: string;
   customerName: string;
   customerPhone?: string;
+  supplierName?: string;
+  supplierPhone?: string;
   date: string;
+  time?: string;
   items: Array<{
     name: string;
     quantity: number;
     unitPrice: number;
     total: number;
+    expiryDate?: string;
+    batchNumber?: string;
   }>;
   subtotal: number;
   discount?: number;
   total: number;
   currencySymbol: string;
-  paymentType: 'cash' | 'debt' | 'split';
+  paymentType: 'cash' | 'debt' | 'split' | string;
   downPayment?: number;
   debtRemaining?: number;
   serviceDescription?: string;
-  type: 'sale' | 'maintenance';
+  type?: 'sale' | 'purchase' | 'maintenance' | 'return';
   taxAmount?: number;
   taxRate?: number;
+  notes?: string;
+  footerNote?: string;
 }
 
 export function generateInvoiceShareText(data: InvoiceShareData): string {
@@ -137,7 +248,7 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
     type,
   } = data;
 
-  const itemsList = type === 'sale'
+  const itemsList = type !== 'maintenance'
     ? items.map(item =>
       `• ${item.name} × ${item.quantity} = ${currencySymbol}${formatNumber(item.total)}`
     ).join('\n')
@@ -157,15 +268,15 @@ ${storeName}
 📅 التاريخ: ${date}
 
 ────────────────
-👤 العميل: ${customerName}
+👤 ${type === 'purchase' ? 'المورد' : 'العميل'}: ${customerName}
 ${customerPhone ? `📱 الهاتف: ${customerPhone}` : ''}
 ────────────────
 
-${type === 'sale' ? '🛒 المشتريات:' : '🔧 الخدمة:'}
+${type !== 'maintenance' ? '🛒 المواد:' : '🔧 الخدمة:'}
 ${itemsList}
 
 ────────────────
-${type === 'sale' && items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${currencySymbol}${formatNumber(data.taxAmount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
+${items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${currencySymbol}${formatNumber(data.taxAmount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
 💳 طريقة الدفع: ${paymentLabel}
 ${paymentType === 'split' && downPayment ? `💵 المقبوض نقداً: ${currencySymbol}${formatNumber(downPayment)}\n📋 المتبقي كدين: ${currencySymbol}${formatNumber(debtRemaining || 0)}\n` : ''}
 
@@ -176,16 +287,71 @@ ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
 }
 
 /**
- * مشاركة فاتورة كاملة
+ * مشاركة فاتورة كاملة كصورة عالية الدقة (Invoice Image Share)
+ * وتعتمد على Canvas النقي الأوفلاين
  */
 export async function shareInvoice(data: InvoiceShareData): Promise<boolean> {
-  const text = generateInvoiceShareText(data);
+  try {
+    const canvasData: InvoiceCanvasData = {
+      id: data.id,
+      type: data.type || 'sale',
+      date: data.date,
+      time: data.time,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      supplierName: data.supplierName,
+      supplierPhone: data.supplierPhone,
+      items: data.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        total: item.total,
+        expiryDate: item.expiryDate,
+        batchNumber: item.batchNumber,
+      })),
+      subtotal: data.subtotal,
+      discount: data.discount,
+      taxAmount: data.taxAmount,
+      taxRate: data.taxRate,
+      total: data.total,
+      currencySymbol: data.currencySymbol,
+      paymentType: data.paymentType,
+      downPayment: data.downPayment,
+      debtRemaining: data.debtRemaining,
+      notes: data.notes,
+      serviceDescription: data.serviceDescription,
+      storeName: data.storeName,
+      storePhone: data.storePhone,
+      storeAddress: data.storeAddress,
+      storeLogo: data.storeLogo,
+      footerNote: data.footerNote,
+    };
 
-  return nativeShare({
-    title: `فاتورة رقم ${data.id}`,
-    text: text,
-    dialogTitle: 'مشاركة الفاتورة',
-  });
+    const blob = await generateInvoiceBlob(canvasData);
+    return await shareInvoiceImage(blob, `invoice_${data.id}`, `فاتورة رقم ${data.id}`);
+  } catch (error) {
+    console.warn('[NativeShare] Invoice canvas generation failed, falling back to text share:', error);
+    const text = generateInvoiceShareText(data);
+    return nativeShare({
+      title: `فاتورة رقم ${data.id}`,
+      text: text,
+      dialogTitle: 'مشاركة الفاتورة',
+    });
+  }
+}
+
+/**
+ * مشاركة كشف حساب عميل كصورة احترافية
+ */
+export async function shareDebtStatement(data: DebtStatementCanvasData): Promise<boolean> {
+  try {
+    const blob = await generateDebtStatementBlob(data);
+    const safeCust = (data.customerName || 'customer').replace(/\s+/g, '_');
+    return await shareInvoiceImage(blob, `statement_${safeCust}`, `كشف حساب - ${data.customerName}`);
+  } catch (error) {
+    console.error('[NativeShare] Debt statement image generation failed:', error);
+    return false;
+  }
 }
 
 /**
@@ -238,16 +404,41 @@ ${dueDate ? `📅 تاريخ الاستحقاق: ${dueDate}` : ''}
 }
 
 export async function shareDebt(data: DebtShareData): Promise<boolean> {
-  const text = generateDebtShareText(data);
+  // إنشاء كشف حساب مصغر كصورة تذكير بالدين
+  try {
+    const statementData: DebtStatementCanvasData = {
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      date: new Date().toLocaleDateString('ar-SA'),
+      totalPurchases: data.totalDebt,
+      totalPaid: Math.max(0, data.totalDebt - data.remainingDebt),
+      totalDebt: data.remainingDebt,
+      currencySymbol: data.currencySymbol,
+      dueDate: data.dueDate,
+      transactions: data.invoiceId ? [{
+        id: data.invoiceId,
+        date: data.dueDate || new Date().toLocaleDateString('ar-SA'),
+        type: 'فاتورة آجل',
+        total: data.totalDebt,
+        paid: Math.max(0, data.totalDebt - data.remainingDebt),
+        remaining: data.remainingDebt,
+        status: 'مستحق',
+      }] : [],
+    };
 
-  // إذا كان هناك رقم هاتف، اقترح إرساله مباشرة
-  if (data.customerPhone) {
-    return shareViaWhatsApp(text, data.customerPhone);
+    const blob = await generateDebtStatementBlob(statementData);
+    const safeCust = (data.customerName || 'debt').replace(/\s+/g, '_');
+    return await shareInvoiceImage(blob, `debt_${safeCust}`, `تذكير بالدين - ${data.customerName}`);
+  } catch (err) {
+    console.warn('[NativeShare] Debt image generation failed, falling back to text:', err);
+    const text = generateDebtShareText(data);
+    if (data.customerPhone) {
+      return shareViaWhatsApp(text, data.customerPhone);
+    }
+    return nativeShare({
+      title: `تذكير بالدين - ${data.customerName}`,
+      text: text,
+      dialogTitle: 'مشاركة تذكير الدين',
+    });
   }
-
-  return nativeShare({
-    title: `تذكير بالدين - ${data.customerName}`,
-    text: text,
-    dialogTitle: 'مشاركة تذكير الدين',
-  });
 }

@@ -636,7 +636,9 @@ export default function Settings() {
         };
         setBackupSettings(freshBackupSettings);
 
-        if (typeof syncObj.appFont === 'string' && isValidAppFontId(syncObj.appFont)) {
+        // عدم الكتابة فوق الخط المحلي المختار إذا كان محدداً مسبقاً في الجهاز
+        const localStoredFont = localStorage.getItem(APP_FONT_STORAGE_KEY);
+        if (!localStoredFont && typeof syncObj.appFont === 'string' && isValidAppFontId(syncObj.appFont)) {
           setStoredAppFont(syncObj.appFont);
         }
 

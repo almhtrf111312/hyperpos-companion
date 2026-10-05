@@ -7,7 +7,7 @@ import {
   Calculator,
   Banknote,
   CreditCard,
-  Printer,
+  Share2,
   Send,
   Check,
   X,
@@ -47,6 +47,7 @@ import { loadCustomersCloud } from '@/lib/cloud/customers-cloud';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/print-utils';
+import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -285,57 +286,40 @@ export function MaintenancePanel({
     }
   };
 
-  const handlePrint = () => {
+  const handleShareInvoiceImage = async () => {
     if (!validateForm()) return;
-    const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
     const storeSettings = getStoreSettings();
-    const printSettings = getPrintSettings();
-
     const currentDate = new Date().toLocaleDateString('ar-SA');
-    const currentTime = new Date().toLocaleTimeString('ar-SA');
-
     const fullDescription = [getServiceLabel(), getProductLabel(), description].filter(Boolean).join(' - ');
 
-    const printContent = `
-      <html dir="rtl">
-        <head>
-          <title>فاتورة صيانة</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-            .logo { max-width: 80px; max-height: 80px; margin: 0 auto 10px; display: block; }
-            .store-name { font-size: 1.4em; font-weight: bold; margin: 5px 0; }
-            .store-info { font-size: 0.85em; color: #555; }
-            .date-time { font-size: 0.8em; color: #777; margin-top: 10px; }
-            .info { margin-bottom: 8px; font-size: 0.9em; }
-            .info-label { color: #555; }
-            .total { font-size: 1.3em; font-weight: bold; margin-top: 20px; border-top: 2px solid #000; padding-top: 10px; text-align: center; }
-            .footer { text-align: center; margin-top: 30px; font-size: 0.85em; color: #555; border-top: 1px dashed #ccc; padding-top: 15px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            ${printSettings.showLogo && storeSettings.logo ? `<img src="${esc(storeSettings.logo)}" alt="شعار المحل" class="logo" />` : ''}
-            <div class="store-name">${esc(storeSettings.name)}</div>
-            ${printSettings.showAddress && storeSettings.address ? `<div class="store-info">${esc(storeSettings.address)}</div>` : ''}
-            ${printSettings.showPhone && storeSettings.phone ? `<div class="store-info">${esc(storeSettings.phone)}</div>` : ''}
-            <div class="date-time">${currentDate} - ${currentTime}</div>
-          </div>
-          <div class="info"><span class="info-label">${t('maintenance.customer')}:</span> ${esc(getEffectiveCustomerName())}</div>
-          ${customerPhone ? `<div class="info"><span class="info-label">${t('maintenance.phoneNumber')}:</span> ${esc(customerPhone)}</div>` : ''}
-          ${fullDescription ? `<div class="info"><span class="info-label">${t('maintenance.serviceType')}:</span> ${esc(fullDescription)}</div>` : ''}
-          <div class="total">
-            <strong>${t('maintenance.total')}:</strong> ${selectedCurrency.symbol}${formatNumber(servicePriceInCurrency)}
-          </div>
-          <div class="footer">
-            <p>${esc(printSettings.footer)}</p>
-          </div>
-        </body>
-      </html>
-    `;
+    const shareData: InvoiceShareData = {
+      id: `MNT-${Date.now().toString().slice(-6)}`,
+      storeName: storeSettings.name,
+      storePhone: storeSettings.phone,
+      storeAddress: storeSettings.address,
+      storeLogo: storeSettings.logo,
+      customerName: getEffectiveCustomerName(),
+      customerPhone: customerPhone || undefined,
+      date: currentDate,
+      items: [{
+        name: fullDescription || 'خدمة صيانة',
+        quantity: 1,
+        unitPrice: servicePriceInCurrency,
+        total: servicePriceInCurrency,
+      }],
+      subtotal: servicePriceInCurrency,
+      total: servicePriceInCurrency,
+      currencySymbol: selectedCurrency.symbol,
+      paymentType: 'cash',
+      type: 'maintenance',
+      serviceDescription: fullDescription,
+    };
 
-    printHTML(printContent);
+    const success = await shareInvoice(shareData);
+    if (success) {
+      toast.success('تم فتح نافذة المشاركة');
+    }
   };
 
   const handleWhatsApp = () => {
@@ -609,9 +593,9 @@ ${footer}`;
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={handlePrint} className="text-sm">
-              <Printer className="w-4 h-4 ml-1" />
-              {t('common.print')}
+            <Button variant="outline" onClick={handleShareInvoiceImage} className="text-sm text-primary border-primary/30 hover:bg-primary/10">
+              <Share2 className="w-4 h-4 ml-1" />
+              مشاركة الفاتورة
             </Button>
             <Button variant="outline" onClick={handleWhatsApp} className="text-sm">
               <Send className="w-4 h-4 ml-1" />

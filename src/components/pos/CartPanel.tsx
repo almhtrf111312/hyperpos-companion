@@ -8,7 +8,7 @@ import {
   Percent,
   Banknote,
   CreditCard,
-  Printer,
+  Share2,
   Send,
   X,
   UserPlus,
@@ -1701,17 +1701,17 @@ export function CartPanel({
               <CreditCard className="w-4 h-4 ml-1.5" />
               {t('pos.debt')}
             </Button>
-            {/* Print & Share Icon Buttons */}
+            {/* Share Invoice as Image Action */}
             <Button
               data-tour="action-btns"
               variant="ghost"
               size="icon"
-              className="h-11 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
+              className="h-11 w-9 flex-shrink-0 text-primary hover:text-primary hover:bg-primary/10 rounded-xl"
               disabled={cart.length === 0 && !lastSale}
-              onClick={() => handlePrint()}
-              title={t('pos.print')}
+              onClick={() => handleWhatsApp()}
+              title="مشاركة الفاتورة كصورة"
             >
-              <Printer className="w-4 h-4" />
+              <Share2 className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"

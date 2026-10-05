@@ -17,10 +17,12 @@ import {
   FileText,
   ShoppingCart,
   Wrench,
-  Printer
+  Share2
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
-import { printHTML, getStoreSettings } from '@/lib/native-print';
+import { getStoreSettings } from '@/lib/native-print';
+import { shareDebtStatement } from '@/lib/native-share';
+import { DebtStatementCanvasData } from '@/lib/invoice-canvas-generator';
 import { loadDebtsCloud, Debt } from '@/lib/cloud/debts-cloud';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -304,7 +306,7 @@ export default function Customers() {
     }
   };
 
-  const handlePrintStatement = () => {
+  const handleShareStatementImage = async () => {
     if (!selectedCustomer) return;
     const store = getStoreSettings();
     const totalPurchases = customerInvoices.reduce((s, i) => s + i.total, 0);
@@ -318,7 +320,7 @@ export default function Customers() {
         const paid = Math.max(0, inv.total - remaining);
         return {
           id: inv.id,
-          date: inv.createdAt,
+          date: new Date(inv.createdAt).toLocaleDateString('ar-SA'),
           type: inv.paymentType === 'cash' ? 'بيع نقدي' : 'بيع آجل',
           total: inv.total,
           paid,
@@ -328,7 +330,7 @@ export default function Customers() {
       }),
       ...customerDebts.filter(d => d.isCashDebt).map(d => ({
         id: d.invoiceId,
-        date: d.createdAt,
+        date: new Date(d.createdAt).toLocaleDateString('ar-SA'),
         type: 'دين نقدي (سلفة)',
         total: d.totalDebt,
         paid: d.totalPaid,
@@ -337,97 +339,25 @@ export default function Customers() {
       }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const rowsHtml = statementRows.map(row => `
-      <tr style="border-bottom: 1px solid #e2e8f0;">
-        <td style="padding: 8px 10px; font-family: monospace; font-size: 12px;">${row.id}</td>
-        <td style="padding: 8px 10px; font-size: 12px;">${new Date(row.date).toLocaleDateString('ar-SA')}</td>
-        <td style="padding: 8px 10px; font-size: 12px;">${row.type}</td>
-        <td style="padding: 8px 10px; font-size: 12px; font-weight: bold; text-align: left;">$${formatNumber(row.total)}</td>
-        <td style="padding: 8px 10px; font-size: 12px; color: #16a34a; text-align: left;">$${formatNumber(row.paid)}</td>
-        <td style="padding: 8px 10px; font-size: 12px; color: ${row.remaining > 0 ? '#dc2626' : '#16a34a'}; font-weight: bold; text-align: left;">$${formatNumber(row.remaining)}</td>
-        <td style="padding: 8px 10px; font-size: 12px; text-align: center;">${row.status}</td>
-      </tr>
-    `).join('');
+    const statementData: DebtStatementCanvasData = {
+      customerName: selectedCustomer.name,
+      customerPhone: selectedCustomer.phone,
+      date: new Date().toLocaleDateString('ar-SA'),
+      totalPurchases,
+      totalPaid,
+      totalDebt,
+      currencySymbol: '$',
+      transactions: statementRows,
+      storeName: store.name,
+      storePhone: store.phone,
+      storeAddress: store.address,
+      storeLogo: store.logo,
+    };
 
-    const html = `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="utf-8">
-        <title>كشف حساب - ${selectedCustomer.name}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif; margin: 20px; color: #1e293b; line-height: 1.5; }
-          .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
-          .store-name { font-size: 22px; font-weight: bold; color: #0284c7; margin-bottom: 4px; }
-          .doc-title { font-size: 18px; font-weight: bold; margin-top: 10px; }
-          .cust-info { display: flex; justify-content: space-between; background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
-          .summary-cards { display: flex; gap: 12px; margin-bottom: 20px; }
-          .card { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center; }
-          .card-title { font-size: 11px; color: #64748b; margin-bottom: 4px; }
-          .card-value { font-size: 18px; font-weight: bold; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th { background: #0284c7; color: white; padding: 10px; font-size: 12px; font-weight: 600; }
-          .footer { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="store-name">${store.name || 'FlowPOS'}</div>
-          ${store.phone ? `<div>هاتف المتجر: ${store.phone}</div>` : ''}
-          <div class="doc-title">كشف حساب عميل تفصيلي</div>
-        </div>
-
-        <div class="cust-info">
-          <div>
-            <strong>اسم العميل:</strong> ${selectedCustomer.name}<br>
-            <strong>رقم الهاتف:</strong> ${selectedCustomer.phone}
-          </div>
-          <div style="text-align: left;">
-            <strong>تاريخ الإصدار:</strong> ${new Date().toLocaleDateString('ar-SA')}<br>
-            <strong>عدد العمليات:</strong> ${statementRows.length}
-          </div>
-        </div>
-
-        <div class="summary-cards">
-          <div class="card">
-            <div class="card-title">إجمالي التعاملات</div>
-            <div class="card-value" style="color: #0284c7;">$${formatNumber(totalPurchases)}</div>
-          </div>
-          <div class="card">
-            <div class="card-title">إجمالي المسدد</div>
-            <div class="card-value" style="color: #16a34a;">$${formatNumber(totalPaid)}</div>
-          </div>
-          <div class="card">
-            <div class="card-title">الرصيد المتبقي (الديون)</div>
-            <div class="card-value" style="color: ${totalDebt > 0 ? '#dc2626' : '#16a34a'};">$${formatNumber(totalDebt)}</div>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th style="text-align: right;">رقم المستند</th>
-              <th style="text-align: right;">التاريخ</th>
-              <th style="text-align: right;">النوع</th>
-              <th style="text-align: left;">الإجمالي</th>
-              <th style="text-align: left;">المدفوع</th>
-              <th style="text-align: left;">المتبقي</th>
-              <th style="text-align: center;">الحالة</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml || '<tr><td colspan="7" style="text-align: center; padding: 20px;">لا توجد حركات مسجلة لهذا العميل</td></tr>'}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          تم إنشاء كشف الحساب بتاريخ ${new Date().toLocaleString('ar-SA')} بواسطة نظام FlowPOS Pro
-        </div>
-      </body>
-      </html>
-    `;
-
-    printHTML(html);
+    const success = await shareDebtStatement(statementData);
+    if (success) {
+      toast.success('تم فتح نافذة المشاركة');
+    }
   };
 
   const openDeleteDialog = (customer: Customer) => {
@@ -760,10 +690,10 @@ export default function Customers() {
               size="sm"
               variant="outline"
               className="border-primary/50 text-primary hover:bg-primary/10 gap-1.5"
-              onClick={handlePrintStatement}
+              onClick={handleShareStatementImage}
             >
-              <Printer className="w-4 h-4" />
-              طباعة كشف الحساب / PDF
+              <Share2 className="w-4 h-4" />
+              مشاركة كشف الحساب كصورة
             </Button>
           </DialogHeader>
           {selectedCustomer && (

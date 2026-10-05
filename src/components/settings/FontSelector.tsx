@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
+import { saveStoreSettings } from '@/lib/supabase-store';
+
 interface FontSelectorProps {
   className?: string;
   showCardContainer?: boolean;
@@ -19,12 +21,21 @@ export const FontSelector: React.FC<FontSelectorProps> = ({
   const { currentFont, setFont, availableFonts } = useAppFont();
   const { isRTL } = useLanguage();
 
-  const handleSelectFont = (fontId: AppFontId, fontName: string) => {
+  const handleSelectFont = async (fontId: AppFontId, fontName: string) => {
     if (fontId === currentFont) return;
     setFont(fontId);
     toast.success(
       isRTL ? `تم تغيير خط النظام إلى: ${fontName}` : `System font changed to: ${fontName}`
     );
+
+    // مزامنة فورية لسحابة المتجر النشط
+    try {
+      await saveStoreSettings({
+        sync_settings: { appFont: fontId },
+      });
+    } catch (e) {
+      console.warn('Failed to sync appFont to store cloud settings:', e);
+    }
   };
 
   const content = (

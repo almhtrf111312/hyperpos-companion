@@ -207,20 +207,20 @@ export default function Products() {
     barcode3: '',  // باركود ثالث
     variantLabel: '',  // وصف المتغير
     category: t('products.defaultCategory'),
-    costPrice: 0,
-    salePrice: 0,
-    laborCost: 0,  // تكلفة العمالة (وضع ورشة الصيانة)
-    quantity: 0,
+    costPrice: 0 as number | string,
+    salePrice: 0 as number | string,
+    laborCost: 0 as number | string,  // تكلفة العمالة (وضع ورشة الصيانة)
+    quantity: 0 as number | string,
     expiryDate: '',
     image: '',
     // Dynamic fields (Fix #16)
     serialNumber: '',
     batchNumber: '',
     warranty: '',
-    wholesalePrice: 0,
+    wholesalePrice: 0 as number | string,
     size: '',
     color: '',
-    minStockLevel: 1,
+    minStockLevel: 1 as number | string,
     weight: '',
     fabricType: '',
     tableNumber: '',
@@ -230,9 +230,9 @@ export default function Products() {
     // Unit settings
     bulkUnit: t('products.unitCarton'),
     smallUnit: t('products.unitPiece'),
-    conversionFactor: 1,
-    bulkCostPrice: 0,
-    bulkSalePrice: 0,
+    conversionFactor: 1 as number | string,
+    bulkCostPrice: 0 as number | string,
+    bulkSalePrice: 0 as number | string,
     trackByUnit: 'piece' as 'piece' | 'bulk',
   });
 
@@ -249,12 +249,29 @@ export default function Products() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({});
 
   // Helper function to convert Arabic numerals to English when typing in numeric fields
+  // Allows empty string during typing so Backspace does not force 0 or lock the input
   const handleNumericChange = useCallback((field: keyof typeof formData, value: string) => {
-    // Convert Arabic numerals to English
-    const converted = toWesternNumerals(value);
-    // Parse as number for numeric fields
-    const numValue = parseFloat(converted) || 0;
-    setFormData(prev => ({ ...prev, [field]: numValue }));
+    const converted = toWesternNumerals(value).trim();
+    if (converted === '') {
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      return;
+    }
+    // Allow numbers and decimal points (e.g. "12.")
+    if (/^-?\d*\.?\d*$/.test(converted)) {
+      setFormData(prev => ({ ...prev, [field]: converted }));
+    }
+  }, []);
+
+  // When leaving the field (onBlur), restore fallback default if left empty
+  const handleNumericBlur = useCallback((field: keyof typeof formData, defaultValue: number = 0) => {
+    setFormData(prev => {
+      const val = prev[field];
+      if (val === '' || val === undefined || val === null) {
+        return { ...prev, [field]: defaultValue };
+      }
+      const parsed = parseFloat(String(val));
+      return { ...prev, [field]: isNaN(parsed) ? defaultValue : parsed };
+    });
   }, []);
 
   // Helper function for text fields that may contain Arabic numerals (like barcode)
@@ -796,24 +813,39 @@ export default function Products() {
     // ✅ Offline-First: ضغط الصورة محلياً فقط (بدون انتظار الشبكة)
     const finalImage = await ensureImageCompressed(formData.image);
 
+    // تحويل الأرقام بشكل آمن
+    const numCostPrice = Number(formData.costPrice) || 0;
+    const numSalePrice = Number(formData.salePrice) || 0;
+    const numLaborCost = Number(formData.laborCost) || 0;
+    const numQuantity = Number(formData.quantity) || 0;
+    const numWholesalePrice = Number(formData.wholesalePrice) || 0;
+    const numMinStockLevel = Number(formData.minStockLevel) || 1;
+    const numConversionFactor = Number(formData.conversionFactor) || 1;
+    const numBulkSalePrice = Number(formData.bulkSalePrice) || 0;
+
     // تحويل الكمية إلى قطع قبل الحفظ - في وضع الفرن، استخدم كمية كبيرة
     const quantityInPieces = noInventory
       ? 99999
       : (formData.trackByUnit === 'bulk'
-        ? formData.quantity * formData.conversionFactor
-        : formData.quantity);
+        ? numQuantity * numConversionFactor
+        : numQuantity);
 
     // حساب سعر تكلفة الكرتونة تلقائياً
-    const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
+    const calculatedBulkCostPrice = numCostPrice * numConversionFactor;
 
     const productData = {
       ...formData,
       image: finalImage, // ✅ استخدم مسار السحابة أو فارغ (ليس base64 ضخم)
       barcode: effectiveBarcode,
-      costPrice: noInventory && !isRepairMode ? 0 : formData.costPrice,
-      laborCost: isRepairMode ? formData.laborCost : 0,
+      costPrice: noInventory && !isRepairMode ? 0 : numCostPrice,
+      salePrice: numSalePrice,
+      wholesalePrice: numWholesalePrice,
+      laborCost: isRepairMode ? numLaborCost : 0,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
       bulkCostPrice: noInventory ? 0 : calculatedBulkCostPrice,
+      bulkSalePrice: numBulkSalePrice,
+      minStockLevel: numMinStockLevel,
+      conversionFactor: numConversionFactor,
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
@@ -901,13 +933,23 @@ export default function Products() {
     // ✅ Offline-First: ضغط الصورة محلياً فقط (بدون انتظار الشبكة)
     const finalImage = await ensureImageCompressed(formData.image);
 
+    // تحويل الأرقام بشكل آمن
+    const numCostPrice = Number(formData.costPrice) || 0;
+    const numSalePrice = Number(formData.salePrice) || 0;
+    const numLaborCost = Number(formData.laborCost) || 0;
+    const numQuantity = Number(formData.quantity) || 0;
+    const numWholesalePrice = Number(formData.wholesalePrice) || 0;
+    const numMinStockLevel = Number(formData.minStockLevel) || 1;
+    const numConversionFactor = Number(formData.conversionFactor) || 1;
+    const numBulkSalePrice = Number(formData.bulkSalePrice) || 0;
+
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
     const quantityInPieces = formData.trackByUnit === 'bulk'
-      ? formData.quantity * formData.conversionFactor
-      : formData.quantity;
+      ? numQuantity * numConversionFactor
+      : numQuantity;
 
     // حساب سعر تكلفة الكرتونة تلقائياً
-    const calculatedBulkCostPrice = formData.costPrice * formData.conversionFactor;
+    const calculatedBulkCostPrice = numCostPrice * numConversionFactor;
 
     // ✅ حماية الصورة: إذا أصبحت فارغة لكن المنتج لديه صورة سابقة، نحافظ عليها
     // (الحذف العمدي يستخدم قيمة خاصة '__CLEAR__')
@@ -921,8 +963,15 @@ export default function Products() {
     const productData = {
       ...formData,
       image: imageToSave,
+      costPrice: noInventory && !isRepairMode ? 0 : numCostPrice,
+      salePrice: numSalePrice,
+      wholesalePrice: numWholesalePrice,
+      laborCost: isRepairMode ? numLaborCost : 0,
       quantity: quantityInPieces, // الكمية دائماً بالقطع
       bulkCostPrice: calculatedBulkCostPrice, // سعر التكلفة محسوب تلقائياً
+      bulkSalePrice: numBulkSalePrice,
+      minStockLevel: numMinStockLevel,
+      conversionFactor: numConversionFactor,
       expiryDate: formData.expiryDate || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
       archived: false, // ✅ تأكيد إزالة الأرشفة عند الحفظ أو الاسترداد
@@ -2432,12 +2481,15 @@ export default function Products() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">الكمية</label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="text-right"
                       placeholder="0"
-                      value={formData.quantity || ''}
+                      value={formData.quantity ?? ''}
                       onChange={(e) => handleNumericChange('quantity', e.target.value)}
+                      onBlur={() => handleNumericBlur('quantity', 0)}
+                      onFocus={(e) => e.target.select()}
                     />
                   </div>
                 )}
@@ -2445,12 +2497,15 @@ export default function Products() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? 'تكلفة القطعة ($)' : 'سعر الشراء ($)'}</label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="text-right"
                       placeholder="0"
-                      value={formData.costPrice || ''}
+                      value={formData.costPrice ?? ''}
                       onChange={(e) => handleNumericChange('costPrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('costPrice', 0)}
+                      onFocus={(e) => e.target.select()}
                     />
                   </div>
                 )}
@@ -2458,12 +2513,15 @@ export default function Products() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ($)</label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="text-right"
                       placeholder="0"
-                      value={formData.laborCost || ''}
+                      value={formData.laborCost ?? ''}
                       onChange={(e) => handleNumericChange('laborCost', e.target.value)}
+                      onBlur={() => handleNumericBlur('laborCost', 0)}
+                      onFocus={(e) => e.target.select()}
                     />
                     <p className="text-xs text-muted-foreground mt-1">تكلفة ساعة العمل أو الخدمة</p>
                   </div>
@@ -2472,12 +2530,15 @@ export default function Products() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="text-right"
                       placeholder="0"
-                      value={formData.salePrice || ''}
+                      value={formData.salePrice ?? ''}
                       onChange={(e) => handleNumericChange('salePrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('salePrice', 0)}
+                      onFocus={(e) => e.target.select()}
                     />
                   </div>
                 )}
@@ -2502,16 +2563,16 @@ export default function Products() {
                           data={{
                             bulkUnit: formData.bulkUnit,
                             smallUnit: formData.smallUnit,
-                            conversionFactor: formData.conversionFactor,
-                            bulkCostPrice: formData.bulkCostPrice,
-                            bulkSalePrice: formData.bulkSalePrice,
+                            conversionFactor: Number(formData.conversionFactor) || 1,
+                            bulkCostPrice: Number(formData.bulkCostPrice) || 0,
+                            bulkSalePrice: Number(formData.bulkSalePrice) || 0,
                             trackByUnit: formData.trackByUnit,
                           }}
                           onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
                           quantityInPieces={formData.trackByUnit === 'bulk'
-                            ? formData.quantity * formData.conversionFactor
-                            : formData.quantity}
-                          pieceCostPrice={formData.costPrice}
+                            ? (Number(formData.quantity) || 0) * (Number(formData.conversionFactor) || 1)
+                            : (Number(formData.quantity) || 0)}
+                          pieceCostPrice={Number(formData.costPrice) || 0}
                         />
                       </CollapsibleContent>
                     </Collapsible>
@@ -2559,16 +2620,19 @@ export default function Products() {
                     />
                   </div>
                 )}
-                {(fieldsConfig.wholesalePrice || (formData.wholesalePrice || 0) > 0) && (
+                {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="text-right"
                       placeholder="0"
-                      value={formData.wholesalePrice || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, wholesalePrice: Number(e.target.value) }))}
+                      value={formData.wholesalePrice ?? ''}
+                      onChange={(e) => handleNumericChange('wholesalePrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('wholesalePrice', 0)}
+                      onFocus={(e) => e.target.select()}
                     />
                   </div>
                 )}
@@ -2964,31 +3028,43 @@ export default function Products() {
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     dir="ltr"
                     className="text-right"
-                    value={formData.quantity || ''}
+                    placeholder="0"
+                    value={formData.quantity ?? ''}
                     onChange={(e) => handleNumericChange('quantity', e.target.value)}
+                    onBlur={() => handleNumericBlur('quantity', 0)}
+                    onFocus={(e) => e.target.select()}
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ($)</label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     dir="ltr"
                     className="text-right"
-                    value={formData.costPrice || ''}
+                    placeholder="0"
+                    value={formData.costPrice ?? ''}
                     onChange={(e) => handleNumericChange('costPrice', e.target.value)}
+                    onBlur={() => handleNumericBlur('costPrice', 0)}
+                    onFocus={(e) => e.target.select()}
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ($)</label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     dir="ltr"
                     className="text-right"
-                    value={formData.salePrice || ''}
+                    placeholder="0"
+                    value={formData.salePrice ?? ''}
                     onChange={(e) => handleNumericChange('salePrice', e.target.value)}
+                    onBlur={() => handleNumericBlur('salePrice', 0)}
+                    onFocus={(e) => e.target.select()}
                   />
                 </div>
 
@@ -3011,16 +3087,16 @@ export default function Products() {
                         data={{
                           bulkUnit: formData.bulkUnit,
                           smallUnit: formData.smallUnit,
-                          conversionFactor: formData.conversionFactor,
-                          bulkCostPrice: formData.bulkCostPrice,
-                          bulkSalePrice: formData.bulkSalePrice,
+                          conversionFactor: Number(formData.conversionFactor) || 1,
+                          bulkCostPrice: Number(formData.bulkCostPrice) || 0,
+                          bulkSalePrice: Number(formData.bulkSalePrice) || 0,
                           trackByUnit: formData.trackByUnit,
                         }}
                         onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
                         quantityInPieces={formData.trackByUnit === 'bulk'
-                          ? formData.quantity * formData.conversionFactor
-                          : formData.quantity}
-                        pieceCostPrice={formData.costPrice}
+                          ? (Number(formData.quantity) || 0) * (Number(formData.conversionFactor) || 1)
+                          : (Number(formData.quantity) || 0)}
+                        pieceCostPrice={Number(formData.costPrice) || 0}
                       />
                     </CollapsibleContent>
                   </Collapsible>
@@ -3067,16 +3143,19 @@ export default function Products() {
                     />
                   </div>
                 )}
-                {(fieldsConfig.wholesalePrice || (formData.wholesalePrice || 0) > 0) && (
+                {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="text-right"
                       placeholder="0"
-                      value={formData.wholesalePrice || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, wholesalePrice: Number(e.target.value) }))}
+                      value={formData.wholesalePrice ?? ''}
+                      onChange={(e) => handleNumericChange('wholesalePrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('wholesalePrice', 0)}
+                      onFocus={(e) => e.target.select()}
                     />
                   </div>
                 )}

@@ -1398,13 +1398,9 @@ export default function Invoices() {
                           <Eye className="w-4 h-4 ml-2" />
                           {t('common.view')}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handlePrint(invoice)}>
-                          <Printer className="w-4 h-4 ml-2" />
-                          {t('common.print')}
-                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleShare(invoice)}>
                           <Share2 className="w-4 h-4 ml-2 text-primary" />
-                          {t('common.share') || 'مشاركة الفاتورة'}
+                          {t('common.share') || 'مشاركة الفاتورة (صورة)'}
                         </DropdownMenuItem>
                         {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                           <>
@@ -1572,13 +1568,9 @@ export default function Invoices() {
               </div>
 
               <div className="flex gap-2">
-                <Button className="flex-1" onClick={() => handlePrint(selectedInvoice)}>
-                  <Printer className="w-4 h-4 ml-2" />
-                  {t('common.print')}
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={() => handleShare(selectedInvoice)}>
-                  <Share2 className="w-4 h-4 ml-2 text-primary" />
-                  {t('common.share') || 'مشاركة'}
+                <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium" onClick={() => handleShare(selectedInvoice)}>
+                  <Share2 className="w-4 h-4 ml-2" />
+                  {t('common.share') || 'مشاركة الفاتورة كصورة'}
                 </Button>
               </div>
             </div>
