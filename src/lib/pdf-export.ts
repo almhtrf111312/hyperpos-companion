@@ -25,54 +25,157 @@ export interface PDFExportOptions {
   orientation?: 'portrait' | 'landscape';
 }
 
-// Check if text contains Arabic characters
-const containsArabic = (text: string): boolean => {
-  return /[\u0600-\u06FF]/.test(text);
-};
-
-// Process Arabic text for proper PDF display
-// 1. Reshape: Convert characters to their connected forms using arabic-reshaper
-// 2. NO reverse needed - jsPDF with Arabic font handles RTL properly
-
-const processArabicText = (text: string): string => {
-  if (!containsArabic(text)) return text;
-
-  try {
-    // Use arabic-reshaper.convertArabic() to properly connect Arabic letters
-    // This converts isolated letters to their proper connected forms
-    const shaped = ArabicReshaper.convertArabic(text);
-    // Return shaped text without reversing - the font handles RTL display
-    return shaped;
-  } catch (error) {
-    console.warn('Arabic reshaping failed, using original text:', error);
-    // Fallback: return original text without modification
-    return text;
-  }
-};
-
 // Global flag to track if Arabic font is available
 let arabicFontLoaded = false;
 
-// Process text for RTL display - wrapper function
-const processRTL = (text: string): string => {
-  if (!arabicFontLoaded) {
-    // Without Arabic font, just return text as-is (will show squares)
-    return String(text || '');
-  }
-  return processArabicText(String(text || ''));
+// Check if text contains Arabic characters (standard, Presentation Forms, or extended Arabic)
+export const containsArabic = (text: string): boolean => {
+  if (!text || typeof text !== 'string') return false;
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 };
 
-// Format date in local timezone with standard numerals
+// Mirror brackets for proper RTL visual display
+const MIRRORED_BRACKETS: Record<string, string> = {
+  '(': ')',
+  ')': '(',
+  '[': ']',
+  ']': '[',
+  '{': '}',
+  '}': '{',
+  '<': '>',
+  '>': '<',
+  '«': '»',
+  '»': '«',
+  '‹': '›',
+  '›': '‹',
+};
+
+// Split string into Unicode grapheme clusters to prevent detaching diacritics
+const splitGraphemes = (str: string): string[] => {
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    try {
+      const segmenter = new Intl.Segmenter('ar', { granularity: 'grapheme' });
+      return Array.from(segmenter.segment(str), s => s.segment);
+    } catch {
+      // Fallback if Segmenter throws
+    }
+  }
+  return Array.from(str);
+};
+
+/**
+ * BiDi Arabic text processor for jsPDF rendering:
+ * 1. Segregates numbers, dates, times, currency amounts, codes, and English/Latin words from Arabic words.
+ * 2. Connects Arabic characters with ArabicReshaper in logical reading order.
+ * 3. Preserves LTR sequences (such as "79" in "صنف 79" or dates "2026/10/05") without inverting their digits or characters.
+ * 4. Reorders segments into visual RTL presentation so jsPDF's LTR engine outputs natural right-to-left text.
+ */
+export const processArabicText = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  if (!containsArabic(text)) return text;
+
+  // Process line by line to support multi-line table cells and headers
+  return text
+    .split('\n')
+    .map(line => processArabicLine(line))
+    .join('\n');
+};
+
+const processArabicLine = (line: string): string => {
+  if (!line || !containsArabic(line)) return line;
+
+  /**
+   * Matches LTR segments:
+   * - URLs (https://...)
+   * - Dates (e.g. 2026/10/05, 05/10/2026, 2026-10-05)
+   * - Times (e.g. 14:30, 09:15:00)
+   * - Numbers with decimals/commas/percentages/currencies (e.g. 1,250.50, 79, 15%, +5, -10)
+   * - Latin identifiers and words (e.g. iPhone, FlowPOS, VIP, INV-0012)
+   * - Sequences of Latin words and numbers separated by single spaces (e.g. "iPhone 15 Pro")
+   */
+  const ltrTokenRegex = /(?:https?:\/\/[^\s]+|\b\d{1,4}[/\-.]\d{1,2}[/\-.]\d{1,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b|[#@$€£¥]?[A-Za-z0-9]+(?:[.\-_/:][A-Za-z0-9]+)*%?|[+\-]?[0-9]+(?:[.,][0-9]+)*(?:%|[A-Za-z]+)?)(?:\s+(?:[#@$€£¥]?[A-Za-z0-9]+(?:[.\-_/:][A-Za-z0-9]+)*%?|[+\-]?[0-9]+(?:[.,][0-9]+)*(?:%|[A-Za-z]+)?))*/g;
+
+  interface Token {
+    type: 'ltr' | 'rtl';
+    text: string;
+  }
+
+  const tokens: Token[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = ltrTokenRegex.exec(line)) !== null) {
+    // Non-LTR chunk preceding this match
+    if (match.index > lastIndex) {
+      tokens.push({
+        type: 'rtl',
+        text: line.slice(lastIndex, match.index),
+      });
+    }
+
+    tokens.push({
+      type: 'ltr',
+      text: match[0],
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Trailing chunk
+  if (lastIndex < line.length) {
+    tokens.push({
+      type: 'rtl',
+      text: line.slice(lastIndex),
+    });
+  }
+
+  // Transform each token
+  const processedTokens = tokens.map(token => {
+    if (token.type === 'ltr') {
+      // LTR token: numbers, dates, Latin words remain untouched in their natural LTR order
+      return token.text;
+    }
+
+    // RTL token: Arabic letters and associated punctuation/brackets
+    try {
+      // Reshape Arabic letters into connected forms
+      const shaped = ArabicReshaper.convertArabic(token.text);
+      // Mirror brackets and reverse graphemes for jsPDF LTR drawing
+      const graphemes = splitGraphemes(shaped);
+      const reversed = graphemes
+        .map(char => MIRRORED_BRACKETS[char] || char)
+        .reverse()
+        .join('');
+      return reversed;
+    } catch {
+      // Fallback
+      return splitGraphemes(token.text)
+        .map(char => MIRRORED_BRACKETS[char] || char)
+        .reverse()
+        .join('');
+    }
+  });
+
+  // Since overall line context is RTL, reverse the order of the segments
+  return processedTokens.reverse().join('');
+};
+
+// Process text for RTL display
+const processRTL = (text: string): string => {
+  if (!text) return '';
+  return processArabicText(String(text));
+};
+
+// Format date in local timezone with standard numerals (YYYY/MM/DD)
 const formatLocalDate = (date?: Date): string => {
   const d = date || new Date();
-  // Use en-GB for standard date format, then manually format
   const day = d.getDate().toString().padStart(2, '0');
   const month = (d.getMonth() + 1).toString().padStart(2, '0');
   const year = d.getFullYear();
   return `${year}/${month}/${day}`;
 };
 
-// Format datetime in local timezone with standard numerals
+// Format datetime in local timezone with standard numerals (YYYY/MM/DD HH:mm)
 const formatLocalDateTime = (date?: Date): string => {
   const d = date || new Date();
   const day = d.getDate().toString().padStart(2, '0');
@@ -99,17 +202,13 @@ const formatInvoiceDate = (dateStr: string): string => {
 // Save PDF on native platforms using Filesystem and Share APIs
 const savePDFNative = async (doc: jsPDF, fileName: string): Promise<void> => {
   try {
-    // Convert PDF to base64
     const pdfBase64 = doc.output('datauristring').split(',')[1];
-
-    // Save file to cache directory
     const result = await Filesystem.writeFile({
       path: fileName,
       data: pdfBase64,
       directory: Directory.Cache,
     });
 
-    // Share the file
     await Share.share({
       title: fileName,
       url: result.uri,
@@ -135,7 +234,7 @@ const getStoreLogo = (): string | null => {
   return null;
 };
 
-// Create and download PDF file
+// Create and export PDF document with full Arabic RTL and responsive styling
 export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   const {
     title,
@@ -161,9 +260,11 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     format: 'a4',
   });
 
-  // ✅ Try to load Arabic font (Noto Sans Arabic)
+  // Try to load Arabic font (Noto Sans Arabic) with offline fallback
   const currentLang = getCurrentLanguage();
-  if (currentLang === 'ar') {
+  const isRTL = currentLang === 'ar';
+
+  if (isRTL) {
     try {
       await loadArabicFont(doc);
       arabicFontLoaded = true;
@@ -177,132 +278,183 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     arabicFontLoaded = false;
   }
 
-  let yPosition = 15;
+  // Set line height factor to comfortably accommodate Arabic ascenders/descenders
+  if (typeof doc.setLineHeightFactor === 'function') {
+    doc.setLineHeightFactor(1.35);
+  }
+
   const pageWidth = doc.internal.pageSize.width;
+  const pageMargin = 12;
+  const bannerWidth = pageWidth - (pageMargin * 2);
+  let yPosition = 12;
 
-  // Add store logo if available
+  const fontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
+  doc.setFont(fontName, 'normal');
+
+  // ==========================================
+  // 1. PROFESSIONAL REPORT HEADER CARD
+  // ==========================================
   const logo = storeLogo || getStoreLogo();
-  if (logo) {
-    try {
-      doc.addImage(logo, 'PNG', pageWidth / 2 - 15, yPosition, 30, 30);
-      yPosition += 35;
-    } catch {
-      // Logo failed to load, skip
+  const headerCardHeight = logo ? 26 : 22;
+
+  // Header Card Background (#1E293B Dark Slate Navy)
+  doc.setFillColor(30, 41, 59);
+  doc.roundedRect(pageMargin, yPosition, bannerWidth, headerCardHeight, 3, 3, 'F');
+
+  if (isRTL) {
+    // --- RTL Header Layout ---
+    let storeX = pageWidth - pageMargin - 8;
+    if (logo) {
+      try {
+        const logoSize = 18;
+        doc.addImage(logo, 'PNG', pageWidth - pageMargin - logoSize - 4, yPosition + 4, logoSize, logoSize);
+        storeX = pageWidth - pageMargin - logoSize - 8;
+      } catch {
+        // Logo skipped if invalid
+      }
     }
-  }
 
-  // Add store name (header)
-  if (storeName) {
-    doc.setFontSize(20);
-    doc.setTextColor(44, 62, 80);
-    const storeNameText = processRTL(storeName);
-    doc.text(storeNameText, pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 8;
-  }
-
-  // Add store contact info
-  if (storePhone || storeAddress) {
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    if (storePhone) {
-      doc.text(storePhone, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 5;
+    // Store Name
+    if (storeName) {
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text(processRTL(storeName), storeX, yPosition + 8.5, { align: 'right' });
     }
-    if (storeAddress) {
-      const addressText = processRTL(storeAddress);
-      doc.text(addressText, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 5;
+
+    // Store Phone & Address
+    const storeDetails: string[] = [];
+    if (storePhone) storeDetails.push(storePhone);
+    if (storeAddress) storeDetails.push(storeAddress);
+    if (storeDetails.length > 0) {
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184); // #94A3B8
+      doc.text(processRTL(storeDetails.join(' | ')), storeX, yPosition + 15.5, { align: 'right' });
     }
+
+    // Left side of Header: Report Type & Generation Date
+    const leftX = pageMargin + 8;
+    if (reportType) {
+      doc.setFontSize(9.5);
+      doc.setTextColor(56, 189, 248); // #38BDF8 Sky Blue
+      doc.text(processRTL(reportType), leftX, yPosition + 8.5, { align: 'left' });
+    }
+    doc.setFontSize(7.5);
+    doc.setTextColor(203, 213, 225); // #CBD5E1
+    doc.text(processRTL(`تاريخ الإصدار: ${formatLocalDateTime()}`), leftX, yPosition + 15.5, { align: 'left' });
+  } else {
+    // --- LTR Header Layout ---
+    let storeX = pageMargin + 8;
+    if (logo) {
+      try {
+        const logoSize = 18;
+        doc.addImage(logo, 'PNG', pageMargin + 4, yPosition + 4, logoSize, logoSize);
+        storeX = pageMargin + logoSize + 8;
+      } catch {
+        // Skip
+      }
+    }
+
+    if (storeName) {
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text(storeName, storeX, yPosition + 8.5, { align: 'left' });
+    }
+
+    const storeDetails: string[] = [];
+    if (storePhone) storeDetails.push(storePhone);
+    if (storeAddress) storeDetails.push(storeAddress);
+    if (storeDetails.length > 0) {
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(storeDetails.join(' | '), storeX, yPosition + 15.5, { align: 'left' });
+    }
+
+    const rightX = pageWidth - pageMargin - 8;
+    if (reportType) {
+      doc.setFontSize(9.5);
+      doc.setTextColor(56, 189, 248);
+      doc.text(reportType, rightX, yPosition + 8.5, { align: 'right' });
+    }
+    doc.setFontSize(7.5);
+    doc.setTextColor(203, 213, 225);
+    doc.text(`Issued: ${formatLocalDateTime()}`, rightX, yPosition + 15.5, { align: 'right' });
   }
 
-  yPosition += 3;
+  yPosition += headerCardHeight + 7;
 
-  // Add horizontal line
-  doc.setDrawColor(200, 200, 200);
-  doc.line(15, yPosition, pageWidth - 15, yPosition);
-  yPosition += 8;
+  // Report Title
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42); // #0F172A
+  doc.text(processRTL(title), pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 5.5;
 
-  // Add report type and date header
-  doc.setFontSize(12);
-  doc.setTextColor(100, 100, 100);
-
-  // Report type on right
-  if (reportType) {
-    const reportTypeText = processRTL(reportType);
-    doc.text(reportTypeText, pageWidth - 15, yPosition, { align: 'right' });
-  }
-
-  // Date on left - process the full text together for proper Arabic display
-  const issueDateLabel = processRTL('تاريخ الإصدار:');
-  const currentDateTime = formatLocalDateTime();
-  // For Arabic, display date label then datetime
-  const dateText = currentLang === 'ar'
-    ? `${currentDateTime} ${issueDateLabel}`
-    : `${issueDateLabel} ${currentDateTime}`;
-  doc.text(dateText, currentLang === 'ar' ? pageWidth - 15 : 15, yPosition, {
-    align: currentLang === 'ar' ? 'right' : 'left'
-  });
-  yPosition += 10;
-
-  // Add title
-  doc.setFontSize(18);
-  doc.setTextColor(44, 62, 80);
-  const titleText = processRTL(title);
-  doc.text(titleText, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 8;
-
-  // Add subtitle
+  // Report Subtitle
   if (subtitle) {
-    doc.setFontSize(11);
-    doc.setTextColor(100, 100, 100);
-    const subtitleText = processRTL(subtitle);
-    doc.text(subtitleText, pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 10;
+    doc.setFontSize(9.5);
+    doc.setTextColor(100, 116, 139); // #64748B
+    doc.text(processRTL(subtitle), pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 5.5;
   }
 
-  // Top KPI Summary Cards (above table)
+  // Accent divider line
+  doc.setDrawColor(2, 132, 199); // #0284C7 Sky Blue
+  doc.setLineWidth(0.5);
+  doc.line(pageWidth / 2 - 25, yPosition, pageWidth / 2 + 25, yPosition);
+  yPosition += 6;
+
+  // ==========================================
+  // 2. TOP KPI SUMMARY CARDS
+  // ==========================================
   if (summary && summary.length > 0) {
-    const margin = 15;
-    const availableWidth = pageWidth - (margin * 2);
+    const availableWidth = pageWidth - (pageMargin * 2);
     const numCards = Math.min(summary.length, 4);
-    const cardGap = 3;
+    const cardGap = 3.5;
     const cardWidth = (availableWidth - (cardGap * (numCards - 1))) / numCards;
-    const cardHeight = 15;
+    const cardHeight = 16;
 
     summary.slice(0, 4).forEach((item, index) => {
       // In RTL (Arabic), place card 0 at rightmost position
-      const colIndex = currentLang === 'ar' ? (numCards - 1 - index) : index;
-      const cardX = margin + colIndex * (cardWidth + cardGap);
+      const colIndex = isRTL ? (numCards - 1 - index) : index;
+      const cardX = pageMargin + colIndex * (cardWidth + cardGap);
 
       // Card Background & Border
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252); // #F8FAFC
+      doc.setDrawColor(226, 232, 240); // #E2E8F0
+      doc.setLineWidth(0.2);
       doc.roundedRect(cardX, yPosition, cardWidth, cardHeight, 2, 2, 'FD');
+
+      // Top color accent strip on card
+      doc.setFillColor(2, 132, 199); // #0284C7
+      doc.roundedRect(cardX + 2, yPosition, cardWidth - 4, 0.8, 0.4, 0.4, 'F');
 
       // Metric Label
       doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      const font = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
-      doc.setFont(font, 'normal');
+      doc.setTextColor(100, 116, 139); // #64748B
+      doc.setFont(fontName, 'normal');
       const labelStr = processRTL(String(item.label));
-      doc.text(labelStr, cardX + cardWidth / 2, yPosition + 5, { align: 'center' });
+      doc.text(labelStr, cardX + cardWidth / 2, yPosition + 5.5, { align: 'center' });
 
       // Metric Value
-      doc.setFontSize(10);
-      doc.setTextColor(15, 23, 42);
-      doc.setFont(font, arabicFontLoaded ? 'normal' : 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42); // #0F172A
+      doc.setFont(fontName, 'normal');
       const valRaw = typeof item.value === 'number' ? item.value.toLocaleString('en-US') : String(item.value);
       const valStr = processRTL(valRaw);
-      doc.text(valStr, cardX + cardWidth / 2, yPosition + 11.5, { align: 'center' });
+      doc.text(valStr, cardX + cardWidth / 2, yPosition + 12, { align: 'center' });
     });
 
     yPosition += cardHeight + 6;
   }
 
-  // Prepare table data
-  const headers = columns.map(col => processRTL(col.header));
+  // ==========================================
+  // 3. TABLE DATA WITH RTL COLUMNS REVERSAL
+  // ==========================================
+  // For Arabic, reverse column order so column 0 appears on the far right and column N-1 on the far left
+  const effectiveColumns = isRTL ? [...columns].reverse() : [...columns];
+
+  const headers = effectiveColumns.map(col => processRTL(col.header));
   const rows = data.map(item =>
-    columns.map(col => {
+    effectiveColumns.map(col => {
       const value = item[col.key];
       if (typeof value === 'number') {
         return value.toLocaleString('en-US');
@@ -313,7 +465,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
 
   // Add totals row if provided
   if (totals) {
-    const totalsRow = columns.map(col => {
+    const totalsRow = effectiveColumns.map(col => {
       if (totals[col.key] !== undefined) {
         const value = totals[col.key];
         if (typeof value === 'number') {
@@ -321,6 +473,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
         }
         return processRTL(String(value));
       }
+      // Put label in the first logical column (columns[0])
       if (col.key === columns[0].key) {
         return processRTL('الإجمالي');
       }
@@ -329,8 +482,27 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     rows.push(totalsRow);
   }
 
-  // Add table using autoTable
-  const fontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
+  // Adjust columnStyles for reversed columns
+  const effectiveColumnStyles: Record<number | string, any> = {};
+  if (columnStyles) {
+    Object.keys(columnStyles).forEach(key => {
+      const num = Number(key);
+      if (!isNaN(num)) {
+        const targetIdx = isRTL ? (columns.length - 1 - num) : num;
+        effectiveColumnStyles[targetIdx] = columnStyles[key];
+      } else {
+        const originalIdx = columns.findIndex(c => c.key === key);
+        if (originalIdx !== -1) {
+          const targetIdx = isRTL ? (columns.length - 1 - originalIdx) : originalIdx;
+          effectiveColumnStyles[targetIdx] = columnStyles[key];
+        } else {
+          effectiveColumnStyles[key] = columnStyles[key];
+        }
+      }
+    });
+  }
+
+  // Render Table using autoTable
   autoTable(doc, {
     startY: yPosition,
     head: [headers],
@@ -338,81 +510,153 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     theme: 'grid',
     styles: {
       font: fontName,
-      fontSize: 10,
-      cellPadding: 3,
-      halign: 'center',
+      fontSize: 9,
+      cellPadding: { top: 3.5, bottom: 3.5, left: 3, right: 3 },
+      halign: isRTL ? 'right' : 'left',
       valign: 'middle',
+      textColor: [30, 41, 59], // #1E293B
+      lineColor: [226, 232, 240], // #E2E8F0 Soft border
+      lineWidth: 0.15,
+      minCellHeight: 8.5,
     },
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
-      // Avoid bold with Arabic custom fonts in jsPDF/autotable (may fallback to Latin font)
-      fontStyle: arabicFontLoaded ? 'normal' : 'bold',
+      fillColor: [30, 41, 59], // #1E293B Dark Slate Navy
+      textColor: [255, 255, 255],
+      fontStyle: 'normal', // Regular weight avoids Arabic glyph distortion
+      fontSize: 9.5,
+      cellPadding: { top: 4, bottom: 4, left: 3, right: 3 },
+      halign: 'center',
+      lineColor: [51, 65, 85], // #334155
+      lineWidth: 0.2,
     },
     alternateRowStyles: {
-      fillColor: [245, 245, 245],
+      fillColor: [248, 250, 252], // #F8FAFC Ultra-soft zebra striping
     },
-    // Style for totals row (last row if totals provided)
-    didParseCell: (data) => {
-      if (totals && data.row.index === rows.length - 1) {
-        data.cell.styles.fontStyle = arabicFontLoaded ? 'normal' : 'bold';
-        data.cell.styles.fillColor = [230, 230, 230];
+    bodyStyles: {
+      fillColor: [255, 255, 255],
+    },
+    didParseCell: (cellData) => {
+      // Style totals row (last row if totals provided)
+      if (totals && cellData.row.index === rows.length - 1) {
+        cellData.cell.styles.fillColor = [241, 245, 249]; // #F1F5F9 Soft Slate
+        cellData.cell.styles.textColor = [15, 23, 42]; // #0F172A
+        cellData.cell.styles.fontStyle = arabicFontLoaded ? 'normal' : 'bold';
+      }
+
+      if (isRTL) {
+        const rawVal = cellData.cell.raw;
+        const textVal = String(rawVal ?? '').trim();
+
+        if (cellData.section === 'head') {
+          // Check if corresponding column is predominantly textual
+          const col = effectiveColumns[cellData.column.index];
+          const isTextCol = col && data.some(row => {
+            const v = row[col.key];
+            return typeof v === 'string' && containsArabic(v);
+          });
+          cellData.cell.styles.halign = isTextCol ? 'right' : 'center';
+        } else if (cellData.section === 'body') {
+          // Texts containing Arabic align right, numbers/dates/prices/codes align center
+          if (containsArabic(textVal)) {
+            cellData.cell.styles.halign = 'right';
+          } else {
+            cellData.cell.styles.halign = 'center';
+          }
+        }
       }
     },
-    columnStyles: columnStyles,
+    columnStyles: effectiveColumnStyles,
   });
 
   // Get final Y position after table
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || yPosition + 50;
 
-  // Add extended summary section if more than 4 items were provided
+  // ==========================================
+  // 4. EXTENDED SUMMARY SECTION (IF > 4 ITEMS)
+  // ==========================================
   if (summary && summary.length > 4) {
-    let summaryY = finalY + 15;
+    let summaryY = finalY + 10;
 
-    // Summary header
-    doc.setFontSize(14);
-    doc.setTextColor(44, 62, 80);
-    doc.text(processRTL('خلاصة حسابية إضافية'), pageWidth / 2, summaryY, { align: 'center' });
-    summaryY += 8;
+    // Check if new page needed
+    if (summaryY + 35 > doc.internal.pageSize.height) {
+      doc.addPage();
+      summaryY = 18;
+    }
 
-    // Summary line
-    doc.setDrawColor(41, 128, 185);
-    doc.line(pageWidth / 2 - 40, summaryY, pageWidth / 2 + 40, summaryY);
-    summaryY += 8;
-
-    // Summary items
-    const summaryFontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
     doc.setFontSize(11);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont(fontName, 'normal');
+    doc.text(processRTL('خلاصة حسابية إضافية'), pageWidth / 2, summaryY, { align: 'center' });
+    summaryY += 4;
+
+    doc.setDrawColor(2, 132, 199);
+    doc.setLineWidth(0.4);
+    doc.line(pageWidth / 2 - 25, summaryY, pageWidth / 2 + 25, summaryY);
+    summaryY += 6;
+
+    const summaryBoxWidth = Math.min(pageWidth - (pageMargin * 2), 140);
+    const summaryBoxX = (pageWidth - summaryBoxWidth) / 2;
+
     summary.slice(4).forEach(item => {
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(summaryFontName, 'normal');
-      doc.text(processRTL(item.label + ':'), pageWidth / 2 + 30, summaryY, { align: 'right' });
-      doc.setTextColor(44, 62, 80);
-      doc.setFont(summaryFontName, arabicFontLoaded ? 'normal' : 'bold');
-      const valueText = typeof item.value === 'number'
-        ? item.value.toLocaleString('en-US')
-        : String(item.value);
-      doc.text(valueText, pageWidth / 2 - 30, summaryY, { align: 'left' });
-      doc.setFont(summaryFontName, 'normal');
-      summaryY += 6;
+      // Background strip
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(241, 245, 249);
+      doc.roundedRect(summaryBoxX, summaryY - 3.5, summaryBoxWidth, 7, 1.5, 1.5, 'FD');
+
+      doc.setFontSize(8.5);
+      if (isRTL) {
+        doc.setTextColor(100, 116, 139);
+        doc.text(processRTL(item.label + ':'), summaryBoxX + summaryBoxWidth - 6, summaryY + 1, { align: 'right' });
+
+        doc.setTextColor(15, 23, 42);
+        const valueText = typeof item.value === 'number'
+          ? item.value.toLocaleString('en-US')
+          : String(item.value);
+        doc.text(processRTL(valueText), summaryBoxX + 6, summaryY + 1, { align: 'left' });
+      } else {
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.label + ':', summaryBoxX + 6, summaryY + 1, { align: 'left' });
+
+        doc.setTextColor(15, 23, 42);
+        const valueText = typeof item.value === 'number'
+          ? item.value.toLocaleString('en-US')
+          : String(item.value);
+        doc.text(valueText, summaryBoxX + summaryBoxWidth - 6, summaryY + 1, { align: 'right' });
+      }
+
+      summaryY += 8.5;
     });
   }
 
-  // Add footer with date and page number
+  // ==========================================
+  // 5. FOOTER
+  // ==========================================
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    const footerY = doc.internal.pageSize.height - 8;
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(pageMargin, footerY - 4, pageWidth - pageMargin, footerY - 4);
+
     doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(148, 163, 184); // #94A3B8
+    doc.setFont(fontName, 'normal');
 
-    const footerDateText = formatLocalDate();
-    doc.text(footerDateText, 15, doc.internal.pageSize.height - 10);
+    if (isRTL) {
+      const footerDateText = processRTL(`التاريخ: ${formatLocalDate()}`);
+      doc.text(footerDateText, pageWidth - pageMargin, footerY, { align: 'right' });
+      const pageText = `${pageCount} / ${i}`;
+      doc.text(pageText, pageMargin, footerY, { align: 'left' });
+    } else {
+      const footerDateText = `Date: ${formatLocalDate()}`;
+      doc.text(footerDateText, pageMargin, footerY, { align: 'left' });
+      const pageText = `${i} / ${pageCount}`;
+      doc.text(pageText, pageWidth - pageMargin, footerY, { align: 'right' });
+    }
 
-    const pageText = `${i} / ${pageCount}`;
-    doc.text(pageText, pageWidth - 15, doc.internal.pageSize.height - 10, { align: 'right' });
-
-    // App name in center
-    doc.text('HyperPOS', pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+    doc.text('FlowPOS Pro', pageWidth / 2, footerY, { align: 'center' });
   }
 
   // Save the PDF based on platform
@@ -455,7 +699,9 @@ export const exportInvoicesToPDF = async (
   const data = invoices.map(inv => ({
     id: inv.id.substring(0, 8).toUpperCase(),
     date: formatInvoiceDate(inv.createdAt),
-    customerName: (inv.customerName && inv.customerName.trim() && inv.customerName.trim() !== 'عميل') ? inv.customerName.trim() : (inv.paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي'),
+    customerName: (inv.customerName && inv.customerName.trim() && inv.customerName.trim() !== 'عميل')
+      ? inv.customerName.trim()
+      : (inv.paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي'),
     total: inv.total,
     discount: inv.discount || 0,
     profit: inv.profit || 0,
@@ -574,12 +820,11 @@ export const exportProductsToPDF = async (
     summary,
     orientation: 'landscape',
     fileName: `منتجات_${new Date().toISOString().split('T')[0]}.pdf`,
-    // Optimization for product list: Name gets more space
     columnStyles: {
-      0: { cellWidth: 100 }, // Name - Increased width to prevent truncation
+      0: { cellWidth: 80 }, // Name
       1: { cellWidth: 35 }, // Barcode
       7: { cellWidth: 30 }, // Category
-    }
+    },
   });
 };
 
@@ -604,25 +849,34 @@ export const exportInvoiceReceiptToPDF = async (
     format: [80, 200], // Receipt size
   });
 
-  // ✅ Try to load Arabic font for receipt
   const currentLang = getCurrentLanguage();
   if (currentLang === 'ar') {
     try {
       await loadArabicFont(doc);
       arabicFontLoaded = true;
+      doc.setFont(ARABIC_FONT_NAME, 'normal');
     } catch {
       arabicFontLoaded = false;
+      doc.setFont('helvetica');
     }
+  } else {
+    doc.setFont('helvetica');
+    arabicFontLoaded = false;
+  }
+
+  if (typeof doc.setLineHeightFactor === 'function') {
+    doc.setLineHeightFactor(1.35);
   }
 
   let yPosition = 10;
   const pageWidth = 80;
   const margin = 5;
+  const font = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
 
   // Store name
   if (storeInfo?.name) {
     doc.setFontSize(12);
-    doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'bold');
+    doc.setFont(font, 'normal');
     const storeNameText = processRTL(storeInfo.name);
     doc.text(storeNameText, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 6;
@@ -631,20 +885,21 @@ export const exportInvoiceReceiptToPDF = async (
   // Store contact
   if (storeInfo?.phone) {
     doc.setFontSize(8);
-    doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'normal');
+    doc.setFont(font, 'normal');
     doc.text(storeInfo.phone, pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 4;
   }
 
   // Divider
-  doc.setDrawColor(150);
+  doc.setDrawColor(200);
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 5;
 
   // Invoice number and date
   doc.setFontSize(8);
+  doc.setFont(font, 'normal');
   doc.text(`#${invoice.id}`, pageWidth - margin, yPosition, { align: 'right' });
-  doc.text(new Date(invoice.createdAt).toLocaleDateString('ar-SA'), margin, yPosition);
+  doc.text(formatInvoiceDate(invoice.createdAt), margin, yPosition);
   yPosition += 6;
 
   // Customer
@@ -685,13 +940,12 @@ export const exportInvoiceReceiptToPDF = async (
   }
 
   // Total
-  doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'bold');
+  doc.setFont(font, 'normal');
   doc.text(processRTL('الإجمالي:'), pageWidth - margin - 25, yPosition, { align: 'right' });
   doc.text(invoice.total.toFixed(2), pageWidth - margin, yPosition, { align: 'right' });
   yPosition += 6;
 
   // Payment type
-  doc.setFont(arabicFontLoaded ? 'Cairo' : 'helvetica', 'normal');
   const paymentText = processRTL(invoice.paymentType === 'cash' ? 'نقدي' : 'آجل');
   doc.text(paymentText, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;

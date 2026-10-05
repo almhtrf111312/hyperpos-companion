@@ -3,16 +3,28 @@
 
 export const ARABIC_FONT_NAME = 'NotoSansArabic';
 
+// Memory cache for font base64 data to avoid repeated downloads and enable instant offline use
+let cachedRegularBase64: string | null = null;
+let cachedBoldBase64: string | null = null;
+
+const STORAGE_KEY_REGULAR = 'hyperpos_font_noto_reg_v1';
+const STORAGE_KEY_BOLD = 'hyperpos_font_noto_bold_v1';
+
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-  // Avoid stack issues with huge buffers by using a loop.
   const bytes = new Uint8Array(buffer);
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const len = bytes.length;
+  // Process in chunks to prevent potential call stack overflow with large arrays
+  const chunkSize = 8192;
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
   return btoa(binary);
 };
 
 const fetchFontAsBase64 = async (url: string): Promise<string> => {
-  const response = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+  const response = await fetch(url, { cache: 'force-cache' });
   if (!response.ok) throw new Error(`Font fetch failed (${response.status}): ${url}`);
   const buf = await response.arrayBuffer();
   if (buf.byteLength < 1000) throw new Error(`Font file too small: ${url}`);
@@ -20,58 +32,111 @@ const fetchFontAsBase64 = async (url: string): Promise<string> => {
 };
 
 // Loads Arabic fonts into jsPDF (normal + bold) and sets default to normal.
+// Includes offline local caching in memory and localStorage for resilience when offline on mobile/desktop.
 export const loadArabicFont = async (doc: any): Promise<void> => {
+  // 1) Load Regular font
+  if (!cachedRegularBase64) {
+    // Check localStorage cache first (offline fast-path)
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_REGULAR);
+      if (stored && stored.length > 5000) {
+        cachedRegularBase64 = stored;
+      }
+    } catch {
+      // localStorage may fail in restricted webview, proceed to fetch
+    }
+  }
+
   const regularSources = [
-    // Google Fonts repo (reliable)
+    // Local public bundled font (100% offline support in web & Capacitor app)
+    '/fonts/NotoSansArabic-Regular.ttf',
+    'fonts/NotoSansArabic-Regular.ttf',
+    // Google Fonts CDN repo (reliable online fallback)
     'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf',
-    // Google Fonts direct (fallback)
+    // Google Fonts direct fallback
     'https://fonts.gstatic.com/s/notosansarabic/v28/nwpxtLGrOAZMl5nJ_wfgRg3DrWFZWsnVBJ_sS6tlqHHFlj4wv4rqxzLI.ttf',
     // Amiri fallback
     'https://cdn.jsdelivr.net/gh/alif-type/amiri@master/Amiri-Regular.ttf',
   ];
 
   const boldSources = [
+    // Local public bundled font
+    '/fonts/NotoSansArabic-Bold.ttf',
+    'fonts/NotoSansArabic-Bold.ttf',
+    // CDN fallbacks
     'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansArabic/NotoSansArabic-Bold.ttf',
     'https://cdn.jsdelivr.net/gh/alif-type/amiri@master/Amiri-Bold.ttf',
   ];
 
   let lastError: Error | null = null;
 
-  // 1) Load Regular (required)
-  for (const url of regularSources) {
-    try {
-      console.log('Attempting to load Arabic regular font from:', url);
-      const base64 = await fetchFontAsBase64(url);
-      const fileName = 'NotoSansArabic-Regular.ttf';
-      doc.addFileToVFS(fileName, base64);
-      doc.addFont(fileName, ARABIC_FONT_NAME, 'normal');
-      doc.setFont(ARABIC_FONT_NAME, 'normal');
-      console.log('Arabic regular font loaded successfully from:', url);
-      lastError = null;
-      break;
-    } catch (e) {
-      lastError = e as Error;
-      console.warn('Arabic regular font source failed:', url, e);
+  if (cachedRegularBase64) {
+    const fileName = 'NotoSansArabic-Regular.ttf';
+    doc.addFileToVFS(fileName, cachedRegularBase64);
+    doc.addFont(fileName, ARABIC_FONT_NAME, 'normal');
+    doc.setFont(ARABIC_FONT_NAME, 'normal');
+  } else {
+    for (const url of regularSources) {
+      try {
+        const base64 = await fetchFontAsBase64(url);
+        const fileName = 'NotoSansArabic-Regular.ttf';
+        doc.addFileToVFS(fileName, base64);
+        doc.addFont(fileName, ARABIC_FONT_NAME, 'normal');
+        doc.setFont(ARABIC_FONT_NAME, 'normal');
+        cachedRegularBase64 = base64;
+        try {
+          localStorage.setItem(STORAGE_KEY_REGULAR, base64);
+        } catch {
+          // Ignore quota exceed
+        }
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e as Error;
+      }
+    }
+
+    if (lastError && !cachedRegularBase64) {
+      console.error('Could not load Arabic regular font from any source:', lastError);
+      throw lastError;
     }
   }
 
-  if (lastError) {
-    console.error('Could not load Arabic regular font from any source:', lastError);
-    throw lastError;
-  }
-
-  // 2) Load Bold (optional but strongly recommended)
-  for (const url of boldSources) {
+  // 2) Load Bold font (optional but recommended)
+  if (cachedBoldBase64) {
+    const fileName = 'NotoSansArabic-Bold.ttf';
+    doc.addFileToVFS(fileName, cachedBoldBase64);
+    doc.addFont(fileName, ARABIC_FONT_NAME, 'bold');
+  } else {
     try {
-      console.log('Attempting to load Arabic bold font from:', url);
-      const base64 = await fetchFontAsBase64(url);
-      const fileName = 'NotoSansArabic-Bold.ttf';
-      doc.addFileToVFS(fileName, base64);
-      doc.addFont(fileName, ARABIC_FONT_NAME, 'bold');
-      console.log('Arabic bold font loaded successfully from:', url);
-      break;
-    } catch (e) {
-      console.warn('Arabic bold font source failed:', url, e);
+      const storedBold = localStorage.getItem(STORAGE_KEY_BOLD);
+      if (storedBold && storedBold.length > 5000) {
+        cachedBoldBase64 = storedBold;
+        const fileName = 'NotoSansArabic-Bold.ttf';
+        doc.addFileToVFS(fileName, cachedBoldBase64);
+        doc.addFont(fileName, ARABIC_FONT_NAME, 'bold');
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    for (const url of boldSources) {
+      try {
+        const base64 = await fetchFontAsBase64(url);
+        const fileName = 'NotoSansArabic-Bold.ttf';
+        doc.addFileToVFS(fileName, base64);
+        doc.addFont(fileName, ARABIC_FONT_NAME, 'bold');
+        cachedBoldBase64 = base64;
+        try {
+          localStorage.setItem(STORAGE_KEY_BOLD, base64);
+        } catch {
+          // ignore
+        }
+        break;
+      } catch {
+        // Bold is optional
+      }
     }
   }
 };
