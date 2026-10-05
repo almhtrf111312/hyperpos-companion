@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { getDeviceKey } from '@/lib/secure-storage';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 import { recordServerContact, getOfflineStatus, isDataEncrypted, decryptLocalData, checkAndEnforceProtection } from '@/lib/offline-protection';
@@ -117,6 +118,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       }
 
       const response = await supabase.functions.invoke('check-license', {
+        body: { device_id: getDeviceKey() },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -213,7 +215,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       if (!session) return { success: false, error: 'يجب تسجيل الدخول أولاً' };
 
       const response = await supabase.functions.invoke('validate-activation-code', {
-        body: { code },
+        body: { code, device_id: getDeviceKey() },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 

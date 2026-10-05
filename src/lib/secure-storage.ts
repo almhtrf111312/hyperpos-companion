@@ -7,7 +7,7 @@
 const PERSISTENT_KEY_STORAGE = 'hp_device_id';
 
 // Generate a unique device key with persistent storage
-const getDeviceKey = (): string => {
+export const getDeviceKey = (): string => {
   // First: Try to get from session cache
   const cachedSession = sessionStorage.getItem('_hpdk');
   if (cachedSession) return cachedSession;

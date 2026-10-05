@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
     // Validate JWT using getClaims first
-    const token = authHeader.replace('Bearer ', '')
+    let requestBody: any = {}; try { requestBody = await req.json(); } catch (e) {} const incomingDeviceId = requestBody.device_id; const token = authHeader.replace('Bearer ', '')
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token)
     
     if (claimsError || !claimsData?.claims) {
@@ -153,6 +153,22 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Check device_id match
+    if (license.device_id && !license.allow_multi_device) {
+      if (!incomingDeviceId || license.device_id !== incomingDeviceId) {
+        return new Response(
+          JSON.stringify({ 
+            valid: false,
+            hasLicense: true,
+            isRevoked: true,
+            needsActivation: true,
+            role: roleData.role,
+            message: 'هذا الترخيص مرتبط بجهاز آخر. تشغيل الحساب المستنسخ ممنوع.'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
     // Check if license is revoked
     if (license.is_revoked) {
       return new Response(

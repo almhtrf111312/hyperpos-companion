@@ -55,11 +55,17 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get the activation code from request
-    const { code } = await req.json()
+    // Get the activation code and device id from request
+    const { code, device_id } = await req.json()
     if (!code || typeof code !== 'string') {
       return new Response(
         JSON.stringify({ success: false, error: 'كود التفعيل مطلوب' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (!device_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'معرف الجهاز مطلوب لربط الترخيص' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -80,180 +86,42 @@ Deno.serve(async (req) => {
     // Use service role to access activation_codes table
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log('Looking for code:', maskedLogCode)
+    console.log(`User ${user.email} attempting to activate code: ${maskedLogCode} on device ${device_id}`)
 
-    // Find the activation code - try exact match first
-    let { data: activationCode, error: codeError } = await supabaseAdmin
-      .from('activation_codes')
-      .select('*')
-      .eq('code', sanitizedCode)
-      .eq('is_active', true)
-      .single()
+    // Call strict activation RPC
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('activate_code_strict', {
+      p_code: sanitizedCode,
+      p_user_id: user.id,
+      p_user_email: user.email,
+      p_device_id: device_id
+    })
 
-    // If not found, try with case-insensitive match
-    if (codeError || !activationCode) {
-      console.log('Exact match failed, trying case-insensitive search')
-      const { data: codes } = await supabaseAdmin
-        .from('activation_codes')
-        .select('*')
-        .eq('is_active', true)
-      
-      console.log('Active code count:', codes?.length ?? 0)
-      
-      // Find matching code case-insensitively
-      activationCode = codes?.find(c => 
-        c.code.toUpperCase().replace(/[-\s]/g, '') === sanitizedCode.replace(/[-\s]/g, '')
-      ) || null
-    }
-
-    if (!activationCode) {
-      console.log('No matching code found for:', maskedLogCode)
+    if (rpcError) {
+      console.error('RPC Error:', rpcError)
       return new Response(
-        JSON.stringify({ success: false, error: 'كود التفعيل غير صالح أو غير موجود' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-    
-    console.log('Found activation code:', activationCode.id)
-
-    // Code reserved for a specific account: only that account may use it
-    if (activationCode.assigned_user_id && activationCode.assigned_user_id !== user.id) {
-      console.log('Code assigned to another user:', activationCode.id)
-      return new Response(
-        JSON.stringify({ success: false, error: 'هذا الكود مخصص لحساب آخر ولا يمكن استخدامه' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Check if code has expired
-    if (activationCode.expires_at && new Date(activationCode.expires_at) < new Date()) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'كود التفعيل منتهي الصلاحية' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ATOMIC UPDATE: Increment usage counter and check max_uses in one operation
-    // This prevents race condition where multiple requests can pass the check
-    const { data: updatedCode, error: atomicUpdateError } = await supabaseAdmin
-      .rpc('increment_activation_code_usage', { 
-        code_id: activationCode.id,
-        max_allowed: activationCode.max_uses
-      })
-
-    // If RPC doesn't exist, fall back to optimistic update with check
-    if (atomicUpdateError?.message?.includes('function') || atomicUpdateError?.code === '42883') {
-      console.log('Falling back to optimistic update')
-      
-      // Check current uses first
-      if (activationCode.current_uses >= activationCode.max_uses) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'كود التفعيل تم استخدامه بالكامل' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Try to increment with a WHERE clause to prevent race condition
-      const { data: updateResult, error: updateErr } = await supabaseAdmin
-        .from('activation_codes')
-        .update({ current_uses: activationCode.current_uses + 1 })
-        .eq('id', activationCode.id)
-        .lt('current_uses', activationCode.max_uses)
-        .select()
-        .single()
-
-      if (updateErr || !updateResult) {
-        console.log('Race condition detected or code exhausted:', updateErr)
-        return new Response(
-          JSON.stringify({ success: false, error: 'كود التفعيل تم استخدامه بالكامل' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    } else if (atomicUpdateError) {
-      console.error('Atomic update error:', atomicUpdateError)
-      return new Response(
-        JSON.stringify({ success: false, error: 'حدث خطأ أثناء التحقق من الكود' }),
+        JSON.stringify({ success: false, error: 'حدث خطأ في النظام أثناء تفعيل الترخيص' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-    } else if (updatedCode === false || updatedCode === null) {
-      // RPC returned false meaning code was exhausted
+    }
+
+    // The RPC returns a JSON object
+    if (!rpcResult.success) {
+      console.warn('Activation failed:', rpcResult.error)
       return new Response(
-        JSON.stringify({ success: false, error: 'كود التفعيل تم استخدامه بالكامل' }),
+        JSON.stringify({ success: false, error: rpcResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Calculate license expiry date
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + activationCode.duration_days)
-
-    // Check if user already has a license
-    const { data: existingLicense } = await supabaseAdmin
-      .from('app_licenses')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
-
-    const licenseData = {
-      activation_code_id: activationCode.id,
-      activated_at: new Date().toISOString(),
-      expires_at: expiresAt.toISOString(),
-      is_trial: false,
-      is_revoked: false,
-      revoked_at: null,
-      revoked_reason: null,
-      max_cashiers: activationCode.max_cashiers || 1,
-      license_tier: activationCode.license_tier || 'basic',
-    }
-
-    if (existingLicense) {
-      // Update existing license
-      const { error: updateError } = await supabaseAdmin
-        .from('app_licenses')
-        .update(licenseData)
-        .eq('user_id', user.id)
-
-      if (updateError) {
-        console.error('Error updating license:', updateError)
-        return new Response(
-          JSON.stringify({ success: false, error: 'حدث خطأ أثناء تحديث الترخيص' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    } else {
-      // Create new license
-      const { error: insertError } = await supabaseAdmin
-        .from('app_licenses')
-        .insert({
-          user_id: user.id,
-          ...licenseData,
-        })
-
-      if (insertError) {
-        console.error('Error creating license:', insertError)
-        return new Response(
-          JSON.stringify({ success: false, error: 'حدث خطأ أثناء إنشاء الترخيص' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    }
-
-    // Remember which account consumed this code (shown in the Boss panel)
-    await supabaseAdmin
-      .from('activation_codes')
-      .update({ used_by: user.id, used_at: new Date().toISOString() })
-      .eq('id', activationCode.id)
-      .is('used_by', null)
 
     console.log('License activated successfully for user:', user.id)
 
     return new Response(
       JSON.stringify({
         success: true,
-        expiresAt: expiresAt.toISOString(),
-        durationDays: activationCode.duration_days,
-        maxCashiers: activationCode.max_cashiers || 1,
-        licenseTier: activationCode.license_tier || 'basic',
+        expiresAt: rpcResult.expires_at,
+        durationDays: rpcResult.duration_days,
+        maxCashiers: rpcResult.max_cashiers,
+        licenseTier: rpcResult.license_tier,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
