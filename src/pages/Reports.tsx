@@ -1983,21 +1983,14 @@ export default function Reports() {
   const handleSwitchView = (tab: 'summary' | 'detailed' | 'comprehensive') => {
     setViewTab(tab);
     setSalesViewMode(tab === 'detailed' ? 'detailed' : 'summary');
-    const titles: Record<string, string> = {
-      summary: 'ملخص بياني وإحصائي',
-      detailed: 'كشف الفواتير التفصيلي',
-      comprehensive: 'عرض تقرير شامل'
-    };
-    toast.success(`تم تبديل العرض إلى: ${titles[tab]} ✨`, { duration: 2500 });
   };
 
-  const handleSelectReportFromModal = (reportId: string, reportName: string) => {
+  const handleSelectReportFromModal = (reportId: string, _reportName?: string) => {
     setIsAllReportsModalOpen(false);
     setActiveReport(reportId);
     if (reportId === 'sales') {
       setViewTab('summary');
     }
-    toast.success(`تم الانتقال إلى: ${reportName} ✨`, { duration: 2500 });
   };
 
   const ALL_REPORT_SECTIONS = [
@@ -2393,7 +2386,6 @@ export default function Reports() {
                 onClick={() => {
                   setActiveReport('sales');
                   setViewTab('summary');
-                  toast.success('تمت العودة إلى ملخص المبيعات');
                 }}
                 className="h-8 px-3 rounded-xl border-primary/30 bg-background text-primary font-bold text-xs gap-1.5 shadow-sm"
               >
@@ -2588,7 +2580,6 @@ export default function Reports() {
                             type="button"
                             onClick={() => {
                               setActiveReport('top-products');
-                              toast.success('تم الانتقال إلى تقرير الأكثر مبيعاً ✨');
                             }}
                             className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium flex items-center justify-center gap-1.5 w-full py-1.5"
                           >
@@ -2704,7 +2695,6 @@ export default function Reports() {
                 className="w-full rounded-xl text-xs font-bold h-10"
                 onClick={() => {
                   setShowCustomDateModal(false);
-                  toast.success(`تم تطبيق الفترة: من ${filters.dateRange.from} إلى ${filters.dateRange.to}`);
                 }}
               >
                 تطبيق الفترة

@@ -134,6 +134,10 @@ const CART_DISCOUNT_KEY = 'hyperpos_cart_discount';
 const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
 // Note: PENDING_BARCODE_KEY is also exported from OfflineBarcodeScanner for consistency
 
+// ذاكرة مؤقتة على مستوى الوحدة لحفظ المنتجات والأقسام ومنع إعادة التحميل أو قفزات الواجهة عند تبديل التبويبات
+let memoryPosProductsCache: POSProduct[] = [];
+let memoryPosCategoriesCache: string[] = [];
+
 export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
@@ -248,9 +252,10 @@ export default function POS() {
 
   // تم إزالة useEffect القديم الذي كان يمسح الباركود المعلق فقط دون معالجته
 
-  // مستمع حالة التطبيق (APK)
+  // مستمع حالة التطبيق (APK + Web) لحفظ واستعادة السلة بأمان دون إعادة تحميل أو تسريب listeners
   useEffect(() => {
     let appListener: { remove: () => void } | null = null;
+    let visibilityHandler: (() => void) | null = null;
 
     App.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) {
@@ -262,7 +267,7 @@ export default function POS() {
         }
         localStorage.setItem(CART_OPEN_KEY, cartOpenRef.current ? '1' : '0');
       } else {
-        // استعادة عند العودة
+        // استعادة عند العودة دون إعادة طلب سحابي
         restoreCart();
         // ✅ استعادة الباركود المعلق عند العودة من ماسح الباركود
         try {
@@ -283,8 +288,16 @@ export default function POS() {
     }).then(listener => {
       appListener = listener;
     }).catch(() => {
-      // Not native - use beforeunload
+      // بيئة الويب - حفظ السلة عند الخروج أو تغيير التبويب دون إعادة طلب المنتجات
       window.addEventListener('beforeunload', saveCart);
+      visibilityHandler = () => {
+        if (document.visibilityState === 'hidden') {
+          saveCart();
+        } else if (document.visibilityState === 'visible') {
+          restoreCart();
+        }
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
     });
 
     // ✅ Listen for barcode-restored event (from App.tsx appRestoredResult)
@@ -300,9 +313,10 @@ export default function POS() {
     return () => {
       if (appListener) appListener.remove();
       window.removeEventListener('beforeunload', saveCart);
+      if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
       window.removeEventListener('barcode-restored', handleBarcodeRestored);
     };
-  }, [cart, cartOpen, saveCart, restoreCart]);
+  }, [saveCart, restoreCart]);
 
   const [discount, setDiscount] = useState<number>(() => {
     try {
@@ -318,11 +332,23 @@ export default function POS() {
       else localStorage.removeItem(CART_DISCOUNT_KEY);
     } catch {}
   }, [discount]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(() => memoryPosProductsCache.length === 0);
 
-  // Load products and categories from cloud
-  const [products, setProducts] = useState<POSProduct[]>([]);
-  const [categories, setCategories] = useState<string[]>([t('common.all')]);
+  // Load products and categories from cloud or memory cache
+  const [products, setProducts] = useState<POSProduct[]>(() => memoryPosProductsCache);
+  const [categories, setCategories] = useState<string[]>(() =>
+    memoryPosCategoriesCache.length > 0 ? memoryPosCategoriesCache : [t('common.all')]
+  );
+
+  const updateProducts = useCallback((items: POSProduct[]) => {
+    memoryPosProductsCache = items;
+    setProducts(items);
+  }, []);
+
+  const updateCategories = useCallback((cats: string[]) => {
+    memoryPosCategoriesCache = cats;
+    setCategories(cats);
+  }, []);
 
   // Scanned product dialog
   const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
@@ -363,7 +389,7 @@ export default function POS() {
   }, [t]);
 
   // Load products and categories from cloud with retry logic
-  // ✅ تحميل فوري من الكاش المحلي المسبق (<0.5 ثانية) ثم مزامنة سحابية في الخلفية
+  // ✅ تحميل فوري من الكاش المحلي المسبق ثم مزامنة سحابية هادئة في الخلفية دون وميض أو قفزة بالواجهة
   const loadData = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
     if (profile === undefined) {
       console.log('[POS] Profile not loaded yet, waiting...');
@@ -371,9 +397,10 @@ export default function POS() {
     }
 
     const userType = profile?.user_type || 'cashier';
+    const hasCached = memoryPosProductsCache.length > 0;
 
-    // ⚡ الخطوة 1: التحميل الفوري من الكاش المحلي (Local-First) دون حجب الشاشة
-    if (!isBackgroundRefresh) {
+    // ⚡ الخطوة 1: التحميل الفوري من الكاش المحلي (Local-First) دون حجب الشاشة إذا لم تكن البيانات بالذاكرة
+    if (!isBackgroundRefresh && !hasCached) {
       try {
         const localProducts = await loadProductsLocalFirst();
         if (localProducts && localProducts.length > 0) {
@@ -391,12 +418,12 @@ export default function POS() {
                   return null;
                 })
                 .filter((p): p is POSProduct => p !== null);
-              setProducts(filtered);
+              updateProducts(filtered);
             } else {
-              setProducts(initialPosProducts);
+              updateProducts(initialPosProducts);
             }
           } else {
-            setProducts(initialPosProducts);
+            updateProducts(initialPosProducts);
           }
 
           // إيقاف مؤشر التحميل فوراً ليظهر كل شيء في أقل من نصف ثانية
@@ -441,12 +468,12 @@ export default function POS() {
           })
           .filter((p): p is POSProduct => p !== null);
 
-        setProducts(filteredProducts);
+        updateProducts(filteredProducts);
       } else {
-        setProducts(allPosProducts);
+        updateProducts(allPosProducts);
       }
 
-      setCategories([t('common.all'), ...cloudCategories]);
+      updateCategories([t('common.all'), ...cloudCategories]);
     } catch (error) {
       console.error('Error in background sync:', error);
       if (retryCount < 3) {
@@ -455,11 +482,12 @@ export default function POS() {
     } finally {
       setIsLoadingProducts(false);
     }
-  }, [profile, activeWarehouse, formatPosProducts, t]);
+  }, [profile, activeWarehouse, formatPosProducts, t, updateProducts, updateCategories]);
 
   // Reload data when component mounts or when returning to this page
   useEffect(() => {
-    loadData();
+    const hasCached = memoryPosProductsCache.length > 0;
+    loadData(0, hasCached);
 
     // ✅ الاستماع لحدث EVENTS.PRODUCTS_UPDATED لتحديث لحظي وفوري من الكاش أولاً ثم الخلفية
     const onProductsUpdated = async () => {
@@ -479,12 +507,12 @@ export default function POS() {
                   return null;
                 })
                 .filter((p): p is POSProduct => p !== null);
-              setProducts(filtered);
+              updateProducts(filtered);
             } else {
-              setProducts(posItems);
+              updateProducts(posItems);
             }
           } else {
-            setProducts(posItems);
+            updateProducts(posItems);
           }
         }
       } catch (e) {
@@ -502,7 +530,7 @@ export default function POS() {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
     };
-  }, [loadData, formatPosProducts, profile, activeWarehouse]);
+  }, [loadData, formatPosProducts, profile, activeWarehouse, updateProducts]);
 
   const currencies: Currency[] = useMemo(() => {
     const rates = loadExchangeRates();

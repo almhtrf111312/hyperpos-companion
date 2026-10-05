@@ -73,6 +73,14 @@ export function ProductGrid({
     localStorage.setItem('pos_view_mode', viewMode);
   }, [viewMode]);
 
+  const cycleViewMode = () => {
+    setViewMode((prev) => {
+      if (prev === 'grid') return 'list';
+      if (prev === 'list') return 'compact';
+      return 'grid';
+    });
+  };
+
   // ✅ استعادة الباركود المعلق — يتم التعامل معها في POS.tsx الآن
   // ProductGrid لم يعد يعالج PENDING_BARCODE_KEY مباشرة لتجنب التكرار
 
@@ -145,9 +153,28 @@ export function ProductGrid({
       {/* Search, View Toggle, and Categories */}
       <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md space-y-3 md:space-y-4">
         <div className="flex gap-2 items-center">
-          {/* View Mode Buttons - moved to left */}
-          <div className="flex border border-border rounded-2xl overflow-hidden flex-shrink-0 bg-muted/70 p-1 shadow-sm h-11 md:h-12 items-center">
+          {/* Mobile Single Cycle View Mode Button */}
+          <button
+            type="button"
+            onClick={cycleViewMode}
+            className="flex md:hidden items-center justify-center h-11 w-11 rounded-2xl border border-border bg-muted/70 text-foreground hover:bg-background/80 shadow-sm flex-shrink-0 transition-all duration-200"
+            title={
+              viewMode === 'grid'
+                ? t('pos.viewGrid')
+                : viewMode === 'list'
+                ? t('pos.viewList')
+                : t('pos.viewCompact')
+            }
+          >
+            {viewMode === 'grid' && <LayoutGrid className="w-4 h-4 text-primary" />}
+            {viewMode === 'list' && <List className="w-4 h-4 text-primary" />}
+            {viewMode === 'compact' && <AlignJustify className="w-4 h-4 text-primary" />}
+          </button>
+
+          {/* Desktop View Mode Toggle (3 Buttons) */}
+          <div className="hidden md:flex border border-border rounded-2xl overflow-hidden flex-shrink-0 bg-muted/70 p-1 shadow-sm h-11 md:h-12 items-center">
             <button
+              type="button"
               onClick={() => setViewMode('grid')}
               className={cn(
                 "p-2 md:p-2.5 rounded-xl transition-all duration-200",
@@ -158,6 +185,7 @@ export function ProductGrid({
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('list')}
               className={cn(
                 "p-2 md:p-2.5 rounded-xl transition-all duration-200",
@@ -168,6 +196,7 @@ export function ProductGrid({
               <List className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('compact')}
               className={cn(
                 "p-2 md:p-2.5 rounded-xl transition-all duration-200",
@@ -179,14 +208,14 @@ export function ProductGrid({
             </button>
           </div>
 
-          <div className="flex-1 relative flex items-center">
-            <Search className="absolute right-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0 relative flex items-center">
+            <Search className="absolute rtl:right-3 ltr:left-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground pointer-events-none" />
             <Input
               type="text"
               placeholder={tDynamic('productSearch')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pr-9 md:pr-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm"
+              className="rtl:pr-9 ltr:pl-9 md:rtl:pr-10 md:ltr:pl-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm w-full"
             />
           </div>
 
