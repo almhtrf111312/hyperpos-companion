@@ -1,6 +1,7 @@
 import { emitEvent, EVENTS } from './events';
 import { addExpenseCloud, ExpenseType } from './cloud/expenses-cloud';
 import { processExpense } from './unified-transactions';
+import { toLocalDateString } from './date-utils';
 
 const RECURRING_EXPENSES_KEY = 'hyperpos_recurring_expenses_v1';
 
@@ -129,25 +130,28 @@ export async function payRecurringExpense(id: string): Promise<boolean> {
   
   if (!expense) return false;
   
+  const todayStr = toLocalDateString(new Date());
+
   // Add as regular cloud expense
   await addExpenseCloud({
     type: expense.type,
     customType: expense.customType || expense.name,
     amount: expense.amount,
     notes: `${expense.name} - مصروف ثابت متكرر`,
-    date: new Date().toISOString().split('T')[0],
+    date: todayStr,
   });
 
   // خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
   processExpense(expense.amount, expense.type);
+  emitEvent(EVENTS.EXPENSES_UPDATED, null);
   
   // Calculate next due date
-  const nextDate = new Date(expense.nextDueDate);
-  nextDate.setDate(nextDate.getDate() + expense.intervalDays);
+  const nextDate = new Date(expense.nextDueDate || todayStr);
+  nextDate.setDate(nextDate.getDate() + (expense.intervalDays || 30));
   
   // Update the recurring expense
-  expense.lastPaidDate = new Date().toISOString().split('T')[0];
-  expense.nextDueDate = nextDate.toISOString().split('T')[0];
+  expense.lastPaidDate = todayStr;
+  expense.nextDueDate = toLocalDateString(nextDate);
   
   saveRecurringExpenses(expenses);
   return true;
@@ -160,10 +164,10 @@ export function skipRecurringExpense(id: string): boolean {
   if (!expense) return false;
   
   // Calculate next due date without paying
-  const nextDate = new Date(expense.nextDueDate);
-  nextDate.setDate(nextDate.getDate() + expense.intervalDays);
+  const baseDate = new Date(expense.nextDueDate || toLocalDateString(new Date()));
+  baseDate.setDate(baseDate.getDate() + (expense.intervalDays || 30));
   
-  expense.nextDueDate = nextDate.toISOString().split('T')[0];
+  expense.nextDueDate = toLocalDateString(baseDate);
   
   saveRecurringExpenses(expenses);
   return true;

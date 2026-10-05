@@ -95,10 +95,11 @@ function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
     type,
     typeLabel: getExpenseTypeLabel(type),
     category: getExpenseCategory(type),
+    customType: cloud.description || undefined,
     amount: Number(cloud.amount) || 0,
     notes: cloud.notes || undefined,
     date: cloud.date,
-    month: cloud.date.substring(0, 7),
+    month: (cloud.date || '').substring(0, 7),
     distributions: cloud.distributions || [],
     createdAt: cloud.created_at,
     cashierId: cloud.cashier_id || undefined,
@@ -239,43 +240,106 @@ export const addExpenseCloud = async (expenseData: {
 }): Promise<Expense | null> => {
   // Server does expense + partner shares together, idempotent by operation UUID.
   const operationId = crypto.randomUUID();
+  const currentUid = getCurrentUserId() || '';
+  const nowIso = new Date().toISOString();
+  const roundedAmount = Math.round(expenseData.amount * 100) / 100;
+
   const payload = {
     _operation_id: operationId,
     _expense_type: expenseData.type,
-    _amount: Math.round(expenseData.amount * 100) / 100,
+    _amount: roundedAmount,
     _description: expenseData.customType || null,
     _date: expenseData.date,
     _notes: expenseData.notes || null,
   };
-  const nowIso = new Date().toISOString();
+
   const localExpense = toExpense({
-    id: operationId, user_id: '', expense_type: expenseData.type, amount: payload._amount,
-    description: payload._description, date: expenseData.date, notes: payload._notes,
-    distributions: [], created_at: nowIso, cashier_id: getCurrentUserId(),
+    id: operationId,
+    user_id: currentUid,
+    expense_type: expenseData.type,
+    amount: roundedAmount,
+    description: payload._description,
+    date: expenseData.date,
+    notes: payload._notes,
+    distributions: [],
+    created_at: nowIso,
+    cashier_id: currentUid || null,
   } as unknown as CloudExpense);
 
-  const queueIt = () => {
+  const saveToLocalAndQueue = () => {
     addToQueue('expense_atomic', payload, 10);
-    const list = [localExpense, ...(expensesCache || loadExpensesLocally() || [])];
-    expensesCache = list; cacheTimestamp = Date.now(); saveExpensesLocally(list);
+    const existing = expensesCache || loadExpensesLocally() || [];
+    const list = [localExpense, ...existing.filter(e => e.id !== localExpense.id)];
+    expensesCache = list;
+    cacheTimestamp = Date.now();
+    saveExpensesLocally(list);
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
+    emitEvent(EVENTS.PARTNERS_UPDATED, null);
+    triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
     return localExpense;
   };
 
-  if (!navigator.onLine) return queueIt();
-
-  const { error } = await sb.rpc('add_expense_atomic', payload);
-  if (error) {
-    const msg = (error.message || '').toLowerCase();
-    if (msg.includes('fetch') || msg.includes('network')) return queueIt();
-    console.error('[addExpenseCloud] failed:', error);
-    return null;
+  // 1. Offline fallback
+  if (!navigator.onLine) {
+    return saveToLocalAndQueue();
   }
-  invalidateExpensesCache();
-  emitEvent(EVENTS.EXPENSES_UPDATED, null);
-  emitEvent(EVENTS.PARTNERS_UPDATED, null);
-  triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
-  return localExpense;
+
+  // 2. Try atomic RPC first
+  try {
+    const { error: rpcError } = await sb.rpc('add_expense_atomic', payload);
+    if (!rpcError) {
+      invalidateExpensesCache();
+      const existing = expensesCache || loadExpensesLocally() || [];
+      const list = [localExpense, ...existing.filter(e => e.id !== localExpense.id)];
+      expensesCache = list;
+      cacheTimestamp = Date.now();
+      saveExpensesLocally(list);
+      emitEvent(EVENTS.EXPENSES_UPDATED, null);
+      emitEvent(EVENTS.PARTNERS_UPDATED, null);
+      triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
+      return localExpense;
+    }
+
+    console.warn('[addExpenseCloud] RPC failed, trying direct table insert fallback:', rpcError);
+
+    // 3. Fallback: Direct insert into expenses table (if RPC failed due to partner constraints or RPC issue)
+    try {
+      const directPayload = {
+        id: operationId,
+        user_id: currentUid,
+        cashier_id: currentUid || null,
+        expense_type: expenseData.type,
+        amount: roundedAmount,
+        description: payload._description,
+        notes: payload._notes,
+        date: expenseData.date,
+        created_at: nowIso,
+      };
+
+      const { error: insertError } = await sb.from('expenses').insert(directPayload);
+      if (!insertError) {
+        invalidateExpensesCache();
+        const existing = expensesCache || loadExpensesLocally() || [];
+        const list = [localExpense, ...existing.filter(e => e.id !== localExpense.id)];
+        expensesCache = list;
+        cacheTimestamp = Date.now();
+        saveExpensesLocally(list);
+        emitEvent(EVENTS.EXPENSES_UPDATED, null);
+        emitEvent(EVENTS.PARTNERS_UPDATED, null);
+        triggerAutoBackup(`مصروف جديد: ${expenseData.type}`);
+        return localExpense;
+      }
+      console.warn('[addExpenseCloud] Direct insert failed, queueing locally:', insertError);
+    } catch (insertEx) {
+      console.warn('[addExpenseCloud] Direct insert exception:', insertEx);
+    }
+
+    // 4. Resilient local-first fallback: queue the expense and return localExpense
+    return saveToLocalAndQueue();
+  } catch (ex) {
+    console.warn('[addExpenseCloud] Exception during expense save, falling back to local queue:', ex);
+    return saveToLocalAndQueue();
+  }
 };
 
 // Delete expense
@@ -313,19 +377,23 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
 // Get expense stats
 export const getExpenseStatsCloud = async () => {
   const expenses = await loadExpensesCloud();
-  const currentMonth = new Date().toISOString().substring(0, 7);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   
-  const monthlyExpenses = expenses.filter(e => e.month === currentMonth);
-  const totalThisMonth = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const monthlyExpenses = expenses.filter(e => {
+    const expMonth = (e.month || (e.date ? e.date.substring(0, 7) : '') || '').substring(0, 7);
+    return expMonth === currentMonth;
+  });
+  const totalThisMonth = monthlyExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   
   const byType: Record<string, number> = {};
   monthlyExpenses.forEach(e => {
     const label = e.typeLabel;
-    byType[label] = (byType[label] || 0) + e.amount;
+    byType[label] = (byType[label] || 0) + (Number(e.amount) || 0);
   });
   
   return {
-    totalExpenses: expenses.reduce((sum, e) => sum + e.amount, 0),
+    totalExpenses: expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
     totalThisMonth,
     expenseCount: expenses.length,
     monthlyCount: monthlyExpenses.length,

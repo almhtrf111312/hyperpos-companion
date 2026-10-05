@@ -31,6 +31,7 @@ import { loadPurchaseInvoicesCloud } from '@/lib/cloud/purchase-invoices-cloud';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import { isNoInventoryMode } from '@/lib/store-type-config';
+import { toLocalDateString } from '@/lib/date-utils';
 
 const DASHBOARD_CACHE_KEY = 'hyperpos_dashboard_stats_cache_v1';
 
@@ -68,7 +69,6 @@ export default function Dashboard() {
   })();
   const [hasData, setHasData] = useState<boolean>(!!cached);
   const [loadError, setLoadError] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<number | null>(cached?.at ?? null);
   const [stats, setStats] = useState(cached?.stats ?? {
     todaySales: 0,
     weekSales: 0,
@@ -131,21 +131,26 @@ export default function Dashboard() {
       ]);
 
       const todayDate = new Date();
-      const todayStr = todayDate.toDateString();
+      const todayLocalYMD = toLocalDateString(todayDate);
+      const thisMonthPrefix = todayLocalYMD.substring(0, 7);
       const isActiveInvoice = (inv: { status?: string }) => inv.status !== 'cancelled' && inv.status !== 'refunded';
 
       const todayInvoices = invoices.filter(inv =>
-        new Date(inv.createdAt).toDateString() === todayStr && isActiveInvoice(inv)
+        toLocalDateString(inv.createdAt) === todayLocalYMD && isActiveInvoice(inv)
       );
 
       const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.total, 0);
       const todayGrossProfit = todayInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
       const todayCOGS = todaySales - todayGrossProfit;
 
-      const todayExpensesRecords = expenses.filter(exp =>
-        new Date(exp.date).toDateString() === todayStr
-      );
-      const todayExpenses = todayExpensesRecords.reduce((sum, exp) => sum + exp.amount, 0);
+      const todayExpensesRecords = expenses.filter(exp => {
+        if (!exp.date) return false;
+        const expDateStr = typeof exp.date === 'string' && exp.date.length >= 10
+          ? exp.date.substring(0, 10)
+          : toLocalDateString(exp.date);
+        return expDateStr === todayLocalYMD;
+      });
+      const todayExpenses = todayExpensesRecords.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
 
       const todayProfit = todayGrossProfit;
       const netProfit = todayGrossProfit - todayExpenses;
@@ -156,12 +161,8 @@ export default function Dashboard() {
 
       const profitMargin = todaySales > 0 ? Math.round((todayProfit / todaySales) * 100) : 0;
 
-      const thisMonth = new Date().getMonth();
-      const thisYear = new Date().getFullYear();
-
       const monthInvoices = invoices.filter(inv => {
-        const date = new Date(inv.createdAt);
-        return date.getMonth() === thisMonth && date.getFullYear() === thisYear && isActiveInvoice(inv);
+        return toLocalDateString(inv.createdAt).substring(0, 7) === thisMonthPrefix && isActiveInvoice(inv);
       });
 
       const uniqueCustomers = new Set(monthInvoices.map(inv => inv.customerName)).size;
@@ -169,9 +170,10 @@ export default function Dashboard() {
 
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const oneWeekAgoYMD = toLocalDateString(oneWeekAgo);
 
       const weekInvoices = invoices.filter(inv =>
-        new Date(inv.createdAt) >= oneWeekAgo && isActiveInvoice(inv)
+        toLocalDateString(inv.createdAt) >= oneWeekAgoYMD && isActiveInvoice(inv)
       );
       const weekSales = weekInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
@@ -183,35 +185,35 @@ export default function Dashboard() {
         .reduce((sum, pi) => sum + (pi.actual_grand_total || 0), 0);
 
       // Helper: generate 7-day array for a metric
-      const make7Days = (fn: (dayStr: string) => number) =>
+      const make7Days = (fn: (dayYmd: string) => number) =>
         Array.from({ length: 7 }, (_, i) => {
           const d = new Date(); d.setDate(d.getDate() - (6 - i));
-          return fn(d.toDateString());
+          return fn(toLocalDateString(d));
         });
 
       // Daily sales for last 7 days (sparkline)
-      const dailySales = make7Days(dayStr =>
-        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && isActiveInvoice(inv))
+      const dailySales = make7Days(dayYmd =>
+        invoices.filter(inv => toLocalDateString(inv.createdAt) === dayYmd && isActiveInvoice(inv))
           .reduce((sum, inv) => sum + inv.total, 0)
       );
 
-      const dailyProfit = make7Days(dayStr =>
-        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && isActiveInvoice(inv))
+      const dailyProfit = make7Days(dayYmd =>
+        invoices.filter(inv => toLocalDateString(inv.createdAt) === dayYmd && isActiveInvoice(inv))
           .reduce((sum, inv) => sum + (inv.profit || 0), 0)
       );
 
-      const dailyDebts = make7Days(dayStr =>
-        debts.filter(d => new Date(d.createdAt).toDateString() === dayStr && d.status !== 'fully_paid')
+      const dailyDebts = make7Days(dayYmd =>
+        debts.filter(d => toLocalDateString(d.createdAt) === dayYmd && d.status !== 'fully_paid')
           .reduce((sum, d) => sum + d.remainingDebt, 0)
       );
 
-      const dailyCustomers = make7Days(dayStr =>
-        new Set(invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && isActiveInvoice(inv))
+      const dailyCustomers = make7Days(dayYmd =>
+        new Set(invoices.filter(inv => toLocalDateString(inv.createdAt) === dayYmd && isActiveInvoice(inv))
           .map(inv => inv.customerName)).size
       );
 
-      const dailyRefunds = make7Days(dayStr =>
-        invoices.filter(inv => new Date(inv.createdAt).toDateString() === dayStr && inv.status === 'refunded')
+      const dailyRefunds = make7Days(dayYmd =>
+        invoices.filter(inv => toLocalDateString(inv.createdAt) === dayYmd && inv.status === 'refunded')
           .reduce((sum, inv) => sum + inv.total, 0)
       );
 
@@ -222,9 +224,11 @@ export default function Dashboard() {
       const monthWeeklySales = Array.from({ length: 4 }, (_, i) => {
         const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() - (i * 7));
         const weekStart = new Date(weekEnd); weekStart.setDate(weekStart.getDate() - 6);
+        const startYmd = toLocalDateString(weekStart);
+        const endYmd = toLocalDateString(weekEnd);
         return invoices.filter(inv => {
-          const d = new Date(inv.createdAt);
-          return d >= weekStart && d <= weekEnd && isActiveInvoice(inv);
+          const dStr = toLocalDateString(inv.createdAt);
+          return dStr >= startYmd && dStr <= endYmd && isActiveInvoice(inv);
         }).reduce((sum, inv) => sum + inv.total, 0);
       }).reverse();
 
@@ -278,14 +282,13 @@ export default function Dashboard() {
 
       // ✅ إحصائيات الفواتير المستردة
       const todayRefundedInvoices = invoices.filter(inv =>
-        new Date(inv.createdAt).toDateString() === todayStr && inv.status === 'refunded'
+        toLocalDateString(inv.createdAt) === todayLocalYMD && inv.status === 'refunded'
       );
       const todayRefundedCount = todayRefundedInvoices.length;
 
       const monthRefundedAmount = invoices
         .filter(inv => {
-          const d = new Date(inv.createdAt);
-          return d.getMonth() === thisMonth && d.getFullYear() === thisYear && inv.status === 'refunded';
+          return toLocalDateString(inv.createdAt).substring(0, 7) === thisMonthPrefix && inv.status === 'refunded';
         })
         .reduce((sum, inv) => sum + inv.total, 0);
 
@@ -329,7 +332,6 @@ export default function Dashboard() {
       setHasData(true);
       setLoadError(false);
       const now = Date.now();
-      setLastUpdated(now);
       try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ stats: nextStats, at: now })); } catch { /* quota */ }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);

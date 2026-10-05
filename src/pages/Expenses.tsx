@@ -72,6 +72,7 @@ import {
 import { emitEvent, EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { processExpense } from '@/lib/unified-transactions';
+import { toLocalDateString } from '@/lib/date-utils';
 
 export default function Expenses() {
   const { t } = useLanguage();
@@ -107,7 +108,7 @@ export default function Expenses() {
     customType: '',
     amount: 0,
     notes: '',
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateString(new Date()),
   });
 
   // Recurring form state
@@ -117,7 +118,7 @@ export default function Expenses() {
     customType: '',
     amount: 0,
     intervalDays: 30,
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: toLocalDateString(new Date()),
     notes: '',
     payImmediately: false,
   });
@@ -166,7 +167,7 @@ export default function Expenses() {
       customType: '',
       amount: 0,
       notes: '',
-      date: new Date().toISOString().split('T')[0],
+      date: toLocalDateString(new Date()),
     });
   };
 
@@ -177,7 +178,7 @@ export default function Expenses() {
       customType: '',
       amount: 0,
       intervalDays: 30,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: toLocalDateString(new Date()),
       notes: '',
       payImmediately: false,
     });
@@ -216,8 +217,12 @@ export default function Expenses() {
       // ✅ خصم المبلغ من الصندوق تلقائياً (الترابط الجديد)
       processExpense(formData.amount, formData.type);
 
-      const expensesData = await loadExpensesCloud();
+      const [expensesData, statsData] = await Promise.all([
+        loadExpensesCloud(),
+        getExpenseStatsCloud()
+      ]);
       setExpenses(expensesData);
+      setStats(statsData);
       setShowAddDialog(false);
       resetForm();
       toast.success(t('expenses.expenseAdded'));
@@ -245,7 +250,7 @@ export default function Expenses() {
     });
 
     if (recurringForm.payImmediately) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = toLocalDateString(new Date());
       await addExpenseCloud({
         type: recurringForm.type,
         customType: recurringForm.customType || recurringForm.name,
@@ -256,18 +261,22 @@ export default function Expenses() {
 
       processExpense(recurringForm.amount, recurringForm.type);
 
-      const nextDate = new Date(recurringForm.startDate);
-      nextDate.setDate(nextDate.getDate() + recurringForm.intervalDays);
+      const nextDate = new Date(recurringForm.startDate || todayStr);
+      nextDate.setDate(nextDate.getDate() + (recurringForm.intervalDays || 30));
       updateRecurringExpense(newExpense.id, {
         lastPaidDate: todayStr,
-        nextDueDate: nextDate.toISOString().split('T')[0],
+        nextDueDate: toLocalDateString(nextDate),
       });
 
       emitEvent(EVENTS.EXPENSES_UPDATED, null);
-      const expensesData = await loadExpensesCloud();
-      setExpenses(expensesData);
     }
 
+    const [expensesData, statsData] = await Promise.all([
+      loadExpensesCloud(),
+      getExpenseStatsCloud()
+    ]);
+    setExpenses(expensesData);
+    setStats(statsData);
     setRecurringExpenses(loadRecurringExpenses());
     setDueExpenses(getDueExpenses());
     setShowRecurringDialog(false);
@@ -321,8 +330,12 @@ export default function Expenses() {
     const deletedType = selectedExpense.type;
     const deletedId = selectedExpense.id;
     await deleteExpenseCloud(selectedExpense.id);
-    const expensesData = await loadExpensesCloud();
+    const [expensesData, statsData] = await Promise.all([
+      loadExpensesCloud(),
+      getExpenseStatsCloud()
+    ]);
     setExpenses(expensesData);
+    setStats(statsData);
     setShowDeleteDialog(false);
     setSelectedExpense(null);
     toast.success(t('expenses.expenseDeleted'));
@@ -333,8 +346,12 @@ export default function Expenses() {
     if (!selectedRecurring) return;
 
     await payRecurringExpense(selectedRecurring.id);
-    const expensesData = await loadExpensesCloud();
+    const [expensesData, statsData] = await Promise.all([
+      loadExpensesCloud(),
+      getExpenseStatsCloud()
+    ]);
     setExpenses(expensesData);
+    setStats(statsData);
     setRecurringExpenses(loadRecurringExpenses());
     setDueExpenses(getDueExpenses());
     setShowPayConfirmDialog(false);
