@@ -239,26 +239,11 @@ export const addDebtCloud = async (
     console.log('[addDebtCloud] Fallback to supabase.auth.getUser:', cashierId);
   }
 
-  // Offline: keep on device, upload automatically later (idempotent by client UUID)
-  if (!navigator.onLine) {
-    const id = crypto.randomUUID();
-    const nowIso = new Date().toISOString();
-    const row = {
-      id, invoice_id: debtData.invoiceId || null, customer_name: debtData.customerName,
-      customer_phone: debtData.customerPhone || null, total_debt: debtData.totalDebt, total_paid: 0,
-      remaining_debt: debtData.totalDebt, due_date: debtData.dueDate || null,
-      status: debtData.dueDate && debtData.dueDate < today ? 'overdue' : 'due',
-      notes: debtData.notes || null, is_cash_debt: debtData.isCashDebt || false, cashier_id: cashierId,
-    };
-    addToQueue('debt', row, 10);
-    const local = toDebt({ ...row, user_id: '', created_at: nowIso, updated_at: nowIso } as CloudDebt);
-    const list = [local, ...(debtsCache || loadDebtsLocally() || [])];
-    debtsCache = list; cacheTimestamp = Date.now(); saveDebtsLocally(list);
-    emitEvent(EVENTS.DEBTS_UPDATED, null);
-    return local;
-  }
-
-  const inserted = await insertToSupabase<CloudDebt>('debts', {
+  const id = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+  
+  const payload = {
+    id,
     invoice_id: debtData.invoiceId || null,
     customer_name: debtData.customerName,
     customer_phone: debtData.customerPhone || null,
@@ -269,17 +254,42 @@ export const addDebtCloud = async (
     status: debtData.dueDate && debtData.dueDate < today ? 'overdue' : 'due',
     notes: debtData.notes || null,
     is_cash_debt: debtData.isCashDebt || false,
-    cashier_id: cashierId, // ✅ Track who created the debt
-  });
+    cashier_id: cashierId,
+  };
 
-  if (inserted) {
-    invalidateDebtsCache();
+  const localDebt = toDebt({ ...payload, user_id: '', created_at: nowIso, updated_at: nowIso } as CloudDebt);
+
+  const saveToLocalAndQueue = () => {
+    addToQueue('debt', payload, 10);
+    const existing = debtsCache || loadDebtsLocally() || [];
+    const list = [localDebt, ...existing.filter(d => d.id !== localDebt.id)];
+    debtsCache = list;
+    cacheTimestamp = Date.now();
+    saveDebtsLocally(list);
     emitEvent(EVENTS.DEBTS_UPDATED, null);
-    triggerAutoBackup(`دين جديد: ${debtData.customerName}`);
-    return toDebt(inserted);
+    return localDebt;
+  };
+
+  if (!navigator.onLine) {
+    return saveToLocalAndQueue();
   }
 
-  return null;
+  try {
+    const inserted = await insertToSupabase<CloudDebt>('debts', payload);
+
+    if (inserted) {
+      invalidateDebtsCache();
+      emitEvent(EVENTS.DEBTS_UPDATED, null);
+      triggerAutoBackup(`دين جديد: ${debtData.customerName}`);
+      return toDebt(inserted);
+    }
+    
+    // If inserted is null (e.g. server error), queue it locally
+    return saveToLocalAndQueue();
+  } catch (error) {
+    console.warn('[addDebtCloud] Exception, queueing locally:', error);
+    return saveToLocalAndQueue();
+  }
 };
 
 // Add debt from invoice

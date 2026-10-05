@@ -310,12 +310,15 @@ async function fetchProductsInChunks(): Promise<CloudProduct[]> {
   return allProducts;
 }
 
+const recentlyConfirmedDeductions = new Set<string>();
+
 const applyPendingDeductionsToCloudProducts = async (products: Product[]): Promise<Product[]> => {
   const pending = await getPendingStockDeductions();
-  if (pending.length === 0) return products;
+  const validPending = pending.filter(p => !recentlyConfirmedDeductions.has(p.operationId));
+  if (validPending.length === 0) return products;
 
   const totals = new Map<string, number>();
-  for (const operation of pending) {
+  for (const operation of validPending) {
     if (operation.warehouseId) continue;
     for (const item of operation.items) {
       totals.set(item.productId, (totals.get(item.productId) || 0) + item.quantity);
@@ -704,6 +707,7 @@ export const deductProductsLocalCache = async (
 };
 
 export const confirmPendingStockDeduction = async (operationId: string): Promise<void> => {
+  recentlyConfirmedDeductions.add(operationId);
   await removePendingStockDeduction(operationId);
 };
 
@@ -714,6 +718,7 @@ export const rollbackPendingStockDeduction = async (operationId: string): Promis
   if (pending.warehouseId) {
     const { adjustWarehouseStockLocalCache } = await import('./warehouses-cloud');
     adjustWarehouseStockLocalCache(pending.warehouseId, pending.items, 'restore');
+    recentlyConfirmedDeductions.add(operationId);
     await removePendingStockDeduction(operationId);
     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
     return true;
@@ -729,6 +734,7 @@ export const rollbackPendingStockDeduction = async (operationId: string): Promis
   });
   cacheTimestamp = Date.now();
   saveToLocalCache(productsCache);
+  recentlyConfirmedDeductions.add(operationId);
   await removePendingStockDeduction(operationId);
   emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
   return true;

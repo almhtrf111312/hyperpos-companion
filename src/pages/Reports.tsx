@@ -152,8 +152,9 @@ export default function Reports() {
       const wStr = w.toISOString().split('T')[0];
       setFilters(prev => ({ ...prev, dateRange: { from: wStr, to: todayStr } }));
     } else if (preset === 'month') {
-      const m = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const mStr = m.toISOString().split('T')[0];
+      const m = new Date();
+        m.setDate(1);
+        const mStr = m.toISOString().split('T')[0];
       setFilters(prev => ({ ...prev, dateRange: { from: mStr, to: todayStr } }));
     } else if (preset === 'custom') {
       setShowCustomDateModal(true);
@@ -390,8 +391,8 @@ export default function Reports() {
       const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
       if (!isDateInRange(invDate, dateRange.from, dateRange.to)) return false;
       if (!isValidType) return false;
-      // Exclude refunded
-      if (inv.status === 'refunded') return false;
+      // Exclude refunded and cancelled
+      if (inv.status === 'refunded' || inv.status === 'cancelled') return false;
       // Apply status filter
       if (filters.status !== 'all' && inv.status !== filters.status) return false;
       // Apply cashier filter
@@ -614,7 +615,7 @@ export default function Reports() {
         .filter(inv => {
           const invDate = toLocalDateString(inv.createdAt);
           return (inv.type === 'sale' || inv.type === 'maintenance') &&
-            inv.status !== 'refunded' &&
+            inv.status !== 'refunded' && inv.status !== 'cancelled' &&
             isDateInRange(invDate, prevFromStr, prevToStr);
         })
         .reduce((sum, inv) => sum + inv.total, 0);
@@ -663,7 +664,7 @@ export default function Reports() {
       const isValidType = inv.type === 'sale' || inv.type === 'maintenance';
       if (!isDateInRange(invDate, dateRange.from, dateRange.to)) return false;
       if (!isValidType) return false;
-      if (inv.status === 'refunded') return false;
+      if (inv.status === 'refunded' || inv.status === 'cancelled') return false;
       if (filters.status !== 'all' && inv.status !== filters.status) return false;
       if (filters.cashierId !== 'all' && (inv.cashierName || 'غير محدد') !== filters.cashierId) return false;
       if (filters.paymentType !== 'all' && inv.paymentType !== filters.paymentType) return false;
@@ -2153,7 +2154,7 @@ export default function Reports() {
                 datePreset === 'month' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              30 يوم
+              هذا الشهر
             </button>
             <button
               type="button"
@@ -3158,3 +3159,5 @@ export default function Reports() {
     </MainLayout>
   );
 }
+
+
