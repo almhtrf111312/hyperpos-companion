@@ -317,7 +317,6 @@ export function CartPanel({
   const remainingUSD = roundCurrency(Math.max(0, total - receivedUSD));
 
   // هل تنطبق شروط الدفع المركب (مقبوض جزئي أكبر من 0 وأقل من الإجمالي)
-  const isSplitEligible = receivedUSD > 0 && receivedUSD < roundCurrency(total) - 0.01;
 
   // Wholesale profit = receivedAmount - COGS (الربح الفعلي = المبلغ المستلم - رأس المال)
   const wholesaleCOGS = roundCurrency(cart.reduce((sum, item) => {
@@ -376,16 +375,6 @@ export function CartPanel({
     }
 
     // إذا كان هناك عجز في المقبوض وعميل مسجل، نفتح البيع المركب مباشرة
-    if (!wholesaleMode && isSplitEligible) {
-      if (isRealCustomerSelected(customerName)) {
-        handleSplitSale();
-        return;
-      } else {
-        showToast.error(
-          `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من إجمالي الفاتورة (${activeReceivedCurrency.symbol}${formatNumber(totalInReceivedCurrency)}). يرجى إدخال المبلغ كاملاً، أو تحديد عميل لإتمام العملية كدفع مركب.`
-        );
-        return;
-      }
     }
 
     setShowCashDialog(true);
@@ -425,47 +414,9 @@ export function CartPanel({
       setCustomerPhone('');
     }
 
-    if (isSplitEligible) {
-      setShowSplitDialog(true);
-    } else {
-      setShowDebtDialog(true);
-    }
+    setShowDebtDialog(true);
   };
 
-  const handleSplitSale = async () => {
-    if (cart.length === 0) return;
-
-    // 🛡️ فحص استباقي: التحقق من أن كل صنف في السلة معتمد وموجود في الكتالوج السحابي
-    const validation = await validateCartProducts(cart);
-    if (!validation.isValid) {
-      showToast.error(
-        `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
-        { persistent: false }
-      );
-      return;
-    }
-
-    if (!isRealCustomerSelected(customerName)) {
-      showToast.error('لا يمكن تسجيل دفع مركب بدون تحديد عميل مسجل لترحيل المتبقي كدين.');
-      return;
-    }
-
-    const existingCustomer = allCustomers.find(c =>
-      c.name.toLowerCase().trim() === customerName.toLowerCase().trim()
-    );
-
-    if (existingCustomer) {
-      setIsNewCustomer(false);
-      setCustomerPhone(existingCustomer.phone || customerPhone || '');
-    } else if (customerPhone && customerPhone.trim()) {
-      setIsNewCustomer(false);
-    } else {
-      setIsNewCustomer(true);
-      setCustomerPhone('');
-    }
-
-    setShowSplitDialog(true);
-  };
 
   const confirmCashSale = async () => {
     // ✅ حماية مزدوجة: state + ref لمنع التكرارات
@@ -742,7 +693,7 @@ export function CartPanel({
     saveSaleSnapshot(
       cartSnapshot,
       customerNameSnapshot,
-      downPaymentSnapshot > 0 ? 'split' : 'debt',
+      'debt',
       downPaymentSnapshot,
       debtRemainingSnapshot
     );
@@ -905,7 +856,7 @@ export function CartPanel({
             total: totalSnapshot, 
             itemsCount: cartSnapshot.length, 
             customerName: customerNameSnapshot, 
-            paymentType: downPaymentSnapshot > 0 ? 'split' : 'debt',
+            paymentType: 'debt',
             downPayment: downPaymentSnapshot,
             debtRemaining: debtRemainingSnapshot
           }
@@ -1678,280 +1629,11 @@ export function CartPanel({
             </Button>
 
             {/* زر بيع مركب صريح يظهر عند وجود مقبوض جزئي */}
-            {isSplitEligible && (
-              <Button
-                variant="outline"
-                className="flex-1 h-11 border-2 border-indigo-500/70 text-indigo-400 hover:bg-indigo-500/10 text-sm font-bold transition-all active:scale-95 rounded-xl bg-indigo-500/5 shadow-sm"
-                disabled={cart.length === 0}
-                onClick={handleSplitSale}
-                title="دفع مركب: جزء نقدي وجزء دين"
-              >
-                <Repeat className="w-4 h-4 ml-1.5" />
-                بيع مركب
-              </Button>
-            )}
-
-            <Button
-              data-tour="debt-btn"
-              variant="outline"
-              className="flex-1 h-11 border-2 border-warning/70 text-warning hover:bg-warning/10 text-sm font-bold transition-all active:scale-95 rounded-xl"
-              disabled={cart.length === 0}
-              onClick={handleDebtSale}
-            >
-              <CreditCard className="w-4 h-4 ml-1.5" />
-              {t('pos.debt')}
-            </Button>
-            {/* Share Invoice as Image Action */}
-            <Button
-              data-tour="action-btns"
-              variant="ghost"
-              size="icon"
-              className="h-11 w-9 flex-shrink-0 text-primary hover:text-primary hover:bg-primary/10 rounded-xl"
-              disabled={cart.length === 0 && !lastSale}
-              onClick={() => handleWhatsApp()}
-              title="مشاركة الفاتورة كصورة"
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
-              disabled={cart.length === 0 && !lastSale}
-              onClick={() => handleWhatsApp()}
-              title={t('pos.whatsapp')}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Cash Sale Dialog */}
-      <Dialog open={showCashDialog} onOpenChange={setShowCashDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-success" />
-              تأكيد البيع النقدي
-            </DialogTitle>
-            <DialogDescription>
-              هل تريد تأكيد الفاتورة النقدية؟
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-muted rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>عدد المنتجات:</span>
-                <span className="font-semibold">{cart.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>العميل:</span>
-                <span className="font-semibold">{customerName || 'عميل نقدي'}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>الإجمالي:</span>
-                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
-              </div>
-              {receivedAmount > 0 && (
-                <div className="space-y-1.5 border-t border-border/50 pt-2 text-sm">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>المبلغ المقبوض:</span>
-                    <span className="font-semibold text-foreground">
-                      {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                      {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
-                    </span>
-                  </div>
-                  {changeInReceivedCurrency > 0 && (
-                    <div className="flex justify-between text-success font-bold bg-success/10 p-2 rounded-lg">
-                      <span>الباقي للعميل:</span>
-                      <span>
-                        {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                        {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(changeUSD)})`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowCashDialog(false)} disabled={isSaving}>
-                إلغاء
-              </Button>
-              <Button className="flex-1 bg-success hover:bg-success/90" onClick={confirmCashSale} disabled={isSaving} aria-busy={isSaving}>
-                <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
-                {isSaving ? 'جاري الحفظ...' : 'تأكيد'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Debt Sale Dialog */}
-      <Dialog open={showDebtDialog} onOpenChange={setShowDebtDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-warning" />
-              تأكيد البيع المؤجل
-            </DialogTitle>
-            <DialogDescription>
-              سيتم إضافة المبلغ كدين على العميل
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-muted rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>العميل:</span>
-                <span className="font-semibold">{customerName}</span>
-              </div>
-              {isNewCustomer && (
-                <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <label htmlFor="cart-new-customer-phone" className="text-sm font-medium mb-1.5 block text-warning">
-                    رقم الهاتف * (مطلوب لعميل جديد)
-                  </label>
-                  <Input
-                    id="cart-new-customer-phone"
-                    type="tel"
-                    inputMode="tel"
-                    dir="ltr"
-                    placeholder="+963 xxx xxx xxx"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
-                    className="bg-background border-warning text-left"
-                  />
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span>عدد المنتجات:</span>
-                <span className="font-semibold">{cart.length}</span>
-              </div>
-              {receivedAmount > 0 && (
-                <div className="flex justify-between text-sm text-success font-semibold bg-success/10 p-2 rounded-lg">
-                  <span>دفعة أولى مقبوضة (كاش):</span>
-                  <span>
-                    {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
-                <span>مبلغ الدين:</span>
-                <span>
-                  {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
-                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowDebtDialog(false)} disabled={isSaving}>
-                إلغاء
-              </Button>
-              <Button
-                className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground"
-                disabled={isSaving}
-                aria-busy={isSaving}
-                onClick={() => {
-                  if (isNewCustomer && !customerPhone.trim()) {
-                    showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
-                    return;
-                  }
                   confirmDebtSale(false);
                 }}
               >
                 <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
                 {isSaving ? 'جاري الحفظ...' : 'تأكيد البيع المؤجل'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Split Payment Dialog (بيع مركب: نقدي + دين) */}
-      <Dialog open={showSplitDialog} onOpenChange={setShowSplitDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-indigo-500">
-              <Repeat className="w-5 h-5" />
-              تأكيد البيع المركب (نقدي + دين)
-            </DialogTitle>
-            <DialogDescription>
-              دفع جزء نقداً وإضافة المبلغ المتبقي كدين على العميل
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-muted rounded-lg p-4 space-y-2.5">
-              <div className="flex justify-between text-sm">
-                <span>العميل:</span>
-                <span className="font-semibold text-foreground">{customerName}</span>
-              </div>
-              {isNewCustomer && (
-                <div className="mt-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <label htmlFor="cart-split-customer-phone" className="text-sm font-medium mb-1.5 block text-warning">
-                    رقم الهاتف * (مطلوب لعميل جديد)
-                  </label>
-                  <Input
-                    id="cart-split-customer-phone"
-                    type="tel"
-                    inputMode="tel"
-                    dir="ltr"
-                    placeholder="+963 xxx xxx xxx"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
-                    className="bg-background border-warning text-left"
-                  />
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span>عدد المنتجات:</span>
-                <span className="font-semibold">{cart.length}</span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-border/50 pt-2 font-medium">
-                <span>إجمالي الفاتورة:</span>
-                <span className="font-bold text-foreground">
-                  {activeReceivedCurrency.symbol}{formatNumber(totalInReceivedCurrency)}
-                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(total)})`}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm text-success font-semibold bg-success/10 p-2 rounded-lg">
-                <span className="flex items-center gap-1">
-                  <Banknote className="w-4 h-4" />
-                  المقبوض نقداً (يدخل الصندوق):
-                </span>
-                <span>
-                  {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm text-warning font-semibold bg-warning/10 p-2 rounded-lg">
-                <span className="flex items-center gap-1">
-                  <CreditCard className="w-4 h-4" />
-                  المتبقي كدين (يُرحّل للعميل):
-                </span>
-                <span>
-                  {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
-                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 text-foreground" onClick={() => setShowSplitDialog(false)} disabled={isSaving}>
-                إلغاء
-              </Button>
-              <Button
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-                disabled={isSaving}
-                aria-busy={isSaving}
-                onClick={() => {
-                  if (isNewCustomer && !customerPhone.trim()) {
-                    showToast.error('يرجى إدخال رقم الهاتف للعميل الجديد');
-                    return;
-                  }
-                  confirmDebtSale(true);
-                }}
-              >
-                <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
-                {isSaving ? 'جاري الحفظ...' : 'تأكيد البيع المركب'}
               </Button>
             </div>
           </div>

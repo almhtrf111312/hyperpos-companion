@@ -922,7 +922,7 @@ export default function BossPanel() {
           throw new Error(response.error.message || 'Failed to activate');
         }
 
-        toast.success(`تم تفعيل حساب "${activationDialog.owner.full_name || activationDialog.owner.email}" بنجاح باستخدام الكود ${code}`);
+        toast.success(`تم تفعيل حساب "${activationDialog.owner.full_name || activationDialog.owner.email}" بنجاح باستخدام الكود ${code.substring(0, 4)}***`);
         setActivationDialog(null);
         setActivationSettings(prev => ({ ...prev, manual_code: '' }));
         fetchData();

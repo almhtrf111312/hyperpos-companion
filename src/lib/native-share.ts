@@ -256,9 +256,9 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
 
   const paymentLabel = paymentType === 'cash' 
     ? '💵 نقدي' 
-    : paymentType === 'split'
-      ? '🔀 بيع مركب (نقدي + دين)'
-      : '📋 آجل';
+    : (paymentType === 'split' || (downPayment && downPayment > 0))
+      ? '📋 آجل مع دفعة نقدية'
+      : '📋 آجل (دين)';
 
   return `────────────────
 ${storeName}
@@ -278,7 +278,7 @@ ${itemsList}
 ────────────────
 ${items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${currencySymbol}${formatNumber(data.taxAmount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
 💳 طريقة الدفع: ${paymentLabel}
-${paymentType === 'split' && downPayment ? `💵 المقبوض نقداً: ${currencySymbol}${formatNumber(downPayment)}\n📋 المتبقي كدين: ${currencySymbol}${formatNumber(debtRemaining || 0)}\n` : ''}
+${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPayment > 0)) ? (downPayment && downPayment > 0 ? `💵 المدفوع نقداً: ${currencySymbol}${formatNumber(downPayment)}\n📋 المتبقي كدين: ${currencySymbol}${formatNumber(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : (total - downPayment))}\n` : `📋 مستحق كدين: ${currencySymbol}${formatNumber(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : total)}\n`) : ''}
 
 ────────────────
 ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}

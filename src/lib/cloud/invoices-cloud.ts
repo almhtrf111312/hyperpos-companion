@@ -95,6 +95,7 @@ export interface Invoice {
   updatedAt: string;
   cashierId?: string;
   cashierName?: string;
+  exchangeRate?: number;
 }
 
 // Normalize customer name based on payment type
@@ -143,6 +144,7 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     updatedAt: cloud.updated_at,
     cashierId: cloud.cashier_id || undefined,
     cashierName: cloud.cashier_name || undefined,
+    exchangeRate: Number(cloud.exchange_rate) || 1,
   };
 }
 

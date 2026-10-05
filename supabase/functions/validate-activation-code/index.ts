@@ -73,10 +73,14 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Utility function to mask activation code (e.g. ACT-***)
+    const maskCode = (c: string) => c.length > 4 ? `${c.substring(0, 4)}***` : '***';
+    const maskedLogCode = maskCode(sanitizedCode);
+
     // Use service role to access activation_codes table
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log('Looking for code:', sanitizedCode)
+    console.log('Looking for code:', maskedLogCode)
 
     // Find the activation code - try exact match first
     let { data: activationCode, error: codeError } = await supabaseAdmin
@@ -103,7 +107,7 @@ Deno.serve(async (req) => {
     }
 
     if (!activationCode) {
-      console.log('No matching code found for:', sanitizedCode)
+      console.log('No matching code found for:', maskedLogCode)
       return new Response(
         JSON.stringify({ success: false, error: 'كود التفعيل غير صالح أو غير موجود' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

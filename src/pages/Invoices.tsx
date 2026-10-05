@@ -1087,6 +1087,9 @@ export default function Invoices() {
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
 
+    const rate = invoice.exchangeRate || 1;
+    const currencySymbol = invoice.currencySymbol || '$';
+    
     // تحضير بيانات المشاركة
     const shareData: InvoiceShareData = {
       id: invoice.id,
@@ -1098,17 +1101,19 @@ export default function Invoices() {
       items: invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => ({
         name: item.name,
         quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.total,
+        unitPrice: item.price * rate,
+        total: item.total * rate,
       })),
-      subtotal: invoice.subtotal,
-      discount: invoice.discount,
-      total: invoice.totalInCurrency,
-      currencySymbol: invoice.currencySymbol,
+      subtotal: invoice.subtotal * rate,
+      discount: invoice.discount * rate,
+      total: invoice.totalInCurrency || (invoice.total * rate),
+      currencySymbol,
       paymentType: invoice.paymentType,
+      downPayment: invoice.debtPaid ? invoice.debtPaid * rate : undefined,
+      debtRemaining: ((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.paymentType === 'debt' ? invoice.total : 0)) * rate,
       serviceDescription: invoice.serviceDescription,
       type: invoice.type,
-      taxAmount: invoice.taxAmount,
+      taxAmount: invoice.taxAmount ? invoice.taxAmount * rate : 0,
       taxRate: invoice.taxRate,
     };
 

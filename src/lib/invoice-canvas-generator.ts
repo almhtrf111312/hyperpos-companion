@@ -335,11 +335,9 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
 
   const paymentLabel = data.paymentType === 'cash'
     ? 'نقدي 💵'
-    : data.paymentType === 'split'
-      ? 'مركب (نقدي + دين) 🔀'
-      : data.paymentType === 'debt'
-        ? 'آجل (دين) 📋'
-        : data.paymentType;
+    : (data.paymentType === 'split' || (data.downPayment !== undefined && data.downPayment > 0))
+      ? 'آجل مع دفعة نقدية 📋'
+      : 'آجل (دين) 📋';
 
   ctx.fillStyle = '#64748b';
   ctx.font = `12px ${FONT_FAMILY}`;
@@ -546,22 +544,28 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.font = `bold 13px ${FONT_FAMILY}`;
   ctx.fillText(paymentLabel, detailsRightX - 70, detailsY);
 
-  // إذا كان بيع مركب
-  if (data.paymentType === 'split' && data.downPayment !== undefined) {
-    detailsY += 24;
-    ctx.fillStyle = '#16a34a';
-    ctx.font = `12px ${FONT_FAMILY}`;
-    ctx.fillText(`المدفوع نقداً: ${data.currencySymbol}${formatNumber(data.downPayment)}`, detailsRightX, detailsY);
+  // تفاصيل المدفوع والمتبقي للدين
+  const isDebtOrSplit = data.paymentType === 'debt' || data.paymentType === 'split' || (data.downPayment !== undefined && data.downPayment > 0) || (data.debtRemaining !== undefined && data.debtRemaining > 0);
+  
+  if (isDebtOrSplit) {
+    if (data.downPayment !== undefined && data.downPayment > 0) {
+      detailsY += 24;
+      ctx.fillStyle = '#16a34a';
+      ctx.font = `12px ${FONT_FAMILY}`;
+      ctx.fillText(`المدفوع نقداً: ${data.currencySymbol}${formatNumber(data.downPayment)}`, detailsRightX, detailsY);
 
-    detailsY += 20;
-    ctx.fillStyle = '#dc2626';
-    ctx.font = `bold 12px ${FONT_FAMILY}`;
-    ctx.fillText(`المتبقي كدين: ${data.currencySymbol}${formatNumber(data.debtRemaining || 0)}`, detailsRightX, detailsY);
-  } else if (data.paymentType === 'debt') {
-    detailsY += 24;
-    ctx.fillStyle = '#dc2626';
-    ctx.font = `bold 12px ${FONT_FAMILY}`;
-    ctx.fillText(`مستحق كدين: ${data.currencySymbol}${formatNumber(data.total)}`, detailsRightX, detailsY);
+      detailsY += 20;
+      ctx.fillStyle = '#dc2626';
+      ctx.font = `bold 12px ${FONT_FAMILY}`;
+      const debtAmount = data.debtRemaining !== undefined && data.debtRemaining !== null ? data.debtRemaining : (data.total - data.downPayment);
+      ctx.fillText(`المتبقي كدين: ${data.currencySymbol}${formatNumber(debtAmount)}`, detailsRightX, detailsY);
+    } else {
+      detailsY += 24;
+      ctx.fillStyle = '#dc2626';
+      ctx.font = `bold 12px ${FONT_FAMILY}`;
+      const debtAmount = data.debtRemaining !== undefined && data.debtRemaining !== null ? data.debtRemaining : data.total;
+      ctx.fillText(`مستحق كدين: ${data.currencySymbol}${formatNumber(debtAmount)}`, detailsRightX, detailsY);
+    }
   }
 
   // هاتف المتجر
