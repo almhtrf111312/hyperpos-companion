@@ -260,6 +260,45 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     yPosition += 10;
   }
 
+  // Top KPI Summary Cards (above table)
+  if (summary && summary.length > 0) {
+    const margin = 15;
+    const availableWidth = pageWidth - (margin * 2);
+    const numCards = Math.min(summary.length, 4);
+    const cardGap = 3;
+    const cardWidth = (availableWidth - (cardGap * (numCards - 1))) / numCards;
+    const cardHeight = 15;
+
+    summary.slice(0, 4).forEach((item, index) => {
+      // In RTL (Arabic), place card 0 at rightmost position
+      const colIndex = currentLang === 'ar' ? (numCards - 1 - index) : index;
+      const cardX = margin + colIndex * (cardWidth + cardGap);
+
+      // Card Background & Border
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(cardX, yPosition, cardWidth, cardHeight, 2, 2, 'FD');
+
+      // Metric Label
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      const font = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
+      doc.setFont(font, 'normal');
+      const labelStr = processRTL(String(item.label));
+      doc.text(labelStr, cardX + cardWidth / 2, yPosition + 5, { align: 'center' });
+
+      // Metric Value
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont(font, arabicFontLoaded ? 'normal' : 'bold');
+      const valRaw = typeof item.value === 'number' ? item.value.toLocaleString('en-US') : String(item.value);
+      const valStr = processRTL(valRaw);
+      doc.text(valStr, cardX + cardWidth / 2, yPosition + 11.5, { align: 'center' });
+    });
+
+    yPosition += cardHeight + 6;
+  }
+
   // Prepare table data
   const headers = columns.map(col => processRTL(col.header));
   const rows = data.map(item =>
@@ -326,14 +365,14 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   // Get final Y position after table
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || yPosition + 50;
 
-  // Add summary section if provided
-  if (summary && summary.length > 0) {
+  // Add extended summary section if more than 4 items were provided
+  if (summary && summary.length > 4) {
     let summaryY = finalY + 15;
 
     // Summary header
     doc.setFontSize(14);
     doc.setTextColor(44, 62, 80);
-    doc.text(processRTL('خلاصة حسابية'), pageWidth / 2, summaryY, { align: 'center' });
+    doc.text(processRTL('خلاصة حسابية إضافية'), pageWidth / 2, summaryY, { align: 'center' });
     summaryY += 8;
 
     // Summary line
@@ -344,7 +383,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     // Summary items
     const summaryFontName = arabicFontLoaded ? ARABIC_FONT_NAME : 'helvetica';
     doc.setFontSize(11);
-    summary.forEach(item => {
+    summary.slice(4).forEach(item => {
       doc.setTextColor(100, 100, 100);
       doc.setFont(summaryFontName, 'normal');
       doc.text(processRTL(item.label + ':'), pageWidth / 2 + 30, summaryY, { align: 'right' });
@@ -398,7 +437,8 @@ export const exportInvoicesToPDF = async (
     cashierName?: string;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string },
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns = [
     { header: 'رقم الفاتورة', key: 'id' },
@@ -436,7 +476,7 @@ export const exportInvoicesToPDF = async (
     profitMargin: `${avgProfitMargin}%`,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'إجمالي المبيعات', value: totalSales },
     { label: 'إجمالي الخصومات', value: totalDiscount },
     { label: 'صافي الأرباح', value: totalProfit },
@@ -479,7 +519,8 @@ export const exportProductsToPDF = async (
     quantity: number;
     minStockLevel?: number;
   }>,
-  storeInfo?: { name: string; phone?: string; address?: string }
+  storeInfo?: { name: string; phone?: string; address?: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns = [
     { header: 'المنتج', key: 'name' },
@@ -512,7 +553,7 @@ export const exportProductsToPDF = async (
     quantity: totalStock,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'عدد المنتجات', value: products.length },
     { label: 'إجمالي المخزون', value: totalStock },
     { label: 'قيمة المخزون (بالتكلفة)', value: totalCostValue },
@@ -680,7 +721,8 @@ export const exportExpensesToPDF = async (
     notes?: string;
   }>,
   storeInfo?: { name: string; phone?: string; address?: string },
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns = [
     { header: 'رقم', key: 'id' },
@@ -696,7 +738,7 @@ export const exportExpensesToPDF = async (
     amount: totalExpenses,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'إجمالي المصاريف', value: totalExpenses },
     { label: 'عدد المصاريف', value: expenses.length },
   ];
@@ -734,7 +776,8 @@ export const exportPartnersToPDF = async (
     totalWithdrawn: number;
     currentBalance: number;
   }>,
-  storeInfo?: { name: string; phone?: string; address?: string }
+  storeInfo?: { name: string; phone?: string; address?: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns = [
     { header: 'الشريك', key: 'name' },
@@ -757,7 +800,7 @@ export const exportPartnersToPDF = async (
     currentBalance: totalBalance,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'إجمالي رأس المال', value: totalCapital },
     { label: 'إجمالي الأرباح', value: totalProfit },
     { label: 'إجمالي المسحوبات', value: totalWithdrawn },
@@ -788,7 +831,8 @@ export const exportCustomersToPDF = async (
     ordersCount: number;
     balance: number;
   }>,
-  storeInfo?: { name: string; phone?: string; address?: string }
+  storeInfo?: { name: string; phone?: string; address?: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns = [
     { header: 'العميل', key: 'name' },
@@ -808,7 +852,7 @@ export const exportCustomersToPDF = async (
     balance: totalBalance,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'عدد العملاء', value: customers.length },
     { label: 'إجمالي المشتريات', value: totalPurchases },
     { label: 'إجمالي الطلبات', value: totalOrders },

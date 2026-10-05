@@ -235,7 +235,8 @@ export const exportInvoicesToExcel = async (
     createdAt: string;
     cashierName?: string;
   }>,
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'رقم الفاتورة', key: 'id', width: 15 },
@@ -273,7 +274,7 @@ export const exportInvoicesToExcel = async (
     profitMargin: avgProfitMargin,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'إجمالي المبيعات', value: totalSales },
     { label: 'إجمالي الخصومات', value: totalDiscount },
     { label: 'صافي الأرباح', value: totalProfit },
@@ -315,7 +316,8 @@ export const exportProductsToExcel = async (
     salePrice: number;
     quantity: number;
     minStockLevel?: number;
-  }>
+  }>,
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'المنتج', key: 'name', width: 25 },
@@ -353,7 +355,7 @@ export const exportProductsToExcel = async (
     stockValue: totalCostValue,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'عدد المنتجات', value: products.length },
     { label: 'إجمالي المخزون', value: totalStock },
     { label: 'قيمة المخزون (بالتكلفة)', value: totalCostValue },
@@ -383,7 +385,8 @@ export const exportExpensesToExcel = async (
     date: string;
     notes?: string;
   }>,
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'رقم', key: 'id', width: 10 },
@@ -399,7 +402,7 @@ export const exportExpensesToExcel = async (
     amount: totalExpenses,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'إجمالي المصاريف', value: totalExpenses },
     { label: 'عدد المصاريف', value: expenses.length },
   ];
@@ -435,7 +438,8 @@ export const exportPartnersToExcel = async (
     totalProfit: number;
     totalWithdrawn: number;
     currentBalance: number;
-  }>
+  }>,
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'الشريك', key: 'name', width: 20 },
@@ -460,7 +464,7 @@ export const exportPartnersToExcel = async (
     currentBalance: totalBalance,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'إجمالي رأس المال', value: totalCapital },
     { label: 'إجمالي الأرباح', value: totalProfit },
     { label: 'إجمالي المسحوبات', value: totalWithdrawn },
@@ -488,7 +492,8 @@ export const exportCustomersToExcel = async (
     totalPurchases: number;
     ordersCount: number;
     balance: number;
-  }>
+  }>,
+  customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
   const columns: ExcelColumn[] = [
     { header: 'اسم العميل', key: 'name', width: 25 },
@@ -508,7 +513,7 @@ export const exportCustomersToExcel = async (
     balance: totalBalance,
   };
 
-  const summary = [
+  const summary = customSummary || [
     { label: 'عدد العملاء', value: customers.length },
     { label: 'إجمالي المشتريات', value: totalPurchases },
     { label: 'إجمالي الطلبات', value: totalOrders },

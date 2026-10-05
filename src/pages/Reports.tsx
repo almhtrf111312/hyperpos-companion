@@ -168,6 +168,7 @@ export default function Reports() {
   const [cloudCategories, setCloudCategories] = useState<Category[]>([]);
   const [cloudExpenses, setCloudExpenses] = useState<Expense[]>([]);
   const [cloudDebts, setCloudDebts] = useState<Debt[]>([]);
+  const [cloudPurchases, setCloudPurchases] = useState<any[]>([]);
 
   const loadCloudData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -183,14 +184,15 @@ export default function Reports() {
         }
       }
 
-      const [invoices, products, customers, partners, categories, expenses, debts] = await Promise.all([
+      const [invoices, products, customers, partners, categories, expenses, debts, purchases] = await Promise.all([
         loadInvoicesCloud(),
         loadProductsCloud(),
         loadCustomersCloud(),
         loadPartnersCloud(),
         loadCategoriesCloud(),
         loadExpensesCloud(),
-        loadDebtsCloud()
+        loadDebtsCloud(),
+        loadPurchaseInvoicesCloud().catch(() => [])
       ]);
       setCloudInvoices(invoices);
       setCloudProducts(products);
@@ -199,6 +201,7 @@ export default function Reports() {
       setCloudCategories(categories);
       setCloudExpenses(expenses);
       setCloudDebts(debts);
+      setCloudPurchases(purchases || []);
     } catch (error) {
       console.error('Error loading cloud data for reports:', error);
       if (!isSilent) toast.error(t('reports.loadError'));
@@ -216,6 +219,7 @@ export default function Reports() {
     window.addEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.PURCHASES_UPDATED, handleUpdate);
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
@@ -223,6 +227,7 @@ export default function Reports() {
       window.removeEventListener(EVENTS.PARTNERS_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.PURCHASES_UPDATED, handleUpdate);
     };
   }, [loadCloudData]);
 
@@ -357,6 +362,12 @@ export default function Reports() {
       if (filters.cashierId !== 'all' && (inv.cashierName || 'غير محدد') !== filters.cashierId) return false;
       // Apply payment type filter
       if (filters.paymentType !== 'all' && inv.paymentType !== filters.paymentType) return false;
+      // Apply search filter
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const matches = (inv.customerName || '').toLowerCase().includes(q) || inv.id.toLowerCase().includes(q);
+        if (!matches) return false;
+      }
       return true;
     });
 
@@ -415,7 +426,7 @@ export default function Reports() {
       dailySales, allDailySales, topProducts, allProducts, topCustomers, allCustomers,
       hasData: filteredInvoices.length > 0,
     };
-  }, [dateRange, filters.status, filters.cashierId, filters.paymentType, cloudInvoices, cloudProducts, t]);
+  }, [dateRange, filters.status, filters.cashierId, filters.paymentType, filters.search, cloudInvoices, cloudProducts, t]);
 
   // Partner report data
   const partnerReportData = useMemo(() => {
@@ -527,58 +538,52 @@ export default function Reports() {
     };
   }, [dateRange, cloudExpenses, cloudPartners]);
 
-  // ========== DYNAMIC SUMMARY CARDS ==========
-
-  const summaryCards = useMemo(() => {
-    switch (activeReport) {
-      case 'sales':
-        return [
-          { icon: DollarSign, value: formatCurrency(reportData.summary.totalSales), label: t('reports.totalSales'), color: 'text-primary', bg: 'bg-primary/10' },
-          { icon: TrendingUp, value: formatCurrency(reportData.summary.totalProfit), label: t('reports.totalProfit'), color: 'text-green-600', bg: 'bg-green-500/10' },
-          { icon: ShoppingCart, value: String(reportData.summary.totalOrders), label: t('reports.ordersCount'), color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { icon: PieChart, value: formatCurrency(reportData.summary.avgOrderValue), label: t('reports.avgOrderValue'), color: 'text-amber-600', bg: 'bg-amber-500/10' },
-        ];
-      case 'profits':
-        return [
-          { icon: TrendingUp, value: formatCurrency(reportData.summary.totalProfit), label: 'إجمالي الأرباح', color: 'text-green-600', bg: 'bg-green-500/10' },
-          { icon: DollarSign, value: formatCurrency(reportData.summary.totalSales), label: 'إجمالي المبيعات', color: 'text-primary', bg: 'bg-primary/10' },
-          { icon: ShoppingCart, value: String(reportData.summary.totalOrders), label: 'عدد الفواتير', color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { icon: PieChart, value: reportData.summary.totalOrders > 0 ? formatCurrency(reportData.summary.totalProfit / reportData.summary.totalOrders) : '$0', label: 'متوسط الربح/فاتورة', color: 'text-amber-600', bg: 'bg-amber-500/10' },
-        ];
-      case 'inventory': {
-        const totalQty = cloudProducts.reduce((s, p) => s + (p.quantity || 0), 0);
-        const costValue = cloudProducts.reduce((s, p) => s + ((p.costPrice || 0) * (p.quantity || 0)), 0);
-        const saleValue = cloudProducts.reduce((s, p) => s + ((p.salePrice || 0) * (p.quantity || 0)), 0);
-        return [
-          { icon: Package, value: String(cloudProducts.length), label: 'عدد الأصناف', color: 'text-primary', bg: 'bg-primary/10' },
-          { icon: ShoppingCart, value: String(totalQty), label: 'إجمالي الكميات', color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { icon: DollarSign, value: formatCurrency(costValue), label: 'قيمة المخزون (شراء)', color: 'text-amber-600', bg: 'bg-amber-500/10' },
-          { icon: TrendingUp, value: formatCurrency(saleValue), label: 'قيمة المخزون (بيع)', color: 'text-green-600', bg: 'bg-green-500/10' },
-        ];
-      }
-      case 'expenses':
-        return [
-          { icon: Receipt, value: formatCurrency(expenseReportData.totalExpenses), label: 'إجمالي المصاريف', color: 'text-destructive', bg: 'bg-destructive/10' },
-          { icon: Calendar, value: String(expenseReportData.expenses.length), label: 'عدد المصاريف', color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { icon: PieChart, value: String(expenseReportData.byType.length), label: 'أنواع المصاريف', color: 'text-amber-600', bg: 'bg-amber-500/10' },
-          { icon: UsersRound, value: String(expenseReportData.partnerExpenses.length), label: 'الشركاء المشاركون', color: 'text-primary', bg: 'bg-primary/10' },
-        ];
-      case 'partners':
-        return [
-          { icon: TrendingUp, value: formatCurrency(partnerReportData.summary.totalProfitInPeriod), label: 'الأرباح في الفترة', color: 'text-green-600', bg: 'bg-green-500/10' },
-          { icon: Wallet, value: formatCurrency(partnerReportData.summary.totalCurrentBalance), label: 'الرصيد الحالي', color: 'text-primary', bg: 'bg-primary/10' },
-          { icon: Banknote, value: formatCurrency(partnerReportData.summary.totalWithdrawnInPeriod), label: 'المسحوب في الفترة', color: 'text-amber-600', bg: 'bg-amber-500/10' },
-          { icon: UsersRound, value: String(partnerReportData.summary.partnersCount), label: 'عدد الشركاء', color: 'text-blue-600', bg: 'bg-blue-500/10' },
-        ];
-      default:
-        return [
-          { icon: DollarSign, value: formatCurrency(reportData.summary.totalSales), label: t('reports.totalSales'), color: 'text-primary', bg: 'bg-primary/10' },
-          { icon: TrendingUp, value: formatCurrency(reportData.summary.totalProfit), label: t('reports.totalProfit'), color: 'text-green-600', bg: 'bg-green-500/10' },
-          { icon: ShoppingCart, value: String(reportData.summary.totalOrders), label: t('reports.ordersCount'), color: 'text-blue-600', bg: 'bg-blue-500/10' },
-          { icon: PieChart, value: formatCurrency(reportData.summary.avgOrderValue), label: t('reports.avgOrderValue'), color: 'text-amber-600', bg: 'bg-amber-500/10' },
-        ];
+  // Profit Margin & Sales Trend Calculations
+  const profitMargin = useMemo(() => {
+    if (reportData.summary.totalSales > 0) {
+      return ((reportData.summary.totalProfit / reportData.summary.totalSales) * 100).toFixed(1);
     }
-  }, [activeReport, reportData, expenseReportData, partnerReportData, cloudProducts, t]);
+    return '0.0';
+  }, [reportData.summary.totalProfit, reportData.summary.totalSales]);
+
+  // حساب المبيعات للفترة السابقة المماثلة لمقارنة النمو الحقيقي
+  const previousPeriodSales = useMemo(() => {
+    try {
+      const fromDate = new Date(dateRange.from);
+      const toDate = new Date(dateRange.to);
+      const durationMs = Math.max(86400000, toDate.getTime() - fromDate.getTime());
+      const prevToDate = new Date(fromDate.getTime() - 86400000);
+      const prevFromDate = new Date(prevToDate.getTime() - durationMs);
+      const prevFromStr = prevFromDate.toISOString().split('T')[0];
+      const prevToStr = prevToDate.toISOString().split('T')[0];
+
+      return cloudInvoices
+        .filter(inv => {
+          const invDate = toLocalDateString(inv.createdAt);
+          return (inv.type === 'sale' || inv.type === 'maintenance') &&
+            inv.status !== 'refunded' &&
+            isDateInRange(invDate, prevFromStr, prevToStr);
+        })
+        .reduce((sum, inv) => sum + inv.total, 0);
+    } catch {
+      return 0;
+    }
+  }, [dateRange, cloudInvoices]);
+
+  const salesTrend = useMemo(() => {
+    if (previousPeriodSales <= 0) {
+      if (reportData.summary.totalSales > 0) {
+        return { isUp: true, label: `${reportData.summary.totalOrders} مبيعات في الفترة` };
+      }
+      return { isUp: true, label: '0% عن الفترة السابقة' };
+    }
+    const diff = ((reportData.summary.totalSales - previousPeriodSales) / previousPeriodSales) * 100;
+    const isUp = diff >= 0;
+    return {
+      isUp,
+      label: `${isUp ? '+' : ''}${diff.toFixed(1)}% عن الفترة السابقة`,
+    };
+  }, [reportData.summary.totalSales, reportData.summary.totalOrders, previousPeriodSales]);
 
   // ========== EXPORT HANDLERS ==========
 
@@ -639,9 +644,640 @@ export default function Reports() {
     });
   }, [cloudCustomers, filters]);
 
+  const getFilteredDebtsForReport = useCallback(() => {
+    return cloudDebts.filter(d => {
+      if (filters.status !== 'all' && d.status !== filters.status) return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        if (!(d.customerName || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [cloudDebts, filters]);
+
+  const getFilteredPurchasesForReport = useCallback(() => {
+    return cloudPurchases.filter(p => {
+      const pDate = toLocalDateString(p.created_at || p.invoice_date);
+      if (!isDateInRange(pDate, dateRange.from, dateRange.to)) return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const num = (p.invoice_number || p.id || '').toLowerCase();
+        const sup = (p.supplier_name || '').toLowerCase();
+        if (!num.includes(q) && !sup.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [cloudPurchases, dateRange, filters]);
+
+  const getFilteredExpensesForReport = useCallback(() => {
+    return expenseReportData.expenses.filter(e => {
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const label = (e.typeLabel || '').toLowerCase();
+        const notes = (e.notes || '').toLowerCase();
+        if (!label.includes(q) && !notes.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [expenseReportData.expenses, filters]);
+
+  // ========== DYNAMIC SUMMARY CARDS ==========
+  const summaryCards = useMemo(() => {
+    switch (activeReport) {
+      case 'sales':
+        return [
+          {
+            icon: DollarSign,
+            value: formatCurrency(reportData.summary.totalSales),
+            label: 'إجمالي المبيعات',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: salesTrend.label,
+          },
+          {
+            icon: TrendingUp,
+            value: formatCurrency(reportData.summary.totalProfit),
+            label: 'صافي الأرباح',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: `هامش ربح: ${profitMargin}%`,
+          },
+          {
+            icon: ShoppingBag,
+            value: `${reportData.summary.totalOrders} طلب`,
+            label: 'عدد الطلبات',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات',
+          },
+          {
+            icon: Clock,
+            value: formatCurrency(reportData.summary.avgOrderValue),
+            label: 'متوسط قيمة الطلب',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل بالفترة` : 'لكل طلب مسجل',
+          },
+        ];
+
+      case 'profits':
+        return [
+          {
+            icon: TrendingUp,
+            value: formatCurrency(reportData.summary.totalProfit),
+            label: 'إجمالي صافي الأرباح',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'صافي الربح المحقق',
+          },
+          {
+            icon: PieChart,
+            value: `${profitMargin}%`,
+            label: 'نسبة هامش الربح',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'معدل الربحية العام',
+          },
+          {
+            icon: DollarSign,
+            value: formatCurrency(reportData.summary.totalSales),
+            label: 'المبيعات المولدة للربح',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'إجمالي إيراد المبيعات',
+          },
+          {
+            icon: Coins,
+            value: formatCurrency(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0),
+            label: 'متوسط الربح/فاتورة',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'متوسط عائد الفاتورة',
+          },
+        ];
+
+      case 'inventory': {
+        const prods = getFilteredProductsForReport();
+        const costValue = prods.reduce((s, p) => s + ((p.costPrice || 0) * (p.quantity || 0)), 0);
+        const saleValue = prods.reduce((s, p) => s + ((p.salePrice || 0) * (p.quantity || 0)), 0);
+        const totalQty = prods.reduce((s, p) => s + (p.quantity || 0), 0);
+        return [
+          {
+            icon: DollarSign,
+            value: formatCurrency(costValue),
+            label: 'قيمة المخزون (بالتكلفة)',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'سعر الشراء الفعلي',
+          },
+          {
+            icon: TrendingUp,
+            value: formatCurrency(saleValue),
+            label: 'القيمة البيعية المتوقعة',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'عائد البيع المتوقع',
+          },
+          {
+            icon: Package,
+            value: `${prods.length} صنف`,
+            label: 'إجمالي عدد الأصناف',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'الأصناف المسجلة (SKU)',
+          },
+          {
+            icon: ShoppingCart,
+            value: `${formatNumber(totalQty)} قطعة`,
+            label: 'إجمالي القطع المتوفرة',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'إجمالي الوحدات بالمخزن',
+          },
+        ];
+      }
+
+      case 'inventory-stock':
+      case 'stock-discrepancy': {
+        const prods = getFilteredProductsForReport();
+        const lowStock = prods.filter(p => (p.quantity || 0) <= (p.minStockLevel || 5) && (p.quantity || 0) > 0).length;
+        const outStock = prods.filter(p => (p.quantity || 0) <= 0).length;
+        const totalQty = prods.reduce((s, p) => s + (p.quantity || 0), 0);
+        const costValue = prods.reduce((s, p) => s + ((p.costPrice || 0) * (p.quantity || 0)), 0);
+        return [
+          {
+            icon: PackageSearch,
+            value: `${prods.length} صنف`,
+            label: 'إجمالي الأصناف المجرودة',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'أصناف مشمولة بالجرد',
+          },
+          {
+            icon: Clock,
+            value: `${lowStock} صنف`,
+            label: 'أصناف قاربت على النفاذ',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'الكمية ≤ الحد الأدنى',
+          },
+          {
+            icon: X,
+            value: `${outStock} صنف`,
+            label: 'أصناف نفدت بالكامل',
+            color: 'text-rose-600',
+            bg: 'bg-rose-500/10',
+            subtext: 'الرصيد بالمخزن = 0',
+          },
+          {
+            icon: ShoppingBag,
+            value: `${formatNumber(totalQty)} قطعة`,
+            label: 'إجمالي كميات الجرد',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: `بقيمة: ${formatCurrency(costValue)}`,
+          },
+        ];
+      }
+
+      case 'product-movement':
+      case 'top-products': {
+        const totalSold = reportData.allProducts.reduce((sum, p) => sum + p.sales, 0);
+        const totalRev = reportData.allProducts.reduce((sum, p) => sum + p.revenue, 0);
+        const topQtyProd = reportData.allProducts.slice().sort((a, b) => b.sales - a.sales)[0]?.name || 'لا يوجد';
+        const topProfitProd = reportData.allProducts.slice().sort((a, b) => b.profit - a.profit)[0]?.name || 'لا يوجد';
+        return [
+          {
+            icon: ShoppingBag,
+            value: `${formatNumber(totalSold)} قطعة`,
+            label: 'إجمالي القطع المباعة',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'حركة المبيعات بالفترة',
+          },
+          {
+            icon: DollarSign,
+            value: formatCurrency(totalRev),
+            label: 'عائد مبيعات المنتجات',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'إجمالي إيراد الأصناف',
+          },
+          {
+            icon: Flame,
+            value: topQtyProd,
+            label: 'الصنف الأكثر طلباً',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'الأعلى طلباً بالكمية',
+          },
+          {
+            icon: TrendingUp,
+            value: topProfitProd,
+            label: 'الصنف الأعلى ربحاً',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'الأعلى تحقيقاً للأرباح',
+          },
+        ];
+      }
+
+      case 'debts': {
+        const debts = getFilteredDebtsForReport();
+        const remDebt = debts.reduce((s, d) => s + (d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))), 0);
+        const paidDebt = debts.reduce((s, d) => s + (d.totalPaid || 0), 0);
+        const origDebt = debts.reduce((s, d) => s + (d.totalDebt || 0), 0);
+        const debtorCount = new Set(debts.filter(d => (d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))) > 0).map(d => d.customerId || d.customerName)).size;
+        return [
+          {
+            icon: Banknote,
+            value: formatCurrency(remDebt),
+            label: 'إجمالي الديون القائمة',
+            color: 'text-rose-600',
+            bg: 'bg-rose-500/10',
+            subtext: 'مستحقات واجبة التحصيل',
+          },
+          {
+            icon: UserCheck,
+            value: formatCurrency(paidDebt),
+            label: 'إجمالي المسدد',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'دفعات تم تحصيلها',
+          },
+          {
+            icon: DollarSign,
+            value: formatCurrency(origDebt),
+            label: 'إجمالي أصل الدين',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'إجمالي المديونيات المسجلة',
+          },
+          {
+            icon: Users,
+            value: `${debtorCount} عميل`,
+            label: 'عدد العملاء المدينين',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'عملاء لديهم رصيد مستحق',
+          },
+        ];
+      }
+
+      case 'customers':
+        return [
+          {
+            icon: Users,
+            value: `${cloudCustomers.length} عميل`,
+            label: 'إجمالي عدد العملاء',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'مسجلين بالدليل',
+          },
+          {
+            icon: UserCheck,
+            value: `${reportData.allCustomers.length} عميل`,
+            label: 'العملاء النشطون بالفترة',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'أجروا طلبات خلال الفترة',
+          },
+          {
+            icon: DollarSign,
+            value: formatCurrency(reportData.summary.totalSales),
+            label: 'إجمالي مشتريات العملاء',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'إيراد المبيعات بالفترة',
+          },
+          {
+            icon: Sparkles,
+            value: reportData.summary.topCustomer,
+            label: 'العميل الأكثر شراءً',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'الأعلى إنفاقاً بالفترة',
+          },
+        ];
+
+      case 'purchases': {
+        const purchs = getFilteredPurchasesForReport();
+        const totalPurch = purchs.reduce((s, p) => s + (p.actual_grand_total || p.expected_grand_total || 0), 0);
+        const purchCount = purchs.length;
+        const suppCount = new Set(purchs.map(p => p.supplier_name || p.supplier_id || 'عام')).size;
+        const avgPurch = purchCount > 0 ? totalPurch / purchCount : 0;
+        return [
+          {
+            icon: FileText,
+            value: formatCurrency(totalPurch),
+            label: 'إجمالي المشتريات',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'إجمالي فواتير التوريد',
+          },
+          {
+            icon: ShoppingCart,
+            value: `${purchCount} فاتورة`,
+            label: 'عدد فواتير الشراء',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'فواتير توريد مستلمة',
+          },
+          {
+            icon: Truck,
+            value: `${suppCount} مورد`,
+            label: 'عدد الموردين',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'تم التعامل معهم بالفترة',
+          },
+          {
+            icon: Clock,
+            value: formatCurrency(avgPurch),
+            label: 'متوسط قيمة الفاتورة',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'متوسط تكلفة التوريد',
+          },
+        ];
+      }
+
+      case 'expenses': {
+        const exps = getFilteredExpensesForReport();
+        const totExp = exps.reduce((s, e) => s + (e.amount || 0), 0);
+        const topExp = expenseReportData.byType[0];
+        const daysBetween = Math.max(1, Math.round((new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        const avgDailyExp = totExp / daysBetween;
+        return [
+          {
+            icon: Receipt,
+            value: formatCurrency(totExp),
+            label: 'إجمالي المصاريف',
+            color: 'text-destructive',
+            bg: 'bg-destructive/10',
+            subtext: 'إجمالي النفقات بالفترة',
+          },
+          {
+            icon: FileText,
+            value: `${exps.length} سند`,
+            label: 'عدد سندات الصرف',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'سندات صرف مسجلة',
+          },
+          {
+            icon: TrendingUp,
+            value: topExp ? topExp.type : 'لا يوجد',
+            label: 'أكبر بند مصروف',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: topExp ? `بقيمة: ${formatCurrency(topExp.amount)}` : 'لا توجد مصاريف',
+          },
+          {
+            icon: Calendar,
+            value: formatCurrency(avgDailyExp),
+            label: 'متوسط الصرف اليومي',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'معدل الإنفاق اليومي',
+          },
+        ];
+      }
+
+      case 'partners':
+      case 'partner-detailed':
+        return [
+          {
+            icon: TrendingUp,
+            value: formatCurrency(partnerReportData.summary.totalProfitInPeriod),
+            label: 'أرباح الشركاء بالفترة',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'صافي نصيب الشركاء',
+          },
+          {
+            icon: Wallet,
+            value: formatCurrency(partnerReportData.summary.totalCurrentBalance),
+            label: 'إجمالي الرصيد المستحق',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'أرصدة الشركاء الحالية',
+          },
+          {
+            icon: Banknote,
+            value: formatCurrency(partnerReportData.summary.totalWithdrawnInPeriod),
+            label: 'المسحوبات بالفترة',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'دفعات مسحوبة للشركاء',
+          },
+          {
+            icon: UsersRound,
+            value: `${partnerReportData.summary.partnersCount} شريك`,
+            label: 'عدد الشركاء',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'شركاء مسجلون بالنظام',
+          },
+        ];
+
+      case 'daily-closing': {
+        const targetDate = selectedDayDate || dateRange.to || new Date().toISOString().split('T')[0];
+        const dayData = reportData.allDailySales.find(d => d.date === targetDate);
+        const dSales = dayData?.sales || 0;
+        const dProfit = dayData?.profit || 0;
+        const dOrders = dayData?.orders || 0;
+        const dAvg = dOrders > 0 ? dSales / dOrders : 0;
+        return [
+          {
+            icon: DollarSign,
+            value: formatCurrency(dSales),
+            label: 'مبيعات اليوم',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: `تاريخ: ${targetDate}`,
+          },
+          {
+            icon: TrendingUp,
+            value: formatCurrency(dProfit),
+            label: 'صافي أرباح اليوم',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: dSales > 0 ? `هامش ربح: ${Math.round((dProfit / dSales) * 100)}%` : 'صافي ربح اليوم',
+          },
+          {
+            icon: ShoppingBag,
+            value: `${dOrders} فاتورة`,
+            label: 'عدد فواتير اليوم',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'فواتير اليوم المسجلة',
+          },
+          {
+            icon: Clock,
+            value: formatCurrency(dAvg),
+            label: 'متوسط قيمة الفاتورة',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'متوسط الفاتورة اليومية',
+          },
+        ];
+      }
+
+      case 'cashier-performance': {
+        const invs = getFilteredInvoicesForReport();
+        const cMap = new Map<string, { count: number; total: number; profit: number }>();
+        invs.forEach(inv => {
+          const name = inv.cashierName || 'كاشير عام';
+          const cur = cMap.get(name) || { count: 0, total: 0, profit: 0 };
+          cur.count += 1;
+          cur.total += inv.total || 0;
+          cur.profit += inv.profit || 0;
+          cMap.set(name, cur);
+        });
+        const sorted = Array.from(cMap.entries()).sort((a, b) => b[1].total - a[1].total);
+        const topC = sorted[0];
+        const topCName = topC ? topC[0] : 'لا يوجد';
+        const topCOrders = topC ? topC[1].count : 0;
+        const activeCCount = sorted.length;
+        const totCSales = sorted.reduce((s, c) => s + c[1].total, 0);
+        const avgC = activeCCount > 0 ? totCSales / activeCCount : 0;
+        return [
+          {
+            icon: UserCheck,
+            value: topCName,
+            label: 'أعلى كاشير مبيعاً',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: topC ? `مبيعات: ${formatCurrency(topC[1].total)}` : 'لا توجد بيانات',
+          },
+          {
+            icon: ShoppingBag,
+            value: `${topCOrders} فاتورة`,
+            label: 'فواتير الكاشير الأعلى',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: 'أعلى إنجاز مبيعات',
+          },
+          {
+            icon: Users,
+            value: `${activeCCount} كاشير`,
+            label: 'إجمالي الكاشيرات النشطين',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'باشروا البيع بالفترة',
+          },
+          {
+            icon: DollarSign,
+            value: formatCurrency(avgC),
+            label: 'متوسط المبيعات لكل كاشير',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'معدل مبيعات الموظف',
+          },
+        ];
+      }
+
+      case 'maintenance': {
+        const maintInvs = cloudInvoices.filter(inv => inv.type === 'maintenance' && isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+        const mTot = maintInvs.reduce((s, inv) => s + inv.total, 0);
+        const mProf = maintInvs.reduce((s, inv) => s + (inv.profit || 0), 0);
+        const mCount = maintInvs.length;
+        const mAvg = mCount > 0 ? mTot / mCount : 0;
+        return [
+          {
+            icon: DollarSign,
+            value: formatCurrency(mTot),
+            label: 'إجمالي خدمات الصيانة',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: 'عائد الصيانة بالفترة',
+          },
+          {
+            icon: TrendingUp,
+            value: formatCurrency(mProf),
+            label: 'صافي أرباح الصيانة',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: mTot > 0 ? `هامش ربح: ${Math.round((mProf / mTot) * 100)}%` : 'أرباح الصيانة',
+          },
+          {
+            icon: ShoppingBag,
+            value: `${mCount} فاتورة`,
+            label: 'عدد فواتير الصيانة',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: 'أجهزة مستلمة/مصلحة',
+          },
+          {
+            icon: Clock,
+            value: formatCurrency(mAvg),
+            label: 'متوسط فاتورة الصيانة',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: 'متوسط تكلفة الخدمة',
+          },
+        ];
+      }
+
+      default:
+        return [
+          {
+            icon: DollarSign,
+            value: formatCurrency(reportData.summary.totalSales),
+            label: 'إجمالي المبيعات',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            subtext: salesTrend.label,
+          },
+          {
+            icon: TrendingUp,
+            value: formatCurrency(reportData.summary.totalProfit),
+            label: 'صافي الأرباح',
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-500/10',
+            subtext: `هامش ربح: ${profitMargin}%`,
+          },
+          {
+            icon: ShoppingBag,
+            value: `${reportData.summary.totalOrders} طلب`,
+            label: 'عدد الطلبات',
+            color: 'text-blue-600',
+            bg: 'bg-blue-500/10',
+            subtext: reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات',
+          },
+          {
+            icon: Clock,
+            value: formatCurrency(reportData.summary.avgOrderValue),
+            label: 'متوسط قيمة الطلب',
+            color: 'text-amber-600',
+            bg: 'bg-amber-500/10',
+            subtext: reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل بالفترة` : 'لكل طلب مسجل',
+          },
+        ];
+    }
+  }, [
+    activeReport,
+    reportData,
+    profitMargin,
+    salesTrend,
+    getFilteredProductsForReport,
+    getFilteredDebtsForReport,
+    cloudCustomers,
+    getFilteredPurchasesForReport,
+    getFilteredExpensesForReport,
+    expenseReportData,
+    partnerReportData,
+    selectedDayDate,
+    dateRange,
+    cloudInvoices,
+    getFilteredInvoicesForReport,
+  ]);
+
   const handleExportPDF = useCallback(async () => {
     const storeInfo = getStoreInfo();
     if (isLoading) { toast.error(t('reports.waitForData')); return; }
+    const currentSummary = summaryCards.map(c => ({ label: c.label, value: c.value }));
     try {
       switch (activeReport) {
         case 'sales':
@@ -652,7 +1288,7 @@ export default function Reports() {
             id: inv.id, customerName: inv.customerName || 'عميل نقدي', total: inv.total,
             discount: inv.discount || 0, profit: inv.profit || 0, paymentType: inv.paymentType,
             type: inv.type, createdAt: inv.createdAt, cashierName: inv.cashierName || '-',
-          })), storeInfo, { start: dateRange.from, end: dateRange.to });
+          })), storeInfo, { start: dateRange.from, end: dateRange.to }, currentSummary);
           break;
         }
         case 'products':
@@ -663,10 +1299,11 @@ export default function Reports() {
             name: p.name, barcode: p.barcode || '', category: p.category || 'بدون تصنيف',
             costPrice: p.costPrice || 0, salePrice: p.salePrice || 0, quantity: p.quantity || 0,
             minStockLevel: p.minStockLevel || 0,
-          })), storeInfo);
+          })), storeInfo, currentSummary);
           break;
         }
-        case 'inventory-stock': {
+        case 'inventory-stock':
+        case 'stock-discrepancy': {
           const filteredProducts = getFilteredProductsForReport();
           if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
           await exportToPDF({
@@ -675,6 +1312,7 @@ export default function Reports() {
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'اسم المنتج', key: 'name' },
               { header: 'الباركود', key: 'barcode' },
@@ -696,8 +1334,7 @@ export default function Reports() {
           break;
         }
         case 'purchases': {
-          const purchases = await loadPurchaseInvoicesCloud();
-          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.created_at || p.invoice_date), dateRange.from, dateRange.to));
+          const filteredPurchases = getFilteredPurchasesForReport();
           if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات في الفترة المحددة للتصدير'); return; }
           await exportToPDF({
             title: 'تقرير فواتير المشتريات',
@@ -705,6 +1342,7 @@ export default function Reports() {
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'رقم الفاتورة', key: 'invoiceNumber' },
               { header: 'المورد', key: 'supplierName' },
@@ -728,13 +1366,15 @@ export default function Reports() {
           break;
         }
         case 'debts': {
-          if (cloudDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          const filteredDebts = getFilteredDebtsForReport();
+          if (filteredDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
           await exportToPDF({
             title: 'تقرير الديون والبيع المؤجل',
             subtitle: `تاريخ التقرير: ${dateRange.to}`,
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'العميل', key: 'customerName' },
               { header: 'المبلغ الإجمالي', key: 'amount' },
@@ -743,7 +1383,7 @@ export default function Reports() {
               { header: 'تاريخ الاستحقاق', key: 'dueDate' },
               { header: 'الحالة', key: 'status' },
             ],
-            data: cloudDebts.map(d => ({
+            data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
               amount: formatCurrency(d.totalDebt || 0),
               paid: formatCurrency(d.totalPaid || 0),
@@ -756,7 +1396,7 @@ export default function Reports() {
           break;
         }
         case 'cashier-performance': {
-          const invoicesInRange = cloudInvoices.filter(inv => isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+          const invoicesInRange = getFilteredInvoicesForReport();
           if (invoicesInRange.length === 0) { toast.error(t('reports.noDataToExport')); return; }
           const cashierMap = new Map<string, { count: number; total: number; profit: number }>();
           invoicesInRange.forEach(inv => {
@@ -773,6 +1413,7 @@ export default function Reports() {
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'اسم الكاشير', key: 'name' },
               { header: 'عدد الفواتير', key: 'count' },
@@ -800,6 +1441,7 @@ export default function Reports() {
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'رقم الفاتورة', key: 'id' },
               { header: 'العميل', key: 'customer' },
@@ -820,27 +1462,31 @@ export default function Reports() {
           });
           break;
         }
-        case 'top-products': {
-          if (reportData.topProducts.length === 0) { toast.error(t('reports.noProductsSold')); return; }
+        case 'top-products':
+        case 'product-movement': {
+          if (reportData.allProducts.length === 0) { toast.error(t('reports.noProductsSold')); return; }
           await exportToPDF({
-            title: 'تقرير المنتجات الأكثر مبيعاً',
+            title: activeReport === 'product-movement' ? 'تقرير حركة المنتجات' : 'تقرير المنتجات الأكثر مبيعاً',
             subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'الترتيب', key: 'rank' },
               { header: 'اسم المنتج', key: 'name' },
               { header: 'الكمية المباعة', key: 'sales' },
               { header: 'إجمالي الإيراد', key: 'revenue' },
+              { header: 'إجمالي الأرباح', key: 'profit' },
             ],
-            data: reportData.topProducts.map((p, idx) => ({
+            data: reportData.allProducts.map((p, idx) => ({
               rank: idx + 1,
               name: p.name,
               sales: `${p.sales} قطعة`,
               revenue: formatCurrency(p.revenue),
+              profit: formatCurrency(p.profit),
             })),
-            fileName: `top-products-${dateRange.from}.pdf`,
+            fileName: `${activeReport}-${dateRange.from}.pdf`,
           });
           break;
         }
@@ -853,6 +1499,7 @@ export default function Reports() {
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            summary: currentSummary,
             columns: [
               { header: 'التاريخ', key: 'date' },
               { header: 'إجمالي المبيعات', key: 'sales' },
@@ -873,23 +1520,25 @@ export default function Reports() {
           await exportCustomersToPDF(filteredCustomers.map(c => ({
             name: c.name, phone: c.phone || '', totalPurchases: c.totalPurchases || 0,
             ordersCount: c.invoiceCount || 0, balance: c.totalDebt || 0,
-          })), storeInfo);
+          })), storeInfo, currentSummary);
           break;
         }
-        case 'partners': {
+        case 'partners':
+        case 'partner-detailed': {
           if (cloudPartners.length === 0) { toast.error(t('reports.noPartnersToExport')); return; }
           await exportPartnersToPDF(cloudPartners.map(p => ({
             name: p.name, sharePercentage: p.sharePercentage || 0, currentCapital: p.currentCapital || 0,
             totalProfit: p.totalProfitEarned || 0, totalWithdrawn: p.totalWithdrawn || 0, currentBalance: p.currentBalance || 0,
-          })), storeInfo);
+          })), storeInfo, currentSummary);
           break;
         }
         case 'expenses': {
-          if (expenseReportData.expenses.length === 0) { toast.error(t('reports.noExpensesToExport')); return; }
-          await exportExpensesToPDF(expenseReportData.expenses.map(e => ({
+          const filteredExpenses = getFilteredExpensesForReport();
+          if (filteredExpenses.length === 0) { toast.error(t('reports.noExpensesToExport')); return; }
+          await exportExpensesToPDF(filteredExpenses.map(e => ({
             id: e.id, type: e.type, typeLabel: e.typeLabel, amount: e.amount || 0,
             date: e.date, notes: e.notes || '',
-          })), storeInfo, { start: dateRange.from, end: dateRange.to });
+          })), storeInfo, { start: dateRange.from, end: dateRange.to }, currentSummary);
           break;
         }
         default: {
@@ -901,39 +1550,57 @@ export default function Reports() {
       console.error('PDF export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudPartners, cloudDebts, cloudInvoices, reportData, isLoading, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
+  }, [
+    dateRange,
+    activeReport,
+    cloudPartners,
+    cloudInvoices,
+    reportData,
+    isLoading,
+    t,
+    summaryCards,
+    getFilteredInvoicesForReport,
+    getFilteredProductsForReport,
+    getFilteredCustomersForReport,
+    getFilteredDebtsForReport,
+    getFilteredPurchasesForReport,
+    getFilteredExpensesForReport,
+  ]);
 
   const handleExportExcel = useCallback(async () => {
+    const currentSummary = summaryCards.map(c => ({ label: c.label, value: c.value }));
     try {
       switch (activeReport) {
         case 'sales':
         case 'profits': {
           const filteredInvoices = getFilteredInvoicesForReport();
           if (filteredInvoices.length === 0) { toast.error(t('reports.noDataToExport')); return; }
-          exportInvoicesToExcel(filteredInvoices.map(inv => ({
+          await exportInvoicesToExcel(filteredInvoices.map(inv => ({
             id: inv.id, customerName: inv.customerName || 'عميل نقدي', total: inv.total,
             profit: inv.profit, paymentType: inv.paymentType, type: inv.type,
             createdAt: inv.createdAt, cashierName: inv.cashierName || '-',
-          })), { start: dateRange.from, end: dateRange.to });
+          })), { start: dateRange.from, end: dateRange.to }, currentSummary);
           break;
         }
         case 'products':
         case 'inventory': {
           const filteredProducts = getFilteredProductsForReport();
           if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
-          exportProductsToExcel(filteredProducts.map(p => ({
+          await exportProductsToExcel(filteredProducts.map(p => ({
             name: p.name, barcode: p.barcode || '', barcode2: p.barcode2 || '', barcode3: p.barcode3 || '',
             variantLabel: p.variantLabel || '', category: p.category || 'بدون تصنيف',
             costPrice: p.costPrice, salePrice: p.salePrice, quantity: p.quantity,
-          })));
+          })), currentSummary);
           break;
         }
-        case 'inventory-stock': {
+        case 'inventory-stock':
+        case 'stock-discrepancy': {
           const filteredProducts = getFilteredProductsForReport();
           if (filteredProducts.length === 0) { toast.error(t('reports.noProductsToExport')); return; }
           await exportToExcel({
             title: 'كشف الجرد الفعلي للمخزون',
             sheetName: 'الجرد الفعلي',
+            summary: currentSummary,
             columns: [
               { header: 'اسم المنتج', key: 'name', width: 25 },
               { header: 'الباركود', key: 'barcode', width: 18 },
@@ -955,12 +1622,12 @@ export default function Reports() {
           break;
         }
         case 'purchases': {
-          const purchases = await loadPurchaseInvoicesCloud();
-          const filteredPurchases = purchases.filter(p => isDateInRange(toLocalDateString(p.created_at || p.invoice_date), dateRange.from, dateRange.to));
+          const filteredPurchases = getFilteredPurchasesForReport();
           if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات للتصدير'); return; }
           await exportToExcel({
             title: 'تقرير فواتير المشتريات',
             sheetName: 'المشتريات',
+            summary: currentSummary,
             columns: [
               { header: 'رقم الفاتورة', key: 'invoiceNumber', width: 18 },
               { header: 'المورد', key: 'supplierName', width: 22 },
@@ -984,10 +1651,12 @@ export default function Reports() {
           break;
         }
         case 'debts': {
-          if (cloudDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          const filteredDebts = getFilteredDebtsForReport();
+          if (filteredDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
           await exportToExcel({
             title: 'تقرير الديون والبيع المؤجل',
             sheetName: 'الديون',
+            summary: currentSummary,
             columns: [
               { header: 'العميل', key: 'customerName', width: 22 },
               { header: 'المبلغ الإجمالي', key: 'amount', width: 15 },
@@ -996,7 +1665,7 @@ export default function Reports() {
               { header: 'تاريخ الاستحقاق', key: 'dueDate', width: 15 },
               { header: 'الحالة', key: 'status', width: 15 },
             ],
-            data: cloudDebts.map(d => ({
+            data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
               amount: d.totalDebt || 0,
               paid: d.totalPaid || 0,
@@ -1009,7 +1678,7 @@ export default function Reports() {
           break;
         }
         case 'cashier-performance': {
-          const invoicesInRange = cloudInvoices.filter(inv => isDateInRange(toLocalDateString(inv.createdAt), dateRange.from, dateRange.to));
+          const invoicesInRange = getFilteredInvoicesForReport();
           if (invoicesInRange.length === 0) { toast.error(t('reports.noDataToExport')); return; }
           const cashierMap = new Map<string, { count: number; total: number; profit: number }>();
           invoicesInRange.forEach(inv => {
@@ -1023,6 +1692,7 @@ export default function Reports() {
           await exportToExcel({
             title: 'تقرير أداء موظفي الكاشير',
             sheetName: 'أداء الكاشير',
+            summary: currentSummary,
             columns: [
               { header: 'اسم الكاشير', key: 'name', width: 22 },
               { header: 'عدد الفواتير', key: 'count', width: 15 },
@@ -1047,6 +1717,7 @@ export default function Reports() {
           await exportToExcel({
             title: 'تقرير خدمات الصيانة',
             sheetName: 'خدمات الصيانة',
+            summary: currentSummary,
             columns: [
               { header: 'رقم الفاتورة', key: 'id', width: 18 },
               { header: 'العميل', key: 'customer', width: 22 },
@@ -1067,24 +1738,28 @@ export default function Reports() {
           });
           break;
         }
-        case 'top-products': {
-          if (reportData.topProducts.length === 0) { toast.error(t('reports.noProductsSold')); return; }
+        case 'top-products':
+        case 'product-movement': {
+          if (reportData.allProducts.length === 0) { toast.error(t('reports.noProductsSold')); return; }
           await exportToExcel({
-            title: 'المنتجات الأكثر مبيعاً',
-            sheetName: 'الأكثر مبيعاً',
+            title: activeReport === 'product-movement' ? 'حركة المنتجات' : 'المنتجات الأكثر مبيعاً',
+            sheetName: 'المنتجات',
+            summary: currentSummary,
             columns: [
               { header: 'الترتيب', key: 'rank', width: 10 },
               { header: 'اسم المنتج', key: 'name', width: 25 },
               { header: 'الكمية المباعة', key: 'sales', width: 15 },
               { header: 'إجمالي الإيراد', key: 'revenue', width: 18 },
+              { header: 'إجمالي الأرباح', key: 'profit', width: 18 },
             ],
-            data: reportData.topProducts.map((p, idx) => ({
+            data: reportData.allProducts.map((p, idx) => ({
               rank: idx + 1,
               name: p.name,
               sales: p.sales,
               revenue: p.revenue,
+              profit: p.profit,
             })),
-            fileName: `top-products-${dateRange.from}.xlsx`,
+            fileName: `${activeReport}-${dateRange.from}.xlsx`,
           });
           break;
         }
@@ -1094,6 +1769,7 @@ export default function Reports() {
           await exportToExcel({
             title: 'تقرير الإغلاق اليومي',
             sheetName: 'الإغلاق اليومي',
+            summary: currentSummary,
             columns: [
               { header: 'التاريخ', key: 'date', width: 15 },
               { header: 'إجمالي المبيعات', key: 'sales', width: 18 },
@@ -1111,24 +1787,27 @@ export default function Reports() {
         case 'customers': {
           const filteredCustomers = getFilteredCustomersForReport();
           if (filteredCustomers.length === 0) { toast.error(t('reports.noCustomersToExport')); return; }
-          exportCustomersToExcel(filteredCustomers.map(c => ({
+          await exportCustomersToExcel(filteredCustomers.map(c => ({
             name: c.name, phone: c.phone, totalPurchases: c.totalPurchases || 0,
             ordersCount: c.invoiceCount || 0, balance: c.totalDebt || 0,
-          })));
+          })), currentSummary);
           break;
         }
         case 'partners':
-          exportPartnersToExcel(cloudPartners.map(p => ({
+        case 'partner-detailed':
+          await exportPartnersToExcel(cloudPartners.map(p => ({
             name: p.name, sharePercentage: p.sharePercentage, initialCapital: p.initialCapital,
             currentCapital: p.currentCapital, totalProfit: p.totalProfitEarned,
             totalWithdrawn: p.totalWithdrawn, currentBalance: p.currentBalance,
-          })));
+          })), currentSummary);
           break;
-        case 'expenses':
-          exportExpensesToExcel(expenseReportData.expenses.map(e => ({
+        case 'expenses': {
+          const filteredExpenses = getFilteredExpensesForReport();
+          await exportExpensesToExcel(filteredExpenses.map(e => ({
             id: e.id, type: e.type, amount: e.amount, date: e.date, notes: e.notes,
-          })), { start: dateRange.from, end: dateRange.to });
+          })), { start: dateRange.from, end: dateRange.to }, currentSummary);
           break;
+        }
         default: {
           toast.info('تم تجهيز التقرير');
           return;
@@ -1139,7 +1818,21 @@ export default function Reports() {
       console.error('Excel export error:', error);
       toast.error(t('reports.exportError'));
     }
-  }, [dateRange, activeReport, expenseReportData, cloudPartners, cloudDebts, cloudInvoices, reportData, t, getFilteredInvoicesForReport, getFilteredProductsForReport, getFilteredCustomersForReport]);
+  }, [
+    dateRange,
+    activeReport,
+    cloudPartners,
+    cloudInvoices,
+    reportData,
+    t,
+    summaryCards,
+    getFilteredInvoicesForReport,
+    getFilteredProductsForReport,
+    getFilteredCustomersForReport,
+    getFilteredDebtsForReport,
+    getFilteredPurchasesForReport,
+    getFilteredExpensesForReport,
+  ]);
 
   const handleShareExpenseReport = (partnerName: string) => {
     const partnerExpenses = expenseReportData.expenses.filter(exp =>
@@ -1196,52 +1889,6 @@ export default function Reports() {
     }
     return topChartDay;
   }, [chartDays, selectedDayDate, topChartDay]);
-
-  const profitMargin = useMemo(() => {
-    if (reportData.summary.totalSales > 0) {
-      return ((reportData.summary.totalProfit / reportData.summary.totalSales) * 100).toFixed(1);
-    }
-    return '0.0';
-  }, [reportData.summary.totalProfit, reportData.summary.totalSales]);
-
-  // حساب المبيعات للفترة السابقة المماثلة لمقارنة النمو الحقيقي
-  const previousPeriodSales = useMemo(() => {
-    try {
-      const fromDate = new Date(dateRange.from);
-      const toDate = new Date(dateRange.to);
-      const durationMs = Math.max(86400000, toDate.getTime() - fromDate.getTime());
-      const prevToDate = new Date(fromDate.getTime() - 86400000);
-      const prevFromDate = new Date(prevToDate.getTime() - durationMs);
-      const prevFromStr = prevFromDate.toISOString().split('T')[0];
-      const prevToStr = prevToDate.toISOString().split('T')[0];
-
-      return cloudInvoices
-        .filter(inv => {
-          const invDate = toLocalDateString(inv.createdAt);
-          return (inv.type === 'sale' || inv.type === 'maintenance') &&
-            inv.status !== 'refunded' &&
-            isDateInRange(invDate, prevFromStr, prevToStr);
-        })
-        .reduce((sum, inv) => sum + inv.total, 0);
-    } catch {
-      return 0;
-    }
-  }, [dateRange, cloudInvoices]);
-
-  const salesTrend = useMemo(() => {
-    if (previousPeriodSales <= 0) {
-      if (reportData.summary.totalSales > 0) {
-        return { isUp: true, label: `${reportData.summary.totalOrders} مبيعات في الفترة` };
-      }
-      return { isUp: true, label: '0% عن الفترة السابقة' };
-    }
-    const diff = ((reportData.summary.totalSales - previousPeriodSales) / previousPeriodSales) * 100;
-    const isUp = diff >= 0;
-    return {
-      isUp,
-      label: `${isUp ? '+' : ''}${diff.toFixed(1)}% عن الفترة السابقة`,
-    };
-  }, [reportData.summary.totalSales, reportData.summary.totalOrders, previousPeriodSales]);
 
   const storeInfo = useMemo(() => getStoreInfo(), []);
 
@@ -1557,84 +2204,44 @@ export default function Reports() {
           </div>
         )}
 
-        {/* 2x2 Executive Metrics Cards Grid */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
-          {/* Card 1: إجمالي المبيعات - متوافق مع جميع الثيمات */}
-          <div className="relative overflow-hidden rounded-2xl bg-card border-2 border-primary/40 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px] transition-colors">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-semibold">إجمالي المبيعات</span>
-              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4" />
+        {/* Dynamic Executive Metrics Cards Grid - adapts to activeReport */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+          {summaryCards.map((card, idx) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={idx}
+                className={cn(
+                  "relative overflow-hidden rounded-2xl bg-card p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[115px] transition-all duration-200 border",
+                  idx === 0 ? "border-2 border-primary/40 shadow-sm" : "border border-border/70 hover:border-border"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs font-semibold truncate max-w-[130px]" title={card.label}>
+                    {card.label}
+                  </span>
+                  <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", card.bg, card.color)}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="my-1">
+                  <p className={cn("text-xl sm:text-2xl font-black tracking-tight truncate", idx === 0 ? "text-primary" : "text-foreground")} title={String(card.value)}>
+                    {card.value}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
+                  {idx === 0 && activeReport === 'sales' && (
+                    salesTrend.isUp ? (
+                      <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    ) : (
+                      <ArrowDownRight className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    )
+                  )}
+                  {card.subtext && <span className="truncate" title={card.subtext}>{card.subtext}</span>}
+                </div>
               </div>
-            </div>
-            <div className="my-1">
-              <p className="text-xl sm:text-2xl font-black text-primary tracking-tight">
-                {formatCurrency(reportData.summary.totalSales)}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium">
-              <span className="text-muted-foreground">{salesTrend.label}</span>
-              {salesTrend.isUp ? (
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />
-              )}
-            </div>
-          </div>
-
-          {/* Card 2: إجمالي الأرباح */}
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/70 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-medium">إجمالي الأرباح</span>
-              <div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="my-1">
-              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                {formatCurrency(reportData.summary.totalProfit)}
-              </p>
-            </div>
-            <p className="text-emerald-600 font-semibold text-[10px] sm:text-xs">
-              هامش ربح: {profitMargin}%
-            </p>
-          </div>
-
-          {/* Card 3: متوسط قيمة الطلب */}
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/70 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-medium">متوسط قيمة الطلب</span>
-              <div className="w-7 h-7 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="my-1">
-              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                {formatCurrency(reportData.summary.avgOrderValue)}
-              </p>
-            </div>
-            <p className="text-muted-foreground text-[10px] sm:text-xs">
-              {reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل في هذه الفترة` : 'لكل طلب مسجل'}
-            </p>
-          </div>
-
-          {/* Card 4: عدد الطلبات */}
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/70 p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs font-medium">عدد الطلبات</span>
-              <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="my-1">
-              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                {reportData.summary.totalOrders} طلب
-              </p>
-            </div>
-            <p className="text-muted-foreground text-[10px] sm:text-xs">
-              {reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات مسجلة'}
-            </p>
-          </div>
+            );
+          })}
         </div>
 
         {/* View Mode Segmented Controls — compact and bounded */}
