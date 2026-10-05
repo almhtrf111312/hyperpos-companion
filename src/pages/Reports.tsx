@@ -1443,7 +1443,7 @@ export default function Reports() {
               { header: 'المسدد', key: 'totalPaid' },
               { header: 'المتبقي', key: 'remainingDebt' },
               { header: 'تاريخ الاستحقاق', key: 'dueDate' },
-              { header: 'الحالة', key: 'status' },
+              { header: 'الحالة', key: 'status_label' },
             ],
             data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
@@ -1451,7 +1451,7 @@ export default function Reports() {
               totalPaid: d.totalPaid || 0,
               remainingDebt: d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0)),
               dueDate: d.dueDate || '-',
-              status: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : 'مستحق',
+              status_label: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : d.status === 'overdue' ? 'متأخر' : 'مستحق',
             })),
             totals: {
               totalDebt: totalDebtVal,
@@ -1717,26 +1717,39 @@ export default function Reports() {
         case 'debts': {
           const filteredDebts = getFilteredDebtsForReport();
           if (filteredDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          const totalDebtVal = filteredDebts.reduce((s, d) => s + (d.totalDebt || 0), 0);
+          const totalPaidVal = filteredDebts.reduce((s, d) => s + (d.totalPaid || 0), 0);
+          const remainingDebtVal = filteredDebts.reduce((s, d) => s + (d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))), 0);
           await exportToExcel({
             title: 'تقرير الديون والبيع المؤجل',
             sheetName: 'الديون',
-            summary: currentSummary,
+            summary: [
+              { label: 'إجمالي الديون', value: totalDebtVal },
+              { label: 'إجمالي المسدد', value: totalPaidVal },
+              { label: 'المتبقي للتحصيل', value: remainingDebtVal },
+              { label: 'عدد الديون', value: filteredDebts.length },
+            ],
             columns: [
               { header: 'العميل', key: 'customerName', width: 22 },
-              { header: 'المبلغ الإجمالي', key: 'amount', width: 15 },
-              { header: 'المسدد', key: 'paid', width: 15 },
-              { header: 'المتبقي', key: 'remaining', width: 15 },
+              { header: 'المبلغ الإجمالي', key: 'totalDebt', width: 15 },
+              { header: 'المسدد', key: 'totalPaid', width: 15 },
+              { header: 'المتبقي', key: 'remainingDebt', width: 15 },
               { header: 'تاريخ الاستحقاق', key: 'dueDate', width: 15 },
-              { header: 'الحالة', key: 'status', width: 15 },
+              { header: 'الحالة', key: 'status_label', width: 15 },
             ],
             data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
-              amount: d.totalDebt || 0,
-              paid: d.totalPaid || 0,
-              remaining: d.remainingDebt || (d.totalDebt || 0) - (d.totalPaid || 0),
+              totalDebt: d.totalDebt || 0,
+              totalPaid: d.totalPaid || 0,
+              remainingDebt: d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0)),
               dueDate: d.dueDate || '-',
-              status: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : 'مستحق',
+              status_label: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : d.status === 'overdue' ? 'متأخر' : 'مستحق',
             })),
+            totals: {
+              totalDebt: totalDebtVal,
+              totalPaid: totalPaidVal,
+              remainingDebt: remainingDebtVal,
+            },
             fileName: `debts-${dateRange.to}.xlsx`,
           });
           break;

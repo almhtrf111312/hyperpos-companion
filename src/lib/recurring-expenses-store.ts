@@ -1,5 +1,6 @@
 import { emitEvent, EVENTS } from './events';
-import { addExpense, ExpenseType } from './expenses-store';
+import { addExpenseCloud, ExpenseType } from './cloud/expenses-cloud';
+import { processExpense } from './unified-transactions';
 
 const RECURRING_EXPENSES_KEY = 'hyperpos_recurring_expenses_v1';
 
@@ -122,20 +123,23 @@ export function getDueExpenses(): RecurringExpense[] {
   });
 }
 
-export function payRecurringExpense(id: string): boolean {
+export async function payRecurringExpense(id: string): Promise<boolean> {
   const expenses = loadRecurringExpenses();
   const expense = expenses.find(e => e.id === id);
   
   if (!expense) return false;
   
-  // Add as regular expense
-  addExpense({
+  // Add as regular cloud expense
+  await addExpenseCloud({
     type: expense.type,
     customType: expense.customType || expense.name,
     amount: expense.amount,
     notes: `${expense.name} - مصروف ثابت متكرر`,
     date: new Date().toISOString().split('T')[0],
   });
+
+  // خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
+  processExpense(expense.amount, expense.type);
   
   // Calculate next due date
   const nextDate = new Date(expense.nextDueDate);

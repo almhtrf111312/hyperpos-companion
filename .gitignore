@@ -28,7 +28,6 @@ gradle-*/
 
 # Android signing keys
 *.keystore
-!android/app/flowpos-release.keystore
 *.jks
 keystore_base64.txt
 

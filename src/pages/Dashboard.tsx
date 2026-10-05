@@ -353,6 +353,7 @@ export default function Dashboard() {
       EVENTS.PRODUCTS_UPDATED,
       EVENTS.PARTNERS_UPDATED,
       EVENTS.EXPENSES_UPDATED,
+      EVENTS.RECURRING_EXPENSES_UPDATED,
       EVENTS.CASHBOX_UPDATED,
       EVENTS.CAPITAL_UPDATED,
       EVENTS.SETTINGS_UPDATED,
@@ -382,12 +383,7 @@ export default function Dashboard() {
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span className="text-xs font-medium text-muted-foreground">{hasData ? 'جارٍ التحديث...' : 'جارٍ الحساب...'}</span>
             </div>
-          ) : (
-            <div className="flex flex-col items-end gap-0.5 px-3 py-1.5 rounded-xl bg-success/10 border border-success/20">
-              <span className="text-xs font-medium text-success">{t('dashboard.synced')}</span>
-              {lastUpdated && <span className="text-[10px] text-muted-foreground" dir="ltr">{new Date(lastUpdated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
-            </div>
-          )
+          ) : undefined
         }
       />
 
