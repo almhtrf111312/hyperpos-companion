@@ -5,11 +5,13 @@ import { Capacitor } from '@capacitor/core';
 import { restoreLastRouteIfNeeded } from "./lib/last-route";
 import { initializeLanguage } from "./lib/i18n";
 import { applyAppFontToDOM, getStoredAppFont } from "./lib/app-font-config";
+import { applyUIScaleToDOM, getStoredUIScale } from "./lib/ui-scale-config";
 import App from "./App.tsx";
 import "./index.css";
 
-// Initialize font and language layout immediately on startup
+// Initialize font, scale, and language layout immediately on startup
 applyAppFontToDOM(getStoredAppFont());
+applyUIScaleToDOM(getStoredUIScale());
 initializeLanguage();
 
 // Cold-start only: if the WebView opened at "/", put the user back on the last screen.

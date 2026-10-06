@@ -17,6 +17,12 @@
             localStorage.setItem('hyperpos_language', 'ar');
             lang = 'ar';
           }
+          var scale = localStorage.getItem('hyperpos_ui_scale');
+          if (scale) scale = scale.trim().replace(/^['"]|['"]$/g, '');
+          var scaleMap = { '80': '11.2px', '90': '12.6px', '100': '14px', '110': '15.4px', '120': '16.8px' };
+          var scalePx = scaleMap[scale] || '14px';
+          document.documentElement.style.fontSize = scalePx;
+          document.documentElement.setAttribute('data-ui-scale', scaleMap[scale] ? scale : '100');
           var isRtl = lang === 'ar' || lang === 'fa' || lang === 'ku';
           document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
           document.documentElement.setAttribute('lang', lang);

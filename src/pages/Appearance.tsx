@@ -1,12 +1,20 @@
 import { useState, Component, ReactNode } from 'react';
 import { Save, Undo2, Loader2, AlertTriangle } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
+import { UIScaleSelector } from '@/components/settings/UIScaleSelector';
 import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { FontSelector } from '@/components/settings/FontSelector';
+import {
+  UIScaleId,
+  setStoredUIScale,
+  getStoredUIScale,
+  applyUIScaleToDOM,
+} from '@/lib/ui-scale-config';
+import { saveStoreSettings } from '@/lib/supabase-store';
 
 // Error Boundary to catch ThemeSection render crashes
 class ThemeErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
@@ -32,27 +40,56 @@ export default function Appearance() {
   const { setFullTheme } = useTheme();
 
   const [pendingTheme, setPendingTheme] = useState<PendingTheme | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
+  const [pendingScale, setPendingScale] = useState<UIScaleId | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    if (!pendingTheme) return;
+  const hasChanges = Boolean(pendingTheme || pendingScale);
+
+  const handleSave = async () => {
+    if (!hasChanges) return;
     setIsSaving(true);
-    setFullTheme(pendingTheme.mode, pendingTheme.color, pendingTheme.blur, pendingTheme.transparency);
-    setHasChanges(false);
-    setPendingTheme(null);
-    setIsSaving(false);
-    toast({
-      title: t('common.saved'),
-      description: isRTL ? 'تم حفظ إعدادات المظهر' : 'Appearance settings saved',
-    });
+
+    try {
+      if (pendingTheme) {
+        setFullTheme(
+          pendingTheme.mode,
+          pendingTheme.color,
+          pendingTheme.blur,
+          pendingTheme.transparency
+        );
+      }
+
+      if (pendingScale) {
+        setStoredUIScale(pendingScale);
+        try {
+          await saveStoreSettings({
+            sync_settings: { uiScale: pendingScale },
+          });
+        } catch (e) {
+          console.warn('Failed to sync uiScale to store cloud settings:', e);
+        }
+      }
+
+      setPendingTheme(null);
+      setPendingScale(null);
+      toast({
+        title: t('common.saved'),
+        description: isRTL
+          ? 'تم حفظ إعدادات المظهر ومقياس الواجهة بنجاح'
+          : 'Appearance & UI scale settings saved successfully',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRevert = () => {
-    setResetSignal(prev => prev + 1);
-    setHasChanges(false);
+    // Revert pending scale on DOM
+    applyUIScaleToDOM(getStoredUIScale());
+    setResetSignal((prev) => prev + 1);
     setPendingTheme(null);
+    setPendingScale(null);
     toast({
       title: t('common.success'),
       description: isRTL ? 'تم التراجع عن التغييرات' : 'Changes reverted',
@@ -76,12 +113,24 @@ export default function Appearance() {
       <ThemeErrorBoundary fallback={errorFallback}>
         <ThemeSection
           onPendingChange={(pending, changed) => {
-            setPendingTheme(pending);
-            setHasChanges(changed);
+            setPendingTheme(changed ? pending : null);
           }}
           resetSignal={resetSignal}
         />
       </ThemeErrorBoundary>
+
+      {/* Embedded UI & Text Scale Selector */}
+      <div className="mt-6">
+        <UIScaleSelector
+          onPendingChange={(scale, changed) => {
+            setPendingScale(changed ? scale : null);
+          }}
+          resetSignal={resetSignal}
+          onSaved={() => {
+            setPendingScale(null);
+          }}
+        />
+      </div>
 
       {/* Embedded App Fonts Selector */}
       <div className="mt-6">
