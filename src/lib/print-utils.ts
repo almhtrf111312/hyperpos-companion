@@ -12,10 +12,20 @@ export interface StoreSettings {
 }
 
 export interface PrintSettings {
+  autoPrint?: boolean;
+  showStoreName?: boolean;
   showLogo: boolean;
   showAddress: boolean;
   showPhone: boolean;
+  showEmail?: boolean;
+  showInvoiceNumber?: boolean;
+  showDateTime?: boolean;
+  showCashierName?: boolean;
+  welcomeMessage?: string;
   footer: string;
+  showAlternativeCurrencies?: boolean;
+  paperSize?: string;
+  copies?: string | number;
 }
 
 /**
@@ -43,14 +53,40 @@ export function getStoreSettings(): StoreSettings {
 export function getPrintSettings(): PrintSettings {
   try {
     const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    const ps = settings.printSettings || {};
     return {
-      showLogo: settings.printSettings?.showLogo ?? true,
-      showAddress: settings.printSettings?.showAddress ?? true,
-      showPhone: settings.printSettings?.showPhone ?? true,
-      footer: settings.printSettings?.footer || 'شكراً لتسوقكم معنا!',
+      autoPrint: ps.autoPrint ?? true,
+      showStoreName: ps.showStoreName ?? true,
+      showLogo: ps.showLogo ?? true,
+      showAddress: ps.showAddress ?? true,
+      showPhone: ps.showPhone ?? true,
+      showEmail: ps.showEmail ?? true,
+      showInvoiceNumber: ps.showInvoiceNumber ?? true,
+      showDateTime: ps.showDateTime ?? true,
+      showCashierName: ps.showCashierName ?? true,
+      welcomeMessage: ps.welcomeMessage || '',
+      footer: ps.footer || 'شكراً لتسوقكم معنا!',
+      showAlternativeCurrencies: ps.showAlternativeCurrencies ?? false,
+      paperSize: ps.paperSize || '80mm',
+      copies: ps.copies || '1',
     };
   } catch {
-    return { showLogo: true, showAddress: true, showPhone: true, footer: 'شكراً لتسوقكم معنا!' };
+    return {
+      autoPrint: true,
+      showStoreName: true,
+      showLogo: true,
+      showAddress: true,
+      showPhone: true,
+      showEmail: true,
+      showInvoiceNumber: true,
+      showDateTime: true,
+      showCashierName: true,
+      welcomeMessage: '',
+      footer: 'شكراً لتسوقكم معنا!',
+      showAlternativeCurrencies: false,
+      paperSize: '80mm',
+      copies: '1',
+    };
   }
 }
 

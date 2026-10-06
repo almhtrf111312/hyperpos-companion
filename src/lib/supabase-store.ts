@@ -620,9 +620,9 @@ export async function fetchStoreSettings(timeoutMs: number = 3800): Promise<Stor
 }
 
 
-// Save store settings
+// Save store settings directly to Supabase
 // ✅ Uses getOwnerIdForInsert - cashiers should NOT save store settings
-export async function saveStoreSettings(settings: Record<string, unknown>): Promise<boolean> {
+export async function saveStoreSettingsDirect(settings: Record<string, unknown>): Promise<boolean> {
   const ownerId = await getOwnerIdForInsert();
   if (!ownerId) return false;
 
@@ -672,6 +672,36 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
     console.error('Error saving store settings:', error);
     return false;
   }
+}
+
+// Save store settings with Offline-First support and Sync Queue
+export async function saveStoreSettings(settings: Record<string, unknown>): Promise<boolean> {
+  // If offline, save into sync queue immediately
+  if (!navigator.onLine) {
+    try {
+      const { addToQueue } = await import('./sync-queue');
+      addToQueue('store_settings_update', settings);
+      console.log('[StoreSettings] Saved offline to sync queue');
+    } catch (e) {
+      console.warn('[StoreSettings] Failed to enqueue offline settings update:', e);
+    }
+    return true;
+  }
+
+  // If online, attempt direct save; on failure, enqueue to sync queue
+  const success = await saveStoreSettingsDirect(settings);
+  if (!success) {
+    try {
+      const { addToQueue } = await import('./sync-queue');
+      addToQueue('store_settings_update', settings);
+      console.log('[StoreSettings] Enqueued to sync queue after network failure');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Delete all user data (for data reset)

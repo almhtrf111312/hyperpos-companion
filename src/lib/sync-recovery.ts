@@ -39,6 +39,7 @@ const TYPE_LABELS: Record<string, string> = {
   shift_open: 'فتح وردية',
   shift_close: 'إغلاق وردية',
   shift_transaction: 'حركة وردية',
+  store_settings_update: 'تحديث إعدادات المتجر والطباعة',
 };
 
 type SaleBundle = {

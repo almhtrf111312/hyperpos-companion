@@ -21,10 +21,20 @@ export interface StoreSettings {
 }
 
 export interface PrintSettings {
+  autoPrint?: boolean;
+  showStoreName?: boolean;
   showLogo: boolean;
   showAddress: boolean;
   showPhone: boolean;
+  showEmail?: boolean;
+  showInvoiceNumber?: boolean;
+  showDateTime?: boolean;
+  showCashierName?: boolean;
+  welcomeMessage?: string;
   footer: string;
+  showAlternativeCurrencies?: boolean;
+  paperSize?: string;
+  copies?: string | number;
 }
 
 /**
@@ -51,14 +61,40 @@ export function getStoreSettings(): StoreSettings {
 export function getPrintSettings(): PrintSettings {
   try {
     const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    const ps = settings.printSettings || {};
     return {
-      showLogo: settings.printSettings?.showLogo ?? true,
-      showAddress: settings.printSettings?.showAddress ?? true,
-      showPhone: settings.printSettings?.showPhone ?? true,
-      footer: settings.printSettings?.footer || 'شكراً لتسوقكم معنا!',
+      autoPrint: ps.autoPrint ?? true,
+      showStoreName: ps.showStoreName ?? true,
+      showLogo: ps.showLogo ?? true,
+      showAddress: ps.showAddress ?? true,
+      showPhone: ps.showPhone ?? true,
+      showEmail: ps.showEmail ?? true,
+      showInvoiceNumber: ps.showInvoiceNumber ?? true,
+      showDateTime: ps.showDateTime ?? true,
+      showCashierName: ps.showCashierName ?? true,
+      welcomeMessage: ps.welcomeMessage || '',
+      footer: ps.footer || 'شكراً لتسوقكم معنا!',
+      showAlternativeCurrencies: ps.showAlternativeCurrencies ?? false,
+      paperSize: ps.paperSize || '80mm',
+      copies: ps.copies || '1',
     };
   } catch {
-    return { showLogo: true, showAddress: true, showPhone: true, footer: 'شكراً لتسوقكم معنا!' };
+    return {
+      autoPrint: true,
+      showStoreName: true,
+      showLogo: true,
+      showAddress: true,
+      showPhone: true,
+      showEmail: true,
+      showInvoiceNumber: true,
+      showDateTime: true,
+      showCashierName: true,
+      welcomeMessage: '',
+      footer: 'شكراً لتسوقكم معنا!',
+      showAlternativeCurrencies: false,
+      paperSize: '80mm',
+      copies: '1',
+    };
   }
 }
 
@@ -71,6 +107,7 @@ interface PrintableInvoice {
   time?: string;
   customerName: string;
   customerPhone?: string;
+  cashierName?: string;
   items: Array<{
     name: string;
     quantity: number;
@@ -98,16 +135,28 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
     </tr>
   `).join('');
 
-  const logoHTML = printSettings.showLogo && store.logo
+  const logoHTML = printSettings.showLogo !== false && store.logo
     ? `<img src="${store.logo}" alt="Logo" style="max-width: 80px; max-height: 80px; margin-bottom: 8px;" />`
     : '';
 
-  const addressHTML = printSettings.showAddress && store.address
+  const storeNameHTML = printSettings.showStoreName !== false && store.name
+    ? `<div class="store-name">${store.name}</div>`
+    : '';
+
+  const addressHTML = printSettings.showAddress !== false && store.address
     ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">${store.address}</p>`
     : '';
 
-  const phoneHTML = printSettings.showPhone && store.phone
+  const phoneHTML = printSettings.showPhone !== false && store.phone
     ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">📞 ${store.phone}</p>`
+    : '';
+
+  const emailHTML = printSettings.showEmail !== false && store.email
+    ? `<p style="margin: 2px 0; font-size: 11px; color: #666;">✉️ ${store.email}</p>`
+    : '';
+
+  const welcomeHTML = printSettings.welcomeMessage
+    ? `<p style="margin: 6px 0 2px; font-size: 12px; color: #334155; font-weight: 500;">${printSettings.welcomeMessage}</p>`
     : '';
 
   return `
@@ -210,19 +259,24 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
   <div class="receipt">
     <div class="header">
       ${logoHTML}
-      <div class="store-name">${store.name}</div>
+      ${storeNameHTML}
       ${addressHTML}
       ${phoneHTML}
+      ${emailHTML}
+      ${welcomeHTML}
     </div>
 
-    <div class="invoice-info">
-      <span>فاتورة: ${invoice.id}</span>
-      <span>${invoice.date}${invoice.time ? ' ' + invoice.time : ''}</span>
-    </div>
+    ${(printSettings.showInvoiceNumber !== false || printSettings.showDateTime !== false) ? `
+      <div class="invoice-info">
+        ${printSettings.showInvoiceNumber !== false ? `<span>فاتورة: ${invoice.id}</span>` : '<span></span>'}
+        ${printSettings.showDateTime !== false ? `<span>${invoice.date}${invoice.time ? ' ' + invoice.time : ''}</span>` : '<span></span>'}
+      </div>
+    ` : ''}
 
     <div class="customer-info">
       <strong>العميل:</strong> ${invoice.customerName || 'عميل نقدي'}
       ${invoice.customerPhone ? `<br/>الهاتف: ${invoice.customerPhone}` : ''}
+      ${(printSettings.showCashierName !== false && invoice.cashierName) ? `<br/><span>الكاشير: ${invoice.cashierName}</span>` : ''}
     </div>
 
     <table class="items-table">
@@ -264,6 +318,28 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
         <span>الإجمالي:</span>
         <span>${invoice.currencySymbol}${formatNumber(invoice.total)}</span>
       </div>
+
+      ${(() => {
+        if (!printSettings.showAlternativeCurrencies) return '';
+        try {
+          const fullSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+          const rates = fullSettings.exchangeRates || {};
+          const sypRate = Number(rates.SYP || 0);
+          const tryRate = Number(rates.TRY || 0);
+          const parts: string[] = [];
+          if (sypRate > 0) parts.push(`المعادل بالسوري: ${formatNumber(invoice.total * sypRate)} ل.س`);
+          if (tryRate > 0) parts.push(`المعادل بالتركي: ${formatNumber(invoice.total * tryRate)} ₺`);
+          if (parts.length === 0) return '';
+          return `
+            <div style="margin-top: 6px; padding: 6px; background: #f8fafc; border-radius: 6px; font-size: 11px; text-align: center; border: 1px dashed #cbd5e1; color: #334155;">
+              <div style="font-weight: bold; margin-bottom: 2px;">المعادل بالعملات البديلة:</div>
+              <div>${parts.join(' | ')}</div>
+            </div>
+          `;
+        } catch {
+          return '';
+        }
+      })()}
 
       <div style="text-align: center; margin-top: 8px;">
         <span class="payment-badge ${invoice.paymentType}">

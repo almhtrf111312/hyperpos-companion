@@ -409,13 +409,20 @@ export default function Settings() {
 
   // Printing settings
   const [printSettings, setPrintSettings] = useState({
-    autoPrint: true,
-    showLogo: true,
-    showAddress: true,
-    showPhone: true,
-    paperSize: '80mm',
+    autoPrint: persisted?.printSettings?.autoPrint ?? true,
+    showStoreName: persisted?.printSettings?.showStoreName ?? true,
+    showLogo: persisted?.printSettings?.showLogo ?? true,
+    showAddress: persisted?.printSettings?.showAddress ?? true,
+    showPhone: persisted?.printSettings?.showPhone ?? true,
+    showEmail: persisted?.printSettings?.showEmail ?? true,
+    showInvoiceNumber: persisted?.printSettings?.showInvoiceNumber ?? true,
+    showDateTime: persisted?.printSettings?.showDateTime ?? true,
+    showCashierName: persisted?.printSettings?.showCashierName ?? true,
+    welcomeMessage: persisted?.printSettings?.welcomeMessage ?? '',
+    footer: persisted?.printSettings?.footer || t('settings.defaultFooter'),
+    showAlternativeCurrencies: persisted?.printSettings?.showAlternativeCurrencies ?? false,
+    paperSize: persisted?.printSettings?.paperSize || '80mm',
     copies: String(persisted?.printSettings?.copies ?? 1),
-    footer: t('settings.defaultFooter'),
   });
 
   // Users are now managed by useUsersManagement hook
@@ -1990,55 +1997,172 @@ export default function Settings() {
 
       case 'printing':
         return (
-          <div className="bg-muted/30 rounded-xl border border-border/50 p-4 space-y-3.5">
-            <h2 className="text-base font-bold text-foreground mb-1">{t('settings.printing')}</h2>
-            {/* الطباعة التلقائية */}
-            <div className="flex items-center justify-between py-2 border-b border-border/40">
-              <span className="text-sm font-medium">{t('settings.autoPrint')}</span>
-              <Switch
-                checked={printSettings.autoPrint}
-                onCheckedChange={(checked) => setPrintSettings({ ...printSettings, autoPrint: checked })}
-              />
+          <div className="bg-muted/30 rounded-xl border border-border/50 p-4 space-y-5">
+            <div>
+              <h2 className="text-base font-bold text-foreground mb-1">{t('settings.printing')}</h2>
+              <p className="text-xs text-muted-foreground">تخصيص بنود وقالب الفاتورة، مفاتيح الإظهار، والعملات البديلة للطباعة والمشاركة</p>
             </div>
-            {/* حجم الورق + النسخ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-foreground w-20 shrink-0">{t('settings.paperSize')}</label>
-                <select
-                  value={printSettings.paperSize}
-                  onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
-                  className="flex-1 h-9 px-3 rounded-lg bg-card border border-border/60 text-foreground text-sm"
-                >
-                  <option value="58mm">58mm</option>
-                  <option value="80mm">80mm</option>
-                  <option value="A4">A4</option>
-                </select>
+
+            {/* إعدادات الطابعة العامة */}
+            <div className="space-y-3 pt-1 border-t border-border/40">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">إعدادات الطابعة</h3>
+              
+              <div className="flex items-center justify-between py-2 border-b border-border/30">
+                <div>
+                  <span className="text-sm font-medium block">{t('settings.autoPrint')}</span>
+                  <span className="text-xs text-muted-foreground">طباعة الإيصال تلقائياً فور تأكيد البيع</span>
+                </div>
+                <Switch
+                  checked={printSettings.autoPrint}
+                  onCheckedChange={(checked) => setPrintSettings({ ...printSettings, autoPrint: checked })}
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-foreground w-20 sm:w-16 shrink-0">{t('settings.copies')}</label>
-                <Input
-                  type="number"
-                  value={printSettings.copies}
-                  onChange={(e) => setPrintSettings({ ...printSettings, copies: e.target.value })}
-                  min="1"
-                  max="5"
-                  className="bg-card border border-border/60 h-9 flex-1"
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('settings.paperSize')}</label>
+                  <select
+                    value={printSettings.paperSize}
+                    onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
+                    className="flex-1 h-9 px-3 rounded-lg bg-card border border-border/60 text-foreground text-sm"
+                  >
+                    <option value="58mm">58mm (طابعة صغيرة)</option>
+                    <option value="80mm">80mm (طابعة قياسية)</option>
+                    <option value="A4">A4 (ورق قياسي)</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-foreground w-24 sm:w-20 shrink-0">{t('settings.copies')}</label>
+                  <Input
+                    type="number"
+                    value={printSettings.copies}
+                    onChange={(e) => setPrintSettings({ ...printSettings, copies: e.target.value })}
+                    min="1"
+                    max="5"
+                    className="bg-card border border-border/60 h-9 flex-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* تخصيص بنود الفاتورة */}
+            <div className="space-y-3 pt-3 border-t border-border/40">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">تخصيص بنود وبيانات الفاتورة</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار اسم المتجر</span>
+                  <Switch
+                    checked={printSettings.showStoreName}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showStoreName: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار الشعار (Logo)</span>
+                  <Switch
+                    checked={printSettings.showLogo}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showLogo: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار العنوان</span>
+                  <Switch
+                    checked={printSettings.showAddress}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showAddress: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار رقم الهاتف</span>
+                  <Switch
+                    checked={printSettings.showPhone}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showPhone: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار البريد الإلكتروني</span>
+                  <Switch
+                    checked={printSettings.showEmail}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showEmail: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار رقم الفاتورة</span>
+                  <Switch
+                    checked={printSettings.showInvoiceNumber}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showInvoiceNumber: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار التاريخ والوقت</span>
+                  <Switch
+                    checked={printSettings.showDateTime}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showDateTime: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/40">
+                  <span className="text-sm font-medium">إظهار اسم الكاشير / البائع</span>
+                  <Switch
+                    checked={printSettings.showCashierName}
+                    onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showCashierName: checked })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* معادلات العملات البديلة في الفاتورة */}
+            <div className="space-y-3 pt-3 border-t border-border/40">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-card/70 border border-primary/20">
+                <div>
+                  <span className="text-sm font-bold block text-foreground">إظهار المجموع بالعملات البديلة</span>
+                  <span className="text-xs text-muted-foreground">
+                    احتساب وعرض المعادل تلقائياً (مثل SYP و TRY) تحت إجمالي الفاتورة لأغراض الطباعة والمشاركة فقط
+                  </span>
+                </div>
+                <Switch
+                  checked={printSettings.showAlternativeCurrencies}
+                  onCheckedChange={(checked) => setPrintSettings({ ...printSettings, showAlternativeCurrencies: checked })}
                 />
               </div>
             </div>
-            {/* تذييل الإيصال */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-foreground w-20 shrink-0">{t('settings.receiptFooter')}</label>
-              <Input
-                value={printSettings.footer}
-                onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
-                className="bg-card border border-border/60 h-9 flex-1"
-              />
+
+            {/* نصوص الفاتورة */}
+            <div className="space-y-3 pt-3 border-t border-border/40">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">رسائل ونصوص الفاتورة</h3>
+              
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground block">الكلمة الترحيبية (أعلى الفاتورة)</label>
+                <Input
+                  value={printSettings.welcomeMessage}
+                  onChange={(e) => setPrintSettings({ ...printSettings, welcomeMessage: e.target.value })}
+                  placeholder="مثال: أهلاً وسهلاً بكم في متجرنا"
+                  className="bg-card border border-border/60 h-9"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground block">{t('settings.receiptFooter')} (خاتمة الفاتورة)</label>
+                <Input
+                  value={printSettings.footer}
+                  onChange={(e) => setPrintSettings({ ...printSettings, footer: e.target.value })}
+                  placeholder="مثال: شكراً لتسوقكم معنا! بضاعتكم أمانة لدينا"
+                  className="bg-card border border-border/60 h-9"
+                />
+              </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleTestPrint} className="w-full sm:w-auto">
-              <Printer className="w-4 h-4 ml-2" />
-              {t('settings.testPrint')}
-            </Button>
+
+            <div className="pt-2">
+              <Button variant="outline" size="sm" onClick={handleTestPrint} className="w-full sm:w-auto">
+                <Printer className="w-4 h-4 ml-2" />
+                {t('settings.testPrint')}
+              </Button>
+            </div>
           </div>
         );
 

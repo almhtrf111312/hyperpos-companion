@@ -214,49 +214,69 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.fillStyle = '#38bdf8';
   ctx.fillRect(0, HEADER_HEIGHT - 3, LOGICAL_WIDTH, 3);
 
-  // تحميل الشعار إذا توفر
+  // تحميل الشعار إذا توفر وإذا كان مفعل
+  const showLogo = printSettings.showLogo !== false;
+  const showStoreName = printSettings.showStoreName !== false;
+  const showPhone = printSettings.showPhone !== false;
+  const showAddress = printSettings.showAddress !== false;
+  const welcomeMessage = printSettings.welcomeMessage || '';
+
   let logoImg: HTMLImageElement | null = null;
-  if (storeLogoUrl) {
+  if (showLogo && storeLogoUrl) {
     logoImg = await loadImageWithTimeout(storeLogoUrl, 300);
   }
 
-  // رسم الشعار أو أيقونة المتجر في اليمين
+  // رسم الشعار أو أيقونة المتجر في اليمين (إذا كان الشعار مفعلاً)
   const logoX = LOGICAL_WIDTH - 30 - 64;
   const logoY = 28;
-  if (logoImg) {
-    ctx.save();
-    drawRoundedRect(ctx, logoX, logoY, 64, 64, 12, '#ffffff');
-    ctx.clip();
-    ctx.drawImage(logoImg, logoX, logoY, 64, 64);
-    ctx.restore();
-  } else {
-    // أيقونة متجر افتراضية راقية
-    drawRoundedRect(ctx, logoX, logoY, 64, 64, 12, 'rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.25)');
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold 26px ${FONT_FAMILY}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.direction = 'rtl';
-    ctx.fillText(storeName.charAt(0) || '🏪', logoX + 32, logoY + 32);
+  if (showLogo) {
+    if (logoImg) {
+      ctx.save();
+      drawRoundedRect(ctx, logoX, logoY, 64, 64, 12, '#ffffff');
+      ctx.clip();
+      ctx.drawImage(logoImg, logoX, logoY, 64, 64);
+      ctx.restore();
+    } else {
+      // أيقونة متجر افتراضية راقية
+      drawRoundedRect(ctx, logoX, logoY, 64, 64, 12, 'rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.25)');
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 26px ${FONT_FAMILY}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction = 'rtl';
+      ctx.fillText(storeName.charAt(0) || '🏪', logoX + 32, logoY + 32);
+    }
   }
 
   // اسم المتجر ومعلومات التواصل
-  const storeTextRight = logoX - 16;
+  const storeTextRight = showLogo ? (logoX - 16) : (LOGICAL_WIDTH - 30);
   ctx.direction = 'rtl';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold 22px ${FONT_FAMILY}`;
-  ctx.fillText(truncateText(ctx, storeName, 320), storeTextRight, 30);
+  let currentHeaderY = 30;
+  if (showStoreName) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold 22px ${FONT_FAMILY}`;
+    ctx.fillText(truncateText(ctx, storeName, 320), storeTextRight, currentHeaderY);
+    currentHeaderY += 28;
+  }
+
+  if (welcomeMessage) {
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = `12px ${FONT_FAMILY}`;
+    ctx.fillText(truncateText(ctx, welcomeMessage, 320), storeTextRight, currentHeaderY);
+    currentHeaderY += 20;
+  }
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = `13px ${FONT_FAMILY}`;
-  if (storePhone) {
-    ctx.fillText(`هاتف: ${storePhone}`, storeTextRight, 62);
+  if (showPhone && storePhone) {
+    ctx.fillText(`هاتف: ${storePhone}`, storeTextRight, currentHeaderY);
+    currentHeaderY += 20;
   }
-  if (storeAddress) {
-    ctx.fillText(truncateText(ctx, storeAddress, 320), storeTextRight, storePhone ? 84 : 62);
+  if (showAddress && storeAddress) {
+    ctx.fillText(truncateText(ctx, storeAddress, 320), storeTextRight, currentHeaderY);
   }
 
   // عنوان الفاتورة ورقمها في اليسار
@@ -569,11 +589,30 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   }
 
   // هاتف المتجر
-  if (storePhone) {
+  if (showPhone && storePhone) {
     detailsY += 26;
     ctx.fillStyle = '#475569';
     ctx.font = `12.5px ${FONT_FAMILY}`;
     ctx.fillText(`📞 للتواصل: ${storePhone}`, detailsRightX, detailsY);
+  }
+
+  // العملات البديلة إذا كانت مفعلة
+  if (printSettings.showAlternativeCurrencies) {
+    try {
+      const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
+      const rates = fullSettings.exchangeRates || {};
+      const sypRate = Number(rates.SYP || 0);
+      const tryRate = Number(rates.TRY || 0);
+      const parts: string[] = [];
+      if (sypRate > 0) parts.push(`سوري: ${formatNumber(data.total * sypRate)} ل.س`);
+      if (tryRate > 0) parts.push(`تركي: ${formatNumber(data.total * tryRate)} ₺`);
+      if (parts.length > 0) {
+        detailsY += 20;
+        ctx.fillStyle = '#0284c7';
+        ctx.font = `11.5px ${FONT_FAMILY}`;
+        ctx.fillText(`المعادل: ${parts.join(' | ')}`, detailsRightX, detailsY);
+      }
+    } catch {}
   }
 
   // عبارة شكر

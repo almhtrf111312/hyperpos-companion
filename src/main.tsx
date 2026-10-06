@@ -99,6 +99,11 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
+// Remove offline fallback overlay if React mounts successfully
+try {
+  document.getElementById('offline-fallback-screen')?.remove();
+} catch {}
+
 createRoot(document.getElementById("root")!).render(
   <GlobalErrorBoundary>
     <App />

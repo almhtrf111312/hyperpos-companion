@@ -104,6 +104,10 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
       console.warn('[SyncProcessor] Legacy sale queue item skipped (auto-cleaned):', operation.id, data);
       return true;
     }
+    case 'store_settings_update': {
+      const { saveStoreSettingsDirect } = await import('@/lib/supabase-store');
+      return saveStoreSettingsDirect(data as Record<string, unknown>);
+    }
     default:
       throw new Error(`Unsupported sync operation: ${operation.type}`);
   }

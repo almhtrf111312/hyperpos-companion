@@ -979,7 +979,7 @@ function mergeSyncQueueInvoices(invoices) {
       queueInvoices.push({
         id: op.data.operationId || op.data.localId || op.id,
         type: 'sale',
-        customerName: bundle.customerName || 'Customer',
+        customerName: bundle.customerName || 'عميل نقدي',
         items: bundle.items || [],
         subtotal: bundle.subtotal || 0,
         discount: bundle.discount || 0,

@@ -36,7 +36,8 @@ export type OperationType =
   | 'quick_purchase'    // Quick single-item purchase (bakery mode)
   | 'purchase_invoice'  // Full purchase invoice with items
   | 'invoice_refund'    // Offline invoice refund (restores stock + reverses profit)
-  | 'invoice_refund_partial'; // Offline partial invoice refund
+  | 'invoice_refund_partial' // Offline partial invoice refund
+  | 'store_settings_update'; // Offline store & print settings update
 
 export interface QueuedOperation {
   id: string;

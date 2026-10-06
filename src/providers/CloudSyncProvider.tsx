@@ -391,6 +391,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           if (!res.success) throw new Error(res.error || 'فشل الاسترداد الجزئي');
           return true;
         }
+        if (operation.type === 'store_settings_update') {
+          const { saveStoreSettingsDirect } = await import('@/lib/supabase-store');
+          return await saveStoreSettingsDirect(operation.data as Record<string, unknown>);
+        }
         return processGenericQueuedOperation(operation);
       }, targetOperationId);
 

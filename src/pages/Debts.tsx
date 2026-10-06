@@ -112,8 +112,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   };
 
   const filterOptions = [
-    { key: 'active', label: 'ط§ظ„ط¯ظٹظˆظ† ط§ظ„ظ†ط´ط·ط©' },
-    { key: 'fully_paid', label: 'ط§ظ„ط¯ظٹظˆظ† ط§ظ„ظ…ط³ط¯ط¯ط©' },
+    { key: 'active', label: 'الديون النشطة' },
+    { key: 'fully_paid', label: 'الديون المسددة' },
     { key: 'all', label: t('common.all') },
     { key: 'due', label: t('debts.statusDue') },
     { key: 'partially_paid', label: t('debts.statusPartiallyPaid') },
@@ -267,14 +267,14 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   }, [selectedDebt, paymentCurrency, currentRate]);
 
   const openPaymentDialog = async (debt: Debt) => {
-    // âœ… ظ…ظ†ط¹ طھط³ط¯ظٹط¯ ط¯ظٹظ† ظ…ط±طھط¨ط· ط¨ظپط§طھظˆط±ط© ظ…ط³طھط±ط¯ط©
+    // ✅ منع تسديد دين مرتبط بفاتورة مستردة
     if (debt.invoiceId && !debt.isCashDebt) {
       try {
         const { getInvoiceByIdCloud } = await import('@/lib/cloud/invoices-cloud');
         const invoice = await getInvoiceByIdCloud(debt.invoiceId);
         if (invoice && invoice.status === 'refunded') {
-          toast.warning('âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ط¯ظٹظ† ظ…ط±طھط¨ط· ط¨ظپط§طھظˆط±ط© ظ…ط³طھط±ط¯ط©', {
-            description: `ط§ظ„ظپط§طھظˆط±ط© ط±ظ‚ظ… ${debt.invoiceId} طھظ… ط§ط³طھط±ط¯ط§ط¯ظ‡ط§ ظ…ط³ط¨ظ‚ط§ظ‹. ظ„ط§ ظٹظ…ظƒظ† طھط³ط¯ظٹط¯ ظ‡ط°ط§ ط§ظ„ط¯ظٹظ†.`,
+          toast.warning('⚠️ هذا الدين مرتبط بفاتورة مستردة', {
+            description: `الفاتورة رقم ${debt.invoiceId} تم استردادها مسبقاً. لا يمكن تسديد هذا الدين.`,
             duration: 5000,
           });
           return;
@@ -370,7 +370,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, finalPaymentUSD, paymentOpIdRef.current);
       paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-      // âœ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ط¨ظ„ط؛ ظ„ظ„طµظ†ط¯ظˆظ‚ ظˆطھط­ط¯ظٹط« ط§ظ„ظˆط±ط¯ظٹط© ط¨ط§ظ„ط¹ظ…ظ„ط©
+      // ✅ إضافة المبلغ للصندوق وتحديث الوردية بالعملة
       processDebtPayment(
         finalPaymentUSD,
         selectedDebt.customerId,
@@ -385,7 +385,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       confirmPendingProfit(selectedDebt.invoiceId, paymentRatio);
       confirmPendingProfitCloud(selectedDebt.invoiceId, paymentRatio);
 
-      // âœ… ط¥ط¹ط§ط¯ط© ط§ط­طھط³ط§ط¨ ط£ط±ظ‚ط§ظ… ط§ظ„ط¹ظ…ظٹظ„ ظ…ظ† ط§ظ„ظپظˆط§طھظٹط± ط§ظ„ظ†ط´ط·ط© ط¨ط¹ط¯ ط§ظ„ط³ط¯ط§ط¯ ظپظˆط±ظٹط§ظ‹
+      // ✅ إعادة احتساب أرقام العميل من الفواتير النشطة بعد السداد فورياً
       try {
         const { loadCustomersCloud, updateCustomerStatsCloud, invalidateCustomersCache } = await import('@/lib/cloud/customers-cloud');
         const { invalidateInvoicesCache } = await import('@/lib/cloud/invoices-cloud');
@@ -445,7 +445,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   };
 
   const handleAddCashDebt = async () => {
-    // âœ… ط­ظ…ط§ظٹط© ظ…ظ† ط§ظ„طھظƒط±ط§ط±ط§طھ
+    // ✅ حماية من التكرارات
     if (isSavingRef.current) return;
 
     if (!newDebtForm.customerName || !newDebtForm.customerPhone || newDebtForm.amount <= 0) {
@@ -619,7 +619,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       <h3 className="font-semibold text-foreground text-sm md:text-base">{debt.customerName}</h3>
                             {debt.pending_sync && (
                               <Badge variant={debt.sync_failed ? 'destructive' : 'outline'} className={!debt.sync_failed ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : ''}>
-                                {debt.sync_failed ? '\u0641\u0634\u0644 \u0641\u064A \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629' : '\u063A\u064A\u0631 \u0645\u062A\u0632\u0627\u0645\u0646\u0629'}
+                                {debt.sync_failed ? 'فشل في المزامنة' : 'غير متزامنة'}
                               </Badge>
                             )}
                       <span className={cn(
@@ -646,7 +646,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       </span>
                       {debt.cashierName && (
                         <span className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded text-[10px] md:text-xs">
-                          ًں‘¤ {debt.cashierName}
+                          <User className="w-3 h-3 text-muted-foreground shrink-0" /> <span>الكاشير: {debt.cashierName}</span>
                         </span>
                       )}
                     </div>
@@ -697,7 +697,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         {t('debts.payment')}
                       </Button>
                     )}
-                    {/* âœ… ط²ط± ط­ط°ظپ ط§ظ„ط¯ظٹظ† */}
+                    {/* ✅ زر حذف الدين */}
                     <Button
                       variant="destructive"
                       size="sm"
@@ -831,16 +831,16 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                     <span className="font-bold text-destructive block">{formatCurrency(selectedDebt.remainingDebt)}</span>
                     {paymentCurrency !== 'USD' && (
                       <span className="text-xs text-muted-foreground block font-mono">
-                        â‰ˆ {formatNumber(maxInCurrency)} {paymentCurrency === 'TRY' ? 'â‚؛' : 'ظ„.ط³'}
+                        ≈ {formatNumber(maxInCurrency)} {paymentCurrency === 'TRY' ? '₺' : 'ل.س'}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* ط§ط®طھظٹط§ط± ط¹ظ…ظ„ط© ط§ظ„ط³ط¯ط§ط¯ */}
+              {/* اختيار عملة السداد */}
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">ط¹ظ…ظ„ط© ط§ظ„ط¯ظپط¹ ط§ظ„ظ…ط³طھظ„ظ…ط©</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">عملة الدفع المستلمة</label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
@@ -857,7 +857,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                     )}
                   >
-                    <span className="text-sm font-bold">ًں’µ ط¯ظˆظ„ط§ط±</span>
+                    <span className="text-sm font-bold">💵 دولار</span>
                     <span className="text-xs font-normal opacity-80">(USD)</span>
                   </button>
                   <button
@@ -875,7 +875,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                     )}
                   >
-                    <span className="text-sm font-bold">â‚؛ طھط±ظƒظٹ</span>
+                    <span className="text-sm font-bold">₺ تركي</span>
                     <span className="text-xs font-normal opacity-80">(TRY)</span>
                   </button>
                   <button
@@ -893,28 +893,28 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                     )}
                   >
-                    <span className="text-sm font-bold">ظ„.ط³ ط³ظˆط±ظٹ</span>
+                    <span className="text-sm font-bold">ل.س سوري</span>
                     <span className="text-xs font-normal opacity-80">(SYP)</span>
                   </button>
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
-                    <span>ط³ط¹ط± ط§ظ„طµط±ظپ ط§ظ„ظ…ط¹طھظ…ط¯:</span>
+                    <span>سعر الصرف المعتمد:</span>
                     <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {paymentCurrency}</span>
                   </p>
                 )}
               </div>
 
 
-              {/* ط­ظ‚ظ„ ط¥ط¯ط®ط§ظ„ ط§ظ„ظ…ط¨ظ„ط؛ */}
+              {/* حقل إدخال المبلغ */}
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-sm font-medium">
-                    ظ…ط¨ظ„ط؛ ط§ظ„ط¯ظپط¹ط© ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? 'â‚؛' : 'ظ„.ط³'})
+                    مبلغ الدفعة ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
                   </label>
                   {paymentCurrency !== 'USD' && amountUSD > 0 && (
                     <span className="text-xs font-bold text-success font-mono">
-                      â‰ˆ ${formatNumber(amountUSD)}
+                      ≈ ${formatNumber(amountUSD)}
                     </span>
                   )}
                 </div>
@@ -929,10 +929,10 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   disabled={isSubmitting}
                 />
 
-                {/* ط§ظ„ظ…ط¹ط§ط¯ظ„ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ط¥ط°ط§ ظƒط§ظ†طھ ط§ظ„ط¹ظ…ظ„ط© ط£ط¬ظ†ط¨ظٹط© */}
+                {/* المعادل بالدولار إذا كانت العملة أجنبية */}
                 {paymentCurrency !== 'USD' && (
                   <div className="mt-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ط¹ط§ط¯ظ„ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ط§ظ„ظ…ط®طµظˆظ… ظ…ظ† ط§ظ„ط¯ظٹظ†:</span>
+                    <span className="text-muted-foreground">المبلغ المعادل بالدولار المخصوم من الدين:</span>
                     <span className="font-bold text-primary text-sm font-mono">${formatNumber(amountUSD)}</span>
                   </div>
                 )}
@@ -976,7 +976,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                      <span>ط¬ط§ط±ظٹ ط§ظ„ط¯ظپط¹...</span>
+                      <span>جاري الدفع...</span>
                     </>
                   ) : (
                     <>

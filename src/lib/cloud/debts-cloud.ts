@@ -609,7 +609,7 @@ function mergeSyncQueueDebts(debts) {
         id: op.data.operationId || op.data.localId || op.id,
         invoiceId: op.data.operationId || op.data.localId || op.id,
         customerId: bundle.customerId,
-        customerName: bundle.customerName || 'Customer',
+        customerName: bundle.customerName || 'عميل',
         customerPhone: bundle.customerPhone || '',
         totalDebt: bundle.total || 0,
         totalPaid: bundle.downPayment || 0,
