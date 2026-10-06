@@ -26,10 +26,10 @@ export function POSHeader({
   const { t, tDynamic } = useLanguage();
 
   return (
-    <header className="h-16 md:h-20 border-b border-border/70 flex items-center justify-between px-3 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] rtl:pr-16 ltr:pl-16 md:rtl:pr-4 md:ltr:pl-4 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md shadow-sm">
+    <header className="h-16 md:h-20 border-b border-border/70 flex items-center justify-between pe-3 ps-14 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md shadow-sm">
       {/* Right side - Title and Desktop Mode Switcher */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">{t('pos.title')}</h1>
+      <div className="flex items-center gap-3 overflow-hidden">
+        <h1 className="text-xl md:text-2xl font-bold text-foreground whitespace-nowrap truncate">{t('pos.title')}</h1>
 
         {/* Desktop Fixed Mode Toggle */}
         {!isMobile && !hideMaintenance && onModeChange && (

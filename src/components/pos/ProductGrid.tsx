@@ -153,6 +153,17 @@ export function ProductGrid({
       {/* Search, View Toggle, and Categories */}
       <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md space-y-3 md:space-y-4">
         <div className="flex gap-2 items-center">
+          <div className="flex-1 min-w-0 relative flex items-center ps-12 md:ps-0">
+            <Search className="absolute rtl:right-14 ltr:left-14 md:rtl:right-3 md:ltr:left-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder={tDynamic('productSearch')}
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="rtl:pr-9 ltr:pl-9 md:rtl:pr-10 md:ltr:pl-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm w-full"
+            />
+          </div>
+
           {/* Mobile Single Cycle View Mode Button */}
           <button
             type="button"
@@ -206,17 +217,6 @@ export function ProductGrid({
             >
               <AlignJustify className="w-4 h-4" />
             </button>
-          </div>
-
-          <div className="flex-1 min-w-0 relative flex items-center">
-            <Search className="absolute rtl:right-3 ltr:left-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              placeholder={tDynamic('productSearch')}
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="rtl:pr-9 ltr:pl-9 md:rtl:pr-10 md:ltr:pl-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm w-full"
-            />
           </div>
 
           {!isRestaurant && (

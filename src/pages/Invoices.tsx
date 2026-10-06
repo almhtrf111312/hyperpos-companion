@@ -1332,7 +1332,7 @@ export default function Invoices() {
                         <Wrench className="w-5 h-5 text-warning" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex flex-col justify-start items-start gap-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold truncate">{invoice.customerName}</span>
                         <Badge variant={invoice.paymentType === 'cash' ? 'default' : 'secondary'}>
@@ -1359,17 +1359,13 @@ export default function Invoices() {
                           )
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
-                        <span>{invoice.id}</span>
-                        <span>•</span>
-                        <span>{formatDateTime(new Date(invoice.createdAt))}</span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                        <span className="bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md">{invoice.id}</span>
+                        <span className="bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md">{formatDateTime(new Date(invoice.createdAt))}</span>
                         {invoice.cashierName && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-1 text-xs bg-muted px-1.5 py-0.5 rounded">
-                              👤 {invoice.cashierName}
-                            </span>
-                          </>
+                          <span className="flex items-center gap-1 bg-muted/80 border border-border/50 px-1.5 py-0.5 rounded-md">
+                            👤 {invoice.cashierName}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -2027,3 +2023,4 @@ export default function Invoices() {
     </div>
   );
 }
+
