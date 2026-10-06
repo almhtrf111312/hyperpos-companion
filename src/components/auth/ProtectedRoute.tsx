@@ -35,6 +35,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     };
   }, [user, signOut]);
 
+  // Show children immediately if local session exists and account is not blocked
+  if (user && !isAccountBlocked) {
+    return <>{children}</>;
+  }
+
   // Show loading while checking session
   if (isLoading) {
     return (

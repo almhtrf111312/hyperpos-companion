@@ -212,11 +212,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cachedData = getCachedSession();
     if (cachedData && getStayLoggedInPreference()) {
       setUser(cachedData.user);
+      setSession(cachedData);
+      setIsLoading(false);
     }
 
     // Set up auth state listener BEFORE checking for existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        // Strict Offline-First: If supabase reports no session but we have a cache, ignore the empty session event
+        if (!currentSession?.user && getCachedSession() && event !== 'SIGNED_OUT') {
+          return;
+        }
         // Skip unnecessary state updates on TOKEN_REFRESHED to prevent re-renders that close dialogs
         if (event === 'TOKEN_REFRESHED' && currentSession?.user) {
           setSession(currentSession);
@@ -248,7 +254,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
-          setIsLoading(false);
+          if (!getCachedSession()) {
+            setIsLoading(false);
+          }
         }
 
         // Handle token refresh events
@@ -258,7 +266,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Handle sign out
         if (event === 'SIGNED_OUT') {
-          cacheSession(null);
+          // Explicitly keeping this for actual sign outs. But if triggered by timeout, we don't clear it.
+          // Since signOut clears cache directly, we don't rely on this event anymore.
         }
       }
     );
@@ -356,7 +365,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const autoLoginSuccess = await attemptDeviceAutoLogin();
         if (!autoLoginSuccess) {
           setIsLoading(false);
-          cacheSession(null);
+          // Strict Offline-First: never clear session here
         }
         return;
       }
@@ -378,23 +387,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = data?.user;
         
         if (userError || !currentUser) {
-          const isNetworkError = userError?.message?.includes('fetch') || 
-                                 userError?.message?.includes('network') ||
-                                 userError?.message?.includes('Failed') ||
-                                 userError?.message?.includes('timeout') ||
-                                 userError?.message?.includes('abort');
-          
-          if (isNetworkError) {
-            console.log('[Auth] Network timeout or error verifying user, keeping existing session');
-            return;
-          }
-          
-          // User genuinely doesn't exist anymore on server
-          console.log('User from session does not exist, signing out...');
-          await supabase.auth.signOut();
-          cacheSession(null);
-          setUser(null);
-          setSession(null);
+          console.log('[Auth] Error verifying user in background, trusting existing local session. Error:', userError?.message);
+          // Strict Offline-First: Never sign out or clear session on background user check failure
           return;
         }
 
