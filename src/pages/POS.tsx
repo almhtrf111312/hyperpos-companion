@@ -559,8 +559,8 @@ export default function POS() {
   }, [customerName]);
 
   const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
-    if (!isNoInventoryMode() && product.quantity === 0) {
-      showToast.warning(t('pos.outOfStock').replace('{name}', product.name));
+    if (!isNoInventoryMode() && (product.quantity <= 0 || product.archived)) {
+      showToast.warning(`المنتج "${product.name}" نفد من المخزون وهو في الأرشيف`);
       return; // Don't add out-of-stock items
     }
 
@@ -659,12 +659,35 @@ export default function POS() {
     );
 
     if (matches.length > 1) {
+      if (!isNoInventoryMode()) {
+        const availableMatches = matches.filter(p => p.quantity > 0 && !p.archived);
+        if (availableMatches.length === 0) {
+          showToast.warning(`المنتج "${matches[0].name}" نفد من المخزون وهو في الأرشيف`);
+          return;
+        }
+        if (availableMatches.length === 1) {
+          if (loadBarcodeScanMode() === 'add') {
+            addToCart(availableMatches[0], 'piece');
+            return;
+          }
+          setSearchQuery(barcode);
+          showToast.success(t('pos.productFound').replace('{name}', availableMatches[0].name) || `Found: ${availableMatches[0].name}`);
+          return;
+        }
+        setVariantMatches(availableMatches);
+        setShowVariantPicker(true);
+        return;
+      }
       setVariantMatches(matches);
       setShowVariantPicker(true);
       return;
     }
 
     if (matches.length === 1) {
+      if (!isNoInventoryMode() && (matches[0].quantity <= 0 || matches[0].archived)) {
+        showToast.warning(`المنتج "${matches[0].name}" نفد من المخزون وهو في الأرشيف`);
+        return;
+      }
       if (loadBarcodeScanMode() === 'add') {
         addToCart(matches[0], 'piece');
         return;
@@ -678,6 +701,10 @@ export default function POS() {
     try {
       const cloudProduct = await getProductByBarcodeCloud(barcode);
       if (cloudProduct) {
+        if (!isNoInventoryMode() && (cloudProduct.quantity <= 0 || cloudProduct.archived)) {
+          showToast.warning(`المنتج "${cloudProduct.name}" نفد من المخزون وهو في الأرشيف`);
+          return;
+        }
         if (loadBarcodeScanMode() === 'add') {
           addToCart({
             id: cloudProduct.id,

@@ -9,7 +9,7 @@ import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
-import { getCurrentStoreType } from '@/lib/store-type-config';
+import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
 
 interface Product {
   id: string;
@@ -84,8 +84,11 @@ export function ProductGrid({
   // ✅ استعادة الباركود المعلق — يتم التعامل معها في POS.tsx الآن
   // ProductGrid لم يعد يعالج PENDING_BARCODE_KEY مباشرة لتجنب التكرار
 
+  const noInventory = isNoInventoryMode();
+
   const filteredProducts = products.filter(product => {
     if (product.archived) return false;
+    if (!noInventory && product.quantity <= 0) return false;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (product.barcode && product.barcode.includes(searchQuery));
     const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;
