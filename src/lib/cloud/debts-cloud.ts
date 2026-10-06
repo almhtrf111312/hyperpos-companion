@@ -1,3 +1,4 @@
+import { getPendingOperations } from '../sync-queue';
 // Cloud Debts Store - Supabase-backed debts management
 import {
   fetchFromSupabase,
@@ -38,6 +39,8 @@ export interface CloudDebt {
 }
 
 export interface Debt {
+  pending_sync?: boolean;
+  sync_failed?: boolean;
   customerId?: string;
   id: string;
   invoiceId: string;
@@ -152,7 +155,7 @@ const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
     if (local) {
       debtsCache = local;
       cacheTimestamp = Date.now();
-      return local;
+      return mergeSyncQueueDebts(local);
     }
     return [];
   }
@@ -214,10 +217,10 @@ export const loadDebtsCloud = async (): Promise<Debt[]> => {
           fetchFresh_loadDebtsCloud().then(() => emitEvent(EVENTS.DEBTS_UPDATED, null)).catch(() => {});
         }, 0);
       }
-      return local;
+      return mergeSyncQueueDebts(local);
     }
   }
-  return fetchFresh_loadDebtsCloud();
+  return fetchFresh_loadDebtsCloud().then(mergeSyncQueueDebts);
 };
 
 export const invalidateDebtsCache = () => {
@@ -593,3 +596,35 @@ export const getDebtsStatsCloud = async () => {
     activeCount: debts.filter(d => d.status !== 'fully_paid').length,
   };
 };
+
+function mergeSyncQueueDebts(debts) {
+  const pending = getPendingOperations();
+  const queueDebts = [];
+  for (const op of pending) {
+    if (op.type === 'debt_sale_bundle') {
+      const bundle = op.data.bundle || {};
+      const remaining = (bundle.total || 0) - (bundle.downPayment || 0);
+      if (remaining <= 0) continue;
+      queueDebts.push({
+        id: op.data.operationId || op.data.localId || op.id,
+        invoiceId: op.data.operationId || op.data.localId || op.id,
+        customerId: bundle.customerId,
+        customerName: bundle.customerName || 'Customer',
+        customerPhone: bundle.customerPhone || '',
+        totalDebt: bundle.total || 0,
+        totalPaid: bundle.downPayment || 0,
+        remainingDebt: remaining,
+        dueDate: bundle.dueDate || new Date().toISOString(),
+        status: 'pending',
+        createdAt: op.timestamp || op.createdAt || new Date().toISOString(),
+        updatedAt: op.timestamp || op.createdAt || new Date().toISOString(),
+        pending_sync: true,
+        sync_failed: op.status === 'failed',
+        isCashDebt: false,
+      });
+    }
+  }
+  const existingIds = new Set(debts.map(d => d.invoiceId));
+  const uniqueQueue = queueDebts.filter(qd => !existingIds.has(qd.invoiceId));
+  return [...uniqueQueue, ...debts];
+}

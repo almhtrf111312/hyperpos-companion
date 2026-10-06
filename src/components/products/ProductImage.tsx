@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
 import { getSignedImageUrl } from '@/lib/image-upload';
+import { getCachedImage, cacheImage } from '@/lib/image-cache';
 import { cn } from '@/lib/utils';
 
 interface ProductImageProps {
@@ -10,17 +11,8 @@ interface ProductImageProps {
   iconClassName?: string;
 }
 
-// كاش في الذاكرة لتفادي إعادة طلب روابط الصور المُوقعة أكثر من مرة
 const signedUrlCache = new Map<string, string>();
 
-/**
- * مكون مشترك لعرض صور المنتجات
- * - يعرض أيقونة بديلة رمادية خفيفة (Placeholder) فوراً لفصل عرض البيانات عن الصور
- * - تفعيل التحميل الكسول الحقيقي (Lazy Loading) عبر IntersectionObserver
- * - لا يتم طلب أو فك تشفير رابط الصورة إلا عند ظهور البطاقة في إطار الرؤية (Viewport)
- * - مهلة زمنية قصيرة (أقصاها ثانيتان) لتجنب تعليق الواجهة
- * - لا يوجد IndexedDB في مسار العرض: الحفظ الدائم يتم فقط عند رفع الصورة (image-upload.ts)
- */
 export function ProductImage({ imageUrl, alt, className, iconClassName }: ProductImageProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(() => {
     if (!imageUrl) return null;
@@ -34,7 +26,6 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // 1. مراقبة ظهور العنصر داخل إطار الرؤية عبر IntersectionObserver
   useEffect(() => {
     if (!imageUrl) {
       setResolvedUrl(null);
@@ -42,7 +33,6 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       return;
     }
 
-    // إذا كانت الصورة مسبقة الكاش أو رابطاً مباشراً، لا نحتاج للانتظار
     if (signedUrlCache.has(imageUrl)) {
       setResolvedUrl(signedUrlCache.get(imageUrl)!);
       return;
@@ -54,7 +44,6 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
       return;
     }
 
-    // فحص دعم المتصفح
     if (typeof IntersectionObserver === 'undefined') {
       setIsVisible(true);
       return;
@@ -69,7 +58,7 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
         }
       },
       {
-        rootMargin: '100px', // التحميل المسبق الخفيف قبل الظهور التام
+        rootMargin: '100px',
       }
     );
 
@@ -82,7 +71,6 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
     };
   }, [imageUrl]);
 
-  // 2. طلب رابط الصورة فقط بعد تأكيد ظهور العنصر في إطار الرؤية
   useEffect(() => {
     if (!imageUrl || !isVisible || resolvedUrl) return;
 
@@ -93,12 +81,43 @@ export function ProductImage({ imageUrl, alt, className, iconClassName }: Produc
 
     let cancelled = false;
 
-    // مهلة زمنية قصيرة (ثانيتان فقط) لتفادي أي بطء في الواجهة
     const timeoutPromise = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('Image load timeout')), 2000)
+      setTimeout(() => reject(new Error('Image load timeout')), 5000) // Increased timeout for offline cache-first
     );
 
-    Promise.race([getSignedImageUrl(imageUrl), timeoutPromise])
+    Promise.race([
+      (async () => {
+        try {
+          // 1. Cache-First: Try to get image from local cache immediately
+          const cachedBlobUrl = await getCachedImage(imageUrl);
+          if (cachedBlobUrl) {
+            return cachedBlobUrl;
+          }
+
+          // 2. Fallback to network: get signed URL
+          const signedUrl = await getSignedImageUrl(imageUrl);
+          if (!signedUrl) return null;
+
+          // 3. Fetch image and store in cache for future offline use
+          try {
+            const response = await fetch(signedUrl, { mode: 'cors', cache: 'no-cache' });
+            if (response.ok) {
+              const blob = await response.blob();
+              await cacheImage(imageUrl, blob);
+              const objectUrl = URL.createObjectURL(blob);
+              return objectUrl;
+            }
+          } catch (fetchErr) {
+            console.warn('[ProductImage] Failed to fetch and cache image for offline:', fetchErr);
+          }
+
+          return signedUrl;
+        } catch (e) {
+          return null;
+        }
+      })(),
+      timeoutPromise
+    ])
       .then((url) => {
         if (!cancelled) {
           if (url) {

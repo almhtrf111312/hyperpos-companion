@@ -1338,6 +1338,11 @@ export default function Invoices() {
                         <Badge variant={invoice.paymentType === 'cash' ? 'default' : 'secondary'}>
                           {invoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
                         </Badge>
+                          {invoice.pending_sync && (
+                            <Badge variant={invoice.sync_failed ? 'destructive' : 'outline'} className={!invoice.sync_failed ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : ''}>
+                              {invoice.sync_failed ? '\u0641\u0634\u0644 \u0641\u064A \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629' : '\u063A\u064A\u0631 \u0645\u062A\u0632\u0627\u0645\u0646\u0629'}
+                            </Badge>
+                          )}
                         {invoice.status === 'refunded' && (
                           <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
                             <Undo2 className="w-3 h-3 ml-1" />

@@ -1,3 +1,4 @@
+import { getPendingOperations } from '../sync-queue';
 // Cloud Invoices Store - Supabase-backed invoices management
 import {
   fetchFromSupabase,
@@ -64,6 +65,8 @@ export interface CloudInvoice {
 }
 
 export interface Invoice {
+  pending_sync?: boolean;
+  sync_failed?: boolean;
   warehouseId?: string;
   dueDate?: string;
   id: string;
@@ -245,7 +248,7 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
   if (!userId) {
     // Try local cache even without userId
     const localInvoices = loadInvoicesFromLocalCache();
-    return localInvoices || [];
+    return mergeSyncQueueInvoices(localInvoices || []);
   }
 
   if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
@@ -261,7 +264,7 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
       void fetchInvoicesFromCloud(userId).then((fresh) => {
         emitEvent(EVENTS.INVOICES_UPDATED, fresh);
       }).catch(() => { /* keep saved copy */ });
-      return localInvoices;
+      return mergeSyncQueueInvoices(localInvoices);
     }
   }
   coldStartServed = true;
@@ -272,12 +275,12 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     if (localInvoices) {
       invoicesCache = localInvoices;
       cacheTimestamp = Date.now();
-      return localInvoices;
+      return mergeSyncQueueInvoices(localInvoices);
     }
-    return invoicesCache || [];
+    return mergeSyncQueueInvoices(invoicesCache || []);
   }
 
-  return fetchInvoicesFromCloud(userId);
+  return fetchInvoicesFromCloud(userId).then(mergeSyncQueueInvoices);
 };
 
 let coldStartServed = false;
@@ -299,7 +302,7 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
         console.log('[InvoicesCloud] ⚠️ Cloud returned empty, using local cache');
         invoicesCache = localInvoices;
         cacheTimestamp = Date.now();
-        return localInvoices;
+        return mergeSyncQueueInvoices(localInvoices);
       }
     }
 
@@ -363,8 +366,8 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
   } catch (error) {
     console.error('[InvoicesCloud] Cloud fetch failed:', error);
     const localInvoices = loadInvoicesFromLocalCache();
-    if (localInvoices) return localInvoices;
-    return invoicesCache || [];
+    if (localInvoices) return mergeSyncQueueInvoices(localInvoices);
+    return mergeSyncQueueInvoices(invoicesCache || []);
   }
 };
 
@@ -965,3 +968,38 @@ export const updateInvoiceByNumberCloud = async (
 
   return false;
 };
+
+function mergeSyncQueueInvoices(invoices) {
+  const pending = getPendingOperations();
+  const queueInvoices = [];
+  for (const op of pending) {
+    if (op.type === 'invoice_create' || op.type === 'debt_sale_bundle') {
+      const bundle = op.data.bundle || {};
+      const isFailed = op.status === 'failed';
+      queueInvoices.push({
+        id: op.data.operationId || op.data.localId || op.id,
+        type: 'sale',
+        customerName: bundle.customerName || 'Customer',
+        items: bundle.items || [],
+        subtotal: bundle.subtotal || 0,
+        discount: bundle.discount || 0,
+        total: bundle.total || 0,
+        totalInCurrency: bundle.totalInCurrency || bundle.total || 0,
+        currency: bundle.currency || 'USD',
+        currencySymbol: bundle.currencySymbol || '$',
+        paymentType: op.type === 'debt_sale_bundle' ? 'debt' : 'cash',
+        status: 'pending',
+        createdAt: op.timestamp || op.createdAt || new Date().toISOString(),
+        updatedAt: op.timestamp || op.createdAt || new Date().toISOString(),
+        pending_sync: true,
+        sync_failed: isFailed,
+        cashierId: bundle.cashierId,
+        debtPaid: bundle.downPayment || 0,
+        debtRemaining: (bundle.total || 0) - (bundle.downPayment || 0)
+      });
+    }
+  }
+  const existingIds = new Set(invoices.map(i => i.id));
+  const uniqueQueue = queueInvoices.filter(qi => !existingIds.has(qi.id));
+  return [...uniqueQueue, ...invoices];
+}
