@@ -149,19 +149,17 @@ export default function Products() {
   }, [viewMode]);
 
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanTarget, setScanTarget] = useState<'search' | 'form' | 'barcode1' | 'barcode2' | 'barcode3' | 'archive' | 'out_of_stock'>('search');
+  const [scanTarget, setScanTarget] = useState<'search' | 'form' | 'barcode1' | 'barcode2' | 'barcode3' | 'archive'>('search');
 
-  // Archive and Out of Stock state
-  const [mainTab, setMainTab] = useState<'products' | 'out_of_stock' | 'archive'>('products');
+  // Archive state
+  const [mainTab, setMainTab] = useState<'products' | 'archive'>('products');
   const [archivedProducts, setArchivedProducts] = useState<Product[]>([]);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
   const [archiveSearchQuery, setArchiveSearchQuery] = useState('');
   const [archivedProductToDelete, setArchivedProductToDelete] = useState<Product | null>(null);
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
 
-  // Out of Stock Archive state
-  const [outOfStockSearchQuery, setOutOfStockSearchQuery] = useState('');
-  const [outOfStockCategory, setOutOfStockCategory] = useState<string>(t('products.all'));
+  // Quick Restock state (for restocking out-of-stock items in the archive)
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [restockQuantity, setRestockQuantity] = useState<string>('10');
@@ -571,8 +569,9 @@ export default function Products() {
             setShowBarcode3(true);
           } else if (pendingScanTarget === 'search') {
             setSearchQuery(cleanBarcode);
-          } else if (pendingScanTarget === 'out_of_stock') {
-            setOutOfStockSearchQuery(cleanBarcode);
+          } else if (pendingScanTarget === 'archive') {
+            setArchiveSearchQuery(cleanBarcode);
+            setMainTab('archive');
           } else {
             setFormData(prev => ({ ...prev, barcode: cleanBarcode }));
             if (!showAddDialog && !showEditDialog) {
@@ -738,29 +737,40 @@ export default function Products() {
 
   const categories = [t('products.all'), ...categoryOptions];
 
-  // Out of Stock products (quantity <= 0 and not archived)
-  const outOfStockProducts = useMemo(() => {
-    return products.filter(p => !p.archived && p.quantity <= 0);
-  }, [products]);
+  // دمج المنتجات المؤرشفة مع المنتجات المنتهية (quantity <= 0) دون تكرار
+  const mergedArchivedProducts = useMemo(() => {
+    const list = [...archivedProducts];
+    const seenIds = new Set(list.map(p => p.id));
 
-  // Memoized filtered out of stock products
-  const filteredOutOfStockProducts = useMemo(() => {
-    const q = outOfStockSearchQuery.trim().toLowerCase();
-    return outOfStockProducts.filter(p => {
-      const matchesSearch = !q ||
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.barcode || '').toLowerCase().includes(q) ||
-        (p.barcode2 || '').toLowerCase().includes(q) ||
-        (p.barcode3 || '').toLowerCase().includes(q) ||
-        (p.category || '').toLowerCase().includes(q);
-      const matchesCategory = outOfStockCategory === t('products.all') || p.category === outOfStockCategory;
-      return matchesSearch && matchesCategory;
+    if (!noInventory) {
+      for (const p of products) {
+        if (p.quantity <= 0 && !seenIds.has(p.id)) {
+          list.push(p);
+          seenIds.add(p.id);
+        }
+      }
+    }
+    return list;
+  }, [archivedProducts, products, noInventory]);
+
+  // Memoized filtered archived products for archive search
+  const filteredArchivedProducts = useMemo(() => {
+    const q = archiveSearchQuery.trim().toLowerCase();
+    if (!q) return mergedArchivedProducts;
+    return mergedArchivedProducts.filter(p => {
+      const matchesName = (p.name || '').toLowerCase().includes(q);
+      const matchesBarcode1 = (p.barcode || '').toLowerCase().includes(q);
+      const matchesBarcode2 = (p.barcode2 || '').toLowerCase().includes(q);
+      const matchesBarcode3 = (p.barcode3 || '').toLowerCase().includes(q);
+      const matchesCategory = (p.category || '').toLowerCase().includes(q);
+      return matchesName || matchesBarcode1 || matchesBarcode2 || matchesBarcode3 || matchesCategory;
     });
-  }, [outOfStockProducts, outOfStockSearchQuery, outOfStockCategory, t]);
+  }, [mergedArchivedProducts, archiveSearchQuery]);
 
   // Memoized filtered results for performance (Active products)
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
+      if (product.archived) return false;
       if (!noInventory && product.quantity <= 0) return false;
       const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         product.barcode.includes(debouncedSearch);
@@ -775,29 +785,15 @@ export default function Products() {
   }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, dateFilter, t]);
 
   const activeProductsCount = useMemo(() => {
-    return noInventory ? products.length : products.filter(p => p.quantity > 0).length;
+    return noInventory ? products.filter(p => !p.archived).length : products.filter(p => !p.archived && p.quantity > 0).length;
   }, [products, noInventory]);
-
-  // Memoized filtered archived products for archive search
-  const filteredArchivedProducts = useMemo(() => {
-    const q = archiveSearchQuery.trim().toLowerCase();
-    if (!q) return archivedProducts;
-    return archivedProducts.filter(p => {
-      const matchesName = (p.name || '').toLowerCase().includes(q);
-      const matchesBarcode1 = (p.barcode || '').toLowerCase().includes(q);
-      const matchesBarcode2 = (p.barcode2 || '').toLowerCase().includes(q);
-      const matchesBarcode3 = (p.barcode3 || '').toLowerCase().includes(q);
-      const matchesCategory = (p.category || '').toLowerCase().includes(q);
-      return matchesName || matchesBarcode1 || matchesBarcode2 || matchesBarcode3 || matchesCategory;
-    });
-  }, [archivedProducts, archiveSearchQuery]);
 
   const stats = {
     total: activeProductsCount,
-    inStock: products.filter(p => (noInventory || p.quantity > 0) && p.status === 'in_stock').length,
-    lowStock: products.filter(p => (noInventory || p.quantity > 0) && p.status === 'low_stock').length,
-    outOfStock: outOfStockProducts.length,
-    multiUnit: products.filter(p => (noInventory || p.quantity > 0) && p.conversionFactor && p.conversionFactor > 1).length,
+    inStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.status === 'in_stock').length,
+    lowStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.status === 'low_stock').length,
+    outOfStock: products.filter(p => !p.archived && p.quantity <= 0).length,
+    multiUnit: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.conversionFactor && p.conversionFactor > 1).length,
   };
 
   const openQuickRestock = (product: Product) => {
@@ -840,6 +836,7 @@ export default function Products() {
         setShowRestockDialog(false);
         setRestockProduct(null);
         await loadData();
+        await loadArchivedData();
       } else {
         toast.error('تعذر تحديث كمية المنتج، يرجى المحاولة ثانية');
       }
@@ -1302,35 +1299,16 @@ export default function Products() {
           title={
             mainTab === 'archive'
               ? 'أرشيف المنتجات'
-              : mainTab === 'out_of_stock'
-              ? 'أرشيف المنتجات المنتهية'
               : tDynamic('pageTitle')
           }
           subtitle={
             mainTab === 'archive'
-              ? 'استرداد وتعديل المنتجات المؤرشفة مع تحديد الكمية أو الحذف النهائي القطعي'
-              : mainTab === 'out_of_stock'
-              ? 'المنتجات التي رصيدها صفر أو أقل مستبعدة من نقطة البيع. أعد تزويدها لتستعاد تلقائياً'
+              ? 'استرداد وتعديل المنتجات المؤرشفة والمنتهية من المخزون أو الحذف النهائي'
               : tDynamic('pageSubtitle')
           }
           actions={
             /* Desktop: Original layout */
             <div className="hidden sm:flex items-center gap-2">
-              {!noInventory && (
-                <Button
-                  variant={mainTab === 'out_of_stock' ? 'default' : 'outline'}
-                  onClick={() => setMainTab(mainTab === 'out_of_stock' ? 'products' : 'out_of_stock')}
-                  className={mainTab === 'out_of_stock' ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
-                >
-                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                  {mainTab === 'out_of_stock' ? 'المنتجات النشطة' : 'المنتجات المنتهية'}
-                  {outOfStockProducts.length > 0 && mainTab !== 'out_of_stock' && (
-                    <span className="mr-1.5 px-1.5 py-0.5 text-xs bg-destructive/15 text-destructive rounded-full font-bold">
-                      {outOfStockProducts.length}
-                    </span>
-                  )}
-                </Button>
-              )}
               <Button
                 variant={mainTab === 'archive' ? 'default' : 'outline'}
                 onClick={() => {
@@ -1345,9 +1323,9 @@ export default function Products() {
               >
                 <Archive className="w-4 h-4 md:w-5 md:h-5 ml-2" />
                 {mainTab === 'archive' ? 'المنتجات النشطة' : 'الأرشيف'}
-                {archivedProducts.length > 0 && mainTab !== 'archive' && (
+                {mergedArchivedProducts.length > 0 && mainTab !== 'archive' && (
                   <span className="mr-1.5 px-1.5 py-0.5 text-xs bg-destructive/15 text-destructive rounded-full font-bold">
-                    {archivedProducts.length}
+                    {mergedArchivedProducts.length}
                   </span>
                 )}
               </Button>
@@ -1406,18 +1384,6 @@ export default function Products() {
               <Tag className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
               <span className="truncate">{t('products.categories')}</span>
             </Button>
-            {!noInventory && (
-              <Button
-                variant={mainTab === 'out_of_stock' ? 'default' : 'outline'}
-                className={cn("h-8 text-xs px-2 flex-1", mainTab === 'out_of_stock' && "bg-amber-600 text-white hover:bg-amber-700")}
-                onClick={() => setMainTab(mainTab === 'out_of_stock' ? 'products' : 'out_of_stock')}
-              >
-                <AlertTriangle className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
-                <span className="truncate">
-                  {mainTab === 'out_of_stock' ? 'النشطة' : `المنتهية${outOfStockProducts.length > 0 ? ` (${outOfStockProducts.length})` : ''}`}
-                </span>
-              </Button>
-            )}
             <Button
               variant={mainTab === 'archive' ? 'default' : 'outline'}
               className={cn("h-8 text-xs px-2 flex-1", mainTab === 'archive' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
@@ -1432,7 +1398,7 @@ export default function Products() {
             >
               <Archive className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
               <span className="truncate">
-                {mainTab === 'archive' ? 'النشطة' : `الأرشيف${archivedProducts.length > 0 ? ` (${archivedProducts.length})` : ''}`}
+                {mainTab === 'archive' ? 'النشطة' : `الأرشيف${mergedArchivedProducts.length > 0 ? ` (${mergedArchivedProducts.length})` : ''}`}
               </span>
             </Button>
             {/* View Mode Buttons */}
@@ -1485,28 +1451,6 @@ export default function Products() {
               {activeProductsCount}
             </span>
           </button>
-          {!noInventory && (
-            <button
-              onClick={() => setMainTab('out_of_stock')}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap",
-                mainTab === 'out_of_stock'
-                  ? "bg-amber-600 text-white shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>المنتجات المنتهية (نفد المخزون)</span>
-              {outOfStockProducts.length > 0 && (
-                <span className={cn(
-                  "text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-bold",
-                  mainTab === 'out_of_stock' ? "bg-white/20 text-white" : "bg-destructive/15 text-destructive"
-                )}>
-                  {outOfStockProducts.length}
-                </span>
-              )}
-            </button>
-          )}
           <button
             onClick={() => {
               setMainTab('archive');
@@ -1521,12 +1465,12 @@ export default function Products() {
           >
             <Archive className="w-4 h-4" />
             <span>أرشيف المنتجات</span>
-            {archivedProducts.length > 0 && (
+            {mergedArchivedProducts.length > 0 && (
               <span className={cn(
                 "text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-bold",
                 mainTab === 'archive' ? "bg-destructive-foreground/20 text-destructive-foreground" : "bg-destructive/15 text-destructive"
               )}>
-                {archivedProducts.length}
+                {mergedArchivedProducts.length}
               </span>
             )}
           </button>
@@ -1621,7 +1565,7 @@ export default function Products() {
           </div>
 
           {/* Archived Products List / Cards */}
-          {isArchiveLoading && archivedProducts.length === 0 ? (
+          {isArchiveLoading && mergedArchivedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">جاري تحميل أرشيف المنتجات...</p>
@@ -1637,7 +1581,7 @@ export default function Products() {
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 {archiveSearchQuery
                   ? 'جرب البحث باسم أو باركود آخر'
-                  : 'لا توجد منتجات مؤرشفة حالياً. تظهر هنا المنتجات التي تؤرشف لاستردادها أو حذفها نهائياً.'}
+                  : 'لا توجد منتجات مؤرشفة أو منتهية المخزون حالياً.'}
               </p>
               {archiveSearchQuery && (
                 <Button variant="outline" size="sm" onClick={() => setArchiveSearchQuery('')}>
@@ -1676,8 +1620,13 @@ export default function Products() {
                         <h4 className="font-bold text-sm text-foreground truncate" title={product.name}>
                           {product.name}
                         </h4>
-                        <span className="text-[10px] bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-md font-medium shrink-0">
-                          مؤرشف
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0",
+                          product.archived
+                            ? "bg-destructive/15 text-destructive"
+                            : "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold"
+                        )}>
+                          {product.archived ? 'مؤرشف' : 'نفد المخزون'}
                         </span>
                       </div>
 
@@ -1714,257 +1663,22 @@ export default function Products() {
                           <span className="text-xs text-muted-foreground">{formatNumber(product.costPrice)} $</span>
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
-                          <span className="text-[10px] text-muted-foreground block">الكمية السابقة</span>
-                          <span className="text-xs text-muted-foreground">{formatNumber(product.quantity)}</span>
+                          <span className="text-[10px] text-muted-foreground block">الرصيد الحالي</span>
+                          <span className={cn("text-xs font-bold", product.quantity <= 0 ? "text-destructive" : "text-muted-foreground")}>
+                            {formatNumber(product.quantity)}
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* إجراءات المنتج المؤرشف: استرداد وتعديل + حذف نهائي */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                  {/* إجراءات المنتج في الأرشيف: إعادة تزويد + تعديل + حذف/أرشفة */}
+                  <div className="flex items-center gap-1.5 pt-2 border-t border-border/60">
                     <Button
-                      variant="default"
                       size="sm"
                       className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
-                      onClick={() => openEditDialog(product)}
-                      title="استرداد المنتج وتحديد الكمية المتوفرة وتحديث بياناته"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5 ml-1.5" />
-                      استرداد وتعديل
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 text-xs px-2.5 font-medium"
-                      onClick={() => {
-                        setArchivedProductToDelete(product);
-                        setShowHardDeleteDialog(true);
-                      }}
-                      title="حذف نهائي قطعي للمنتج وسجلاته من السحابة"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 ml-1" />
-                      حذف نهائي
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : mainTab === 'out_of_stock' ? (
-        <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24 space-y-3 pt-2">
-          {/* Out of Stock Search & Action Bar */}
-          <div className="bg-card rounded-xl border border-border p-3 md:p-4 space-y-3 shadow-sm">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-destructive/10 text-destructive">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                    أرشيف المنتجات المنتهية (نفد المخزون)
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-bold">
-                      {outOfStockProducts.length} منتج
-                    </span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    هذه المنتجات رصيدها صفر أو أقل ومستبعدة تلقائياً من شاشة البيع (POS). عند إعادة تزويدها وتحديد الكمية، ستعود فوراً وتلقائياً للظهور للبيع.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadData()}
-                  disabled={isLoading}
-                  className="text-xs h-9 flex-1 sm:flex-initial"
-                >
-                  <RefreshCw className={cn("w-3.5 h-3.5 ml-1", isLoading && "animate-spin")} />
-                  تحديث القائمة
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setMainTab('products')}
-                  className="text-xs h-9 flex-1 sm:flex-initial"
-                >
-                  <Package className="w-3.5 h-3.5 ml-1" />
-                  المنتجات النشطة
-                </Button>
-              </div>
-            </div>
-
-            {/* Out of Stock Search & Filters */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="بحث في المنتجات المنتهية (الاسم، الباركود 1، 2، 3، التصنيف)..."
-                  value={outOfStockSearchQuery}
-                  onChange={(e) => setOutOfStockSearchQuery(e.target.value)}
-                  className="pr-9 bg-muted border-0 h-10 text-sm"
-                />
-                {outOfStockSearchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => setOutOfStockSearchQuery('')}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <select
-                  value={outOfStockCategory}
-                  onChange={(e) => setOutOfStockCategory(e.target.value)}
-                  className="bg-muted border-0 rounded-lg px-3 py-2 text-xs md:text-sm text-foreground focus:ring-1 focus:ring-primary h-10"
-                >
-                  <option value={t('products.all')}>كل التصنيفات</option>
-                  {categoryOptions.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 flex-shrink-0"
-                  onClick={() => {
-                    setScanTarget('out_of_stock');
-                    try { localStorage.setItem('hyperpos_scan_target', 'out_of_stock'); } catch {}
-                    setScannerOpen(true);
-                  }}
-                  title="مسح باركود للبحث"
-                >
-                  <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Out of Stock Products List / Cards */}
-          {isLoading && outOfStockProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">جاري تحميل المنتجات...</p>
-            </div>
-          ) : filteredOutOfStockProducts.length === 0 ? (
-            <div className="bg-card rounded-xl border border-dashed border-border p-10 text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mx-auto text-success">
-                <CheckCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground">
-                {outOfStockSearchQuery ? 'لا توجد نتائج مطابقة في المنتجات المنتهية' : 'لا توجد منتجات منتهية المخزون'}
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                {outOfStockSearchQuery
-                  ? 'جرب البحث باسم أو باركود أو تصنيف آخر'
-                  : 'جميع المنتجات المتوفرة لديها رصيد مخزني وجاهزة للبيع في نقطة البيع (POS).'}
-              </p>
-              {outOfStockSearchQuery && (
-                <Button variant="outline" size="sm" onClick={() => setOutOfStockSearchQuery('')}>
-                  مسح نص البحث
-                </Button>
-              )}
-            </div>
-          ) : viewMode === 'compact' ? (
-            <div className="space-y-2">
-              {filteredOutOfStockProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-3 bg-card rounded-xl border border-destructive/30 shadow-sm hover:shadow transition-shadow gap-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-foreground truncate">{product.name}</h4>
-                      <span className="text-[10px] bg-destructive/15 text-destructive px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                        نفد المخزون
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                      <span>${formatNumber(product.salePrice, 2)}</span>
-                      {product.barcode && <span className="font-mono text-[11px]">{product.barcode}</span>}
-                      <span className="text-destructive font-semibold">الرصيد: {product.quantity}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      className="h-8 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                       onClick={() => openQuickRestock(product)}
-                      title="إعادة تزويد الكمية"
-                    >
-                      <Plus className="w-3.5 h-3.5 ml-1" />
-                      تزويد
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(product)}
-                      title="تعديل تفاصيل المنتج"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => openDeleteDialog(product)}
-                      title="أرشفة المنتج"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : viewMode === 'list' ? (
-            <div className="space-y-2">
-              {filteredOutOfStockProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex items-center gap-3 p-3 bg-card rounded-xl border border-destructive/30 shadow-sm hover:shadow transition-shadow"
-                >
-                  {product.image ? (
-                    <div
-                      className="w-14 h-14 rounded-lg overflow-hidden border border-border/60 flex-shrink-0 cursor-pointer"
-                      onClick={() => openImagePreview(product.image!)}
-                    >
-                      <ProductImage imageUrl={product.image} alt={product.name} className="w-full h-full object-cover" iconClassName="w-5 h-5" />
-                    </div>
-                  ) : (
-                    <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground border border-border/60">
-                      <Package className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-foreground truncate">{product.name}</h4>
-                      <span className="text-[10px] bg-destructive/15 text-destructive px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                        نفد المخزون
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
-                      <span className="font-semibold text-primary">${formatNumber(product.salePrice, 2)}</span>
-                      {product.category && <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-[11px]">{product.category}</span>}
-                      {product.barcode && <span className="font-mono text-[11px] text-muted-foreground">{product.barcode}</span>}
-                      <span className="text-destructive font-bold">الرصيد: {product.quantity}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      className="h-8 text-xs px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                      onClick={() => openQuickRestock(product)}
-                      title="إعادة تزويد الكمية"
+                      title="إعادة تزويد الكمية ليعود فوراً للمنتجات النشطة ونقطة البيع"
                     >
                       <Plus className="w-3.5 h-3.5 ml-1" />
                       إعادة تزويد
@@ -1972,119 +1686,39 @@ export default function Products() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs px-2.5"
+                      className="h-8 text-xs px-2.5 font-medium"
                       onClick={() => openEditDialog(product)}
-                      title="تعديل تفاصيل المنتج"
+                      title="تعديل بيانات المنتج وتفاصيله"
                     >
-                      <Edit className="w-3.5 h-3.5 ml-1" />
+                      <RotateCcw className="w-3.5 h-3.5 ml-1" />
                       تعديل
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => openDeleteDialog(product)}
-                      title="أرشفة المنتج"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredOutOfStockProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="bg-card rounded-xl border border-destructive/30 p-3.5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between gap-3 relative overflow-hidden"
-                >
-                  <div className="flex gap-3 items-start">
-                    {product.image ? (
-                      <div
-                        className="w-16 h-16 rounded-lg overflow-hidden border border-border/60 flex-shrink-0 cursor-pointer"
-                        onClick={() => openImagePreview(product.image!)}
+                    {product.archived ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs px-2.5 font-medium"
+                        onClick={() => {
+                          setArchivedProductToDelete(product);
+                          setShowHardDeleteDialog(true);
+                        }}
+                        title="حذف نهائي قطعي للمنتج وسجلاته من السحابة"
                       >
-                        <ProductImage
-                          imageUrl={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          iconClassName="w-5 h-5"
-                        />
-                      </div>
+                        <Trash2 className="w-3.5 h-3.5 ml-1" />
+                        حذف نهائي
+                      </Button>
                     ) : (
-                      <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground border border-border/60">
-                        <Package className="w-6 h-6" />
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs px-2 font-medium text-destructive hover:bg-destructive/10"
+                        onClick={() => openDeleteDialog(product)}
+                        title="أرشفة المنتج يدوياً"
+                      >
+                        <Archive className="w-3.5 h-3.5 ml-1" />
+                        أرشفة
+                      </Button>
                     )}
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 justify-between">
-                        <h4 className="font-bold text-sm text-foreground truncate" title={product.name}>
-                          {product.name}
-                        </h4>
-                        <span className="text-[10px] bg-destructive/15 text-destructive px-2 py-0.5 rounded-full font-bold shrink-0 flex items-center gap-1 border border-destructive/20">
-                          <AlertTriangle className="w-3 h-3" />
-                          نفد المخزون
-                        </span>
-                      </div>
-
-                      <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                        {product.category && (
-                          <span className="inline-block px-1.5 py-0.5 bg-muted rounded text-[11px] ml-1">
-                            {product.category}
-                          </span>
-                        )}
-                        {product.barcode && (
-                          <p className="font-mono text-[11px] truncate text-muted-foreground" dir="ltr">
-                            {product.barcode}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs font-semibold text-foreground">
-                            ${formatNumber(product.salePrice, 2)}
-                          </span>
-                          <span className="text-[11px] text-destructive font-bold">
-                            الرصيد: {product.quantity}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions: Re-stock / Quick Edit */}
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-8 text-xs px-3 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
-                      onClick={() => openQuickRestock(product)}
-                      title="إعادة تزويد المنتج وتحديد الكمية الجديدة ليعود فوراً لنقطة البيع"
-                    >
-                      <Plus className="w-3.5 h-3.5 ml-1" />
-                      إعادة تزويد / تعديل الكمية
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs px-2.5"
-                      onClick={() => openEditDialog(product)}
-                      title="تعديل كافة بيانات المنتج"
-                    >
-                      <Edit className="w-3.5 h-3.5 ml-1" />
-                      تعديل
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => openDeleteDialog(product)}
-                      title="أرشفة المنتج"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
                   </div>
                 </div>
               ))}

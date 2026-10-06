@@ -99,7 +99,6 @@ export function ProductGrid({
     // ✅ Don't call setScannerOpen(false) here — onClose callback handles it
     onSearchChange(barcode);
     onBarcodeScan?.(barcode);
-    toast.success(`${t('pos.barcode')}: ${barcode}`);
     try { localStorage.removeItem('hyperpos_pending_scan'); } catch {}
   };
 
@@ -163,6 +162,19 @@ export function ProductGrid({
               placeholder={tDynamic('productSearch')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const trimmed = searchQuery.trim();
+                  if (trimmed) {
+                    const match = products.find(p => p.barcode === trimmed || (p as any).barcode2 === trimmed || (p as any).barcode3 === trimmed);
+                    if (match && (!noInventory && (match.quantity <= 0 || match.archived))) {
+                      toast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+                      return;
+                    }
+                    onBarcodeScan?.(trimmed);
+                  }
+                }
+              }}
               className="rtl:pr-9 ltr:pl-9 md:rtl:pr-10 md:ltr:pl-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm w-full"
             />
           </div>

@@ -560,7 +560,7 @@ export default function POS() {
 
   const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
     if (!isNoInventoryMode() && (product.quantity <= 0 || product.archived)) {
-      showToast.warning(`المنتج "${product.name}" نفد من المخزون وهو في الأرشيف`);
+      showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
       return; // Don't add out-of-stock items
     }
 
@@ -662,7 +662,7 @@ export default function POS() {
       if (!isNoInventoryMode()) {
         const availableMatches = matches.filter(p => p.quantity > 0 && !p.archived);
         if (availableMatches.length === 0) {
-          showToast.warning(`المنتج "${matches[0].name}" نفد من المخزون وهو في الأرشيف`);
+          showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
           return;
         }
         if (availableMatches.length === 1) {
@@ -685,7 +685,7 @@ export default function POS() {
 
     if (matches.length === 1) {
       if (!isNoInventoryMode() && (matches[0].quantity <= 0 || matches[0].archived)) {
-        showToast.warning(`المنتج "${matches[0].name}" نفد من المخزون وهو في الأرشيف`);
+        showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
         return;
       }
       if (loadBarcodeScanMode() === 'add') {
@@ -702,7 +702,7 @@ export default function POS() {
       const cloudProduct = await getProductByBarcodeCloud(barcode);
       if (cloudProduct) {
         if (!isNoInventoryMode() && (cloudProduct.quantity <= 0 || cloudProduct.archived)) {
-          showToast.warning(`المنتج "${cloudProduct.name}" نفد من المخزون وهو في الأرشيف`);
+          showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
           return;
         }
         if (loadBarcodeScanMode() === 'add') {
@@ -738,6 +738,17 @@ export default function POS() {
     } catch (err) {
       console.error('Cloud lookup error:', err);
       setSearchQuery(barcode);
+    }
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    const trimmed = query.trim();
+    if (trimmed.length >= 2 && !isNoInventoryMode()) {
+      const match = products.find(p => p.barcode === trimmed || p.barcode2 === trimmed || p.barcode3 === trimmed);
+      if (match && (match.quantity <= 0 || match.archived)) {
+        showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+      }
     }
   };
 
@@ -939,7 +950,7 @@ export default function POS() {
                 categories={categories}
                 searchQuery={searchQuery}
                 selectedCategory={selectedCategory}
-                onSearchChange={setSearchQuery}
+                onSearchChange={handleSearchChange}
                 onCategoryChange={setSelectedCategory}
                 onProductClick={(product) => addToCart(product, 'piece')}
                 onBarcodeScan={handleBarcodeScan}

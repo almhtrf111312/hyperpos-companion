@@ -28,7 +28,8 @@ import {
   UtensilsCrossed,
   BookOpen,
   CookingPot,
-  Store
+  Store,
+  MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -37,8 +38,6 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { toast } from 'sonner';
 import { TranslationKey } from '@/lib/i18n';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageCircle } from 'lucide-react';
-import { NotificationBell } from './NotificationBell';
 import { SyncStatusMenu } from './SyncStatusMenu';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
 import { getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
@@ -246,7 +245,6 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
               </div>
               <div className="flex flex-col items-center gap-1.5">
                 <SyncStatusMenu />
-                <NotificationBell compact={true} />
               </div>
             </div>
           ) : (
@@ -264,7 +262,6 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                 </div>
                 <div className="flex items-center gap-0.5 flex-shrink-0">
                   <SyncStatusMenu />
-                  <NotificationBell compact={true} />
                 </div>
               </div>
             </div>
@@ -290,22 +287,43 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
+        <nav 
+          className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin select-none pointer-events-auto"
+          style={{
+            WebkitUserSelect: 'none',
+            userSelect: 'none',
+            WebkitTouchCallout: 'none',
+          }}
+        >
           <ul className="space-y-1">
             {filteredNavItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
                 <li 
                   key={item.path}
-                  className={cn(isMobile && isOpen && "animate-fade-in-up")}
-                  style={isMobile && isOpen ? { animationDelay: `${index * 30}ms`, animationFillMode: 'both' } : undefined}
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  className={cn("select-none pointer-events-auto", isMobile && isOpen && "animate-fade-in-up")}
+                  style={{
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    ...(isMobile && isOpen ? { animationDelay: `${index * 30}ms`, animationFillMode: 'both' } : {})
+                  }}
                 >
                   <NavLink
                     {...(item.tourId ? { 'data-tour': item.tourId } : {})}
                     to={item.path}
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                     onClick={(e) => handleNavClick(e, item.path)}
+                    style={{
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                    }}
                     className={cn(
-                      "flex items-center gap-3 rounded-xl transition-all duration-200 group relative",
+                      "flex items-center gap-3 rounded-xl transition-all duration-200 group relative select-none pointer-events-auto",
                       effectiveCollapsed && !isMobile ? "justify-center p-2.5 mx-auto" : "px-3 py-2.5",
                       isActive 
                         ? "bg-gradient-primary text-primary-foreground font-semibold shadow-md shadow-primary/25" 
@@ -330,9 +348,9 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="text-sm truncate">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
+                        <span className="text-sm truncate select-none">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
                         {!!item.badge && (
-                          <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full select-none">
                             {item.badge}
                           </span>
                         )}
@@ -342,14 +360,14 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     {/* Collapsed tooltip with enhanced description */}
                     {effectiveCollapsed && !isMobile && (
                       <div className={cn(
-                        "absolute px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
+                        "absolute px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50 select-none",
                         "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
                         "border border-border min-w-[180px] max-w-[240px]",
                         isRTL ? "right-full mr-2" : "left-full ml-2"
                       )}>
-                        <p className="text-xs font-semibold text-foreground">{t(item.translationKey)}</p>
+                        <p className="text-xs font-semibold text-foreground select-none">{t(item.translationKey)}</p>
                         {item.tooltipKey && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{t(item.tooltipKey)}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed select-none">{t(item.tooltipKey)}</p>
                         )}
                       </div>
                     )}
