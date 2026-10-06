@@ -6,13 +6,9 @@ import {
   Plus,
   Minus,
   X,
-  MapPin,
-  ShieldCheck,
-  Building,
   Copy,
   Check,
   DollarSign,
-  TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -59,7 +55,8 @@ export function ProductDetailsDialog({
   onClose,
   onAddToCart,
 }: ProductDetailsDialogProps) {
-  const [activeTab, setActiveTab] = useState<'pricing' | 'inventory' | 'info'>('pricing');
+  // تبويبان فقط: الأسعار والمخزون
+  const [activeTab, setActiveTab] = useState<'pricing' | 'inventory'>('pricing');
   const [qty, setQty] = useState(1);
   const [copiedBarcode, setCopiedBarcode] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -73,7 +70,7 @@ export function ProductDetailsDialog({
     }
   }, [product?.id]);
 
-  // مخزون المستودع الإضافي
+  // مخزون المستودع الإضافي إن وجد
   const warehouseStockQty = useMemo(() => {
     if (!product?.id) return 0;
     try {
@@ -91,17 +88,6 @@ export function ProductDetailsDialog({
 
   // الحسابات تعتمد حصرياً على البيانات الفعلية
   const salePrice = Number(product.price) || 0;
-  const costPrice =
-    product.costPrice !== undefined &&
-    product.costPrice !== null &&
-    !isNaN(Number(product.costPrice)) &&
-    Number(product.costPrice) > 0
-      ? Number(product.costPrice)
-      : null;
-  const hasCost = costPrice !== null;
-  const profitPerPiece = hasCost ? Math.max(0, salePrice - costPrice!) : null;
-  const profitMargin =
-    hasCost && salePrice > 0 ? (((profitPerPiece! / salePrice) * 100).toFixed(1)) : null;
 
   const wholesalePrice =
     product.wholesalePrice !== undefined &&
@@ -172,9 +158,9 @@ export function ProductDetailsDialog({
         }}
       >
         <DialogTitle className="sr-only">{product.name}</DialogTitle>
-        <DialogDescription className="sr-only">تفاصيل المنتج الفعلي</DialogDescription>
+        <DialogDescription className="sr-only">تفاصيل المنتج</DialogDescription>
 
-        {/* رأس النافذة: شريط السحب + شارة القسم + زر الإغلاق */}
+        {/* رأس النافذة: شريط السحب + شارة القسم + زر الإغلاق الدائري */}
         <div
           className="flex flex-col items-center pt-3 pb-2 px-5 cursor-grab active:cursor-grabbing select-none shrink-0"
           onTouchStart={handleTouchStart}
@@ -188,17 +174,17 @@ export function ProductDetailsDialog({
           />
 
           <div className="flex w-full items-center justify-between">
-            {/* شارة القسم: كبسولة دائرية مع نقطة بارزة */}
+            {/* شارة القسم: كبسولة هادئة مع نقطة بارزة */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span>{product.category ? `قسم: ${product.category}` : 'قسم: عام'}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span>قسم: {product.category || 'عام'}</span>
             </div>
 
             {/* زر إغلاق دائري (X) في أقصى اليسار */}
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-90 transition-all border border-border/50"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all border border-border/50"
               aria-label="إغلاق"
             >
               <X className="h-4 w-4" />
@@ -208,23 +194,19 @@ export function ProductDetailsDialog({
 
         {/* بطاقة بيانات الصنف الرئيسية (Hero Card) */}
         <div className="px-5 pb-3 shrink-0">
-          <div className="bg-card rounded-3xl border border-border/80 shadow-sm p-4 flex items-center justify-between gap-3.5">
+          <div className="bg-card rounded-3xl border border-border/80 shadow-xs p-4 flex items-center justify-between gap-3.5">
             <div className="flex-1 min-w-0">
-              <h3 className="text-base md:text-lg font-bold text-foreground truncate" title={product.name}>
+              <h3 className="text-sm md:text-base font-bold text-foreground truncate" title={product.name}>
                 {product.name}
               </h3>
               {product.description ? (
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1" title={product.description}>
                   {product.description}
                 </p>
-              ) : (
-                <p className="text-xs text-muted-foreground/70 mt-0.5">
-                  {product.category || 'صنف عام'}
-                </p>
-              )}
+              ) : null}
 
               <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                <span className="text-2xl font-black text-primary tracking-tight">
+                <span className="text-lg md:text-xl font-black text-primary tracking-tight font-mono">
                   ${salePrice.toFixed(2)}
                 </span>
                 {product.barcode && (
@@ -232,10 +214,10 @@ export function ProductDetailsDialog({
                     type="button"
                     onClick={handleCopyBarcode}
                     title="انقر لنسخ الباركود"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 text-xs font-mono font-medium active:scale-95 transition-all shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 text-xs font-mono font-medium active:scale-95 transition-all shadow-2xs"
                   >
                     <Barcode className="h-3.5 w-3.5 text-primary" />
-                    <span>{product.barcode}</span>
+                    <span dir="ltr">{product.barcode}</span>
                     {copiedBarcode ? (
                       <Check className="h-3 w-3 text-emerald-500" />
                     ) : (
@@ -246,8 +228,8 @@ export function ProductDetailsDialog({
               </div>
             </div>
 
-            {/* صورة المنتج عبر ProductImage مع كاش محلي أوفلاين وسحابي */}
-            <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl overflow-hidden border border-border/80 bg-muted/40 shadow-sm shrink-0 flex items-center justify-center">
+            {/* صورة المنتج عبر ProductImage تشغل 100% من الحاوية المتناسقة مع الكاش أوفلاين وسحابياً */}
+            <div className="h-20 w-20 md:h-22 md:w-22 rounded-2xl overflow-hidden border border-border/70 bg-muted/20 shadow-2xs shrink-0 flex items-center justify-center">
               <ProductImage
                 imageUrl={product.image || product.imageUrl}
                 alt={product.name}
@@ -258,87 +240,62 @@ export function ProductDetailsDialog({
           </div>
         </div>
 
-        {/* التبويبات الثلاثة بتصميم الكبسولات العصرية */}
+        {/* التبويبات (تبويبان فقط: الأسعار والمخزون) بتصميم الكبسولات العصرية */}
         <div className="px-5 pb-2 shrink-0">
           <div className="flex p-1 bg-muted/50 rounded-2xl border border-border/50 gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('pricing')}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all",
+                "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all",
                 activeTab === 'pricing'
-                  ? "bg-card text-primary shadow-sm border border-border/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  ? "bg-card text-primary shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
               )}
             >
               <DollarSign className="w-3.5 h-3.5" />
-              <span>الأسعار والأرباح</span>
+              <span>الأسعار</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('inventory')}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all",
+                "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all",
                 activeTab === 'inventory'
-                  ? "bg-card text-primary shadow-sm border border-border/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  ? "bg-card text-primary shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
               )}
             >
               <Package className="w-3.5 h-3.5" />
-              <span>المخزون المتوفر</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('info')}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all",
-                activeTab === 'info'
-                  ? "bg-card text-primary shadow-sm border border-border/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-              )}
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>الموقع والضمان</span>
+              <span>المخزون</span>
             </button>
           </div>
         </div>
 
-        {/* محتوى التبويبات القابل للتمرير عمودياً */}
+        {/* محتوى التبويبات المتناسق مع UI Scale */}
         <div className="px-5 py-2 space-y-2.5 flex-1 overflow-y-auto">
-          {/* تبويب الأسعار والأرباح */}
+          {/* التبويب الأول: الأسعار */}
           {activeTab === 'pricing' && (
             <div className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* سعر التكلفة (الشراء) */}
-                <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-xs flex flex-col justify-between">
-                  <div className="flex items-center justify-between text-muted-foreground mb-1">
-                    <span className="text-xs font-semibold">سعر التكلفة (الشراء)</span>
-                    <DollarSign className="w-3.5 h-3.5 text-muted-foreground/60" />
+              {/* بطاقة سعر المبيع الأساسي */}
+              <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                    <DollarSign className="w-4 h-4" />
                   </div>
-                  <p className="text-base font-bold text-foreground">
-                    {hasCost ? `$${costPrice!.toFixed(2)}` : 'لا يوجد'}
-                  </p>
-                  <span className="text-[11px] text-muted-foreground mt-1">رأس مال القطعة</span>
-                </div>
-
-                {/* صافي الربح التقديري */}
-                <div className="rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/20 p-3.5 border border-emerald-500/20 shadow-xs flex flex-col justify-between">
-                  <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 mb-1">
-                    <span className="text-xs font-semibold">صافي الربح التقديري</span>
-                    <TrendingUp className="w-3.5 h-3.5" />
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">سعر المبيع الأساسي</span>
+                    <span className="text-[11px] text-muted-foreground">السعر المعتمد للقطعة الواحدة</span>
                   </div>
-                  <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                    {hasCost ? `$${profitPerPiece!.toFixed(2)}` : 'لا يوجد'}
-                  </p>
-                  <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1 font-medium">
-                    {hasCost ? `هامش الربح: ${profitMargin}%` : 'لا يوجد'}
-                  </span>
                 </div>
+                <span className="text-base font-black text-primary font-mono">
+                  ${salePrice.toFixed(2)}
+                </span>
               </div>
 
-              {/* سعر الجملة */}
-              <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-xs flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+              {/* بطاقة سعر الجملة مع أيقونة الصندوق */}
+              <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary">
                     <Box className="w-4 h-4" />
                   </div>
@@ -347,159 +304,123 @@ export function ProductDetailsDialog({
                     <span className="text-[11px] text-muted-foreground">يطبق تلقائياً عند طلب الكميات</span>
                   </div>
                 </div>
-                <span className="text-base font-bold text-foreground font-mono">
+                <span className="text-sm md:text-base font-bold text-foreground font-mono">
                   {hasWholesale ? `$${wholesalePrice!.toFixed(2)}` : 'لا يوجد'}
                 </span>
               </div>
             </div>
           )}
 
-          {/* تبويب المخزون المتوفر */}
+          {/* التبويب الثاني: المخزون */}
           {activeTab === 'inventory' && (
             <div className="space-y-2.5">
-              {/* الكمية المتوفرة بالمحل */}
-              <div className="flex justify-between items-center rounded-2xl bg-card p-3.5 border border-border/70 shadow-xs">
-                <div>
-                  <span className="text-xs font-bold text-foreground block">الكمية المتوفرة بالمحل</span>
-                  <span className="text-[11px] text-muted-foreground">الرصيد الفعلي الجاهز للبيع</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn("text-base font-black font-mono", stock > 0 ? "text-foreground" : "text-destructive")}>
-                    {stock} {product.smallUnit || ''}
-                  </span>
-                  {stock > 0 ? (
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      ✓ متوفر للبيع الفوري
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
-                      نفد المخزون
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* حد إعادة الطلب */}
-              <div className="flex justify-between items-center rounded-2xl bg-card p-3.5 border border-border/70 shadow-xs">
-                <div>
-                  <span className="text-xs font-bold text-foreground block">حد إعادة الطلب</span>
-                  <span className="text-[11px] text-muted-foreground">الحد الأدنى للتنبيه</span>
-                </div>
-                <span className="text-sm font-bold text-foreground font-mono">
-                  {minStock !== null ? `${minStock} ${product.smallUnit || ''}` : 'لا يوجد'}
-                </span>
-              </div>
-
-              {/* بطاقة إضافية لمخزون المستودع */}
-              <div className="flex justify-between items-center rounded-2xl bg-card p-3.5 border border-border/70 shadow-xs">
-                <div>
-                  <span className="text-xs font-bold text-foreground block">مخزون المستودع الإضافي</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {warehouseStockQty > 0 ? 'مخزون مسجل في المستودعات' : 'المستودع: لا يوجد مخزون إضافي'}
-                  </span>
-                </div>
-                <span className={cn("text-sm font-bold font-mono", warehouseStockQty > 0 ? "text-primary" : "text-muted-foreground")}>
-                  {warehouseStockQty > 0 ? `${warehouseStockQty} ${product.smallUnit || 'قطعة'}` : 'لا يوجد'}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* تبويب الموقع والضمان: بطاقة موحدة مقسمة */}
-          {activeTab === 'info' && (
-            <div className="rounded-2xl bg-card border border-border/70 shadow-xs overflow-hidden divide-y divide-border/60">
-              {/* موقع الصنف في المتجر */}
-              <div className="flex justify-between items-center p-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                    <MapPin className="h-4 w-4" />
-                  </div>
+              {/* الصف الأول: الكمية المتوفرة بالمحل + حد إعادة الطلب */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* بطاقة الكمية المتوفرة بالمحل */}
+                <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
+                  <span className="text-xs text-muted-foreground block mb-1">الكمية المتوفرة بالمحل:</span>
+                  <p className={cn("text-base md:text-lg font-black font-mono my-0.5", stock > 0 ? "text-foreground" : "text-destructive")}>
+                    {stock} {product.smallUnit || 'قطعة'}
+                  </p>
                   <div>
-                    <span className="text-xs font-bold text-foreground block">موقع الصنف في المتجر</span>
-                    <span className="text-[11px] text-muted-foreground">الرف أو القسم الداخلي</span>
+                    {stock > 0 ? (
+                      <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        ✓ متوفر للبيع الفوري
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-[11px] font-bold text-destructive">
+                        نفد المخزون
+                      </span>
+                    )}
                   </div>
                 </div>
-                <span className="text-sm font-semibold text-foreground">
-                  {product.location ? product.location : 'لا يوجد'}
-                </span>
+
+                {/* بطاقة حد إعادة الطلب */}
+                <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
+                  <span className="text-xs text-muted-foreground block mb-1">حد إعادة الطلب:</span>
+                  <p className="text-base md:text-lg font-black text-rose-500 font-mono my-0.5">
+                    {minStock !== null ? `${minStock} ${product.smallUnit || 'قطعة'}` : 'لا يوجد'}
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">تنبيه عند الاقتراب</span>
+                </div>
               </div>
 
-              {/* فترة الضمان */}
-              <div className="flex justify-between items-center p-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    <ShieldCheck className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-foreground block">فترة الضمان</span>
-                    <span className="text-[11px] text-muted-foreground">الضمان المعتمد للمنتج</span>
-                  </div>
+              {/* الصف الثاني: الصنف / التصنيف + فترة الضمان */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* بطاقة الصنف */}
+                <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
+                  <span className="text-xs text-muted-foreground block mb-1">الصنف:</span>
+                  <p className="text-xs md:text-sm font-bold text-foreground my-0.5 truncate" title={product.category || 'عام'}>
+                    {product.category || 'عام'}
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">القسم الفعلي للمنتج</span>
                 </div>
-                <span className="text-sm font-semibold text-foreground">
-                  {product.warranty ? product.warranty : 'لا يوجد'}
-                </span>
+
+                {/* بطاقة فترة الضمان */}
+                <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
+                  <span className="text-xs text-muted-foreground block mb-1">فترة الضمان:</span>
+                  <p className="text-xs md:text-sm font-bold text-foreground my-0.5 truncate">
+                    {product.warranty ? product.warranty : 'لا يوجد'}
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">الضمان المعتمد للمنتج</span>
+                </div>
               </div>
 
-              {/* المورد المعتمد إن وجد */}
-              {product.supplier ? (
-                <div className="flex justify-between items-center p-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-muted text-muted-foreground">
-                      <Building className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-foreground block">المورد المعتمد</span>
-                      <span className="text-[11px] text-muted-foreground">جهة التوريد</span>
-                    </div>
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    {product.supplier}
-                  </span>
+              {/* بطاقة المستودع إن وجد رصيد إضافي */}
+              {warehouseStockQty > 0 && (
+                <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">المستودع الرئيسي:</span>
+                  <span className="font-bold text-foreground font-mono">{warehouseStockQty} قطعة إضافية</span>
                 </div>
-              ) : null}
+              )}
             </div>
           )}
         </div>
 
-        {/* الشريط السفلي لإضافة الصنف */}
+        {/* شريط الإجراء السفلي: عداد كمية مستقل + زر إضافة عريض بحساب ديناميكي */}
         {onAddToCart && stock > 0 ? (
           <div className="shrink-0 flex items-center gap-3 border-t border-border bg-card/95 backdrop-blur-sm px-5 py-3.5 pb-6">
-            {/* عداد كمية أملس */}
-            <div className="flex items-center gap-1.5 rounded-2xl bg-muted/80 px-2 py-1.5 border border-border/80 shadow-xs">
+            {/* عداد كمية أملس داخل كبسولة مستقلة */}
+            <div className="flex items-center gap-1.5 rounded-2xl bg-muted/60 px-2.5 py-1.5 border border-border/70 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setQty(q => Math.max(1, q - 1))}
                 disabled={qty <= 1}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-card text-foreground shadow-2xs hover:bg-muted active:scale-90 transition disabled:opacity-40 disabled:pointer-events-none"
+                className="flex h-7 w-7 items-center justify-center rounded-xl bg-card text-foreground shadow-2xs hover:bg-muted active:scale-90 transition disabled:opacity-30 disabled:pointer-events-none"
                 aria-label="تقليل الكمية"
               >
-                <Minus className="h-3.5 w-3.5" />
+                <Minus className="h-3 w-3" />
               </button>
-              <span className="w-9 text-center text-sm font-bold text-foreground font-mono">{qty}</span>
+              <span className="w-8 text-center text-sm font-bold text-foreground font-mono">{qty}</span>
               <button
                 type="button"
                 onClick={() => setQty(q => Math.min(stock, q + 1))}
                 disabled={qty >= stock}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-card text-foreground shadow-2xs hover:bg-muted active:scale-90 transition disabled:opacity-40 disabled:pointer-events-none"
+                className="flex h-7 w-7 items-center justify-center rounded-xl bg-card text-foreground shadow-2xs hover:bg-muted active:scale-90 transition disabled:opacity-30 disabled:pointer-events-none"
                 aria-label="زيادة الكمية"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3" />
               </button>
             </div>
 
-            {/* زر رئيسي عريض يظهر الإجمالي ديناميكياً */}
+            {/* زر إضافة عريض بلون الثيم الأساسي (+ إضافة للفاتورة) يحسب المبلغ الإجمالي ديناميكياً */}
             <button
               type="button"
               onClick={handleAdd}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md active:scale-[0.98] transition hover:opacity-95"
+              className="flex flex-1 items-center justify-between gap-2 rounded-2xl bg-primary px-4 py-2.5 text-xs md:text-sm font-bold text-primary-foreground shadow-md active:scale-[0.98] transition hover:opacity-95"
             >
-              <Plus className="h-4 w-4" />
-              <span>+ إضافة للفاتورة — ${(salePrice * qty).toFixed(2)}</span>
+              <div className="flex items-center gap-1.5">
+                <Plus className="h-4 w-4" />
+                <span>إضافة للفاتورة</span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-xl bg-white/20 text-white font-mono font-bold text-xs">
+                ${(salePrice * qty).toFixed(2)}
+              </span>
             </button>
           </div>
         ) : (
           <div className="shrink-0 px-5 pb-6 pt-2">
-            <div className="rounded-2xl bg-destructive/10 py-3 text-center text-sm font-bold text-destructive border border-destructive/20 flex items-center justify-center gap-2">
+            <div className="rounded-2xl bg-destructive/10 py-3 text-center text-xs md:text-sm font-bold text-destructive border border-destructive/20 flex items-center justify-center gap-2">
               <AlertTriangle className="w-4 h-4" />
               <span>هذا الصنف غير متوفر حالياً بالمخزون</span>
             </div>
