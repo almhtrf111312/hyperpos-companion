@@ -5,75 +5,83 @@ import { getDeviceId } from '@/lib/device-fingerprint';
 import { toast } from 'sonner';
 
 // Helper function to check if account is active and license is not revoked
-export async function checkUserAccountStatus(userId: string): Promise<{ blocked: boolean; reason?: string }> {
+export async function checkUserAccountStatus(userId: string, timeoutMs: number = 1500): Promise<{ blocked: boolean; reason?: string }> {
   try {
-    // 1. Check user_roles for is_active and role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role, owner_id, is_active')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (roleError) {
-      console.warn('[AccountCheck] Error querying user_roles:', roleError);
-    }
-
-    if (roleData) {
-      // Boss accounts are superadmins, never blocked
-      if (roleData.role === 'boss') {
-        return { blocked: false };
-      }
-
-      // Check if user account is deactivated
-      if (roleData.is_active === false) {
-        return { blocked: true, reason: 'inactive' };
-      }
-
-      // If cashier, also check if owner is deactivated
-      if (roleData.role === 'cashier' && roleData.owner_id) {
-        const { data: ownerRole } = await supabase
-          .from('user_roles')
-          .select('is_active')
-          .eq('user_id', roleData.owner_id)
-          .maybeSingle();
-
-        if (ownerRole?.is_active === false) {
-          return { blocked: true, reason: 'owner_inactive' };
-        }
-      }
-
-      // Check owner license if cashier, or own license
-      const targetUserId = (roleData.role === 'cashier' && roleData.owner_id)
-        ? roleData.owner_id
-        : userId;
-
-      const { data: licenseData, error: licenseError } = await supabase
-        .from('app_licenses')
-        .select('is_revoked')
-        .eq('user_id', targetUserId)
-        .maybeSingle();
-
-      if (licenseError) {
-        console.warn('[AccountCheck] Error querying app_licenses:', licenseError);
-      }
-
-      if (licenseData?.is_revoked === true) {
-        return { blocked: true, reason: 'revoked' };
-      }
-    } else {
-      // Fallback: check app_licenses directly if no user_role record found
-      const { data: licenseData } = await supabase
-        .from('app_licenses')
-        .select('is_revoked')
+    const statusPromise = (async (): Promise<{ blocked: boolean; reason?: string }> => {
+      // 1. Check user_roles for is_active and role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role, owner_id, is_active')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (licenseData?.is_revoked === true) {
-        return { blocked: true, reason: 'revoked' };
+      if (roleError) {
+        console.warn('[AccountCheck] Error querying user_roles:', roleError);
       }
-    }
 
-    return { blocked: false };
+      if (roleData) {
+        // Boss accounts are superadmins, never blocked
+        if (roleData.role === 'boss') {
+          return { blocked: false };
+        }
+
+        // Check if user account is deactivated
+        if (roleData.is_active === false) {
+          return { blocked: true, reason: 'inactive' };
+        }
+
+        // If cashier, also check if owner is deactivated
+        if (roleData.role === 'cashier' && roleData.owner_id) {
+          const { data: ownerRole } = await supabase
+            .from('user_roles')
+            .select('is_active')
+            .eq('user_id', roleData.owner_id)
+            .maybeSingle();
+
+          if (ownerRole?.is_active === false) {
+            return { blocked: true, reason: 'owner_inactive' };
+          }
+        }
+
+        // Check owner license if cashier, or own license
+        const targetUserId = (roleData.role === 'cashier' && roleData.owner_id)
+          ? roleData.owner_id
+          : userId;
+
+        const { data: licenseData, error: licenseError } = await supabase
+          .from('app_licenses')
+          .select('is_revoked')
+          .eq('user_id', targetUserId)
+          .maybeSingle();
+
+        if (licenseError) {
+          console.warn('[AccountCheck] Error querying app_licenses:', licenseError);
+        }
+
+        if (licenseData?.is_revoked === true) {
+          return { blocked: true, reason: 'revoked' };
+        }
+      } else {
+        // Fallback: check app_licenses directly if no user_role record found
+        const { data: licenseData } = await supabase
+          .from('app_licenses')
+          .select('is_revoked')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (licenseData?.is_revoked === true) {
+          return { blocked: true, reason: 'revoked' };
+        }
+      }
+
+      return { blocked: false };
+    })();
+
+    const timeoutPromise = new Promise<{ blocked: boolean; reason?: string }>((resolve) => {
+      setTimeout(() => resolve({ blocked: false }), timeoutMs);
+    });
+
+    return await Promise.race([statusPromise, timeoutPromise]);
   } catch (err) {
     console.warn('[AccountCheck] Exception checking account status:', err);
     return { blocked: false };
@@ -126,6 +134,7 @@ const cacheSession = (session: Session | null) => {
     if (session) {
       localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
         user: session.user,
+        session: session,
         expires_at: session.expires_at,
         cached_at: Date.now()
       }));
@@ -137,34 +146,55 @@ const cacheSession = (session: Session | null) => {
   }
 };
 
-// Get cached session for immediate UI restore
-const getCachedSession = () => {
+// Get cached session for immediate UI restore (checks SESSION_CACHE_KEY and Supabase auth token keys)
+const getCachedSession = (): { user: User | null; session: Session | null } => {
   try {
+    // 1. Check custom hyperpos_session_cache
     const cached = localStorage.getItem(SESSION_CACHE_KEY);
     if (cached) {
       const data = JSON.parse(cached);
-      // For POS / offline apps, restore user session immediately
       if (data?.user) {
-        return data;
+        return {
+          user: data.user as User,
+          session: (data.session || data) as unknown as Session,
+        };
       }
     }
-  } catch {
-    // Ignore parse errors
+
+    // 2. Also check any Supabase auth token stored in localStorage (e.g. sb-*-auth-token)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          if (parsed?.user) {
+            return {
+              user: parsed.user as User,
+              session: parsed as unknown as Session,
+            };
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Auth] Error reading cached session:', e);
   }
-  return null;
+  return { user: null, session: null };
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [cachedInitial] = useState(() => getCachedSession());
-  const [user, setUser] = useState<User | null>(() => cachedInitial?.user || null);
-  const [session, setSession] = useState<Session | null>(() => (cachedInitial as unknown as Session) || null);
+  const [user, setUser] = useState<User | null>(() => cachedInitial.user);
+  const [session, setSession] = useState<Session | null>(() => cachedInitial.session);
   const [profile, setProfile] = useState<Profile | null>(() => {
     try {
       const p = localStorage.getItem('hyperpos_cached_profile');
       return p ? JSON.parse(p) : null;
     } catch { return null; }
   });
-  const [isLoading, setIsLoading] = useState<boolean>(() => !cachedInitial?.user);
+  // Instant boot: if cached user exists, isLoading is immediately false (0ms)!
+  const [isLoading, setIsLoading] = useState<boolean>(() => !cachedInitial.user);
   const [isAutoLoginChecking, setIsAutoLoginChecking] = useState(false);
   const [stayLoggedIn, setStayLoggedInState] = useState(getStayLoggedInPreference);
 
@@ -208,75 +238,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Immediately restore from cache for faster UI
+    // Immediately restore from cache if not already set
     const cachedData = getCachedSession();
-    if (cachedData && getStayLoggedInPreference()) {
+    if (cachedData.user && !user) {
       setUser(cachedData.user);
-      setSession(cachedData);
+      setSession(cachedData.session);
       setIsLoading(false);
     }
 
-    // Set up auth state listener BEFORE checking for existing session
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        // Strict Offline-First: If supabase reports no session but we have a cache, ignore the empty session event
-        if (!currentSession?.user && getCachedSession() && event !== 'SIGNED_OUT') {
+        // Strict Offline-First: If supabase reports no session but we have local cache, ignore empty event
+        if (!currentSession?.user && getCachedSession().user && event !== 'SIGNED_OUT') {
           return;
         }
+
         // Skip unnecessary state updates on TOKEN_REFRESHED to prevent re-renders that close dialogs
         if (event === 'TOKEN_REFRESHED' && currentSession?.user) {
           setSession(currentSession);
-          // Only update user ref without triggering profile refetch
           setUser(prev => {
             if (prev?.id === currentSession.user.id) return prev;
             return currentSession.user;
           });
-          if (getStayLoggedInPreference()) {
-            cacheSession(currentSession);
-          }
+          cacheSession(currentSession);
           return;
         }
 
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-
-        // Cache session if stay logged in is enabled
-        if (getStayLoggedInPreference()) {
-          cacheSession(currentSession);
-        }
-
         if (currentSession?.user) {
-          // Use setTimeout to avoid potential deadlocks
+          setSession(currentSession);
+          setUser(currentSession.user);
+          cacheSession(currentSession);
+          setIsLoading(false);
+
+          // Fetch profile asynchronously in background
           setTimeout(async () => {
             const profileData = await fetchProfile(currentSession.user.id);
-            setProfile(profileData);
-            setIsLoading(false);
+            if (profileData) setProfile(profileData);
           }, 0);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
+          // Explicit sign out only
+          setSession(null);
+          setUser(null);
           setProfile(null);
-          if (!getCachedSession()) {
-            setIsLoading(false);
-          }
-        }
-
-        // Handle token refresh events
-        if (event === 'TOKEN_REFRESHED' && currentSession) {
-          cacheSession(currentSession);
-        }
-
-        // Handle sign out
-        if (event === 'SIGNED_OUT') {
-          // Explicitly keeping this for actual sign outs. But if triggered by timeout, we don't clear it.
-          // Since signOut clears cache directly, we don't rely on this event anymore.
+          cacheSession(null);
+          setIsLoading(false);
         }
       }
     );
 
-    // Attempt device auto-login function
+    // Attempt device auto-login function - runs in background with strict 1.5s timeout
     const attemptDeviceAutoLogin = async () => {
-      const AUTO_LOGIN_TIMEOUT_MS = 3000;
+      const AUTO_LOGIN_TIMEOUT_MS = 1500;
 
       try {
+        // If we already have a user, do not auto-login
+        if (user || cachedInitial.user) {
+          return true;
+        }
+
         // Check if we already attempted auto-login recently
         const alreadyAttempted = sessionStorage.getItem(AUTO_LOGIN_ATTEMPTED_KEY);
         if (alreadyAttempted) {
@@ -307,7 +327,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[AutoLogin] Response:', data);
 
         if (data?.success && data?.action_link) {
-          // Extract token from action link and verify with OTP
           try {
             const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
               email: data.email,
@@ -321,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             if (otpData?.session) {
-              const accountCheck = await checkUserAccountStatus(otpData.session.user.id);
+              const accountCheck = await checkUserAccountStatus(otpData.session.user.id, 1500);
               if (accountCheck.blocked) {
                 console.log('[AutoLogin] User account disabled or license revoked, rejecting auto-login');
                 await supabase.auth.signOut();
@@ -329,6 +348,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return false;
               }
               console.log('[AutoLogin] Session restored successfully!');
+              setUser(otpData.session.user);
+              setSession(otpData.session);
               cacheSession(otpData.session);
               return true;
             }
@@ -343,95 +364,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       } finally {
         setIsAutoLoginChecking(false);
-        // Mark that we attempted auto-login this session
         sessionStorage.setItem(AUTO_LOGIN_ATTEMPTED_KEY, 'true');
       }
     };
 
-    // Hard safety net: never keep the app stuck on the loading screen (APK first launch / slow network)
+    // Hard safety net: never keep the app stuck on the loading screen
     const loadingSafetyTimer = setTimeout(() => {
       setIsAutoLoginChecking(false);
       setIsLoading(false);
-    }, 6000);
+    }, 1500);
 
     // Check for existing session and verify user without blocking UI
     const sessionPromise = supabase.auth.getSession();
     const sessionTimeout = new Promise<{ data: { session: null } }>((resolve) =>
-      setTimeout(() => resolve({ data: { session: null } }), 4000)
+      setTimeout(() => resolve({ data: { session: null } }), 1500)
     );
     Promise.race([sessionPromise, sessionTimeout]).then(async ({ data: { session: existingSession } }) => {
-      if (!existingSession) {
-        // No session - try device auto-login
-        const autoLoginSuccess = await attemptDeviceAutoLogin();
-        if (!autoLoginSuccess) {
-          setIsLoading(false);
-          // Strict Offline-First: never clear session here
+      if (existingSession?.user) {
+        // Active session retrieved from Supabase
+        setUser(existingSession.user);
+        setSession(existingSession);
+        setIsLoading(false);
+        cacheSession(existingSession);
+
+        // Verify user in the background with a strict 1.5s timeout (prevents dead VPN hangs)
+        try {
+          const userPromise = supabase.auth.getUser();
+          const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 1500)
+          );
+
+          const { data, error: userError } = await Promise.race([userPromise, timeoutPromise]);
+          const currentUser = data?.user;
+
+          if (userError || !currentUser) {
+            console.log('[Auth] Network timeout or error verifying user, keeping existing session');
+            return;
+          }
+
+          // Check if user account is deactivated or license is revoked on startup
+          if (currentUser) {
+            const accountCheck = await checkUserAccountStatus(currentUser.id, 1500);
+            if (accountCheck.blocked) {
+              console.log('[Auth] Account is disabled or license is revoked, signing out immediately...');
+              toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
+              await supabase.auth.signOut();
+              cacheSession(null);
+              setUser(null);
+              setSession(null);
+              setProfile(null);
+              return;
+            }
+          }
+        } catch {
+          // Network timeout / dead VPN / offline - trust existing local session!
+          console.log('[Auth] Network probe timeout (e.g. dead VPN), trusting active session');
         }
         return;
       }
 
-      // Existing session found: activate state immediately in 0ms!
-      setUser(existingSession.user);
-      setSession(existingSession);
-      setIsLoading(false);
-      cacheSession(existingSession);
-      
-      // Verify user in the background with a strict 2.5s race timeout (prevents dead VPN 30s hangs)
-      try {
-        const userPromise = supabase.auth.getUser();
-        const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 2500)
-        );
-        
-        const { data, error: userError } = await Promise.race([userPromise, timeoutPromise]);
-        const currentUser = data?.user;
-        
-        if (userError || !currentUser) {
-          console.log('[Auth] Error verifying user in background, trusting existing local session. Error:', userError?.message);
-          // Strict Offline-First: Never sign out or clear session on background user check failure
-          return;
-        }
-
-        // Check if user account is deactivated or license is revoked on startup
-        if (currentUser) {
-          const accountCheck = await checkUserAccountStatus(currentUser.id);
+      // If no session from Supabase, but we already have a cached user from localStorage
+      if (cachedInitial.user) {
+        setIsLoading(false);
+        // Verify account silently in background with timeout (1.5s) without blocking
+        checkUserAccountStatus(cachedInitial.user.id, 1500).then(async (accountCheck) => {
           if (accountCheck.blocked) {
-            console.log('[Auth] Account is disabled or license is revoked, signing out immediately...');
             toast.error('تم تعطيل هذا الحساب أو إلغاء ترخيصه، يرجى التواصل مع الإدارة');
             await supabase.auth.signOut();
             cacheSession(null);
             setUser(null);
             setSession(null);
             setProfile(null);
-            return;
           }
-        }
-      } catch {
-        // Network timeout / dead VPN / offline - trust existing local session!
-        console.log('[Auth] Network probe timeout (e.g. dead VPN), trusting active session');
+        }).catch(() => {
+          // Offline / network failure -> keep session
+        });
+        return;
+      }
+
+      // No session and no cached user: try device auto-login in background
+      const autoLoginSuccess = await attemptDeviceAutoLogin();
+      if (!autoLoginSuccess) {
+        setIsLoading(false);
       }
     });
 
-    // Periodic session refresh for Android background
+    // Periodic session refresh for background (every minute)
     const refreshInterval = setInterval(async () => {
-      if (getStayLoggedInPreference()) {
+      try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (currentSession) {
-          // Try to refresh if expiring soon (within 10 minutes)
           const expiresAt = currentSession.expires_at;
           if (expiresAt && (expiresAt - Date.now() / 1000) < 600) {
             await supabase.auth.refreshSession();
           }
         }
+      } catch {
+        // Offline / network issue
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
     return () => {
       clearTimeout(loadingSafetyTimer);
       subscription.unsubscribe();
       clearInterval(refreshInterval);
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, cachedInitial.user]);
 
   const signIn = async (email: string, password: string, rememberMe: boolean = false): Promise<{ error: Error | null; data?: { user: User; session: Session } }> => {
     try {
@@ -440,12 +478,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       
-      // Set stay logged in preference
+      // Set stay logged in preference and cache session
       if (!error && data.session) {
         setStayLoggedIn(rememberMe);
-        if (rememberMe) {
-          cacheSession(data.session);
-        }
+        cacheSession(data.session);
       }
       
       // Log successful login

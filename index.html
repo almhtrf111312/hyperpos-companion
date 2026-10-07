@@ -54,24 +54,6 @@
 
   <body style="background-color: #0a0a0a; color: #fafafa;">
     <div id="root"></div>
-    <script>
-      // Offline fallback: Never overwrite or block #root so React can boot from local cache & IndexedDB
-      if (!navigator.onLine && !navigator.serviceWorker?.controller) {
-        var overlay = document.createElement('div');
-        overlay.id = 'offline-fallback-screen';
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:2rem;font-family:sans-serif;';
-        overlay.innerHTML = '<div style="max-width:360px">'
-          + '<p style="font-size:3rem;margin:0 0 0.5rem">📡</p>'
-          + '<h2 style="color:#fff;margin:0.5rem 0 0.25rem;font-size:1.25rem">وضع عدم الاتصال</h2>'
-          + '<p style="color:#a1a1aa;font-size:0.875rem;margin-bottom:1.5rem">يمكنك تشغيل التطبيق ومتابعة العمل على البيانات المخزنة محلياً</p>'
-          + '<button id="btn-open-offline" style="background:#6d28d9;color:#fff;border:none;padding:0.75rem 1.75rem;border-radius:0.75rem;font-size:0.95rem;font-weight:600;cursor:pointer">فتح التطبيق في وضع عدم الاتصال</button>'
-          + '</div>';
-        document.body.appendChild(overlay);
-        document.getElementById('btn-open-offline').onclick = function() {
-          overlay.remove();
-        };
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
