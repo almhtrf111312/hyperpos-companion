@@ -12,6 +12,7 @@ import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
+import { getDeviceKey } from '@/lib/secure-storage';
 import { CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
 import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
 
@@ -78,10 +79,11 @@ export default function Login() {
   const checkDeviceBinding = async (userId: string): Promise<{ blocked: boolean; allowMultiDevice: boolean }> => {
     try {
       const currentDeviceId = await getDeviceId();
-      console.log('[DeviceCheck] Current device ID:', currentDeviceId);
+      const currentDeviceKey = getDeviceKey();
+      console.log('[DeviceCheck] Current device ID:', currentDeviceId, 'Device Key:', currentDeviceKey);
       console.log('[DeviceCheck] Checking for user:', userId);
 
-      // Check if user is Boss - Boss has unlimited device access
+      // Check if user is Boss or Admin - Boss and Admin have unlimited device access
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -90,8 +92,8 @@ export default function Login() {
 
       console.log('[DeviceCheck] Role data:', roleData, 'Error:', roleError);
 
-      if (roleData?.role === 'boss') {
-        console.log('[DeviceCheck] User is boss, skipping device check');
+      if (roleData?.role === 'boss' || roleData?.role === 'admin') {
+        console.log('[DeviceCheck] User is boss/admin, skipping device check');
         return { blocked: false, allowMultiDevice: true };
       }
 
@@ -125,11 +127,14 @@ export default function Login() {
         return { blocked: false, allowMultiDevice: false };
       }
 
-      // Check if device matches
-      const blocked = license.device_id !== currentDeviceId;
+      // Check if device matches EITHER currentDeviceId OR currentDeviceKey
+      const isMatch = license.device_id === currentDeviceId || license.device_id === currentDeviceKey;
+      const blocked = !isMatch;
       console.log('[DeviceCheck] Device comparison:', {
         registered: license.device_id,
-        current: currentDeviceId,
+        currentDeviceId,
+        currentDeviceKey,
+        isMatch,
         blocked
       });
       return { blocked, allowMultiDevice: false };

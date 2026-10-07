@@ -121,7 +121,9 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const { t, direction } = useLanguage();
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
-  const isFullyLoading = authLoading || isLoading || isCheckingDevice;
+  
+  const hasActiveSession = Boolean(user && hasLicense && isValid);
+  const isFullyLoading = authLoading || isLoading || (isCheckingDevice && !hasActiveSession);
 
   useEffect(() => {
     if (isRevoked) {
@@ -151,7 +153,12 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
 
   if (!user) return <>{children}</>;
   if (dataEncrypted) return <DataEncryptedScreen />;
-  if (isDeviceBlocked) return <DeviceBlockedScreen />;
+  
+  // Transient device check protection:
+  // If user has a valid active session, do not mount DeviceBlockedScreen while isCheckingDevice is running.
+  // Only mount if verified against both IDs, check has concluded (!isCheckingDevice), and device is confirmed blocked.
+  if (isDeviceBlocked && !isCheckingDevice) return <DeviceBlockedScreen />;
+
   if (isValid && hasLicense) return <>{children}</>;
 
   if (ownerNeedsActivation && role === 'cashier') {

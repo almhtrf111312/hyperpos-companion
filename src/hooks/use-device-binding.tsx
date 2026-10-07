@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { useAuth } from './use-auth';
-import { secureSet, secureGet, secureRemove } from '@/lib/secure-storage';
+import { secureSet, secureGet, secureRemove, getDeviceKey } from '@/lib/secure-storage';
 
 // Encrypted storage key — data is XOR-encrypted with device key via secure-storage
 const DEVICE_CACHE_KEY = 'device_binding_cache';
@@ -53,14 +53,11 @@ function loadDeviceCache(): { isDeviceBlocked: boolean; deviceId: string | null;
 
 export function useDeviceBinding() {
   const { user } = useAuth();
-  // The local cache is a UX hint only and is never trusted to unblock a device.
-  // A blocked state is honoured immediately (fail closed); an unblocked state
-  // still waits for the server check to confirm it while we are online.
   const cached = loadDeviceCache();
   const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   const [state, setState] = useState<DeviceBindingState>({
-    isChecking: !(isOffline && cached) || Boolean(cached?.isDeviceBlocked),
+    isChecking: !(isOffline && cached) && Boolean(cached?.isDeviceBlocked),
     isDeviceBlocked: cached?.isDeviceBlocked ?? false,
     deviceId: cached?.deviceId ?? null,
     registeredDeviceId: cached?.registeredDeviceId ?? null,
@@ -74,8 +71,9 @@ export function useDeviceBinding() {
 
     try {
       const currentDeviceId = await getDeviceId();
+      const currentDeviceKey = getDeviceKey();
 
-      // Check if Boss
+      // Check if Boss or Admin
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -93,13 +91,19 @@ export function useDeviceBinding() {
         .from('app_licenses')
         .select('device_id, is_revoked, allow_multi_device')
         .eq('user_id', user.id)
-        .eq('is_revoked', false)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error || !license) {
-        const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: null };
+        // Transient network error or no license -> do not block active session
+        setState(prev => ({ ...prev, isChecking: false }));
+        return;
+      }
+
+      // Check if explicitly revoked
+      if (license.is_revoked === true) {
+        const result = { isDeviceBlocked: true, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
         setState({ isChecking: false, ...result });
         saveDeviceCache(result);
         return;
@@ -112,6 +116,7 @@ export function useDeviceBinding() {
         return;
       }
 
+      // If !license.device_id is empty on cloud record, update with currentDeviceId
       if (!license.device_id) {
         await supabase
           .from('app_licenses')
@@ -125,18 +130,50 @@ export function useDeviceBinding() {
         return;
       }
 
-      const isBlocked = license.device_id !== currentDeviceId;
-      const result = { isDeviceBlocked: isBlocked, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
+      // Check if license.device_id matches EITHER currentDeviceId OR currentDeviceKey
+      const isMatch = license.device_id === currentDeviceId || license.device_id === currentDeviceKey;
+      
+      if (isMatch) {
+        const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
+        setState({ isChecking: false, ...result });
+        saveDeviceCache(result);
+        return;
+      }
+
+      // If user already had a valid authenticated session running locally:
+      // Background network reconnects must NOT abruptly interrupt or lock the screen
+      // unless the license is explicitly revoked (is_revoked === true).
+      const cachedData = loadDeviceCache();
+      const hadActiveUnblockedSession = cachedData && cachedData.isDeviceBlocked === false;
+
+      if (hadActiveUnblockedSession && license.is_revoked !== true) {
+        console.warn('[DeviceBinding] Active unblocked session running during reconnect. Preserving session.');
+        const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
+        setState({ isChecking: false, ...result });
+        return;
+      }
+
+      // Genuine block confirmed against both IDs
+      const result = { isDeviceBlocked: true, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
       setState({ isChecking: false, ...result });
       saveDeviceCache(result);
     } catch (error) {
       console.error('Device binding check error:', error);
-      setState({ isChecking: false, isDeviceBlocked: false, deviceId: null, registeredDeviceId: null });
+      setState(prev => ({ ...prev, isChecking: false }));
     }
   }, [user]);
 
   useEffect(() => {
     checkDeviceBinding();
+
+    const handleOnline = () => {
+      checkDeviceBinding();
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
   }, [checkDeviceBinding]);
 
   // Safety timeout: release loading screen after 3.5s even if server hasn't responded.
