@@ -27,6 +27,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           license_tier: string | null
+          locked_device_id: string | null
           max_cashiers: number | null
           max_uses: number | null
           note: string | null
@@ -45,6 +46,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           license_tier?: string | null
+          locked_device_id?: string | null
           max_cashiers?: number | null
           max_uses?: number | null
           note?: string | null
@@ -63,6 +65,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           license_tier?: string | null
+          locked_device_id?: string | null
           max_cashiers?: number | null
           max_uses?: number | null
           note?: string | null
@@ -1945,6 +1948,15 @@ export type Database = {
       }
     }
     Functions: {
+      activate_code_strict: {
+        Args: {
+          _code: string
+          _device_id: string
+          _user_email: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       add_expense_atomic:
         | {
             Args: {
