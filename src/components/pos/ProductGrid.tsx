@@ -151,12 +151,12 @@ export function ProductGrid({
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Search, View Toggle, and Categories */}
-      <div data-tour="search-bar" className="p-4 md:p-6 border-b border-black/5 dark:border-white/5 bg-transparent space-y-4 md:space-y-6">
-        <div className="flex gap-2 items-center">
-          <div className="flex-1 min-w-0 relative flex items-center ps-12 md:ps-0">
-            <Search className="absolute rtl:right-14 ltr:left-14 md:rtl:right-3 md:ltr:left-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground pointer-events-none" />
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50/50 dark:bg-zinc-950/50">
+      {/* Modern Apple-like Header Area */}
+      <div data-tour="search-bar" className="px-3 py-3 md:px-5 md:py-5 flex flex-col gap-3 md:gap-4 bg-transparent shrink-0">
+        <div className="flex gap-2.5 items-center">
+          <div className="flex-1 relative flex items-center shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] rounded-full">
+            <Search className="absolute rtl:right-4 ltr:left-4 w-5 h-5 text-muted-foreground/50 pointer-events-none" />
             <Input
               type="text"
               placeholder={tDynamic('productSearch')}
@@ -166,96 +166,49 @@ export function ProductGrid({
                 if (e.key === 'Enter') {
                   const trimmed = searchQuery.trim();
                   if (trimmed) {
-                    const match = products.find(p => p.barcode === trimmed || (p as any).barcode2 === trimmed || (p as any).barcode3 === trimmed);
-                    if (match && (!noInventory && (match.quantity <= 0 || match.archived))) {
-                      toast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
-                      return;
-                    }
-                    onBarcodeScan?.(trimmed);
+                    const match = products.find(p => p.barcode === trimmed || p.barcode2 === trimmed || p.barcode3 === trimmed);
+                    if (match) onProductClick(match);
                   }
                 }
               }}
-              className="rtl:pr-11 ltr:pl-11 md:rtl:pr-12 md:ltr:pl-12 h-12 md:h-14 rounded-full bg-white/80 dark:bg-zinc-900/80 border border-black/5 dark:border-white/10 text-base shadow-[0_2px_10px_rgb(0,0,0,0.02)] backdrop-blur-xl focus-visible:ring-black/10 dark:focus-visible:ring-white/10 w-full transition-all"
+              className="rtl:pr-12 ltr:pl-12 h-12 md:h-14 rounded-full bg-white dark:bg-zinc-900 border-none text-sm md:text-base shadow-none w-full focus-visible:ring-2 focus-visible:ring-primary/30 transition-all font-medium"
             />
-          </div>
-
-          {/* Mobile Single Cycle View Mode Button */}
-          <button
-            type="button"
-            onClick={cycleViewMode}
-            className="flex md:hidden items-center justify-center h-11 w-11 rounded-2xl border border-border bg-muted/70 text-foreground hover:bg-background/80 shadow-sm flex-shrink-0 transition-all duration-200"
-            title={
-              viewMode === 'grid'
-                ? t('pos.viewGrid')
-                : viewMode === 'list'
-                ? t('pos.viewList')
-                : t('pos.viewCompact')
-            }
-          >
-            {viewMode === 'grid' && <LayoutGrid className="w-4 h-4 text-primary" />}
-            {viewMode === 'list' && <List className="w-4 h-4 text-primary" />}
-            {viewMode === 'compact' && <AlignJustify className="w-4 h-4 text-primary" />}
-          </button>
-
-          {/* Desktop View Mode Toggle (3 Buttons) */}
-          <div className="hidden md:flex border border-border rounded-2xl overflow-hidden flex-shrink-0 bg-muted/70 p-1 shadow-sm h-11 md:h-12 items-center">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={cn(
-                "p-2 md:p-2.5 rounded-xl transition-all duration-200",
-                viewMode === 'grid' ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-background/70"
-              )}
-              title={t('pos.viewGrid')}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={cn(
-                "p-2 md:p-2.5 rounded-xl transition-all duration-200",
-                viewMode === 'list' ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-background/70"
-              )}
-              title={t('pos.viewList')}
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('compact')}
-              className={cn(
-                "p-2 md:p-2.5 rounded-xl transition-all duration-200",
-                viewMode === 'compact' ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30" : "text-muted-foreground hover:bg-background/70"
-              )}
-              title={t('pos.viewCompact')}
-            >
-              <AlignJustify className="w-4 h-4" />
-            </button>
           </div>
 
           {!isRestaurant && (
             <Button
               variant="outline"
               size="icon"
-              className="h-11 w-11 md:h-12 md:w-12 rounded-2xl border-border bg-background/90 shadow-sm flex-shrink-0"
+              className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-primary hover:bg-primary/5 active:scale-95 transition-all"
               onClick={() => setScannerOpen(true)}
             >
-              <Barcode className="w-4 h-4 md:w-5 md:h-5" />
+              <Barcode className="w-5 h-5 md:w-6 md:h-6" />
             </Button>
           )}
+
+          {/* Mobile View Toggle */}
+          <button
+            type="button"
+            onClick={cycleViewMode}
+            className="flex md:hidden items-center justify-center h-12 w-12 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-foreground hover:bg-black/5 active:scale-95 transition-all"
+          >
+            {viewMode === 'grid' && <LayoutGrid className="w-5 h-5" />}
+            {viewMode === 'list' && <List className="w-5 h-5" />}
+            {viewMode === 'compact' && <AlignJustify className="w-5 h-5" />}
+          </button>
         </div>
 
-        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+        {/* Categories Horizontal Scroll */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 md:mx-0 md:px-0">
           {categories.map((category, index) => (
             <button
-              key={`${category}-${index}`}
+              key={category + index}
               onClick={() => onCategoryChange(category)}
               className={cn(
-                "px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 border",
-                  selectedCategory === category
-                    ? "bg-black dark:bg-white text-white dark:text-black shadow-[0_4px_14px_rgba(0,0,0,0.2)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.2)] border-transparent scale-105"
-                    : "bg-white dark:bg-zinc-900 text-foreground hover:bg-black/5 dark:hover:bg-white/10 border-black/5 dark:border-white/10"
+                "px-5 py-2.5 md:py-3 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 active:scale-95",
+                selectedCategory === category
+                  ? "bg-black dark:bg-white text-white dark:text-black shadow-lg scale-105"
+                  : "bg-white dark:bg-zinc-900 text-muted-foreground hover:text-foreground shadow-sm border border-black/5 dark:border-white/5"
               )}
             >
               {category}
@@ -264,35 +217,42 @@ export function ProductGrid({
         </div>
       </div>
 
-      {/* Products */}
-      <div className="flex-1 p-3 md:p-4 overflow-y-auto pb-28">
-        {/* Grid View */}
+      {/* Grid Content */}
+      <div className="flex-1 p-3 pt-0 md:p-5 overflow-y-auto pb-32">
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
             {filteredProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in p-2.5 md:p-3 group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_20px_40px_rgb(0,0,0,0.4)] hover:-translate-y-1.5 border border-black/5 dark:border-white/10 rounded-3xl transition-all duration-300 bg-white dark:bg-zinc-900"
+                className="pos-item text-right fade-in group bg-white dark:bg-zinc-900 rounded-[20px] md:rounded-3xl overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:-translate-y-1 transition-all duration-300 border border-black/5 dark:border-white/5 flex flex-col"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="w-full aspect-square rounded-2xl bg-slate-50 dark:bg-zinc-950 flex items-center justify-center mb-3 overflow-hidden group-hover:scale-105 transition-transform duration-500 ease-out">
+                {/* Edge-to-Edge Image Header */}
+                <div className="w-full aspect-[4/3] bg-slate-100 dark:bg-zinc-800 relative overflow-hidden shrink-0">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
-                    className="w-full h-full"
-                    iconClassName="w-6 h-6 md:w-8 md:h-8"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    iconClassName="w-8 h-8 text-muted-foreground/30"
                   />
+                  {/* Floating Quantity Badge */}
+                  <div className="absolute top-2 right-2 bg-black/60 dark:bg-white/90 backdrop-blur-md rounded-full px-2 py-0.5 shadow-sm">
+                    <span className="text-[10px] font-bold text-white dark:text-black">
+                      <DualUnitDisplayCompact
+                        totalPieces={product.quantity}
+                        conversionFactor={product.conversionFactor || 1}
+                        bulkUnit={product.bulkUnit}
+                        smallUnit={product.smallUnit}
+                      />
+                    </span>
+                  </div>
                 </div>
-                <h3 className="font-bold text-foreground text-[10px] sm:text-xs md:text-sm line-clamp-2 mb-1 leading-snug">{product.name}</h3>
-                <p className="text-foreground font-black text-xs sm:text-sm md:text-base">${product.price}</p>
-                <div className="mt-0.5 scale-90 origin-right">
-                  <DualUnitDisplayCompact
-                    totalPieces={product.quantity}
-                    conversionFactor={product.conversionFactor || 1}
-                    bulkUnit={product.bulkUnit}
-                    smallUnit={product.smallUnit}
-                  />
+
+                {/* Card Body */}
+                <div className="p-3 md:p-4 flex flex-col justify-between flex-1">
+                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 mb-1 leading-snug">{product.name}</h3>
+                  <p className="text-primary font-black text-sm md:text-base mt-auto">$\{product.price}</p>
                 </div>
               </button>
             ))}
@@ -301,56 +261,59 @@ export function ProductGrid({
 
         {/* List View */}
         {viewMode === 'list' && (
-          <div className="space-y-1.5">
+          <div className="flex flex-col gap-3">
             {filteredProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-2xl border border-border/70 bg-card shadow-sm hover:bg-muted/40 hover:shadow-md transition-all text-right fade-in"
+                className="pos-item text-right fade-in group flex items-center bg-white dark:bg-zinc-900 rounded-[20px] p-2 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-black/5 dark:border-white/5"
+                style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex-shrink-0 overflow-hidden relative">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
-                    className="w-full h-full"
-                    iconClassName="w-6 h-6"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-foreground text-sm truncate">{product.name}</h3>
-                  <DualUnitDisplayCompact
-                    totalPieces={product.quantity}
-                    conversionFactor={product.conversionFactor || 1}
-                    bulkUnit={product.bulkUnit}
-                    smallUnit={product.smallUnit}
-                  />
+                <div className="flex-1 px-4">
+                  <h3 className="font-bold text-sm md:text-base text-foreground line-clamp-1 mb-1">{product.name}</h3>
+                  <div className="text-muted-foreground text-xs font-medium mb-1">
+                    <DualUnitDisplayCompact
+                      totalPieces={product.quantity}
+                      conversionFactor={product.conversionFactor || 1}
+                      bulkUnit={product.bulkUnit}
+                      smallUnit={product.smallUnit}
+                    />
+                  </div>
+                  <p className="text-primary font-black text-sm md:text-base">$\{product.price}</p>
                 </div>
-                <p className="text-primary font-bold text-base flex-shrink-0">${product.price}</p>
               </button>
             ))}
           </div>
         )}
 
-        {/* Compact View (no images) */}
+        {/* Compact View */}
         {viewMode === 'compact' && (
-          <div className="space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             {filteredProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl border border-border/70 bg-card shadow-sm hover:bg-muted/40 hover:shadow-md transition-all text-right fade-in"
+                className="pos-item text-right fade-in group flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 border border-black/5 dark:border-white/5"
+                style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
+                <div className="flex-1 pe-2 overflow-hidden text-right">
+                  <h3 className="font-bold text-xs text-foreground truncate">{product.name}</h3>
+                  <p className="text-primary font-bold text-xs mt-0.5">$\{product.price}</p>
                 </div>
-                <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="text-[10px] bg-muted/50 rounded-lg px-2 py-1 shrink-0 font-medium">
                   <DualUnitDisplayCompact
                     totalPieces={product.quantity}
                     conversionFactor={product.conversionFactor || 1}
                     bulkUnit={product.bulkUnit}
                     smallUnit={product.smallUnit}
                   />
-                  <p className="text-primary font-bold text-sm">${product.price}</p>
                 </div>
               </button>
             ))}
@@ -358,24 +321,31 @@ export function ProductGrid({
         )}
 
         {filteredProducts.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-            <Package className="w-12 h-12 mb-2 opacity-50" />
-            <p>{t('pos.noProducts')}</p>
+          <div className="flex flex-col items-center justify-center h-40 text-muted-foreground fade-in">
+            <Package className="w-12 h-12 mb-3 opacity-20" />
+            <p className="font-medium text-sm">{t('pos.noProductsFound')}</p>
           </div>
         )}
       </div>
 
-      <BarcodeScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} onScan={handleBarcodeScan} />
-      <ProductDetailsDialog
-        product={selectedProduct}
-        isOpen={detailsDialogOpen}
-        onClose={() => { setDetailsDialogOpen(false); setSelectedProduct(null); }}
-        onAddToCart={(prod, quantity) => {
-          for (let i = 0; i < quantity; i++) {
-            onProductClick(prod);
-          }
-        }}
-      />
+      
+      {scannerOpen && (
+        <BarcodeScanner
+          onScan={handleBarcodeScan}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
+      
+      {selectedProduct && (
+        <ProductDetailsDialog
+          product={selectedProduct}
+          isOpen={detailsDialogOpen}
+          onClose={() => {
+            setDetailsDialogOpen(false);
+            setSelectedProduct(null);
+          }}
+        />
+      )}
     </div>
   );
 }

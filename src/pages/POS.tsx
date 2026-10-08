@@ -989,7 +989,7 @@ export default function POS() {
 
       {/* Cart Sheet - Mobile */}
       <Sheet open={cartOpen} onOpenChange={handleSetCartOpen}>
-        <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden">
+        <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden bg-transparent border-none">
           <CartPanel
             cart={cart}
             currencies={currencies}

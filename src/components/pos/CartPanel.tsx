@@ -1262,7 +1262,7 @@ export function CartPanel({
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
-                className="pr-9 bg-muted border-0 h-9 md:h-10 text-sm"
+                className="pr-10 bg-slate-100 dark:bg-zinc-800 border-none h-12 rounded-2xl text-base shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20"
               />
               {/* Customer Suggestions Dropdown */}
               {showSuggestions && customerSuggestions.length > 0 && (
@@ -1295,7 +1295,7 @@ export function CartPanel({
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 md:h-10 md:w-10 flex-shrink-0"
+              className="h-12 w-12 rounded-2xl flex-shrink-0 border-none shadow-sm bg-white dark:bg-zinc-800 hover:bg-black/5"
               onClick={() => setShowCustomerDialog(true)}
             >
               <UserPlus className="w-4 h-4" />
