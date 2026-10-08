@@ -154,6 +154,60 @@ export default function Appearance() {
         <FontSelector />
       </div>
 
+      {/* خيار نمط التصميم (مضاف هنا) */}
+      <div className="mt-6 rounded-2xl bg-card border border-border/70 p-5 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <SlidersHorizontal className="w-5 h-5 text-primary" />
+          <div>
+            <h3 className="text-base font-semibold text-foreground">
+              {isRTL ? 'نمط تصميم لوحة التحكم والتقارير' : 'Dashboard & Reports Layout'}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {isRTL ? 'اختر بين التصميم الافتراضي أو التصميم الموحد الحديث' : 'Choose layout mode'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          <button
+            type="button"
+            onClick={() => handleDesignChange('classic')}
+            className={cn(
+              "flex flex-col items-start p-4 rounded-xl border text-right transition-all",
+              dashboardDesign === 'classic'
+                ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                : "border-border hover:bg-muted/40"
+            )}
+          >
+            <span className="font-semibold text-sm text-foreground">
+              {isRTL ? 'التصميم الافتراضي (Classic)' : 'Classic Layout'}
+            </span>
+            <span className="text-xs text-muted-foreground mt-1">
+              {isRTL ? 'اللوحة التقليدية القديمة' : 'Standard cards layout'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleDesignChange('unified_pro')}
+            className={cn(
+              "flex flex-col items-start p-4 rounded-xl border text-right transition-all",
+              dashboardDesign === 'unified_pro'
+                ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                : "border-border hover:bg-muted/40"
+            )}
+          >
+            <span className="font-semibold text-sm text-foreground flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-emerald-500" />
+              {isRTL ? 'التصميم الجديد (الموحد Pro)' : 'Unified Pro'}
+            </span>
+            <span className="text-xs text-muted-foreground mt-1">
+              {isRTL ? 'تصميم الرسوم البيانية الموحد بدون أزرار سريعة' : 'Analytics & charts layout'}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Floating Action Buttons (FAB) */}
       <div
         className={cn(

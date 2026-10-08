@@ -384,6 +384,18 @@ export default function Dashboard() {
     };
   }, [loadStats]);
 
+    if (dashboardDesign === 'unified_pro') {
+    return (
+      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <UnifiedReportsDashboard
+          stats={stats}
+          isLoading={isLoading}
+          onRefresh={loadStats}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-3 md:space-y-4">
       {/* Header */}
