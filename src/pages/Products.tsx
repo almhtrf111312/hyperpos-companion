@@ -1334,12 +1334,12 @@ export default function Products() {
                 {mainTab === 'archive' ? (
                   <>
                     <Package className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                    ÇáãäÊÌÇÊ ÇáäÔØÉ
+                    Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ù†Ø´Ø·Ø©
                   </>
                 ) : (
                   <>
                     <Archive className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                    ÃÑÔíÝ ÇáãäÊÌÇÊ
+                    Ø£Ø±Ø´ÙŠÙ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª
                     {mergedArchivedProducts.length > 0 && (
                       <span className="mr-1.5 px-1.5 py-0.5 text-[10px] bg-destructive/15 text-destructive rounded-full font-bold">
                         {mergedArchivedProducts.length}
@@ -1407,7 +1407,7 @@ export default function Products() {
             >
               {mainTab === 'archive' ? <Package className="w-3.5 h-3.5 ml-1 flex-shrink-0" /> : <Archive className="w-3.5 h-3.5 ml-1 flex-shrink-0" />}
               <span className="truncate">
-                {mainTab === 'archive' ? 'ÇáäÔØÉ' : `ÇáÃÑÔíÝ${mergedArchivedProducts.length > 0 ? ` (${mergedArchivedProducts.length})` : '}`}
+                {mainTab === 'archive' ? 'Ø§Ù„Ù†Ø´Ø·Ø©' : `Ø§Ù„Ø£Ø±Ø´ÙŠÙ${mergedArchivedProducts.length > 0 ? ` (${mergedArchivedProducts.length})` : ''}`}
               </span>
             </Button>
             
