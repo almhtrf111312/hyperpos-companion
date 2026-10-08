@@ -153,7 +153,7 @@ export function ProductGrid({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Search, View Toggle, and Categories */}
-      <div data-tour="search-bar" className="p-3 md:p-5 border-b border-border/40 bg-background/60 supports-[backdrop-filter]:bg-background/40 backdrop-blur-2xl space-y-3 md:space-y-5">
+      <div data-tour="search-bar" className="p-4 md:p-6 border-b border-black/5 dark:border-white/5 bg-transparent space-y-4 md:space-y-6">
         <div className="flex gap-2 items-center">
           <div className="flex-1 min-w-0 relative flex items-center ps-12 md:ps-0">
             <Search className="absolute rtl:right-14 ltr:left-14 md:rtl:right-3 md:ltr:left-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground pointer-events-none" />
@@ -175,7 +175,7 @@ export function ProductGrid({
                   }
                 }
               }}
-              className="rtl:pr-9 ltr:pl-9 md:rtl:pr-10 md:ltr:pl-10 h-11 md:h-12 rounded-2xl bg-background/90 border border-border text-sm md:text-base shadow-sm w-full"
+              className="rtl:pr-11 ltr:pl-11 md:rtl:pr-12 md:ltr:pl-12 h-12 md:h-14 rounded-full bg-white/80 dark:bg-zinc-900/80 border border-black/5 dark:border-white/10 text-base shadow-[0_2px_10px_rgb(0,0,0,0.02)] backdrop-blur-xl focus-visible:ring-black/10 dark:focus-visible:ring-white/10 w-full transition-all"
             />
           </div>
 
@@ -246,16 +246,16 @@ export function ProductGrid({
           )}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 md:mx-0 md:px-0">
+        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
           {categories.map((category, index) => (
             <button
               key={`${category}-${index}`}
               onClick={() => onCategoryChange(category)}
               className={cn(
-                "px-3.5 md:px-4 py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-200 flex-shrink-0 border border-border/70",
-                selectedCategory === category
-                  ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30 border-transparent"
-                  : "bg-secondary/70 text-foreground hover:bg-secondary"
+                "px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 border",
+                  selectedCategory === category
+                    ? "bg-black dark:bg-white text-white dark:text-black shadow-[0_4px_14px_rgba(0,0,0,0.2)] dark:shadow-[0_4px_14px_rgba(255,255,255,0.2)] border-transparent scale-105"
+                    : "bg-white dark:bg-zinc-900 text-foreground hover:bg-black/5 dark:hover:bg-white/10 border-black/5 dark:border-white/10"
               )}
             >
               {category}
@@ -273,10 +273,10 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in p-2 md:p-3 group hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border/40 rounded-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm"
+                className="pos-item text-right fade-in p-2.5 md:p-3 group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_20px_40px_rgb(0,0,0,0.4)] hover:-translate-y-1.5 border border-black/5 dark:border-white/10 rounded-3xl transition-all duration-300 bg-white dark:bg-zinc-900"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="w-full aspect-square rounded-xl bg-muted/30 flex items-center justify-center mb-2 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                <div className="w-full aspect-square rounded-2xl bg-slate-50 dark:bg-zinc-950 flex items-center justify-center mb-3 overflow-hidden group-hover:scale-105 transition-transform duration-500 ease-out">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
@@ -284,8 +284,8 @@ export function ProductGrid({
                     iconClassName="w-6 h-6 md:w-8 md:h-8"
                   />
                 </div>
-                <h3 className="font-semibold text-foreground text-[9px] sm:text-[10px] md:text-xs line-clamp-2 mb-0.5 leading-tight">{product.name}</h3>
-                <p className="text-primary font-bold text-[10px] sm:text-[11px] md:text-sm">${product.price}</p>
+                <h3 className="font-bold text-foreground text-[10px] sm:text-xs md:text-sm line-clamp-2 mb-1 leading-snug">{product.name}</h3>
+                <p className="text-foreground font-black text-xs sm:text-sm md:text-base">${product.price}</p>
                 <div className="mt-0.5 scale-90 origin-right">
                   <DualUnitDisplayCompact
                     totalPieces={product.quantity}

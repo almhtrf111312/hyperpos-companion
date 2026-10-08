@@ -26,22 +26,22 @@ export function POSHeader({
   const { t, tDynamic } = useLanguage();
 
   return (
-    <header className="h-16 md:h-20 border-b border-border/50 flex items-center justify-between pe-3 ps-14 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-2xl shadow-[0_4px_24px_-8px_rgba(0,0,0,0.1)] transition-all duration-300">
+    <header className="h-16 md:h-20 flex items-center justify-between pe-3 ps-14 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-3xl shadow-[0_4px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_30px_rgb(0,0,0,0.3)] transition-all duration-300 border-b border-black/5 dark:border-white/5">
       {/* Right side - Title and Desktop Mode Switcher */}
       <div className="flex items-center gap-3 overflow-hidden">
         <h1 className="text-xl md:text-2xl font-bold text-foreground whitespace-nowrap truncate">{t('pos.title')}</h1>
 
         {/* Desktop Fixed Mode Toggle */}
         {!isMobile && !hideMaintenance && onModeChange && (
-          <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/60 shadow-inner backdrop-blur-md">
+          <div className="flex items-center p-1 rounded-full bg-slate-100/80 dark:bg-zinc-900/80 border border-black/5 dark:border-white/5 shadow-inner backdrop-blur-3xl">
             <button
               type="button"
               onClick={() => onModeChange('products')}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 select-none",
-                activeMode === 'products'
-                  ? "bg-gradient-primary text-primary-foreground shadow-sm shadow-primary/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                "flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 select-none",
+                  activeMode === 'products'
+                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-[0_4px_12px_rgb(0,0,0,0.08)] dark:shadow-[0_4px_12px_rgb(0,0,0,0.4)] scale-105"
+                    : "text-muted-foreground hover:text-foreground"
               )}
             >
               <ShoppingCart className="w-3.5 h-3.5" />
@@ -51,10 +51,10 @@ export function POSHeader({
               type="button"
               onClick={() => onModeChange('maintenance')}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 select-none",
-                activeMode === 'maintenance'
-                  ? "bg-gradient-primary text-primary-foreground shadow-sm shadow-primary/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                "flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 select-none",
+                  activeMode === 'maintenance'
+                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-[0_4px_12px_rgb(0,0,0,0.08)] dark:shadow-[0_4px_12px_rgb(0,0,0,0.4)] scale-105"
+                    : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Wrench className="w-3.5 h-3.5" />

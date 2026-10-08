@@ -1178,11 +1178,11 @@ export function CartPanel({
   return (
     <>
       <div className={cn(
-        "bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-xl flex flex-col h-full shadow-2xl",
-        isMobile ? "rounded-t-2xl" : "border-r border-border"
+        "bg-white/90 dark:bg-zinc-900/90 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-zinc-900/60 backdrop-blur-3xl flex flex-col h-full shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+          isMobile ? "rounded-t-3xl" : "rounded-3xl border border-black/5 dark:border-white/10"
       )}>
         {/* Cart Header */}
-        <div className="p-4 md:p-5 border-b border-border/40 bg-card/50">
+        <div className="p-5 md:p-6 border-b border-black/5 dark:border-white/5 bg-transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 text-primary" />
@@ -1304,7 +1304,7 @@ export function CartPanel({
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-1.5 bg-muted/10">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-50/50 dark:bg-zinc-950/50">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
               <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />

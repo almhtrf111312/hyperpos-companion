@@ -874,7 +874,7 @@ export default function POS() {
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-slate-50/50 dark:bg-zinc-950/50">
       {/* Sidebar - Always visible, collapsed by default on non-mobile */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -905,16 +905,16 @@ export default function POS() {
 
         {/* Mode Buttons - Compact Segmented Pill */}
         {isMobile && !hideMaintenanceSection && (
-          <div className="px-3 py-1.5 border-b border-border/50 bg-background/90 backdrop-blur-sm flex justify-center">
-            <div className="inline-flex items-center p-0.5 rounded-xl bg-muted/70 border border-border/60 shadow-xs">
+          <div className="px-3 py-2 border-b border-black/5 dark:border-white/5 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-3xl flex justify-center">
+            <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-zinc-900 border border-black/5 dark:border-white/5 shadow-inner">
               <button
                 type="button"
                 onClick={() => setActiveMode('products')}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all",
-                  activeMode === 'products'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
+                    activeMode === 'products'
+                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-[0_2px_8px_rgb(0,0,0,0.08)] dark:shadow-[0_2px_8px_rgb(0,0,0,0.4)]"
+                      : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <ShoppingCart className="w-3.5 h-3.5" />
@@ -924,10 +924,10 @@ export default function POS() {
                 type="button"
                 onClick={() => setActiveMode('maintenance')}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all",
-                  activeMode === 'maintenance'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
+                    activeMode === 'maintenance'
+                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-[0_2px_8px_rgb(0,0,0,0.08)] dark:shadow-[0_2px_8px_rgb(0,0,0,0.4)]"
+                      : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Wrench className="w-3.5 h-3.5" />
@@ -966,7 +966,7 @@ export default function POS() {
 
           {/* Cart Panel - Desktop Only (not tablet) */}
           {!isMobile && !isTablet && (
-            <div className="w-80 flex-shrink-0" data-tour="cart-panel">
+            <div className="w-[340px] flex-shrink-0 p-3 pl-0 hidden md:block" data-tour="cart-panel">
               <CartPanel
                 cart={cart}
                 currencies={currencies}
