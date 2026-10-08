@@ -42,8 +42,8 @@ export function VariantPickerDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl p-0">
+        <DialogHeader className="p-5 border-b border-border/40 bg-muted/30">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
             اختر المنتج المطلوب

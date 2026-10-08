@@ -374,11 +374,11 @@ ${footer}`;
   return (
     <>
       <div className={cn(
-        "bg-card flex flex-col h-full",
+        "bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-xl flex flex-col h-full shadow-2xl",
         isMobile ? "rounded-t-2xl" : fullWidth ? "" : "border-r border-border"
       )}>
         {/* Header */}
-        <div className="p-3 md:p-4 border-b border-border">
+        <div className="p-4 md:p-5 border-b border-border/40 bg-card/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wrench className="w-4 h-4 md:w-5 md:h-5 text-primary" />
@@ -415,7 +415,7 @@ ${footer}`;
                       placeholder={t('maintenance.customerName')}
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="pr-9 bg-muted border-0"
+                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm"
                     />
                   </div>
                 </div>
@@ -431,7 +431,7 @@ ${footer}`;
                       placeholder="+963 xxx xxx xxx"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
-                      className="pr-9 bg-muted border-0 text-left"
+                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm text-left"
                     />
                   </div>
                 </div>
@@ -445,7 +445,7 @@ ${footer}`;
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('maintenance.serviceType')}</label>
                     <Select value={serviceType} onValueChange={setServiceType}>
-                      <SelectTrigger className="bg-muted border-0">
+                      <SelectTrigger className="h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm">
                         <SelectValue placeholder={t('maintenance.select')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -461,7 +461,7 @@ ${footer}`;
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('maintenance.deviceType')}</label>
                     <Select value={productType} onValueChange={setProductType}>
-                      <SelectTrigger className="bg-muted border-0">
+                      <SelectTrigger className="h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm">
                         <SelectValue placeholder={t('maintenance.select')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -484,7 +484,7 @@ ${footer}`;
                     placeholder="تفاصيل إضافية عن الخدمة..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-muted border-0 min-h-[60px] resize-none"
+                    className="bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm min-h-[80px] resize-none p-3"
                   />
                 </div>
               </div>
@@ -504,7 +504,7 @@ ${footer}`;
                       placeholder="0"
                       value={servicePrice || ''}
                       onChange={(e) => setServicePrice(Number(e.target.value))}
-                      className="pr-9 bg-muted border-0 text-lg font-bold"
+                      className="pr-10 h-12 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm text-lg font-bold"
                     />
                   </div>
                 </div>
@@ -518,7 +518,7 @@ ${footer}`;
                       placeholder="0"
                       value={partsCost || ''}
                       onChange={(e) => setPartsCost(Number(e.target.value))}
-                      className="pr-9 bg-muted border-0"
+                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm"
                     />
                   </div>
                 </div>
@@ -634,7 +634,7 @@ ${footer}`;
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowCashDialog(false)} className="flex-1" disabled={isSaving}>
+            <Button variant="outline" onClick={() => setShowCashDialog(false)} className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95" disabled={isSaving}>
               {t('common.cancel')}
             </Button>
             <Button
@@ -681,7 +681,7 @@ ${footer}`;
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowDebtDialog(false)} className="flex-1" disabled={isSaving}>
+            <Button variant="outline" onClick={() => setShowDebtDialog(false)} className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95" disabled={isSaving}>
               {t('common.cancel')}
             </Button>
             <Button

@@ -60,17 +60,17 @@ export function ScannedProductDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl p-0">
+        <DialogHeader className="p-5 border-b border-border/40 bg-muted/30">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
             {t('scannedProduct.productFound')}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="py-4">
+        <div className="p-5">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+            <div className="w-24 h-24 rounded-2xl bg-muted/50 border border-border/40 shadow-sm flex items-center justify-center flex-shrink-0">
               {product.image ? (
                 <img 
                   src={product.image} 
@@ -81,14 +81,14 @@ export function ScannedProductDialog({
                 <Package className="w-10 h-10 text-muted-foreground" />
               )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 h-12 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all">
               <h3 className="font-bold text-lg text-foreground mb-1">{product.name}</h3>
               <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
               <p className="text-2xl font-bold text-primary">${product.price}</p>
             </div>
           </div>
 
-          <div className="bg-muted rounded-lg p-3 mb-4">
+          <div className="bg-muted/40 border border-border/40 rounded-xl p-4 mb-5 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('scannedProduct.availableStock')}:</span>
               <span className="font-semibold text-foreground">{product.quantity} {t('scannedProduct.piece')}</span>
@@ -102,7 +102,7 @@ export function ScannedProductDialog({
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
+            <Button variant="outline" className="flex-1 h-12 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all" onClick={onClose}>
               <X className="w-4 h-4 ml-2" />
               {t('scannedProduct.close')}
             </Button>
@@ -118,7 +118,7 @@ export function ScannedProductDialog({
               </Button>
             )}
             <Button 
-              className="flex-1 bg-primary hover:bg-primary/90" 
+              className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg bg-gradient-primary text-primary-foreground active:scale-95 transition-all" 
               onClick={handleAdd}
               disabled={product.quantity === 0}
             >

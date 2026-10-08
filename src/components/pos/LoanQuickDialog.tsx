@@ -82,7 +82,7 @@ export function LoanQuickDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
@@ -126,7 +126,7 @@ export function LoanQuickDialog({
                     placeholder="بحث بالاسم أو الهاتف..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-9 bg-muted border-0"
+                    className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm"
                   />
                 </div>
                 <div className="max-h-40 overflow-y-auto space-y-1">
