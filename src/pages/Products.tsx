@@ -1395,8 +1395,6 @@ export default function Products() {
             </div>
           </div>
         </div>
-
-        </div>
       </div>
 
       {mainTab === 'archive' ? (
@@ -3688,6 +3686,7 @@ export default function Products() {
     </div>
   );
 }
+
 
 
 
