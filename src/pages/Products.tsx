@@ -1292,9 +1292,7 @@ export default function Products() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background relative selection:bg-primary/20">
-      {/* Subtle Ambient Background Gradient */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background opacity-70" />
-      
+
       {/* Header - Fixed */}
       <div className="flex-shrink-0 p-4 pt-6 md:p-8 pb-3 md:pb-4 overflow-x-hidden max-w-full relative z-10">
         {/* Header */}
@@ -1312,26 +1310,6 @@ export default function Products() {
           actions={
             /* Desktop: Original layout */
             <div className="hidden sm:flex items-center gap-2">
-              <Button
-                variant={mainTab === 'archive' ? 'default' : 'outline'}
-                onClick={() => {
-                  if (mainTab === 'archive') {
-                    setMainTab('products');
-                  } else {
-                    setMainTab('archive');
-                    loadArchivedData();
-                  }
-                }}
-                className={mainTab === 'archive' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : ''}
-              >
-                <Archive className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                {mainTab === 'archive' ? 'المنتجات النشطة' : 'الأرشيف'}
-                {mergedArchivedProducts.length > 0 && mainTab !== 'archive' && (
-                  <span className="mr-1.5 px-1.5 py-0.5 text-xs bg-destructive/15 text-destructive rounded-full font-bold">
-                    {mergedArchivedProducts.length}
-                  </span>
-                )}
-              </Button>
               {!noInventory && (
                 <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
                   <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
@@ -1387,23 +1365,7 @@ export default function Products() {
               <Tag className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
               <span className="truncate">{t('products.categories')}</span>
             </Button>
-            <Button
-              variant={mainTab === 'archive' ? 'default' : 'outline'}
-              className={cn("h-8 text-xs px-2 flex-1", mainTab === 'archive' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
-              onClick={() => {
-                if (mainTab === 'archive') {
-                  setMainTab('products');
-                } else {
-                  setMainTab('archive');
-                  loadArchivedData();
-                }
-              }}
-            >
-              <Archive className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
-              <span className="truncate">
-                {mainTab === 'archive' ? 'النشطة' : `الأرشيف${mergedArchivedProducts.length > 0 ? ` (${mergedArchivedProducts.length})` : ''}`}
-              </span>
-            </Button>
+            
             {/* View Mode Buttons */}
             <div className="flex bg-muted rounded-lg p-0.5 flex-shrink-0">
               <Button
@@ -1434,102 +1396,12 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Unified Tab Switcher */}
-        <div className="flex items-center gap-2 mt-2.5 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setMainTab('products')}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap",
-              mainTab === 'products'
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            <Package className="w-4 h-4" />
-            <span>المنتجات النشطة</span>
-            <span className={cn(
-              "text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-bold",
-              mainTab === 'products' ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background text-foreground"
-            )}>
-              {activeProductsCount}
-            </span>
-          </button>
-          <button
-            onClick={() => {
-              setMainTab('archive');
-              loadArchivedData();
-            }}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap",
-              mainTab === 'archive'
-                ? "bg-destructive text-destructive-foreground shadow-sm"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            <Archive className="w-4 h-4" />
-            <span>أرشيف المنتجات</span>
-            {mergedArchivedProducts.length > 0 && (
-              <span className={cn(
-                "text-[10px] md:text-xs px-1.5 py-0.5 rounded-full font-bold",
-                mainTab === 'archive' ? "bg-destructive-foreground/20 text-destructive-foreground" : "bg-destructive/15 text-destructive"
-              )}>
-                {mergedArchivedProducts.length}
-              </span>
-            )}
-          </button>
         </div>
       </div>
 
       {mainTab === 'archive' ? (
         <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24 space-y-3 pt-2">
-          {/* Archive Search & Action Bar */}
-          <div className="bg-card rounded-xl border border-border p-3 md:p-4 space-y-3 shadow-sm">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-destructive/10 text-destructive">
-                  <Archive className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                    المنتجات المؤرشفة
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
-                      {archivedProducts.length} منتج
-                    </span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    هذه المنتجات مستبعدة من شاشة البيع (POS) وحسابات المخزون. يمكنك استردادها وإدخال كميتها أو حذفها نهائياً.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadArchivedData}
-                  disabled={isArchiveLoading}
-                  className="text-xs h-9 flex-1 sm:flex-initial"
-                >
-                  {isArchiveLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 ml-1 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-3.5 h-3.5 ml-1" />
-                  )}
-                  تحديث الأرشيف
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setMainTab('products')}
-                  className="text-xs h-9 flex-1 sm:flex-initial"
-                >
-                  <Package className="w-3.5 h-3.5 ml-1" />
-                  المنتجات النشطة
-                </Button>
-              </div>
-            </div>
-
-            {/* Archive Search Bar */}
+          {/* Archive Search Bar */}
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1565,8 +1437,6 @@ export default function Products() {
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             </div>
-          </div>
-
           {/* Archived Products List / Cards */}
           {isArchiveLoading && mergedArchivedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -1663,7 +1533,7 @@ export default function Products() {
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
                           <span className="text-[10px] text-muted-foreground block">سعر الشراء</span>
-                          <span className="text-xs text-muted-foreground">{formatNumber(product.costPrice)} $</span>
+                          <span className="text-xs text-foreground/80">{formatNumber(product.costPrice)} $</span>
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
                           <span className="text-[10px] text-muted-foreground block">الرصيد الحالي</span>
@@ -2033,7 +1903,7 @@ export default function Products() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
-                        {!noInventory && <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>}
+                        {!noInventory && <span className="text-foreground/80 font-medium">${formatNumber(product.costPrice, 2)}</span>}
                         <span className="font-semibold text-primary">${formatNumber(product.salePrice, 2)}</span>
                         {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
                         {noInventory && product.wholesalePrice > 0 && <span className="text-muted-foreground">{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
@@ -2082,7 +1952,7 @@ export default function Products() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-11 w-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all active:scale-95 border border-border/40"
+                            className="h-11 w-11 text-foreground/80 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all active:scale-95 border border-border/40"
                             onClick={() => openDeleteDialog(product)}
                             title="حذف المنتج"
                           >
@@ -2091,7 +1961,7 @@ export default function Products() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-11 w-11 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all active:scale-95 border border-border/40"
+                            className="h-11 w-11 text-foreground/80 hover:text-primary hover:bg-muted rounded-xl transition-all active:scale-95 border border-border/40"
                             onClick={() => openEditDialog(product)}
                             title="تعديل المنتج"
                           >
@@ -2356,11 +2226,11 @@ export default function Products() {
                           ) : (
                             <div className="flex flex-col text-sm">
                               <div className="flex items-center gap-1">
-                                <span className="text-xs text-muted-foreground">{t('products.costPrice')}:</span>
-                                <span className="text-muted-foreground">${formatNumber(product.costPrice, 2)}</span>
+                                <span className="text-xs text-foreground/80">{t('products.costPrice')}:</span>
+                                <span className="text-foreground/80 font-medium">${formatNumber(product.costPrice, 2)}</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <span className="text-xs text-muted-foreground">{t('products.salePrice')}:</span>
+                                <span className="text-xs text-foreground/80">{t('products.salePrice')}:</span>
                                 <span className="font-semibold text-foreground">${formatNumber(product.salePrice, 2)}</span>
                               </div>
                             </div>
@@ -2370,7 +2240,7 @@ export default function Products() {
 
                       {noInventory && !isRepairMode && (
                         <td className="py-3 px-3">
-                          <span className="text-sm text-muted-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</span>
+                          <span className="text-sm text-foreground/90 font-medium">${formatNumber(product.wholesalePrice || 0, 2)}</span>
                         </td>
                       )}
 
@@ -2380,7 +2250,7 @@ export default function Products() {
                           <td className="py-3 px-3">
                             <div className="flex flex-col">
                               <span className="font-semibold text-success text-sm">${formatNumber(profit, 2)}</span>
-                              <span className="text-xs text-muted-foreground">{profitPercentage}%</span>
+                              <span className="text-xs text-foreground/80">{profitPercentage}%</span>
                             </div>
                           </td>
 
@@ -2413,7 +2283,7 @@ export default function Products() {
 
                               if (custodyQty === 0) {
                                 return (
-                                  <span className="text-xs text-muted-foreground">-</span>
+                                  <span className="text-xs text-foreground/80">-</span>
                                 );
                               }
 
@@ -2424,7 +2294,7 @@ export default function Products() {
                                       <div className="flex items-center gap-1 cursor-help">
                                         <Truck className="w-3.5 h-3.5 text-primary" />
                                         <span className="font-medium text-sm text-primary">{custodyQty}</span>
-                                        <span className="text-xs text-muted-foreground">
+                                        <span className="text-xs text-foreground/80">
                                           {product.smallUnit || t('products.unitPiece')}
                                         </span>
                                       </div>
@@ -2687,7 +2557,7 @@ export default function Products() {
                             <Boxes className="w-4 h-4" />
                             إعدادات الوحدات (كرتونة / قطعة)
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-foreground/80">
                             {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
                           </span>
                         </Button>
@@ -3213,7 +3083,7 @@ export default function Products() {
                           <Boxes className="w-4 h-4" />
                           إعدادات الوحدات (كرتونة / قطعة)
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-foreground/80">
                           {showUnitSettings ? t('common.hide') : t('common.show')}
                         </span>
                       </Button>
@@ -3818,4 +3688,11 @@ export default function Products() {
     </div>
   );
 }
+
+
+
+
+
+
+
 
