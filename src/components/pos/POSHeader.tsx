@@ -26,14 +26,14 @@ export function POSHeader({
   const { t, tDynamic } = useLanguage();
 
   return (
-    <header className="h-16 md:h-20 border-b border-border/70 flex items-center justify-between pe-3 ps-14 md:px-4 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md shadow-sm">
+    <header className="h-16 md:h-20 border-b border-border/50 flex items-center justify-between pe-3 ps-14 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-background/80 supports-[backdrop-filter]:bg-background/60 backdrop-blur-2xl shadow-[0_4px_24px_-8px_rgba(0,0,0,0.1)] transition-all duration-300">
       {/* Right side - Title and Desktop Mode Switcher */}
       <div className="flex items-center gap-3 overflow-hidden">
         <h1 className="text-xl md:text-2xl font-bold text-foreground whitespace-nowrap truncate">{t('pos.title')}</h1>
 
         {/* Desktop Fixed Mode Toggle */}
         {!isMobile && !hideMaintenance && onModeChange && (
-          <div className="flex items-center p-1 rounded-xl bg-muted/80 border border-border shadow-sm">
+          <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/60 shadow-inner backdrop-blur-md">
             <button
               type="button"
               onClick={() => onModeChange('products')}

@@ -153,7 +153,7 @@ export function ProductGrid({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Search, View Toggle, and Categories */}
-      <div data-tour="search-bar" className="p-3 md:p-4 border-b border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 backdrop-blur-md space-y-3 md:space-y-4">
+      <div data-tour="search-bar" className="p-3 md:p-5 border-b border-border/40 bg-background/60 supports-[backdrop-filter]:bg-background/40 backdrop-blur-2xl space-y-3 md:space-y-5">
         <div className="flex gap-2 items-center">
           <div className="flex-1 min-w-0 relative flex items-center ps-12 md:ps-0">
             <Search className="absolute rtl:right-14 ltr:left-14 md:rtl:right-3 md:ltr:left-3 w-4 h-4 md:w-5 md:h-5 text-muted-foreground pointer-events-none" />
@@ -273,10 +273,10 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in p-1.5 md:p-2"
+                className="pos-item text-right fade-in p-2 md:p-3 group hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border/40 rounded-2xl transition-all duration-300 bg-card/80 backdrop-blur-sm"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="w-full aspect-square rounded-lg bg-muted/50 flex items-center justify-center mb-1.5 overflow-hidden">
+                <div className="w-full aspect-square rounded-xl bg-muted/30 flex items-center justify-center mb-2 overflow-hidden group-hover:scale-105 transition-transform duration-300">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}

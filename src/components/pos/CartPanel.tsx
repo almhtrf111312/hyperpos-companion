@@ -1178,11 +1178,11 @@ export function CartPanel({
   return (
     <>
       <div className={cn(
-        "bg-card flex flex-col h-full",
+        "bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-xl flex flex-col h-full shadow-2xl",
         isMobile ? "rounded-t-2xl" : "border-r border-border"
       )}>
         {/* Cart Header */}
-        <div className="p-3 md:p-4 border-b border-border">
+        <div className="p-4 md:p-5 border-b border-border/40 bg-card/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 text-primary" />
@@ -1354,16 +1354,16 @@ export function CartPanel({
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
-                      className="w-6 h-6 rounded-md bg-muted/80 border border-border/40 text-foreground flex items-center justify-center hover:bg-muted active:scale-90 transition-all"
+                      className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-muted/60 border border-border/60 text-foreground flex items-center justify-center hover:bg-muted hover:shadow-sm active:scale-95 transition-all"
                     >
-                      <Minus className="w-2.5 h-2.5" />
+                      <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-5 text-center font-bold text-xs text-foreground">{item.quantity}</span>
+                    <span className="w-8 text-center font-bold text-sm text-foreground">{item.quantity}</span>
                     <button
                       onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
-                      className="w-6 h-6 rounded-md bg-muted/80 border border-border/40 text-foreground flex items-center justify-center hover:bg-muted active:scale-90 transition-all"
+                      className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-muted/60 border border-border/60 text-foreground flex items-center justify-center hover:bg-muted hover:shadow-sm active:scale-95 transition-all"
                     >
-                      <Plus className="w-2.5 h-2.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
                   {/* Price */}
