@@ -134,7 +134,6 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState(t('products.all'));
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
   const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
-  const [dateFilter, setDateFilter] = useState('');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
 
@@ -779,10 +778,9 @@ export default function Products() {
       const matchesUnit = unitFilter === 'all' ||
         (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
         (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
-      const matchesDate = !dateFilter || (product.createdAt?.startsWith(dateFilter) ?? false);
-      return matchesSearch && matchesCategory && matchesStatus && matchesUnit && matchesDate;
+      return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
     });
-  }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, dateFilter, t]);
+  }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, t]);
 
   const activeProductsCount = useMemo(() => {
     return noInventory ? products.filter(p => !p.archived).length : products.filter(p => !p.archived && p.quantity > 0).length;
@@ -1316,9 +1314,39 @@ export default function Products() {
                   {t('purchaseInvoice.addPurchaseInvoice')}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
+              <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(true)} className="px-3">
                 <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
                 {t('products.categories')}
+              </Button>
+              <Button
+                variant={mainTab === 'archive' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  if (mainTab === 'archive') {
+                    setMainTab('products');
+                  } else {
+                    setMainTab('archive');
+                    loadArchivedData();
+                  }
+                }}
+                className={cn("px-3", mainTab === 'archive' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+              >
+                {mainTab === 'archive' ? (
+                  <>
+                    <Package className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                    «·„‰ Ã«  «·‰‘ÿ…
+                  </>
+                ) : (
+                  <>
+                    <Archive className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                    √—‘Ì› «·„‰ Ã« 
+                    {mergedArchivedProducts.length > 0 && (
+                      <span className="mr-1.5 px-1.5 py-0.5 text-[10px] bg-destructive/15 text-destructive rounded-full font-bold">
+                        {mergedArchivedProducts.length}
+                      </span>
+                    )}
+                  </>
+                )}
               </Button>
               {canAddProducts && (
                 <Button className="bg-primary hover:bg-primary/90" onClick={() => {
@@ -1364,6 +1392,23 @@ export default function Products() {
             <Button variant="outline" className="h-8 text-xs px-2 flex-1" onClick={() => setShowCategoryManager(true)}>
               <Tag className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
               <span className="truncate">{t('products.categories')}</span>
+            </Button>
+            <Button
+              variant={mainTab === 'archive' ? 'default' : 'outline'}
+              className={cn("h-8 text-xs px-2 flex-1", mainTab === 'archive' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+              onClick={() => {
+                if (mainTab === 'archive') {
+                  setMainTab('products');
+                } else {
+                  setMainTab('archive');
+                  loadArchivedData();
+                }
+              }}
+            >
+              {mainTab === 'archive' ? <Package className="w-3.5 h-3.5 ml-1 flex-shrink-0" /> : <Archive className="w-3.5 h-3.5 ml-1 flex-shrink-0" />}
+              <span className="truncate">
+                {mainTab === 'archive' ? '«·‰‘ÿ…' : `«·√—‘Ì›${mergedArchivedProducts.length > 0 ? ` (${mergedArchivedProducts.length})` : '}`}
+              </span>
             </Button>
             
             {/* View Mode Buttons */}
@@ -1702,43 +1747,7 @@ export default function Products() {
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             )}
-            {/* ÿ≤ÿ± ÿßŸÑÿ™ÿßÿ±ŸäÿÆ ÿßŸÑŸÖÿ∂ÿ∫Ÿàÿ∑ - ŸÑŸÑŸÖŸàÿ®ÿßŸäŸÑ ŸÅŸÇÿ∑ */}
-            <div className="md:hidden flex items-center flex-shrink-0">
-              <DatePicker
-                value={dateFilter}
-                onChange={setDateFilter}
-                placeholder="ÿßŸÑÿ™ÿßÿ±ŸäÿÆ"
-                className="w-[76px] h-10 text-[11px] px-2 justify-center"
-              />
-              {dateFilter && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-7 flex-shrink-0"
-                  onClick={() => setDateFilter('')}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-            <div className="hidden md:flex items-center gap-1 flex-shrink-0">
-              <DatePicker
-                value={dateFilter}
-                onChange={setDateFilter}
-                placeholder={t('products.dateLabel')}
-                className="w-[140px]"
-              />
-              {dateFilter && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 flex-shrink-0"
-                  onClick={() => setDateFilter('')}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
+            
             {/* View Mode Buttons - Desktop only */}
             <div className="hidden sm:flex bg-muted rounded-lg p-0.5">
               <Button
@@ -3686,6 +3695,9 @@ export default function Products() {
     </div>
   );
 }
+
+
+
 
 
 
