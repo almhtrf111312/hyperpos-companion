@@ -1291,9 +1291,12 @@ export default function Products() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-background relative selection:bg-primary/20">
+      {/* Subtle Ambient Background Gradient */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background opacity-70" />
+      
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-3 pt-6 md:p-6 pb-2 md:pb-3 overflow-x-hidden max-w-full">
+      <div className="flex-shrink-0 p-4 pt-6 md:p-8 pb-3 md:pb-4 overflow-x-hidden max-w-full relative z-10">
         {/* Header */}
         <PageHeader
           title={
@@ -2066,9 +2069,10 @@ export default function Products() {
               return (
                 <div
                   key={product.id}
-                  className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-sm hover:shadow-md transition-shadow fade-in"
+                  className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 fade-in group relative overflow-hidden"
                   style={{ animationDelay: `${index * 25}ms` }}
                 >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   {/* القسم العلوي: أزرار + شارة الوحدة + البيانات + الصورة المكبرة */}
                   <div className="flex items-center justify-between gap-3 mb-3">
                     {/* 1. أزرار التحكم المكبرة + شارة الوحدة المترجمة بجانبهم */}
@@ -2478,16 +2482,25 @@ export default function Products() {
 
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe text-sm" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base">
-                <Plus className="w-5 h-5 text-primary" />
-                إضافة منتج جديد
-              </DialogTitle>
-              <DialogDescription>أدخل بيانات المنتج الجديد</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4 pb-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
+            
+            {/* Premium Header */}
+            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-8 pb-6 border-b border-border/50">
+              <DialogHeader>
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-primary/20">
+                  <Package className="w-6 h-6 text-primary" />
+                </div>
+                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                  إضافة منتج جديد
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-1">
+                  أدخل بيانات وتفاصيل المنتج لإضافته إلى المخزون.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(92vh-180px)] scrollbar-thin">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                   <Input
@@ -2996,7 +3009,7 @@ export default function Products() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 sm:gap-3 pt-4 pb-safe">
+              <div className="flex gap-3 pt-6 pb-safe mt-6 border-t border-border/50 sticky bottom-0 bg-background/95 backdrop-blur-sm">
                 <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
                   setShowAddDialog(false);
                   setImagePreviewBase64('');
@@ -3010,34 +3023,37 @@ export default function Products() {
                 </Button>
               </div>
             </div>
+            </div>
           </DialogContent>
         </Dialog>
 
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) clearPersistedState(); }}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] h-full sm:h-auto overflow-y-auto pb-safe text-sm" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base">
-                {selectedProduct?.archived ? (
-                  <>
-                    <RotateCcw className="w-5 h-5 text-emerald-600" />
-                    <span>استرداد وتعديل المنتج المؤرشف</span>
-                  </>
-                ) : (
-                  <>
-                    <Edit className="w-5 h-5 text-primary" />
-                    <span>{tDynamic('editProduct')}</span>
-                  </>
-                )}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedProduct?.archived
-                  ? 'أدخل الكمية المتوفرة حالياً وحدّث بيانات المنتج لإعادته لقائمة المنتجات النشطة وشاشة البيع.'
-                  : tDynamic('pageSubtitle')}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4 pb-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
+            
+            {/* Premium Header */}
+            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-8 pb-6 border-b border-border/50">
+              <DialogHeader>
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-primary/20">
+                  {selectedProduct?.archived ? (
+                    <RotateCcw className="w-6 h-6 text-emerald-600" />
+                  ) : (
+                    <Edit className="w-6 h-6 text-primary" />
+                  )}
+                </div>
+                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                  {selectedProduct?.archived ? 'استرداد وتعديل المنتج المؤرشف' : tDynamic('editProduct')}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-1">
+                  {selectedProduct?.archived
+                    ? 'أدخل الكمية المتوفرة حالياً وحدّث بيانات المنتج لإعادته لقائمة المنتجات النشطة وشاشة البيع.'
+                    : tDynamic('pageSubtitle')}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(92vh-180px)] scrollbar-thin">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
                   <Input
@@ -3520,7 +3536,7 @@ export default function Products() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 sm:gap-3 pt-4 pb-safe">
+              <div className="flex gap-3 pt-6 pb-safe mt-6 border-t border-border/50 sticky bottom-0 bg-background/95 backdrop-blur-sm">
                 <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
                   setShowEditDialog(false);
                   setImagePreviewBase64('');
@@ -3548,6 +3564,7 @@ export default function Products() {
                   )}
                 </Button>
               </div>
+            </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -3803,3 +3820,4 @@ export default function Products() {
     </div>
   );
 }
+

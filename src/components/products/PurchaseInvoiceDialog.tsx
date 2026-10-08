@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -468,34 +469,57 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[92vh] p-3 sm:p-6 overflow-y-auto overflow-x-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            {t('purchaseInvoice.title')}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]">
+        
+        {/* Premium Header with gradient background */}
+        <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-8 pb-6 border-b border-border/50">
+          <DialogHeader>
+            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-primary/20">
+              <FileText className="w-6 h-6 text-primary" />
+            </div>
+            <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+              {t('purchaseInvoice.title')}
+            </DialogTitle>
+          </DialogHeader>
 
-        {/* Step Indicator */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 border-b pb-3 mb-2">
-          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium ${step === 'header' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-            }`}>
-            <span>1</span>
-            <span>{t('purchaseInvoice.headerStep')}</span>
-          </div>
-          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground rtl:rotate-180 shrink-0" />
-          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium ${step === 'items' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-            }`}>
-            <span>2</span>
-            <span>{t('purchaseInvoice.itemsStep')}</span>
-          </div>
-          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground rtl:rotate-180 shrink-0" />
-          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium ${step === 'finalize' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-            }`}>
-            <span>3</span>
-            <span>{t('purchases.finalize')}</span>
+          {/* Step Indicator */}
+          <div className="flex flex-wrap items-center gap-3 mt-6">
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300",
+              step === 'header' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
+            )}>
+              <span className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                step === 'header' ? "bg-primary-foreground/20" : "bg-background/80"
+              )}>1</span>
+              {t('purchaseInvoice.headerStep')}
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300",
+              step === 'items' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
+            )}>
+              <span className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                step === 'items' ? "bg-primary-foreground/20" : "bg-background/80"
+              )}>2</span>
+              {t('purchaseInvoice.itemsStep')}
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300",
+              step === 'finalize' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
+            )}>
+              <span className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                step === 'finalize' ? "bg-primary-foreground/20" : "bg-background/80"
+              )}>3</span>
+              {t('purchases.finalize')}
+            </div>
           </div>
         </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-220px)] scrollbar-thin">
 
         {/* Step 1: Header */}
         {step === 'header' && (
@@ -765,6 +789,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             </div>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
     <NativeCameraPreview
