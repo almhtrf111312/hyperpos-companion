@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Receipt
 } from 'lucide-react';
+import { UnifiedReportsDashboard } from '@/components/dashboard/UnifiedReportsDashboard';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { DebtAlerts } from '@/components/dashboard/DebtAlerts';
@@ -59,6 +60,19 @@ const getCapitalSettings = () => {
 };
 
 export default function Dashboard() {
+  const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
+    return (localStorage.getItem('hyperpos_dashboard_design_v1') as 'classic' | 'unified_pro') || 'classic';
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      const current = (localStorage.getItem('hyperpos_dashboard_design_v1') as 'classic' | 'unified_pro') || 'classic';
+      setDashboardDesign(current);
+    };
+    window.addEventListener('hyperpos:design-changed', handler);
+    return () => window.removeEventListener('hyperpos:design-changed', handler);
+  }, []);
+
   const { t, language, isRTL } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [capitalConfig, setCapitalConfig] = useState(getCapitalSettings);

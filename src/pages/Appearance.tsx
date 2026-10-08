@@ -1,5 +1,5 @@
 import { useState, Component, ReactNode } from 'react';
-import { Save, Undo2, Loader2, AlertTriangle } from 'lucide-react';
+import { Save, Undo2, Loader2, AlertTriangle, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
 import { UIScaleSelector } from '@/components/settings/UIScaleSelector';
 import { useTheme } from '@/hooks/use-theme';
@@ -34,6 +34,8 @@ class ThemeErrorBoundary extends Component<{ children: ReactNode; fallback: Reac
   }
 }
 
+const DASHBOARD_DESIGN_KEY = 'hyperpos_dashboard_design_v1';
+
 export default function Appearance() {
   const { t, isRTL } = useLanguage();
   const { toast } = useToast();
@@ -43,6 +45,21 @@ export default function Appearance() {
   const [pendingScale, setPendingScale] = useState<UIScaleId | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
+    return (localStorage.getItem(DASHBOARD_DESIGN_KEY) as 'classic' | 'unified_pro') || 'classic';
+  });
+
+  const handleDesignChange = (design: 'classic' | 'unified_pro') => {
+    setDashboardDesign(design);
+    localStorage.setItem(DASHBOARD_DESIGN_KEY, design);
+    window.dispatchEvent(new Event('hyperpos:design-changed'));
+    toast({
+      title: t('common.saved'),
+      description: isRTL ? 'تم تغيير نمط التصميم بنجاح' : 'Design layout updated successfully',
+    });
+  };
+
 
   const hasChanges = Boolean(pendingTheme || pendingScale);
 
