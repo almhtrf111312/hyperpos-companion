@@ -146,7 +146,7 @@ export function useDeviceBinding() {
       const cachedData = loadDeviceCache();
       const hadActiveUnblockedSession = cachedData && cachedData.isDeviceBlocked === false;
 
-      if (hadActiveUnblockedSession && license.is_revoked !== true) {
+      if (hadActiveUnblockedSession) {
         console.warn('[DeviceBinding] Active unblocked session running during reconnect. Preserving session.');
         const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
         setState({ isChecking: false, ...result });

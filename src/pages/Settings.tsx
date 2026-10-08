@@ -126,6 +126,13 @@ interface PrintSettingsType {
   paperSize: string;
   copies: string;
   footer: string;
+  showStoreName?: boolean;
+  showEmail?: boolean;
+  showInvoiceNumber?: boolean;
+  showDateTime?: boolean;
+  showCashierName?: boolean;
+  welcomeMessage?: string;
+  showAlternativeCurrencies?: boolean;
 }
 
 interface BackupSettingsType {

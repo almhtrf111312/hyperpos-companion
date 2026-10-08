@@ -135,7 +135,7 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
   const store = storeName ? { name: storeName, phone: storePhone, address: storeAddress } : getStoreInfo();
 
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet(sheetName, { views: [{ rtl: true }] });
+  const ws = wb.addWorksheet(sheetName, { views: [{ rightToLeft: true } as any] });
 
   // Store header
   ws.addRow([store.name]);

@@ -974,10 +974,11 @@ function mergeSyncQueueInvoices(invoices) {
   const queueInvoices = [];
   for (const op of pending) {
     if (op.type === 'invoice_create' || op.type === 'debt_sale_bundle') {
-      const bundle = op.data.bundle || {};
+      const data = op.data as Record<string, any>;
+      const bundle = (data?.bundle || {}) as Record<string, any>;
       const isFailed = op.status === 'failed';
       queueInvoices.push({
-        id: op.data.operationId || op.data.localId || op.id,
+        id: data?.operationId || data?.localId || op.id,
         type: 'sale',
         customerName: bundle.customerName || 'عميل نقدي',
         items: bundle.items || [],

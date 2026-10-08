@@ -877,6 +877,62 @@ export default function POS() {
     } catch {}
   };
 
+  const handleSwitchCart = useCallback((cartId: string) => {
+    setHeldCarts(prev => {
+      const updated = prev.map(c => c.id === activeCartId ? {
+        ...c,
+        cart,
+        customerName,
+        discount,
+      } : c);
+      
+      const target = updated.find(c => c.id === cartId);
+      if (target) {
+        setCart(target.cart);
+        setCustomerName(target.customerName);
+        setDiscount(target.discount);
+        setActiveCartId(target.id);
+      }
+      return updated;
+    });
+  }, [activeCartId, cart, customerName, discount]);
+
+  const handleAddNewCart = useCallback(() => {
+    const newId = `cart_${Date.now()}`;
+    const newName = `سلة ${heldCarts.length + 1}`;
+    setHeldCarts(prev => [
+      ...prev.map(c => c.id === activeCartId ? { ...c, cart, customerName, discount } : c),
+      { id: newId, name: newName, cart: [], customerName: '', discount: 0, createdAt: Date.now() }
+    ]);
+    setCart([]);
+    setCustomerName('');
+    setDiscount(0);
+    setActiveCartId(newId);
+  }, [activeCartId, cart, customerName, discount, heldCarts.length]);
+
+  const handleRemoveCart = useCallback((cartId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (heldCarts.length <= 1) return;
+    
+    setHeldCarts(prev => {
+      const remaining = prev.filter(c => c.id !== cartId);
+      if (activeCartId === cartId) {
+        const nextActive = remaining[0];
+        setCart(nextActive.cart);
+        setCustomerName(nextActive.customerName);
+        setDiscount(nextActive.discount);
+        setActiveCartId(nextActive.id);
+      }
+      return remaining;
+    });
+  }, [activeCartId, heldCarts.length]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HELD_CARTS_KEY, JSON.stringify(heldCarts));
+    } catch {}
+  }, [heldCarts]);
+
   // Update item price manually (for Boss/Admin discounts)
   const updateItemPrice = (id: string, newPrice: number, unit: 'piece' | 'bulk') => {
     if (newPrice < 0) return;

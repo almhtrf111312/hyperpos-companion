@@ -602,7 +602,8 @@ function mergeSyncQueueDebts(debts) {
   const queueDebts = [];
   for (const op of pending) {
     if (op.type === 'debt_sale_bundle') {
-      const bundle = op.data.bundle || {};
+      const data = op.data as Record<string, any>;
+      const bundle = (data?.bundle || {}) as Record<string, any>;
       const remaining = (bundle.total || 0) - (bundle.downPayment || 0);
       if (remaining <= 0) continue;
       queueDebts.push({

@@ -1,6 +1,6 @@
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  AlertCircle, useState, useMemo, useEffect, useRef } from 'react';
-import {
+  AlertCircle,
   ShoppingCart,
   Plus,
   Minus,
@@ -161,6 +161,12 @@ interface CartPanelProps {
   onUpdateItemPrice?: (id: string, newPrice: number, unit: 'piece' | 'bulk') => void;
   onClose?: () => void;
   isMobile?: boolean;
+  heldCarts?: HeldCart[];
+  activeCartId?: string;
+  onSwitchCart?: (cartId: string) => void;
+  onAddNewCart?: () => void;
+  onRemoveCart?: (cartId: string, e?: React.MouseEvent) => void;
+  lastAddedItemId?: string | null;
 }
 
 function generateQuickCashOptions(totalAmount: number, currencyCode: 'USD' | 'TRY' | 'SYP'): number[] {
@@ -213,6 +219,12 @@ export function CartPanel({
   onUpdateItemPrice,
   onClose,
   isMobile = false,
+  heldCarts,
+  activeCartId,
+  onSwitchCart,
+  onAddNewCart,
+  onRemoveCart,
+  lastAddedItemId,
 }: CartPanelProps) {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
@@ -585,6 +597,7 @@ export function CartPanel({
           total: roundCurrency(itemPrice * item.quantity),
           costPrice: itemCostPrice,
           profit: itemProfit,
+          category: cat,
         };
       });
 
