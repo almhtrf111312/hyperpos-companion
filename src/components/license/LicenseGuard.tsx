@@ -123,7 +123,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const [showActivation, setShowActivation] = useState(false);
   
   const hasActiveSession = Boolean(user && hasLicense && isValid);
-  const isFullyLoading = authLoading || isLoading || (isCheckingDevice && !hasActiveSession);
+  const isFullyLoading = (authLoading || isLoading || isCheckingDevice) && !hasActiveSession;
 
   useEffect(() => {
     if (isRevoked) {

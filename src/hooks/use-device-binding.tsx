@@ -57,7 +57,7 @@ export function useDeviceBinding() {
   const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   const [state, setState] = useState<DeviceBindingState>({
-    isChecking: !(isOffline && cached) && Boolean(cached?.isDeviceBlocked),
+    isChecking: cached ? false : true,
     isDeviceBlocked: cached?.isDeviceBlocked ?? false,
     deviceId: cached?.deviceId ?? null,
     registeredDeviceId: cached?.registeredDeviceId ?? null,
@@ -176,8 +176,8 @@ export function useDeviceBinding() {
     };
   }, [checkDeviceBinding]);
 
-  // Safety timeout: release loading screen after 3.5s even if server hasn't responded.
-  // Prevents infinite black screen on clean installs with slow/no network.
+  // Safety timeout: release loading screen after 1.5s even if server hasn't responded.
+  // The device check must be 100% asynchronous and non-blocking for active sessions.
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setState(prev => {
@@ -187,7 +187,7 @@ export function useDeviceBinding() {
         }
         return prev;
       });
-    }, 3500);
+    }, 1500);
 
     return () => clearTimeout(timeoutId);
   }, []);
