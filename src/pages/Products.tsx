@@ -3023,7 +3023,6 @@ export default function Products() {
                 </Button>
               </div>
             </div>
-            </div>
           </DialogContent>
         </Dialog>
 
@@ -3564,7 +3563,6 @@ export default function Products() {
                   )}
                 </Button>
               </div>
-            </div>
             </div>
           </DialogContent>
         </Dialog>
