@@ -1,5 +1,10 @@
 [
   {
+    "type": "feature",
+    "ar": "v1.0.64 - نمط السوبرماركت فائق السرعة، تقسيم شاشة التابلت مع السلة، تعدد السلال المعلقة، فئات النقد السريع وحساب الباقي، والسماح بالبيع بأقل من الإجمالي مع تحذير أحمر.",
+    "en": "v1.0.64 - Supermarket high-speed mode, tablet split-screen, multi-cart support, quick cash denominations and change due calculation, and underpaid sale allowance with red warning."
+  },
+  {
     "type": "fix",
     "ar": "أمان: تحديث مكتبة التنقل بين الصفحات لإصلاح ثغرات معروفة.",
     "en": "v1.0.63 - Security: updated react-router-dom to 7.18.4 to fix known vulnerabilities"

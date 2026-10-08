@@ -37,6 +37,7 @@ interface POSProduct {
   barcode2?: string;
   barcode3?: string;
   variantLabel?: string;
+  archived?: boolean;
   // Multi-unit support
   bulkUnit?: string;
   smallUnit?: string;
@@ -127,6 +128,15 @@ interface CartItem {
 type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
 
 // Keys for persistence across app background/foreground cycles
+export interface HeldCart {
+  id: string;
+  name: string;
+  cart: CartItem[];
+  customerName: string;
+  discount: number;
+  createdAt: number;
+}
+const HELD_CARTS_KEY = 'hyperpos_held_carts_v1';
 const CART_STORAGE_KEY = 'hyperpos_temp_cart';
 const CART_OPEN_KEY = 'hyperpos_cart_open';
 const CART_CUSTOMER_KEY = 'hyperpos_cart_customer';
@@ -167,6 +177,41 @@ export default function POS() {
       return null;
     }
   });
+
+  const [lastAddedItemId, setLastAddedItemId] = useState<string | null>(null);
+
+  // Multi-cart (Held Carts) State Management
+  const [heldCarts, setHeldCarts] = useState<HeldCart[]>(() => {
+    try {
+      const raw = localStorage.getItem(HELD_CARTS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    let legacyCart: CartItem[] = [];
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) legacyCart = parsed;
+      }
+    } catch {}
+    let legacyCustomer = '';
+    try { legacyCustomer = localStorage.getItem(CART_CUSTOMER_KEY) || ''; } catch {}
+    let legacyDiscount = 0;
+    try { legacyDiscount = Number(localStorage.getItem(CART_DISCOUNT_KEY)) || 0; } catch {}
+    return [{
+      id: 'cart_1',
+      name: 'سلة 1',
+      cart: legacyCart,
+      customerName: legacyCustomer,
+      discount: legacyDiscount,
+      createdAt: Date.now(),
+    }];
+  });
+
+  const [activeCartId, setActiveCartId] = useState<string>(() => heldCarts[0]?.id || 'cart_1');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(t('common.all'));
@@ -965,8 +1010,8 @@ export default function POS() {
           </div>
 
           {/* Cart Panel - Desktop Only (not tablet) */}
-          {!isMobile && !isTablet && (
-            <div className="w-[340px] flex-shrink-0 p-3 pl-0 hidden md:block" data-tour="cart-panel">
+          {!isMobile && (
+            <div className="w-[340px] md:w-[350px] lg:w-[390px] flex-shrink-0 p-2 md:p-3 pl-0 flex flex-col h-full" data-tour="cart-panel">
               <CartPanel
                 cart={cart}
                 currencies={currencies}
@@ -981,6 +1026,13 @@ export default function POS() {
                 onCustomerNameChange={setCustomerName}
                 onToggleUnit={toggleCartItemUnit}
                 onUpdateItemPrice={updateItemPrice}
+                heldCarts={heldCarts}
+                activeCartId={activeCartId}
+                onSwitchCart={handleSwitchCart}
+                onAddNewCart={handleAddNewCart}
+                onRemoveCart={handleRemoveCart}
+                lastAddedItemId={lastAddedItemId}
+                isMobile={false}
               />
             </div>
           )}
@@ -988,27 +1040,35 @@ export default function POS() {
       </div>
 
       {/* Cart Sheet - Mobile */}
-      <Sheet open={cartOpen} onOpenChange={handleSetCartOpen}>
-        <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden bg-transparent border-none">
-          <CartPanel
-            cart={cart}
-            currencies={currencies}
-            selectedCurrency={selectedCurrency}
-            discount={discount}
-            customerName={customerName}
-            onUpdateQuantity={updateQuantity}
-            onRemoveItem={removeItem}
-            onClearCart={clearCart}
-            onCurrencyChange={setSelectedCurrency}
-            onDiscountChange={setDiscount}
-            onCustomerNameChange={setCustomerName}
-            onToggleUnit={toggleCartItemUnit}
-            onUpdateItemPrice={updateItemPrice}
-            onClose={() => handleSetCartOpen(false)}
-            isMobile
-          />
-        </SheetContent>
-      </Sheet>
+      {isMobile && (
+        <Sheet open={cartOpen} onOpenChange={handleSetCartOpen}>
+          <SheetContent side="bottom" className="h-[85vh] p-0 [&>button]:hidden bg-transparent border-none">
+            <CartPanel
+              cart={cart}
+              currencies={currencies}
+              selectedCurrency={selectedCurrency}
+              discount={discount}
+              customerName={customerName}
+              onUpdateQuantity={updateQuantity}
+              onRemoveItem={removeItem}
+              onClearCart={clearCart}
+              onCurrencyChange={setSelectedCurrency}
+              onDiscountChange={setDiscount}
+              onCustomerNameChange={setCustomerName}
+              onToggleUnit={toggleCartItemUnit}
+              onUpdateItemPrice={updateItemPrice}
+              heldCarts={heldCarts}
+              activeCartId={activeCartId}
+              onSwitchCart={handleSwitchCart}
+              onAddNewCart={handleAddNewCart}
+              onRemoveCart={handleRemoveCart}
+              lastAddedItemId={lastAddedItemId}
+              onClose={() => handleSetCartOpen(false)}
+              isMobile
+            />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Scanned Product Dialog */}
       <ScannedProductDialog

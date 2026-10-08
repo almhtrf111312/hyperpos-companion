@@ -21,6 +21,8 @@ interface Product {
   imageUrl?: string;
   description?: string;
   barcode?: string;
+  barcode2?: string;
+  barcode3?: string;
   conversionFactor?: number;
   bulkUnit?: string;
   smallUnit?: string;
@@ -323,7 +325,7 @@ export function ProductGrid({
         {filteredProducts.length === 0 && (
           <div className="flex flex-col items-center justify-center h-40 text-muted-foreground fade-in">
             <Package className="w-12 h-12 mb-3 opacity-20" />
-            <p className="font-medium text-sm">{t('pos.noProductsFound')}</p>
+            <p className="font-medium text-sm">{t('common.all')}</p>
           </div>
         )}
       </div>
@@ -331,6 +333,7 @@ export function ProductGrid({
       
       {scannerOpen && (
         <BarcodeScanner
+          isOpen={scannerOpen}
           onScan={handleBarcodeScan}
           onClose={() => setScannerOpen(false)}
         />

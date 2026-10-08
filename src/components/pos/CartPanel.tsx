@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  AlertCircle, useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShoppingCart,
   Plus,
@@ -135,6 +136,15 @@ interface Currency {
   rate: number;
 }
 
+export interface HeldCart {
+  id: string;
+  name: string;
+  cart: CartItem[];
+  customerName: string;
+  discount: number;
+  createdAt: number;
+}
+
 interface CartPanelProps {
   cart: CartItem[];
   currencies: Currency[];
@@ -151,6 +161,40 @@ interface CartPanelProps {
   onUpdateItemPrice?: (id: string, newPrice: number, unit: 'piece' | 'bulk') => void;
   onClose?: () => void;
   isMobile?: boolean;
+}
+
+function generateQuickCashOptions(totalAmount: number, currencyCode: 'USD' | 'TRY' | 'SYP'): number[] {
+  if (totalAmount <= 0) return [];
+  const options = new Set<number>();
+  const exact = currencyCode === 'SYP' ? Math.round(totalAmount) : Math.round(totalAmount * 100) / 100;
+  options.add(exact);
+
+  if (currencyCode === 'SYP') {
+    const steps = [500, 1000, 2000, 5000, 10000, 25000, 50000, 100000];
+    for (const step of steps) {
+      const rounded = Math.ceil(totalAmount / step) * step;
+      if (rounded > totalAmount) options.add(rounded);
+    }
+  } else if (currencyCode === 'TRY') {
+    const steps = [5, 10, 20, 50, 100, 200, 500];
+    for (const step of steps) {
+      const rounded = Math.ceil(totalAmount / step) * step;
+      if (rounded > totalAmount) options.add(rounded);
+    }
+  } else {
+    const intCeil = Math.ceil(totalAmount);
+    if (intCeil > totalAmount) options.add(intCeil);
+    const steps = [5, 10, 20, 50, 100];
+    for (const step of steps) {
+      const rounded = Math.ceil(totalAmount / step) * step;
+      if (rounded > totalAmount) options.add(rounded);
+    }
+  }
+
+  return Array.from(options)
+    .filter(val => val >= exact)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
 }
 
 export function CartPanel({
@@ -307,6 +351,11 @@ export function CartPanel({
 
   // إجمالي الفاتورة بعملة المقبوض
   const totalInReceivedCurrency = roundCurrency(total * receivedRate);
+
+  // Quick cash denomination options
+  const quickCashOptions = useMemo(() => {
+    return generateQuickCashOptions(totalInReceivedCurrency, activeReceivedCurrency.code);
+  }, [totalInReceivedCurrency, activeReceivedCurrency.code]);
 
   // الباقي للزبون (Change)
   const changeInReceivedCurrency = roundCurrency(Math.max(0, receivedAmount - totalInReceivedCurrency));
@@ -1242,6 +1291,57 @@ export function CartPanel({
             </div>
           )}
 
+          {/* Held Carts Tabs Bar */}
+          {heldCarts && heldCarts.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mt-2 scrollbar-none">
+              {heldCarts.map((hc) => (
+                <button
+                  key={hc.id}
+                  type="button"
+                  onClick={() => onSwitchCart?.(hc.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 border",
+                    hc.id === activeCartId
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs scale-105"
+                      : "bg-muted/50 text-muted-foreground border-border/50 hover:text-foreground"
+                  )}
+                >
+                  <span>{hc.name}</span>
+                  {hc.cart.length > 0 && (
+                    <span className={cn(
+                      "w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold",
+                      hc.id === activeCartId ? "bg-primary-foreground text-primary" : "bg-primary/20 text-primary"
+                    )}>
+                      {hc.cart.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                  {heldCarts.length > 1 && onRemoveCart && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => onRemoveCart(hc.id, e)}
+                      className="hover:text-destructive p-0.5 rounded text-muted-foreground"
+                      title="إلغاء السلة"
+                    >
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                </button>
+              ))}
+              {onAddNewCart && (
+                <button
+                  type="button"
+                  onClick={onAddNewCart}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-dashed border-border/70 transition-all shrink-0"
+                  title="إضافة سلة جديدة"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>سلة +</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Customer Name with Autocomplete */}
           <div className="mt-3 flex gap-2">
             <div className="flex-1 relative">
@@ -1304,7 +1404,7 @@ export function CartPanel({
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-50/50 dark:bg-zinc-950/50">
+        <div className="flex-1 overflow-y-auto px-2.5 py-2 space-y-1 bg-slate-50/50 dark:bg-zinc-950/50">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
               <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
@@ -1618,6 +1718,14 @@ export function CartPanel({
               </span>
             </div>
           </div>
+
+          {/* شريط تحذير بارز باللون الأحمر عند البيع بأقل من الإجمالي */}
+          {!wholesaleMode && receivedAmount > 0 && receivedUSD < roundCurrency(total) - 0.01 && (
+            <div className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold text-center flex items-center justify-center gap-1.5 animate-pulse">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>تنبيه: المبلغ المقبوض أقل من إجمالي الفاتورة - هل تريد المتابعة؟</span>
+            </div>
+          )}
 
           {/* Row 5: Pay Buttons + Action Icons */}
           <div className="flex items-center gap-1.5">

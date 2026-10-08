@@ -1,8 +1,14 @@
 {
-  "versionCode": 293,
-  "versionName": "1.0.63",
-  "lastUpdated": "2026-10-05T09:15:00.000Z",
+  "versionCode": 294,
+  "versionName": "1.0.64",
+  "lastUpdated": "2026-10-09T02:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 294,
+      "versionName": "1.0.64",
+      "date": "2026-10-09",
+      "description": "v1.0.64 - نمط السوبرماركت فائق السرعة، تقسيم شاشة التابلت، تعدد السلال المعلقة، فئات النقد السريع وحساب الباقي، والسماح بالبيع بأقل مع تحذير أحمر"
+    },
     {
       "versionCode": 293,
       "versionName": "1.0.63",

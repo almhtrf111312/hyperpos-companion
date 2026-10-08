@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
@@ -86,12 +86,16 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      const rows = salesTrendData.map(d => ({
-        'اليوم': d.name,
-        'المبيعات': d.sales,
-        'الأرباح التقديرية': d.profit
-      }));
-      await exportToExcel(rows, `تقرير_المبيعات_الموحد_${new Date().toISOString().slice(0, 10)}`);
+      await exportToExcel({
+        fileName: `تقرير_المبيعات_الموحد_${new Date().toISOString().slice(0, 10)}`,
+        columns: [
+          { header: 'اليوم', key: 'day', width: 20 },
+          { header: 'المبيعات', key: 'sales', width: 20 },
+          { header: 'الأرباح التقديرية', key: 'profit', width: 20 }
+        ],
+        data: salesTrendData.map(d => ({ day: d.name, sales: d.sales, profit: d.profit })),
+        title: 'تقرير المبيعات والأداء الموحد'
+      });
       toast.success(isRTL ? 'تم تصدير ملف الإكسل بنجاح' : 'Excel exported successfully');
     } catch {
       toast.error(isRTL ? 'فشل تصدير الإكسل' : 'Export failed');
@@ -103,16 +107,20 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
   const handleExportPDF = async () => {
     try {
       setIsExporting(true);
-      const rows = salesTrendData.map(d => ({
-        day: d.name,
-        sales: formatCurrency(d.sales),
-        profit: formatCurrency(d.profit)
-      }));
-      await exportToPDF(rows, [
-        { header: 'اليوم', dataKey: 'day' },
-        { header: 'المبيعات', dataKey: 'sales' },
-        { header: 'الربح', dataKey: 'profit' }
-      ], `تقرير_الأداء_الموحد_${new Date().toISOString().slice(0, 10)}`);
+      await exportToPDF({
+        title: 'تقرير الأداء والمبيعات الموحد',
+        fileName: `تقرير_الأداء_الموحد_${new Date().toISOString().slice(0, 10)}`,
+        columns: [
+          { header: 'اليوم', key: 'day' },
+          { header: 'المبيعات', key: 'sales' },
+          { header: 'الربح', key: 'profit' }
+        ],
+        data: salesTrendData.map(d => ({
+          day: d.name,
+          sales: formatCurrency(d.sales),
+          profit: formatCurrency(d.profit)
+        }))
+      });
       toast.success(isRTL ? 'تم تصدير ملف PDF بنجاح' : 'PDF exported successfully');
     } catch {
       toast.error(isRTL ? 'فشل تصدير PDF' : 'PDF export failed');

@@ -417,11 +417,6 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
           }
         />
       )}
-              <span className="text-xs font-medium text-muted-foreground">{hasData ? 'جارٍ التحديث...' : 'جارٍ الحساب...'}</span>
-            </div>
-          ) : undefined
-        }
-      />
 
       {/* Quick Actions - Compact Toolbar */}
       <QuickActions />
