@@ -57,11 +57,11 @@ interface NavItem {
   requiresContactSidebar?: boolean;
   tourId?: string;
   tooltipKey?: TranslationKey;
+  labelOverride?: string;
 }
 
 const navItems: NavItem[] = [
   { icon: ShoppingCart, translationKey: 'nav.pos', path: '/', tourId: 'pos', tooltipKey: 'tooltip.pos' as TranslationKey },
-  { icon: LayoutDashboard, translationKey: 'nav.dashboard', path: '/dashboard', adminOnly: true, tourId: 'dashboard', tooltipKey: 'tooltip.dashboard' as TranslationKey },
   { icon: FileText, translationKey: 'nav.invoices', path: '/invoices', tourId: 'invoices', tooltipKey: 'tooltip.invoices' as TranslationKey },
   { icon: Package, translationKey: 'nav.products', path: '/products', adminOnly: true, dynamicKey: 'products', tourId: 'products', tooltipKey: 'tooltip.products' as TranslationKey },
   { icon: Truck, translationKey: 'nav.purchases' as TranslationKey, path: '/purchases', adminOnly: true, requiresPurchases: true, tourId: 'purchases', tooltipKey: 'tooltip.purchases' as TranslationKey },
@@ -72,7 +72,7 @@ const navItems: NavItem[] = [
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts', tourId: 'cash-shifts', tooltipKey: 'tooltip.cashShifts' as TranslationKey },
   // FROZEN (warehouses/stock-transfer disabled): { icon: Package, translationKey: 'nav.warehouses', path: '/warehouses', adminOnly: true, hideInNoInventory: true, tourId: 'warehouses', tooltipKey: 'tooltip.warehouses' as TranslationKey },
   // FROZEN (warehouses/stock-transfer disabled): { icon: Package, translationKey: 'nav.stockTransfer', path: '/stock-transfer', adminOnly: true, hideInNoInventory: true, tourId: 'stock-transfer', tooltipKey: 'tooltip.stockTransfer' as TranslationKey },
-  { icon: BarChart3, translationKey: 'nav.reports', path: '/reports', adminOnly: true, tourId: 'reports', tooltipKey: 'tooltip.reports' as TranslationKey },
+  { icon: LayoutDashboard, translationKey: 'nav.reports', labelOverride: 'لوحة التقارير والتحكم', path: '/reports', adminOnly: true, tourId: 'reports', tooltipKey: 'tooltip.reports' as TranslationKey },
   { icon: Palette, translationKey: 'settings.theme', path: '/appearance', tourId: 'appearance', tooltipKey: 'tooltip.appearance' as TranslationKey },
   { icon: HelpCircle, translationKey: 'nav.help', path: '/help', tourId: 'help', tooltipKey: 'tooltip.help' as TranslationKey },
   { icon: MessageCircle, translationKey: 'license.contactDeveloper' as TranslationKey, path: '/contact', requiresContactSidebar: true, tourId: 'contact', tooltipKey: 'license.contactDeveloper' as TranslationKey },
@@ -348,7 +348,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     
                     {(!effectiveCollapsed || isMobile) && (
                       <>
-                        <span className="text-sm truncate select-none">{item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey)}</span>
+                        <span className="text-sm truncate select-none">{item.labelOverride || (item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey))}</span>
                         {!!item.badge && (
                           <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full select-none">
                             {item.badge}
@@ -365,7 +365,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                         "border border-border min-w-[180px] max-w-[240px]",
                         isRTL ? "right-full mr-2" : "left-full ml-2"
                       )}>
-                        <p className="text-xs font-semibold text-foreground select-none">{t(item.translationKey)}</p>
+                        <p className="text-xs font-semibold text-foreground select-none">{item.labelOverride || t(item.translationKey)}</p>
                         {item.tooltipKey && (
                           <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed select-none">{t(item.tooltipKey)}</p>
                         )}

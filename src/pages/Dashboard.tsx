@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { formatNumber, formatCurrency } from '@/lib/utils';
@@ -59,7 +60,7 @@ const getCapitalSettings = () => {
   }
 };
 
-export default function Dashboard() {
+export default function Dashboard({ embedded }: { embedded?: boolean }) {
   const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
     return (localStorage.getItem('hyperpos_dashboard_design_v1') as 'classic' | 'unified_pro') || 'classic';
   });
@@ -397,18 +398,25 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+    <div className={cn("space-y-3 md:space-y-4", !embedded && "p-4 md:p-6")}>
       {/* Header */}
-      <PageHeader
-        title={t('nav.dashboard')}
-        actions={
-          loadError ? (
-            <button onClick={() => loadStats()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-medium text-destructive">
-              تعذّر التحديث — إعادة المحاولة
-            </button>
-          ) : isLoading ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted border border-border">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+      {!embedded && (
+        <PageHeader
+          title={t('nav.dashboard')}
+          actions={
+            loadError ? (
+              <button onClick={() => loadStats()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-medium text-destructive">
+                إعادة المحاولة
+              </button>
+            ) : isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted border border-border">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs font-medium text-muted-foreground">{hasData ? 'تحديث...' : 'جاري التحميل...'}</span>
+              </div>
+            ) : undefined
+          }
+        />
+      )}
               <span className="text-xs font-medium text-muted-foreground">{hasData ? 'جارٍ التحديث...' : 'جارٍ الحساب...'}</span>
             </div>
           ) : undefined

@@ -312,7 +312,7 @@ const AppContent = () => {
           <Route path="/contact" element={<ContactDeveloper />} />
 
           {/* Admin/Boss only */}
-          <Route path="/dashboard" element={<RoleGuard allowedRoles={['boss', 'admin']}><Dashboard /></RoleGuard>} />
+          <Route path="/dashboard" element={<Navigate to="/reports" replace />} />
           <Route path="/products" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
           <Route path="/products/*" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
           <Route path="/purchases" element={<RoleGuard allowedRoles={['boss', 'admin']}><Purchases /></RoleGuard>} />
