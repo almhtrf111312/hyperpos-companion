@@ -44,63 +44,33 @@ export default function Appearance() {
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto pb-24 pt-14 md:pt-4 space-y-4">
-      {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 backdrop-blur-xl shadow-xs">
-        <button
-          type="button"
-          onClick={() => setActiveTab('theme')}
-          className={cn(
-            "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none",
-            activeTab === 'theme'
-              ? "bg-card text-foreground shadow-sm border border-border/40"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-          )}
-        >
-          <Palette className="w-4 h-4 text-primary shrink-0" />
-          <span className="truncate">السمة والألوان</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('fonts')}
-          className={cn(
-            "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none",
-            activeTab === 'fonts'
-              ? "bg-card text-foreground shadow-sm border border-border/40"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-          )}
-        >
-          <Type className="w-4 h-4 text-primary shrink-0" />
-          <span className="truncate">الخطوط</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('scale')}
-          className={cn(
-            "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none",
-            activeTab === 'scale'
-              ? "bg-card text-foreground shadow-sm border border-border/40"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-          )}
-        >
-          <Maximize2 className="w-4 h-4 text-primary shrink-0" />
-          <span className="truncate">الحجم</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('layout')}
-          className={cn(
-            "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none",
-            activeTab === 'layout'
-              ? "bg-card text-foreground shadow-sm border border-border/40"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-          )}
-        >
-          <LayoutGrid className="w-4 h-4 text-primary shrink-0" />
-          <span className="truncate">المظهر العام</span>
-        </button>
+      {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق بدون أي قص للنصوص أو النقاط */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 backdrop-blur-xl shadow-xs overflow-visible">
+        {[
+          { id: 'theme' as AppearanceTab, label: isRTL ? 'السمات والألوان' : 'Themes & Colors', icon: Palette },
+          { id: 'fonts' as AppearanceTab, label: isRTL ? 'الخطوط' : 'Fonts', icon: Type },
+          { id: 'scale' as AppearanceTab, label: isRTL ? 'الحجم والمقياس' : 'UI Scale', icon: Maximize2 },
+          { id: 'layout' as AppearanceTab, label: isRTL ? 'المظهر العام' : 'Layout', icon: LayoutGrid },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none min-h-[48px] overflow-visible",
+                isActive
+                  ? "bg-card text-foreground shadow-sm border border-border/50 ring-1 ring-border/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+              )}
+            >
+              <Icon className="w-4 h-4 text-primary shrink-0" />
+              <span className="whitespace-nowrap leading-relaxed py-0.5 overflow-visible">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* محتوى التبويب النشط داخل بطاقة موحدة بتشطيب متناسق */}

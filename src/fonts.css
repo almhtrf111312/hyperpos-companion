@@ -707,3 +707,11 @@
 .font-preview-readex {
   font-family: 'Inter Digits', 'Readex Pro', sans-serif !important;
 }
+
+.font-preview-cairo,
+.font-preview-tajawal,
+.font-preview-ibm-plex,
+.font-preview-almarai,
+.font-preview-readex {
+  line-height: 1.45 !important;
+}

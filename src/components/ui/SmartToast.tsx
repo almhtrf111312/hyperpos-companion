@@ -194,19 +194,19 @@ export function SmartToast() {
     }
 
     // 2. سحب للأعلى (Swipe Up Dismiss)
-    if (deltaY < -45) {
+    if (deltaY < -35) {
       dismissNotification('up');
       return;
     }
 
     // 3. سحب لليمين (Swipe Right Dismiss)
-    if (deltaX > 65) {
+    if (deltaX > 40) {
       dismissNotification('right');
       return;
     }
 
     // 4. سحب لليسار (Swipe Left Dismiss)
-    if (deltaX < -65) {
+    if (deltaX < -40) {
       dismissNotification('left');
       return;
     }
@@ -313,7 +313,7 @@ export function SmartToast() {
       {/* بطاقة الإشعار القابلة للتفاعل والسحب */}
       <div
         className={cn(
-          "smart-toast-card notification-spring w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none",
+          "smart-toast-card notification-spring w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none [touch-action:pan-x]",
           dragState && "dragging"
         )}
         style={{
