@@ -76,50 +76,48 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
           {t('settings.theme')}
         </h2>
         
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-2.5 mb-4">
           <button
+            type="button"
             onClick={() => handleModeChange('light')}
             className={cn(
-              "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all relative",
+              "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all relative active:scale-95",
               pendingMode === 'light'
-                ? "border-primary bg-primary/10"
-                : "border-border bg-muted hover:bg-muted/80"
+                ? "border-primary bg-primary/10 shadow-xs"
+                : "border-border/60 bg-muted/40 hover:bg-muted/70"
             )}
           >
             <div className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center",
-              pendingMode === 'light' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+              pendingMode === 'light' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/15 text-muted-foreground"
             )}>
-              <Sun className="w-8 h-8" />
+              <Sun className="w-4 h-4" />
             </div>
-            <span className="font-medium text-foreground">{t('settings.lightMode')}</span>
+            <span className="text-xs md:text-sm font-bold text-foreground">{t('settings.lightMode')}</span>
             {pendingMode === 'light' && (
-              <div className="absolute top-2 left-2">
-                <Check className="w-5 h-5 text-primary" />
-              </div>
+              <Check className="w-4 h-4 text-primary absolute rtl:left-2.5 ltr:right-2.5" />
             )}
           </button>
 
           <button
+            type="button"
             onClick={() => handleModeChange('dark')}
             className={cn(
-              "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all relative",
+              "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all relative active:scale-95",
               pendingMode === 'dark'
-                ? "border-primary bg-primary/10"
-                : "border-border bg-muted hover:bg-muted/80"
+                ? "border-primary bg-primary/10 shadow-xs"
+                : "border-border/60 bg-muted/40 hover:bg-muted/70"
             )}
           >
             <div className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center",
-              pendingMode === 'dark' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+              pendingMode === 'dark' ? "bg-primary text-primary-foreground" : "bg-muted-foreground/15 text-muted-foreground"
             )}>
-              <Moon className="w-8 h-8" />
+              <Moon className="w-4 h-4" />
             </div>
-            <span className="font-medium text-foreground">{t('settings.darkMode')}</span>
+            <span className="text-xs md:text-sm font-bold text-foreground">{t('settings.darkMode')}</span>
             {pendingMode === 'dark' && (
-              <div className="absolute top-2 left-2">
-                <Check className="w-5 h-5 text-primary" />
-              </div>
+              <Check className="w-4 h-4 text-primary absolute rtl:left-2.5 ltr:right-2.5" />
             )}
           </button>
         </div>
