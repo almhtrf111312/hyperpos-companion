@@ -76,6 +76,7 @@ export function SmartToast() {
     if (autoDismissTimerRef.current) {
       clearTimeout(autoDismissTimerRef.current);
     }
+    setDragState(null);
     setDismissDirection(direction);
     setIsVisible(false);
     playHapticSound('dismiss');
@@ -84,8 +85,7 @@ export function SmartToast() {
       hideSmartToast();
       setDismissDirection(null);
       setIsExpanded(false);
-      setDragState(null);
-    }, 350);
+    }, 340);
   }, []);
 
   // إعادة ضبط مؤقت الإغلاق التلقائي
@@ -176,8 +176,10 @@ export function SmartToast() {
 
     const deltaX = e.clientX - pointerStartRef.current.x;
     const deltaY = e.clientY - pointerStartRef.current.y;
-    const elapsedTime = Date.now() - pointerStartRef.current.time;
+    const elapsedTime = Math.max(Date.now() - pointerStartRef.current.time, 1);
     const distance = Math.hypot(deltaX, deltaY);
+    const velocityX = deltaX / elapsedTime;
+    const velocityY = deltaY / elapsedTime;
 
     pointerStartRef.current = null;
 
@@ -189,19 +191,19 @@ export function SmartToast() {
     }
 
     // 2. سحب للأعلى (Swipe Up Dismiss)
-    if (deltaY < -35) {
+    if (deltaY < -35 || velocityY < -0.35) {
       dismissNotification('up');
       return;
     }
 
     // 3. سحب لليمين (Swipe Right Dismiss)
-    if (deltaX > 40) {
+    if (deltaX > 35 || velocityX > 0.28) {
       dismissNotification('right');
       return;
     }
 
     // 4. سحب لليسار (Swipe Left Dismiss)
-    if (deltaX < -40) {
+    if (deltaX < -35 || velocityX < -0.28) {
       dismissNotification('left');
       return;
     }
@@ -283,27 +285,30 @@ export function SmartToast() {
   let transform = 'translate(0px, 0px) rotate(0deg)';
   let opacity = 1;
 
-  if (dragState) {
-    transform = `translate(${dragState.x}px, ${dragState.y}px) rotate(${dragState.rotate}deg)`;
-    opacity = dragState.opacity;
-  } else if (!isVisible) {
+  if (!isVisible) {
     if (dismissDirection === 'right') {
-      transform = 'translateX(140%) rotate(8deg)';
+      transform = 'translateX(115vw) rotate(12deg)';
     } else if (dismissDirection === 'left') {
-      transform = 'translateX(-140%) rotate(-8deg)';
+      transform = 'translateX(-115vw) rotate(-12deg)';
     } else {
-      transform = 'translateY(-140px)';
+      transform = 'translateY(-140px) scale(0.92)';
     }
     opacity = 0;
+  } else if (dragState) {
+    transform = `translate(${dragState.x}px, ${dragState.y}px) rotate(${dragState.rotate}deg)`;
+    opacity = dragState.opacity;
   }
+
+  const isDismissing = !isVisible && dismissDirection !== null;
 
   return (
     <div className="fixed top-6 inset-x-0 px-3 z-[100] flex justify-center pointer-events-none">
       {/* بطاقة الإشعار القابلة للتفاعل والسحب */}
       <div
         className={cn(
-          "smart-toast-card notification-spring w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none touch-none",
-          dragState && "dragging"
+          "smart-toast-card w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none touch-none",
+          isDismissing ? "notification-dismissing" : "notification-spring",
+          dragState && !isDismissing && "dragging"
         )}
         style={{
           transform,
