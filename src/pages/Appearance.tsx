@@ -14,9 +14,10 @@ type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
 export default function Appearance() {
   const { t, isRTL } = useLanguage();
   const [activeTab, setActiveTab] = useState<AppearanceTab>('theme');
-  const { setFullTheme } = useTheme();
+  const { setFullTheme, previewTheme, revertTheme } = useTheme();
 
   const [pendingTheme, setPendingTheme] = useState<PendingTheme | null>(null);
+  const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
@@ -42,6 +43,21 @@ export default function Appearance() {
     }
   };
 
+  const handleUndoTheme = () => {
+    revertTheme();
+    setPendingTheme(null);
+    setResetSignal(prev => prev + 1);
+  };
+
+  const handleTabClick = (tabId: AppearanceTab) => {
+    if (activeTab === 'theme' && pendingTheme && tabId !== 'theme') {
+      revertTheme();
+      setPendingTheme(null);
+      setResetSignal(prev => prev + 1);
+    }
+    setActiveTab(tabId);
+  };
+
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto pb-24 pt-14 md:pt-4 space-y-4">
       {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق بدون أي قص للنصوص أو النقاط */}
@@ -58,7 +74,7 @@ export default function Appearance() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={cn(
                 "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none min-h-[48px] overflow-visible",
                 isActive
@@ -77,7 +93,15 @@ export default function Appearance() {
       <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm transition-all">
         {activeTab === 'theme' && (
           <ThemeSection
-            onPendingChange={(pending, changed) => setPendingTheme(changed ? pending : null)}
+            resetSignal={resetSignal}
+            onPendingChange={(pending, changed) => {
+              setPendingTheme(changed ? pending : null);
+              if (changed) {
+                previewTheme(pending.mode, pending.color, pending.blur, pending.transparency);
+              } else {
+                revertTheme();
+              }
+            }}
           />
         )}
 
@@ -140,7 +164,7 @@ export default function Appearance() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => setPendingTheme(null)}
+            onClick={handleUndoTheme}
             className="rounded-full shadow-md h-11 w-11 p-0 border-border/80 bg-background hover:bg-muted"
             title="تراجع"
           >

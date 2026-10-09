@@ -549,12 +549,9 @@ input, textarea {
   box-shadow: var(--glass-shadow), var(--glass-inset-shadow) !important;
 }
 
-/* Main background - subtle gradient wash */
+/* Main background - transparent to reveal fixed ambient mesh */
 .blur-theme .bg-background {
-  background: linear-gradient(160deg,
-      hsl(var(--primary) / 0.06) 0%,
-      transparent 40%,
-      hsl(var(--accent) / 0.04) 100%) !important;
+  background: transparent !important;
 }
 
 /* Popover surfaces */
@@ -1917,8 +1914,12 @@ html { font-size: 14px; }
 }
 
 .blur-theme body {
-  background: radial-gradient(circle at 15% 20%, hsl(var(--primary) / 0.12) 0%, transparent 40%),
-              radial-gradient(circle at 85% 80%, hsl(var(--accent) / 0.08) 0%, transparent 45%),
-              hsl(var(--background)) !important;
+  background: 
+    radial-gradient(circle at 18% 15%, hsl(var(--primary) / 0.22) 0%, transparent 48%),
+    radial-gradient(circle at 82% 20%, hsl(var(--accent) / 0.20) 0%, transparent 50%),
+    radial-gradient(circle at 50% 65%, hsl(var(--primary) / 0.16) 0%, transparent 55%),
+    radial-gradient(circle at 25% 85%, hsl(var(--accent) / 0.16) 0%, transparent 48%),
+    radial-gradient(circle at 85% 90%, hsl(var(--primary) / 0.14) 0%, transparent 45%),
+    hsl(var(--background)) !important;
   background-attachment: fixed !important;
 }

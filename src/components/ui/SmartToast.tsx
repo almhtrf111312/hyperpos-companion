@@ -145,11 +145,6 @@ export function SmartToast() {
     };
 
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-
-    // إيقاف مؤقت التلاشي مؤقتاً أثناء التفاعل
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -213,18 +208,12 @@ export function SmartToast() {
 
     // ارتداد ناعم للمنتصف (Spring Back)
     setDragState(null);
-    if (!isExpanded) {
-      resetAutoDismiss(toast?.duration || 4500);
-    }
   };
 
   const handlePointerCancel = () => {
     isDraggingRef.current = false;
     pointerStartRef.current = null;
     setDragState(null);
-    if (!isExpanded) {
-      resetAutoDismiss(toast?.duration || 4500);
-    }
   };
 
   if (!toast) return null;
@@ -313,7 +302,7 @@ export function SmartToast() {
       {/* بطاقة الإشعار القابلة للتفاعل والسحب */}
       <div
         className={cn(
-          "smart-toast-card notification-spring w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none [touch-action:pan-x]",
+          "smart-toast-card notification-spring w-full max-w-[394px] bg-white/95 dark:bg-zinc-900/95 text-slate-900 dark:text-white rounded-[26px] border border-slate-200/90 dark:border-white/15 backdrop-blur-2xl pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none touch-none",
           dragState && "dragging"
         )}
         style={{
@@ -468,7 +457,8 @@ export function SmartToast() {
             className={cn(
               "h-full",
               config.bar,
-              isVisible && !isExpanded && !dragState ? "timer-active" : "timer-paused"
+              isVisible && "timer-active",
+              (isExpanded || !isVisible) && "timer-paused"
             )}
             style={{ '--duration': `${toast.duration || 4500}ms` } as React.CSSProperties}
           />

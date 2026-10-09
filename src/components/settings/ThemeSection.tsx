@@ -57,9 +57,9 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
 
   const handleBlurChange = (enabled: boolean) => {
     setPendingBlur(enabled);
-    const newTransparency = !enabled ? 0 : (pendingTransparency === 0 ? 30 : pendingTransparency);
+    const newTransparency = !enabled ? 0 : (pendingTransparency === 0 ? 50 : pendingTransparency);
     if (!enabled) setPendingTransparency(0);
-    else if (pendingTransparency === 0) setPendingTransparency(30);
+    else if (pendingTransparency === 0) setPendingTransparency(50);
     notifyChange(pendingMode, pendingColor, enabled, newTransparency);
   };
 
@@ -201,14 +201,15 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
                 value={[pendingTransparency]}
                 onValueChange={handleTransparencyChange}
                 min={10}
-                max={90}
+                max={100}
                 step={10}
                 className="w-full cursor-pointer"
               />
               <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
                 <span>10% (خفيف)</span>
                 <span>50% (متوسط)</span>
-                <span>90% (شفاف جداً)</span>
+                <span>80% (قوي)</span>
+                <span>100% (زجاجي فائق)</span>
               </div>
             </div>
           </div>

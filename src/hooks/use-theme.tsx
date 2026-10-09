@@ -15,6 +15,8 @@ interface ThemeContextType {
   setTransparencyLevel: (level: number) => void;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
   setFullTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, transparency?: number) => void;
+  previewTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, transparency: number) => void;
+  revertTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -262,7 +264,7 @@ function triggerThemeTransition() {
   setTimeout(() => root.classList.remove('theme-transitioning'), 500);
 }
 
-function applyTheme(mode: ThemeMode, color: ThemeColor) {
+export function applyTheme(mode: ThemeMode, color: ThemeColor) {
   const root = document.documentElement;
   const colors = mode === 'light' ? lightPalettes[color] : darkModeColors;
   const colorTheme = themeColors[color];
@@ -286,7 +288,6 @@ function applyTheme(mode: ThemeMode, color: ThemeColor) {
   root.style.setProperty('--sidebar-foreground', colors.sidebarForeground);
   root.style.setProperty('--sidebar-accent', colors.sidebarAccent);
   root.style.setProperty('--sidebar-border', colors.sidebarBorder);
-  // sidebar-accent-foreground (previously missing — causes nav hover color issues)
   if (mode === 'light') {
     root.style.setProperty('--sidebar-accent-foreground', (colors as LightPalette).sidebarAccentForeground);
   } else {
@@ -330,40 +331,47 @@ const DEFAULT_COLOR: ThemeColor = 'blue';
 const DEFAULT_BLUR: boolean = false;
 const DEFAULT_TRANSPARENCY: number = 0;
 
-function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number = 0) {
+export function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number = 0) {
   const root = document.documentElement;
   if (enabled && transparency > 0) {
     root.classList.add('blur-theme');
     
-    // حساب الألفا بدقة مع دعم الشفافية الفائقة (sheer) عند 90% و 100%
-    let alpha = (100 - transparency) / 100;
-    let glassBg = mode === 'dark' ? `rgba(18, 18, 18, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+    // حساب نسبة العتامة الأساسية (0 إلى 1)
+    const normalized = Math.max(0, (100 - transparency) / 100);
     
-    if (transparency >= 100) {
-      alpha = 0.02;
-      glassBg = mode === 'dark' ? 'rgba(10, 14, 23, 0.15)' : 'rgba(255, 255, 255, 0.20)';
-    } else if (transparency >= 90) {
-      alpha = 0.05;
-      glassBg = mode === 'dark' ? 'rgba(10, 14, 23, 0.25)' : 'rgba(255, 255, 255, 0.35)';
-    }
+    // منحنى شفافية متدرج وواضح جداً (Power Curve)
+    // عند 10: عتامة 0.86
+    // عند 50: عتامة 0.38
+    // عند 80: عتامة 0.10
+    // عند 90: عتامة 0.04
+    // عند 100: عتامة 0.015 (زجاجي خالص فائق النقاء)
+    let alpha = Math.pow(normalized, 1.4);
+    alpha = Math.max(0.015, alpha);
+    
+    // ضبط لون الخلفية الزجاجية مع الحفاظ على التباين
+    let darkAlpha = Math.max(0.03, alpha * 0.85);
+    let lightAlpha = Math.max(0.02, alpha * 0.90);
+    let glassBg = mode === 'dark' 
+      ? `rgba(12, 16, 24, ${darkAlpha})` 
+      : `rgba(255, 255, 255, ${lightAlpha})`;
     
     root.style.setProperty('--glass-opacity', `${alpha}`);
     root.style.setProperty('--glass-bg', glassBg);
     
-    // رفع درجة التعتيم تدريجياً لتصل بسلاسة إلى 32px عند الشفافية القصوى للحفاظ على فخامة المظهر ومقروئية النصوص
-    const blurPx = Math.min(32, 10 + (transparency / 100) * 22);
+    // رفع درجة التعتيم تدريجياً لتصل بسلاسة إلى 34px عند الشفافية القصوى
+    const blurPx = Math.min(34, 12 + (transparency / 100) * 22);
     root.style.setProperty('--blur-intensity', `${blurPx}px`);
 
     if (mode === 'dark') {
-      root.style.setProperty('--glass-border', 'rgba(255, 255, 255, 0.14)');
-      root.style.setProperty('--glass-highlight', 'rgba(255, 255, 255, 0.07)');
-      root.style.setProperty('--glass-shadow', '0 8px 32px rgba(0, 0, 0, 0.35)');
+      root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${Math.max(0.06, 0.20 - (transparency / 100) * 0.10)})`);
+      root.style.setProperty('--glass-highlight', 'rgba(255, 255, 255, 0.08)');
+      root.style.setProperty('--glass-shadow', `0 12px 36px rgba(0, 0, 0, ${0.25 + (transparency / 100) * 0.20})`);
       root.style.setProperty('--glass-inset-shadow', 'inset 0 1px 1px rgba(255, 255, 255, 0.12)');
     } else {
-      root.style.setProperty('--glass-border', 'rgba(0, 0, 0, 0.10)');
-      root.style.setProperty('--glass-highlight', 'rgba(255, 255, 255, 0.5)');
-      root.style.setProperty('--glass-shadow', '0 8px 32px rgba(0, 0, 0, 0.08)');
-      root.style.setProperty('--glass-inset-shadow', 'inset 0 1px 1px rgba(255, 255, 255, 0.6)');
+      root.style.setProperty('--glass-border', `rgba(0, 0, 0, ${Math.max(0.04, 0.14 - (transparency / 100) * 0.08)})`);
+      root.style.setProperty('--glass-highlight', 'rgba(255, 255, 255, 0.6)');
+      root.style.setProperty('--glass-shadow', `0 10px 32px rgba(0, 0, 0, ${0.05 + (transparency / 100) * 0.06})`);
+      root.style.setProperty('--glass-inset-shadow', 'inset 0 1px 1px rgba(255, 255, 255, 0.7)');
     }
   } else {
     root.classList.remove('blur-theme');
@@ -510,8 +518,31 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     saveTheme(newMode, newColor, blur, t);
   };
 
+  const previewTheme = useCallback((m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
+    applyTheme(m, c);
+    applyBlurTheme(b, m, t);
+  }, []);
+
+  const revertTheme = useCallback(() => {
+    applyTheme(mode, color);
+    applyBlurTheme(blurEnabled, mode, transparencyLevel);
+  }, [mode, color, blurEnabled, transparencyLevel]);
+
   return (
-    <ThemeContext.Provider value={{ mode, color, blurEnabled, transparencyLevel, setMode, setColor, setBlurEnabled, setTransparencyLevel, setTheme, setFullTheme }}>
+    <ThemeContext.Provider value={{ 
+      mode, 
+      color, 
+      blurEnabled, 
+      transparencyLevel, 
+      setMode, 
+      setColor, 
+      setBlurEnabled, 
+      setTransparencyLevel, 
+      setTheme, 
+      setFullTheme,
+      previewTheme,
+      revertTheme
+    }}>
       {children}
     </ThemeContext.Provider>
   );
