@@ -109,6 +109,7 @@ export function useRealtimeSync() {
                 address: settings.address || existing.storeSettings?.address,
                 logo: settings.logo_url || existing.storeSettings?.logo,
               },
+              primaryCurrency: (settings.primary_currency as any) || (settings.sync_settings as any)?.primaryCurrency || existing.primaryCurrency || 'USD',
               exchangeRates: settings.exchange_rates || existing.exchangeRates,
               language: settings.language || existing.language,
               theme: settings.theme || existing.theme,

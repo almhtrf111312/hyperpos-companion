@@ -209,6 +209,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         // Apply cloud settings to localStorage (cloud is source of truth)
         const syncObj = cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object' 
           ? cloudSettings.sync_settings as Record<string, unknown> : {};
+        const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        const resolvedPrimaryCurrency = (cloudSettings.primary_currency as any) || (syncObj as any)?.primaryCurrency || (existingRaw ? JSON.parse(existingRaw)?.primaryCurrency : undefined) || 'USD';
+        
         const settings = {
           storeSettings: {
             name: cloudSettings.name ?? '',
@@ -218,6 +221,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
             address: cloudSettings.address ?? '',
             logo: cloudSettings.logo_url ?? '',
           },
+          primaryCurrency: resolvedPrimaryCurrency,
           exchangeRates: cloudSettings.exchange_rates || { TRY: '', SYP: '' },
           language: cloudSettings.language || 'ar',
           theme: cloudSettings.theme || 'dark',
@@ -446,6 +450,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
             address: cloudSettings.address || existing.storeSettings?.address,
             logo: cloudSettings.logo_url || existing.storeSettings?.logo,
           },
+          primaryCurrency: (cloudSettings.primary_currency as any) || (syncSettingsObj as any)?.primaryCurrency || existing.primaryCurrency || 'USD',
           exchangeRates: cloudSettings.exchange_rates || existing.exchangeRates,
           taxEnabled: cloudSettings.tax_enabled ?? existing.taxEnabled ?? false,
           taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,

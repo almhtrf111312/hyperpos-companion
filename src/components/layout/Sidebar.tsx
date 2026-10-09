@@ -211,12 +211,15 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     <>
       {/* Mobile overlay backdrop - ONLY on true mobile, never tablet */}
       {isMobile && !isTablet && (
-        <button 
-          type="button"
+        <div 
+          role="button"
+          tabIndex={-1}
           aria-label="إغلاق القائمة"
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className={cn(
-            "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300",
-            isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 select-none outline-none focus:outline-none touch-none",
+            "[-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]",
+            isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           )}
           onClick={onToggle}
         />

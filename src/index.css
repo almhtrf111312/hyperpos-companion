@@ -1897,3 +1897,28 @@ html { font-size: 14px; }
 .dark .smart-toast-btn-secondary:hover {
   background-color: rgba(255, 255, 255, 0.15) !important;
 }
+
+
+/* ===== Global Tap-Highlight and Text Selection Prevention for Mobile/WebView ===== */
+.select-none, [role="button"], button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ===== Enhanced Glassmorphism for POS Cards & Ambient Depth ===== */
+.blur-theme .pos-item,
+.blur-theme [class*="pos-item"] {
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: blur(var(--blur-intensity, 16px)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity, 16px)) saturate(180%) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow), var(--glass-inset-shadow) !important;
+}
+
+.blur-theme body {
+  background: radial-gradient(circle at 15% 20%, hsl(var(--primary) / 0.12) 0%, transparent 40%),
+              radial-gradient(circle at 85% 80%, hsl(var(--accent) / 0.08) 0%, transparent 45%),
+              hsl(var(--background)) !important;
+  background-attachment: fixed !important;
+}

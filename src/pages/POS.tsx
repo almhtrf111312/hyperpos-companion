@@ -611,9 +611,13 @@ export default function POS() {
     const handleSettings = () => setSettingsRev(r => r + 1);
     window.addEventListener(EVENTS.SETTINGS_UPDATED, handleSettings as EventListener);
     window.addEventListener('settings-updated', handleSettings as EventListener);
+    window.addEventListener('STORE_SETTINGS_UPDATED', handleSettings as EventListener);
+    window.addEventListener('storage', handleSettings as EventListener);
     return () => {
       window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleSettings as EventListener);
       window.removeEventListener('settings-updated', handleSettings as EventListener);
+      window.removeEventListener('STORE_SETTINGS_UPDATED', handleSettings as EventListener);
+      window.removeEventListener('storage', handleSettings as EventListener);
     };
   }, []);
 

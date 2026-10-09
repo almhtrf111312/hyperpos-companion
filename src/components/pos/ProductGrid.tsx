@@ -247,8 +247,16 @@ export function ProductGrid({
                 className="pos-item text-right fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border/60 flex flex-col"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
-                {/* الصورة بإطار متناسق واحتواء كامل بدون قص أو تقريب */}
+                {/* الصورة بإطار متناسق واحتواء كامل مع شارة المخزون العلوية */}
                 <div className="w-full aspect-[4/3] bg-muted/20 p-2 relative overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="absolute z-10 top-2 rtl:left-2 rtl:right-auto ltr:right-2 ltr:left-auto bg-background/80 dark:bg-black/60 backdrop-blur-md border border-border/50 text-[10px] font-bold px-2 py-0.5 rounded-lg text-foreground shadow-xs select-none pointer-events-none">
+                    <DualUnitDisplayCompact
+                      totalPieces={product.quantity}
+                      conversionFactor={product.conversionFactor || 1}
+                      bulkUnit={product.bulkUnit}
+                      smallUnit={product.smallUnit}
+                    />
+                  </div>
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
@@ -257,25 +265,16 @@ export function ProductGrid({
                   />
                 </div>
 
-                {/* جسم البطاقة المستغل للمساحة بالكامل لاسم المنتج */}
-                <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5">
-                  {/* اسم المنتج بكامل العرض بدون اقتطاع الباركود */}
-                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 leading-snug flex-1" title={product.name}>
+                {/* جسم البطاقة المستغل للمساحة بالكامل لاسم المنتج والسعر */}
+                <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 w-full">
+                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 leading-snug min-h-[2.5rem] w-full text-right" title={product.name}>
                     {product.name}
                   </h3>
 
-                  {/* السطر السفلي: السعر وبجانبه مباشرة عدد القطع / المخزون */}
-                  <div className="flex items-center justify-between gap-1.5 mt-auto pt-1 border-t border-border/30">
-                    <span className="text-primary font-black text-xs md:text-sm">
+                  {/* السطر السفلي: السعر بكامل العرض لمنع أي قص أو التفاف */}
+                  <div className="w-full pt-1 border-t border-border/30 mt-auto text-right">
+                    <span className="text-primary font-black text-xs md:text-sm block truncate w-full">
                       {formatDisplayPrice(product.price)}
-                    </span>
-                    <span className="text-[10px] font-medium text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md shrink-0 border border-border/40">
-                      <DualUnitDisplayCompact
-                        totalPieces={product.quantity}
-                        conversionFactor={product.conversionFactor || 1}
-                        bulkUnit={product.bulkUnit}
-                        smallUnit={product.smallUnit}
-                      />
                     </span>
                   </div>
                 </div>
@@ -295,6 +294,14 @@ export function ProductGrid({
                 style={{ animationDelay: `${index * 15}ms` }}
               >
                 <div className="w-full aspect-square bg-muted/20 p-1.5 rounded-lg overflow-hidden mb-1.5 relative flex items-center justify-center">
+                  <div className="absolute z-10 top-1.5 rtl:left-1.5 rtl:right-auto ltr:right-1.5 ltr:left-auto bg-background/80 dark:bg-black/60 backdrop-blur-md border border-border/50 text-[9px] font-bold px-1.5 py-0.5 rounded-md text-foreground shadow-xs select-none pointer-events-none">
+                    <DualUnitDisplayCompact
+                      totalPieces={product.quantity}
+                      conversionFactor={product.conversionFactor || 1}
+                      bulkUnit={product.bulkUnit}
+                      smallUnit={product.smallUnit}
+                    />
+                  </div>
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
@@ -302,14 +309,13 @@ export function ProductGrid({
                     iconClassName="w-5 h-5 text-muted-foreground/30"
                   />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-[11px] text-foreground line-clamp-2 leading-tight" title={product.name}>
+                <div className="space-y-1 w-full">
+                  <h4 className="font-bold text-[11px] text-foreground line-clamp-2 leading-tight min-h-[2rem] w-full text-right" title={product.name}>
                     {product.name}
                   </h4>
-                  <div className="flex items-center justify-between text-[10px] gap-1">
-                    <span className="font-black text-primary truncate">{formatDisplayPrice(product.price)}</span>
-                    <span className="text-muted-foreground font-semibold text-[9px] bg-muted/60 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
-                      {product.quantity} قطعة
+                  <div className="w-full pt-0.5 border-t border-border/30 text-right">
+                    <span className="font-black text-primary text-[11px] block truncate w-full">
+                      {formatDisplayPrice(product.price)}
                     </span>
                   </div>
                 </div>

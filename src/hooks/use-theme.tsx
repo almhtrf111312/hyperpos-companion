@@ -335,31 +335,36 @@ function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number 
   if (enabled && transparency > 0) {
     root.classList.add('blur-theme');
     
-    // حساب الألفا بطريقة غير مقيدة، مع دعم الشفافية القوية جداً عند 90% و 100%
+    // حساب الألفا بدقة مع دعم الشفافية الفائقة (sheer) عند 90% و 100%
     let alpha = (100 - transparency) / 100;
-    if (transparency >= 100) alpha = 0.05;
-    else if (transparency >= 90) alpha = 0.08;
+    let glassBg = mode === 'dark' ? `rgba(18, 18, 18, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+    
+    if (transparency >= 100) {
+      alpha = 0.02;
+      glassBg = mode === 'dark' ? 'rgba(10, 14, 23, 0.15)' : 'rgba(255, 255, 255, 0.20)';
+    } else if (transparency >= 90) {
+      alpha = 0.05;
+      glassBg = mode === 'dark' ? 'rgba(10, 14, 23, 0.25)' : 'rgba(255, 255, 255, 0.35)';
+    }
     
     root.style.setProperty('--glass-opacity', `${alpha}`);
-    root.style.setProperty('--glass-bg', mode === 'dark' ? `rgba(18, 18, 18, ${alpha})` : `rgba(255, 255, 255, ${alpha})`);
+    root.style.setProperty('--glass-bg', glassBg);
     
-    // رفع درجة التعتيم تدريجياً لتصل إلى 28px عند الشفافية القصوى للحفاظ على وضوح النصوص
-    const blurPx = Math.min(28, 8 + (transparency / 100) * 20);
+    // رفع درجة التعتيم تدريجياً لتصل بسلاسة إلى 32px عند الشفافية القصوى للحفاظ على فخامة المظهر ومقروئية النصوص
+    const blurPx = Math.min(32, 10 + (transparency / 100) * 22);
     root.style.setProperty('--blur-intensity', `${blurPx}px`);
 
     if (mode === 'dark') {
-      root.style.setProperty('--glass-border', `rgba(255, 255, 255, 0.18)`);
-      root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, 0.08)`);
-      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, 0.35)`);
+      root.style.setProperty('--glass-border', 'rgba(255, 255, 255, 0.14)');
+      root.style.setProperty('--glass-highlight', 'rgba(255, 255, 255, 0.07)');
+      root.style.setProperty('--glass-shadow', '0 8px 32px rgba(0, 0, 0, 0.35)');
+      root.style.setProperty('--glass-inset-shadow', 'inset 0 1px 1px rgba(255, 255, 255, 0.12)');
     } else {
-      root.style.setProperty('--glass-border', `rgba(0, 0, 0, 0.12)`);
-      root.style.setProperty('--glass-highlight', `rgba(255, 255, 255, 0.4)`);
-      root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, 0.08)`);
+      root.style.setProperty('--glass-border', 'rgba(0, 0, 0, 0.10)');
+      root.style.setProperty('--glass-highlight', 'rgba(255, 255, 255, 0.5)');
+      root.style.setProperty('--glass-shadow', '0 8px 32px rgba(0, 0, 0, 0.08)');
+      root.style.setProperty('--glass-inset-shadow', 'inset 0 1px 1px rgba(255, 255, 255, 0.6)');
     }
-    root.style.setProperty('--glass-inset-shadow', mode === 'dark' 
-      ? 'inset 0 1px 1px rgba(255, 255, 255, 0.1)' 
-      : 'inset 0 1px 1px rgba(255, 255, 255, 0.5)'
-    );
   } else {
     root.classList.remove('blur-theme');
     root.style.removeProperty('--glass-opacity');
