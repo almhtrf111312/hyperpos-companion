@@ -3,7 +3,7 @@ import { Search, Barcode, Package, LayoutGrid, Grid3x3, List, AlignJustify } fro
 import { ProductImage } from '@/components/products/ProductImage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
@@ -82,12 +82,9 @@ export function ProductGrid({
     const rate = selectedCurrency?.rate || 1;
     const symbol = selectedCurrency?.symbol || '$';
     const converted = usdPrice * rate;
+    const decimals = selectedCurrency?.code === 'SYP' ? 0 : 2;
 
-    const formatted = selectedCurrency?.code === 'SYP'
-      ? Math.round(converted).toLocaleString()
-      : converted.toFixed(2);
-
-    return `${formatted} ${symbol}`;
+    return `${symbol}${formatNumber(converted, decimals)}`;
   };
 
   const cycleViewMode = () => {

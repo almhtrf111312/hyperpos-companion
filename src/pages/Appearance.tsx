@@ -26,7 +26,7 @@ export default function Appearance() {
   const handleDesignChange = (design: 'classic' | 'unified_pro') => {
     setDashboardDesign(design);
     localStorage.setItem('hyperpos_dashboard_design_v1', design);
-    window.dispatchEvent(new Event('hyperpos:design-changed'));
+    window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: design }));
     toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم بنجاح' : 'Layout updated' });
   };
 

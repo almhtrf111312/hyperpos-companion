@@ -120,6 +120,8 @@ interface PrintableInvoice {
   tax?: number;
   total: number;
   currencySymbol: string;
+  currency?: string;
+  totalUSD?: number;
   paymentType: 'cash' | 'debt';
 }
 
@@ -324,11 +326,31 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
         try {
           const fullSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
           const rates = fullSettings.exchangeRates || {};
+          const enabled = fullSettings.enabledCurrencies || { USD: true, TRY: true, SYP: true };
           const sypRate = Number(rates.SYP || 0);
           const tryRate = Number(rates.TRY || 0);
+
+          const invSymbol = invoice.currencySymbol || '$';
+          const invCode = (invoice.currency || (invSymbol === '₺' ? 'TRY' : invSymbol === 'ل.س' ? 'SYP' : 'USD')).toUpperCase();
+          
+          let baseUSD = invoice.totalUSD;
+          if (baseUSD === undefined || baseUSD === null) {
+            if (invCode === 'TRY' && tryRate > 0) baseUSD = invoice.total / tryRate;
+            else if (invCode === 'SYP' && sypRate > 0) baseUSD = invoice.total / sypRate;
+            else baseUSD = invoice.total;
+          }
+
           const parts: string[] = [];
-          if (sypRate > 0) parts.push(`المعادل بالسوري: ${formatNumber(invoice.total * sypRate)} ل.س`);
-          if (tryRate > 0) parts.push(`المعادل بالتركي: ${formatNumber(invoice.total * tryRate)} ₺`);
+          if (invCode !== 'USD' && enabled.USD !== false) {
+            parts.push(`المعادل بالدولار: $${formatNumber(baseUSD, 2)}`);
+          }
+          if (invCode !== 'TRY' && enabled.TRY !== false && tryRate > 0) {
+            parts.push(`المعادل بالتركي: ${formatNumber(baseUSD * tryRate, 2)} ₺`);
+          }
+          if (invCode !== 'SYP' && enabled.SYP !== false && sypRate > 0) {
+            parts.push(`المعادل بالسوري: ${formatNumber(Math.round(baseUSD * sypRate))} ل.س`);
+          }
+
           if (parts.length === 0) return '';
           return `
             <div style="margin-top: 6px; padding: 6px; background: #f8fafc; border-radius: 6px; font-size: 11px; text-align: center; border: 1px dashed #cbd5e1; color: #334155;">

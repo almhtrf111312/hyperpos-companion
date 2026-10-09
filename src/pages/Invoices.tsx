@@ -1058,7 +1058,7 @@ export default function Invoices() {
           ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount)}</div>` : ''}
           ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${formatCurrency(invoice.totalInCurrency)}
+            الإجمالي: ${formatCurrency(invoice.totalInCurrency || invoice.total, invoice.currencySymbol || '$')}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -1379,11 +1379,11 @@ export default function Invoices() {
                   <div className="flex items-center gap-3">
                     <div className="text-left">
                       <p className="font-bold text-lg">
-                        {formatCurrency(invoice.totalInCurrency)}
+                        {formatCurrency(invoice.totalInCurrency || invoice.total, invoice.currencySymbol || '$')}
                       </p>
                       {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          المدفوع: {formatCurrency(invoice.debtPaid)} / المتبقي: {formatCurrency(invoice.debtRemaining || 0)}
+                          المدفوع: {formatCurrency(invoice.debtPaid ? (invoice.debtPaid * (invoice.exchangeRate || 1)) : 0, invoice.currencySymbol || '$')} / المتبقي: {formatCurrency((invoice.debtRemainingInCurrency ?? ((invoice.debtRemaining || 0) * (invoice.exchangeRate || 1))), invoice.currencySymbol || '$')}
                         </p>
                       )}
                       {invoice.profit !== undefined && invoice.profit > 0 && (
@@ -1504,7 +1504,7 @@ export default function Invoices() {
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">المبلغ المقبوض:</span>
-                    <span className="font-medium">{formatCurrency(selectedInvoice.total)}</span>
+                    <span className="font-medium">{formatCurrency(selectedInvoice.totalInCurrency || selectedInvoice.total, selectedInvoice.currencySymbol || '$')}</span>
                   </div>
                   {selectedInvoice.partsCost !== undefined && selectedInvoice.partsCost > 0 && (
                     <div className="flex justify-between text-sm">
@@ -1544,8 +1544,8 @@ export default function Invoices() {
                               )}
                             </td>
                             <td className="w-[15%] px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="w-[20%] px-3 py-2 text-center">{formatCurrency(item.price)}</td>
-                            <td className="w-[20%] px-3 py-2 text-left font-medium">{formatCurrency(item.refunded ? 0 : (item.price * item.quantity))}</td>
+                            <td className="w-[20%] px-3 py-2 text-center">{formatCurrency(item.price * (selectedInvoice.exchangeRate || 1), selectedInvoice.currencySymbol || '$')}</td>
+                            <td className="w-[20%] px-3 py-2 text-left font-medium">{formatCurrency((item.refunded ? 0 : (item.price * item.quantity)) * (selectedInvoice.exchangeRate || 1), selectedInvoice.currencySymbol || '$')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1558,12 +1558,12 @@ export default function Invoices() {
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
-                    <span className="text-destructive">-{formatCurrency(selectedInvoice.discount)}</span>
+                    <span className="text-destructive">-{formatCurrency(selectedInvoice.discount * (selectedInvoice.exchangeRate || 1), selectedInvoice.currencySymbol || '$')}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t('invoices.total')}:</span>
-                  <span className="text-primary">{formatCurrency(selectedInvoice.totalInCurrency)}</span>
+                  <span className="text-primary">{formatCurrency(selectedInvoice.totalInCurrency || selectedInvoice.total, selectedInvoice.currencySymbol || '$')}</span>
                 </div>
                 {selectedInvoice.profit !== undefined && (
                   <div className="flex justify-between text-sm text-success">

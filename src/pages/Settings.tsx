@@ -144,6 +144,7 @@ interface BackupSettingsType {
 
 export interface PersistedSettings {
   primaryCurrency?: 'USD' | 'TRY' | 'SYP';
+  enabledCurrencies?: { USD: boolean; TRY: boolean; SYP: boolean };
   storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
   exchangeRates?: Partial<{ TRY: string; SYP: string }>;
   currencyNames?: Partial<{ TRY: string; SYP: string }>;
@@ -384,6 +385,27 @@ export default function Settings() {
     });
   };
 
+  // Enabled currencies state
+  const [enabledCurrencies, setEnabledCurrencies] = useState({
+    USD: true,
+    TRY: persisted?.enabledCurrencies?.TRY ?? true,
+    SYP: persisted?.enabledCurrencies?.SYP ?? true,
+  });
+
+  const toggleCurrency = (currency: 'TRY' | 'SYP', enabled: boolean) => {
+    setEnabledCurrencies(prev => {
+      const next = { ...prev, [currency]: enabled };
+      if (!enabled && primaryCurrency === currency) {
+        if (currency === 'TRY') {
+          setPrimaryCurrency(next.SYP ? 'SYP' : 'USD');
+        } else if (currency === 'SYP') {
+          setPrimaryCurrency(next.TRY ? 'TRY' : 'USD');
+        }
+      }
+      return next;
+    });
+  };
+
   // Exchange rates (string to avoid mobile keyboard/focus issues)
   const [primaryCurrency, setPrimaryCurrency] = useState<'USD' | 'TRY' | 'SYP'>(
     persisted?.primaryCurrency || 'USD'
@@ -557,6 +579,7 @@ export default function Settings() {
   const settingsSnapshotRef = useRef<{
     storeSettings: typeof storeSettings;
     primaryCurrency: 'USD' | 'TRY' | 'SYP';
+    enabledCurrencies: typeof enabledCurrencies;
     exchangeRates: typeof exchangeRates;
     currencyNames: typeof currencyNames;
     notificationSettings: typeof notificationSettings;
@@ -708,6 +731,7 @@ export default function Settings() {
         settingsSnapshotRef.current = {
           storeSettings: { ...freshStoreSettings },
           primaryCurrency: freshPrimaryCurrency,
+          enabledCurrencies: { ...enabledCurrencies },
           exchangeRates: { ...freshExchangeRates },
           currencyNames: { ...freshCurrencyNames },
           notificationSettings: { ...freshNotificationSettings },
@@ -739,6 +763,7 @@ export default function Settings() {
       settingsSnapshotRef.current = {
         storeSettings: { ...storeSettings },
         primaryCurrency,
+        enabledCurrencies: { ...enabledCurrencies },
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         notificationSettings: { ...notificationSettings },
@@ -892,6 +917,7 @@ export default function Settings() {
       savePersistedSettings({
         storeSettings,
         primaryCurrency,
+        enabledCurrencies,
         exchangeRates,
         currencyNames,
         syncSettings,
@@ -939,6 +965,7 @@ export default function Settings() {
       mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
       mergedSyncSettings.currencyNames = currencyNames;
       mergedSyncSettings.primaryCurrency = primaryCurrency;
+      mergedSyncSettings.enabledCurrencies = enabledCurrencies;
       mergedSyncSettings.backupSettings = backupSettings;
       mergedSyncSettings.appFont = localStorage.getItem(APP_FONT_STORAGE_KEY) || 'cairo';
 
@@ -970,6 +997,7 @@ export default function Settings() {
       settingsSnapshotRef.current = {
         storeSettings: { ...storeSettings },
         primaryCurrency,
+        enabledCurrencies: { ...enabledCurrencies },
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         notificationSettings: { ...notificationSettings },
@@ -987,7 +1015,7 @@ export default function Settings() {
       };
 
       // Activate interactive save success state in floating action banner
-      window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: { ...persisted, primaryCurrency, exchangeRates, currencyNames } }));
+      window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: { ...persisted, primaryCurrency, exchangeRates, currencyNames, enabledCurrencies } }));
       setIsSaveSuccess(true);
       if (saveSuccessTimeoutRef.current) {
         clearTimeout(saveSuccessTimeoutRef.current);
@@ -1766,7 +1794,7 @@ export default function Settings() {
                     </Badge>
                   </div>
 
-                  {/* بطاقات العملات الثلاث باختيار راديو */}
+                  {/* بطاقات العملات الثلاث باختيار راديو ومفاتيح التفعيل */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2">
                     
                     {/* 1. الدولار الأمريكي USD */}
@@ -1800,19 +1828,33 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-border/40">
-                        <Badge variant="secondary" className="text-[10px] font-medium bg-muted/60 text-muted-foreground">
-                          العملة المرجعية (1.00 $)
-                        </Badge>
-                        <p className="text-[11px] text-muted-foreground mt-1.5">تُحفظ جميع المعاملات المحاسبية بها مرجعياً</p>
+                      <div className="mt-4 pt-3 border-t border-border/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary" className="text-[10px] font-medium bg-muted/60 text-muted-foreground">
+                            العملة المرجعية (1.00 $)
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">
+                            مفعلة دائماً
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+                          الدولار يظل العملة المرجعية لتسعير الصرف والمحاسبة الداخلية حتى لو تم إيقاف ظهوره في الطباعة ونقاط البيع.
+                        </p>
                       </div>
                     </div>
 
                     {/* 2. الليرة التركية TRY */}
                     <div
-                      onClick={() => setPrimaryCurrency('TRY')}
+                      onClick={() => {
+                        if (enabledCurrencies.TRY) {
+                          setPrimaryCurrency('TRY');
+                        } else {
+                          toast({ title: 'العملة معطلة', description: 'يجب تفعيل الليرة التركية أولاً لاختيارها كعملة افتراضية' });
+                        }
+                      }}
                       className={cn(
                         "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        !enabledCurrencies.TRY && "opacity-60 border-dashed border-border/60 bg-muted/10",
                         primaryCurrency === 'TRY'
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
                           : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
@@ -1845,7 +1887,7 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
+                      <div className="mt-3 pt-3 border-t border-border/40 space-y-2.5">
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">سعر الصرف ($1 =):</span>
                           <Input
@@ -1856,17 +1898,28 @@ export default function Settings() {
                             className="h-7 text-xs font-mono font-bold px-2 bg-background/80"
                           />
                         </div>
-                        <p className="text-[11px] text-primary/80 font-medium">
-                          1 $ = {exchangeRates.TRY || '0'} {currencyNames.TRY}
-                        </p>
+                        <div className="flex items-center justify-between pt-1 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-xs font-medium text-foreground">تفعيل العملة:</span>
+                          <Switch
+                            checked={enabledCurrencies.TRY}
+                            onCheckedChange={(val) => toggleCurrency('TRY', val)}
+                          />
+                        </div>
                       </div>
                     </div>
 
                     {/* 3. الليرة السورية SYP */}
                     <div
-                      onClick={() => setPrimaryCurrency('SYP')}
+                      onClick={() => {
+                        if (enabledCurrencies.SYP) {
+                          setPrimaryCurrency('SYP');
+                        } else {
+                          toast({ title: 'العملة معطلة', description: 'يجب تفعيل الليرة السورية أولاً لاختيارها كعملة افتراضية' });
+                        }
+                      }}
                       className={cn(
                         "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        !enabledCurrencies.SYP && "opacity-60 border-dashed border-border/60 bg-muted/10",
                         primaryCurrency === 'SYP'
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
                           : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
@@ -1899,7 +1952,7 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
+                      <div className="mt-3 pt-3 border-t border-border/40 space-y-2.5">
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">سعر الصرف ($1 =):</span>
                           <Input
@@ -1910,9 +1963,13 @@ export default function Settings() {
                             className="h-7 text-xs font-mono font-bold px-2 bg-background/80"
                           />
                         </div>
-                        <p className="text-[11px] text-primary/80 font-medium">
-                          1 $ = {(Number(exchangeRates.SYP) || 0).toLocaleString()} {currencyNames.SYP}
-                        </p>
+                        <div className="flex items-center justify-between pt-1 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-xs font-medium text-foreground">تفعيل العملة:</span>
+                          <Switch
+                            checked={enabledCurrencies.SYP}
+                            onCheckedChange={(val) => toggleCurrency('SYP', val)}
+                          />
+                        </div>
                       </div>
                     </div>
 

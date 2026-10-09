@@ -234,6 +234,7 @@ export function CartPanel({
   const { syncState, syncMessage, startSync, completeSync, failSync } = useSyncState();
   const { isOnline, syncImmediately } = useCloudSyncContext();
   const [showCashDialog, setShowCashDialog] = useState(false);
+  const [showDeficitDialog, setShowDeficitDialog] = useState(false);
   const [showDebtDialog, setShowDebtDialog] = useState(false);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '' });
@@ -482,26 +483,10 @@ export function CartPanel({
       return;
     }
 
-    // إذا كان هناك عجز في المقبوض، نعتمده تلقائياً كخصم فوري ونسأل المستخدم أو نتمم
+    // إذا كان هناك عجز في المقبوض، نفتح حوار المعالجة (خصم فوري أو دين) بدلاً من window.confirm المانع لتجميد WebView
     if (!wholesaleMode && receivedUSD > 0 && receivedUSD < roundCurrency(total) - 0.01) {
-      const deficitInCurrency = roundCurrency(remainingInReceivedCurrency);
-      const confirmDeficit = window.confirm(
-        `المبلغ المقبوض (${activeReceivedCurrency.symbol}${formatNumber(receivedAmount)}) أقل من الفاتورة.\nهل تريد اعتماد العجز (${activeReceivedCurrency.symbol}${formatNumber(deficitInCurrency)}) كخصم فوري وإتمام البيع نقداً؟`
-      );
-      if (confirmDeficit) {
-        handleApplyDeficitAsDiscount();
-        // فتح حوار التأكيد بعد تطبيق الخصم
-        setTimeout(() => setShowCashDialog(true), 100);
-        return;
-      } else {
-        // إذا رفض الخصم وكان هناك عميل، نفتح البيع الآجل
-        if (isRealCustomerSelected(customerName)) {
-          handleDebtSale();
-          return;
-        }
-        showToast.info('يرجى استكمال المبلغ أو تحديد عميل لتسجيل الباقي كدين.');
-        return;
-      }
+      setShowDeficitDialog(true);
+      return;
     }
 
     setShowCashDialog(true);
@@ -1964,6 +1949,25 @@ export function CartPanel({
                       )}
                     </div>
                   )}
+                  {remainingInReceivedCurrency > 0 && receivedUSD < roundCurrency(total) - 0.01 && (
+                    <div className="flex flex-col gap-1.5 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/30 text-amber-800 dark:text-amber-300">
+                      <div className="flex justify-between font-bold text-sm">
+                        <span>عجز في المقبوض:</span>
+                        <span>{activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          handleApplyDeficitAsDiscount();
+                        }}
+                        className="h-7 text-xs font-semibold text-amber-900 dark:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 self-end mt-1 rounded-lg"
+                      >
+                        اعتماد العجز كخصم فوري
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1974,6 +1978,78 @@ export function CartPanel({
               <Button className="flex-1 bg-success hover:bg-success/90" onClick={confirmCashSale} disabled={isSaving} aria-busy={isSaving}>
                 <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
                 {isSaving ? 'جاري الحفظ...' : 'تأكيد'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deficit Resolution Dialog (Safe for mobile & Android WebView) */}
+      <Dialog open={showDeficitDialog} onOpenChange={setShowDeficitDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              تنبيه عجز في المبلغ المقبوض
+            </DialogTitle>
+            <DialogDescription>
+              المبلغ المقبوض أقل من إجمالي الفاتورة. اختر كيفية معالجة العجز:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-3">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 space-y-2 text-sm text-foreground">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">إجمالي الفاتورة:</span>
+                <span className="font-bold">{activeReceivedCurrency.symbol}{formatNumber(totalInReceivedCurrency)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">المبلغ المقبوض:</span>
+                <span className="font-bold text-success">{activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t border-amber-500/20 pt-2 text-amber-700 dark:text-amber-300 font-bold text-base">
+                <span>مقدار العجز:</span>
+                <span>{activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <Button
+                type="button"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                onClick={() => {
+                  handleApplyDeficitAsDiscount();
+                  setShowDeficitDialog(false);
+                  setTimeout(() => setShowCashDialog(true), 150);
+                }}
+              >
+                اعتماد العجز كخصم فوري وإتمام البيع نقداً
+              </Button>
+
+              {isRealCustomerSelected(customerName) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-warning text-warning hover:bg-warning/10 font-bold"
+                  onClick={() => {
+                    setShowDeficitDialog(false);
+                    handleDebtSale();
+                  }}
+                >
+                  تسجيل العجز كدين على العميل ({customerName})
+                </Button>
+              ) : (
+                <div className="text-xs text-center text-muted-foreground">
+                  (لتسجيل الباقي كدين، حدد عميلاً مسجلاً في السلة أولاً)
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-muted-foreground mt-1"
+                onClick={() => setShowDeficitDialog(false)}
+              >
+                إلغاء والعودة لتعديل المبلغ
               </Button>
             </div>
           </div>

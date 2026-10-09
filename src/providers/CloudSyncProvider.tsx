@@ -211,6 +211,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           ? cloudSettings.sync_settings as Record<string, unknown> : {};
         const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
         const resolvedPrimaryCurrency = (cloudSettings.primary_currency as any) || (syncObj as any)?.primaryCurrency || (existingRaw ? JSON.parse(existingRaw)?.primaryCurrency : undefined) || 'USD';
+        const resolvedEnabledCurrencies = (syncObj as any)?.enabledCurrencies || (existingRaw ? JSON.parse(existingRaw)?.enabledCurrencies : undefined) || { USD: true, TRY: true, SYP: true };
         
         const settings = {
           storeSettings: {
@@ -222,6 +223,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
             logo: cloudSettings.logo_url ?? '',
           },
           primaryCurrency: resolvedPrimaryCurrency,
+          enabledCurrencies: resolvedEnabledCurrencies,
           exchangeRates: cloudSettings.exchange_rates || { TRY: '', SYP: '' },
           language: cloudSettings.language || 'ar',
           theme: cloudSettings.theme || 'dark',

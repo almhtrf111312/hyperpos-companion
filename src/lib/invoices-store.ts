@@ -30,6 +30,8 @@ export interface Invoice {
   discount: number;
   total: number;
   totalInCurrency: number;
+  subtotalInCurrency?: number;
+  debtRemainingInCurrency?: number;
   currency: string;
   currencySymbol: string;
   paymentType: PaymentType;

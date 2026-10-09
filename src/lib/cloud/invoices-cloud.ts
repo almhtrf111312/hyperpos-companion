@@ -82,6 +82,8 @@ export interface Invoice {
   taxAmount?: number;
   total: number;
   totalInCurrency: number;
+  subtotalInCurrency?: number;
+  debtRemainingInCurrency?: number;
   currency: string;
   currencySymbol: string;
   paymentType: PaymentType;
@@ -120,6 +122,20 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     ? rawDiscount
     : (discountPercentage > 0 ? (subtotal * discountPercentage) / 100 : 0);
 
+  const rawCurrency = (cloud.currency || 'USD').toUpperCase();
+  let currencySymbol = '$';
+  if (rawCurrency === 'TRY') currencySymbol = '₺';
+  else if (rawCurrency === 'SYP') currencySymbol = 'ل.س';
+
+  const exchangeRate = Number(cloud.exchange_rate) || 1;
+  const isForeign = rawCurrency !== 'USD' && exchangeRate > 0;
+  
+  const total = Number(cloud.total) || 0;
+  const totalInCurrency = isForeign ? roundCurrency(total * exchangeRate) : total;
+  const subtotalInCurrency = isForeign ? roundCurrency(subtotal * exchangeRate) : subtotal;
+  const debtRemaining = Number(cloud.debt_remaining) || 0;
+  const debtRemainingInCurrency = isForeign ? roundCurrency(debtRemaining * exchangeRate) : debtRemaining;
+
   return {
     id: cloud.invoice_number || cloud.id,
     type: (cloud.invoice_type as InvoiceType) || 'sale',
@@ -128,26 +144,28 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     customerPhone: cloud.customer_phone || undefined,
     items: [], // Items loaded separately
     subtotal,
+    subtotalInCurrency,
     discount: actualDiscount,
     discountPercentage,
     taxRate: Number(cloud.tax_rate) || 0,
     taxAmount: Number(cloud.tax_amount) || 0,
-    total: Number(cloud.total) || 0,
-    totalInCurrency: Number(cloud.total) || 0,
-    currency: cloud.currency || 'USD',
-    currencySymbol: '$',
+    total,
+    totalInCurrency,
+    currency: rawCurrency,
+    currencySymbol,
     paymentType: (cloud.payment_type as PaymentType) || 'cash',
     status: (cloud.status as InvoiceStatus) || 'paid',
     profit: Number(cloud.profit) || 0,
     debtPaid: Number(cloud.debt_paid) || 0,
-    debtRemaining: Number(cloud.debt_remaining) || 0,
+    debtRemaining,
+    debtRemainingInCurrency,
     serviceDescription: cloud.notes || undefined,
     partsCost: (cloud.invoice_type === 'maintenance') ? Math.max(0, (Number(cloud.total) || 0) - (Number(cloud.profit) || 0)) : undefined,
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
     cashierId: cloud.cashier_id || undefined,
     cashierName: cloud.cashier_name || undefined,
-    exchangeRate: Number(cloud.exchange_rate) || 1,
+    exchangeRate,
   };
 }
 
