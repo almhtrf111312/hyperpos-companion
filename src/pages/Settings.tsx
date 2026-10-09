@@ -71,6 +71,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
@@ -117,6 +118,7 @@ interface NotificationSettingsType {
   newDebt: boolean;
   paymentReceived: boolean;
   dailyReport: boolean;
+  durationSeconds?: number; // وقت بقاء الإشعار بالثواني (0.5 إلى 3.0)
 }
 
 interface PrintSettingsType {
@@ -432,7 +434,7 @@ export default function Settings() {
   });
 
   // Notification settings
-  const [notificationSettings, setNotificationSettings] = useState({
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsType>({
     masterEnabled: persisted?.notificationSettings?.masterEnabled ?? true,
     sound: persisted?.notificationSettings?.sound ?? true,
     newSale: persisted?.notificationSettings?.newSale ?? true,
@@ -440,6 +442,7 @@ export default function Settings() {
     newDebt: persisted?.notificationSettings?.newDebt ?? true,
     paymentReceived: persisted?.notificationSettings?.paymentReceived ?? true,
     dailyReport: persisted?.notificationSettings?.dailyReport ?? false,
+    durationSeconds: persisted?.notificationSettings?.durationSeconds ?? 2,
   });
 
   // Printing settings
@@ -933,6 +936,8 @@ export default function Settings() {
         trackCapital,
         initialCapital,
       });
+
+      localStorage.setItem('hyperpos_toast_duration', String((notificationSettings.durationSeconds || 2) * 1000));
 
       // Build merged sync_settings: keep productFieldsConfig alongside sync settings
       const mergedSyncSettings: Record<string, unknown> = {
@@ -2225,6 +2230,44 @@ export default function Settings() {
                   </div>
                 );
               })}
+
+              {/* وقت بقاء الإشعار على الشاشة (من نصف ثانية إلى 3 ثواني) */}
+              <div className="px-4 py-3.5 hover:bg-muted/20 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-foreground block">وقت بقاء الإشعار</span>
+                      <span className="text-xs text-muted-foreground block">
+                        المدة الزمنية لظهور الإشعار على الشاشة قبل الانكماش التلقائي (من 0.5 إلى 3 ثواني)
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                    {notificationSettings.durationSeconds ?? 2} ثانية
+                  </span>
+                </div>
+                <div dir="ltr" className="space-y-1.5 pt-1 px-1">
+                  <Slider
+                    value={[notificationSettings.durationSeconds ?? 2]}
+                    onValueChange={([val]) => {
+                      setNotificationSettings({ ...notificationSettings, durationSeconds: val });
+                      localStorage.setItem('hyperpos_toast_duration', String(val * 1000));
+                    }}
+                    min={0.5}
+                    max={3}
+                    step={0.5}
+                    className="w-full cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+                    <span>0.5s (خاطف)</span>
+                    <span>1.5s (متوسط)</span>
+                    <span>3.0s (أطول)</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );

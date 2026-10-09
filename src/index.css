@@ -1813,6 +1813,65 @@ html { font-size: 14px; }
   transition: none !important;
 }
 
+/* Dynamic Island Burst & Shockwave Animations */
+@keyframes lateralShockwave {
+  0% {
+    transform: scale(0.2, 0.2);
+    opacity: 1;
+    border-width: 4px;
+    filter: blur(0px);
+  }
+  40% {
+    opacity: 0.9;
+    border-width: 2.5px;
+  }
+  80% {
+    opacity: 0.35;
+    border-width: 1.2px;
+  }
+  100% {
+    transform: scale(9.5, 3.4);
+    opacity: 0;
+    border-width: 0.5px;
+    filter: blur(4px);
+  }
+}
+
+.shockwave-ring {
+  position: absolute;
+  border-radius: 50%;
+  border-style: solid;
+  pointer-events: none;
+  animation: lateralShockwave 0.62s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  will-change: transform, opacity;
+  z-index: 95;
+}
+
+.edge-flare {
+  position: fixed;
+  top: 18px;
+  width: 40px;
+  height: 90px;
+  border-radius: 50%;
+  filter: blur(14px);
+  pointer-events: none;
+  opacity: 0;
+  animation: flareFade 0.48s ease-out forwards;
+  z-index: 95;
+}
+
+@keyframes flareFade {
+  0% { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+.dynamic-island-retract {
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: translateY(-50px) scale(0.3, 1.2) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @keyframes pulseGlow {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.15); opacity: 0.7; }
