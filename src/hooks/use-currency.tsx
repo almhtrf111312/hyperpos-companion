@@ -3,6 +3,12 @@ import { EVENTS } from '@/lib/events';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
+export interface EnabledCurrencies {
+  USD: boolean;
+  TRY: boolean;
+  SYP: boolean;
+}
+
 export const loadExchangeRates = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -23,9 +29,33 @@ export const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return 'USD';
     const parsed = JSON.parse(raw);
-    return parsed?.primaryCurrency || 'USD';
+    const primary = parsed?.primaryCurrency || 'USD';
+    const enabled = parsed?.enabledCurrencies;
+    // If primary currency is disabled, fallback to first enabled currency
+    if (enabled && enabled[primary] === false) {
+      if (enabled.TRY) return 'TRY';
+      if (enabled.SYP) return 'SYP';
+      if (enabled.USD) return 'USD';
+    }
+    return primary;
   } catch {
     return 'USD';
+  }
+};
+
+export const loadEnabledCurrencies = (): EnabledCurrencies => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return { USD: true, TRY: true, SYP: true };
+    const parsed = JSON.parse(raw);
+    const enabled = parsed?.enabledCurrencies;
+    return {
+      USD: enabled?.USD ?? true,
+      TRY: enabled?.TRY ?? true,
+      SYP: enabled?.SYP ?? true,
+    };
+  } catch {
+    return { USD: true, TRY: true, SYP: true };
   }
 };
 
@@ -50,10 +80,16 @@ export const useCurrency = () => {
     const _ = settingsRev;
     const code = loadDefaultCurrencyCode();
     const rates = loadExchangeRates();
+    const enabled = loadEnabledCurrencies();
     let symbol = '$';
     let rate = 1;
     if (code === 'TRY') { symbol = '₺'; rate = rates.TRY; }
     else if (code === 'SYP') { symbol = 'ل.س'; rate = rates.SYP; }
-    return { currencyCode: code, currencySymbol: symbol, exchangeRate: rate };
+    return {
+      currencyCode: code,
+      currencySymbol: symbol,
+      exchangeRate: rate,
+      enabledCurrencies: enabled,
+    };
   }, [settingsRev]);
 };

@@ -1,4 +1,4 @@
-import { ShoppingCart, Wrench } from 'lucide-react';
+import { ShoppingCart, Wrench, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -27,9 +27,16 @@ export function POSHeader({
 
   return (
     <header className="h-16 md:h-20 flex items-center justify-between pe-3 ps-14 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-3xl shadow-[0_4px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_30px_rgb(0,0,0,0.3)] transition-all duration-300 border-b border-black/5 dark:border-white/5">
-      {/* Right side - Title and Desktop Mode Switcher */}
+      {/* Right side - Title Capsule and Desktop Mode Switcher */}
       <div className="flex items-center gap-3 overflow-hidden">
-        <h1 className="text-xl md:text-2xl font-bold text-foreground whitespace-nowrap truncate">{t('pos.title')}</h1>
+        <div className="flex items-center gap-2.5 px-3 py-1.5 md:px-3.5 md:py-1.5 rounded-2xl md:rounded-full bg-muted/70 dark:bg-zinc-900/80 border border-border/40 shadow-xs backdrop-blur-3xl shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Store className="w-4 h-4" />
+          </div>
+          <h1 className="text-sm md:text-base font-bold text-foreground whitespace-nowrap truncate tracking-tight">
+            {t('pos.title')}
+          </h1>
+        </div>
 
         {/* Desktop Fixed Mode Toggle */}
         {!isMobile && !hideMaintenance && onModeChange && (

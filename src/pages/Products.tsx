@@ -770,11 +770,22 @@ export default function Products() {
     return list;
   }, [archivedProducts, products, noInventory]);
 
+  const [archiveFilter, setArchiveFilter] = useState<'all' | 'out_of_stock' | 'manual_archived'>('all');
+
+  const archiveStats = useMemo(() => {
+    const total = mergedArchivedProducts.length;
+    const outOfStock = mergedArchivedProducts.filter(p => p.quantity <= 0).length;
+    const manualArchived = mergedArchivedProducts.filter(p => p.archived).length;
+    return { total, outOfStock, manualArchived };
+  }, [mergedArchivedProducts]);
+
   // Memoized filtered archived products for archive search
   const filteredArchivedProducts = useMemo(() => {
     const q = archiveSearchQuery.trim().toLowerCase();
-    if (!q) return mergedArchivedProducts;
     return mergedArchivedProducts.filter(p => {
+      if (archiveFilter === 'out_of_stock' && p.quantity > 0) return false;
+      if (archiveFilter === 'manual_archived' && !p.archived) return false;
+      if (!q) return true;
       const matchesName = (p.name || '').toLowerCase().includes(q);
       const matchesBarcode1 = (p.barcode || '').toLowerCase().includes(q);
       const matchesBarcode2 = (p.barcode2 || '').toLowerCase().includes(q);
@@ -782,7 +793,7 @@ export default function Products() {
       const matchesCategory = (p.category || '').toLowerCase().includes(q);
       return matchesName || matchesBarcode1 || matchesBarcode2 || matchesBarcode3 || matchesCategory;
     });
-  }, [mergedArchivedProducts, archiveSearchQuery]);
+  }, [mergedArchivedProducts, archiveSearchQuery, archiveFilter]);
 
   // Memoized filtered results for performance (Active products)
   const filteredProducts = useMemo(() => {
@@ -1313,6 +1324,7 @@ export default function Products() {
       <div className="flex-shrink-0 p-4 pt-6 md:p-8 pb-3 md:pb-4 overflow-x-hidden max-w-full relative z-10">
         {/* Header */}
         <PageHeader
+          icon={<Package className="w-5 h-5" />}
           title={
             mainTab === 'archive'
               ? 'أرشيف المنتجات'
@@ -1320,60 +1332,74 @@ export default function Products() {
           }
           subtitle={
             mainTab === 'archive'
-              ? 'استرداد وتعديل المنتجات المؤرشفة والمنتهية من المخزون أو الحذف النهائي'
+              ? 'إدارة واسترداد المنتجات المؤرشفة والمنتهية من المخزون'
               : tDynamic('pageSubtitle')
           }
           actions={
-            /* Desktop: Original layout */
+            /* Desktop: Unified Geometry Actions */
             <div className="hidden sm:flex items-center gap-2">
               {!noInventory && (
-                <Button variant="outline" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                  <FileText className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                <Button variant="outline" className="h-9 px-3.5" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+                  <FileText className="w-4 h-4 ml-1.5" />
                   {t('purchaseInvoice.addPurchaseInvoice')}
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(true)} className="px-3">
-                <Tag className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+              <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(true)} className="h-9 px-3.5">
+                <Tag className="w-4 h-4 ml-1.5" />
                 {t('products.categories')}
               </Button>
-              <Button
-                variant={mainTab === 'archive' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  if (mainTab === 'archive') {
-                    setMainTab('products');
-                  } else {
+              
+              {/* Segmented Pill Switcher (Fixed Geometry) */}
+              <div className="flex items-center p-0.5 rounded-lg bg-muted border border-border/50 h-9 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMainTab('products')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-semibold transition-all select-none min-w-[105px] justify-center",
+                    mainTab === 'products'
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Package className="w-3.5 h-3.5 ml-1 shrink-0" />
+                  <span>المنتجات النشطة</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     setMainTab('archive');
                     loadArchivedData();
-                  }
-                }}
-                className={cn("px-3", mainTab === 'archive' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
-              >
-                {mainTab === 'archive' ? (
-                  <>
-                    <Package className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                    المنتجات النشطة
-                  </>
-                ) : (
-                  <>
-                    <Archive className="w-4 h-4 md:w-5 md:h-5 ml-2" />
-                    أرشيف المنتجات
-                    {mergedArchivedProducts.length > 0 && (
-                      <span className="mr-1.5 px-1.5 py-0.5 text-[10px] bg-destructive/15 text-destructive rounded-full font-bold">
-                        {mergedArchivedProducts.length}
-                      </span>
-                    )}
-                  </>
-                )}
-              </Button>
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-semibold transition-all select-none min-w-[95px] justify-center",
+                    mainTab === 'archive'
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Archive className="w-3.5 h-3.5 ml-1 shrink-0" />
+                  <span>الأرشيف</span>
+                  {mergedArchivedProducts.length > 0 && (
+                    <span className={cn(
+                      "mr-1 px-1.5 py-0.2 text-[10px] rounded-full font-bold",
+                      mainTab === 'archive'
+                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                        : "bg-muted-foreground/20 text-muted-foreground"
+                    )}>
+                      {mergedArchivedProducts.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
               {canAddProducts && (
-                <Button className="bg-primary hover:bg-primary/90" onClick={() => {
+                <Button className="h-9 px-3.5 bg-primary hover:bg-primary/90" onClick={() => {
                   setFieldsConfig(getEffectiveFieldsConfig());
                   setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
                   setImagePreviewBase64('');
                   setShowAddDialog(true);
                 }}>
-                  <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+                  <Plus className="w-4 h-4 ml-1.5" />
                   {tDynamic('addProduct')}
                 </Button>
               )}
@@ -1381,56 +1407,78 @@ export default function Products() {
           }
         />
 
-        {/* Mobile Toolbar - Independent row below Header */}
-        <div className="sm:hidden flex flex-col gap-1.5 w-full mt-2">
-          {/* Row 1: إضافة منتج + فاتورة شراء */}
-          <div className="grid grid-cols-2 gap-1.5">
+        {/* Mobile Toolbar - Standardized Geometry */}
+        <div className="sm:hidden flex flex-col gap-2 w-full mt-2">
+          {/* Row 1: Segmented Switcher + Add Product */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center p-0.5 rounded-lg bg-muted border border-border/50 h-9 flex-1">
+              <button
+                type="button"
+                onClick={() => setMainTab('products')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-semibold transition-all select-none",
+                  mainTab === 'products'
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Package className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">النشطة</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMainTab('archive');
+                  loadArchivedData();
+                }}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-semibold transition-all select-none",
+                  mainTab === 'archive'
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Archive className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">الأرشيف</span>
+                {mergedArchivedProducts.length > 0 && (
+                  <span className="mr-0.5 px-1 py-0.2 text-[9px] bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full font-bold">
+                    {mergedArchivedProducts.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
             {canAddProducts && (
-              <Button className="h-8 text-xs px-2 bg-primary hover:bg-primary/90" onClick={() => {
-                setFieldsConfig(getEffectiveFieldsConfig());
-                setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-                setImagePreviewBase64('');
-                setShowAddDialog(true);
-              }}>
-                <Plus className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
-                <span className="truncate">{tDynamic('addProduct')}</span>
+              <Button
+                className="h-9 px-3 bg-primary hover:bg-primary/90 text-xs shrink-0"
+                onClick={() => {
+                  setFieldsConfig(getEffectiveFieldsConfig());
+                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
+                  setImagePreviewBase64('');
+                  setShowAddDialog(true);
+                }}
+              >
+                <Plus className="w-3.5 h-3.5 ml-1 shrink-0" />
+                <span>{tDynamic('addProduct')}</span>
               </Button>
             )}
-            {!noInventory ? (
-              <Button variant="outline" className="h-8 text-xs px-2" onClick={() => setShowPurchaseInvoiceDialog(true)}>
+          </div>
+
+          {/* Row 2: Secondary Actions & View Modes */}
+          <div className="flex items-center gap-1.5">
+            {!noInventory && (
+              <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowPurchaseInvoiceDialog(true)}>
                 <FileText className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
                 <span className="truncate">فاتورة شراء</span>
               </Button>
-            ) : (
-              canAddProducts ? null : <div />
             )}
-          </div>
-          {/* Row 2: التصنيفات + المنتهية + الأرشيف + نمط العرض */}
-          <div className="flex gap-1.5">
-            <Button variant="outline" className="h-8 text-xs px-2 flex-1" onClick={() => setShowCategoryManager(true)}>
+            <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowCategoryManager(true)}>
               <Tag className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
               <span className="truncate">{t('products.categories')}</span>
             </Button>
-            <Button
-              variant={mainTab === 'archive' ? 'default' : 'outline'}
-              className={cn("h-8 text-xs px-2 flex-1", mainTab === 'archive' && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
-              onClick={() => {
-                if (mainTab === 'archive') {
-                  setMainTab('products');
-                } else {
-                  setMainTab('archive');
-                  loadArchivedData();
-                }
-              }}
-            >
-              {mainTab === 'archive' ? <Package className="w-3.5 h-3.5 ml-1 flex-shrink-0" /> : <Archive className="w-3.5 h-3.5 ml-1 flex-shrink-0" />}
-              <span className="truncate">
-                {mainTab === 'archive' ? 'النشطة' : `الأرشيف${mergedArchivedProducts.length > 0 ? ` (${mergedArchivedProducts.length})` : ''}`}
-              </span>
-            </Button>
             
             {/* View Mode Buttons */}
-            <div className="flex bg-muted rounded-lg p-0.5 flex-shrink-0">
+            <div className="flex bg-muted rounded-lg p-0.5 shrink-0">
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="icon"
@@ -1460,44 +1508,311 @@ export default function Products() {
         </div>
       </div>
 
-      {mainTab === 'archive' ? (
-        <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24 space-y-3 pt-2">
-          {/* Archive Search Bar */}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="بحث في الأرشيف (الاسم، الباركود 1، 2، 3، التصنيف)..."
-                  value={archiveSearchQuery}
-                  onChange={(e) => setArchiveSearchQuery(e.target.value)}
-                  className="pr-9 bg-muted border-0 h-10 text-sm"
-                />
-                {archiveSearchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => setArchiveSearchQuery('')}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
+      {/* Stats - Fixed Geometry for Both Modes */}
+      {!noInventory && (
+        <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
+          {mainTab === 'archive' ? (
+            <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('all')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  archiveFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
                 )}
-              </div>
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-primary/10">
+                    <Archive className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.total}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">إجمالي الأرشيف</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('out_of_stock')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  archiveFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
+                    <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.outOfStock}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">نفاد المخزون</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('manual_archived')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  archiveFilter === 'manual_archived' ? "border-warning ring-2 ring-warning/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-warning/10">
+                    <Archive className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.manualArchived}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">مؤرشف يدوياً</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('all')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  archiveFilter === 'all' ? "border-success ring-2 ring-success/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-success/10">
+                    <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.total}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">جاهز للاسترداد</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-primary/10">
+                    <Package className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.total}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.total')}</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setStatusFilter('in_stock')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-success/10">
+                    <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.inStock}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.available')}</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setStatusFilter('low_stock')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-warning/10">
+                    <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.low')}</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setStatusFilter('out_of_stock')}
+                className={cn(
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+                )}
+              >
+                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
+                  <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
+                    <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filters & Search - Fixed Geometry for Both Modes */}
+      <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={mainTab === 'archive' ? "بحث في الأرشيف (الاسم، الباركود 1، 2، 3، التصنيف)..." : t('products.searchPlaceholder')}
+                value={mainTab === 'archive' ? archiveSearchQuery : searchQuery}
+                onChange={(e) => mainTab === 'archive' ? setArchiveSearchQuery(e.target.value) : setSearchQuery(e.target.value)}
+                className="pr-9 md:pr-10 bg-muted border-0"
+              />
+              {mainTab === 'archive' && archiveSearchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={() => setArchiveSearchQuery('')}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
+            {!isRestaurant && (
               <Button
                 variant="outline"
                 size="icon"
                 className="h-10 w-10 flex-shrink-0"
                 onClick={() => {
-                  setScanTarget('archive');
-                  try { localStorage.setItem('hyperpos_scan_target', 'archive'); } catch { /* ignore */ }
+                  setScanTarget(mainTab === 'archive' ? 'archive' : 'search');
+                  try { localStorage.setItem('hyperpos_scan_target', mainTab === 'archive' ? 'archive' : 'search'); } catch { /* ignore */ }
                   setScannerOpen(true);
                 }}
-                title="مسح باركود للبحث في الأرشيف"
+                title={mainTab === 'archive' ? "مسح باركود للبحث في الأرشيف" : undefined}
               >
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
+            )}
+            
+            {/* View Mode Buttons - Desktop only */}
+            <div className="hidden sm:flex bg-muted rounded-lg p-0.5">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setViewMode('compact')}
+              >
+                <AlignJustify className="w-4 h-4" />
+              </Button>
             </div>
+          </div>
+
+          {mainTab === 'archive' ? (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('all')}
+                className={cn(
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  archiveFilter === 'all'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                الكل ({archiveStats.total})
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('out_of_stock')}
+                className={cn(
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  archiveFilter === 'out_of_stock'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                نفاد المخزون ({archiveStats.outOfStock})
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter('manual_archived')}
+                className={cn(
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  archiveFilter === 'manual_archived'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                مؤرشف يدوياً ({archiveStats.manualArchived})
+              </button>
+              <div className="h-6 w-px bg-border mx-1 self-center" />
+              <div className="px-3 py-1 rounded-full text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap flex items-center gap-1.5">
+                <Archive className="w-3.5 h-3.5" />
+                <span>أرشيف السحابة والمخزون</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={cn(
+                    "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                    selectedCategory === category
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  {category}
+                </button>
+              ))}
+
+              {/* Unit Filter */}
+              <div className="h-6 w-px bg-border mx-1 self-center" />
+              <button
+                onClick={() => setUnitFilter(unitFilter === 'multi_unit' ? 'all' : 'multi_unit')}
+                className={cn(
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
+                  unitFilter === 'multi_unit'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                <Boxes className="w-3.5 h-3.5" />
+                متعدد الوحدات ({stats.multiUnit})
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content Area - Scrollable */}
+      {mainTab === 'archive' ? (
+        <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24 space-y-3 pt-2">
           {/* Archived Products List / Cards */}
           {isArchiveLoading && mergedArchivedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -1660,177 +1975,7 @@ export default function Products() {
           )}
         </div>
       ) : (
-        <>
-          {/* Stats - Fixed */}
-      {!noInventory && (
-        <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
-          <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={cn(
-                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-                statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
-              )}
-            >
-              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                <div className="p-1 md:p-2 rounded-lg bg-primary/10">
-                  <Package className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.total}</p>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.total')}</p>
-                </div>
-              </div>
-            </button>
-            <button
-              onClick={() => setStatusFilter('in_stock')}
-              className={cn(
-                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-                statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
-              )}
-            >
-              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                <div className="p-1 md:p-2 rounded-lg bg-success/10">
-                  <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.inStock}</p>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.available')}</p>
-                </div>
-              </div>
-            </button>
-            <button
-              onClick={() => setStatusFilter('low_stock')}
-              className={cn(
-                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-                statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
-              )}
-            >
-              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                <div className="p-1 md:p-2 rounded-lg bg-warning/10">
-                  <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
-                </div>
-                <div>
-                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.low')}</p>
-                </div>
-              </div>
-            </button>
-            <button
-              onClick={() => setStatusFilter('out_of_stock')}
-              className={cn(
-                "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
-                statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
-              )}
-            >
-              <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
-                  <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-base md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filters - Fixed */}
-      <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={t('products.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-9 md:pr-10 bg-muted border-0"
-              />
-            </div>
-            {!isRestaurant && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 flex-shrink-0"
-                onClick={() => {
-                  setScanTarget('search');
-                  try { localStorage.setItem('hyperpos_scan_target', 'search'); } catch { /* ignore */ }
-                  setScannerOpen(true);
-                }}
-              >
-                <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
-              </Button>
-            )}
-            
-            {/* View Mode Buttons - Desktop only */}
-            <div className="hidden sm:flex bg-muted rounded-lg p-0.5">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setViewMode('grid')}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'compact' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setViewMode('compact')}
-              >
-                <AlignJustify className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
-                  selectedCategory === category
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {category}
-              </button>
-            ))}
-
-            {/* Unit Filter */}
-            <div className="h-6 w-px bg-border mx-1 self-center" />
-            <button
-              onClick={() => setUnitFilter(unitFilter === 'multi_unit' ? 'all' : 'multi_unit')}
-              className={cn(
-                "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
-                unitFilter === 'multi_unit'
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              <Boxes className="w-3.5 h-3.5" />
-              متعدد الوحدات ({stats.multiUnit})
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Products Grid - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24">
+        <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24">
         {/* Products Grid - Mobile */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
@@ -2370,10 +2515,9 @@ export default function Products() {
               </tbody>
             </table>
           </div>
+          </div>
         </div>
-      </div>
-    </>
-  )}
+      )}
 
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
