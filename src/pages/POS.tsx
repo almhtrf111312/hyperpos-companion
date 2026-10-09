@@ -104,6 +104,23 @@ const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
   }
 };
 
+const loadEnabledCurrencies = () => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return { USD: true, TRY: true, SYP: true };
+    const parsed = JSON.parse(raw);
+    const enabled = parsed?.enabledCurrencies;
+    const primary = parsed?.primaryCurrency || 'USD';
+    return {
+      USD: true,
+      TRY: primary === 'TRY' ? true : (enabled?.TRY ?? true),
+      SYP: primary === 'SYP' ? true : (enabled?.SYP ?? true),
+    };
+  } catch {
+    return { USD: true, TRY: true, SYP: true };
+  }
+};
+
 const loadCurrencyNames = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -604,11 +621,14 @@ export default function POS() {
     const _ = settingsRev;
     const rates = loadExchangeRates();
     const names = loadCurrencyNames();
-    return [
+    const enabled = loadEnabledCurrencies();
+    const all: Currency[] = [
       { code: 'USD', symbol: '$', name: t('currency.usd') || 'دولار', rate: 1 },
       { code: 'TRY', symbol: '₺', name: names.TRY || 'ليرة تركية', rate: rates.TRY },
       { code: 'SYP', symbol: 'ل.س', name: names.SYP || 'ليرة سورية', rate: rates.SYP },
     ];
+    const filtered = all.filter(c => enabled[c.code] !== false);
+    return filtered.length > 0 ? filtered : [all[0]];
   }, [settingsRev, t]);
 
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => {

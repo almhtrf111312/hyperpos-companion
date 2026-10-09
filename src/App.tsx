@@ -253,15 +253,22 @@ const AppContent = () => {
     return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
   }
 
-  // Show setup wizard ONLY for brand new signups (first-time account registration)
-  // Existing accounts logging in bypass it completely
+  // Setup wizard state (can also be launched on demand from Settings or Help)
+  const [manualShowSetup, setManualShowSetup] = useState(false);
+  useEffect(() => {
+    const handleOpenWizard = () => setManualShowSetup(true);
+    window.addEventListener('hyperpos:open-setup-wizard', handleOpenWizard);
+    return () => window.removeEventListener('hyperpos:open-setup-wizard', handleOpenWizard);
+  }, []);
+
+  // Show setup wizard for brand new signups or on manual trigger
   const isNewSignup = (() => {
     try {
       return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
     } catch { return false; }
   })();
 
-  const shouldShowSetup = isNewSignup && !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss');
+  const shouldShowSetup = manualShowSetup || (isNewSignup && !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss'));
   if (shouldShowSetup) {
     return (
       <>
@@ -271,6 +278,7 @@ const AppContent = () => {
             localStorage.setItem('hyperpos_setup_complete', 'true');
           } catch {}
           setSetupComplete(true);
+          setManualShowSetup(false);
         }} />
       </>
     );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Coins, Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Coins, Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
@@ -1538,6 +1538,31 @@ export default function Settings() {
               <TabsContent value="info" className="space-y-4 mt-0">
                 <div>
                   <h2 className="text-lg md:text-xl font-bold text-foreground mb-3">{t('settings.storeInfo')}</h2>
+
+                  {/* Setup Wizard Quick Launcher */}
+                  <div className="p-3 mb-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">معالج الترحيب والإعداد الأولي</p>
+                        <p className="text-[11px] text-muted-foreground">تهيئة هوية المتجر والعملات والضرائب والشركاء والمظهر خطوة بخطوة</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs rounded-lg border-primary/30 text-primary hover:bg-primary/10 shrink-0 font-bold"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('hyperpos:open-setup-wizard'));
+                      }}
+                    >
+                      تشغيل المعالج
+                    </Button>
+                  </div>
+
                   <div className="space-y-2">
                     {/* اسم المتجر */}
                     <div className="flex items-center gap-2">

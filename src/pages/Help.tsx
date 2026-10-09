@@ -90,18 +90,30 @@ export default function HelpPage() {
           subtitle={isAr ? 'دليل الاستخدام والأسئلة الشائعة' : 'User guide and FAQs'}
           icon={<BookOpen className="w-5 h-5 text-primary" />}
           actions={
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs shrink-0 self-start sm:self-auto gap-1.5"
-              onClick={() => {
-                try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
-                window.dispatchEvent(new CustomEvent('onboarding:replay'));
-              }}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>{isAr ? 'إعادة جولة الشرح' : 'Replay tour'}</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs shrink-0 self-start sm:self-auto gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('hyperpos:open-setup-wizard'));
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span>{isAr ? 'معالج الإعداد الأولي' : 'Setup Wizard'}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs shrink-0 self-start sm:self-auto gap-1.5"
+                onClick={() => {
+                  try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
+                  window.dispatchEvent(new CustomEvent('onboarding:replay'));
+                }}
+              >
+                <span>{isAr ? 'إعادة جولة الشرح' : 'Replay tour'}</span>
+              </Button>
+            </div>
           }
         />
 
