@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Coins, Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
@@ -68,6 +68,7 @@ import { printHTML } from '@/lib/native-print';
 import { checkNotificationPermissionNative, requestNotificationPermissionNative, sendLocalNotification } from '@/lib/native-notifications';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -141,7 +142,8 @@ interface BackupSettingsType {
   keepDays: string;
 }
 
-type PersistedSettings = {
+export interface PersistedSettings {
+  primaryCurrency?: 'USD' | 'TRY' | 'SYP';
   storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
   exchangeRates?: Partial<{ TRY: string; SYP: string }>;
   currencyNames?: Partial<{ TRY: string; SYP: string }>;
@@ -383,6 +385,10 @@ export default function Settings() {
   };
 
   // Exchange rates (string to avoid mobile keyboard/focus issues)
+  const [primaryCurrency, setPrimaryCurrency] = useState<'USD' | 'TRY' | 'SYP'>(
+    persisted?.primaryCurrency || 'USD'
+  );
+
   const [exchangeRates, setExchangeRates] = useState({
     TRY: persisted?.exchangeRates?.TRY ?? '',
     SYP: persisted?.exchangeRates?.SYP ?? '',
@@ -550,6 +556,7 @@ export default function Settings() {
   // Snapshot of settings when page loads - for revert functionality
   const settingsSnapshotRef = useRef<{
     storeSettings: typeof storeSettings;
+    primaryCurrency: 'USD' | 'TRY' | 'SYP';
     exchangeRates: typeof exchangeRates;
     currencyNames: typeof currencyNames;
     notificationSettings: typeof notificationSettings;
@@ -617,6 +624,13 @@ export default function Settings() {
         const syncObj = cloudData.sync_settings && typeof cloudData.sync_settings === 'object' 
           ? cloudData.sync_settings as Record<string, unknown> : {};
 
+        // 5.5 Resolved Primary Currency
+        const freshPrimaryCurrency = (cloudData.primary_currency as 'USD' | 'TRY' | 'SYP') 
+          || ((syncObj as any)?.primaryCurrency as 'USD' | 'TRY' | 'SYP') 
+          || persisted?.primaryCurrency 
+          || 'USD';
+        setPrimaryCurrency(freshPrimaryCurrency);
+
         const freshDiscountPercent = typeof syncObj.discountPercentEnabled === 'boolean' ? syncObj.discountPercentEnabled : true;
         const freshDiscountFixed = typeof syncObj.discountFixedEnabled === 'boolean' ? syncObj.discountFixedEnabled : true;
         const freshBarcodeMode = (syncObj.barcodeScanMode === 'search' || syncObj.barcodeScanMode === 'add') ? syncObj.barcodeScanMode : 'search';
@@ -674,6 +688,7 @@ export default function Settings() {
         // Persist to localStorage so offline reads stay in sync
         savePersistedSettings({
           storeSettings: freshStoreSettings,
+          primaryCurrency: freshPrimaryCurrency,
           exchangeRates: freshExchangeRates,
           currencyNames: freshCurrencyNames,
           taxEnabled: freshTaxEnabled,
@@ -692,6 +707,7 @@ export default function Settings() {
         // ✅ Update snapshot with the EXACT identical fresh values from cloud
         settingsSnapshotRef.current = {
           storeSettings: { ...freshStoreSettings },
+          primaryCurrency: freshPrimaryCurrency,
           exchangeRates: { ...freshExchangeRates },
           currencyNames: { ...freshCurrencyNames },
           notificationSettings: { ...freshNotificationSettings },
@@ -722,6 +738,7 @@ export default function Settings() {
     if (!settingsSnapshotRef.current) {
       settingsSnapshotRef.current = {
         storeSettings: { ...storeSettings },
+        primaryCurrency,
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         notificationSettings: { ...notificationSettings },
@@ -753,6 +770,7 @@ export default function Settings() {
     // Check changes ONLY for the active tab to prevent false triggers
     if (activeTab === 'store') {
       return (
+        primaryCurrency !== snap.primaryCurrency ||
         JSON.stringify(storeSettings) !== JSON.stringify(snap.storeSettings) ||
         JSON.stringify(exchangeRates) !== JSON.stringify(snap.exchangeRates) ||
         JSON.stringify(currencyNames) !== JSON.stringify(snap.currencyNames) ||
@@ -792,6 +810,7 @@ export default function Settings() {
     const snap = settingsSnapshotRef.current;
     if (!snap) return;
     setStoreSettings({ ...snap.storeSettings });
+    setPrimaryCurrency(snap.primaryCurrency ?? 'USD');
     setExchangeRates({ ...snap.exchangeRates });
     setCurrencyNames({ ...snap.currencyNames });
     setNotificationSettings({ ...snap.notificationSettings });
@@ -872,6 +891,7 @@ export default function Settings() {
       // Save to localStorage for local caching
       savePersistedSettings({
         storeSettings,
+        primaryCurrency,
         exchangeRates,
         currencyNames,
         syncSettings,
@@ -918,6 +938,7 @@ export default function Settings() {
       // Sync additional preferences to cloud
       mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
       mergedSyncSettings.currencyNames = currencyNames;
+      mergedSyncSettings.primaryCurrency = primaryCurrency;
       mergedSyncSettings.backupSettings = backupSettings;
       mergedSyncSettings.appFont = localStorage.getItem(APP_FONT_STORAGE_KEY) || 'cairo';
 
@@ -929,6 +950,7 @@ export default function Settings() {
         email: storeSettings.email,
         address: storeSettings.address,
         logo_url: storeSettings.logo,
+        primary_currency: primaryCurrency,
         exchange_rates: { USD: 1, TRY: tryRate, SYP: sypRate },
         tax_enabled: taxEnabled,
         tax_rate: taxRate,
@@ -947,6 +969,7 @@ export default function Settings() {
       // Update snapshot after successful save
       settingsSnapshotRef.current = {
         storeSettings: { ...storeSettings },
+        primaryCurrency,
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         notificationSettings: { ...notificationSettings },
@@ -964,6 +987,7 @@ export default function Settings() {
       };
 
       // Activate interactive save success state in floating action banner
+      window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: { ...persisted, primaryCurrency, exchangeRates, currencyNames } }));
       setIsSaveSuccess(true);
       if (saveSuccessTimeoutRef.current) {
         clearTimeout(saveSuccessTimeoutRef.current);
@@ -1700,52 +1724,173 @@ export default function Settings() {
 
               {/* التبويب الفرعي 2: العملات والضرائب */}
               <TabsContent value="finance" className="space-y-4 mt-0">
-                {/* Currencies Section */}
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-foreground">{t('settings.exchangeRates')}</h3>
-                  
-                  {/* العملة الأولى */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={currencyNames.TRY}
-                        onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
-                        className="flex-1 bg-muted border-0 h-9 text-sm"
-                        placeholder={t('settings.currencyTryPlaceholder')}
-                      />
-                      <div className="relative flex-1">
-                        <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          value={exchangeRates.TRY}
-                          onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
-                          className="pr-10 bg-muted border-0 h-9 text-sm"
-                          placeholder="32"
-                        />
-                      </div>
+                {/* قسم العملة وأسعار الصرف */}
+                <div className="space-y-4 rounded-xl border border-border/80 bg-card/60 p-4 md:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+                    <div>
+                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                        <Coins className="w-5 h-5 text-primary" />
+                        {t('settings.exchangeRates')} والعملة الافتراضية
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        اختر العملة الرئيسية التي ستظهر بها أسعار البيع والشراء وسلة الكاشير افتراضياً
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground px-1">1 {t('settings.dollar')} = {exchangeRates.TRY} {currencyNames.TRY}</p>
+                    <Badge variant="outline" className="w-fit text-xs px-2.5 py-1 font-semibold border-primary/30 text-primary bg-primary/10">
+                      العملة النشطة حالياً: {primaryCurrency}
+                    </Badge>
                   </div>
 
-                  {/* العملة الثانية */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={currencyNames.SYP}
-                        onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
-                        className="flex-1 bg-muted border-0 h-9 text-sm"
-                        placeholder={t('settings.currencySypPlaceholder')}
-                      />
-                      <div className="relative flex-1">
-                        <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          value={exchangeRates.SYP}
-                          onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
-                          className="pr-10 bg-muted border-0 h-9 text-sm"
-                          placeholder="14500"
-                        />
+                  {/* بطاقات العملات الثلاث باختيار راديو */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2">
+                    
+                    {/* 1. الدولار الأمريكي USD */}
+                    <div
+                      onClick={() => setPrimaryCurrency('USD')}
+                      className={cn(
+                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        primaryCurrency === 'USD'
+                          ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
+                          : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center font-black text-base",
+                            primaryCurrency === 'USD' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          )}>
+                            $
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-foreground">الدولار الأمريكي</h4>
+                            <span className="text-[11px] text-muted-foreground font-mono">USD</span>
+                          </div>
+                        </div>
+                        <div className={cn(
+                          "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                          primaryCurrency === 'USD' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                        )}>
+                          {primaryCurrency === 'USD' && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-border/40">
+                        <Badge variant="secondary" className="text-[10px] font-medium bg-muted/60 text-muted-foreground">
+                          العملة المرجعية (1.00 $)
+                        </Badge>
+                        <p className="text-[11px] text-muted-foreground mt-1.5">تُحفظ جميع المعاملات المحاسبية بها مرجعياً</p>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground px-1">1 {t('settings.dollar')} = {exchangeRates.SYP} {currencyNames.SYP}</p>
+
+                    {/* 2. الليرة التركية TRY */}
+                    <div
+                      onClick={() => setPrimaryCurrency('TRY')}
+                      className={cn(
+                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        primaryCurrency === 'TRY'
+                          ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
+                          : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center font-black text-base",
+                            primaryCurrency === 'TRY' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          )}>
+                            ₺
+                          </div>
+                          <div className="space-y-1">
+                            <Input
+                              value={currencyNames.TRY}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
+                              className="h-7 text-xs font-bold px-2 w-28 bg-background/80"
+                              placeholder="اسم العملة"
+                            />
+                            <span className="text-[11px] text-muted-foreground font-mono">TRY</span>
+                          </div>
+                        </div>
+                        <div className={cn(
+                          "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                          primaryCurrency === 'TRY' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                        )}>
+                          {primaryCurrency === 'TRY' && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">سعر الصرف ($1 =):</span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={exchangeRates.TRY}
+                            onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
+                            className="h-7 text-xs font-mono font-bold px-2 bg-background/80"
+                          />
+                        </div>
+                        <p className="text-[11px] text-primary/80 font-medium">
+                          1 $ = {exchangeRates.TRY || '0'} {currencyNames.TRY}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 3. الليرة السورية SYP */}
+                    <div
+                      onClick={() => setPrimaryCurrency('SYP')}
+                      className={cn(
+                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        primaryCurrency === 'SYP'
+                          ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
+                          : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs",
+                            primaryCurrency === 'SYP' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          )}>
+                            ل.س
+                          </div>
+                          <div className="space-y-1">
+                            <Input
+                              value={currencyNames.SYP}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
+                              className="h-7 text-xs font-bold px-2 w-28 bg-background/80"
+                              placeholder="اسم العملة"
+                            />
+                            <span className="text-[11px] text-muted-foreground font-mono">SYP</span>
+                          </div>
+                        </div>
+                        <div className={cn(
+                          "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                          primaryCurrency === 'SYP' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                        )}>
+                          {primaryCurrency === 'SYP' && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">سعر الصرف ($1 =):</span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={exchangeRates.SYP}
+                            onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
+                            className="h-7 text-xs font-mono font-bold px-2 bg-background/80"
+                          />
+                        </div>
+                        <p className="text-[11px] text-primary/80 font-medium">
+                          1 $ = {(Number(exchangeRates.SYP) || 0).toLocaleString()} {currencyNames.SYP}
+                        </p>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 

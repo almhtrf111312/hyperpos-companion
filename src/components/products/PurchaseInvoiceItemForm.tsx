@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,39 @@ interface ExistingProduct {
 export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInvoiceItemFormProps) {
   const { t } = useLanguage();
   const fieldsConfig = getEffectiveFieldsConfig();
+  // عملة إدخال فاتورة الشراء وأسعار الصرف
+  const [inputCurrency, setInputCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => {
+    try {
+      const raw = localStorage.getItem('hyperpos_settings_v1');
+      if (!raw) return 'USD';
+      const parsed = JSON.parse(raw);
+      return parsed?.primaryCurrency || 'USD';
+    } catch {
+      return 'USD';
+    }
+  });
+
+  const { rates } = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('hyperpos_settings_v1');
+      const parsed = raw ? JSON.parse(raw) : {};
+      const ex = parsed?.exchangeRates;
+      return {
+        rates: {
+          USD: 1,
+          TRY: Number(ex?.TRY) || 32,
+          SYP: Number(ex?.SYP) || 14500,
+        },
+      };
+    } catch {
+      return {
+        rates: { USD: 1, TRY: 32, SYP: 14500 },
+      };
+    }
+  }, []);
+
+  const currentRate = rates[inputCurrency] || 1;
+  const currencySymbols: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'ل.س' };
 
   const [productName, setProductName] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -144,8 +178,10 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setProductName(product.name);
     setBarcode(product.barcode || '');
     setCategory(product.category || '');
-    setCostPrice(product.cost_price?.toString() || '');
-    setSalePrice(product.sale_price?.toString() || '');
+    const convertedCost = product.cost_price ? (product.cost_price * currentRate) : 0;
+    const convertedSale = product.sale_price ? (product.sale_price * currentRate) : 0;
+    setCostPrice(convertedCost > 0 ? (inputCurrency === 'SYP' ? Math.round(convertedCost).toString() : convertedCost.toFixed(2)) : '');
+    setSalePrice(convertedSale > 0 ? (inputCurrency === 'SYP' ? Math.round(convertedSale).toString() : convertedSale.toFixed(2)) : '');
     setSearchResults([]);
     setShowSearch(false);
   };
@@ -169,15 +205,32 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   const handleSubmit = () => {
     if (!productName || !quantity || !costPrice) return;
 
+    // حساب التكلفة المرجعية بالدولار لضمان دقة المتوسط المرجح للتكلفة (WAC) وحساب الأرباح السحابية
+    // cost_price_usd = cost_price_local / exchange_rate
+    const costPriceNum = Number.parseFloat(costPrice) || 0;
+    const costPriceUSD = currentRate > 0 ? (costPriceNum / currentRate) : costPriceNum;
+
+    const salePriceNum = salePrice ? Number.parseFloat(salePrice) : undefined;
+    const salePriceUSD = salePriceNum !== undefined ? (currentRate > 0 ? (salePriceNum / currentRate) : salePriceNum) : undefined;
+
+    const wholesalePriceNum = wholesalePrice ? Number.parseFloat(wholesalePrice) : undefined;
+    const wholesalePriceUSD = wholesalePriceNum !== undefined ? (currentRate > 0 ? (wholesalePriceNum / currentRate) : wholesalePriceNum) : undefined;
+
+    const bulkCostPriceNum = bulkCostPrice ? Number.parseFloat(bulkCostPrice) : undefined;
+    const bulkCostPriceUSD = bulkCostPriceNum !== undefined ? (currentRate > 0 ? (bulkCostPriceNum / currentRate) : bulkCostPriceNum) : undefined;
+
+    const bulkSalePriceNum = bulkSalePrice ? Number.parseFloat(bulkSalePrice) : undefined;
+    const bulkSalePriceUSD = bulkSalePriceNum !== undefined ? (currentRate > 0 ? (bulkSalePriceNum / currentRate) : bulkSalePriceNum) : undefined;
+
     onAdd({
       product_name: productName,
       barcode: barcode || undefined,
       category: category || undefined,
       quantity: Number.parseInt(quantity),
-      cost_price: Number.parseFloat(costPrice),
-      sale_price: salePrice ? Number.parseFloat(salePrice) : undefined,
+      cost_price: Number.parseFloat(costPriceUSD.toFixed(4)),
+      sale_price: salePriceUSD !== undefined ? Number.parseFloat(salePriceUSD.toFixed(4)) : undefined,
       product_id: selectedProduct?.id,
-      wholesale_price: wholesalePrice ? Number.parseFloat(wholesalePrice) : undefined,
+      wholesale_price: wholesalePriceUSD !== undefined ? Number.parseFloat(wholesalePriceUSD.toFixed(4)) : undefined,
       expiry_date: expiryDate || undefined,
       serial_number: serialNumber || undefined,
       batch_number: batchNumber || undefined,
@@ -196,8 +249,8 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       bulk_unit: bulkUnit,
       small_unit: smallUnit,
       conversion_factor: Number.parseInt(conversionFactor) || 1,
-      bulk_cost_price: bulkCostPrice ? Number.parseFloat(bulkCostPrice) : undefined,
-      bulk_sale_price: bulkSalePrice ? Number.parseFloat(bulkSalePrice) : undefined,
+      bulk_cost_price: bulkCostPriceUSD !== undefined ? Number.parseFloat(bulkCostPriceUSD.toFixed(4)) : undefined,
+      bulk_sale_price: bulkSalePriceUSD !== undefined ? Number.parseFloat(bulkSalePriceUSD.toFixed(4)) : undefined,
     });
 
     // Reset form
@@ -312,6 +365,31 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         </Select>
       </div>
 
+      {/* شريط اختيار عملة الشراء */}
+      <div className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/60">
+        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+          عملة إدخال الفاتورة:
+        </span>
+        <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border border-border/60">
+          {(['USD', 'TRY', 'SYP'] as const).map((curr) => (
+            <button
+              key={curr}
+              type="button"
+              onClick={() => setInputCurrency(curr)}
+              className={cn(
+                "px-2.5 py-0.5 text-xs font-bold rounded transition-all flex items-center gap-1",
+                inputCurrency === curr
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span>{currencySymbols[curr]}</span>
+              <span>{curr}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Quantity + Prices */}
       <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
         <div className="space-y-1 sm:space-y-1.5 min-w-0">
@@ -321,28 +399,42 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
             min="1"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="h-9 text-xs sm:text-sm px-2"
+            className="h-9 text-xs sm:text-sm px-2 font-bold"
           />
         </div>
         <div className="space-y-1 sm:space-y-1.5 min-w-0">
-          <Label className="text-xs sm:text-sm truncate block">{t('products.costPrice')} *</Label>
+          <Label className="text-xs sm:text-sm truncate block">
+            {t('products.costPrice')} ({currencySymbols[inputCurrency]}) *
+          </Label>
           <Input
             type="number"
-            step="0.01"
+            step="any"
             value={costPrice}
             onChange={(e) => setCostPrice(e.target.value)}
-            className="h-9 text-xs sm:text-sm px-2"
+            className="h-9 text-xs sm:text-sm px-2 font-bold"
           />
+          {inputCurrency !== 'USD' && costPrice && (
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
+              ≈ ${( (Number.parseFloat(costPrice) || 0) / currentRate ).toFixed(2)} USD
+            </p>
+          )}
         </div>
         <div className="space-y-1 sm:space-y-1.5 min-w-0">
-          <Label className="text-xs sm:text-sm truncate block">{t('products.salePrice')}</Label>
+          <Label className="text-xs sm:text-sm truncate block">
+            {t('products.salePrice')} ({currencySymbols[inputCurrency]})
+          </Label>
           <Input
             type="number"
-            step="0.01"
+            step="any"
             value={salePrice}
             onChange={(e) => setSalePrice(e.target.value)}
             className="h-9 text-xs sm:text-sm px-2"
           />
+          {inputCurrency !== 'USD' && salePrice && (
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
+              ≈ ${( (Number.parseFloat(salePrice) || 0) / currentRate ).toFixed(2)} USD
+            </p>
+          )}
         </div>
       </div>
 

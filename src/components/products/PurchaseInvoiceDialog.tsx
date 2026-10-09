@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -54,6 +54,21 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>('header');
   const [loading, setLoading] = useState(false);
+
+  // عملة المتجر الافتراضية لعرض الإجمالي الموازي
+  const { primaryCurrencyCode, primaryRate, primarySymbol } = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('hyperpos_settings_v1');
+      const parsed = raw ? JSON.parse(raw) : {};
+      const code = parsed?.primaryCurrency || 'USD';
+      const rates = parsed?.exchangeRates;
+      const rate = code === 'TRY' ? (Number(rates?.TRY) || 32) : code === 'SYP' ? (Number(rates?.SYP) || 14500) : 1;
+      const sym = code === 'TRY' ? '₺' : code === 'SYP' ? 'ل.س' : '$';
+      return { primaryCurrencyCode: code, primaryRate: rate, primarySymbol: sym };
+    } catch {
+      return { primaryCurrencyCode: 'USD', primaryRate: 1, primarySymbol: '$' };
+    }
+  }, [open]);
 
   // Header form state
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -707,7 +722,16 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t('common.total')}: </span>
-                  <span className="font-bold text-primary">${currentInvoice.actual_grand_total?.toFixed(2)}</span>
+                  <span className="font-bold text-primary font-mono">
+                    ${currentInvoice.actual_grand_total?.toFixed(2)} USD
+                    {primaryCurrencyCode !== 'USD' && (
+                      <span className="text-xs text-muted-foreground font-normal mx-1 font-sans">
+                        (≈ {primaryCurrencyCode === 'SYP' 
+                          ? Math.round((currentInvoice.actual_grand_total || 0) * primaryRate).toLocaleString()
+                          : ((currentInvoice.actual_grand_total || 0) * primaryRate).toFixed(2)} {primarySymbol})
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
             </div>

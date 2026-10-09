@@ -93,6 +93,17 @@ const loadExchangeRates = () => {
   }
 };
 
+const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return 'USD';
+    const parsed = JSON.parse(raw);
+    return parsed?.primaryCurrency || 'USD';
+  } catch {
+    return 'USD';
+  }
+};
+
 const loadCurrencyNames = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -1055,6 +1066,7 @@ export default function POS() {
                 onCategoryChange={setSelectedCategory}
                 onProductClick={(product) => addToCart(product, 'piece')}
                 onBarcodeScan={handleBarcodeScan}
+                selectedCurrency={selectedCurrency}
               />
             ) : (
               <MaintenancePanel

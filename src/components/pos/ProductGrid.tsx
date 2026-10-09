@@ -46,6 +46,7 @@ interface ProductGridProps {
   onCategoryChange: (category: string) => void;
   onProductClick: (product: Product) => void;
   onBarcodeScan?: (barcode: string) => void;
+  selectedCurrency?: { code: string; symbol: string; rate: number };
 }
 
 type ViewMode = 'grid' | 'dense' | 'list' | 'compact';
@@ -59,6 +60,7 @@ export function ProductGrid({
   onCategoryChange,
   onProductClick,
   onBarcodeScan,
+  selectedCurrency,
 }: ProductGridProps) {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -74,6 +76,19 @@ export function ProductGrid({
   useEffect(() => {
     localStorage.setItem('pos_view_mode', viewMode);
   }, [viewMode]);
+
+  // تنسيق السعر بالعملة المختارة ومعدل الصرف
+  const formatDisplayPrice = (usdPrice: number) => {
+    const rate = selectedCurrency?.rate || 1;
+    const symbol = selectedCurrency?.symbol || '$';
+    const converted = usdPrice * rate;
+
+    const formatted = selectedCurrency?.code === 'SYP'
+      ? Math.round(converted).toLocaleString()
+      : converted.toFixed(2);
+
+    return `${formatted} ${symbol}`;
+  };
 
   const cycleViewMode = () => {
     setViewMode((prev) => {
@@ -259,7 +274,7 @@ export function ProductGrid({
                   {/* السطر السفلي: السعر وبجانبه مباشرة عدد القطع / المخزون */}
                   <div className="flex items-center justify-between gap-1.5 mt-auto pt-1 border-t border-border/30">
                     <span className="text-primary font-black text-xs md:text-sm">
-                      ${product.price}
+                      {formatDisplayPrice(product.price)}
                     </span>
                     <span className="text-[10px] font-medium text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md shrink-0 border border-border/40">
                       <DualUnitDisplayCompact
@@ -299,7 +314,7 @@ export function ProductGrid({
                     {product.name}
                   </h4>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="font-black text-primary">${product.price}</span>
+                    <span className="font-black text-primary">{formatDisplayPrice(product.price)}</span>
                     <span className="text-muted-foreground font-mono">
                       {product.quantity}ق
                     </span>
@@ -337,7 +352,7 @@ export function ProductGrid({
                       smallUnit={product.smallUnit}
                     />
                   </div>
-                  <p className="text-primary font-black text-sm md:text-base">$\{product.price}</p>
+                  <p className="text-primary font-black text-sm md:text-base">{formatDisplayPrice(product.price)}</p>
                 </div>
               </button>
             ))}
@@ -356,7 +371,7 @@ export function ProductGrid({
               >
                 <div className="flex-1 pe-2 overflow-hidden text-right">
                   <h3 className="font-bold text-xs text-foreground truncate">{product.name}</h3>
-                  <p className="text-primary font-bold text-xs mt-0.5">$\{product.price}</p>
+                  <p className="text-primary font-bold text-xs mt-0.5">{formatDisplayPrice(product.price)}</p>
                 </div>
                 <div className="text-[10px] bg-muted/50 rounded-lg px-2 py-1 shrink-0 font-medium">
                   <DualUnitDisplayCompact

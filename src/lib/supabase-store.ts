@@ -20,6 +20,7 @@ export interface StoreSettingsRow {
   email?: string | null;
   address?: string | null;
   logo_url?: string | null;
+  primary_currency?: string | null;
   tax_enabled?: boolean | null;
   tax_rate?: number | null;
   notification_settings?: Record<string, unknown> | null;
@@ -646,10 +647,21 @@ export async function saveStoreSettingsDirect(settings: Record<string, unknown>)
       }
 
       // Update existing
-      const { error } = await sb
+      let { error } = await sb
         .from('stores')
         .update(payloadToSave)
         .eq('user_id', ownerId);
+
+      // Graceful fallback if primary_currency column does not exist in stores schema cache
+      if (error && payloadToSave.primary_currency && (String(error.message || '').includes('primary_currency') || (error as any).code === 'PGRST204')) {
+        const fallbackPayload = { ...payloadToSave };
+        delete fallbackPayload.primary_currency;
+        const retry = await sb
+          .from('stores')
+          .update(fallbackPayload)
+          .eq('user_id', ownerId);
+        error = retry.error;
+      }
 
       if (error) {
         console.error('Error updating store settings:', error);
