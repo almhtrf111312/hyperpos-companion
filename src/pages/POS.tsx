@@ -588,17 +588,39 @@ export default function POS() {
     };
   }, [loadData, formatPosProducts, profile, activeWarehouse, updateProducts]);
 
+  const [settingsRev, setSettingsRev] = useState(0);
+
+  useEffect(() => {
+    const handleSettings = () => setSettingsRev(r => r + 1);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, handleSettings as EventListener);
+    window.addEventListener('settings-updated', handleSettings as EventListener);
+    return () => {
+      window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleSettings as EventListener);
+      window.removeEventListener('settings-updated', handleSettings as EventListener);
+    };
+  }, []);
+
   const currencies: Currency[] = useMemo(() => {
+    const _ = settingsRev;
     const rates = loadExchangeRates();
     const names = loadCurrencyNames();
     return [
-      { code: 'USD', symbol: '$', name: t('currency.usd'), rate: 1 },
-      { code: 'TRY', symbol: '₺', name: names.TRY, rate: rates.TRY },
-      { code: 'SYP', symbol: 'ل.س', name: names.SYP, rate: rates.SYP },
+      { code: 'USD', symbol: '$', name: t('currency.usd') || 'دولار', rate: 1 },
+      { code: 'TRY', symbol: '₺', name: names.TRY || 'ليرة تركية', rate: rates.TRY },
+      { code: 'SYP', symbol: 'ل.س', name: names.SYP || 'ليرة سورية', rate: rates.SYP },
     ];
-  }, []);
+  }, [settingsRev, t]);
 
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => currencies[0]);
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => {
+    const code = loadDefaultCurrencyCode();
+    return currencies.find(c => c.code === code) || currencies[0];
+  });
+
+  useEffect(() => {
+    const code = loadDefaultCurrencyCode();
+    const newCurr = currencies.find(c => c.code === code) || currencies[0];
+    setSelectedCurrency(prev => prev.code !== newCurr.code || prev.rate !== newCurr.rate ? newCurr : prev);
+  }, [currencies]);
   const [customerName, setCustomerName] = useState<string>(() => {
     try {
       return localStorage.getItem(CART_CUSTOMER_KEY) || '';

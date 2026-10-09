@@ -28,6 +28,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { cn, toWesternNumerals, formatNumber } from '@/lib/utils';
+import { useCurrency } from '@/hooks/use-currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -106,6 +107,23 @@ import { getSignedImageUrl } from '@/lib/image-upload';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Products() {
+  const { currencyCode, currencySymbol, exchangeRate } = useCurrency();
+  const formatPrice = (usdPrice: number) => {
+    if (!usdPrice) usdPrice = 0;
+    if (currencyCode === 'USD') return `${formatNumber(usdPrice, 2)}`;
+    const localVal = usdPrice * exchangeRate;
+    const decimals = currencyCode === 'SYP' ? 0 : 2;
+    return `${formatNumber(localVal, decimals)} ${currencySymbol} <span class="text-[0.8em] opacity-60 ml-1">(${formatNumber(usdPrice, 2)})</span>`;
+  };
+  
+  const formatPriceRaw = (usdPrice: number) => {
+    if (!usdPrice) usdPrice = 0;
+    if (currencyCode === 'USD') return `${formatNumber(usdPrice, 2)}`;
+    const localVal = usdPrice * exchangeRate;
+    const decimals = currencyCode === 'SYP' ? 0 : 2;
+    return `${formatNumber(localVal, decimals)} ${currencySymbol} (${formatNumber(usdPrice, 2)})`;
+  };
+
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
   const { t, tDynamic, isRTL } = useLanguage();
@@ -1572,11 +1590,11 @@ export default function Products() {
                       <div className="grid grid-cols-3 gap-1 mt-2.5 pt-2 border-t border-border/40 text-center">
                         <div className="bg-muted/40 p-1 rounded">
                           <span className="text-[10px] text-muted-foreground block">سعر البيع</span>
-                          <span className="font-bold text-xs text-foreground">{formatNumber(product.salePrice)} $</span>
+                          <span className="font-bold text-xs text-foreground"><span dangerouslySetInnerHTML={{__html: formatPrice(product.salePrice)}} /></span>
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
                           <span className="text-[10px] text-muted-foreground block">سعر الشراء</span>
-                          <span className="text-xs text-foreground/80">{formatNumber(product.costPrice)} $</span>
+                          <span className="text-xs text-foreground/80"><span dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice)}} /></span>
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
                           <span className="text-[10px] text-muted-foreground block">الرصيد الحالي</span>
@@ -1866,10 +1884,10 @@ export default function Products() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                        <span>${formatNumber(product.salePrice, 2)}</span>
+                        <span dangerouslySetInnerHTML={{__html: formatPrice(product.salePrice)}} />
                         {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
                         {!noInventory && <span>{product.quantity} {product.smallUnit || t('products.unitPiece')}</span>}
-                        {noInventory && product.wholesalePrice > 0 && <span>{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
+                        {noInventory && product.wholesalePrice > 0 && <span>{t('products.wholesalePrice')}: <span dangerouslySetInnerHTML={{__html: formatPrice(product.wholesalePrice)}} /></span>}
                         {fieldsConfig.sizeColor && product.size && <span className="text-primary">{product.size}</span>}
                         {fieldsConfig.sizeColor && product.color && <span>{product.color}</span>}
                       </div>
@@ -1910,10 +1928,10 @@ export default function Products() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
-                        {!noInventory && <span className="text-foreground/80 font-medium">${formatNumber(product.costPrice, 2)}</span>}
-                        <span className="font-semibold text-primary">${formatNumber(product.salePrice, 2)}</span>
+                        {!noInventory && <span className="text-foreground/80 font-medium" dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice)}} />}
+                        <span className="font-semibold text-primary" dangerouslySetInnerHTML={{__html: formatPrice(product.salePrice)}} />
                         {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
-                        {noInventory && product.wholesalePrice > 0 && <span className="text-muted-foreground">{t('products.wholesalePrice')}: ${formatNumber(product.wholesalePrice, 2)}</span>}
+                        {noInventory && product.wholesalePrice > 0 && <span className="text-muted-foreground">{t('products.wholesalePrice')}: <span dangerouslySetInnerHTML={{__html: formatPrice(product.wholesalePrice)}} /></span>}
                         {!noInventory && (
                           <DualUnitDisplay
                             totalPieces={product.quantity}
@@ -2048,7 +2066,7 @@ export default function Products() {
                           <>
                             <div>
                               <p className="text-[14px] text-muted-foreground font-medium">تكلفة القطعة</p>
-                              <p className="font-bold text-base text-foreground">${formatNumber(product.costPrice, 2)}</p>
+                              <p className="font-bold text-base text-foreground" dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice)}} />
                             </div>
                             <div>
                               <p className="text-[14px] text-muted-foreground font-medium">تكلفة العمالة</p>
@@ -2056,18 +2074,18 @@ export default function Products() {
                             </div>
                             <div>
                               <p className="text-[14px] text-muted-foreground font-medium">المجموع</p>
-                              <p className="font-bold text-base text-primary">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</p>
+                              <p className="font-bold text-base text-primary" dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice + (product.laborCost || 0))}} />
                             </div>
                           </>
                         ) : (
                           <>
                             <div>
                               <p className="text-[14px] text-muted-foreground font-medium">البيع</p>
-                              <p className="font-bold text-base text-primary">${formatNumber(product.salePrice, 2)}</p>
+                              <p className="font-bold text-base text-primary" dangerouslySetInnerHTML={{__html: formatPrice(product.salePrice)}} />
                             </div>
                             <div>
                               <p className="text-[14px] text-muted-foreground font-medium">{t('products.wholesalePrice')}</p>
-                              <p className="font-bold text-base text-foreground">${formatNumber(product.wholesalePrice || 0, 2)}</p>
+                              <p className="font-bold text-base text-foreground" dangerouslySetInnerHTML={{__html: formatPrice(product.wholesalePrice || 0)}} />
                             </div>
                           </>
                         )}
@@ -2078,13 +2096,13 @@ export default function Products() {
                         <div className="px-1">
                           <p className="text-[14px] text-muted-foreground font-medium mb-0.5">الشراء</p>
                           <p className="font-bold text-sm sm:text-base text-foreground">
-                            ${formatNumber(product.costPrice, 2)}
+                            ${formatPriceRaw(product.costPrice)}
                           </p>
                         </div>
                         <div className="px-1">
                           <p className="text-[14px] text-muted-foreground font-medium mb-0.5">البيع</p>
                           <p className="font-bold text-sm sm:text-base text-primary">
-                            ${formatNumber(product.salePrice, 2)}
+                            ${formatPriceRaw(product.salePrice)}
                           </p>
                         </div>
                         <div className="px-1">
@@ -2217,28 +2235,28 @@ export default function Products() {
                       {isRepairMode ? (
                         <>
                           <td className="py-3 px-3">
-                            <span className="text-sm text-foreground">${formatNumber(product.costPrice, 2)}</span>
+                            <span className="text-sm text-foreground" dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice)}} />
                           </td>
                           <td className="py-3 px-3">
                             <span className="text-sm text-foreground">${formatNumber(product.laborCost || 0, 2)}</span>
                           </td>
                           <td className="py-3 px-3">
-                            <span className="font-semibold text-primary text-sm">${formatNumber(product.costPrice + (product.laborCost || 0), 2)}</span>
+                            <span className="font-semibold text-primary text-sm" dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice + (product.laborCost || 0))}} />
                           </td>
                         </>
                       ) : (
                         <td className="py-3 px-3">
                           {noInventory ? (
-                            <span className="font-semibold text-foreground text-sm">${formatNumber(product.salePrice, 2)}</span>
+                            <span className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{__html: formatPrice(product.salePrice)}} />
                           ) : (
                             <div className="flex flex-col text-sm">
                               <div className="flex items-center gap-1">
                                 <span className="text-xs text-foreground/80">{t('products.costPrice')}:</span>
-                                <span className="text-foreground/80 font-medium">${formatNumber(product.costPrice, 2)}</span>
+                                <span className="text-foreground/80 font-medium" dangerouslySetInnerHTML={{__html: formatPrice(product.costPrice)}} />
                               </div>
                               <div className="flex items-center gap-1">
                                 <span className="text-xs text-foreground/80">{t('products.salePrice')}:</span>
-                                <span className="font-semibold text-foreground">${formatNumber(product.salePrice, 2)}</span>
+                                <span className="font-semibold text-foreground" dangerouslySetInnerHTML={{__html: formatPrice(product.salePrice)}} />
                               </div>
                             </div>
                           )}
@@ -2247,7 +2265,7 @@ export default function Products() {
 
                       {noInventory && !isRepairMode && (
                         <td className="py-3 px-3">
-                          <span className="text-sm text-foreground/90 font-medium">${formatNumber(product.wholesalePrice || 0, 2)}</span>
+                          <span className="text-sm text-foreground/90 font-medium" dangerouslySetInnerHTML={{__html: formatPrice(product.wholesalePrice || 0)}} />
                         </td>
                       )}
 

@@ -1593,7 +1593,7 @@ export function CartPanel({
                   key={currency.code}
                   onClick={() => onCurrencyChange(currency)}
                   className={cn(
-                    "flex-1 py-1 rounded-md text-[10px] font-semibold transition-all leading-none",
+                    "flex-1 py-1.5 min-h-[36px] rounded-md text-[11px] font-bold transition-all flex items-center justify-center leading-none",
                     selectedCurrency.code === currency.code
                       ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
                       : "text-muted-foreground hover:text-foreground"
@@ -1624,7 +1624,7 @@ export function CartPanel({
               {settingsDiscountPercentEnabled && (
                 <label
                   className={cn(
-                    "group box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+                    "group box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'percent' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1647,7 +1647,7 @@ export function CartPanel({
                     max="100"
                   />
                   <span className={cn(
-                    "flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+                    "flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold flex-shrink-0 transition-colors",
                     discountType === 'percent' && discount > 0
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "bg-muted/50 text-muted-foreground border border-border/60"
@@ -1657,7 +1657,7 @@ export function CartPanel({
               {settingsDiscountFixedEnabled && (
                 <label
                   className={cn(
-                    "group box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+                    "group box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'fixed' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1679,7 +1679,7 @@ export function CartPanel({
                     min="0"
                   />
                   <span className={cn(
-                    "flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold flex-shrink-0 transition-colors",
+                    "flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold flex-shrink-0 transition-colors",
                     discountType === 'fixed' && discount > 0
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "bg-muted/50 text-muted-foreground border border-border/60"
@@ -1692,7 +1692,7 @@ export function CartPanel({
           {/* Row 3: Received Amount with Currency Selector */}
           <div className="space-y-1">
             <div className={cn(
-              "box-border flex h-9 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+              "box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
               receivedAmount > 0
                 ? "bg-primary/5 border-primary/40"
                 : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1785,11 +1785,16 @@ export function CartPanel({
                     )}
                   </div>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total - 0.001 && (
-                  <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold">
-                    مقبوض: {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)} — متبقٍ: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
-                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
-                  </span>
+                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total - 0.01 && (
+                  <div className="flex flex-col gap-1 w-full mt-1 animate-in fade-in zoom-in-95 duration-200">
+                    <span className="bg-destructive/15 text-destructive px-2 py-1.5 rounded-md text-xs font-bold text-center border border-destructive/30 shadow-sm flex items-center justify-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      المبلغ المقبوض أقل من الإجمالي - هل ترغب بالمتابعة؟
+                    </span>
+                    <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold text-center text-xs">
+                      مقبوض: {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)} — متبقٍ: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
+                    </span>
+                  </div>
                 )}
 
                 {receivedAmount > 0 && wholesaleMode && (
