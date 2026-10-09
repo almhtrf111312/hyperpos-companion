@@ -98,7 +98,11 @@ const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return 'USD';
     const parsed = JSON.parse(raw);
-    return parsed?.primaryCurrency || 'USD';
+    const primary = (parsed?.primaryCurrency || 'USD') as 'USD' | 'TRY' | 'SYP';
+    const enabled = parsed?.enabledCurrencies;
+    if (primary === 'TRY' && enabled?.TRY === false) return 'USD';
+    if (primary === 'SYP' && enabled?.SYP === false) return 'USD';
+    return primary;
   } catch {
     return 'USD';
   }
@@ -110,11 +114,10 @@ const loadEnabledCurrencies = () => {
     if (!raw) return { USD: true, TRY: true, SYP: true };
     const parsed = JSON.parse(raw);
     const enabled = parsed?.enabledCurrencies;
-    const primary = parsed?.primaryCurrency || 'USD';
     return {
       USD: true,
-      TRY: primary === 'TRY' ? true : (enabled?.TRY ?? true),
-      SYP: primary === 'SYP' ? true : (enabled?.SYP ?? true),
+      TRY: enabled?.TRY !== false,
+      SYP: enabled?.SYP !== false,
     };
   } catch {
     return { USD: true, TRY: true, SYP: true };
@@ -297,31 +300,36 @@ export default function POS() {
     }
   }, []);
 
-  // ✅ حفظ حالة فتح السلة في localStorage لاستعادتها عند العودة
+  // ✅ حفظ حالة فتح السلة في localStorage واستعادتها بأمان دون التسبب بإشعار خروج غير مرغوب
   const handleSetCartOpen = useCallback((open: boolean) => {
-    // If opening, push state. If closing via button (not back navigation), go back to pop it.
-    if (open && !cartOpen) {
-      window.history.pushState({ posCartOpen: true }, '');
-    } else if (!open && cartOpen && window.history.state?.posCartOpen) {
-      window.history.back();
-      // the popstate listener will handle setting state
-      return; 
+    if (open) {
+      if (!cartOpen) {
+        window.history.pushState({ posCartOpen: true }, '');
+      }
+      setCartOpen(true);
+      try { localStorage.setItem(CART_OPEN_KEY, '1'); } catch { }
+    } else {
+      // 🛡️ كبت إشعار الخروج لمدة ثانيتين عند إغلاق السلة برمجياً
+      (window as any).__posSuppressExitUntil = Date.now() + 2000;
+      if (window.history.state?.posCartOpen) {
+        window.history.replaceState(null, '');
+      }
+      setCartOpen(false);
+      try { localStorage.setItem(CART_OPEN_KEY, '0'); } catch { }
     }
-    
-    setCartOpen(open);
-    try { localStorage.setItem(CART_OPEN_KEY, open ? '1' : '0'); } catch { }
   }, [cartOpen]);
 
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      if (cartOpen) {
+    const handlePopState = () => {
+      if (cartOpenRef.current) {
+        (window as any).__posSuppressExitUntil = Date.now() + 2000;
         setCartOpen(false);
         try { localStorage.setItem(CART_OPEN_KEY, '0'); } catch { }
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [cartOpen]);
+    window.addEventListener('popstate', handlePopState, true);
+    return () => window.removeEventListener('popstate', handlePopState, true);
+  }, []);
 
   // تم إزالة useEffect القديم الذي كان يمسح الباركود المعلق فقط دون معالجته
 
@@ -643,7 +651,11 @@ export default function POS() {
   useEffect(() => {
     const code = loadDefaultCurrencyCode();
     const newCurr = currencies.find(c => c.code === code) || currencies[0];
-    setSelectedCurrency(prev => prev.code !== newCurr.code || prev.rate !== newCurr.rate ? newCurr : prev);
+    setSelectedCurrency(prev => {
+      const isStillAvailable = currencies.some(c => c.code === prev.code);
+      if (!isStillAvailable) return newCurr;
+      return prev.code !== newCurr.code || prev.rate !== newCurr.rate ? newCurr : prev;
+    });
   }, [currencies]);
   const [customerName, setCustomerName] = useState<string>(() => {
     try {

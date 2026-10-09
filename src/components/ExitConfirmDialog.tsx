@@ -51,6 +51,21 @@ export function ExitConfirmDialog() {
       if (Capacitor.isNativePlatform()) {
         try {
           listenerHandle = await App.addListener('backButton', ({ canGoBack }) => {
+            // 🛡️ إذا كان هناك كبت نشط (مثل إغلاق سلة أو إتمام عملية بيع)، لا نظهر إشعار الخروج
+            if ((window as any).__posSuppressExitUntil && Date.now() < (window as any).__posSuppressExitUntil) {
+              return;
+            }
+
+            // 🛡️ إذا كان هناك أي نافذة أو سلة أو قائمة منبثقة مفتوحة، لا نظهر إشعار الخروج
+            const hasOpenModal = document.querySelector('[data-state="open"], [role="dialog"], [role="alertdialog"]');
+            if (hasOpenModal) {
+              return;
+            }
+
+            if (localStorage.getItem('hyperpos_cart_open') === '1') {
+              return;
+            }
+
             // If on main route and can't go back, handle exit
             if (isMainRoute || !canGoBack) {
               handleBackPress();
@@ -71,6 +86,21 @@ export function ExitConfirmDialog() {
     const handlePopState = (event: PopStateEvent) => {
       if (!isMainRoute) return;
       
+      // 🛡️ إذا كان هناك كبت نشط (مثل إغلاق سلة أو إتمام عملية بيع)، لا نظهر إشعار الخروج
+      if ((window as any).__posSuppressExitUntil && Date.now() < (window as any).__posSuppressExitUntil) {
+        return;
+      }
+
+      // 🛡️ إذا كان التراجع ناتجاً عن إغلاق سلة أو نافذة منبثقة، نتجاهله ولا نظهر إشعار الخروج
+      if (
+        event.state?.posCartOpen ||
+        window.history.state?.posCartOpen ||
+        localStorage.getItem('hyperpos_cart_open') === '1' ||
+        document.querySelector('[data-state="open"], [role="dialog"], [role="alertdialog"]')
+      ) {
+        return;
+      }
+
       event.preventDefault();
       window.history.pushState(null, '', window.location.href);
       handleBackPress();

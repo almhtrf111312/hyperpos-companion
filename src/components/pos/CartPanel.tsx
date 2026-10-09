@@ -255,6 +255,13 @@ export function CartPanel({
   const [wholesaleMode, setWholesaleMode] = useState(false);
   const [receivedAmount, setReceivedAmount] = useState<number>(0);
   const [receivedCurrencyCode, setReceivedCurrencyCode] = useState<'USD' | 'TRY' | 'SYP'>(() => selectedCurrency.code);
+
+  // Fallback if the received currency was disabled in settings
+  useEffect(() => {
+    if (!currencies.some(c => c.code === receivedCurrencyCode)) {
+      setReceivedCurrencyCode(currencies[0]?.code || 'USD');
+    }
+  }, [currencies, receivedCurrencyCode]);
   
 
   // Smart customer search feature
@@ -569,6 +576,7 @@ export function CartPanel({
       : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
+    (window as any).__posSuppressExitUntil = Date.now() + 2000;
     setShowCashDialog(false);
     onClose?.();
     saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash');
@@ -837,6 +845,7 @@ export function CartPanel({
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
+    (window as any).__posSuppressExitUntil = Date.now() + 2000;
     setShowDebtDialog(false);
     onClose?.();
     saveSaleSnapshot(

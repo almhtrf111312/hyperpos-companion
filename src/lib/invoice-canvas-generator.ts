@@ -601,11 +601,17 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
     try {
       const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
       const rates = fullSettings.exchangeRates || {};
+      const enabled = fullSettings.enabledCurrencies || { USD: true, TRY: true, SYP: true };
       const sypRate = Number(rates.SYP || 0);
       const tryRate = Number(rates.TRY || 0);
+      const invSymbol = data.currencySymbol || '$';
       const parts: string[] = [];
-      if (sypRate > 0) parts.push(`سوري: ${formatNumber(data.total * sypRate)} ل.س`);
-      if (tryRate > 0) parts.push(`تركي: ${formatNumber(data.total * tryRate)} ₺`);
+      if (invSymbol !== 'ل.س' && sypRate > 0 && enabled.SYP !== false) {
+        parts.push(`سوري: ${formatNumber(data.total * sypRate)} ل.س`);
+      }
+      if (invSymbol !== '₺' && tryRate > 0 && enabled.TRY !== false) {
+        parts.push(`تركي: ${formatNumber(data.total * tryRate)} ₺`);
+      }
       if (parts.length > 0) {
         detailsY += 20;
         ctx.fillStyle = '#0284c7';

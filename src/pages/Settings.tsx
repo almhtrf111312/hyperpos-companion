@@ -397,13 +397,27 @@ export default function Settings() {
   const toggleCurrency = (currency: 'TRY' | 'SYP', enabled: boolean) => {
     setEnabledCurrencies(prev => {
       const next = { ...prev, [currency]: enabled };
+      let newPrimary = primaryCurrency;
       if (!enabled && primaryCurrency === currency) {
         if (currency === 'TRY') {
-          setPrimaryCurrency(next.SYP ? 'SYP' : 'USD');
+          newPrimary = next.SYP ? 'SYP' : 'USD';
         } else if (currency === 'SYP') {
-          setPrimaryCurrency(next.TRY ? 'TRY' : 'USD');
+          newPrimary = next.TRY ? 'TRY' : 'USD';
         }
+        setPrimaryCurrency(newPrimary);
       }
+      
+      // Auto-save immediately to localStorage so other tabs and POS reflect changes in real-time
+      const persistedSettings = getPersistedSettings();
+      const updated = {
+        ...persistedSettings,
+        enabledCurrencies: next,
+        primaryCurrency: newPrimary,
+      };
+      savePersistedSettings(updated);
+      window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: updated }));
+      window.dispatchEvent(new CustomEvent('settings-updated'));
+
       return next;
     });
   };
@@ -711,10 +725,19 @@ export default function Settings() {
           emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncObj.customFields);
         }
 
+        const rawEC = (syncObj as any)?.enabledCurrencies || persisted?.enabledCurrencies;
+        const freshEnabledCurrencies = {
+          USD: true,
+          TRY: rawEC?.TRY ?? true,
+          SYP: rawEC?.SYP ?? true,
+        };
+        setEnabledCurrencies(freshEnabledCurrencies);
+
         // Persist to localStorage so offline reads stay in sync
         savePersistedSettings({
           storeSettings: freshStoreSettings,
           primaryCurrency: freshPrimaryCurrency,
+          enabledCurrencies: freshEnabledCurrencies,
           exchangeRates: freshExchangeRates,
           currencyNames: freshCurrencyNames,
           taxEnabled: freshTaxEnabled,
@@ -734,7 +757,7 @@ export default function Settings() {
         settingsSnapshotRef.current = {
           storeSettings: { ...freshStoreSettings },
           primaryCurrency: freshPrimaryCurrency,
-          enabledCurrencies: { ...enabledCurrencies },
+          enabledCurrencies: { ...freshEnabledCurrencies },
           exchangeRates: { ...freshExchangeRates },
           currencyNames: { ...freshCurrencyNames },
           notificationSettings: { ...freshNotificationSettings },
@@ -799,6 +822,7 @@ export default function Settings() {
     if (activeTab === 'store') {
       return (
         primaryCurrency !== snap.primaryCurrency ||
+        JSON.stringify(enabledCurrencies) !== JSON.stringify(snap.enabledCurrencies) ||
         JSON.stringify(storeSettings) !== JSON.stringify(snap.storeSettings) ||
         JSON.stringify(exchangeRates) !== JSON.stringify(snap.exchangeRates) ||
         JSON.stringify(currencyNames) !== JSON.stringify(snap.currencyNames) ||
@@ -839,6 +863,9 @@ export default function Settings() {
     if (!snap) return;
     setStoreSettings({ ...snap.storeSettings });
     setPrimaryCurrency(snap.primaryCurrency ?? 'USD');
+    if (snap.enabledCurrencies) {
+      setEnabledCurrencies({ ...snap.enabledCurrencies });
+    }
     setExchangeRates({ ...snap.exchangeRates });
     setCurrencyNames({ ...snap.currencyNames });
     setNotificationSettings({ ...snap.notificationSettings });
