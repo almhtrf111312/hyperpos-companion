@@ -108,10 +108,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                        notification.type === 'out_of_stock' ||
                        notification.type === 'expired'
         ? 'error' : 'warning';
+      const structuredOptions = {
+        description: notification.message,
+        operation: notification.type === 'low_stock' ? 'تنبيه مخزون حرج'
+                 : notification.type === 'out_of_stock' ? 'نفاد المخزون'
+                 : notification.type === 'debt_overdue' ? 'دين متأخر'
+                 : notification.type === 'debt_due_today' ? 'دين مستحق اليوم'
+                 : notification.title,
+        itemName: notification.data?.productName,
+        stockQuantity: notification.data?.quantity,
+        isMultiple: false,
+      };
       if (toastType === 'error') {
-        toast.error(notification.title, { description: notification.message });
+        toast.error(notification.title, structuredOptions);
       } else {
-        toast.warning(notification.title, { description: notification.message });
+        toast.warning(notification.title, structuredOptions);
       }
 
       // فحص تفضيلات المستخدم قبل إرسال الإشعار الأصلي لنظام أندرويد

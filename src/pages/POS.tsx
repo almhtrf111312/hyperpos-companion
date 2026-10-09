@@ -12,7 +12,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { loadProductsCloud, loadProductsLocalFirst, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
@@ -722,9 +722,21 @@ export default function POS() {
 
     // Play sound effect
     playAddToCart();
-    // Show only ONE toast per add action
+    // Show rich smart toast with full direct details
     const unitLabel = unit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
-    showToast.success(t('pos.addedToCart').replace('{name}', `${product.name} (${unitLabel})`));
+    const isMultipleUnits = unit === 'bulk' && (product.conversionFactor || 1) > 1;
+    const itemPriceConverted = priceForUnit * (selectedCurrency.rate || 1);
+    const formattedPrice = `${selectedCurrency.symbol}${formatNumber(itemPriceConverted, 2)}`;
+
+    showToast.success('إضافة منتج إلى السلة', {
+      operation: 'إضافة منتج إلى السلة',
+      itemName: product.name,
+      isMultiple: isMultipleUnits,
+      itemCount: isMultipleUnits ? (product.conversionFactor || 1) : 1,
+      price: formattedPrice,
+      currency: selectedCurrency.symbol,
+      description: unitLabel ? `الوحدة: ${unitLabel}` : undefined,
+    });
   };
 
   // Toggle unit for cart item

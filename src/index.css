@@ -1890,50 +1890,40 @@ html { font-size: 14px; }
   animation-play-state: paused !important;
 }
 
-/* Smart Toast Island Custom Styling & Theme Protection */
+/* Smart Toast Island Custom Styling & Glassmorphism Theme Integration */
 .smart-toast-card {
-  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.14), 0 6px 14px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  background: hsl(var(--card) / 0.92);
+  border: 1px solid hsl(var(--border) / 0.8);
+  color: hsl(var(--foreground));
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.16), 0 0 0 1px hsl(var(--border) / 0.4);
 }
 
 .dark .smart-toast-card {
+  background: hsl(var(--card) / 0.90);
+  border: 1px solid hsl(var(--border) / 0.7);
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 8px 16px -6px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-/* Light mode high-contrast text overrides inside toast */
-.light .smart-toast-card .smart-toast-title {
-  color: #0f172a !important; /* dark slate-900 */
+/* Glassmorphism Active Theme (.blur-theme) - Pure True Glass with User-Defined Transparency */
+.blur-theme .smart-toast-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(calc(var(--blur-intensity, 16px) + 8px)) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(calc(var(--blur-intensity, 16px) + 8px)) saturate(1.8) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow), 0 16px 40px -10px rgba(0, 0, 0, 0.25) !important;
 }
 
-.light .smart-toast-card .smart-toast-subtitle {
-  color: #475569 !important; /* slate-600 */
-}
-
-.light .smart-toast-card .smart-toast-time {
-  color: #64748b !important; /* slate-500 */
-}
-
-/* Dark mode high-contrast text overrides inside toast */
-.dark .smart-toast-card .smart-toast-title {
-  color: #ffffff !important;
-}
-
-.dark .smart-toast-card .smart-toast-subtitle {
-  color: #d4d4d8 !important; /* zinc-300 */
-}
-
-.dark .smart-toast-card .smart-toast-time {
-  color: #a1a1aa !important; /* zinc-400 */
+/* Timeline paused state when finger or mouse rests on notification */
+.smart-toast-card .timer-paused {
+  animation-play-state: paused !important;
 }
 
 /* Primary Button adapts dynamically to Appearance theme (--primary) */
 .smart-toast-btn-primary {
   background-color: hsl(var(--primary)) !important;
-  color: #ffffff !important;
-}
-
-.smart-toast-btn-primary span,
-.smart-toast-btn-primary * {
-  color: #ffffff !important;
+  color: hsl(var(--primary-foreground, 0 0% 100%)) !important;
 }
 
 .smart-toast-btn-primary:hover {
@@ -1941,24 +1931,14 @@ html { font-size: 14px; }
 }
 
 /* Secondary Button in light & dark modes */
-.light .smart-toast-btn-secondary {
-  background-color: #f1f5f9 !important; /* slate-100 */
-  color: #1e293b !important; /* slate-800 */
-  border-color: #cbd5e1 !important; /* slate-300 */
+.smart-toast-btn-secondary {
+  background-color: hsl(var(--muted) / 0.7) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border) / 0.6) !important;
 }
 
-.light .smart-toast-btn-secondary:hover {
-  background-color: #e2e8f0 !important; /* slate-200 */
-}
-
-.dark .smart-toast-btn-secondary {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: #f4f4f5 !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.dark .smart-toast-btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
+.smart-toast-btn-secondary:hover {
+  background-color: hsl(var(--muted)) !important;
 }
 
 

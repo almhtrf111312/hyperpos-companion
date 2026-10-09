@@ -13,6 +13,16 @@ export interface SmartToastData {
     onClick: () => void;
   };
   onDismiss?: () => void;
+
+  // الحقول المنظمة لتفاصيل العمليات المباشرة
+  operation?: string;
+  itemName?: string;
+  itemCount?: number;
+  isMultiple?: boolean;
+  price?: string | number;
+  currency?: string;
+  stockQuantity?: number;
+  statusBadge?: string;
 }
 
 // Global emitter

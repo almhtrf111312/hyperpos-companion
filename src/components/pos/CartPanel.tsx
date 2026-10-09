@@ -731,23 +731,63 @@ export function CartPanel({
 
           const outcome = await Promise.race([syncPromise, timeoutPromise]);
 
+          const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+          const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
+          const singleName = isSingle ? cartSnapshot[0].name : undefined;
+          const formattedTotal = `${activeReceivedCurrency.symbol}${formatNumber(receivedAmount || (totalSnapshot * (activeReceivedCurrency.rate || 1)), 2)}`;
+
           if ('timeout' in outcome) {
             // استغرقت المزامنة وقتاً أطول على الشبكة، الفاتورة محفوظة محلياً وفي طريقها للسحابة
             completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
-            showToast.info('تم حفظ الفاتورة محلياً', 'جاري المزامنة مع السحابة في الخلفية...');
+            showToast.info('تم حفظ الفاتورة محلياً', {
+              operation: 'فاتورة مكتملة',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedTotal,
+              currency: activeReceivedCurrency.symbol,
+              description: 'محفوظة محلياً ✓ جاري المزامنة بالخلفية...',
+            });
           } else if (outcome.success) {
             completeSync('تمت المزامنة بنجاح ✓', 2000);
-            showToast.success('تم حفظ الفاتورة ومزامنتها بنجاح ✓');
+            showToast.success('فاتورة مكتملة', {
+              operation: 'فاتورة مكتملة',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedTotal,
+              currency: activeReceivedCurrency.symbol,
+              description: 'تم حفظ الفاتورة ومزامنتها بنجاح ✓',
+            });
           } else if (outcome.failed > 0) {
             failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
-            showToast.warning('تم حفظ الفاتورة محلياً', 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً');
+            showToast.warning('تم حفظ الفاتورة محلياً', {
+              operation: 'فاتورة مكتملة',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedTotal,
+              currency: activeReceivedCurrency.symbol,
+              description: 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً',
+            });
           } else {
             completeSync('تم حفظ الفاتورة ✓', 2000);
-            showToast.success('تم حفظ الفاتورة ✓');
+            showToast.success('فاتورة مكتملة', {
+              operation: 'فاتورة مكتملة',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedTotal,
+              currency: activeReceivedCurrency.symbol,
+              description: 'تم تسجيل الفاتورة بنجاح ✓',
+            });
           }
         } catch {
           completeSync('محفوظة محلياً ✓', 2000);
-          showToast.info('تم حفظ الفاتورة محلياً', 'سيتم رفعها للسحابة تلقائياً');
+          showToast.info('تم حفظ الفاتورة محلياً', {
+            operation: 'فاتورة مكتملة',
+            description: 'سيتم رفعها للسحابة تلقائياً',
+          });
         }
       })();
 
@@ -999,26 +1039,70 @@ export function CartPanel({
 
           const outcome = await Promise.race([syncPromise, timeoutPromise]);
 
+          const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+          const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
+          const singleName = isSingle ? cartSnapshot[0].name : undefined;
+          const totalDebtSale = downPaymentSnapshot + debtRemainingSnapshot;
+          const formattedDebtPrice = `$${formatNumber(totalDebtSale, 2)}`;
+
           if ('timeout' in outcome) {
             completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
-            showToast.info('تم حفظ الفاتورة محلياً', 'جاري المزامنة مع السحابة في الخلفية...');
+            showToast.info('تم حفظ الفاتورة محلياً', {
+              operation: 'فاتورة بيع آجل',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedDebtPrice,
+              description: 'محفوظة محلياً ✓ جاري المزامنة بالخلفية...',
+            });
           } else if (outcome.success) {
             completeSync('تمت المزامنة بنجاح ✓', 2000);
             if (downPaymentSnapshot > 0) {
-              showToast.success(`تم حفظ ومزامنة البيع المركب بنجاح ✓ (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)})`);
+              showToast.success('فاتورة بيع مركب', {
+                operation: 'فاتورة بيع مركب',
+                itemName: singleName,
+                isMultiple: !isSingle,
+                itemCount: totalPieces,
+                price: formattedDebtPrice,
+                description: `نقدي: $${formatNumber(downPaymentSnapshot, 2)} + دين: $${formatNumber(debtRemainingSnapshot, 2)}`,
+              });
             } else {
-              showToast.success('تم حفظ فاتورة البيع المؤجل ومزامنتها بنجاح ✓');
+              showToast.success('فاتورة بيع مؤجل', {
+                operation: 'فاتورة بيع مؤجل',
+                itemName: singleName,
+                isMultiple: !isSingle,
+                itemCount: totalPieces,
+                price: formattedDebtPrice,
+                description: 'تم حفظ فاتورة البيع ومزامنتها بنجاح ✓',
+              });
             }
           } else if (outcome.failed > 0) {
             failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
-            showToast.warning('تم حفظ الفاتورة محلياً', 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً');
+            showToast.warning('تم حفظ الفاتورة محلياً', {
+              operation: 'فاتورة بيع آجل',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedDebtPrice,
+              description: 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً',
+            });
           } else {
             completeSync('تم حفظ الفاتورة ✓', 2000);
-            showToast.success(downPaymentSnapshot > 0 ? 'تم حفظ البيع المركب بنجاح ✓' : 'تم حفظ فاتورة البيع المؤجل ✓');
+            showToast.success('فاتورة بيع آجل', {
+              operation: downPaymentSnapshot > 0 ? 'فاتورة بيع مركب' : 'فاتورة بيع مؤجل',
+              itemName: singleName,
+              isMultiple: !isSingle,
+              itemCount: totalPieces,
+              price: formattedDebtPrice,
+              description: 'تم تسجيل الفاتورة بنجاح ✓',
+            });
           }
         } catch {
           completeSync('محفوظة محلياً ✓', 2000);
-          showToast.info('تم حفظ الفاتورة محلياً', 'سيتم رفعها للسحابة تلقائياً');
+          showToast.info('تم حفظ الفاتورة محلياً', {
+            operation: 'فاتورة بيع آجل',
+            description: 'سيتم رفعها للسحابة تلقائياً',
+          });
         }
       })();
 
