@@ -189,37 +189,35 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
         </div>
 
         {pendingBlur && (
-          <div className="space-y-3 pr-13">
-            <div className="flex items-center justify-between text-sm">
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between text-xs font-semibold">
               <span className="text-muted-foreground">{t('settings.transparencyLevel')}</span>
-              <span className="font-medium text-foreground">{pendingTransparency}%</span>
+              <span className="font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                {pendingTransparency}%
+              </span>
             </div>
-            <Slider
-              value={[pendingTransparency]}
-              onValueChange={handleTransparencyChange}
-              min={10}
-              max={90}
-              step={10}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>10%</span>
-              <span>50%</span>
-              <span>90%</span>
+
+            {/* شريط الشفافية باتجاه LTR صريح لمنع الانعكاس بين اليمين واليسار */}
+            <div dir="ltr" className="space-y-1.5 px-1">
+              <Slider
+                value={[pendingTransparency]}
+                onValueChange={handleTransparencyChange}
+                min={10}
+                max={90}
+                step={10}
+                className="w-full cursor-pointer"
+              />
+              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+                <span>10% (خفيف)</span>
+                <span>50% (متوسط)</span>
+                <span>90% (شفاف جداً)</span>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Live Preview */}
-      <div className="pt-4 border-t border-border">
-        <ThemeLivePreview
-          mode={pendingMode}
-          color={pendingColor}
-          blur={pendingBlur}
-          transparency={pendingTransparency}
-        />
-      </div>
+      
     </div>
   );
 }

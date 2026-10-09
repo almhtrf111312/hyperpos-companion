@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Barcode, Package, LayoutGrid, List, AlignJustify } from 'lucide-react';
+import { Search, Barcode, Package, LayoutGrid, Grid3x3, List, AlignJustify } from 'lucide-react';
 import { ProductImage } from '@/components/products/ProductImage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,7 @@ interface ProductGridProps {
   onBarcodeScan?: (barcode: string) => void;
 }
 
-type ViewMode = 'grid' | 'list' | 'compact';
+type ViewMode = 'grid' | 'dense' | 'list' | 'compact';
 
 export function ProductGrid({
   products,
@@ -77,7 +77,8 @@ export function ProductGrid({
 
   const cycleViewMode = () => {
     setViewMode((prev) => {
-      if (prev === 'grid') return 'list';
+      if (prev === 'grid') return 'dense';
+      if (prev === 'dense') return 'list';
       if (prev === 'list') return 'compact';
       return 'grid';
     });
@@ -192,9 +193,10 @@ export function ProductGrid({
           <button
             type="button"
             onClick={cycleViewMode}
-            className="flex md:hidden items-center justify-center h-12 w-12 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-foreground hover:bg-black/5 active:scale-95 transition-all"
+            className="flex items-center justify-center h-12 w-12 md:h-14 md:w-14 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-foreground hover:bg-black/5 active:scale-95 transition-all"
           >
             {viewMode === 'grid' && <LayoutGrid className="w-5 h-5" />}
+            {viewMode === 'dense' && <Grid3x3 className="w-5 h-5" />}
             {viewMode === 'list' && <List className="w-5 h-5" />}
             {viewMode === 'compact' && <AlignJustify className="w-5 h-5" />}
           </button>
@@ -207,10 +209,10 @@ export function ProductGrid({
               key={category + index}
               onClick={() => onCategoryChange(category)}
               className={cn(
-                "px-5 py-2.5 md:py-3 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 active:scale-95",
+                "px-4 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all duration-200 flex-shrink-0 active:scale-95",
                 selectedCategory === category
-                  ? "bg-black dark:bg-white text-white dark:text-black shadow-lg scale-105"
-                  : "bg-white dark:bg-zinc-900 text-muted-foreground hover:text-foreground shadow-sm border border-black/5 dark:border-white/5"
+                  ? "bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/20"
+                  : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 shadow-sm border border-border/60"
               )}
             >
               {category}
@@ -222,25 +224,44 @@ export function ProductGrid({
       {/* Grid Content */}
       <div className="flex-1 p-3 pt-0 md:p-5 overflow-y-auto pb-32">
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5">
             {filteredProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in group bg-white dark:bg-zinc-900 rounded-[20px] md:rounded-3xl overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:-translate-y-1 transition-all duration-300 border border-black/5 dark:border-white/5 flex flex-col"
-                style={{ animationDelay: `${index * 30}ms` }}
+                className="pos-item text-right fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border/60 flex flex-col"
+                style={{ animationDelay: `${index * 20}ms` }}
               >
-                {/* Edge-to-Edge Image Header */}
-                <div className="w-full aspect-[4/3] bg-slate-100 dark:bg-zinc-800 relative overflow-hidden shrink-0">
+                {/* الصورة بدون أي عناصر معلقة تشوهها */}
+                <div className="w-full aspect-[16/10] bg-muted/40 relative overflow-hidden shrink-0">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                    iconClassName="w-8 h-8 text-muted-foreground/30"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    iconClassName="w-7 h-7 text-muted-foreground/30"
                   />
-                  {/* Floating Quantity Badge */}
-                  <div className="absolute top-2 right-2 bg-black/60 dark:bg-white/90 backdrop-blur-md rounded-full px-2 py-0.5 shadow-sm">
-                    <span className="text-[10px] font-bold text-white dark:text-black">
+                </div>
+
+                {/* جسم البطاقة المستغل للمساحة */}
+                <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5">
+                  {/* اسم المنتج ومعه رقم القطعة/الباركود بجانبه مباشرة */}
+                  <div className="flex items-start justify-between gap-1">
+                    <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-1 leading-tight flex-1">
+                      {product.name}
+                    </h3>
+                    {(product.barcode || (product as any).sku || (product as any).item_number) && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 bg-muted text-muted-foreground rounded shrink-0 border border-border/40">
+                        #{product.barcode || (product as any).sku || (product as any).item_number}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* السطر السفلي: السعر وبجانبه مباشرة عدد القطع / المخزون */}
+                  <div className="flex items-center justify-between gap-1.5 mt-auto pt-1 border-t border-border/30">
+                    <span className="text-primary font-black text-xs md:text-sm">
+                      ${product.price}
+                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md shrink-0 border border-border/40">
                       <DualUnitDisplayCompact
                         totalPieces={product.quantity}
                         conversionFactor={product.conversionFactor || 1}
@@ -250,11 +271,39 @@ export function ProductGrid({
                     </span>
                   </div>
                 </div>
+              </button>
+            ))}
+          </div>
+        )}
 
-                {/* Card Body */}
-                <div className="p-3 md:p-4 flex flex-col justify-between flex-1">
-                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 mb-1 leading-snug">{product.name}</h3>
-                  <p className="text-primary font-black text-sm md:text-base mt-auto">$\{product.price}</p>
+        {/* Dense View - 3 items side-by-side on mobile, 4-7 on desktop */}
+        {viewMode === 'dense' && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+            {filteredProducts.map((product, index) => (
+              <button
+                key={product.id}
+                {...pressHandlers(product)}
+                className="pos-item text-right fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-all"
+                style={{ animationDelay: `${index * 15}ms` }}
+              >
+                <div className="w-full aspect-square bg-muted/30 rounded-lg overflow-hidden mb-1.5 relative">
+                  <ProductImage
+                    imageUrl={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    iconClassName="w-5 h-5 text-muted-foreground/30"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-[11px] text-foreground line-clamp-1 leading-tight">
+                    {product.name}
+                  </h4>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-black text-primary">${product.price}</span>
+                    <span className="text-muted-foreground font-mono">
+                      {product.quantity}ق
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}

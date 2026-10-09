@@ -1,6 +1,11 @@
 [
   {
     "type": "feature",
+    "ar": "v1.0.65 - نمط العرض المرصوص (Dense Grid)، تحسين بطاقات المنتجات وتناسق الألوان مع كافة الثيمات، حل انعكاس مؤشر الشفافية، قائمة الخطوط الخفيفة الأفقية، شريط مقياس الواجهة بـ 5 نقاط، وهيكلة صفحة المظهر إلى 4 تبويبات منظمة.",
+    "en": "v1.0.65 - Dense grid view mode for POS, product card redesign with semantic theme colors, fixed inverted transparency slider, lightweight horizontal font selector, 5-step UI scale slider, and 4-tab Appearance page layout."
+  },
+  {
+    "type": "feature",
     "ar": "v1.0.64 - نمط السوبرماركت فائق السرعة، تقسيم شاشة التابلت مع السلة، تعدد السلال المعلقة، فئات النقد السريع وحساب الباقي، والسماح بالبيع بأقل من الإجمالي مع تحذير أحمر.",
     "en": "v1.0.64 - Supermarket high-speed mode, tablet split-screen, multi-cart support, quick cash denominations and change due calculation, and underpaid sale allowance with red warning."
   },
