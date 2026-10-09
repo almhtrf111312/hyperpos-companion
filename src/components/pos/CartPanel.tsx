@@ -423,6 +423,56 @@ export function CartPanel({
     });
   };
 
+  // اعتماد العجز في المبلغ المقبوض كخصم فوري للتسوية السريعة
+  const handleApplyDeficitAsDiscount = () => {
+    if (receivedUSD <= 0 || receivedUSD >= roundCurrency(total) - 0.001) return;
+    
+    // حساب قيمة الخصم الإجمالية بالدولار المطلوبة لجعل الإجمالي النهائي مساوياً تماماً للمقبوض
+    let requiredDiscountAmountUSD = 0;
+    if (taxMode === 'gross' || effectiveTaxRate <= 0) {
+      requiredDiscountAmountUSD = Math.max(0, roundCurrency(subtotal - receivedUSD));
+    } else {
+      const targetTaxable = receivedUSD / (1 + effectiveTaxRate / 100);
+      requiredDiscountAmountUSD = Math.max(0, roundCurrency(subtotal - targetTaxable));
+    }
+
+    setDiscountType('fixed');
+    const newDiscountInCurrency = roundCurrency(requiredDiscountAmountUSD * activeRate);
+    onDiscountChange(newDiscountInCurrency);
+    showToast.success(`تم اعتماد العجز (${activeReceivedCurrency.symbol}${formatNumber(remainingInReceivedCurrency)}) كخصم فوري`);
+  };
+
+  // اعتماد الزيادة في المبلغ المقبوض كربح إضافي عبر تعديل سعر البيع
+  const handleApplySurplusAsProfit = () => {
+    if (!onUpdateItemPrice || cart.length === 0) return;
+    if (receivedUSD <= roundCurrency(total) + 0.001) return;
+
+    if (discount > 0) {
+      onDiscountChange(0);
+    }
+
+    const targetSubtotalUSD = (taxMode === 'gross' || effectiveTaxRate <= 0)
+      ? receivedUSD
+      : receivedUSD / (1 + effectiveTaxRate / 100);
+
+    const extraProfitUSD = roundCurrency(receivedUSD - total);
+
+    if (cart.length === 1) {
+      const item = cart[0];
+      const newUnitPrice = roundCurrency(targetSubtotalUSD / item.quantity);
+      onUpdateItemPrice(item.id, newUnitPrice, item.unit);
+      showToast.success(`تم تعديل سعر الصنف واعتماد الزيادة (${formatNumber(extraProfitUSD)}) كربح إضافي`);
+    } else {
+      const currentSubtotal = subtotal > 0 ? subtotal : 1;
+      const ratio = targetSubtotalUSD / currentSubtotal;
+      cart.forEach((item) => {
+        const newUnitPrice = roundCurrency(item.price * ratio);
+        onUpdateItemPrice(item.id, newUnitPrice, item.unit);
+      });
+      showToast.success(`تم تعديل أسعار الأصناف واعتماد الزيادة (${formatNumber(extraProfitUSD)}) كربح إضافي`);
+    }
+  };
+
   const handleCashSale = async () => {
     if (cart.length === 0) return;
 
@@ -1244,7 +1294,7 @@ export function CartPanel({
           isMobile ? "rounded-t-3xl" : "rounded-3xl border border-black/5 dark:border-white/10"
       )}>
         {/* Cart Header */}
-        <div className="p-5 md:p-6 border-b border-black/5 dark:border-white/5 bg-transparent">
+        <div className="p-3 md:p-3.5 border-b border-black/5 dark:border-white/5 bg-transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 text-primary" />
@@ -1356,7 +1406,7 @@ export function CartPanel({
           )}
 
           {/* Customer Name with Autocomplete */}
-          <div className="mt-3 flex gap-2">
+          <div className="mt-2 flex gap-1.5">
             <div className="flex-1 relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
               <Input
@@ -1375,7 +1425,7 @@ export function CartPanel({
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
-                className="pr-10 bg-slate-100 dark:bg-zinc-800 border-none h-12 rounded-2xl text-base shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20"
+                className="pr-9 bg-slate-100 dark:bg-zinc-800 border-none h-9 md:h-10 rounded-xl text-xs md:text-sm shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20"
               />
               {/* Customer Suggestions Dropdown */}
               {showSuggestions && customerSuggestions.length > 0 && (
@@ -1408,7 +1458,7 @@ export function CartPanel({
             <Button
               variant="outline"
               size="icon"
-              className="h-12 w-12 rounded-2xl flex-shrink-0 border-none shadow-sm bg-white dark:bg-zinc-800 hover:bg-black/5"
+              className="h-9 w-9 md:h-10 md:w-10 rounded-xl flex-shrink-0 border-none shadow-sm bg-white dark:bg-zinc-800 hover:bg-black/5"
               onClick={() => setShowCustomerDialog(true)}
             >
               <UserPlus className="w-4 h-4" />
@@ -1428,25 +1478,41 @@ export function CartPanel({
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-card rounded-lg px-2.5 py-2 border border-border/30 cart-item-enter transition-all duration-150 hover:border-primary/30 hover:bg-card/90"
-                style={{ animationDelay: `${index * 30}ms` }}
+                className="bg-card rounded-xl px-2.5 py-1.5 border border-border/40 cart-item-enter transition-all duration-150 hover:border-primary/40 hover:bg-card/95 flex items-center gap-2 group min-h-[44px]"
+                style={{ animationDelay: `${index * 20}ms` }}
               >
-                {/* Product name row */}
-                <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                    <h4 className="font-semibold text-xs leading-tight line-clamp-1 text-foreground">{item.name}</h4>
+                {/* زر حذف واضح ومريح */}
+                <button
+                  type="button"
+                  onClick={() => onRemoveItem(item.id, item.unit)}
+                  className="w-7 h-7 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center shrink-0 transition-colors"
+                  title="حذف من السلة"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+
+                {/* اسم المنتج وشارة الوحدة */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-semibold text-xs leading-tight truncate text-foreground" title={item.name}>
+                      {item.name}
+                    </span>
                     {!!item.bulkSalePrice && item.bulkSalePrice > 0 && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${item.unit === 'bulk'
-                          ? 'bg-primary/20 text-primary'
-                          : 'bg-muted-foreground/20 text-muted-foreground'
-                          }`}>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <span className={cn(
+                          "text-[9px] px-1 py-0.2 rounded font-medium",
+                          item.unit === 'bulk'
+                            ? "bg-primary/20 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        )}>
                           {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
                         </span>
                         {onToggleUnit && (
                           <button
+                            type="button"
                             onClick={() => onToggleUnit(item.id, item.unit)}
                             className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                            title="تبديل الوحدة"
                           >
                             <Repeat className="w-2.5 h-2.5" />
                           </button>
@@ -1454,56 +1520,51 @@ export function CartPanel({
                       </div>
                     )}
                   </div>
+                  {(wholesaleMode || (isRepairStoreType() && item.costPrice != null)) && (
+                    <div className="text-[9px] text-muted-foreground truncate leading-none mt-0.5">
+                      {wholesaleMode && <span className="text-orange-400 font-medium">{formatNumber(getItemPrice(item))} × {item.quantity}</span>}
+                      {wholesaleMode && isRepairStoreType() && item.costPrice != null && ' · '}
+                      {isRepairStoreType() && item.costPrice != null && `تكلفة: ${formatNumber(item.costPrice || 0)}`}
+                    </div>
+                  )}
+                </div>
+
+                {/* أزرار التحكم بالكمية الأنيقة */}
+                <div className="flex items-center gap-0.5 bg-muted/40 rounded-lg p-0.5 border border-border/30 shrink-0">
                   <button
-                    onClick={() => onRemoveItem(item.id, item.unit)}
-                    className="p-0.5 text-muted-foreground/50 hover:text-destructive transition-colors flex-shrink-0"
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
+                    className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-all shadow-xs"
+                    title="تقليل الكمية"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="w-6 text-center font-bold text-xs text-foreground tabular-nums select-none">
+                    {item.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
+                    className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-all shadow-xs"
+                    title="زيادة الكمية"
+                  >
+                    <Plus className="w-3 h-3" />
                   </button>
                 </div>
-                {/* Price + qty row */}
-                <div className="flex items-center justify-between gap-2">
-                  {/* Qty controls */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
-                      className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-muted/60 border border-border/60 text-foreground flex items-center justify-center hover:bg-muted hover:shadow-sm active:scale-95 transition-all"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-8 text-center font-bold text-sm text-foreground">{item.quantity}</span>
-                    <button
-                      onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
-                      className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-muted/60 border border-border/60 text-foreground flex items-center justify-center hover:bg-muted hover:shadow-sm active:scale-95 transition-all"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {/* Price */}
-                  <div className="flex items-center gap-1.5">
-                    {onUpdateItemPrice && (
-                      <EditablePrice
-                        value={getItemPrice(item)}
-                        onChange={(newPrice) => onUpdateItemPrice(item.id, newPrice, item.unit)}
-                        className="w-14 h-6 text-[10px] text-center bg-muted/30 border border-border p-1"
-                      />
-                    )}
-                    <span className={cn("font-bold text-sm tabular-nums", wholesaleMode ? "text-orange-500" : "text-primary")}>
-                      ${formatNumber(getItemPrice(item) * item.quantity)}
-                    </span>
-                  </div>
+
+                {/* سعر البيع التفاعلي والإجمالي */}
+                <div className="flex items-center gap-1 shrink-0 text-left">
+                  {onUpdateItemPrice && (
+                    <EditablePrice
+                      value={getItemPrice(item)}
+                      onChange={(newPrice) => onUpdateItemPrice(item.id, newPrice, item.unit)}
+                      className="w-12 h-6 text-[10px] text-center bg-muted/30 border border-border/60 p-0.5 rounded-md"
+                    />
+                  )}
+                  <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[48px] text-left", wholesaleMode ? "text-orange-500" : "text-primary")}>
+                    ${formatNumber(getItemPrice(item) * item.quantity)}
+                  </span>
                 </div>
-                {/* Wholesale / Repair extra info */}
-                {wholesaleMode && (
-                  <div className="text-[9px] text-orange-400 mt-1 opacity-80">
-                    {formatNumber(getItemPrice(item))} × {item.quantity}
-                  </div>
-                )}
-                {isRepairStoreType() && item.costPrice != null && (
-                  <div className="text-[9px] text-muted-foreground mt-1">
-                    تكلفة: ${formatNumber(item.costPrice || 0)} · مرجع: ${formatNumber((item.costPrice || 0) + (item.laborCost || 0))}
-                  </div>
-                )}
               </div>
             ))
           )}
@@ -1695,10 +1756,22 @@ export function CartPanel({
                   </span>
                 )}
                 {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
-                  <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                    باقي للعميل: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(changeUSD)})`}
-                  </span>
+                  <div className="flex items-center justify-between gap-1 w-full flex-wrap">
+                    <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
+                      باقي للعميل: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
+                      {activeReceivedCurrency.code !== 'USD' && ` (${formatNumber(changeUSD)})`}
+                    </span>
+                    {receivedUSD > roundCurrency(total) + 0.01 && onUpdateItemPrice && (
+                      <button
+                        type="button"
+                        onClick={handleApplySurplusAsProfit}
+                        className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-all flex items-center gap-1"
+                        title="تعديل سعر الصنف ليطابق المبلغ المقبوض واعتماد الزيادة كربح"
+                      >
+                        <span>اعتماد كربح إضافي (+${formatNumber(roundCurrency(receivedUSD - total))})</span>
+                      </button>
+                    )}
+                  </div>
                 )}
                 {receivedAmount > 0 && !wholesaleMode && receivedUSD < total - 0.001 && (
                   <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold">
@@ -1732,11 +1805,37 @@ export function CartPanel({
             </div>
           </div>
 
-          {/* شريط تحذير بارز باللون الأحمر عند البيع بأقل من الإجمالي */}
+          {/* شريط معالجة عجز المبلغ المقبوض مع خيارات الاعتماد كخصم أو دين */}
           {!wholesaleMode && receivedAmount > 0 && receivedUSD < roundCurrency(total) - 0.01 && (
-            <div className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold text-center flex items-center justify-center gap-1.5 animate-pulse">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>تنبيه: المبلغ المقبوض أقل من إجمالي الفاتورة - هل تريد المتابعة؟</span>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex flex-col gap-2 shadow-xs">
+              <div className="flex items-center justify-between gap-1 font-bold">
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>المقبوض أقل من الفاتورة بعجز: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)} (${formatNumber(remainingUSD)})</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleApplyDeficitAsDiscount}
+                  className="flex-1 h-7 text-[11px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-500/40 rounded-lg"
+                  title="تحويل العجز إلى خصم مباشر وإتمام البيع نقداً"
+                >
+                  اعتماد كخصم (-${formatNumber(remainingUSD)})
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDebtSale}
+                  className="flex-1 h-7 text-[11px] font-bold bg-warning/15 hover:bg-warning/25 text-warning border-warning/40 rounded-lg"
+                  title="تسجيل المبلغ المتبقي كدين على العميل"
+                >
+                  تسجيل كدين
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1824,12 +1923,28 @@ export function CartPanel({
                     </span>
                   </div>
                   {changeInReceivedCurrency > 0 && (
-                    <div className="flex justify-between text-success font-bold bg-success/10 p-2 rounded-lg">
-                      <span>الباقي للعميل:</span>
-                      <span>
-                        {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                        {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(changeUSD)})`}
-                      </span>
+                    <div className="flex flex-col gap-1.5 bg-success/10 p-2.5 rounded-lg border border-success/20">
+                      <div className="flex justify-between text-success font-bold text-sm">
+                        <span>الباقي للعميل:</span>
+                        <span>
+                          {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
+                          {activeReceivedCurrency.code !== 'USD' && ` (${formatNumber(changeUSD)})`}
+                        </span>
+                      </div>
+                      {onUpdateItemPrice && receivedUSD > roundCurrency(total) + 0.01 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            handleApplySurplusAsProfit();
+                            setShowCashDialog(false);
+                          }}
+                          className="h-7 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 self-end mt-1 rounded-lg"
+                        >
+                          اعتماد الزيادة كربح إضافي (بدون باقٍ)
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

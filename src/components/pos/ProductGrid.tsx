@@ -247,29 +247,22 @@ export function ProductGrid({
                 className="pos-item text-right fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border/60 flex flex-col"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
-                {/* الصورة بدون أي عناصر معلقة تشوهها */}
-                <div className="w-full aspect-[16/10] bg-muted/40 relative overflow-hidden shrink-0">
+                {/* الصورة بإطار متناسق واحتواء كامل بدون قص أو تقريب */}
+                <div className="w-full aspect-[4/3] bg-muted/20 p-2 relative overflow-hidden shrink-0 flex items-center justify-center">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
                     iconClassName="w-7 h-7 text-muted-foreground/30"
                   />
                 </div>
 
-                {/* جسم البطاقة المستغل للمساحة */}
+                {/* جسم البطاقة المستغل للمساحة بالكامل لاسم المنتج */}
                 <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5">
-                  {/* اسم المنتج ومعه رقم القطعة/الباركود بجانبه مباشرة */}
-                  <div className="flex items-start justify-between gap-1">
-                    <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-1 leading-tight flex-1">
-                      {product.name}
-                    </h3>
-                    {(product.barcode || (product as any).sku || (product as any).item_number) && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 bg-muted text-muted-foreground rounded shrink-0 border border-border/40">
-                        #{product.barcode || (product as any).sku || (product as any).item_number}
-                      </span>
-                    )}
-                  </div>
+                  {/* اسم المنتج بكامل العرض بدون اقتطاع الباركود */}
+                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 leading-snug flex-1" title={product.name}>
+                    {product.name}
+                  </h3>
 
                   {/* السطر السفلي: السعر وبجانبه مباشرة عدد القطع / المخزون */}
                   <div className="flex items-center justify-between gap-1.5 mt-auto pt-1 border-t border-border/30">
@@ -301,22 +294,22 @@ export function ProductGrid({
                 className="pos-item text-right fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-all"
                 style={{ animationDelay: `${index * 15}ms` }}
               >
-                <div className="w-full aspect-square bg-muted/30 rounded-lg overflow-hidden mb-1.5 relative">
+                <div className="w-full aspect-square bg-muted/20 p-1.5 rounded-lg overflow-hidden mb-1.5 relative flex items-center justify-center">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform"
                     iconClassName="w-5 h-5 text-muted-foreground/30"
                   />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-bold text-[11px] text-foreground line-clamp-1 leading-tight">
+                  <h4 className="font-bold text-[11px] text-foreground line-clamp-2 leading-tight" title={product.name}>
                     {product.name}
                   </h4>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="font-black text-primary">{formatDisplayPrice(product.price)}</span>
-                    <span className="text-muted-foreground font-mono">
-                      {product.quantity}ق
+                  <div className="flex items-center justify-between text-[10px] gap-1">
+                    <span className="font-black text-primary truncate">{formatDisplayPrice(product.price)}</span>
+                    <span className="text-muted-foreground font-semibold text-[9px] bg-muted/60 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+                      {product.quantity} قطعة
                     </span>
                   </div>
                 </div>

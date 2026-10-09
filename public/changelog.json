@@ -1,6 +1,11 @@
 [
   {
     "type": "feature",
+    "ar": "v1.0.67 - إصلاح واجهة نقطة البيع: إطار متناسق 4:3 للصور مع احتواء كامل وتوسيع اسم المنتج، عناصر السلة بنمط سطر واحد مدمج (Single-Row Item)، ضغط الهيدر بنسبة 35%، معالجة عجز المقبوض باعتماده كخصم فوري أو تسجيله كدين، واعتماد الزيادة في المقبوض كربح إضافي.",
+    "en": "v1.0.67 - POS UI & UX overhaul: 4:3 image ratio with full object containment and expanded 2-line product name, compact Single-Row Cart Items, 35% header height compression, deficit received amount handling with instant discount or debt sale, and overpaid surplus profit override."
+  },
+  {
+    "type": "feature",
     "ar": "v1.0.66 - بطاقات العملة الافتراضية وأسعار الصرف التفاعلية في الإعدادات، بدء نقطة البيع بالعملة الافتراضية، عرض أسعار بطاقات المنتجات بالعملة المختارة ومعدل الصرف، ودعم إدخال فواتير الشراء بالعملات المحلية مع حساب التكلفة المرجعية USD بدقة WAC وحساب الأرباح السحابية.",
     "en": "v1.0.66 - Interactive radio cards for default currency and exchange rates in Settings, POS default currency initialization, product card price display in selected currency and exchange rates, and multi-currency purchase invoice entry with exact USD reference cost calculation preserving WAC and cloud profits."
   },
