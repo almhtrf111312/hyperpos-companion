@@ -1677,6 +1677,7 @@ export type Database = {
           name: string
           notification_settings: Json | null
           phone: string | null
+          primary_currency: string | null
           print_settings: Json | null
           store_type: string | null
           sync_settings: Json | null
@@ -1701,6 +1702,7 @@ export type Database = {
           name?: string
           notification_settings?: Json | null
           phone?: string | null
+          primary_currency?: string | null
           print_settings?: Json | null
           store_type?: string | null
           sync_settings?: Json | null
@@ -1725,6 +1727,7 @@ export type Database = {
           name?: string
           notification_settings?: Json | null
           phone?: string | null
+          primary_currency?: string | null
           print_settings?: Json | null
           store_type?: string | null
           sync_settings?: Json | null
