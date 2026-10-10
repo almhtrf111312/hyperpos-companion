@@ -1586,6 +1586,49 @@ export default function Settings() {
   };
 
   const renderTabContent = () => {
+    // Security: Verify user has permission to access the requested tab
+    if (activeTab) {
+      const requestedTab = settingsTabs.find(tab => tab.id === activeTab);
+      if (requestedTab) {
+        // Check if tab requires boss-only access
+        if (requestedTab.bossOnly && !isBoss) {
+          return (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mb-4">
+                <Lock className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2">
+                {isRTL ? 'وصول محظور' : 'Access Denied'}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                {isRTL 
+                  ? 'هذا القسم متاح فقط لحساب المالك الرئيسي'
+                  : 'This section is only available to the boss account'}
+              </p>
+            </div>
+          );
+        }
+        // Check if tab requires admin-only access
+        if (requestedTab.adminOnly && !isOwnerAdmin && !isBoss) {
+          return (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mb-4">
+                <Lock className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2">
+                {isRTL ? 'وصول محظور' : 'Access Denied'}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                {isRTL 
+                  ? 'هذا القسم متاح فقط للمدراء'
+                  : 'This section is only available to administrators'}
+              </p>
+            </div>
+          );
+        }
+      }
+    }
+
     switch (activeTab) {
       case 'profile':
         return <ProfileManagement />;
