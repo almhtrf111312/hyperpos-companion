@@ -110,13 +110,13 @@ export default function Products() {
   const { currencyCode, currencySymbol, exchangeRate } = useCurrency();
   const formatPrice = (usdPrice: number) => {
     const val = usdPrice || 0;
-    if (currencyCode === 'USD') return <>$${formatNumber(val, 2)}</>;
+    if (currencyCode === 'USD') return <>${formatNumber(val, 2)}</>;
     const localVal = val * exchangeRate;
     const decimals = currencyCode === 'SYP' ? 0 : 2;
     return (
       <>
         {formatNumber(localVal, decimals)} {currencySymbol}{' '}
-        <span className="text-[0.8em] opacity-60 ml-1">($${formatNumber(val, 2)})</span>
+        <span className="text-[0.8em] opacity-60 ml-1">(${formatNumber(val, 2)})</span>
       </>
     );
   };

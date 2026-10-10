@@ -395,31 +395,39 @@ export default function Settings() {
   });
 
   const toggleCurrency = (currency: 'TRY' | 'SYP', enabled: boolean) => {
-    setEnabledCurrencies(prev => {
-      const next = { ...prev, [currency]: enabled };
-      let newPrimary = primaryCurrency;
-      if (!enabled && primaryCurrency === currency) {
-        if (currency === 'TRY') {
-          newPrimary = next.SYP ? 'SYP' : 'USD';
-        } else if (currency === 'SYP') {
-          newPrimary = next.TRY ? 'TRY' : 'USD';
-        }
-        setPrimaryCurrency(newPrimary);
+    // 1. حساب العملات الجديدة
+    const nextEnabled = {
+      ...enabledCurrencies,
+      [currency]: enabled,
+    };
+    
+    // 2. إذا تم إيقاف العملة الأساسية، يتم التحويل تلقائياً للعملة النشطة الأخرى أو الدولار
+    let newPrimary = primaryCurrency;
+    if (!enabled && primaryCurrency === currency) {
+      if (currency === 'TRY') {
+        newPrimary = nextEnabled.SYP ? 'SYP' : 'USD';
+      } else if (currency === 'SYP') {
+        newPrimary = nextEnabled.TRY ? 'TRY' : 'USD';
       }
-      
-      // Auto-save immediately to localStorage so other tabs and POS reflect changes in real-time
-      const persistedSettings = getPersistedSettings();
-      const updated = {
-        ...persistedSettings,
-        enabledCurrencies: next,
-        primaryCurrency: newPrimary,
-      };
-      savePersistedSettings(updated);
-      window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: updated }));
-      window.dispatchEvent(new CustomEvent('settings-updated'));
+      setPrimaryCurrency(newPrimary);
+    }
+    
+    // 3. تحديث حالة الواجهة
+    setEnabledCurrencies(nextEnabled);
 
-      return next;
-    });
+    // 4. حفظ الإعدادات بالاسم الصحيح لدالة التحميل loadPersistedSettings
+    const persistedSettings = loadPersistedSettings() || {};
+    const updated = {
+      ...persistedSettings,
+      enabledCurrencies: nextEnabled,
+      primaryCurrency: newPrimary,
+    };
+
+    savePersistedSettings(updated as PersistedSettings);
+
+    // 5. إشعار جميع التبويبات والشاشات (POS، Products، Invoices) بالتغيير الفوري
+    window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: updated }));
+    window.dispatchEvent(new CustomEvent('settings-updated'));
   };
 
   // Exchange rates (string to avoid mobile keyboard/focus issues)
