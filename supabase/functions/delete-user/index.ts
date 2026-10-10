@@ -9,8 +9,8 @@ const corsHeaders = {
 type DeleteType = 'user' | 'owner' | 'boss';
 
 // NOTE: Deno edge runtime + esm.sh types can be overly strict here.
-// We intentionally treat the client as `any` to avoid type mismatches.
-type SupabaseAnyClient = any;
+// We intentionally treat the client as `unknown` to avoid type mismatches.
+type SupabaseAnyClient = unknown;
 
 async function safeDeleteByUserId(
   adminClient: SupabaseAnyClient,
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     }
 
     const targetRole = targetRoleRow?.role as string | undefined;
-    const targetOwnerId = (targetRoleRow as any)?.owner_id as string | null | undefined;
+    const targetOwnerId = (targetRoleRow as Record<string, unknown>)?.owner_id as string | null | undefined;
 
     // Boss-only deletion of boss accounts
     if (deleteType === 'boss') {
@@ -190,7 +190,43 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Deleting user:', userId, 'deleteType:', deleteType || 'user');
+    // Enforce protected role deletion: boss and owner accounts require explicit deleteType
+    // This prevents bypass via omitted or unexpected deleteType values
+    const normalizedDeleteType = deleteType || 'user';
+    
+    if (targetRole === 'boss') {
+      // Boss accounts can only be deleted with explicit deleteType: 'boss' by another boss
+      if (normalizedDeleteType !== 'boss') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Boss accounts require deleteType: "boss"' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!isBoss) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Only boss can delete other boss accounts' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
+    if (targetRole === 'owner' || targetRole === 'admin') {
+      // Owner/admin accounts can only be deleted with explicit deleteType: 'owner' by a boss
+      if (normalizedDeleteType !== 'owner') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Owner/admin accounts require deleteType: "owner"' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!isBoss) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Only boss can delete owner/admin accounts' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    console.log('Deleting user:', userId, 'deleteType:', normalizedDeleteType);
 
     // Owner deletion flow (boss only): delete sub-accounts + owner data + auth account
     if (deleteType === 'owner') {
@@ -208,7 +244,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const subUserIds = (subRoles || []).map((r: any) => r.user_id).filter(Boolean);
+      const subUserIds = (subRoles || []).map((r: Record<string, unknown>) => r.user_id).filter(Boolean);
       console.log('Owner sub accounts:', subUserIds.length);
 
       // 2) Delete sub-accounts fully (including auth)
