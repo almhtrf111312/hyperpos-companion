@@ -57,6 +57,7 @@ import BossPanel from "./pages/BossPanel";
 import LibraryMembers from "./pages/LibraryMembers";
 import { WarehouseProvider } from "./hooks/use-warehouse";
 import { useLicenseReminder } from "./hooks/use-license-reminder";
+import { useDueExpensesChecker } from "./hooks/use-due-expenses-checker";
 import { SmartToast } from '@/components/ui/SmartToast';
 
 const queryClient = new QueryClient({
@@ -119,6 +120,10 @@ const AppContent = () => {
   // Setup wizard state for fresh installations
   const { user } = useAuth();
   const { role, isLoading: roleLoading } = useUserRole();
+
+  // 🔔 فحص المصاريف المستحقة والدفع التلقائي عند بدء تشغيل التطبيق
+  useDueExpensesChecker();
+
   const [setupComplete, setSetupComplete] = useState<boolean>(() => {
     try {
       return localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1');

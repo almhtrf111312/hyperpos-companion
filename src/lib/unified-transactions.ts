@@ -340,6 +340,37 @@ export const processExpense = (
 };
 
 /**
+ * استرداد / عكس مصروف تشغيلي وإعادة المال للصندوق والوردية
+ */
+export const reverseExpenseTransaction = (
+  expenseId: string,
+  amount: number,
+  expenseType: string
+): TransactionResult => {
+  try {
+    // 1. إعادة المبلغ للوردية الحالية / الصندوق كإيداع عكسي
+    addDepositToShift(roundCurrency(amount), `استرداد مصروف: ${expenseType}`);
+
+    // 2. تسجيل النشاط والحدث المالي
+    addActivityLog(
+      'expense_refund',
+      'system',
+      'كاشير',
+      `استرداد مصروف تشغيلي (${expenseType}): +$${formatNumber(amount)}`,
+      { expenseId, amount, type: 'refund' }
+    );
+
+    emitEvent(EVENTS.EXPENSES_UPDATED, null);
+    emitEvent(EVENTS.CASH_SHIFTS_CHANGED, null);
+
+    return { success: true };
+  } catch (error) {
+    console.error('خطأ في استرداد المصروف:', error);
+    return { success: false, error: 'تعذر استرداد المصروف وإعادة المبلغ للصندوق' };
+  }
+};
+
+/**
  * حساب صافي الربح الحقيقي
  * إجمالي الأرباح - إجمالي المصاريف
  */

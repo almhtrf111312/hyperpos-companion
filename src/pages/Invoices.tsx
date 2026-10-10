@@ -1117,10 +1117,7 @@ export default function Invoices() {
       taxRate: invoice.taxRate,
     };
 
-    const success = await shareInvoice(shareData);
-    if (success) {
-      toast.success(t('invoices.shareOpened') || 'تم فتح نافذة المشاركة');
-    }
+    await shareInvoice(shareData);
   };
   const handleShare = handleWhatsApp;
 

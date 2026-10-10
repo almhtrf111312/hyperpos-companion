@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -330,10 +330,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       dueDate: debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('ar-SA') : undefined,
     };
 
-    const success = await shareDebt(shareData);
-    if (success) {
-      toast.success(t('debts.shareOpened'));
-    }
+    await shareDebt(shareData);
   };
 
   const handlePayment = async () => {

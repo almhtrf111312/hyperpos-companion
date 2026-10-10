@@ -51,15 +51,46 @@ export default function Appearance() {
 
   const handleTabClick = (tabId: AppearanceTab) => {
     if (activeTab === 'theme' && pendingTheme && tabId !== 'theme') {
-      revertTheme();
+      // ✅ حفظ السمة تلقائياً عند الانتقال لتبويب آخر بدلاً من إلغائها واسترجاع القديمة
+      setFullTheme(pendingTheme.mode, pendingTheme.color, pendingTheme.blur, pendingTheme.transparency);
       setPendingTheme(null);
-      setResetSignal(prev => prev + 1);
+      toast({ title: t('common.saved'), description: isRTL ? 'تم حفظ السمة بنجاح' : 'Theme saved' });
     }
     setActiveTab(tabId);
   };
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto pb-24 pt-14 md:pt-4 space-y-4">
+      {/* شريط حفظ السمة العلوي والواضح لتجنب اختفائه على شاشات الجوال */}
+      {pendingTheme && (
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-primary text-primary-foreground shadow-md border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span className="text-xs sm:text-sm font-bold">لديك تعديلات معلقة في السمة والألوان</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleSaveTheme}
+              disabled={isSaving}
+              className="h-8 px-3 rounded-xl font-bold gap-1 text-xs shadow-xs"
+            >
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>حفظ السمة</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleUndoTheme}
+              className="h-8 w-8 p-0 rounded-xl bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/20"
+              title="تراجع"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
       {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق بدون أي قص للنصوص أو النقاط */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 backdrop-blur-xl shadow-xs overflow-visible">
         {[

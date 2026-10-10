@@ -236,10 +236,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
 
     report += `\n---\nتم إنشاء التقرير بواسطة FlowPOS Pro`;
 
-    const success = await shareReport('تقرير أرباح الشركاء', report);
-    if (success) {
-      toast.success('تم فتح المشاركة');
-    }
+    await shareReport('تقرير أرباح الشركاء', report);
   };
 
   const SortIcon = ({ field }: { field: 'date' | 'amount' | 'category' }) => {

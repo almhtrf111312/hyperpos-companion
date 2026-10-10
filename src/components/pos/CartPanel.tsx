@@ -1368,10 +1368,7 @@ export function CartPanel({
       type: 'sale',
     };
 
-    const success = await shareInvoice(shareData);
-    if (success) {
-      showToast.success('تم فتح المشاركة');
-    }
+    await shareInvoice(shareData);
     if (data) setLastSale(null); // مسح بعد المشاركة
   };
 

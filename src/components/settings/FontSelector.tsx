@@ -41,6 +41,15 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
         </span>
       </div>
 
+      {/* تأكيد الخط الحالي النشط */}
+      <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-primary/10 border border-primary/25 text-xs font-semibold text-primary">
+        <span>{isRTL ? 'الخط المعتمد حالياً:' : 'Active Font:'} {isRTL ? (availableFonts.find(f => f.id === currentFont)?.nameAr || currentFont) : (availableFonts.find(f => f.id === currentFont)?.name || currentFont)}</span>
+        <span className="flex items-center gap-1 text-[11px] font-bold text-primary">
+          <Check className="w-3.5 h-3.5 stroke-[3]" />
+          {isRTL ? 'مثبت ومحفوظ' : 'Saved'}
+        </span>
+      </div>
+
       <div className="flex flex-col gap-2.5">
         {availableFonts.map((font) => {
           const isSelected = currentFont === font.id;

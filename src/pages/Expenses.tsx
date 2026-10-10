@@ -71,7 +71,7 @@ import {
 } from '@/lib/recurring-expenses-store';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
-import { processExpense } from '@/lib/unified-transactions';
+import { processExpense, reverseExpenseTransaction } from '@/lib/unified-transactions';
 import { toLocalDateString } from '@/lib/date-utils';
 
 export default function Expenses() {
@@ -96,6 +96,7 @@ export default function Expenses() {
     amount: 0,
     intervalDays: 30,
     notes: '',
+    autoPay: false,
   });
   const [showPayConfirmDialog, setShowPayConfirmDialog] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
@@ -121,6 +122,7 @@ export default function Expenses() {
     startDate: toLocalDateString(new Date()),
     notes: '',
     payImmediately: false,
+    autoPay: false,
   });
 
   // Load expenses from cloud
@@ -247,6 +249,7 @@ export default function Expenses() {
       intervalDays: recurringForm.intervalDays,
       startDate: recurringForm.startDate,
       notes: recurringForm.notes,
+      autoPay: recurringForm.autoPay,
     });
 
     if (recurringForm.payImmediately) {
@@ -293,6 +296,7 @@ export default function Expenses() {
       amount: expense.amount,
       intervalDays: expense.intervalDays,
       notes: expense.notes || '',
+      autoPay: expense.autoPay ?? false,
     });
     setShowEditRecurringDialog(true);
   };
@@ -314,6 +318,7 @@ export default function Expenses() {
       interval: intervalInfo.interval,
       intervalDays: editRecurringForm.intervalDays,
       notes: editRecurringForm.notes,
+      autoPay: editRecurringForm.autoPay,
     });
 
     setRecurringExpenses(loadRecurringExpenses());
@@ -330,6 +335,10 @@ export default function Expenses() {
     const deletedType = selectedExpense.type;
     const deletedId = selectedExpense.id;
     await deleteExpenseCloud(selectedExpense.id);
+
+    // 🛡️ استرداد مالي: إعادة المبلغ فوراً للصندوق والوردية الحالية
+    reverseExpenseTransaction(deletedId, deletedAmount, deletedType);
+
     const [expensesData, statsData] = await Promise.all([
       loadExpensesCloud(),
       getExpenseStatsCloud()
@@ -338,25 +347,33 @@ export default function Expenses() {
     setStats(statsData);
     setShowDeleteDialog(false);
     setSelectedExpense(null);
-    toast.success(t('expenses.expenseDeleted'));
-    import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_deleted', `حذف مصروف (${deletedType}): ${deletedAmount}`, { id: deletedId, amount: deletedAmount, type: deletedType }));
+    toast.success('تم حذف واسترداد المصروف وإعادة المبلغ للصندوق');
+    import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_deleted', `استرداد وحذف مصروف (${deletedType}): +${deletedAmount}`, { id: deletedId, amount: deletedAmount, type: deletedType }));
+  };
+
+  // الدفع الفوري بنقرة واحدة دون فتح نافذة تأكيد ثانية
+  const handleQuickPayRecurring = async (expense: RecurringExpense) => {
+    try {
+      await payRecurringExpense(expense.id);
+      const [expensesData, statsData] = await Promise.all([
+        loadExpensesCloud(),
+        getExpenseStatsCloud()
+      ]);
+      setExpenses(expensesData);
+      setStats(statsData);
+      setRecurringExpenses(loadRecurringExpenses());
+      setDueExpenses(getDueExpenses());
+      toast.success(`تم صرف مصروف: ${expense.name}`);
+    } catch (err) {
+      toast.error('فشل في تنفيذ عملية الصرف');
+    }
   };
 
   const handlePayRecurring = async () => {
     if (!selectedRecurring) return;
-
-    await payRecurringExpense(selectedRecurring.id);
-    const [expensesData, statsData] = await Promise.all([
-      loadExpensesCloud(),
-      getExpenseStatsCloud()
-    ]);
-    setExpenses(expensesData);
-    setStats(statsData);
-    setRecurringExpenses(loadRecurringExpenses());
-    setDueExpenses(getDueExpenses());
+    await handleQuickPayRecurring(selectedRecurring);
     setShowPayConfirmDialog(false);
     setSelectedRecurring(null);
-    toast.success(t('expenses.expensePaid'));
   };
 
   const handleSkipRecurring = (expense: RecurringExpense) => {
@@ -428,7 +445,7 @@ export default function Expenses() {
                     <X className="w-4 h-4 ml-1" />
                     {t('expenses.skip')}
                   </Button>
-                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => openPayConfirmDialog(expense)}>
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => handleQuickPayRecurring(expense)}>
                     <Check className="w-4 h-4 ml-1" />
                     {t('expenses.pay')}
                   </Button>
@@ -777,6 +794,20 @@ export default function Expenses() {
               </label>
             </div>
 
+            <div className="flex items-center space-x-2 space-x-reverse pt-1">
+              <Checkbox
+                id="autoPay"
+                checked={recurringForm.autoPay}
+                onCheckedChange={(checked) => setRecurringForm({ ...recurringForm, autoPay: !!checked })}
+              />
+              <label
+                htmlFor="autoPay"
+                className="text-sm font-medium leading-none cursor-pointer select-none text-foreground"
+              >
+                دفع تلقائي (خصم من الصندوق والوردية تلقائياً عند موعد الاستحقاق)
+              </label>
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowRecurringDialog(false)}>
                 {t('expenses.cancel')}
@@ -920,6 +951,20 @@ export default function Expenses() {
               />
             </div>
 
+            <div className="flex items-center space-x-2 space-x-reverse pt-1">
+              <Checkbox
+                id="editAutoPay"
+                checked={editRecurringForm.autoPay}
+                onCheckedChange={(checked) => setEditRecurringForm({ ...editRecurringForm, autoPay: !!checked })}
+              />
+              <label
+                htmlFor="editAutoPay"
+                className="text-sm font-medium leading-none cursor-pointer select-none text-foreground"
+              >
+                دفع تلقائي (خصم من الصندوق والوردية تلقائياً عند موعد الاستحقاق)
+              </label>
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowEditRecurringDialog(false)}>
                 {t('expenses.cancel')}
@@ -956,9 +1001,12 @@ export default function Expenses() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('expenses.confirmDelete')}</AlertDialogTitle>
+            <AlertDialogTitle>{t('expenses.confirmDelete')} / استرداد المصروف</AlertDialogTitle>
             <AlertDialogDescription>
               {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', formatNumber(selectedExpense?.amount || 0))}
+              <span className="block mt-2 font-medium text-emerald-600 dark:text-emerald-400">
+                💰 سيتم استرداد هذا المبلغ وإعادته تلقائياً إلى رصيد الصندوق والوردية الحالية.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

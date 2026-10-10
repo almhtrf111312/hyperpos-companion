@@ -354,10 +354,7 @@ export default function Customers() {
       storeLogo: store.logo,
     };
 
-    const success = await shareDebtStatement(statementData);
-    if (success) {
-      toast.success('تم فتح نافذة المشاركة');
-    }
+    await shareDebtStatement(statementData);
   };
 
   const openDeleteDialog = (customer: Customer) => {

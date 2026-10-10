@@ -18,6 +18,7 @@ export interface RecurringExpense {
   intervalDays: number;
   nextDueDate: string;
   lastPaidDate?: string;
+  autoPay?: boolean;
   isActive: boolean;
   createdAt: string;
 }
@@ -64,6 +65,7 @@ export function addRecurringExpense(data: {
   notes?: string;
   intervalDays: number;
   startDate: string;
+  autoPay?: boolean;
 }): RecurringExpense {
   const intervalInfo = recurringIntervals.find(i => i.value === data.intervalDays) || recurringIntervals[1];
   
@@ -77,6 +79,7 @@ export function addRecurringExpense(data: {
     interval: intervalInfo.interval,
     intervalDays: data.intervalDays,
     nextDueDate: data.startDate,
+    autoPay: data.autoPay ?? false,
     isActive: true,
     createdAt: new Date().toISOString(),
   };
