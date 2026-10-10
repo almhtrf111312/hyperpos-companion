@@ -179,3 +179,34 @@ export function skipRecurringExpense(id: string): boolean {
 export function toggleRecurringExpense(id: string, isActive: boolean): boolean {
   return updateRecurringExpense(id, { isActive });
 }
+
+export async function executeAutoPayRecurringExpenses(): Promise<number> {
+  const expenses = loadRecurringExpenses();
+  const todayStr = toLocalDateString(new Date());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let paidCount = 0;
+
+  for (const item of expenses) {
+    if (!item.isActive || !item.autoPay) continue;
+
+    const dueDate = new Date(item.nextDueDate);
+    dueDate.setHours(0, 0, 0, 0);
+
+    // التحقق من عدم التكرار (Idempotency): لا يتم السداد إذا كان قد سُدد اليوم مسبقاً
+    if (dueDate <= today && item.lastPaidDate !== todayStr) {
+      try {
+        const success = await payRecurringExpense(item.id);
+        if (success) {
+          paidCount++;
+        }
+      } catch (err) {
+        console.error(`[AutoPay] Failed to auto-pay expense ${item.id}:`, err);
+      }
+    }
+  }
+
+  return paidCount;
+}
+

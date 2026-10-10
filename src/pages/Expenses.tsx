@@ -426,33 +426,24 @@ export default function Expenses() {
         </div>
       </div>
 
-      {/* Due Expenses Alert */}
+      {/* Due Expenses Alert Banner */}
       {dueExpenses.length > 0 && (
-        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Bell className="w-5 h-5 text-warning" />
-            <h3 className="font-semibold text-warning">{t('expenses.dueExpenses')} ({dueExpenses.length})</h3>
+        <div className="mb-4 p-3 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-amber-500 shrink-0" />
+            <div>
+              <span className="font-semibold text-sm">يوجد {dueExpenses.length} مصروف مستحق الدفع اليوم</span>
+              <p className="text-xs text-muted-foreground">المجموع: {formatCurrency(dueExpenses.reduce((sum, e) => sum + e.amount, 0))}</p>
+            </div>
           </div>
-          <div className="space-y-2">
-            {dueExpenses.map(expense => (
-              <div key={expense.id} className="flex items-center justify-between bg-card rounded-lg p-3">
-                <div>
-                  <p className="font-medium">{expense.name}</p>
-                  <p className="text-sm text-muted-foreground">{formatCurrency(expense.amount)}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleSkipRecurring(expense)}>
-                    <X className="w-4 h-4 ml-1" />
-                    {t('expenses.skip')}
-                  </Button>
-                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => handleQuickPayRecurring(expense)}>
-                    <Check className="w-4 h-4 ml-1" />
-                    {t('expenses.pay')}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-500/40 hover:bg-amber-500/10 text-xs font-medium"
+            onClick={() => setShowRecurringListDialog(true)}
+          >
+            مراجعة وسداد
+          </Button>
         </div>
       )}
 
@@ -845,24 +836,33 @@ export default function Expenses() {
                       {t('expenses.nextDue')}: {expense.nextDueDate}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Button
-                      variant="ghost"
                       size="sm"
-                      className="text-primary hover:text-primary/80 hover:bg-primary/10"
-                      onClick={() => handleOpenEditRecurring(expense)}
-                      title="تعديل"
+                      className="h-7 text-xs bg-success hover:bg-success/90 text-white gap-1 px-2.5"
+                      onClick={() => handleQuickPayRecurring(expense)}
+                      title="سداد فوري وخصم من الصندوق"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Check className="w-3.5 h-3.5" />
+                      سداد
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                      className="h-7 w-7 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+                      onClick={() => handleOpenEditRecurring(expense)}
+                      title="تعديل"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
                       onClick={() => handleDeleteRecurring(expense.id)}
                       title="حذف"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>

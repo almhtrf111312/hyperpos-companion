@@ -1,6 +1,11 @@
 [
   {
     "type": "feature",
+    "ar": "v1.0.68 - دورة حياة العملات المتعددة واعتماد الدولار كمرجع محاسبي أساسي، تحسين ثبات سمات المظهر وحفظ الخطوط، شريط تنبيه وسداد المصاريف الدورية والمستحقة، جدولة الدفع التلقائي مع منع التكرار، والتراجع المالي الآمن عن المصاريف مع استرداد الصندوق والوردية.",
+    "en": "v1.0.68 - Multi-currency lifecycle with USD database reference, persistent Appearance and font saving UX, actionable overdue expenses review and settlement banner, idempotent recurring auto-pay scheduler, and financial expense reversal restoring cash drawer and shift balances."
+  },
+  {
+    "type": "feature",
     "ar": "v1.0.67 - إصلاح واجهة نقطة البيع: إطار متناسق 4:3 للصور مع احتواء كامل وتوسيع اسم المنتج، عناصر السلة بنمط سطر واحد مدمج (Single-Row Item)، ضغط الهيدر بنسبة 35%، معالجة عجز المقبوض باعتماده كخصم فوري أو تسجيله كدين، واعتماد الزيادة في المقبوض كربح إضافي.",
     "en": "v1.0.67 - POS UI & UX overhaul: 4:3 image ratio with full object containment and expanded 2-line product name, compact Single-Row Cart Items, 35% header height compression, deficit received amount handling with instant discount or debt sale, and overpaid surplus profit override."
   },

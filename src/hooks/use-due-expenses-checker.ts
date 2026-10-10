@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { getDueExpenses, payRecurringExpense } from '@/lib/recurring-expenses-store';
+import { getDueExpenses, executeAutoPayRecurringExpenses } from '@/lib/recurring-expenses-store';
 import { showSmartToast } from '@/hooks/use-smart-toast';
 import { formatNumber } from '@/lib/utils';
 
@@ -7,34 +7,30 @@ export function useDueExpensesChecker() {
   useEffect(() => {
     const checkAndAutoPay = async () => {
       try {
-        const due = getDueExpenses();
-        if (!due || due.length === 0) return;
-
-        for (const exp of due) {
-          // إذا كان المصروف مفعلاً للدفع التلقائي
-          if (exp.autoPay) {
-            await payRecurringExpense(exp.id);
-            showSmartToast({
-              title: 'دفع تلقائي لمصروف دوري',
-              subtitle: `تم خصم ${exp.name} بقيمة $${formatNumber(exp.amount, 2)} من الصندوق`,
-              type: 'info',
-              time: 'الآن',
-              duration: 4000
-            });
-          }
+        // 1. تنفيذ الدفع التلقائي للمصاريف المجدولة مع ضمان عدم التكرار (Idempotency)
+        const autoPaidCount = await executeAutoPayRecurringExpenses();
+        if (autoPaidCount > 0) {
+          showSmartToast({
+            title: 'دفع تلقائي لمصروف دوري',
+            subtitle: `تم خصم وسداد ${autoPaidCount} مصروف دوري مستحق تلقائياً من الصندوق`,
+            type: 'info',
+            time: 'الآن',
+            duration: 4500
+          });
         }
 
-        // التنبيه بالمصاريف المستحقة التي تتطلب مراجعة يدوية
+        // 2. التنبيه بالمصاريف المستحقة التي تتطلب مراجعة وسداد يدوي
         const manualDue = getDueExpenses().filter(e => !e.autoPay);
         if (manualDue.length > 0) {
+          const totalAmount = manualDue.reduce((sum, e) => sum + e.amount, 0);
           showSmartToast({
-            title: `تنبيه: لديك ${manualDue.length} مصاريف مستحقة الصرف`,
-            subtitle: 'انقر للانتقال لشاشة المصاريف ومراجعتها وسدادها',
+            title: `تنبيه: يوجد ${manualDue.length} مصروف مستحق السداد اليوم`,
+            subtitle: `إجمالي المستحق: $${formatNumber(totalAmount, 2)} - اضغط للمراجعة والسداد`,
             type: 'warning',
             time: 'الآن',
             duration: 6000,
             primaryAction: {
-              label: 'عرض المصاريف',
+              label: 'مراجعة وسداد',
               onClick: () => {
                 window.location.hash = '#/expenses';
               }

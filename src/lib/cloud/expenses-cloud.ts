@@ -37,6 +37,7 @@ export interface CloudExpense {
   notes: string | null;
   distributions: ExpenseDistribution[];
   created_at: string;
+  is_reversed?: boolean;
 }
 
 export interface Expense {
@@ -53,6 +54,7 @@ export interface Expense {
   createdAt: string;
   cashierId?: string;
   cashierName?: string;
+  is_reversed?: boolean;
 }
 
 // Expense types with labels
@@ -104,6 +106,7 @@ function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
     createdAt: cloud.created_at,
     cashierId: cloud.cashier_id || undefined,
     cashierName: cloud.cashier_name || cashierNamesCache[cloud.cashier_id || ''] || undefined,
+    is_reversed: !!cloud.is_reversed,
   };
 }
 
@@ -196,6 +199,9 @@ const fetchFresh_loadExpensesCloud = async (): Promise<Expense[]> => {
       }));
     }
   }
+
+  // Exclude reversed expenses
+  cloudExpenses = (cloudExpenses || []).filter(e => !e.is_reversed);
 
   expensesCache = cloudExpenses.map(toExpense);
   cacheTimestamp = Date.now();
@@ -364,10 +370,25 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
     }
   }
   
-  const success = await deleteFromSupabase('expenses', id);
+  let success = false;
+  try {
+    // 🛡️ التراجع المالي الآمن (Financial Reversal) عبر التعليم كـ is_reversed للحفاظ على سجل التدقيق
+    const { error: updateErr } = await sb.from('expenses').update({ is_reversed: true } as any).eq('id', id);
+    if (!updateErr) {
+      success = true;
+    } else {
+      success = await deleteFromSupabase('expenses', id);
+    }
+  } catch {
+    success = await deleteFromSupabase('expenses', id);
+  }
   
   if (success) {
     invalidateExpensesCache();
+    const existing = expensesCache || loadExpensesLocally() || [];
+    const list = existing.filter(e => e.id !== id);
+    expensesCache = list;
+    saveExpensesLocally(list);
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
   }
   
