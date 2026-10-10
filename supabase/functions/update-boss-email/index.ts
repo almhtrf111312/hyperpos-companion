@@ -54,11 +54,18 @@ serve(async (req) => {
       );
     }
 
-    const { newEmail, targetUserId } = await req.json();
+    const { newEmail, targetUserId, currentPassword } = await req.json();
 
     if (!newEmail) {
       return new Response(
         JSON.stringify({ error: 'New email is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!currentPassword) {
+      return new Response(
+        JSON.stringify({ error: 'Current password is required for email change' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -89,6 +96,21 @@ serve(async (req) => {
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    }
+
+    // CRITICAL SECURITY: Verify current password before allowing email change
+    // This prevents account takeover via stolen session tokens
+    const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+      email: user.email!,
+      password: currentPassword,
+    });
+
+    if (signInError || !signInData.user) {
+      console.error('Password verification failed:', signInError);
+      return new Response(
+        JSON.stringify({ error: 'Current password is incorrect' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Check if email is already in use
