@@ -681,6 +681,7 @@ export type Database = {
           tax_rate: number | null
           time: string
           total: number | null
+          total_in_currency: number | null
           updated_at: string | null
           user_id: string
           warehouse_id: string | null
@@ -713,6 +714,7 @@ export type Database = {
           tax_rate?: number | null
           time?: string
           total?: number | null
+          total_in_currency?: number | null
           updated_at?: string | null
           user_id: string
           warehouse_id?: string | null
@@ -745,6 +747,7 @@ export type Database = {
           tax_rate?: number | null
           time?: string
           total?: number | null
+          total_in_currency?: number | null
           updated_at?: string | null
           user_id?: string
           warehouse_id?: string | null
@@ -1662,6 +1665,60 @@ export type Database = {
           },
         ]
       }
+      store_settings: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          exchange_rates: Json | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          primary_currency: string | null
+          store_type: string | null
+          sync_settings: Json | null
+          tax_enabled: boolean | null
+          tax_rate: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          exchange_rates?: Json | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          primary_currency?: string | null
+          store_type?: string | null
+          sync_settings?: Json | null
+          tax_enabled?: boolean | null
+          tax_rate?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          exchange_rates?: Json | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          primary_currency?: string | null
+          store_type?: string | null
+          sync_settings?: Json | null
+          tax_enabled?: boolean | null
+          tax_rate?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       stores: {
         Row: {
           address: string | null
@@ -2076,40 +2133,50 @@ export type Database = {
       is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
-      process_pos_sale_atomic: {
-        Args: {
-          _currency: string
-          _customer_name: string
-          _customer_phone: string
-          _discount: number
-          _discount_percentage: number
-          _down_payment?: number
-          _items: Json
-          _operation_id: string
-          _payment_type: string
-          _profit: number
-          _subtotal: number
-          _tax_amount: number
-          _tax_rate: number
-          _total: number
-          _warehouse_id: string
-        }
-        Returns: {
-          already_processed: boolean
-          cogs: number
-          debt_paid: number
-          debt_remaining: number
-          discount: number
-          invoice_id: string
-          invoice_number: string
-          profit: number
-          stock_shortage: boolean
-          subtotal: number
-          success: boolean
-          tax_amount: number
-          total: number
-        }[]
-      }
+      process_pos_sale_atomic:
+        | {
+            Args: {
+              _currency: string
+              _customer_name: string
+              _customer_phone: string
+              _discount: number
+              _discount_percentage: number
+              _down_payment?: number
+              _items: Json
+              _operation_id: string
+              _payment_type: string
+              _profit: number
+              _subtotal: number
+              _tax_amount: number
+              _tax_rate: number
+              _total: number
+              _warehouse_id: string
+            }
+            Returns: {
+              already_processed: boolean
+              cogs: number
+              debt_paid: number
+              debt_remaining: number
+              discount: number
+              invoice_id: string
+              invoice_number: string
+              profit: number
+              stock_shortage: boolean
+              subtotal: number
+              success: boolean
+              tax_amount: number
+              total: number
+            }[]
+          }
+        | {
+            Args: {
+              p_deduct_inventory?: boolean
+              p_invoice: Json
+              p_items: Json
+              p_payment: Json
+            }
+            Returns: Json
+          }
       recalc_pos_invoice_profit: {
         Args: { _invoice_id: string }
         Returns: undefined
