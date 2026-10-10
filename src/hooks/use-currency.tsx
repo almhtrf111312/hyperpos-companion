@@ -29,11 +29,16 @@ export const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return 'USD';
     const parsed = JSON.parse(raw);
-    const primary = parsed?.primaryCurrency || 'USD';
+    const primary = (parsed?.primaryCurrency as 'USD' | 'TRY' | 'SYP') || 'USD';
     const enabled = parsed?.enabledCurrencies;
     // If primary currency is disabled, fallback to first enabled currency
     if (enabled && enabled[primary] === false) {
+      if (enabled.TRY) return 'TRY';
+      if (enabled.SYP) return 'SYP';
       if (enabled.USD !== false) return 'USD';
+    }
+    // If primary is USD but USD is disabled in settings, fallback to enabled local currency
+    if (primary === 'USD' && enabled && enabled.USD === false) {
       if (enabled.TRY) return 'TRY';
       if (enabled.SYP) return 'SYP';
     }
@@ -49,10 +54,17 @@ export const loadEnabledCurrencies = (): EnabledCurrencies => {
     if (!raw) return { USD: true, TRY: true, SYP: true };
     const parsed = JSON.parse(raw);
     const enabled = parsed?.enabledCurrencies;
+    const isUsd = enabled?.USD !== false;
+    const isTry = enabled?.TRY !== false;
+    const isSyp = enabled?.SYP !== false;
+    // Ensure at least one currency is enabled
+    if (!isUsd && !isTry && !isSyp) {
+      return { USD: true, TRY: false, SYP: false };
+    }
     return {
-      USD: true,
-      TRY: enabled?.TRY !== false,
-      SYP: enabled?.SYP !== false,
+      USD: isUsd,
+      TRY: isTry,
+      SYP: isSyp,
     };
   } catch {
     return { USD: true, TRY: true, SYP: true };

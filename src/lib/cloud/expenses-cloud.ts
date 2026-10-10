@@ -348,15 +348,15 @@ export const addExpenseCloud = async (expenseData: {
   }
 };
 
-// Delete expense
-export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
+// Delete or reverse expense
+export const deleteExpenseCloud = async (id: string, reason: string = 'تراجع بواسطة المستخدم'): Promise<boolean> => {
   const expenses = await loadExpensesCloud();
   const expense = expenses.find(e => e.id === id);
   
   if (!expense) return false;
   
   // Refund partners
-  if (expense.distributions.length > 0) {
+  if (expense.distributions && expense.distributions.length > 0) {
     const partners = await loadPartnersCloud();
     
     for (const dist of expense.distributions) {
@@ -373,7 +373,12 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
   let success = false;
   try {
     // 🛡️ التراجع المالي الآمن (Financial Reversal) عبر التعليم كـ is_reversed للحفاظ على سجل التدقيق
-    const { error: updateErr } = await sb.from('expenses').update({ is_reversed: true } as any).eq('id', id);
+    const { error: updateErr } = await sb.from('expenses').update({
+      is_reversed: true,
+      reversed_at: new Date().toISOString(),
+      reversed_reason: reason,
+    } as any).eq('id', id);
+
     if (!updateErr) {
       success = true;
     } else {
@@ -393,6 +398,10 @@ export const deleteExpenseCloud = async (id: string): Promise<boolean> => {
   }
   
   return success;
+};
+
+export const reverseExpenseCloud = async (id: string, reason: string = 'تراجع بواسطة المستخدم'): Promise<boolean> => {
+  return deleteExpenseCloud(id, reason);
 };
 
 // Get expense stats

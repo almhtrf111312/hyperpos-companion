@@ -16,7 +16,8 @@ import {
   X,
   Bell,
   Settings2,
-  Pencil
+  Pencil,
+  RotateCcw
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ import {
   loadExpensesCloud,
   addExpenseCloud,
   deleteExpenseCloud,
+  reverseExpenseCloud,
   getExpenseStatsCloud,
   expenseTypes,
   Expense,
@@ -71,7 +73,7 @@ import {
 } from '@/lib/recurring-expenses-store';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
-import { processExpense, reverseExpenseTransaction } from '@/lib/unified-transactions';
+import { processExpense, reverseExpenseTransaction, restoreExpenseCash } from '@/lib/unified-transactions';
 import { toLocalDateString } from '@/lib/date-utils';
 
 export default function Expenses() {
@@ -328,28 +330,39 @@ export default function Expenses() {
     toast.success('تم تعديل المصروف الثابت بنجاح');
   };
 
-  const handleDeleteExpense = async () => {
-    if (!selectedExpense) return;
+  const handleReverseExpense = async (expenseToReverse?: Expense) => {
+    const expense = expenseToReverse || selectedExpense;
+    if (!expense || expense.is_reversed) return;
 
-    const deletedAmount = selectedExpense.amount;
-    const deletedType = selectedExpense.type;
-    const deletedId = selectedExpense.id;
-    await deleteExpenseCloud(selectedExpense.id);
+    const reversedAmount = expense.amount;
+    const reversedType = expense.type;
+    const reversedId = expense.id;
 
-    // 🛡️ استرداد مالي: إعادة المبلغ فوراً للصندوق والوردية الحالية
-    reverseExpenseTransaction(deletedId, deletedAmount, deletedType);
+    try {
+      // 1. استدعاء السحابة لتعليم المصروف كمسترد مع السبب
+      await reverseExpenseCloud(reversedId, 'تراجع بواسطة المستخدم');
 
-    const [expensesData, statsData] = await Promise.all([
-      loadExpensesCloud(),
-      getExpenseStatsCloud()
-    ]);
-    setExpenses(expensesData);
-    setStats(statsData);
-    setShowDeleteDialog(false);
-    setSelectedExpense(null);
-    toast.success('تم حذف واسترداد المصروف وإعادة المبلغ للصندوق');
-    import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_deleted', `استرداد وحذف مصروف (${deletedType}): +${deletedAmount}`, { id: deletedId, amount: deletedAmount, type: deletedType }));
+      // 2. إعادة المبلغ المخصوم إلى رصيد الصندوق فوراً
+      restoreExpenseCash(reversedAmount, reversedType);
+
+      // 3. تحديث البيانات محلياً
+      const [expensesData, statsData] = await Promise.all([
+        loadExpensesCloud(),
+        getExpenseStatsCloud()
+      ]);
+      setExpenses(expensesData);
+      setStats(statsData);
+      setShowDeleteDialog(false);
+      setSelectedExpense(null);
+
+      toast.success(`تم استرداد المصروف وإعادة ${formatCurrency(reversedAmount)} للصندوق`);
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_refund', `استرداد وتراجع عن مصروف (${reversedType}): +${reversedAmount}`, { id: reversedId, amount: reversedAmount, type: reversedType }));
+    } catch (error) {
+      toast.error('فشل التراجع عن المصروف');
+    }
   };
+
+  const handleDeleteExpense = () => handleReverseExpense();
 
   // الدفع الفوري بنقرة واحدة دون فتح نافذة تأكيد ثانية
   const handleQuickPayRecurring = async (expense: RecurringExpense) => {
@@ -586,12 +599,13 @@ export default function Expenses() {
 
               <div className="flex justify-end mt-3">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-700 h-7 text-xs gap-1.5"
                   onClick={() => openDeleteDialog(expense)}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>استرداد / تراجع</span>
                 </Button>
               </div>
             </div>
@@ -1001,7 +1015,7 @@ export default function Expenses() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('expenses.confirmDelete')} / استرداد المصروف</AlertDialogTitle>
+            <AlertDialogTitle>استرداد وتراجع عن المصروف</AlertDialogTitle>
             <AlertDialogDescription>
               {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', formatNumber(selectedExpense?.amount || 0))}
               <span className="block mt-2 font-medium text-emerald-600 dark:text-emerald-400">
@@ -1011,8 +1025,8 @@ export default function Expenses() {
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>{t('expenses.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteExpense} className="bg-destructive hover:bg-destructive/90">
-              {t('expenses.delete')}
+            <AlertDialogAction onClick={handleDeleteExpense} className="bg-amber-600 hover:bg-amber-700 text-white">
+              تأكيد الاسترداد والتراجع
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -100,8 +100,9 @@ const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
     const parsed = JSON.parse(raw);
     const primary = (parsed?.primaryCurrency || 'USD') as 'USD' | 'TRY' | 'SYP';
     const enabled = parsed?.enabledCurrencies;
-    if (primary === 'TRY' && enabled?.TRY === false) return 'USD';
-    if (primary === 'SYP' && enabled?.SYP === false) return 'USD';
+    if (primary === 'TRY' && enabled?.TRY === false) return enabled?.USD !== false ? 'USD' : (enabled?.SYP ? 'SYP' : 'TRY');
+    if (primary === 'SYP' && enabled?.SYP === false) return enabled?.USD !== false ? 'USD' : (enabled?.TRY ? 'TRY' : 'SYP');
+    if (primary === 'USD' && enabled?.USD === false) return enabled?.TRY ? 'TRY' : (enabled?.SYP ? 'SYP' : 'USD');
     return primary;
   } catch {
     return 'USD';
@@ -114,10 +115,14 @@ const loadEnabledCurrencies = () => {
     if (!raw) return { USD: true, TRY: true, SYP: true };
     const parsed = JSON.parse(raw);
     const enabled = parsed?.enabledCurrencies;
+    const isUsd = enabled?.USD !== false;
+    const isTry = enabled?.TRY !== false;
+    const isSyp = enabled?.SYP !== false;
+    if (!isUsd && !isTry && !isSyp) return { USD: true, TRY: false, SYP: false };
     return {
-      USD: true,
-      TRY: enabled?.TRY !== false,
-      SYP: enabled?.SYP !== false,
+      USD: isUsd,
+      TRY: isTry,
+      SYP: isSyp,
     };
   } catch {
     return { USD: true, TRY: true, SYP: true };

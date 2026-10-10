@@ -1,8 +1,8 @@
 [
   {
     "type": "feature",
-    "ar": "v1.0.68 - دورة حياة العملات المتعددة واعتماد الدولار كمرجع محاسبي أساسي، تحسين ثبات سمات المظهر وحفظ الخطوط، شريط تنبيه وسداد المصاريف الدورية والمستحقة، جدولة الدفع التلقائي مع منع التكرار، والتراجع المالي الآمن عن المصاريف مع استرداد الصندوق والوردية.",
-    "en": "v1.0.68 - Multi-currency lifecycle with USD database reference, persistent Appearance and font saving UX, actionable overdue expenses review and settlement banner, idempotent recurring auto-pay scheduler, and financial expense reversal restoring cash drawer and shift balances."
+    "ar": "v1.0.68 - دورة حياة العملات المتعددة: إمكانية إخفاء الدولار الأمريكي من الواجهات ونقاط البيع مع بقائه كمرجع محاسبي داخلي، التحويل التلقائي للأسعار المدخلة بالعملة النشطة إلى الدولار المرجعي، شريط تنبيه وسداد المصاريف المستحقة، جدولة الدفع التلقائي مع منع التكرار، والتراجع المحاسبي الآمن عن المصاريف مع استرداد الصندوق والوردية.",
+    "en": "v1.0.68 - Multi-currency lifecycle: option to hide USD from POS and customer-facing interfaces while retaining it as internal accounting base, automatic conversion of entered product prices to reference USD, overdue expenses actionable settlement banner, idempotent recurring auto-pay scheduler, and financial expense reversal restoring cash drawer and shift balances."
   },
   {
     "type": "feature",

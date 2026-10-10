@@ -107,7 +107,7 @@ import { getSignedImageUrl } from '@/lib/image-upload';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Products() {
-  const { currencyCode, currencySymbol, exchangeRate } = useCurrency();
+  const { currencyCode, currencySymbol, exchangeRate, enabledCurrencies } = useCurrency();
   const formatPrice = (usdPrice: number) => {
     const val = usdPrice || 0;
     if (currencyCode === 'USD') return <>${formatNumber(val, 2)}</>;
@@ -116,7 +116,9 @@ export default function Products() {
     return (
       <>
         {formatNumber(localVal, decimals)} {currencySymbol}{' '}
-        <span className="text-[0.8em] opacity-60 ml-1">(${formatNumber(val, 2)})</span>
+        {enabledCurrencies.USD !== false && (
+          <span className="text-[0.8em] opacity-60 ml-1">(${formatNumber(val, 2)})</span>
+        )}
       </>
     );
   };
@@ -126,7 +128,9 @@ export default function Products() {
     if (currencyCode === 'USD') return `$${formatNumber(val, 2)}`;
     const localVal = val * exchangeRate;
     const decimals = currencyCode === 'SYP' ? 0 : 2;
-    return `${formatNumber(localVal, decimals)} ${currencySymbol} ($${formatNumber(val, 2)})`;
+    return enabledCurrencies.USD !== false
+      ? `${formatNumber(localVal, decimals)} ${currencySymbol} ($${formatNumber(val, 2)})`
+      : `${formatNumber(localVal, decimals)} ${currencySymbol}`;
   };
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
@@ -928,14 +932,15 @@ export default function Products() {
     const finalImage = await ensureImageCompressed(formData.image);
 
     // تحويل الأرقام بشكل آمن
-    const numCostPrice = Number(formData.costPrice) || 0;
-    const numSalePrice = Number(formData.salePrice) || 0;
-    const numLaborCost = Number(formData.laborCost) || 0;
+    const activeRate = (currencyCode !== 'USD' && exchangeRate > 0) ? exchangeRate : 1;
+    const numCostPrice = (Number(formData.costPrice) || 0) / activeRate;
+    const numSalePrice = (Number(formData.salePrice) || 0) / activeRate;
+    const numLaborCost = (Number(formData.laborCost) || 0) / activeRate;
     const numQuantity = Number(formData.quantity) || 0;
-    const numWholesalePrice = Number(formData.wholesalePrice) || 0;
+    const numWholesalePrice = (Number(formData.wholesalePrice) || 0) / activeRate;
     const numMinStockLevel = Number(formData.minStockLevel) || 1;
     const numConversionFactor = Number(formData.conversionFactor) || 1;
-    const numBulkSalePrice = Number(formData.bulkSalePrice) || 0;
+    const numBulkSalePrice = (Number(formData.bulkSalePrice) || 0) / activeRate;
 
     // تحويل الكمية إلى قطع قبل الحفظ - في وضع الفرن، استخدم كمية كبيرة
     const quantityInPieces = noInventory
@@ -1048,14 +1053,15 @@ export default function Products() {
     const finalImage = await ensureImageCompressed(formData.image);
 
     // تحويل الأرقام بشكل آمن
-    const numCostPrice = Number(formData.costPrice) || 0;
-    const numSalePrice = Number(formData.salePrice) || 0;
-    const numLaborCost = Number(formData.laborCost) || 0;
+    const activeRate = (currencyCode !== 'USD' && exchangeRate > 0) ? exchangeRate : 1;
+    const numCostPrice = (Number(formData.costPrice) || 0) / activeRate;
+    const numSalePrice = (Number(formData.salePrice) || 0) / activeRate;
+    const numLaborCost = (Number(formData.laborCost) || 0) / activeRate;
     const numQuantity = Number(formData.quantity) || 0;
-    const numWholesalePrice = Number(formData.wholesalePrice) || 0;
+    const numWholesalePrice = (Number(formData.wholesalePrice) || 0) / activeRate;
     const numMinStockLevel = Number(formData.minStockLevel) || 1;
     const numConversionFactor = Number(formData.conversionFactor) || 1;
-    const numBulkSalePrice = Number(formData.bulkSalePrice) || 0;
+    const numBulkSalePrice = (Number(formData.bulkSalePrice) || 0) / activeRate;
 
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
     const quantityInPieces = formData.trackByUnit === 'bulk'
@@ -1236,6 +1242,13 @@ export default function Products() {
       ? Math.floor(product.quantity / conversionFactor)
       : product.quantity;
 
+    const activeRate = (currencyCode !== 'USD' && exchangeRate > 0) ? exchangeRate : 1;
+    const roundDecimals = currencyCode === 'SYP' ? 0 : 2;
+    const toActiveCurrency = (usdVal: number) => {
+      if (currencyCode === 'USD' || !usdVal) return usdVal || 0;
+      return Number((usdVal * activeRate).toFixed(roundDecimals));
+    };
+
     setFormData({
       name: product.name,
       barcode: product.barcode,
@@ -1243,16 +1256,16 @@ export default function Products() {
       barcode3: product.barcode3 || '',
       variantLabel: product.variantLabel || '',
       category: product.category,
-      costPrice: product.costPrice,
-      salePrice: product.salePrice,
-      laborCost: product.laborCost || 0,
+      costPrice: toActiveCurrency(product.costPrice),
+      salePrice: toActiveCurrency(product.salePrice),
+      laborCost: toActiveCurrency(product.laborCost || 0),
       quantity: quantityForDisplay,
       expiryDate: product.expiryDate || '',
       image: product.image || '',
       serialNumber: product.serialNumber || '',
       batchNumber: product.batchNumber || '',
       warranty: product.warranty || '',
-      wholesalePrice: product.wholesalePrice || 0,
+      wholesalePrice: toActiveCurrency(product.wholesalePrice || 0),
       size: product.size || '',
       color: product.color || '',
       minStockLevel: product.minStockLevel || 1,
@@ -1266,8 +1279,8 @@ export default function Products() {
       bulkUnit: product.bulkUnit || t('products.unitCarton'),
       smallUnit: product.smallUnit || t('products.unitPiece'),
       conversionFactor: conversionFactor,
-      bulkCostPrice: product.bulkCostPrice || 0,
-      bulkSalePrice: product.bulkSalePrice || 0,
+      bulkCostPrice: toActiveCurrency(product.bulkCostPrice || 0),
+      bulkSalePrice: toActiveCurrency(product.bulkSalePrice || 0),
       trackByUnit: trackByUnit,
     });
     // Check if product has unit settings to auto-expand
@@ -2672,7 +2685,7 @@ export default function Products() {
                 )}
                 {(!noInventory || isRepairMode) && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? 'تكلفة القطعة ($)' : 'سعر الشراء ($)'}</label>
+                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? `تكلفة القطعة (${currencySymbol})` : `سعر الشراء (${currencySymbol})`}</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -2688,7 +2701,7 @@ export default function Products() {
                 )}
                 {isRepairMode && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ($)</label>
+                    <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ({currencySymbol})</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -2705,7 +2718,7 @@ export default function Products() {
                 )}
                 {!isRepairMode && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">سعر البيع ($)</label>
+                    <label className="text-sm font-medium mb-1.5 block">سعر البيع ({currencySymbol})</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -2799,7 +2812,7 @@ export default function Products() {
                 )}
                 {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ({currencySymbol})</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -3219,7 +3232,7 @@ export default function Products() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ($)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ({currencySymbol})</label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -3233,7 +3246,7 @@ export default function Products() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ($)</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ({currencySymbol})</label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -3324,7 +3337,7 @@ export default function Products() {
                 )}
                 {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ($)</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ({currencySymbol})</label>
                     <Input
                       type="text"
                       inputMode="decimal"

@@ -371,6 +371,13 @@ export const reverseExpenseTransaction = (
 };
 
 /**
+ * إعادة المبلغ المخصوم إلى رصيد الصندوق والوردية فوراً
+ */
+export const restoreExpenseCash = (amount: number, expenseType: string = 'other'): TransactionResult => {
+  return reverseExpenseTransaction('', amount, expenseType);
+};
+
+/**
  * حساب صافي الربح الحقيقي
  * إجمالي الأرباح - إجمالي المصاريف
  */

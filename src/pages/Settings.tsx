@@ -394,20 +394,32 @@ export default function Settings() {
     SYP: persisted?.enabledCurrencies?.SYP ?? true,
   });
 
-  const toggleCurrency = (currency: 'TRY' | 'SYP', enabled: boolean) => {
+  const toggleCurrency = (currency: 'USD' | 'TRY' | 'SYP', enabled: boolean) => {
     // 1. حساب العملات الجديدة
     const nextEnabled = {
       ...enabledCurrencies,
       [currency]: enabled,
     };
+
+    // منع إيقاف جميع العملات معاً (يجب إبقاء عملة واحدة على الأقل نشطة في النظام)
+    if (!nextEnabled.USD && !nextEnabled.TRY && !nextEnabled.SYP) {
+      toast({
+        title: 'تنبيه',
+        description: 'يجب الإبقاء على عملة واحدة مفعلة على الأقل في النظام',
+        variant: 'destructive',
+      });
+      return;
+    }
     
-    // 2. إذا تم إيقاف العملة الأساسية، يتم التحويل تلقائياً للعملة النشطة الأخرى أو الدولار
+    // 2. إذا تم إيقاف العملة الأساسية، يتم التحويل تلقائياً للعملة النشطة الأخرى
     let newPrimary = primaryCurrency;
     if (!enabled && primaryCurrency === currency) {
-      if (currency === 'TRY') {
-        newPrimary = nextEnabled.SYP ? 'SYP' : 'USD';
+      if (currency === 'USD') {
+        newPrimary = nextEnabled.TRY ? 'TRY' : nextEnabled.SYP ? 'SYP' : 'USD';
+      } else if (currency === 'TRY') {
+        newPrimary = nextEnabled.SYP ? 'SYP' : nextEnabled.USD ? 'USD' : 'TRY';
       } else if (currency === 'SYP') {
-        newPrimary = nextEnabled.TRY ? 'TRY' : 'USD';
+        newPrimary = nextEnabled.TRY ? 'TRY' : nextEnabled.USD ? 'USD' : 'SYP';
       }
       setPrimaryCurrency(newPrimary);
     }
@@ -1839,9 +1851,16 @@ export default function Settings() {
                     
                     {/* 1. الدولار الأمريكي USD */}
                     <div
-                      onClick={() => setPrimaryCurrency('USD')}
+                      onClick={() => {
+                        if (enabledCurrencies.USD !== false) {
+                          setPrimaryCurrency('USD');
+                        } else {
+                          toast({ title: 'العملة معطلة', description: 'يجب تفعيل عرض الدولار الأمريكي أولاً لاختياره كعملة افتراضية' });
+                        }
+                      }}
                       className={cn(
                         "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        enabledCurrencies.USD === false && "opacity-60 border-dashed border-border/60 bg-muted/10",
                         primaryCurrency === 'USD'
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
                           : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
@@ -1871,14 +1890,18 @@ export default function Settings() {
                       <div className="mt-4 pt-3 border-t border-border/40 space-y-2">
                         <div className="flex items-center justify-between">
                           <Badge variant="secondary" className="text-[10px] font-medium bg-muted/60 text-muted-foreground">
-                            العملة المرجعية (1.00 $)
+                            مرجع محاسبي (1.00 $)
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">
-                            مفعلة دائماً
-                          </Badge>
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-xs font-medium text-foreground">عرض في الواجهة:</span>
+                            <Switch
+                              checked={enabledCurrencies.USD !== false}
+                              onCheckedChange={(val) => toggleCurrency('USD', val)}
+                            />
+                          </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-                          الدولار يظل العملة المرجعية لتسعير الصرف والمحاسبة الداخلية حتى لو تم إيقاف ظهوره في الطباعة ونقاط البيع.
+                          يبقى الدولار المرجع المحاسبي في قاعدة البيانات حتى عند إخفائه من نقاط البيع والفواتير.
                         </p>
                       </div>
                     </div>
