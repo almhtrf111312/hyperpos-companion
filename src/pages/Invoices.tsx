@@ -28,7 +28,9 @@ import {
   Loader2,
   Save,
   Coins,
-  Copy
+  Copy,
+  User,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1538,41 +1540,28 @@ export default function Invoices() {
                 const invUsdTotal = invoice.total || 0;
                 const invUsdProfit = financials.baseProfit || 0;
                 const invUpper = (invoice.currency || 'USD').toUpperCase();
+                const invStoredRate = typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 0 ? invoice.exchangeRate : 1;
 
                 // Rates for secondary currencies
-                const tryRate = (invUpper === 'TRY' && typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 1)
-                  ? invoice.exchangeRate
+                const tryRate = (invUpper === 'TRY' && invStoredRate > 1)
+                  ? invStoredRate
                   : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
 
-                const sypRate = (invUpper === 'SYP' && typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 1)
-                  ? invoice.exchangeRate
+                const sypRate = (invUpper === 'SYP' && invStoredRate > 1)
+                  ? invStoredRate
                   : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
 
-                // Primary display total & currency
-                let primaryTotalVal = invUsdTotal;
-                let primarySymbol = '$';
-                let primaryDecimals = 2;
+                // Exact real selling prices and equivalents
+                const sypTotal = invUpper === 'SYP' && invStoredRate > 1
+                  ? Math.round(invUsdTotal * invStoredRate)
+                  : Math.round(invUsdTotal * sypRate);
 
-                if (invUpper === 'SYP') {
-                  primaryTotalVal = roundCurrency(invUsdTotal * sypRate);
-                  primarySymbol = 'ل.س';
-                  primaryDecimals = 0;
-                } else if (invUpper === 'TRY') {
-                  primaryTotalVal = roundCurrency(invUsdTotal * tryRate);
-                  primarySymbol = '₺';
-                  primaryDecimals = 2;
-                }
+                const tryTotal = invUpper === 'TRY' && invStoredRate > 1
+                  ? Math.round((invUsdTotal * invStoredRate) * 100) / 100
+                  : Math.round((invUsdTotal * tryRate) * 100) / 100;
 
-                // Equivalent tags:
-                const tag1 = invUpper === 'SYP' || invUpper === 'TRY'
-                  ? { text: `($${formatNumber(invUsdTotal, 2)})`, class: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" }
-                  : (enabledCurrencies.TRY ? { text: `${formatCurrency(invUsdTotal * tryRate, '₺', 2)}`, class: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" } : null);
-
-                const tag2 = invUpper === 'SYP'
-                  ? (enabledCurrencies.TRY ? { text: `${formatCurrency(invUsdTotal * tryRate, '₺', 2)}`, class: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" } : null)
-                  : (invUpper === 'TRY'
-                      ? (enabledCurrencies.SYP ? { text: `${formatCurrency(invUsdTotal * sypRate, 'ل.س', 0)}`, class: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" } : null)
-                      : (enabledCurrencies.SYP ? { text: `${formatCurrency(invUsdTotal * sypRate, 'ل.س', 0)}`, class: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" } : null));
+                const sypProfit = Math.round(invUsdProfit * sypRate);
+                const tryProfit = Math.round((invUsdProfit * tryRate) * 100) / 100;
 
                 const itemCount = invoice.items?.filter(it => !it.refunded && it.quantity > 0).length || 0;
 
@@ -1580,35 +1569,35 @@ export default function Invoices() {
                   <div
                     key={invoice.id}
                     onClick={() => handleView(invoice)}
-                    className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+                    className="invoice-card bg-card text-card-foreground rounded-xl p-2.5 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
                   >
                     {/* Top-Left Options Button */}
-                    <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute left-2 top-2 z-10" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted active:scale-90 transition-transform">
+                          <button className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted active:scale-90 transition-transform">
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-44 text-xs font-bold">
                           <DropdownMenuItem onClick={() => handleView(invoice)} className="justify-between cursor-pointer">
                             <span>عرض</span>
-                            <Eye className="w-4 h-4 text-muted-foreground" />
+                            <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleShare(invoice)} className="justify-between cursor-pointer">
                             <span>مشاركة</span>
-                            <Share2 className="w-4 h-4 text-muted-foreground" />
+                            <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </DropdownMenuItem>
                           {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handlePayDebt(invoice)} className="justify-between cursor-pointer">
                                 <span>تسديد دفعة</span>
-                                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                                <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleMarkPaid(invoice)} className="justify-between cursor-pointer">
                                 <span>{t('invoices.markAsPaid')}</span>
-                                <Check className="w-4 h-4 text-muted-foreground" />
+                                <Check className="w-3.5 h-3.5 text-muted-foreground" />
                               </DropdownMenuItem>
                             </>
                           )}
@@ -1617,7 +1606,7 @@ export default function Invoices() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleRefund(invoice)} className="justify-between text-destructive cursor-pointer">
                                 <span>استرداد الفاتورة</span>
-                                <Undo2 className="w-4 h-4 text-destructive" />
+                                <Undo2 className="w-3.5 h-3.5 text-destructive" />
                               </DropdownMenuItem>
                             </>
                           )}
@@ -1625,100 +1614,175 @@ export default function Invoices() {
                       </DropdownMenu>
                     </div>
 
-                    {/* Card Header Row (Customer & Badges) */}
-                    <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap">
-                      <span className="font-black text-foreground text-sm truncate">{invoice.customerName}</span>
+                    {/* Header Row: Customer, Badges & Cashier */}
+                    <div className="flex items-center flex-wrap gap-1.5 pr-0 pl-7 leading-tight">
+                      <span className="font-black text-foreground text-xs">{invoice.customerName}</span>
+                      
                       {invoice.paymentType === 'cash' ? (
-                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                          {t('invoices.cash')}
+                        <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          {t('invoices.cash') || 'نقدي'}
                         </span>
                       ) : (
-                        <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                          {t('invoices.credit')}
+                        <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          {t('invoices.credit') || 'بيع مؤجل'}
                         </span>
                       )}
+
                       {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                         invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
-                          <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9.5px] font-bold px-1.5 py-0.5 rounded">
+                          <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded">
                             مدفوع جزئياً
                           </span>
                         ) : (
-                          <span className="bg-destructive text-destructive-foreground text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">
-                            {t('invoices.unpaid')}
+                          <span className="bg-destructive text-destructive-foreground text-[8.5px] font-extrabold px-1.5 py-0.5 rounded">
+                            {t('invoices.unpaid') || 'غير مدفوع'}
                           </span>
                         )
                       )}
+
+                      {invoice.status === 'paid' && (
+                        <span className="bg-emerald-600 text-white text-[8.5px] font-extrabold px-1.5 py-0.5 rounded">
+                          {t('invoices.paid') || 'مدفوع'}
+                        </span>
+                      )}
+
                       {invoice.status === 'refunded' && (
-                        <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[9.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                          <Undo2 className="w-3 h-3" />
+                        <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <Undo2 className="w-2.5 h-2.5" />
                           مسترجعة
                         </span>
                       )}
+
                       {refundMeta[invoice.id] && (
-                        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border">
+                        <span className="text-[8.5px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border font-medium">
                           {refundMeta[invoice.id].condition === 'damaged' ? 'معيب' : 'سليم'}
                         </span>
                       )}
+
                       {invoice.pending_sync && (
                         <span className={cn(
-                          "text-[9px] px-1.5 py-0.5 rounded border font-semibold",
+                          "text-[8.5px] px-1.5 py-0.5 rounded border font-semibold",
                           invoice.sync_failed ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
                         )}>
                           {invoice.sync_failed ? 'فشل المزامنة' : 'غير متزامنة'}
                         </span>
                       )}
+
+                      {/* Cashier Badge */}
+                      {invoice.cashierName && (
+                        <span className="mr-1 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 font-black text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
+                          <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                          <span>{invoice.cashierName}</span>
+                        </span>
+                      )}
                     </div>
 
-                    {/* Meta Tags (Number, Date, Cashier, Item Count) */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10.5px]">
-                      <span className="bg-muted text-muted-foreground font-mono px-1.5 py-0.5 rounded font-bold">
+                    {/* Meta Tags (Number, Date, Item Count) */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[9.5px]">
+                      <span className="bg-muted text-foreground font-mono px-1 py-0.5 rounded font-bold">
                         {invoice.id}
                       </span>
                       <span className="text-muted-foreground font-medium" dir="ltr">
                         {formatDateTime(new Date(invoice.createdAt))}
                       </span>
-                      {invoice.cashierName && (
-                        <span className="text-primary font-bold flex items-center gap-0.5 bg-primary/10 px-1.5 py-0.5 rounded">
-                          👤 {invoice.cashierName}
-                        </span>
-                      )}
-                      <span className="text-muted-foreground text-[10px] flex items-center gap-1 mr-auto font-medium">
+                      <span className="text-muted-foreground font-bold flex items-center gap-0.5 mr-auto bg-muted/60 px-1.5 py-0.5 rounded">
                         <span>🛒</span>
                         <span>{itemCount} {itemCount === 1 ? 'صنف' : 'أصناف'}</span>
                       </span>
                     </div>
 
-                    {/* Multi-Currency Display Box */}
-                    <div className="mt-2.5 pt-2 border-t border-dashed border-border flex items-end justify-between">
-                      {/* Multi-Currency Profit breakdown */}
-                      <div className="text-[10px] text-muted-foreground space-y-0.5 min-w-0">
-                        {invUsdProfit > 0 ? (
-                          <>
-                            <div className="font-bold text-foreground">
-                              صافي الربح: <span className="text-emerald-600 dark:text-emerald-400 font-black font-mono whitespace-nowrap" dir="ltr">${formatNumber(invUsdProfit, 2)}</span>
-                            </div>
-                            <div className="text-[9.5px] text-muted-foreground font-mono whitespace-nowrap" dir="ltr">
-                              [ {formatCurrency(invUsdProfit * sypRate, 'ل.س', 0)}{enabledCurrencies.TRY ? ` | ${formatCurrency(invUsdProfit * tryRate, '₺', 2)}` : ''} ]
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-[10px] text-muted-foreground font-medium">
-                            {invoice.type === 'maintenance' ? 'فاتورة صيانة' : 'فاتورة مبيعات'}
+                    {/* Symmetrical Compact 3-Currency Box (Grid 2 cols: السعر + صافي الربح) */}
+                    <div className="mt-1.5 pt-1.5 border-t border-dashed border-border/80">
+                      <div className="grid grid-cols-2 rounded-lg bg-muted/40 p-1.5 border border-border/70 relative">
+                        
+                        {/* عمود السعر (الإجمالي) */}
+                        <div className="pe-2 space-y-0.5 border-l border-border/70">
+                          <div className="flex items-center justify-between pb-0.5 border-b border-border/50">
+                            <span className="text-[9.5px] font-black text-foreground flex items-center gap-0.5">
+                              <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-500" />
+                              <span>السعر:</span>
+                            </span>
+                            <span className="text-[8px] font-bold text-muted-foreground font-mono">(الإجمالي)</span>
                           </div>
-                        )}
-                      </div>
 
-                      {/* Main Total Values formatted cleanly */}
-                      <div className="text-left whitespace-nowrap shrink-0">
-                        <div className="text-base font-black text-foreground flex items-baseline gap-1 justify-end leading-none font-mono">
-                          <span className="whitespace-nowrap">{formatNumber(primaryTotalVal, primaryDecimals)}</span>
-                          <span className="text-xs font-semibold text-muted-foreground font-sans">{primarySymbol}</span>
+                          {/* سوري */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight">
+                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0"></span>
+                              <span>سوري:</span>
+                            </span>
+                            <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
+                              {formatNumber(sypTotal, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
+                            </span>
+                          </div>
+
+                          {/* دولار */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight">
+                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0"></span>
+                              <span>دولار:</span>
+                            </span>
+                            <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[10.5px] whitespace-nowrap">
+                              ${formatNumber(invUsdTotal, 2)}
+                            </span>
+                          </div>
+
+                          {/* تركي */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight">
+                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-sky-500 shrink-0"></span>
+                              <span>تركي:</span>
+                            </span>
+                            <span className="font-black text-sky-700 dark:text-sky-400 font-mono text-[10.5px] whitespace-nowrap">
+                              {formatNumber(tryTotal, tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
+                            </span>
+                          </div>
                         </div>
-                        {/* Secondary & Tertiary Currency Tags */}
-                        <div className="flex items-center gap-1 mt-1 justify-end text-[10px] font-mono font-bold whitespace-nowrap">
-                          {tag1 && <span className={cn("px-1.5 py-0.5 rounded", tag1.class)} dir="ltr">{tag1.text}</span>}
-                          {tag2 && <span className={cn("px-1.5 py-0.5 rounded", tag2.class)} dir="ltr">{tag2.text}</span>}
+
+                        {/* عمود صافي الربح (الأرباح) */}
+                        <div className="ps-2 space-y-0.5">
+                          <div className="flex items-center justify-between pb-0.5 border-b border-border/50">
+                            <span className="text-[9.5px] font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5">
+                              <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              <span>صافي الربح:</span>
+                            </span>
+                            <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">(الأرباح)</span>
+                          </div>
+
+                          {/* سوري */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight">
+                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0"></span>
+                              <span>سوري:</span>
+                            </span>
+                            <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
+                              {formatNumber(sypProfit, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
+                            </span>
+                          </div>
+
+                          {/* دولار */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight">
+                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0"></span>
+                              <span>دولار:</span>
+                            </span>
+                            <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                              ${formatNumber(invUsdProfit, 2)}
+                            </span>
+                          </div>
+
+                          {/* تركي */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight">
+                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full bg-sky-500 shrink-0"></span>
+                              <span>تركي:</span>
+                            </span>
+                            <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", tryProfit >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-600 dark:text-rose-400")}>
+                              {formatNumber(tryProfit, tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
+                            </span>
+                          </div>
                         </div>
+
                       </div>
                     </div>
                   </div>
