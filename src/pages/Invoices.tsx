@@ -190,12 +190,13 @@ export default function Invoices() {
     if (target !== 'stored') {
       code = target;
       if (code === 'TRY') {
-        rate = exchangeRates.TRY || 34;
+        rate = (exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34;
         symbol = '₺';
       } else if (code === 'SYP') {
-        rate = exchangeRates.SYP || 14500;
+        rate = (exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500;
         symbol = 'ل.س';
       } else {
+        code = 'USD';
         rate = 1;
         symbol = '$';
       }
@@ -206,33 +207,33 @@ export default function Invoices() {
 
       if (hasStoredForeign) {
         code = invCurr as 'TRY' | 'SYP';
-        rate = (inv.exchangeRate && inv.exchangeRate > 0)
+        // إذا كان سعر الصرف المخزن في الفاتورة يساوي 1 (أو أقل/غير موجود)، يجب تجاهل الرقم 1 والاعتماد تلقائياً على سعر الصرف الفعلي للعملة من الإعدادات
+        const hasValidStoredRate = typeof inv.exchangeRate === 'number' && inv.exchangeRate > 1;
+        rate = hasValidStoredRate
           ? inv.exchangeRate
-          : (code === 'TRY' ? (exchangeRates.TRY || 34) : (exchangeRates.SYP || 14500));
-        symbol = inv.currencySymbol || (code === 'TRY' ? '₺' : 'ل.س');
+          : (exchangeRates[code] || (code === 'TRY' ? 34 : 14500));
+        // رمز العملة: إذا كانت العملة TRY يكون دائماً '₺'، وإذا كانت SYP يكون دائماً 'ل.س' (منع ظهور '$' نهائياً بجانب أرباح أو إجماليات الليرة السورية أو التركية)
+        symbol = code === 'TRY' ? '₺' : 'ل.س';
       } else if (currencyCode !== 'USD' && (enabledCurrencies.USD === false || !inv.currency || inv.currency === 'USD')) {
         // System default is foreign (e.g. TRY) and either USD is disabled or invoice has no specific foreign currency
         code = currencyCode;
-        rate = exchangeRate;
-        symbol = currencySymbol;
+        rate = (code !== 'USD' && exchangeRate <= 1)
+          ? (exchangeRates[code] || (code === 'TRY' ? 34 : 14500))
+          : exchangeRate;
+        symbol = code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : '$');
       } else {
         code = 'USD';
         rate = 1;
-        symbol = inv.currencySymbol || '$';
+        symbol = '$';
       }
     }
 
     const decimals = code === 'SYP' ? 0 : 2;
 
-    // Display total
-    let displayTotal: number;
-    if (target === 'stored' && code === (inv.currency as any) && inv.totalInCurrency) {
-      displayTotal = inv.totalInCurrency;
-    } else {
-      displayTotal = roundCurrency(inv.total * rate);
-    }
+    // الإجمالي المعروض: إجمالي الفاتورة الأساسي (inv.total) مضروباً في سعر الصرف المعتمد
+    const displayTotal = roundCurrency((inv.total || 0) * rate);
 
-    // Display profit (stored as USD base, converted by rate)
+    // صافي الربح المعروض: ربح الفاتورة الأساسي (inv.profit) مضروباً في سعر الصرف المعتمد
     const baseProfit = inv.profit || 0;
     const displayProfit = roundCurrency(baseProfit * rate);
 
@@ -250,7 +251,11 @@ export default function Invoices() {
   const statCurrencyCode = displayCurrencyFilter !== 'stored'
     ? displayCurrencyFilter
     : currencyCode;
-  const statExchangeRate = statCurrencyCode === 'USD' ? 1 : (exchangeRates[statCurrencyCode] || 1);
+  const statExchangeRate = statCurrencyCode === 'USD'
+    ? 1
+    : ((exchangeRates[statCurrencyCode] && exchangeRates[statCurrencyCode] > 1)
+        ? exchangeRates[statCurrencyCode]
+        : (statCurrencyCode === 'TRY' ? 34 : 14500));
   const statCurrencySymbol = statCurrencyCode === 'USD' ? '$' : (statCurrencyCode === 'TRY' ? '₺' : 'ل.س');
   const statDecimals = statCurrencyCode === 'SYP' ? 0 : 2;
 
@@ -450,8 +455,9 @@ export default function Invoices() {
     saveRefundMeta(invoice.id);
     // Snapshot invoice-specific data BEFORE running so notifications reflect this exact invoice
     const invoiceLabel = invoice.id;
-    const invoiceTotal = invoice.totalInCurrency || invoice.total || 0;
-    const invoiceCurrencySymbol = invoice.currencySymbol || '$';
+    const refundFin = getInvoiceFinancials(invoice);
+    const invoiceTotal = refundFin.displayTotal;
+    const invoiceCurrencySymbol = refundFin.symbol;
     // Unique toast id per invoice → prevents duplicate stacked notifications on re-triggers
     const toastId = `refund-${invoiceLabel}`;
 
@@ -465,7 +471,7 @@ export default function Invoices() {
       addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel }, `invoice-refund:${invoiceLabel}`);
       toast.info(`تم جدولة استرداد ${invoiceLabel}`, {
         id: toastId,
-        description: `المبلغ: ${formatCurrency(invoiceTotal, invoice.currency)} — سيُنفَّذ عند عودة الإنترنت`,
+        description: `المبلغ: ${formatCurrency(invoiceTotal, invoiceCurrencySymbol, refundFin.decimals)} — سيُنفَّذ عند عودة الإنترنت`,
         duration: 3500,
       });
       return;
@@ -1668,6 +1674,12 @@ export default function Invoices() {
               )}
 
               <div className="border-t pt-4 space-y-2">
+                {selectedInvoice.subtotal !== undefined && selectedInvoice.discount > 0 && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{t('invoices.subtotal') || 'المجموع قبل الخصم'}:</span>
+                    <span>{formatCurrency(selectedInvoice.subtotal * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                  </div>
+                )}
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
@@ -1678,6 +1690,18 @@ export default function Invoices() {
                   <span>{t('invoices.total')}:</span>
                   <span className="text-primary">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                 </div>
+                {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && selectedInvoice.debtPaid !== undefined && selectedInvoice.debtPaid > 0 && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>المدفوع نقداً:</span>
+                    <span className="font-medium text-success">{formatCurrency((selectedInvoice.debtPaid || 0) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                  </div>
+                )}
+                {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && (
+                  <div className="flex justify-between text-sm text-destructive">
+                    <span>المتبقي (دين):</span>
+                    <span className="font-semibold">{formatCurrency(((selectedInvoice.debtRemaining !== undefined && selectedInvoice.debtRemaining !== null) ? selectedInvoice.debtRemaining : (selectedInvoice.total - (selectedInvoice.debtPaid || 0))) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                  </div>
+                )}
                 {selectedFinancials.displayProfit > 0 && (
                   <div className="flex justify-between text-sm text-success">
                     <span>{t('invoices.profit') || 'صافي الربح'}:</span>
