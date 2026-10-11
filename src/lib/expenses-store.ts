@@ -113,23 +113,17 @@ export const addExpense = (expenseData: {
   const expensePartners = partners.filter(p => p.sharesExpenses);
   
   if (expensePartners.length > 0) {
-    // Calculate total share percentage of expense partners
-    // Use expenseSharePercentage if available, otherwise fallback to sharePercentage
-    const totalExpenseShare = expensePartners.reduce((sum, p) => 
-      sum + (p.expenseSharePercentage ?? p.sharePercentage), 0);
-    
     expensePartners.forEach(partner => {
-      // Calculate this partner's ratio of the expense
+      // ✅ حساب الحصة المباشرة من أصل المصروف لتتطابق محاسبياً مع معادلة توزيع الأرباح
       const partnerExpenseShare = partner.expenseSharePercentage ?? partner.sharePercentage;
-      const partnerRatio = totalExpenseShare > 0 ? partnerExpenseShare / totalExpenseShare : 0;
-      const partnerAmount = expenseData.amount * partnerRatio;
+      const partnerAmount = Math.round(((expenseData.amount * partnerExpenseShare) / 100) * 100) / 100;
       
       if (partnerAmount > 0) {
         distributions.push({
           partnerId: partner.id,
           partnerName: partner.name,
           amount: partnerAmount,
-          percentage: partnerRatio * 100,
+          percentage: partnerExpenseShare,
         });
         
         // Deduct from partner's balance

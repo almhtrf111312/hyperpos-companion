@@ -20,6 +20,7 @@ const EXPENSE_RECORDS_KEY = 'hyperpos_expense_records_v1';
 export interface ProfitRecord {
   id: string;
   saleId: string;
+  operationId?: string;
   date: string;
   grossProfit: number;      // الربح الإجمالي (المبيعات - التكلفة)
   cogs: number;             // تكلفة البضاعة المباعة
@@ -87,19 +88,39 @@ export const saveExpenseRecords = (records: OperatingExpenseRecord[]): void => {
 
 /**
  * تسجيل الربح الإجمالي لعملية بيع
- * يتم استدعاؤها من processCashSale و processDebtSale
+ * يتم استدعاؤها من processCashSale و processDebtSale و CartPanel
+ * تدعم تحديث السجل المؤقت عند وصول المعرف الفعلي لمنع التكرار
  */
 export const addGrossProfit = (
   saleId: string,
   grossProfit: number,
   cogs: number,
-  saleTotal: number
+  saleTotal: number,
+  operationId?: string
 ): ProfitRecord => {
   const records = loadProfitRecords();
+  
+  // فحص ما إذا كان السجل موجوداً مسبقاً (بنفس saleId أو بنفس operationId)
+  const existingIndex = records.findIndex(r => 
+    r.saleId === saleId || 
+    (operationId && (r.operationId === operationId || r.saleId === operationId))
+  );
+
+  if (existingIndex !== -1) {
+    const existing = records[existingIndex];
+    existing.saleId = saleId;
+    if (operationId) existing.operationId = operationId;
+    existing.grossProfit = roundCurrency(grossProfit);
+    existing.cogs = roundCurrency(cogs);
+    existing.saleTotal = roundCurrency(saleTotal);
+    saveProfitRecords(records);
+    return existing;
+  }
   
   const newRecord: ProfitRecord = {
     id: `profit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     saleId,
+    operationId,
     date: new Date().toISOString().split('T')[0],
     grossProfit: roundCurrency(grossProfit),
     cogs: roundCurrency(cogs),
@@ -142,9 +163,9 @@ export const addOperatingExpense = (
 /**
  * حذف سجل ربح (للمرتجعات)
  */
-export const removeGrossProfit = (saleId: string): boolean => {
+export const removeGrossProfit = (saleIdOrOpId: string): boolean => {
   const records = loadProfitRecords();
-  const index = records.findIndex(r => r.saleId === saleId);
+  const index = records.findIndex(r => r.saleId === saleIdOrOpId || r.operationId === saleIdOrOpId);
   
   if (index !== -1) {
     records.splice(index, 1);

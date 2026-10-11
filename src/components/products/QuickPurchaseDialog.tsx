@@ -35,9 +35,11 @@ import { checkRealInternetAccess } from '@/hooks/use-network-status';
 import { useImageUpload } from '@/hooks/use-image-upload';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
-import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { addProductCloud, updateProductCloud } from '@/lib/cloud/products-cloud';
 import { isNoInventoryMode } from '@/lib/store-type-config';
+import { cn, formatNumber } from '@/lib/utils';
+import { addWithdrawalFromShift } from '@/lib/cashbox-store';
+import { addActivityLog } from '@/lib/activity-log';
 
 interface QuickPurchaseDialogProps {
   open: boolean;
@@ -62,6 +64,9 @@ interface ExistingProductOption {
 export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurchaseDialogProps) {
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
+
+  // Payment Method: cash (drawer deduction) vs credit (supplier payable)
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
 
   // Core Product Info
   const [productName, setProductName] = useState('');
@@ -249,11 +254,16 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
 
     // Offline Handling
     if (!hasInternet) {
+      if (paymentMethod === 'cash') {
+        addWithdrawalFromShift(totalCost, 'USD');
+      }
+
       addToQueue('quick_purchase', {
         productName: productName.trim(),
         quantity: qtyNum,
         costPrice: costNum,
         totalCost,
+        paymentMethod,
         imageUrl: imageUrl || undefined,
         barcode: barcode.trim() || undefined,
         category: category || undefined,
@@ -426,6 +436,20 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           total_cost: totalCost,
         });
 
+      // 5. خصم النقدية من الصندوق والوردية النشطة إذا كان الدفع نقداً من الدرج
+      if (paymentMethod === 'cash') {
+        addWithdrawalFromShift(totalCost, 'USD');
+        if (user) {
+          addActivityLog(
+            'expense',
+            user.id,
+            user.email || 'كاشير',
+            `شراء سريع نقداً من الصندوق (${productName.trim()}): $${formatNumber(totalCost)}`,
+            { totalCost, productName: productName.trim(), type: 'quick_purchase' }
+          );
+        }
+      }
+
       toast.success(t('purchases.quickAdded') || 'تمت إضافة الفاتورة وتحديث المخزون بنجاح');
       emitEvent(EVENTS.PURCHASES_UPDATED);
       emitEvent(EVENTS.PRODUCTS_UPDATED);
@@ -433,12 +457,17 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
       onOpenChange(false);
     } catch (error) {
       console.error('Error adding quick purchase:', error);
+      // إذا كان الدفع نقداً، نخصم من الصندوق المحلي لمنع عجز الدرج حتى في حالة الانتظار
+      if (paymentMethod === 'cash') {
+        addWithdrawalFromShift(totalCost, 'USD');
+      }
       // Fallback to queue on error
       addToQueue('quick_purchase', {
         productName: productName.trim(),
         quantity: qtyNum,
         costPrice: costNum,
         totalCost,
+        paymentMethod,
         imageUrl: imageUrl || undefined,
         barcode: barcode.trim() || undefined,
         category: category || undefined,
@@ -702,6 +731,42 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 <span className="text-base font-bold font-mono text-primary">
                   ${totalCost.toFixed(2)}
                 </span>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-xs sm:text-sm font-medium">طريقة سداد المشتريات</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cash')}
+                    className={cn(
+                      "py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all",
+                      paymentMethod === 'cash'
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                    )}
+                  >
+                    <span>💵 نقداً من الصندوق</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('credit')}
+                    className={cn(
+                      "py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all",
+                      paymentMethod === 'credit'
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                    )}
+                  >
+                    <span>📋 آجل (ذمة مورد)</span>
+                  </button>
+                </div>
+                {paymentMethod === 'cash' && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    سيتم خصم المبلغ تلقائياً من الوردية الحالية المفتوحة لمنع أي عجز بالصندوق.
+                  </p>
+                )}
               </div>
             </div>
 

@@ -452,6 +452,39 @@ export const addExpensesToShift = (amount: number, currency: ShiftCurrency = 'US
   updateCashboxBalance(amount, 'expense', currency, currencyAmount);
 };
 
+/**
+ * ✅ استرداد مصروف من الوردية النشطة وإعادة المبلغ لرصيد الصندوق مع تخفيض إجمالي المصاريف
+ */
+export const refundExpenseFromShift = (
+  amount: number,
+  currency: ShiftCurrency = 'USD',
+  currencyAmount?: number
+): void => {
+  const roundedAmount = roundCurrency(amount);
+  const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
+
+  const state = loadCashboxState();
+  state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+  state.lastUpdated = new Date().toISOString();
+  saveCashboxState(state);
+
+  const shifts = loadShifts();
+  const activeIndex = shifts.findIndex(s => s.status === 'open');
+  if (activeIndex !== -1) {
+    const shift = shifts[activeIndex];
+    if (!shift.currencies) {
+      shift.currencies = initShiftCurrencies(shift.openingCash);
+    }
+    const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
+    currMap.expenses = Math.max(0, subtractCurrency(currMap.expenses, roundedCurrAmount));
+    shift.currencies[currency] = currMap;
+
+    shift.expensesTotal = Math.max(0, subtractCurrency(shift.expensesTotal, roundedAmount));
+    saveShifts(shifts);
+    emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
+  }
+};
+
 // Add deposit to current shift (partner capital, etc.) - يعمل بدون وردية الآن
 export const addDepositToShift = (amount: number, currency: ShiftCurrency = 'USD', currencyAmount?: number): void => {
   updateCashboxBalance(amount, 'deposit', currency, currencyAmount);

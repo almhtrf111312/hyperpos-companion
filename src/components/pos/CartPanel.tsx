@@ -694,6 +694,7 @@ export function CartPanel({
 
           currency: selectedCurrency.code,
           currencySymbol: selectedCurrency.symbol,
+          exchangeRate: activeRate,
           profit: discountedProfit,
           cogs: totalCOGS,
           profitsByCategory: Object.fromEntries(
@@ -705,9 +706,8 @@ export function CartPanel({
         },
       }, operationId);
 
-      // ✅ تسجيل الربح محلياً فوراً (تقريبي - سيُحدَّث بدقة عند المزامنة)
-      const tempInvoiceId = `local_${Date.now()}`;
-      addGrossProfit(tempInvoiceId, discountedProfit, totalCOGS, totalSnapshot);
+      // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
+      addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
 
       // ✅ تسجيل النشاط
       if (user) {
@@ -934,6 +934,7 @@ export function CartPanel({
         totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: selectedCurrency.symbol,
+        exchangeRate: selectedCurrency.rate || activeRate || 1,
         profit: discountedProfit,
         cogs: totalCOGS,
         profitsByCategory: Object.fromEntries(
@@ -973,9 +974,8 @@ export function CartPanel({
         );
       }
 
-      // ✅ تسجيل الربح محلياً فوراً
-      const tempInvoiceId = `local_debt_${Date.now()}`;
-      addGrossProfit(tempInvoiceId, discountedProfit, totalCOGS, totalSnapshot);
+      // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
+      addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
 
       // ✅ تسجيل النشاط
       if (user) {

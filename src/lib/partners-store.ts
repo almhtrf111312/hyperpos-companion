@@ -326,6 +326,16 @@ export const confirmPendingProfit = (invoiceId: string, ratio: number = 1): void
       modified = true;
     });
     
+    // ✅ تحديث عناصر سجل تاريخ الأرباح لتصبح مؤكدة
+    if (partner.profitHistory) {
+      partner.profitHistory = partner.profitHistory.map(r => {
+        if (r.invoiceId === invoiceId && r.isDebt) {
+          return { ...r, isDebt: false };
+        }
+        return r;
+      });
+    }
+
     // حذف التفاصيل التي تم تأكيدها بالكامل (المبلغ = 0)
     partner.pendingProfitDetails = partner.pendingProfitDetails.filter(
       pd => pd.amount > 0

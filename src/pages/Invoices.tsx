@@ -62,7 +62,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
-import { useCurrency } from '@/hooks/use-currency';
+import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
@@ -808,7 +808,7 @@ export default function Invoices() {
 
       paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       setSelectedDebtForPayment(targetDebt);
-      setPaymentCurrency('USD');
+      setPaymentCurrency(loadDefaultCurrencyCode());
       setPaymentAmountInput('');
       setShowDebtPaymentDialog(true);
     } catch (err) {

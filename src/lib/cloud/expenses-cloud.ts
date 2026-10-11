@@ -15,6 +15,7 @@ import { emitEvent, EVENTS } from '../events';
 import { addToQueue } from '../sync-queue';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
+import { removeOperatingExpense } from '../profits-store';
 
 export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
 export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'cash_adjustment' | 'other';
@@ -389,6 +390,11 @@ export const deleteExpenseCloud = async (id: string, reason: string = 'تراج�
   }
   
   if (success) {
+    // ✅ إزالة المصروف من سجل الأرباح المركزي لإعادة صافي الربح لقيمته الحقيقية
+    try {
+      removeOperatingExpense(id);
+    } catch { /* noop */ }
+
     invalidateExpensesCache();
     const existing = expensesCache || loadExpensesLocally() || [];
     const list = existing.filter(e => e.id !== id);
@@ -406,7 +412,9 @@ export const reverseExpenseCloud = async (id: string, reason: string = 'تراج
 
 // Get expense stats
 export const getExpenseStatsCloud = async () => {
-  const expenses = await loadExpensesCloud();
+  const allExpenses = await loadExpensesCloud();
+  // ✅ استثناء المصاريف المستردة أو الملغاة تماماً من الإحصائيات الشهرية والإجمالية
+  const expenses = allExpenses.filter(e => !e.is_reversed);
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   

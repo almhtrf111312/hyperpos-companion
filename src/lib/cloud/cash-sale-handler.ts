@@ -36,6 +36,7 @@ export interface CashSaleBundle {
   totalInCurrency: number;
   currency: string;
   currencySymbol: string;
+  exchangeRate?: number;
   profit: number;
   cogs: number;
   profitsByCategory: Record<string, number>;
@@ -64,7 +65,7 @@ export async function processCashSaleBundleFromQueue(
     // 3. Record profit & background bookkeeping (must not block instant sale response)
     if (!sale.alreadyProcessed) {
       const revenue = Math.round((sale.total - sale.taxAmount) * 100) / 100;
-      addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue);
+      addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue, operationId);
       addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue }).catch(() => {});
 
       // 4. Distribute profit to partners in background (non-blocking)

@@ -659,12 +659,21 @@ export const confirmPendingProfitCloud = async (invoiceId: string, ratio: number
     }).filter(d => d.amount > 0);
     
     if (totalConfirmed > 0) {
+      // ✅ تحديث عناصر سجل تاريخ الأرباح لتصبح مؤكدة (غير معلقة كدين)
+      const updatedProfitHistory = (partner.profitHistory || []).map(r => {
+        if (r.invoiceId === invoiceId && r.isDebt) {
+          return { ...r, isDebt: false };
+        }
+        return r;
+      });
+
       await updatePartnerCloud(partner.id, {
         pendingProfit: Math.max(0, partner.pendingProfit - totalConfirmed),
         confirmedProfit: partner.confirmedProfit + totalConfirmed,
         currentBalance: partner.currentBalance + totalConfirmed,
         totalProfitEarned: partner.totalProfitEarned + totalConfirmed,
         pendingProfitDetails: updatedDetails,
+        profitHistory: updatedProfitHistory,
       });
     }
   }

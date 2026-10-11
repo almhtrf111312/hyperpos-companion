@@ -28,8 +28,9 @@ export const isActiveInvoice = (invoice: Invoice): boolean =>
 export const remainingDebtOf = (invoice: Invoice): number => {
   if (invoice.paymentType !== 'debt') return 0;
   if (invoice.status === 'paid') return 0;
-  const remaining = Number(invoice.debtRemaining) || 0;
-  return remaining > 0 ? remaining : Number(invoice.total) || 0;
+  return typeof invoice.debtRemaining === 'number'
+    ? Math.max(0, invoice.debtRemaining)
+    : (Number(invoice.total) || 0);
 };
 
 export const normalizeCustomerKey = (name?: string | null): string =>

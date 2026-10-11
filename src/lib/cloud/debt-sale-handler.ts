@@ -46,6 +46,7 @@ export interface DebtSaleBundle {
   totalInCurrency: number;
   currency: string;
   currencySymbol: string;
+  exchangeRate?: number;
   
   // Tax data
   taxRate?: number;
@@ -169,7 +170,7 @@ export async function processDebtSaleWithOfflineSupport(
     if (!sale.alreadyProcessed) {
       // ✅ أرقام الخادم هي المعتمدة (التكلفة من جدول المنتجات، الضريبة خارج الربح)
       const revenue = Math.round((sale.total - sale.taxAmount) * 100) / 100;
-      addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue);
+      addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue, localId);
       addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue }).catch(() => {});
     }
     

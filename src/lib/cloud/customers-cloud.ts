@@ -368,14 +368,42 @@ export const updateCustomerStatsCloud = async (
 
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const totalPurchases = round2(active.reduce((s, inv) => s + (Number(inv.total) || 0), 0));
-  const totalDebt = round2(
-    active
-      .filter(inv => inv.payment_type === 'debt' && inv.status !== 'paid')
-      .reduce((s, inv) => {
-        const remaining = Number(inv.debt_remaining) || 0;
-        return s + (remaining > 0 ? remaining : Number(inv.total) || 0);
-      }, 0)
-  );
+  
+  // حساب ديون الفواتير مع فحص دقيق للمتبقي
+  const invoiceDebt = active
+    .filter(inv => inv.payment_type === 'debt' && inv.status !== 'paid')
+    .reduce((s, inv) => {
+      const remaining = typeof inv.debt_remaining === 'number' ? inv.debt_remaining : (Number(inv.total) || 0);
+      return s + Math.max(0, remaining);
+    }, 0);
+
+  // دمج رصيد الديون المباشرة/النقدية اليدوية من جدول debts
+  let directDebtTotal = 0;
+  try {
+    const customers = await loadCustomersCloud();
+    const currentCust = customers.find(c => c.id === resolvedId);
+    const cname = currentCust?.name?.trim();
+    if (cname) {
+      const { data: directDebts } = await supabase
+        .from('debts')
+        .select('remaining_debt, status, invoice_id')
+        .ilike('customer_name', cname)
+        .neq('status', 'fully_paid');
+
+      if (directDebts) {
+        directDebts.forEach(d => {
+          const isManual = !d.invoice_id || d.invoice_id.startsWith('DBT-') || d.invoice_id.startsWith('manual_');
+          if (isManual) {
+            directDebtTotal += Number(d.remaining_debt) || 0;
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[updateCustomerStatsCloud] direct debts query failed:', err);
+  }
+
+  const totalDebt = round2(invoiceDebt + directDebtTotal);
   const lastPurchase = active
     .map(inv => inv.created_at)
     .filter(Boolean)

@@ -439,7 +439,7 @@ export const addInvoiceCloud = async (
     total: Math.round((invoice.total || 0) * 100) / 100,
     profit: Math.round((invoice.profit || 0) * 100) / 100,
     currency: invoice.currency,
-    exchange_rate: 1,
+    exchange_rate: Number((invoice as any).exchangeRate) || 1,
     payment_type: invoice.paymentType,
     status: invoice.status,
     debt_paid: invoice.debtPaid || 0,

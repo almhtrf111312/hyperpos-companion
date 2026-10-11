@@ -17,7 +17,7 @@
  * - طابور التزامن (Sync Queue) للعمل offline-first
  */
 
-import { addSalesToShift, addDepositToShift, addExpensesToShift, getActiveShift } from './cashbox-store';
+import { addSalesToShift, addDepositToShift, addExpensesToShift, refundExpenseFromShift, getActiveShift } from './cashbox-store';
 import { deductStockBatch, checkStockAvailability } from './products-store';
 import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
@@ -348,8 +348,8 @@ export const reverseExpenseTransaction = (
   expenseType: string
 ): TransactionResult => {
   try {
-    // 1. إعادة المبلغ للوردية الحالية / الصندوق كإيداع عكسي
-    addDepositToShift(roundCurrency(amount), `استرداد مصروف: ${expenseType}`);
+    // 1. إعادة المبلغ للوردية الحالية / الصندوق وتخفيض إجمالي المصاريف بالعملة الصحيحة
+    refundExpenseFromShift(roundCurrency(amount), 'USD');
 
     // 2. تسجيل النشاط والحدث المالي
     addActivityLog(

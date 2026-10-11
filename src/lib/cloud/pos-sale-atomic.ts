@@ -28,6 +28,7 @@ export interface AtomicSaleBundle {
   taxAmount?: number;
   total: number;
   currency: string;
+  exchangeRate?: number;
   profit: number;
   warehouseId?: string;
   /** دفعة أولى مقبوضة نقداً عند البيع المؤجل (بالدولار) — تُخصم من الدين */
@@ -136,6 +137,12 @@ export async function processPosSaleAtomic(
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.success || !row.invoice_id || !row.invoice_number) {
       throw new Error('Atomic sale returned an invalid result');
+    }
+
+    // ✅ حفظ سعر الصرف الفعلي للفاتورة في السحابة
+    const actualExchangeRate = Number((bundle as any).exchangeRate) || 1;
+    if (actualExchangeRate > 0 && actualExchangeRate !== 1) {
+      sb.from('invoices').update({ exchange_rate: actualExchangeRate }).eq('id', row.invoice_id).then?.(() => {}).catch?.(() => {});
     }
 
     invalidateInvoicesCache();
