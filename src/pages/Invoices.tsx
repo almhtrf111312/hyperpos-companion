@@ -26,7 +26,8 @@ import {
   Layers,
   Share2,
   Loader2,
-  Save
+  Save,
+  Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -180,12 +181,12 @@ export default function Invoices() {
   }, [selectedDebtForPayment, paymentCurrency, currentRate]);
 
   // Helper for computing display financial values for an invoice
-  const getInvoiceFinancials = (inv: Invoice) => {
+  const getInvoiceFinancials = (inv: Invoice, forceStored: boolean = false) => {
     let code: 'USD' | 'TRY' | 'SYP';
     let rate: number;
     let symbol: string;
 
-    const target = displayCurrencyFilter;
+    const target = forceStored ? 'stored' : displayCurrencyFilter;
 
     if (target !== 'stored') {
       code = target;
@@ -237,6 +238,15 @@ export default function Invoices() {
     const baseProfit = inv.profit || 0;
     const displayProfit = roundCurrency(baseProfit * rate);
 
+    const invUpper = (inv.currency || '').toUpperCase();
+    const tryRate = (invUpper === 'TRY' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 1)
+      ? inv.exchangeRate
+      : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
+
+    const sypRate = (invUpper === 'SYP' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 1)
+      ? inv.exchangeRate
+      : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
+
     return {
       code,
       rate,
@@ -245,6 +255,8 @@ export default function Invoices() {
       displayTotal,
       displayProfit,
       baseProfit,
+      tryRate,
+      sypRate,
     };
   };
 
@@ -1433,6 +1445,23 @@ export default function Invoices() {
         ) : (
           filteredInvoices.map((invoice) => {
             const financials = getInvoiceFinancials(invoice);
+            const invUsdTotal = invoice.total || 0;
+            const invUsdProfit = financials.baseProfit || 0;
+
+            const altCode = financials.code !== 'USD'
+              ? null
+              : ((invoice.currency && invoice.currency !== 'USD')
+                  ? (invoice.currency as 'TRY' | 'SYP')
+                  : (currencyCode !== 'USD'
+                      ? (currencyCode as 'TRY' | 'SYP')
+                      : (enabledCurrencies.TRY ? 'TRY' : (enabledCurrencies.SYP ? 'SYP' : null))));
+
+            const altRate = altCode === 'TRY' ? financials.tryRate : (altCode === 'SYP' ? financials.sypRate : 1);
+            const altSymbol = altCode === 'TRY' ? '₺' : (altCode === 'SYP' ? 'ل.س' : '$');
+            const altDecimals = altCode === 'SYP' ? 0 : 2;
+            const altTotal = roundCurrency(invUsdTotal * altRate);
+            const altProfit = roundCurrency(invUsdProfit * altRate);
+
             return (
             <Card key={invoice.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
@@ -1493,20 +1522,68 @@ export default function Invoices() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="text-left">
-                      <p className="font-bold text-lg">
-                        {formatCurrency(financials.displayTotal, financials.symbol, financials.decimals)}
-                      </p>
-                      {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          المدفوع: {formatCurrency(invoice.debtPaid ? (invoice.debtPaid * financials.rate) : 0, financials.symbol, financials.decimals)} / المتبقي: {formatCurrency((invoice.debtRemainingInCurrency ?? ((invoice.debtRemaining || 0) * financials.rate)), financials.symbol, financials.decimals)}
-                        </p>
-                      )}
-                      {financials.displayProfit > 0 && (
-                        <p className="text-xs text-success font-medium">
-                          صافي الربح: {formatCurrency(financials.displayProfit, financials.symbol, financials.decimals)}
-                        </p>
-                      )}
+                    <div className="text-left whitespace-nowrap">
+                      <div className="flex flex-col items-end">
+                        {financials.code !== 'USD' ? (
+                          <>
+                            <div className="flex flex-col sm:flex-row sm:items-baseline items-end gap-0.5 sm:gap-1.5">
+                              <span className="font-bold text-base sm:text-lg text-foreground">
+                                {formatCurrency(financials.displayTotal, financials.symbol, financials.decimals)}
+                              </span>
+                              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap" dir="ltr">
+                                ({formatCurrency(invUsdTotal, '$', 2)})
+                              </span>
+                            </div>
+                            {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                المدفوع: {formatCurrency((invoice.debtPaid || 0) * financials.rate, financials.symbol, financials.decimals)} / المتبقي: {formatCurrency(((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.total - (invoice.debtPaid || 0))) * financials.rate, financials.symbol, financials.decimals)}
+                              </p>
+                            )}
+                            {invUsdProfit > 0 && (
+                              <p className="text-xs text-success font-medium mt-0.5 whitespace-nowrap">
+                                صافي الربح: <span dir="ltr">{formatCurrency(invUsdProfit, '$', 2)}</span> ({formatCurrency(financials.displayProfit, financials.symbol, financials.decimals)})
+                              </p>
+                            )}
+                          </>
+                        ) : altCode ? (
+                          <>
+                            <div className="flex flex-col sm:flex-row sm:items-baseline items-end gap-0.5 sm:gap-1.5">
+                              <span className="font-bold text-base sm:text-lg text-foreground" dir="ltr">
+                                {formatCurrency(invUsdTotal, '$', 2)}
+                              </span>
+                              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                                ({formatCurrency(altTotal, altSymbol, altDecimals)})
+                              </span>
+                            </div>
+                            {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                المدفوع: {formatCurrency(invoice.debtPaid || 0, '$', 2)} / المتبقي: {formatCurrency(((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.total - (invoice.debtPaid || 0))), '$', 2)}
+                              </p>
+                            )}
+                            {invUsdProfit > 0 && (
+                              <p className="text-xs text-success font-medium mt-0.5 whitespace-nowrap">
+                                صافي الربح: <span dir="ltr">{formatCurrency(invUsdProfit, '$', 2)}</span> ({formatCurrency(altProfit, altSymbol, altDecimals)})
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-bold text-base sm:text-lg text-foreground" dir="ltr">
+                              {formatCurrency(invUsdTotal, '$', 2)}
+                            </p>
+                            {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                المدفوع: {formatCurrency(invoice.debtPaid || 0, '$', 2)} / المتبقي: {formatCurrency(((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.total - (invoice.debtPaid || 0))), '$', 2)}
+                              </p>
+                            )}
+                            {invUsdProfit > 0 && (
+                              <p className="text-xs text-success font-medium mt-0.5 whitespace-nowrap" dir="ltr">
+                                صافي الربح: {formatCurrency(invUsdProfit, '$', 2)}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <DropdownMenu>
@@ -1576,7 +1653,19 @@ export default function Invoices() {
             </DialogTitle>
           </DialogHeader>
           {selectedInvoice && (() => {
-            const selectedFinancials = getInvoiceFinancials(selectedInvoice);
+            const selectedFinancials = getInvoiceFinancials(selectedInvoice, true);
+            const baseInvTotal = selectedInvoice.total || 0;
+            const tryRateForInv = (selectedInvoice.currency === 'TRY' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 1)
+              ? selectedInvoice.exchangeRate
+              : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
+            const sypRateForInv = (selectedInvoice.currency === 'SYP' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 1)
+              ? selectedInvoice.exchangeRate
+              : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
+
+            const totalUsdStr = formatCurrency(baseInvTotal, '$', 2);
+            const totalTryStr = formatCurrency(baseInvTotal * tryRateForInv, '₺', 2);
+            const totalSypStr = formatCurrency(baseInvTotal * sypRateForInv, 'ل.س', 0);
+
             return (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1643,28 +1732,28 @@ export default function Invoices() {
               {selectedInvoice.items.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">{selectedInvoice.type === 'sale' ? t('invoices.products') : 'عناصر الفاتورة'}:</span>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm table-fixed">
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-xs sm:text-sm">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="w-[45%] px-3 py-2 text-right font-medium text-muted-foreground">المنتج</th>
-                          <th className="w-[15%] px-3 py-2 text-center font-medium text-muted-foreground">الكمية</th>
-                          <th className="w-[20%] px-3 py-2 text-center font-medium text-muted-foreground">السعر</th>
-                          <th className="w-[20%] px-3 py-2 text-left font-medium text-muted-foreground">المجموع</th>
+                          <th className="px-2 py-2 text-right font-medium text-muted-foreground">المنتج</th>
+                          <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">الكمية</th>
+                          <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">السعر</th>
+                          <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">المجموع</th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedInvoice.items.map((item, idx) => (
                           <tr key={idx} className={cn("border-t border-muted/50", item.refunded && "opacity-60")}>
-                            <td className="w-[45%] px-3 py-2 text-right whitespace-normal break-words leading-snug" dir="auto">
+                            <td className="px-2 py-2 text-right whitespace-normal break-words leading-snug" dir="auto">
                               <span className={cn(item.refunded && "line-through")}>{item.name}</span>
                               {item.refunded && (
                                 <span className="mr-2 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">مُسترد</span>
                               )}
                             </td>
-                            <td className="w-[15%] px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="w-[20%] px-3 py-2 text-center">{formatCurrency(item.price * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
-                            <td className="w-[20%] px-3 py-2 text-left font-medium">{formatCurrency((item.refunded ? 0 : (item.price * item.quantity)) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
+                            <td className="px-2 py-2 text-center whitespace-nowrap">{item.quantity}</td>
+                            <td className="px-2 py-2 text-center whitespace-nowrap font-mono sm:font-sans">{formatCurrency(item.price * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
+                            <td className="px-2 py-2 text-left font-medium whitespace-nowrap font-mono sm:font-sans">{formatCurrency((item.refunded ? 0 : (item.price * item.quantity)) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1708,6 +1797,34 @@ export default function Invoices() {
                     <span className="font-semibold">{formatCurrency(selectedFinancials.displayProfit, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
+              </div>
+
+              {/* قسم معادلة العملات أسفل الجدول والملخص المالي */}
+              <div className="bg-muted/40 border border-border/70 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground pb-1.5 border-b border-border/40">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    <Coins className="w-3.5 h-3.5 text-primary" />
+                    معادلة العملات (إجمالي الفاتورة):
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
+                    <span className="text-muted-foreground text-[11px]">القيمة بالدولار:</span>
+                    <span className="font-bold text-foreground text-sm whitespace-nowrap" dir="ltr">{totalUsdStr}</span>
+                  </div>
+                  {enabledCurrencies.TRY && (
+                    <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
+                      <span className="text-muted-foreground text-[11px]">القيمة بالليرة التركية:</span>
+                      <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalTryStr}</span>
+                    </div>
+                  )}
+                  {enabledCurrencies.SYP && (
+                    <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
+                      <span className="text-muted-foreground text-[11px]">القيمة بالليرة السورية:</span>
+                      <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalSypStr}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">

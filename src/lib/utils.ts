@@ -60,7 +60,12 @@ export function formatCurrency(amount: number, symbol: string = '$', decimals: n
     maximumFractionDigits: decimals,
     useGrouping: true,
   });
-  return `${symbol}${formatter.format(roundCurrency(amount))}`;
+  const formatted = formatter.format(roundCurrency(amount));
+  const cleanSymbol = (symbol || '').trim();
+  if (cleanSymbol === 'ل.س' || cleanSymbol === 'SYP') {
+    return `${formatted}\u00A0${cleanSymbol}`;
+  }
+  return `${symbol}${formatted}`;
 }
 
 // Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)
